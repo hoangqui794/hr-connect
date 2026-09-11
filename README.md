@@ -172,10 +172,10 @@ Các thay đổi nghiệp vụ cần được cập nhật vào tài liệu liê
 
 | Thành viên | Mã sinh viên |
 |---|---|
-| [Họ và tên] | [Mã sinh viên] |
-| [Họ và tên] | [Mã sinh viên] |
-| [Họ và tên] | [Mã sinh viên] |
-| [Họ và tên] | [Mã sinh viên] |
-| [Họ và tên] | [Mã sinh viên] |
+| Trương Hoàng Quí | SE184355 |
+| Lê Thị Trà Mi | SE184379 |
+| [Cao Hữu Trí | SE184047 |
+| Khúc Ngọc Sơn | SE184040 |
+| Nguyễn Văn Sang | SE183276 |
 
-**Giảng viên hướng dẫn:** [Họ và tên]
+**Giảng viên hướng dẫn:** Phạm Minh Trí
