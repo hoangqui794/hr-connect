@@ -95,14 +95,16 @@ Phiên bản công nghệ và hướng dẫn cài đặt sẽ được cập nh�
 
 ## 8. Cấu trúc repository dự kiến
 
+```text
 hr-connect/
 ├── frontend/       # Mã nguồn giao diện
 ├── backend/        # Solution và các project .NET
 ├── docs/           # Tài liệu nghiệp vụ và kỹ thuật
 ├── .github/        # Pull Request template và CI
 ├── .gitignore
-├── .env.example    # Mẫu biến môi trường, không chứa bí mật thật
+├── .env.example    # Mẫu biến môi trường
 └── README.md
+```
 
 Thư mục `ai-service/` chỉ được bổ sung nếu AI được triển khai thành service riêng.
 
