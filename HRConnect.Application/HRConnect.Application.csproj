@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Common\Behaviors\" />
+    <Folder Include="Common\Interfaces\" />
+    <Folder Include="Common\Models\" />
+    <Folder Include="DTOs\" />
+    <Folder Include="Features\Auth\Commands\Register\" />
+    <Folder Include="Features\Auth\Queries\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="MediatR" Version="14.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HRConnect.Domain\HRConnect.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

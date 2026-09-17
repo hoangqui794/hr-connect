@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37628.2
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HRConnect.Application", "HRConnect.Application\HRConnect.Application.csproj", "{F4F3817C-4D56-4C2B-BEDC-895E7C1E18B0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HRConnect.Infrastructure", "HRConnect.Infrastructure\HRConnect.Infrastructure.csproj", "{41A1B640-768B-4D74-897C-BD12080D827B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HRConnect.Domain", "HRConnect.Domain\HRConnect.Domain.csproj", "{610AA6BB-513C-49CA-817A-F36E06B07E6F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HRConnect.Presentation", "HRConnect.Presentation\HRConnect.Presentation.csproj", "{4280FA78-71DC-4A50-BED6-2D10C5C65063}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F4F3817C-4D56-4C2B-BEDC-895E7C1E18B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F4F3817C-4D56-4C2B-BEDC-895E7C1E18B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F4F3817C-4D56-4C2B-BEDC-895E7C1E18B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F4F3817C-4D56-4C2B-BEDC-895E7C1E18B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{41A1B640-768B-4D74-897C-BD12080D827B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{41A1B640-768B-4D74-897C-BD12080D827B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{41A1B640-768B-4D74-897C-BD12080D827B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{41A1B640-768B-4D74-897C-BD12080D827B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{610AA6BB-513C-49CA-817A-F36E06B07E6F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{610AA6BB-513C-49CA-817A-F36E06B07E6F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{610AA6BB-513C-49CA-817A-F36E06B07E6F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{610AA6BB-513C-49CA-817A-F36E06B07E6F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4280FA78-71DC-4A50-BED6-2D10C5C65063}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4280FA78-71DC-4A50-BED6-2D10C5C65063}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4280FA78-71DC-4A50-BED6-2D10C5C65063}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4280FA78-71DC-4A50-BED6-2D10C5C65063}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {20FBE870-4195-44A1-AC76-12112369F651}
+	EndGlobalSection
+EndGlobal

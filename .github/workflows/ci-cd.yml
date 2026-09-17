@@ -1,0 +1,133 @@
+name: HRConnect CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+      - 'fix/**'
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '.gitignore'
+      - '.dockerignore'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '.gitignore'
+      - '.dockerignore'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # -----------------------------------------------------------
+  # 1. CI JOB: Restore, Build, Check code quality
+  # -----------------------------------------------------------
+  ci:
+    name: Build & Test (CI)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore Dependencies
+        run: dotnet restore HRConnect.sln
+
+      - name: Build Solution (Release)
+        run: dotnet build HRConnect.sln --configuration Release --no-restore
+
+      - name: Run Unit & Integration Tests (if available)
+        run: |
+          if ls **/*[Tt]est*/*.csproj 1> /dev/null 2>&1; then
+            dotnet test --configuration Release --no-build --verbosity normal
+          else
+            echo "No test projects found yet. Skipping test execution."
+          fi
+
+  # -----------------------------------------------------------
+  # 2. CD JOB: Build Docker Image & Deploy to Production
+  # Kích hoạt DUY NHẤT khi merge / push vào nhánh main và CI thành công
+  # -----------------------------------------------------------
+  cd:
+    name: Deploy to Production (CD)
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata (Tags & Labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Bước Deploy thực tế lên Server / Cloud:
+      # Tùy theo nền tảng bạn dùng, kích hoạt 1 trong các cách sau:
+      - name: Trigger Production Deployment
+        run: |
+          echo "================================================================="
+          echo "Docker image successfully built and pushed to GHCR:"
+          echo "${{ steps.meta.outputs.tags }}"
+          echo "Production deployment initiated!"
+          echo "================================================================="
+          
+          # CÁCH 1: Nếu dùng Deploy Webhook (Render / Railway / Portainer / Coolify):
+          # if [ -n "${{ secrets.DEPLOY_WEBHOOK_URL }}" ]; then
+          #   curl -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}"
+          # fi
+
+          # CÁCH 2: Nếu dùng SSH vào VPS Linux (kéo image mới và docker compose up):
+          # uses: appleboy/ssh-action@v1.0.3
+          # with:
+          #   host: ${{ secrets.PROD_SERVER_HOST }}
+          #   username: ${{ secrets.PROD_SERVER_USER }}
+          #   key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          #   script: |
+          #     docker pull ghcr.io/${{ github.repository }}:latest
+          #     docker compose -f /app/docker-compose.yml up -d

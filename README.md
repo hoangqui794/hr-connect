@@ -6,176 +6,191 @@ HR Connect là nền tảng web hỗ trợ Agency quản lý hoạt động tuy�
 
 Hệ thống tập trung thông tin tuyển dụng, hỗ trợ đánh giá CV bằng AI, theo dõi nguồn giới thiệu và quản lý quyền lợi Affiliate.
 
-> Dự án Capstone — SEP490, FPT University.
-> Trạng thái: Đang phát triển.
+> **Dự án Capstone — SEP490, FPT University**  
+> **Trạng thái:** Đang phát triển  
+> **Giảng viên hướng dẫn:** Phạm Minh Trí  
 
-## 1. Mục tiêu
+---
+
+## 👥 Nhóm Thực Hiện (Team Members)
+
+| STT | Thành viên | Mã sinh viên | Vai trò |
+|:---:|---|:---:|---|
+| 1 | **Trương Hoàng Quí** | SE184355 | Leader |
+| 2 | **Lê Thị Trà Mi** | SE184379 | Member |
+| 3 | **Cao Hữu Trí** | SE184047 | Member |
+| 4 | **Khúc Ngọc Sơn** | SE184040 | Member |
+| 5 | **Nguyễn Văn Sang** | SE183276 | Member |
+
+---
+
+## 1. Mục Tiêu Dự Án
 
 - Tập trung hóa thông tin doanh nghiệp, Job, ứng viên và CV.
 - Hỗ trợ ba loại dịch vụ tuyển dụng trên một nền tảng.
 - Nhận diện hồ sơ trùng và truy vết nguồn giới thiệu.
-- Sử dụng AI hỗ trợ đối chiếu CV với Job Description.
+- Sử dụng AI hỗ trợ đối chiếu CV với Job Description (JD).
 - Theo dõi tiến độ và kết quả xử lý hồ sơ.
 - Quản lý Commission, Payout và báo cáo hoạt động.
 
-## 2. Dịch vụ tuyển dụng
+---
 
-| Service Type | Dịch vụ |
-|---|---|
-| `HEADHUNT_COD` | Tuyển dụng theo mô hình hoa hồng |
-| `CV_SOURCING` | Tìm kiếm và cung cấp hồ sơ ứng viên |
-| `CV_APPLICATION` | Tiếp nhận và xử lý hồ sơ ứng tuyển |
+## 2. Dịch Vụ Tuyển Dụng
 
-Quy trình, đầu ra và điều kiện tài chính của từng dịch vụ được mô tả trong tài liệu nghiệp vụ của dự án.
+| Service Type | Dịch vụ | Mô tả |
+|---|---|---|
+| `HEADHUNT_COD` | Tuyển dụng theo mô hình hoa hồng | Trả phí khi ứng viên nhận việc thành công |
+| `CV_SOURCING` | Tìm kiếm và cung cấp hồ sơ ứng viên | Cung cấp danh sách CV đạt chuẩn theo yêu cầu |
+| `CV_APPLICATION` | Tiếp nhận và xử lý hồ sơ ứng tuyển | Đăng tuyển và xử lý ứng viên nộp hồ sơ trực tiếp |
 
-## 3. Actor
+---
+
+## 3. Đối Tượng Người Dùng (Actor)
 
 | Actor | Vai trò chính |
 |---|---|
-| Guest | Xem thông tin nền tảng và Job công khai |
-| Platform Admin | Quản trị tài khoản, quyền truy cập và giám sát nền tảng |
-| Internal HR / Recruiter | Xử lý hồ sơ và điều phối tuyển dụng |
-| Client Company User | Tạo nhu cầu tuyển dụng và đánh giá hồ sơ được chia sẻ |
-| Candidate | Quản lý hồ sơ cá nhân và tham gia ứng tuyển |
-| Affiliate Recruiter / OPR Hub | Giới thiệu ứng viên, theo dõi hồ sơ và quyền lợi |
+| **Guest** | Xem thông tin nền tảng và các Job tuyển dụng công khai |
+| **Platform Admin** | Quản trị toàn bộ tài khoản, phân quyền hệ thống và giám sát nền tảng |
+| **Internal HR / Recruiter** | Tiếp nhận, xử lý hồ sơ, phỏng vấn và điều phối quy trình tuyển dụng |
+| **Client Company User** | Doanh nghiệp đối tác tạo nhu cầu tuyển dụng và đánh giá ứng viên |
+| **Candidate** | Quản lý hồ sơ cá nhân, CV và nộp hồ sơ ứng tuyển |
+| **Affiliate Recruiter / OPR Hub** | Cộng tác viên giới thiệu ứng viên, theo dõi tiến độ và nhận hoa hồng |
 
-## 4. Core Modules
+---
 
-1. **Company & Job Management**
-   Quản lý doanh nghiệp, nhu cầu tuyển dụng và thông tin Job.
+## 4. Kiến Trúc Backend (.NET 8 Clean Architecture & CQRS)
 
-2. **Candidate, CV & Submission Management**
-   Quản lý hồ sơ, tiếp nhận CV, kiểm tra trùng và ghi nhận nguồn.
+Dự án Backend được tổ chức theo chuẩn **Clean Architecture (Onion)** kết hợp **CQRS (MediatR)** và **Vertical Slice**:
 
-3. **AI Matching & Screening Support**
-   Phân tích mức độ phù hợp giữa CV và JD, cung cấp thông tin hỗ trợ sàng lọc.
-
-4. **Recruitment Workflow & Outcome Management**
-   Theo dõi quá trình xử lý hồ sơ và kết quả tuyển dụng theo dịch vụ.
-
-5. **Affiliate, Commission & Reporting Management**
-   Quản lý Affiliate, quyền lợi hoa hồng, lịch sử chi trả và báo cáo.
-
-Các chức năng dùng chung gồm quản lý tài khoản, kiểm soát truy cập, thông báo và lịch sử xử lý.
-
-## 5. Main Flows
-
-| Mã | Luồng nghiệp vụ |
-|---|---|
-| MF-01 | Tạo, duyệt và công bố Job |
-| MF-02 | Tiếp nhận hồ sơ, kiểm tra trùng và ghi nhận nguồn |
-| MF-03 | AI Matching và hỗ trợ sàng lọc |
-| MF-04 | Tuyển chọn và tuyển dụng ứng viên |
-| MF-05 | Theo dõi hậu tuyển dụng, Commission và Payout |
-
-Các luồng được áp dụng theo dịch vụ và điều kiện nghiệp vụ. Không mặc định mọi hồ sơ đều phát sinh Commission.
-
-## 6. Nguyên tắc nghiệp vụ
-
-- Candidate và CV là hai khái niệm khác nhau.
-- Submission ghi nhận lần gửi hồ sơ; Application thể hiện hồ sơ ứng tuyển tại một Job.
-- Người thực hiện thao tác gửi có thể khác nguồn giới thiệu.
-- Việc tiếp nhận hồ sơ không tự động xác lập quyền hưởng hoa hồng.
-- Commission và Payout được theo dõi riêng.
-- AI chỉ hỗ trợ đánh giá; quyết định tuyển chọn thuộc về con người.
-- Quyền xem dữ liệu phụ thuộc vai trò và phạm vi được cấp.
-- Quy tắc kiểm tra trùng và attribution tuân theo phiên bản Business Rules đã được xác nhận.
-
-## 7. Công nghệ
-
-| Thành phần | Công nghệ |
-|---|---|
-| Backend | C# / ASP.NET Core |
-| Frontend | Đang cập nhật |
-| Database | Đang cập nhật |
-| AI Matching | Đang cập nhật |
-| Quản lý mã nguồn | Git / GitHub |
-
-Phiên bản công nghệ và hướng dẫn cài đặt sẽ được cập nhật theo mã nguồn triển khai.
-
-## 8. Cấu trúc repository dự kiến
-
-```text
-hr-connect/
-├── frontend/       # Mã nguồn giao diện
-├── backend/        # Solution và các project .NET
-├── docs/           # Tài liệu nghiệp vụ và kỹ thuật
-├── .github/        # Pull Request template và CI
-├── .gitignore
-├── .env.example    # Mẫu biến môi trường
-└── README.md
+```
+        ┌─────────────────────────┐
+        │  HRConnect.Presentation │  (Web API / Endpoints / Swagger / JWT)
+        └────────────┬────────────┘
+                     │ phụ thuộc
+        ┌────────────▼────────────┐
+        │ HRConnect.Infrastructure│  (PostgreSQL, EF Core, External Services)
+        └────────────┬────────────┘
+                     │ phụ thuộc
+        ┌────────────▼────────────┐
+        │  HRConnect.Application  │  (CQRS Features, Use Cases, DTOs)
+        └────────────┬────────────┘
+                     │ phụ thuộc
+        ┌────────────▼────────────┐
+        │    HRConnect.Domain     │  (Core Entities, Business Rules)
+        └─────────────────────────┘
 ```
 
-Thư mục `ai-service/` chỉ được bổ sung nếu AI được triển khai thành service riêng.
+### Chi tiết các tầng và cấu trúc thư mục:
 
-## 9. Thiết lập và chạy dự án
+```text
+d:/Ki_9/HRConnect/
+├── .github/workflows/
+│   └── ci-cd.yml               # Pipeline CI/CD tự động (GitHub Actions)
+├── .env.example                # Mẫu biến môi trường (DB Connection, JWT Secret)
+├── .gitignore                  # Bỏ qua file rác và file .env
+├── Dockerfile                  # Đóng gói Docker multi-stage .NET 8 (Non-root user)
+├── HRConnect.sln
+│
+├── HRConnect.Domain/           # [CORE] Chứa logic nghiệp vụ cốt lõi
+│   ├── Common/                 # BaseEntity, ValueObject, DomainEvent
+│   ├── Entities/               # User, Candidate, Job, Submission, Commission...
+│   ├── Enums/                  # UserRole, ServiceType, JobStatus, SubmissionStatus...
+│   └── Interfaces/             # Domain Interfaces
+│
+├── HRConnect.Application/      # [USE CASES] Xử lý nghiệp vụ & CQRS
+│   ├── Common/
+│   │   ├── Behaviors/          # MediatR Pipeline (ValidationBehavior, LoggingBehavior)
+│   │   ├── Interfaces/         # IApplicationDbContext, IPasswordHasher...
+│   │   └── Models/             # Result<T>, PaginatedList<T>
+│   ├── DTOs/                   # DTOs dùng chung
+│   └── Features/               # Vertical Slice theo từng Module/Feature
+│       └── Auth/               # Module Xác thực tài khoản
+│           ├── Commands/       # Các tác vụ thay đổi dữ liệu (Create, Update, Delete)
+│           │   └── Register/   # Chức năng Đăng ký (Command, Handler, Validator, DTO)
+│           └── Queries/        # Các tác vụ đọc dữ liệu (Read-only)
+│
+├── HRConnect.Infrastructure/   # [INFRASTRUCTURE] Kỹ thuật và giao tiếp bên ngoài
+│   ├── Migrations/             # Quản lý Database Migrations của EF Core
+│   ├── Persistence/            # Kết nối PostgreSQL (ApplicationDbContext)
+│   │   └── Configurations/     # Fluent API cấu hình bảng (UserConfiguration...)
+│   ├── Repositories/           # Triển khai Repository / Unit of Work (nếu có)
+│   └── Services/               # BCrypt Hasher, JWT Generator, Email Service...
+│
+└── HRConnect.Presentation/     # [PRESENTATION] Tiếp nhận HTTP Request từ Client
+    ├── Endpoints/
+    │   └── V1/
+    │       └── Auth/           # Minimal API Endpoints (/api/v1/auth)
+    ├── Program.cs              # Nạp .env, CORS, Swagger JWT, Auth pipeline
+    └── appsettings.json
+```
 
-Hướng dẫn chạy đang được hoàn thiện.
+---
 
-Sau khi khởi tạo mã nguồn, nhóm sẽ bổ sung:
+## 5. Quy Chuẩn Phát Triển Chức Năng Mới (CQRS)
 
-- Phiên bản SDK và công cụ cần cài đặt.
-- Cách cấu hình môi trường phát triển.
-- Cách khởi tạo database.
-- Lệnh chạy backend và frontend.
-- Địa chỉ truy cập giao diện và tài liệu API.
-- Lệnh chạy kiểm thử.
+Khi phát triển một chức năng mới, hãy tạo một thư mục con tương ứng trong `Features/<Module>/`:
+- **Command**: Xử lý tạo mới, cập nhật hoặc xóa dữ liệu.
+- **Query**: Xử lý truy vấn, tìm kiếm hoặc đọc dữ liệu (`AsNoTracking`).
 
-## 10. Quy trình đóng góp
+Mỗi lát cắt (Slice) gồm 4 file cơ bản:
+1. `*Command.cs` hoặc `*Query.cs`: Khai báo tham số đầu vào.
+2. `*Handler.cs`: Xử lý nghiệp vụ và tương tác dữ liệu.
+3. `*Validator.cs`: Kiểm tra dữ liệu hợp lệ bằng `FluentValidation`.
+4. `*ResponseDto.cs`: Kết quả trả về cho Client.
 
-### Nhánh
+---
 
-- `main`: Nhánh tích hợp chung.
-- `feature/<ten-chuc-nang>`: Phát triển chức năng.
-- `fix/<ten-loi>`: Sửa lỗi.
-- `docs/<noi-dung>`: Cập nhật tài liệu.
+## 6. Cấu Hình Biến Môi Trường (.env)
 
-### Quy trình làm việc
+Dự án hỗ trợ nạp cấu hình tự động từ file `.env` qua thư viện `DotNetEnv`.
 
-1. Cập nhật mã nguồn mới nhất từ `main`.
-2. Tạo nhánh cho công việc cần thực hiện.
-3. Phát triển và kiểm tra thay đổi.
-4. Tạo Pull Request, mô tả nội dung và cách kiểm tra.
-5. Nhờ thành viên khác review trước khi merge.
+### Các bước thiết lập cho thành viên mới:
+1. Sao chép file `.env.example` thành `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+2. Mở file `.env` và cập nhật thông tin PostgreSQL của bạn:
+   ```env
+   ASPNETCORE_ENVIRONMENT=Development
+   ConnectionStrings__DefaultConnection=Host=localhost;Port=5432;Database=hrconnect_db;Username=postgres;Password=your_password
+   JwtSettings__Secret=YourSuperSecretKeyWithAtLeast32CharactersLong!123456
+   ```
+> [!CAUTION]
+> File `.env` chứa mật khẩu nhạy cảm và đã được cấu hình trong `.gitignore`. **Tuyệt đối không push file `.env` lên GitHub.**
 
-### Ví dụ commit
+---
 
-- `feat: add candidate submission`
-- `fix: correct duplicate detection`
-- `docs: update recruitment main flows`
+## 7. Quy Trình Git Flow & CI/CD
 
-## 11. Bảo vệ dữ liệu và cấu hình
+### Quy tắc phân nhánh:
+- `main`: Nhánh tích hợp chung (Production).
+- `feature/<ten-chuc-nang>`: Phát triển tính năng mới.
+- `fix/<ten-loi>`: Sửa lỗi hệ thống.
+- `docs/<noi-dung>`: Cập nhật tài liệu (tự động bỏ qua CI/CD).
 
-- Không commit mật khẩu database, API key hoặc JWT secret.
-- Chỉ đưa cấu hình mẫu không chứa thông tin bí mật vào repository.
-- Không đưa CV thật hoặc dữ liệu cá nhân của ứng viên vào mã nguồn.
-- Sử dụng dữ liệu giả lập cho phát triển và kiểm thử.
-- Không ghi thông tin nhạy cảm vào log hoặc nội dung Pull Request.
+### Hành vi Pipeline GitHub Actions:
+- **Khi mở Pull Request vào `main`**: Tự động kích hoạt **CI** (`dotnet restore`, `dotnet build -c Release`, `dotnet test`).
+- **Khi merge vào `main`**: Tự động kích hoạt **CD** ➔ Build Docker Image và đẩy lên **GitHub Container Registry (GHCR)** để deploy Production.
 
-## 12. Tài liệu dự án
+---
 
-Tài liệu được quản lý trong thư mục `docs/`, gồm:
+## 8. Hướng Dẫn Chạy Dự Án (Getting Started)
 
-- Problem Analysis.
-- Actor.
-- Objectives.
-- Scope.
-- Business Capabilities / Core Modules.
-- Core Blueprint và Main Flows.
-- Business Rules và Decision Log.
-- Use Cases và Acceptance Criteria.
-- Thiết kế hệ thống và hướng dẫn kiểm thử.
+### Yêu cầu cài đặt:
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [PostgreSQL](https://www.postgresql.org/) (hoặc chạy qua Docker)
 
-Các thay đổi nghiệp vụ cần được cập nhật vào tài liệu liên quan để giữ thống nhất với mã nguồn.
+### Các bước chạy:
+```bash
+# 1. Khôi phục dependencies
+dotnet restore
 
-## 13. Nhóm thực hiện
+# 2. Build dự án
+dotnet build
 
-| Thành viên | Mã sinh viên |
-|---|---|
-| Trương Hoàng Quí | SE184355 |
-| Lê Thị Trà Mi | SE184379 |
-| [Cao Hữu Trí | SE184047 |
-| Khúc Ngọc Sơn | SE184040 |
-| Nguyễn Văn Sang | SE183276 |
+# 3. Chạy API Server
+dotnet run --project HRConnect.Presentation
+```
 
-**Giảng viên hướng dẫn:** Phạm Minh Trí
+Truy cập tài liệu API Swagger UI tại:
+- `https://localhost:7xxx/swagger` hoặc `http://localhost:5xxx/swagger` (có nút **Authorize 🔒** để nhập JWT Token).
