@@ -183,13 +183,13 @@ Dự án hỗ trợ nạp cấu hình tự động từ file `.env` qua thư vi�
 ### Các bước chạy:
 ```bash
 # 1. Khôi phục dependencies
-dotnet restore
+dotnet restore HRConnect/HRConnect.sln
 
 # 2. Build dự án
-dotnet build
+dotnet build HRConnect/HRConnect.sln
 
 # 3. Chạy API Server
-dotnet run --project HRConnect.Presentation
+dotnet run --project HRConnect/HRConnect.Presentation
 ```
 
 Truy cập tài liệu API Swagger UI tại:

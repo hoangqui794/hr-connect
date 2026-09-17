@@ -1,0 +1,16 @@
+**/.git
+**/.gitignore
+**/.vs
+**/.vscode
+**/.idea
+**/bin
+**/obj
+**/*.user
+**/*.suo
+**/TestResults
+docs/
+*.md
+.github/
+.env
+.env.*
+!.env.example
