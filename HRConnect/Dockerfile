@@ -15,6 +15,7 @@ COPY ["HRConnect.Domain/HRConnect.Domain.csproj", "HRConnect.Domain/"]
 COPY ["HRConnect.Application/HRConnect.Application.csproj", "HRConnect.Application/"]
 COPY ["HRConnect.Infrastructure/HRConnect.Infrastructure.csproj", "HRConnect.Infrastructure/"]
 COPY ["HRConnect.Presentation/HRConnect.Presentation.csproj", "HRConnect.Presentation/"]
+COPY ["HRConnect.UnitTests/HRConnect.UnitTests.csproj", "HRConnect.UnitTests/"]
 
 # Restore dependencies
 RUN dotnet restore "HRConnect.sln"
