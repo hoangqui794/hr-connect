@@ -75,7 +75,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "UserId" }, "admin_profile_user_id_key")
                         .IsUnique();
 
-                    b.ToTable("admin_profile", "hr_connect");
+                    b.ToTable("admin_profile", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.AffiliateApplication", b =>
@@ -164,7 +164,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("((status)::text = ANY ((ARRAY['PENDING'::character varying, 'UNDER_REVIEW'::character varying])::text[]))");
 
-                    b.ToTable("affiliate_application", "hr_connect", t =>
+                    b.ToTable("affiliate_application", "public", t =>
                         {
                             t.HasComment("Existing Candidate can apply to become Affiliate without creating a second app_user. Approval should add/re-activate AFFILIATE_RECRUITER role in the same transaction.");
                         });
@@ -255,7 +255,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "AffiliateId", "PeriodEnd" }, "idx_affiliate_performance_affiliate_period")
                         .IsDescending(false, true);
 
-                    b.ToTable("affiliate_performance", "hr_connect", t =>
+                    b.ToTable("affiliate_performance", "public", t =>
                         {
                             t.HasComment("D17-ready performance snapshot. submission_to_hire_rate is supported; quality_rating stays nullable until the rating formula is approved.");
                         });
@@ -335,7 +335,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "UserId" }, "affiliate_profile_user_id_key")
                         .IsUnique();
 
-                    b.ToTable("affiliate_profile", "hr_connect");
+                    b.ToTable("affiliate_profile", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.AiMatchResult", b =>
@@ -421,7 +421,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "ApplicationId", "AttemptNo" }, "idx_ai_match_application")
                         .IsDescending(false, true);
 
-                    b.ToTable("ai_match_result", "hr_connect", t =>
+                    b.ToTable("ai_match_result", "public", t =>
                         {
                             t.HasComment("Post-application AI screening support. Match Score/Tier/Highlight support human review; AI does not auto-reject/shortlist/hire.");
                         });
@@ -502,7 +502,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex(new[] { "Status" }, "idx_app_user_status");
 
-                    b.ToTable("app_user", "hr_connect", t =>
+                    b.ToTable("app_user", "public", t =>
                         {
                             t.HasComment("One login identity. A user may simultaneously hold multiple roles through user_role. Candidate + Affiliate is supported on the same account.");
                         });
@@ -571,7 +571,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex(new[] { "JobId", "Status" }, "idx_application_job_status");
 
-                    b.ToTable("application", "hr_connect", t =>
+                    b.ToTable("application", "public", t =>
                         {
                             t.HasCheckConstraint("ck_application_status", "status IN ('SUBMITTED','SCREENING','SHORTLISTED','REJECTED','INTERVIEW','BACKUP','BACKUP_NOT_SELECTED','INTERVIEW_FAILED','OFFER_PENDING','OFFER_ACCEPTED','OFFER_DECLINED','NOT_STARTED','WITHDRAWN','PLACED','CLOSED')");
                         });
@@ -622,7 +622,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "ApplicationId", "ChangedAt" }, "idx_application_status_history_app")
                         .IsDescending(false, true);
 
-                    b.ToTable("application_status_history", "hr_connect");
+                    b.ToTable("application_status_history", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Attribution", b =>
@@ -684,7 +684,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "WinningSubmissionId" }, "attribution_winning_submission_id_key")
                         .IsUnique();
 
-                    b.ToTable("attribution", "hr_connect", t =>
+                    b.ToTable("attribution", "public", t =>
                         {
                             t.HasComment("First accepted Affiliate Submission attribution. Trigger validates source/status/Candidate/Job and blocks self-attribution by account/email/phone.");
                         });
@@ -752,7 +752,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "EntityType", "EntityId", "CreatedAt" }, "idx_audit_log_entity")
                         .IsDescending(false, false, true);
 
-                    b.ToTable("audit_log", "hr_connect", t =>
+                    b.ToTable("audit_log", "public", t =>
                         {
                             t.HasComment("Append-only audit trail. Set hr_connect.current_user_id in the application transaction when actor identity is available.");
                         });
@@ -874,7 +874,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("((normalized_phone IS NOT NULL) AND ((status)::text = ANY ((ARRAY['ACTIVE'::character varying, 'INACTIVE'::character varying])::text[])))");
 
-                    b.ToTable("candidate", "hr_connect");
+                    b.ToTable("candidate", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.CandidateCv", b =>
@@ -978,7 +978,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("((is_primary = true) AND ((status)::text = 'ACTIVE'::text))");
 
-                    b.ToTable("candidate_cv", "hr_connect", t =>
+                    b.ToTable("candidate_cv", "public", t =>
                         {
                             t.HasComment("Supports PLATFORM_BUILDER, TEMPLATE_FORM and FILE_UPLOAD CV creation methods.");
                         });
@@ -1072,7 +1072,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "JobId", "GeneratedAt" }, "idx_candidate_job_match_job")
                         .IsDescending(false, true);
 
-                    b.ToTable("candidate_job_match", "hr_connect", t =>
+                    b.ToTable("candidate_job_match", "public", t =>
                         {
                             t.HasComment("OPTIONAL D16 capability. Keep disabled/out of baseline if pre-application job-fit recommendation is not approved.");
                         });
@@ -1103,7 +1103,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex("SkillId");
 
-                    b.ToTable("candidate_skill", "hr_connect");
+                    b.ToTable("candidate_skill", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Commission", b =>
@@ -1205,7 +1205,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "AttributionId", "PlacementId" }, "uq_commission_attribution_placement")
                         .IsUnique();
 
-                    b.ToTable("commission", "hr_connect", t =>
+                    b.ToTable("commission", "public", t =>
                         {
                             t.HasComment("Commission eligibility/calculation domain. PAYABLE means approved for payment; payment completion is represented by payout.status=COMPLETED.");
                         });
@@ -1256,7 +1256,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "CommissionId", "AdjustedAt" }, "idx_commission_adjustment_commission")
                         .IsDescending(false, true);
 
-                    b.ToTable("commission_adjustment", "hr_connect", t =>
+                    b.ToTable("commission_adjustment", "public", t =>
                         {
                             t.HasComment("Append-only Commission adjustment event. UPDATE/DELETE are prohibited; corrections require a new adjustment event.");
                         });
@@ -1300,7 +1300,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasKey("MilestoneCode")
                         .HasName("commission_milestone_pkey");
 
-                    b.ToTable("commission_milestone", "hr_connect");
+                    b.ToTable("commission_milestone", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.CommissionRule", b =>
@@ -1377,7 +1377,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsDescending(false, false, true)
                         .HasFilter("(is_active = true)");
 
-                    b.ToTable("commission_rule", "hr_connect");
+                    b.ToTable("commission_rule", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Company", b =>
@@ -1453,7 +1453,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("(tax_code IS NOT NULL)");
 
-                    b.ToTable("company", "hr_connect");
+                    b.ToTable("company", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.CompanyUser", b =>
@@ -1515,7 +1515,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("((is_primary_contact = true) AND ((status)::text = 'ACTIVE'::text))");
 
-                    b.ToTable("company_user", "hr_connect");
+                    b.ToTable("company_user", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.CompanyVerificationRequest", b =>
@@ -1578,7 +1578,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("((status)::text = ANY ((ARRAY['PENDING'::character varying, 'UNDER_REVIEW'::character varying])::text[]))");
 
-                    b.ToTable("company_verification_request", "hr_connect");
+                    b.ToTable("company_verification_request", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.CvTemplate", b =>
@@ -1640,7 +1640,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "Code" }, "cv_template_code_key")
                         .IsUnique();
 
-                    b.ToTable("cv_template", "hr_connect");
+                    b.ToTable("cv_template", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Dispute", b =>
@@ -1730,7 +1730,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex("SubmissionId");
 
-                    b.ToTable("dispute", "hr_connect");
+                    b.ToTable("dispute", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.EmailOutbox", b =>
@@ -1809,7 +1809,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "Status", "NextRetryAt", "CreatedAt" }, "idx_email_outbox_pending")
                         .HasFilter("((status)::text = ANY ((ARRAY['PENDING'::character varying, 'FAILED'::character varying])::text[]))");
 
-                    b.ToTable("email_outbox", "hr_connect");
+                    b.ToTable("email_outbox", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.InternalHrProfile", b =>
@@ -1868,7 +1868,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "UserId" }, "internal_hr_profile_user_id_key")
                         .IsUnique();
 
-                    b.ToTable("internal_hr_profile", "hr_connect");
+                    b.ToTable("internal_hr_profile", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Interview", b =>
@@ -1952,7 +1952,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "ApplicationId", "InterviewRound" }, "interview_application_id_interview_round_key")
                         .IsUnique();
 
-                    b.ToTable("interview", "hr_connect", t =>
+                    b.ToTable("interview", "public", t =>
                         {
                             t.HasCheckConstraint("ck_interview_duration_positive", "duration_minutes IS NULL OR duration_minutes > 0");
 
@@ -2139,7 +2139,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "Visibility", "Status", "PostedAt" }, "idx_job_visibility_status")
                         .IsDescending(false, false, true);
 
-                    b.ToTable("job", "hr_connect");
+                    b.ToTable("job", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.JobRequirement", b =>
@@ -2192,7 +2192,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex("JobId");
 
-                    b.ToTable("job_requirement", "hr_connect");
+                    b.ToTable("job_requirement", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.JobSkill", b =>
@@ -2221,7 +2221,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex("SkillId");
 
-                    b.ToTable("job_skill", "hr_connect");
+                    b.ToTable("job_skill", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.JobStatusHistory", b =>
@@ -2269,7 +2269,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "JobId", "ChangedAt" }, "idx_job_status_history_job")
                         .IsDescending(false, true);
 
-                    b.ToTable("job_status_history", "hr_connect");
+                    b.ToTable("job_status_history", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.MatchTierConfig", b =>
@@ -2326,7 +2326,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasKey("TierCode")
                         .HasName("match_tier_config_pkey");
 
-                    b.ToTable("match_tier_config", "hr_connect");
+                    b.ToTable("match_tier_config", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Notification", b =>
@@ -2401,7 +2401,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "UserId", "CreatedAt" }, "idx_notification_user_created")
                         .IsDescending(false, true);
 
-                    b.ToTable("notification", "hr_connect", t =>
+                    b.ToTable("notification", "public", t =>
                         {
                             t.HasComment("In-app notification store. JOB_FIT notifications may reference a Job through related_entity_type/related_entity_id.");
                         });
@@ -2498,7 +2498,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "OfferId", "ApplicationId" }, "uq_offer_application_pair")
                         .IsUnique();
 
-                    b.ToTable("offer", "hr_connect", t =>
+                    b.ToTable("offer", "public", t =>
                         {
                             t.HasCheckConstraint("ck_offer_date_range", "expiry_date IS NULL OR start_date IS NULL OR expiry_date >= start_date");
 
@@ -2557,7 +2557,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "OfferId", "UserId" }, "offer_approval_offer_id_user_id_key")
                         .IsUnique();
 
-                    b.ToTable("offer_approval", "hr_connect", t =>
+                    b.ToTable("offer_approval", "public", t =>
                         {
                             t.HasComment("PROPOSED. Remove if the team does not implement a separate offer approval workflow.");
                         });
@@ -2639,7 +2639,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "CommissionId", "AttemptNo" }, "uq_payout_attempt")
                         .IsUnique();
 
-                    b.ToTable("payout", "hr_connect", t =>
+                    b.ToTable("payout", "public", t =>
                         {
                             t.HasComment("Manual/external payout ledger. Rows are never physically deleted. PENDING may become COMPLETED/FAILED/CANCELLED; terminal rows are immutable.");
                         });
@@ -2699,7 +2699,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "Code" }, "permission_code_key")
                         .IsUnique();
 
-                    b.ToTable("permission", "hr_connect");
+                    b.ToTable("permission", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Placement", b =>
@@ -2779,7 +2779,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "OfferId" }, "placement_offer_id_key")
                         .IsUnique();
 
-                    b.ToTable("placement", "hr_connect");
+                    b.ToTable("placement", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Probation", b =>
@@ -2835,7 +2835,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "PlacementId" }, "probation_placement_id_key")
                         .IsUnique();
 
-                    b.ToTable("probation", "hr_connect");
+                    b.ToTable("probation", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.RefreshToken", b =>
@@ -2899,7 +2899,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "TokenHash" }, "refresh_token_token_hash_key")
                         .IsUnique();
 
-                    b.ToTable("refresh_token", "hr_connect");
+                    b.ToTable("refresh_token", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Role", b =>
@@ -2956,7 +2956,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "Code" }, "role_code_key")
                         .IsUnique();
 
-                    b.ToTable("role", "hr_connect");
+                    b.ToTable("role", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.RolePermission", b =>
@@ -2980,7 +2980,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex("PermissionId");
 
-                    b.ToTable("role_permission", "hr_connect");
+                    b.ToTable("role_permission", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.ServiceType", b =>
@@ -3031,7 +3031,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "Code" }, "service_type_code_key")
                         .IsUnique();
 
-                    b.ToTable("service_type", "hr_connect");
+                    b.ToTable("service_type", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Skill", b =>
@@ -3077,7 +3077,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "NormalizedName" }, "skill_normalized_name_key")
                         .IsUnique();
 
-                    b.ToTable("skill", "hr_connect");
+                    b.ToTable("skill", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Submission", b =>
@@ -3157,7 +3157,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("((status)::text = 'ACCEPTED'::text)");
 
-                    b.ToTable("submission", "hr_connect", t =>
+                    b.ToTable("submission", "public", t =>
                         {
                             t.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed.");
                         });
@@ -3223,7 +3223,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex(new[] { "RoleId" }, "idx_user_role_role_id");
 
-                    b.ToTable("user_role", "hr_connect", t =>
+                    b.ToTable("user_role", "public", t =>
                         {
                             t.HasComment("Role ownership/lifecycle. Candidate and Affiliate may coexist on the same app_user. Other multi-role combinations remain subject to business policy.");
                         });
@@ -3286,7 +3286,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "UserId", "TokenType", "ExpiresAt" }, "idx_user_token_lookup")
                         .IsDescending(false, false, true);
 
-                    b.ToTable("user_token", "hr_connect");
+                    b.ToTable("user_token", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Warranty", b =>
@@ -3345,7 +3345,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "PlacementId" }, "warranty_placement_id_key")
                         .IsUnique();
 
-                    b.ToTable("warranty", "hr_connect", t =>
+                    b.ToTable("warranty", "public", t =>
                         {
                             t.HasComment("Warranty exists only when applicable. No row may represent NOT_APPLICABLE; absence of a warranty row means not applicable.");
                         });
