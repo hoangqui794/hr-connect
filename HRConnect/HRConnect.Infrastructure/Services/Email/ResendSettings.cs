@@ -8,5 +8,5 @@ public class ResendSettings
 
     public string FromEmail { get; set; } = "onboarding@resend.dev";
 
-    public string FromName { get; set; } = "HRConnect System";
+    public string FromName { get; set; } = "HR Connect System";
 }

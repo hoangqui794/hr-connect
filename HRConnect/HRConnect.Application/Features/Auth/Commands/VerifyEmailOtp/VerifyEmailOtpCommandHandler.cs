@@ -161,17 +161,17 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             {
                 try
                 {
-                    var subject = "Affiliate Registration Received";
+                    var subject = "HR Connect - Đã tiếp nhận hồ sơ đăng ký Đối tác tuyển dụng";
                     var bodyHtml = $@"
                         <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                            <h2 style='color: #4F46E5; margin-top: 0;'>HR Connect - Affiliate Recruiter</h2>
-                            <p>Thank you for registering as an Affiliate Recruiter with HR Connect.</p>
-                            <p>Your email has been successfully verified.</p>
-                            <p><strong>Your registration is now waiting for approval from our administrator.</strong></p>
-                            <p>We will notify you by email when your application has been reviewed.</p>
-                            <p>Thank you for your patience.</p>
+                            <h2 style='color: #4F46E5; margin-top: 0;'>HR Connect - Đối tác tuyển dụng</h2>
+                            <p>Cảm ơn bạn đã đăng ký trở thành Đối tác tuyển dụng (Affiliate Recruiter) trên hệ thống HR Connect.</p>
+                            <p>Địa chỉ email của bạn đã được xác thực thành công.</p>
+                            <p><strong>Hồ sơ đăng ký của bạn hiện đang chờ Ban quản trị hệ thống xem xét và phê duyệt.</strong></p>
+                            <p>Chúng tôi sẽ gửi email thông báo kết quả ngay sau khi hồ sơ của bạn được xử lý.</p>
+                            <p>Cảm ơn sự hợp tác và kiên nhẫn của bạn.</p>
                             <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                            <p style='color: #9CA3AF; font-size: 12px;'>HR Connect System Notification</p>
+                            <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
                         </div>";
 
                     await _emailService.SendEmailAsync(user.Email, subject, bodyHtml, CancellationToken.None);
@@ -228,17 +228,17 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             {
                 try
                 {
-                    var subject = "Company Registration Received";
+                    var subject = "HR Connect - Đã tiếp nhận hồ sơ đăng ký Doanh nghiệp";
                     var bodyHtml = $@"
                         <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                            <h2 style='color: #4F46E5; margin-top: 0;'>HR Connect - Client Company Registration</h2>
-                            <p>Thank you for registering your company with HR Connect.</p>
-                            <p>Your email has been successfully verified.</p>
-                            <p><strong>Your company registration is now waiting for approval from our administrator.</strong></p>
-                            <p>We will notify you by email when your company has been reviewed.</p>
-                            <p>Thank you for your patience.</p>
+                            <h2 style='color: #4F46E5; margin-top: 0;'>HR Connect - Đăng ký Doanh nghiệp</h2>
+                            <p>Cảm ơn bạn đã đăng ký tài khoản Doanh nghiệp tuyển dụng trên hệ thống HR Connect.</p>
+                            <p>Địa chỉ email của bạn đã được xác thực thành công.</p>
+                            <p><strong>Hồ sơ xác thực doanh nghiệp của bạn hiện đang chờ Ban quản trị hệ thống xem xét và phê duyệt.</strong></p>
+                            <p>Chúng tôi sẽ gửi email thông báo kết quả ngay sau khi hồ sơ được xét duyệt.</p>
+                            <p>Cảm ơn sự hợp tác và kiên nhẫn của bạn.</p>
                             <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                            <p style='color: #9CA3AF; font-size: 12px;'>HR Connect System Notification</p>
+                            <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
                         </div>";
 
                     await _emailService.SendEmailAsync(user.Email, subject, bodyHtml, CancellationToken.None);

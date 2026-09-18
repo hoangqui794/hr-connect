@@ -141,13 +141,15 @@ public class AdminApprovalService : IAdminApprovalService
         {
             try
             {
-                var subject = "Your Affiliate Registration Has Been Approved";
+                var subject = "Chúc mừng! Hồ sơ Đối tác tuyển dụng của bạn đã được phê duyệt - HR Connect";
                 var bodyHtml = @"
                     <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                        <h2 style='color: #10B981; margin-top: 0;'>Congratulations!</h2>
-                        <p>Your Affiliate Recruiter registration with HR Connect has been approved.</p>
-                        <p>You can now sign in and access Affiliate features.</p>
-                        <p>Thank you for joining HR Connect.</p>
+                        <h2 style='color: #10B981; margin-top: 0;'>Chúc mừng bạn!</h2>
+                        <p>Hồ sơ đăng ký <strong>Đối tác tuyển dụng (Affiliate Recruiter)</strong> của bạn trên hệ thống HR Connect đã được Ban quản trị phê duyệt thành công.</p>
+                        <p>Hiện tại bạn đã có thể đăng nhập vào hệ thống và bắt đầu sử dụng đầy đủ các tính năng dành cho Đối tác tuyển dụng.</p>
+                        <p>Cảm ơn bạn đã đồng hành cùng HR Connect!</p>
+                        <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
+                        <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
                     </div>";
 
                 await _emailService.SendEmailAsync(application.User.Email, subject, bodyHtml, CancellationToken.None);
@@ -214,15 +216,17 @@ public class AdminApprovalService : IAdminApprovalService
         {
             try
             {
-                var subject = "Affiliate Registration Update";
-                var reasonText = string.IsNullOrWhiteSpace(reviewNote) ? "" : $"<p><strong>Reason:</strong> {reviewNote}</p>";
+                var subject = "Thông báo về hồ sơ đăng ký Đối tác tuyển dụng - HR Connect";
+                var reasonText = string.IsNullOrWhiteSpace(reviewNote) ? "" : $"<p><strong>Lý do từ chối:</strong> {reviewNote}</p>";
                 var bodyHtml = $@"
                     <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                        <h2 style='color: #EF4444; margin-top: 0;'>Affiliate Registration Update</h2>
-                        <p>Thank you for your interest in becoming an Affiliate Recruiter with HR Connect.</p>
-                        <p>Unfortunately, your registration was not approved.</p>
+                        <h2 style='color: #EF4444; margin-top: 0;'>Thông báo kết quả hồ sơ Đối tác tuyển dụng</h2>
+                        <p>Cảm ơn bạn đã quan tâm và đăng ký trở thành Đối tác tuyển dụng trên hệ thống HR Connect.</p>
+                        <p>Rất tiếc, hồ sơ đăng ký của bạn chưa được phê duyệt ở thời điểm hiện tại.</p>
                         {reasonText}
-                        <p>Please contact HR Connect support if you need more information.</p>
+                        <p>Nếu bạn cần hỗ trợ thêm thông tin hoặc có thắc mắc, vui lòng liên hệ với bộ phận hỗ trợ của HR Connect.</p>
+                        <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
+                        <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
                     </div>";
 
                 await _emailService.SendEmailAsync(application.User.Email, subject, bodyHtml, CancellationToken.None);
@@ -339,13 +343,15 @@ public class AdminApprovalService : IAdminApprovalService
         {
             try
             {
-                var subject = "Your Company Registration Has Been Approved";
+                var subject = "Chúc mừng! Hồ sơ Doanh nghiệp của bạn đã được phê duyệt - HR Connect";
                 var bodyHtml = @"
                     <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                        <h2 style='color: #10B981; margin-top: 0;'>Congratulations!</h2>
-                        <p>Your company registration with HR Connect has been approved.</p>
-                        <p>You can now sign in and access Client Company features.</p>
-                        <p>Thank you for using HR Connect.</p>
+                        <h2 style='color: #10B981; margin-top: 0;'>Chúc mừng bạn!</h2>
+                        <p>Hồ sơ xác thực <strong>Doanh nghiệp tuyển dụng</strong> của bạn trên hệ thống HR Connect đã được Ban quản trị phê duyệt thành công.</p>
+                        <p>Tài khoản của bạn đã được kích hoạt. Hiện tại bạn có thể đăng nhập và sử dụng toàn bộ tính năng tuyển dụng và quản trị doanh nghiệp.</p>
+                        <p>Cảm ơn bạn đã tin tưởng và đồng hành cùng HR Connect!</p>
+                        <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
+                        <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
                     </div>";
 
                 await _emailService.SendEmailAsync(request.SubmittedByNavigation.Email, subject, bodyHtml, CancellationToken.None);
@@ -416,15 +422,17 @@ public class AdminApprovalService : IAdminApprovalService
         {
             try
             {
-                var subject = "Company Registration Update";
-                var reasonText = string.IsNullOrWhiteSpace(reviewNote) ? "" : $"<p><strong>Reason:</strong> {reviewNote}</p>";
+                var subject = "Thông báo về hồ sơ xác thực Doanh nghiệp - HR Connect";
+                var reasonText = string.IsNullOrWhiteSpace(reviewNote) ? "" : $"<p><strong>Lý do từ chối:</strong> {reviewNote}</p>";
                 var bodyHtml = $@"
                     <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                        <h2 style='color: #EF4444; margin-top: 0;'>Company Registration Update</h2>
-                        <p>Thank you for registering your company with HR Connect.</p>
-                        <p>Unfortunately, your company registration was not approved.</p>
+                        <h2 style='color: #EF4444; margin-top: 0;'>Thông báo kết quả xác thực Doanh nghiệp</h2>
+                        <p>Cảm ơn bạn đã đăng ký hồ sơ Doanh nghiệp trên hệ thống HR Connect.</p>
+                        <p>Rất tiếc, yêu cầu xác thực doanh nghiệp của bạn chưa được Ban quản trị phê duyệt ở thời điểm hiện tại.</p>
                         {reasonText}
-                        <p>Please contact HR Connect support if you need more information.</p>
+                        <p>Nếu bạn cần hỗ trợ thêm thông tin hoặc muốn bổ sung tài liệu xác thực, vui lòng liên hệ với bộ phận hỗ trợ của HR Connect.</p>
+                        <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
+                        <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
                     </div>";
 
                 await _emailService.SendEmailAsync(request.SubmittedByNavigation.Email, subject, bodyHtml, CancellationToken.None);

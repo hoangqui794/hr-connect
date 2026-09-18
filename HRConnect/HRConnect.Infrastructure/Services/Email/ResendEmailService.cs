@@ -67,9 +67,11 @@ public class ResendEmailService : IEmailService
 
         try
         {
-            var sender = !string.IsNullOrWhiteSpace(_settings.FromName)
-                ? $"{_settings.FromName} <{_settings.FromEmail}>"
-                : _settings.FromEmail;
+            var fromName = !string.IsNullOrWhiteSpace(_settings.FromName)
+                ? _settings.FromName
+                : "HR Connect System";
+
+            var sender = $"{fromName} <{_settings.FromEmail}>";
 
             var payload = new ResendEmailRequest
             {
