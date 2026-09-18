@@ -55,13 +55,8 @@ jobs:
       - name: Build Solution (Release)
         run: dotnet build HRConnect/HRConnect.sln --configuration Release --no-restore
 
-      - name: Run Unit & Integration Tests (if available)
-        run: |
-          if ls **/*[Tt]est*/*.csproj 1> /dev/null 2>&1; then
-            dotnet test --configuration Release --no-build --verbosity normal
-          else
-            echo "No test projects found yet. Skipping test execution."
-          fi
+      - name: Run Unit & Integration Tests
+        run: dotnet test HRConnect/HRConnect.sln --configuration Release --no-build --verbosity normal
 
   # -----------------------------------------------------------
   # 2. CD JOB: Build Docker Image & Deploy to Production
