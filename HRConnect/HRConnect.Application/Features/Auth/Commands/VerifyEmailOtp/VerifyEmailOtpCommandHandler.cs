@@ -12,6 +12,10 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
 
     private readonly IUserRepository _userRepository;
     private readonly IUserTokenRepository _userTokenRepository;
+    private readonly IAffiliateApplicationRepository _affiliateApplicationRepository;
+    private readonly ICompanyVerificationRequestRepository _companyVerificationRequestRepository;
+    private readonly ICompanyRepository _companyRepository;
+    private readonly IEmailService _emailService;
     private readonly IEmailNormalizer _emailNormalizer;
     private readonly IOtpService _otpService;
     private readonly IUnitOfWork _unitOfWork;
@@ -20,6 +24,10 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
     public VerifyEmailOtpCommandHandler(
         IUserRepository userRepository,
         IUserTokenRepository userTokenRepository,
+        IAffiliateApplicationRepository affiliateApplicationRepository,
+        ICompanyVerificationRequestRepository companyVerificationRequestRepository,
+        ICompanyRepository companyRepository,
+        IEmailService emailService,
         IEmailNormalizer emailNormalizer,
         IOtpService otpService,
         IUnitOfWork unitOfWork,
@@ -27,6 +35,10 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
     {
         _userRepository = userRepository;
         _userTokenRepository = userTokenRepository;
+        _affiliateApplicationRepository = affiliateApplicationRepository;
+        _companyVerificationRequestRepository = companyVerificationRequestRepository;
+        _companyRepository = companyRepository;
+        _emailService = emailService;
         _emailNormalizer = emailNormalizer;
         _otpService = otpService;
         _unitOfWork = unitOfWork;
@@ -51,17 +63,23 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         }
 
         // 3. Kiểm tra nếu tài khoản đã được xác thực trước đó
-        if (user.EmailVerifiedAt != null && user.Status == "ACTIVE")
+        if (user.EmailVerifiedAt != null)
         {
+            var isCandidate = user.Status == "ACTIVE";
+            var statusToReturn = isCandidate ? "ACTIVE" : "PENDING_ADMIN_APPROVAL";
+            var msgToReturn = isCandidate
+                ? "Tài khoản của bạn đã được xác thực email từ trước đó. Bạn có thể đăng nhập ngay."
+                : "Email của bạn đã được xác thực thành công và hồ sơ đang chờ Quản trị viên phê duyệt.";
+
             return new VerifyEmailOtpResponse
             {
                 Success = true,
-                Message = "Tài khoản của bạn đã được xác thực email từ trước đó. Bạn có thể đăng nhập ngay.",
+                Message = msgToReturn,
                 Data = new VerifyEmailOtpData
                 {
                     UserId = user.UserId,
                     Email = user.Email,
-                    Status = user.Status,
+                    Status = statusToReturn,
                     EmailVerifiedAt = user.EmailVerifiedAt.Value
                 }
             };
@@ -78,7 +96,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         // 5. Kiểm tra phòng chống Brute-force (tối đa 5 lần thử)
         if (token.AttemptCount >= MaxFailedAttempts)
         {
-            _logger.LogWarning("UserId {UserId} đã vượt quá số lần thử OTP cho phép ({Attempts}/{Max})", 
+            _logger.LogWarning("UserId {UserId} đã vượt quá số lần thử OTP cho phép ({Attempts}/{Max})",
                 user.UserId, token.AttemptCount, MaxFailedAttempts);
             throw new BadRequestException("Bạn đã nhập sai mã OTP quá 5 lần. Mã xác thực này đã bị khóa. Vui lòng yêu cầu mã OTP mới.");
         }
@@ -86,7 +104,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         // 6. Kiểm tra hạn sử dụng của OTP
         if (DateTime.UtcNow > token.ExpiresAt)
         {
-            _logger.LogWarning("UserId {UserId} sử dụng mã OTP đã hết hạn (Hết hạn lúc: {ExpiresAt})", 
+            _logger.LogWarning("UserId {UserId} sử dụng mã OTP đã hết hạn (Hết hạn lúc: {ExpiresAt})",
                 user.UserId, token.ExpiresAt);
             throw new BadRequestException("Mã OTP đã hết hạn. Vui lòng yêu cầu mã xác thực mới.");
         }
@@ -100,7 +118,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             var remainingAttempts = MaxFailedAttempts - token.AttemptCount;
-            _logger.LogWarning("UserId {UserId} nhập sai OTP. Số lần thử còn lại: {Remaining}", 
+            _logger.LogWarning("UserId {UserId} nhập sai OTP. Số lần thử còn lại: {Remaining}",
                 user.UserId, remainingAttempts);
 
             if (remainingAttempts <= 0)
@@ -111,19 +129,147 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             throw new BadRequestException($"Mã OTP không chính xác. Bạn còn {remainingAttempts} lần thử lại.");
         }
 
-        // 8. Xác thực thành công: Đánh dấu used_at, kích hoạt trạng thái ACTIVE
+        // 8. Đánh dấu used_at cho token
         var now = DateTime.UtcNow;
         token.UsedAt = now;
         _userTokenRepository.Update(token);
 
         user.EmailVerifiedAt = now;
-        user.Status = "ACTIVE";
         user.UpdatedAt = now;
+
+        // 9. Nhận diện loại tài khoản để áp dụng nghiệp vụ tương ứng:
+        // Case A: Người dùng đăng ký Affiliate Recruiter
+        var affiliateApp = await _affiliateApplicationRepository.GetByUserIdAsync(user.UserId, cancellationToken);
+        if (affiliateApp != null)
+        {
+            // QUY TẮC QUAN TRỌNG:
+            // 1. Giữ user.Status = "PENDING"
+            // 2. KHÔNG gán vai trò AFFILIATE_RECRUITER
+            // 3. affiliate_application.status = "UNDER_REVIEW"
+            user.Status = "PENDING";
+            affiliateApp.Status = "UNDER_REVIEW";
+            _affiliateApplicationRepository.Update(affiliateApp);
+            _userRepository.Update(user);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Xác thực email thành công cho Affiliate UserId {UserId}. Hồ sơ chuyển sang UNDER_REVIEW chờ Admin duyệt.",
+                user.UserId);
+
+            // Gửi email xác nhận tiếp nhận hồ sơ Affiliate (Stage 2)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var subject = "Affiliate Registration Received";
+                    var bodyHtml = $@"
+                        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+                            <h2 style='color: #4F46E5; margin-top: 0;'>HR Connect - Affiliate Recruiter</h2>
+                            <p>Thank you for registering as an Affiliate Recruiter with HR Connect.</p>
+                            <p>Your email has been successfully verified.</p>
+                            <p><strong>Your registration is now waiting for approval from our administrator.</strong></p>
+                            <p>We will notify you by email when your application has been reviewed.</p>
+                            <p>Thank you for your patience.</p>
+                            <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
+                            <p style='color: #9CA3AF; font-size: 12px;'>HR Connect System Notification</p>
+                        </div>";
+
+                    await _emailService.SendEmailAsync(user.Email, subject, bodyHtml, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Lỗi gửi email tiếp nhận hồ sơ Affiliate tới {Email}", user.Email);
+                }
+            }, CancellationToken.None);
+
+            return new VerifyEmailOtpResponse
+            {
+                Success = true,
+                Message = "Email verified successfully. Your Affiliate registration is pending Admin approval.",
+                Data = new VerifyEmailOtpData
+                {
+                    UserId = user.UserId,
+                    Email = user.Email,
+                    Status = "PENDING_ADMIN_APPROVAL",
+                    EmailVerifiedAt = now
+                }
+            };
+        }
+
+        // Case B: Người dùng đăng ký Client Company
+        var companyVerification = await _companyVerificationRequestRepository.GetByUserIdAsync(user.UserId, cancellationToken);
+        if (companyVerification != null)
+        {
+            // QUY TẮC QUAN TRỌNG:
+            // 1. Giữ user.Status = "PENDING"
+            // 2. KHÔNG gán vai trò CLIENT_COMPANY_USER
+            // 3. company_verification_request.status = "UNDER_REVIEW"
+            // 4. company.verification_status = "UNDER_REVIEW"
+            user.Status = "PENDING";
+            companyVerification.Status = "UNDER_REVIEW";
+            _companyVerificationRequestRepository.Update(companyVerification);
+
+            var company = await _companyRepository.GetByIdAsync(companyVerification.CompanyId, cancellationToken);
+            if (company != null)
+            {
+                company.VerificationStatus = "UNDER_REVIEW";
+                company.UpdatedAt = now;
+                _companyRepository.Update(company);
+            }
+
+            _userRepository.Update(user);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Xác thực email thành công cho Client UserId {UserId}, Company {CompanyId}. Chờ Admin duyệt.",
+                user.UserId, companyVerification.CompanyId);
+
+            // Gửi email xác nhận tiếp nhận hồ sơ Doanh nghiệp (Stage 2)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var subject = "Company Registration Received";
+                    var bodyHtml = $@"
+                        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+                            <h2 style='color: #4F46E5; margin-top: 0;'>HR Connect - Client Company Registration</h2>
+                            <p>Thank you for registering your company with HR Connect.</p>
+                            <p>Your email has been successfully verified.</p>
+                            <p><strong>Your company registration is now waiting for approval from our administrator.</strong></p>
+                            <p>We will notify you by email when your company has been reviewed.</p>
+                            <p>Thank you for your patience.</p>
+                            <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
+                            <p style='color: #9CA3AF; font-size: 12px;'>HR Connect System Notification</p>
+                        </div>";
+
+                    await _emailService.SendEmailAsync(user.Email, subject, bodyHtml, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Lỗi gửi email tiếp nhận hồ sơ Doanh nghiệp tới {Email}", user.Email);
+                }
+            }, CancellationToken.None);
+
+            return new VerifyEmailOtpResponse
+            {
+                Success = true,
+                Message = "Email verified successfully. Your company registration is pending Admin approval.",
+                Data = new VerifyEmailOtpData
+                {
+                    UserId = user.UserId,
+                    Email = user.Email,
+                    Status = "PENDING_ADMIN_APPROVAL",
+                    EmailVerifiedAt = now
+                }
+            };
+        }
+
+        // Case C: Tài khoản Candidate (Ứng viên)
+        user.Status = "ACTIVE";
         _userRepository.Update(user);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Xác thực email thành công cho UserId {UserId}, Email {Email}. Tài khoản đã chuyển sang ACTIVE.", 
+        _logger.LogInformation("Xác thực email thành công cho Candidate UserId {UserId}, Email {Email}. Tài khoản đã chuyển sang ACTIVE.",
             user.UserId, user.Email);
 
         return new VerifyEmailOtpResponse

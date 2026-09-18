@@ -68,7 +68,61 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             throw new UnauthorizedException("Email hoặc mật khẩu không chính xác.");
         }
 
-        // 4. Kiểm tra trạng thái tài khoản
+        // 4. Kiểm tra các ràng buộc đặc thù cho Affiliate Recruiter và Client Company User
+        if (user.AffiliateApplicationUser != null)
+        {
+            if (user.EmailVerifiedAt == null)
+            {
+                _logger.LogWarning("Đăng nhập từ chối: Tài khoản Affiliate {Email} chưa xác thực email.", normalizedEmail);
+                throw new ForbiddenException("Please verify your email before continuing.");
+            }
+
+            if (string.Equals(user.AffiliateApplicationUser.Status, "REJECTED", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Đăng nhập từ chối: Đơn đăng ký Affiliate của {Email} đã bị từ chối.", normalizedEmail);
+                throw new ForbiddenException("Your registration was rejected.");
+            }
+
+            if (string.Equals(user.AffiliateApplicationUser.Status, "PENDING", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(user.AffiliateApplicationUser.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Đăng nhập từ chối: Đơn đăng ký Affiliate của {Email} đang chờ Admin duyệt.", normalizedEmail);
+                throw new ForbiddenException("Your registration is pending Admin approval.");
+            }
+        }
+
+        var clientRequest = user.CompanyVerificationRequestSubmittedByNavigations.FirstOrDefault()
+            ?? user.CompanyUsers.FirstOrDefault()?.Company?.CompanyVerificationRequest;
+        var clientCompany = user.CompanyUsers.FirstOrDefault()?.Company;
+
+        if (clientRequest != null || clientCompany != null)
+        {
+            if (user.EmailVerifiedAt == null)
+            {
+                _logger.LogWarning("Đăng nhập từ chối: Tài khoản Client {Email} chưa xác thực email.", normalizedEmail);
+                throw new ForbiddenException("Please verify your email before continuing.");
+            }
+
+            var isRequestRejected = clientRequest != null && string.Equals(clientRequest.Status, "REJECTED", StringComparison.OrdinalIgnoreCase);
+            var isCompanyRejected = clientCompany != null && string.Equals(clientCompany.VerificationStatus, "REJECTED", StringComparison.OrdinalIgnoreCase);
+
+            if (isRequestRejected || isCompanyRejected)
+            {
+                _logger.LogWarning("Đăng nhập từ chối: Đăng ký doanh nghiệp của {Email} đã bị từ chối.", normalizedEmail);
+                throw new ForbiddenException("Your registration was rejected.");
+            }
+
+            var isRequestPending = clientRequest != null && (string.Equals(clientRequest.Status, "PENDING", StringComparison.OrdinalIgnoreCase) || string.Equals(clientRequest.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase));
+            var isCompanyPending = clientCompany != null && (string.Equals(clientCompany.VerificationStatus, "PENDING", StringComparison.OrdinalIgnoreCase) || string.Equals(clientCompany.VerificationStatus, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase));
+
+            if (isRequestPending || isCompanyPending)
+            {
+                _logger.LogWarning("Đăng nhập từ chối: Đăng ký doanh nghiệp của {Email} đang chờ Admin duyệt.", normalizedEmail);
+                throw new ForbiddenException("Your registration is pending Admin approval.");
+            }
+        }
+
+        // 5. Kiểm tra trạng thái tài khoản chung (Ứng viên & người dùng khác)
         if (string.Equals(user.Status, "PENDING", StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning("Đăng nhập từ chối: Tài khoản {Email} chưa xác thực email (PENDING)", normalizedEmail);
@@ -81,12 +135,17 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             throw new BadRequestException("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.");
         }
 
-        // 5. Thu thập danh sách Roles và Permissions đang ACTIVE
         var activeRoles = user.UserRoleUsers
             .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
             .Select(ur => ur.Role.Code)
             .Distinct()
             .ToList();
+
+        if (activeRoles.Count == 0)
+        {
+            _logger.LogWarning("Đăng nhập từ chối: Tài khoản {Email} không có vai trò kích hoạt nào trong hệ thống.", normalizedEmail);
+            throw new ForbiddenException("Tài khoản chưa được phân quyền truy cập hệ thống.");
+        }
 
         var activePermissions = user.UserRoleUsers
             .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))

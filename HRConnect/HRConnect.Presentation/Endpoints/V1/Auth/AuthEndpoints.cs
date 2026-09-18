@@ -1,6 +1,10 @@
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Auth.Commands.Login;
+using HRConnect.Application.Features.Auth.Commands.RegisterAffiliate;
 using HRConnect.Application.Features.Auth.Commands.RegisterCandidate;
+using HRConnect.Application.Features.Auth.Commands.RegisterClient;
+using HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,13 +17,13 @@ public static class AuthEndpoints
         var group = app.MapGroup("/api/auth")
                        .WithTags("Auth");
 
+        // 1. Đăng ký Candidate
         group.MapPost("/register/candidate", async (
             [FromBody] RegisterCandidateCommand command,
             [FromServices] ISender sender,
             [FromServices] IValidator<RegisterCandidateCommand> validator,
             CancellationToken cancellationToken) =>
         {
-            // 1. Validate Command trực tiếp bằng FluentValidation
             var validationResult = await validator.ValidateAsync(command, cancellationToken);
             if (!validationResult.IsValid)
             {
@@ -37,9 +41,7 @@ public static class AuthEndpoints
 
             try
             {
-                // 2. Gửi Command vào MediatR Pipeline (Vertical Slice CQRS)
                 var result = await sender.Send(command, cancellationToken);
-
                 return Results.Created($"/api/auth/candidate/{result.Data?.UserId}", result);
             }
             catch (ConflictException ex)
@@ -67,13 +69,117 @@ public static class AuthEndpoints
         .Produces(StatusCodes.Status409Conflict)
         .Produces(StatusCodes.Status500InternalServerError);
 
-        group.MapPost("/verify-email-otp", async (
-            [FromBody] HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp.VerifyEmailOtpCommand command,
+        // 2. Đăng ký Affiliate Recruiter
+        group.MapPost("/register/affiliate", async (
+            [FromBody] RegisterAffiliateCommand command,
             [FromServices] ISender sender,
-            [FromServices] IValidator<HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp.VerifyEmailOtpCommand> validator,
+            [FromServices] IValidator<RegisterAffiliateCommand> validator,
             CancellationToken cancellationToken) =>
         {
-            // 1. Validate Command bằng FluentValidation
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu đăng ký Affiliate không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                            g => g.Key, 
+                            g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Created($"/api/auth/affiliate/{result.Data?.UserId}", result);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+        })
+        .WithName("RegisterAffiliate")
+        .WithSummary("Đăng ký tài khoản Đối tác tuyển dụng (Affiliate Recruiter)")
+        .WithDescription("Đăng ký tài khoản đối tác tuyển dụng mới. Trạng thái PENDING chờ xác thực email OTP. Chưa cấp quyền AFFILIATE_RECRUITER.")
+        .Produces<RegisterAffiliateResponse>(StatusCodes.Status201Created)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status409Conflict)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // 3. Đăng ký Client Company User
+        group.MapPost("/register/client", async (
+            [FromBody] RegisterClientCommand command,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<RegisterClientCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu đăng ký Doanh nghiệp không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                            g => g.Key, 
+                            g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Created($"/api/auth/client/{result.Data?.UserId}", result);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+        })
+        .WithName("RegisterClient")
+        .WithSummary("Đăng ký tài khoản Doanh nghiệp tuyển dụng (Client Company User)")
+        .WithDescription("Đăng ký tài khoản đại diện doanh nghiệp và công ty mới. Trạng thái PENDING chờ xác thực email OTP. Chưa cấp quyền CLIENT_COMPANY_USER.")
+        .Produces<RegisterClientResponse>(StatusCodes.Status201Created)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status409Conflict)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // 4. Xác thực mã OTP qua Email
+        group.MapPost("/verify-email-otp", async (
+            [FromBody] VerifyEmailOtpCommand command,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<VerifyEmailOtpCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
             var validationResult = await validator.ValidateAsync(command, cancellationToken);
             if (!validationResult.IsValid)
             {
@@ -91,7 +197,6 @@ public static class AuthEndpoints
 
             try
             {
-                // 2. Dispatch Command vào MediatR Pipeline
                 var result = await sender.Send(command, cancellationToken);
                 return Results.Ok(result);
             }
@@ -105,18 +210,18 @@ public static class AuthEndpoints
             }
         })
         .WithName("VerifyEmailOtp")
-        .WithSummary("Xác thực mã OTP gửi về Email để kích hoạt tài khoản")
-        .WithDescription("Nhập email và mã OTP 6 số. Khi xác thực thành công, tài khoản chuyển từ PENDING sang ACTIVE.")
-        .Produces<HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp.VerifyEmailOtpResponse>(StatusCodes.Status200OK)
+        .WithSummary("Xác thực mã OTP gửi về Email để kích hoạt tài khoản / xác nhận đăng ký")
+        .WithDescription("Nhập email và mã OTP 6 số. Candidate chuyển sang ACTIVE. Affiliate và Client chuyển sang PENDING_ADMIN_APPROVAL.")
+        .Produces<VerifyEmailOtpResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest);
 
+        // 5. Đăng nhập hệ thống
         group.MapPost("/login", async (
-            [FromBody] HRConnect.Application.Features.Auth.Commands.Login.LoginCommand command,
+            [FromBody] LoginCommand command,
             [FromServices] ISender sender,
-            [FromServices] IValidator<HRConnect.Application.Features.Auth.Commands.Login.LoginCommand> validator,
+            [FromServices] IValidator<LoginCommand> validator,
             CancellationToken cancellationToken) =>
         {
-            // 1. Validate Command bằng FluentValidation
             var validationResult = await validator.ValidateAsync(command, cancellationToken);
             if (!validationResult.IsValid)
             {
@@ -134,7 +239,6 @@ public static class AuthEndpoints
 
             try
             {
-                // 2. Gửi Command vào MediatR Pipeline
                 var result = await sender.Send(command, cancellationToken);
                 return Results.Ok(result);
             }
@@ -145,6 +249,14 @@ public static class AuthEndpoints
                     success = false,
                     message = ex.Message
                 }, statusCode: StatusCodes.Status401Unauthorized);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = ex.Message
+                }, statusCode: StatusCodes.Status403Forbidden);
             }
             catch (BadRequestException ex)
             {
@@ -157,10 +269,11 @@ public static class AuthEndpoints
         })
         .WithName("Login")
         .WithSummary("Đăng nhập hệ thống (Email + Mật khẩu)")
-        .WithDescription("Xác thực người dùng, trả về JWT Access Token (kèm Roles & Permissions), Refresh Token và thông tin tài khoản.")
-        .Produces<HRConnect.Application.Features.Auth.Commands.Login.LoginResponse>(StatusCodes.Status200OK)
+        .WithDescription("Xác thực người dùng, trả về JWT Access Token kèm Roles & Permissions. Chặn tài khoản chưa xác thực email hoặc chưa được Admin phê duyệt.")
+        .Produces<LoginResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
-        .Produces(StatusCodes.Status401Unauthorized);
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden);
 
         return app;
     }

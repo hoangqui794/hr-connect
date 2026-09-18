@@ -33,6 +33,12 @@ public class UserRepository : IUserRepository
                 .ThenInclude(ur => ur.Role)
                     .ThenInclude(r => r.RolePermissions)
                         .ThenInclude(rp => rp.Permission)
+            .Include(u => u.AffiliateApplicationUser)
+            .Include(u => u.CompanyUsers)
+                .ThenInclude(cu => cu.Company)
+                    .ThenInclude(c => c.CompanyVerificationRequest)
+            .Include(u => u.CompanyVerificationRequestSubmittedByNavigations)
+                .ThenInclude(cvr => cvr.Company)
             .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail, cancellationToken);
     }
 

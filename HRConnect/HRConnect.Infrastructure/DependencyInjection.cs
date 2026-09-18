@@ -45,12 +45,17 @@ public static class DependencyInjection
         // 4. Repositories & UnitOfWork
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ICandidateRepository, CandidateRepository>();
+        services.AddScoped<IAffiliateApplicationRepository, AffiliateApplicationRepository>();
+        services.AddScoped<ICompanyRepository, CompanyRepository>();
+        services.AddScoped<ICompanyUserRepository, CompanyUserRepository>();
+        services.AddScoped<ICompanyVerificationRequestRepository, CompanyVerificationRequestRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();
         services.AddScoped<IUserTokenRepository, UserTokenRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailOutboxRepository, EmailOutboxRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IAdminApprovalService, HRConnect.Infrastructure.Services.Admin.AdminApprovalService>();
 
         return services;
     }
