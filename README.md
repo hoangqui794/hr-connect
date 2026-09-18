@@ -103,18 +103,20 @@ d:/Ki_9/HRConnect/
 │   │   ├── Interfaces/         # IApplicationDbContext, IPasswordHasher...
 │   │   └── Models/             # Result<T>, PaginatedList<T>
 │   ├── DTOs/                   # DTOs dùng chung
-│   └── Features/               # Vertical Slice theo từng Module/Feature
-│       └── Auth/               # Module Xác thực tài khoản
-│           ├── Commands/       # Các tác vụ thay đổi dữ liệu (Create, Update, Delete)
-│           │   └── Register/   # Chức năng Đăng ký (Command, Handler, Validator, DTO)
-│           └── Queries/        # Các tác vụ đọc dữ liệu (Read-only)
+│   ├── Features/               # Vertical Slice theo từng Module/Feature
+│   │   └── Auth/               # Module Xác thực tài khoản
+│   │       ├── Commands/       # Các tác vụ thay đổi dữ liệu (Create, Update, Delete)
+│   │       │   └── Register/   # Chức năng Đăng ký (Command, Handler, Validator, DTO)
+│   │       └── Queries/        # Các tác vụ đọc dữ liệu (Read-only)
+│   └── DependencyInjection.cs  # Đăng ký MediatR, FluentValidation của tầng Application
 │
 ├── HRConnect.Infrastructure/   # [INFRASTRUCTURE] Kỹ thuật và giao tiếp bên ngoài
 │   ├── Migrations/             # Quản lý Database Migrations của EF Core
 │   ├── Persistence/            # Kết nối PostgreSQL (ApplicationDbContext)
 │   │   └── Configurations/     # Fluent API cấu hình bảng (UserConfiguration...)
 │   ├── Repositories/           # Triển khai Repository / Unit of Work (nếu có)
-│   └── Services/               # BCrypt Hasher, JWT Generator, Email Service...
+│   ├── Services/               # BCrypt Hasher, JWT Generator, Email Service...
+│   └── DependencyInjection.cs  # Đăng ký DbContext, PostgreSQL, Services ngoài
 │
 └── HRConnect.Presentation/     # [PRESENTATION] Tiếp nhận HTTP Request từ Client
     ├── Endpoints/
@@ -123,6 +125,23 @@ d:/Ki_9/HRConnect/
     ├── Program.cs              # Nạp .env, CORS, Swagger JWT, Auth pipeline
     └── appsettings.json
 ```
+
+### Cơ Chế Dependency Injection Tự Quản (DI Modules)
+
+Trong Clean Architecture, để file `Program.cs` không bị phình to hàng trăm dòng và giữ nguyên tính đóng gói, **mỗi tầng sẽ tự chịu trách nhiệm đăng ký các dịch vụ của chính nó** thông qua file `DependencyInjection.cs`:
+
+- **`HRConnect.Application/DependencyInjection.cs`**:
+  - Cung cấp hàm mở rộng: `services.AddApplicationServices()`.
+  - Tự động đăng ký: MediatR, FluentValidation, Pipeline Behaviors.
+- **`HRConnect.Infrastructure/DependencyInjection.cs`**:
+  - Cung cấp hàm mở rộng: `services.AddInfrastructureServices(configuration)`.
+  - Tự đọc chuỗi kết nối từ `.env`, cấu hình `ApplicationDbContext` với PostgreSQL (`Npgsql`), đăng ký Repositories và các dịch vụ ngoài (PasswordHasher, JWT Generator...).
+- **`HRConnect.Presentation/Program.cs`**:
+  - Đóng vai trò là "nhạc trưởng", chỉ cần gọi đúng **2 dòng code ngắn gọn**:
+    ```csharp
+    builder.Services.AddApplicationServices();
+    builder.Services.AddInfrastructureServices(builder.Configuration);
+    ```
 
 ---
 

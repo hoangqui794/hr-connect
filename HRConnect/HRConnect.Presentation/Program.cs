@@ -2,6 +2,8 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using HRConnect.Application;
+using HRConnect.Infrastructure;
 
 // ==============================================================================
 // 1. Nạp biến môi trường từ file .env
@@ -92,9 +94,9 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// TODO (Clean Architecture): Sau này khi tạo các file DependencyInjection.cs, mở comment 2 dòng sau:
-// builder.Services.AddApplicationServices();
-// builder.Services.AddInfrastructureServices(builder.Configuration);
+// Clean Architecture: Dang ky cac dich vu cua tung tang
+builder.Services.AddApplicationServices();
+builder.Services.AddInfrastructureServices(builder.Configuration);
 
 var app = builder.Build();
 
