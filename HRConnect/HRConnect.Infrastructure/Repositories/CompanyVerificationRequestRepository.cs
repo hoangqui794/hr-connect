@@ -40,6 +40,15 @@ public class CompanyVerificationRequestRepository : ICompanyVerificationRequestR
             .FirstOrDefaultAsync(cvr => cvr.CompanyVerificationRequestId == requestId, cancellationToken);
     }
 
+    public async Task<CompanyVerificationRequest?> GetByIdWithDetailsAsync(Guid requestId, CancellationToken cancellationToken = default)
+    {
+        return await _context.CompanyVerificationRequests
+            .Include(cvr => cvr.Company)
+            .Include(cvr => cvr.SubmittedByNavigation)
+            .Include(cvr => cvr.ReviewedByNavigation)
+            .FirstOrDefaultAsync(cvr => cvr.CompanyVerificationRequestId == requestId, cancellationToken);
+    }
+
     public void Update(CompanyVerificationRequest request)
     {
         _context.CompanyVerificationRequests.Update(request);

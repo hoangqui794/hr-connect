@@ -31,6 +31,14 @@ public class AffiliateApplicationRepository : IAffiliateApplicationRepository
             .FirstOrDefaultAsync(a => a.AffiliateApplicationId == applicationId, cancellationToken);
     }
 
+    public async Task<AffiliateApplication?> GetByIdWithDetailsAsync(Guid applicationId, CancellationToken cancellationToken = default)
+    {
+        return await _context.AffiliateApplications
+            .Include(a => a.User)
+            .Include(a => a.ReviewedByNavigation)
+            .FirstOrDefaultAsync(a => a.AffiliateApplicationId == applicationId, cancellationToken);
+    }
+
     public void Update(AffiliateApplication application)
     {
         _context.AffiliateApplications.Update(application);

@@ -12,5 +12,7 @@ public interface ICompanyVerificationRequestRepository
 
     Task<CompanyVerificationRequest?> GetByIdAsync(Guid requestId, CancellationToken cancellationToken = default);
 
+    Task<CompanyVerificationRequest?> GetByIdWithDetailsAsync(Guid requestId, CancellationToken cancellationToken = default);
+
     void Update(CompanyVerificationRequest request);
 }

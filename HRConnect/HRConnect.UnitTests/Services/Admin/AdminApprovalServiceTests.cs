@@ -1,4 +1,5 @@
 using FluentAssertions;
+using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
@@ -235,5 +236,86 @@ public class AdminApprovalServiceTests
 
         var userRole = await _context.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == user.UserId);
         userRole.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ApproveAffiliateApplicationAsync_ShouldThrowConflict_WhenAlreadyApproved()
+    {
+        // Arrange
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "affiliate_dup@example.com",
+            PasswordHash = "hash",
+            DisplayName = "Affiliate Dup",
+            Status = "ACTIVE"
+        };
+        var application = new AffiliateApplication
+        {
+            AffiliateApplicationId = Guid.NewGuid(),
+            UserId = user.UserId,
+            AffiliateType = "RECRUITER",
+            Status = "APPROVED",
+            SubmittedData = "{}"
+        };
+
+        await _context.AppUsers.AddAsync(user);
+        await _context.AffiliateApplications.AddAsync(application);
+        await _context.SaveChangesAsync();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ConflictException>(() =>
+            _service.ApproveAffiliateApplicationAsync(application.AffiliateApplicationId, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task ApproveCompanyVerificationRequestAsync_ShouldThrowConflict_WhenAlreadyApproved()
+    {
+        // Arrange
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "client_dup@example.com",
+            PasswordHash = "hash",
+            DisplayName = "Client Dup",
+            Status = "ACTIVE"
+        };
+        var company = new Company
+        {
+            CompanyId = Guid.NewGuid(),
+            CompanyName = "Dup Corp",
+            VerificationStatus = "VERIFIED"
+        };
+        var request = new CompanyVerificationRequest
+        {
+            CompanyVerificationRequestId = Guid.NewGuid(),
+            CompanyId = company.CompanyId,
+            SubmittedBy = user.UserId,
+            Status = "APPROVED",
+            SubmittedPayload = "{}"
+        };
+
+        await _context.AppUsers.AddAsync(user);
+        await _context.Companies.AddAsync(company);
+        await _context.CompanyVerificationRequests.AddAsync(request);
+        await _context.SaveChangesAsync();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ConflictException>(() =>
+            _service.ApproveCompanyVerificationRequestAsync(request.CompanyVerificationRequestId, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task ApproveAffiliateApplicationAsync_ShouldThrowNotFound_WhenNotExists()
+    {
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            _service.ApproveAffiliateApplicationAsync(Guid.NewGuid(), Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task ApproveCompanyVerificationRequestAsync_ShouldThrowNotFound_WhenNotExists()
+    {
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            _service.ApproveCompanyVerificationRequestAsync(Guid.NewGuid(), Guid.NewGuid()));
     }
 }
