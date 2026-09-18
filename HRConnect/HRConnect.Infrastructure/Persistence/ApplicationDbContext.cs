@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using HRConnect.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -118,6 +118,7 @@ public partial class ApplicationDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("pgcrypto");
+        modelBuilder.HasSequence<long>("audit_log_audit_log_id_seq", "public");
 
         modelBuilder.Entity<AdminProfile>(entity =>
         {
