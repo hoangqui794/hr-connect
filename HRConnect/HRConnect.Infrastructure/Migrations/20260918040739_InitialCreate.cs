@@ -13,14 +13,14 @@ namespace HRConnect.Infrastructure.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.EnsureSchema(
-                name: "hr_connect");
+                name: "public");
 
             migrationBuilder.AlterDatabase()
                 .Annotation("Npgsql:PostgresExtension:pgcrypto", ",,");
 
             migrationBuilder.CreateTable(
                 name: "app_user",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     user_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -44,7 +44,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "commission_milestone",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     milestone_code = table.Column<string>(type: "character varying(60)", maxLength: 60, nullable: false),
@@ -61,7 +61,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "company",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     company_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -84,7 +84,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "cv_template",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     cv_template_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -104,7 +104,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "match_tier_config",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     tier_code = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
@@ -124,7 +124,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "permission",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     permission_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -143,7 +143,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "role",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     role_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -162,7 +162,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "service_type",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     service_type_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -180,7 +180,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "skill",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     skill_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -197,7 +197,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "admin_profile",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     admin_profile_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -214,7 +214,7 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "admin_profile_user_id_fkey",
                         column: x => x.user_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
@@ -222,7 +222,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "affiliate_application",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     affiliate_application_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -246,14 +246,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "affiliate_application_reviewed_by_fkey",
                         column: x => x.reviewed_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "affiliate_application_user_id_fkey",
                         column: x => x.user_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
@@ -262,7 +262,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "affiliate_profile",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     affiliate_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -284,7 +284,7 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "affiliate_profile_user_id_fkey",
                         column: x => x.user_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
@@ -292,7 +292,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "audit_log",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     audit_log_id = table.Column<long>(type: "bigint", nullable: false, defaultValueSql: "nextval('audit_log_audit_log_id_seq'::regclass)"),
@@ -313,7 +313,7 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "audit_log_actor_user_id_fkey",
                         column: x => x.actor_user_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
@@ -322,7 +322,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "candidate",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     candidate_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -350,14 +350,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "candidate_user_id_fkey",
                         column: x => x.user_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "fk_candidate_merged_into",
                         column: x => x.merged_into_candidate_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "candidate",
                         principalColumn: "candidate_id",
                         onDelete: ReferentialAction.Restrict);
@@ -365,7 +365,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "email_outbox",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     email_outbox_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -387,7 +387,7 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "email_outbox_user_id_fkey",
                         column: x => x.user_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
@@ -395,7 +395,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "internal_hr_profile",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     hr_profile_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -413,7 +413,7 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "internal_hr_profile_user_id_fkey",
                         column: x => x.user_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
@@ -421,7 +421,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "notification",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     notification_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -442,7 +442,7 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "notification_user_id_fkey",
                         column: x => x.user_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
@@ -451,7 +451,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "refresh_token",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     refresh_token_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -471,14 +471,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "refresh_token_replaced_by_token_id_fkey",
                         column: x => x.replaced_by_token_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "refresh_token",
                         principalColumn: "refresh_token_id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "refresh_token_user_id_fkey",
                         column: x => x.user_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
@@ -486,7 +486,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "user_token",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     token_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -505,7 +505,7 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "user_token_user_id_fkey",
                         column: x => x.user_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
@@ -513,7 +513,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "company_user",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     company_user_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -531,14 +531,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "company_user_company_id_fkey",
                         column: x => x.company_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "company",
                         principalColumn: "company_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "company_user_user_id_fkey",
                         column: x => x.user_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
@@ -546,7 +546,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "company_verification_request",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     company_verification_request_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -565,21 +565,21 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "company_verification_request_company_id_fkey",
                         column: x => x.company_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "company",
                         principalColumn: "company_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "company_verification_request_reviewed_by_fkey",
                         column: x => x.reviewed_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "company_verification_request_submitted_by_fkey",
                         column: x => x.submitted_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
@@ -587,7 +587,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "role_permission",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     role_id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -600,14 +600,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "role_permission_permission_id_fkey",
                         column: x => x.permission_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "permission",
                         principalColumn: "permission_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "role_permission_role_id_fkey",
                         column: x => x.role_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "role",
                         principalColumn: "role_id",
                         onDelete: ReferentialAction.Cascade);
@@ -615,7 +615,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "user_role",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     user_id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -634,28 +634,28 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_user_role_revoked_by",
                         column: x => x.revoked_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "user_role_assigned_by_fkey",
                         column: x => x.assigned_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "user_role_role_id_fkey",
                         column: x => x.role_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "role",
                         principalColumn: "role_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "user_role_user_id_fkey",
                         column: x => x.user_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
@@ -664,7 +664,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "commission_rule",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     commission_rule_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -686,14 +686,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "commission_rule_service_type_id_fkey",
                         column: x => x.service_type_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "service_type",
                         principalColumn: "service_type_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_commission_rule_milestone",
                         column: x => x.milestone_type,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "commission_milestone",
                         principalColumn: "milestone_code",
                         onDelete: ReferentialAction.Restrict);
@@ -701,7 +701,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "job",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     job_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -730,21 +730,21 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "job_company_id_fkey",
                         column: x => x.company_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "company",
                         principalColumn: "company_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "job_created_by_fkey",
                         column: x => x.created_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "job_service_type_id_fkey",
                         column: x => x.service_type_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "service_type",
                         principalColumn: "service_type_id",
                         onDelete: ReferentialAction.Restrict);
@@ -752,7 +752,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "affiliate_performance",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     affiliate_performance_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -776,7 +776,7 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "affiliate_performance_affiliate_id_fkey",
                         column: x => x.affiliate_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "affiliate_profile",
                         principalColumn: "affiliate_id",
                         onDelete: ReferentialAction.Restrict);
@@ -785,7 +785,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "candidate_cv",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     cv_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -812,14 +812,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "candidate_cv_candidate_id_fkey",
                         column: x => x.candidate_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "candidate",
                         principalColumn: "candidate_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "candidate_cv_cv_template_id_fkey",
                         column: x => x.cv_template_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "cv_template",
                         principalColumn: "cv_template_id",
                         onDelete: ReferentialAction.SetNull);
@@ -828,7 +828,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "candidate_skill",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     candidate_id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -842,14 +842,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "candidate_skill_candidate_id_fkey",
                         column: x => x.candidate_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "candidate",
                         principalColumn: "candidate_id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "candidate_skill_skill_id_fkey",
                         column: x => x.skill_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "skill",
                         principalColumn: "skill_id",
                         onDelete: ReferentialAction.Restrict);
@@ -857,7 +857,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "job_requirement",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     requirement_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -875,7 +875,7 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "job_requirement_job_id_fkey",
                         column: x => x.job_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "job",
                         principalColumn: "job_id",
                         onDelete: ReferentialAction.Cascade);
@@ -883,7 +883,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "job_skill",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     job_id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -897,14 +897,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "job_skill_job_id_fkey",
                         column: x => x.job_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "job",
                         principalColumn: "job_id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "job_skill_skill_id_fkey",
                         column: x => x.skill_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "skill",
                         principalColumn: "skill_id",
                         onDelete: ReferentialAction.Restrict);
@@ -912,7 +912,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "job_status_history",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     job_status_history_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -929,14 +929,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "job_status_history_changed_by_fkey",
                         column: x => x.changed_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "job_status_history_job_id_fkey",
                         column: x => x.job_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "job",
                         principalColumn: "job_id",
                         onDelete: ReferentialAction.Restrict);
@@ -944,7 +944,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "candidate_job_match",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     candidate_job_match_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -968,28 +968,28 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "candidate_job_match_candidate_id_fkey",
                         column: x => x.candidate_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "candidate",
                         principalColumn: "candidate_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "candidate_job_match_job_id_fkey",
                         column: x => x.job_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "job",
                         principalColumn: "job_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_candidate_job_match_cv_owner",
                         columns: x => new { x.candidate_id, x.cv_id },
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "candidate_cv",
                         principalColumns: new[] { "candidate_id", "cv_id" },
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_candidate_job_match_tier",
                         column: x => x.match_tier,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "match_tier_config",
                         principalColumn: "tier_code",
                         onDelete: ReferentialAction.Restrict);
@@ -998,7 +998,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "submission",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     submission_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1020,35 +1020,35 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_submission_cv_owner",
                         columns: x => new { x.candidate_id, x.cv_id },
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "candidate_cv",
                         principalColumns: new[] { "candidate_id", "cv_id" },
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "submission_candidate_id_fkey",
                         column: x => x.candidate_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "candidate",
                         principalColumn: "candidate_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "submission_duplicate_of_submission_id_fkey",
                         column: x => x.duplicate_of_submission_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "submission",
                         principalColumn: "submission_id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "submission_job_id_fkey",
                         column: x => x.job_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "job",
                         principalColumn: "job_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "submission_submitted_by_fkey",
                         column: x => x.submitted_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
@@ -1057,7 +1057,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "application",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     application_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1076,21 +1076,21 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "application_candidate_id_fkey",
                         column: x => x.candidate_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "candidate",
                         principalColumn: "candidate_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "application_job_id_fkey",
                         column: x => x.job_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "job",
                         principalColumn: "job_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_application_accepted_submission",
                         columns: x => new { x.accepted_submission_id, x.candidate_id, x.job_id },
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "submission",
                         principalColumns: new[] { "submission_id", "candidate_id", "job_id" },
                         onDelete: ReferentialAction.Restrict);
@@ -1098,7 +1098,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "ai_match_result",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     match_result_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1122,14 +1122,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "ai_match_result_application_id_fkey",
                         column: x => x.application_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "application",
                         principalColumn: "application_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_ai_match_result_tier",
                         column: x => x.match_tier,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "match_tier_config",
                         principalColumn: "tier_code",
                         onDelete: ReferentialAction.Restrict);
@@ -1138,7 +1138,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "application_status_history",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     application_status_history_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1155,14 +1155,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "application_status_history_application_id_fkey",
                         column: x => x.application_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "application",
                         principalColumn: "application_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "application_status_history_changed_by_fkey",
                         column: x => x.changed_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
@@ -1170,7 +1170,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "attribution",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     attribution_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1188,21 +1188,21 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "attribution_affiliate_id_fkey",
                         column: x => x.affiliate_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "affiliate_profile",
                         principalColumn: "affiliate_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "attribution_application_id_fkey",
                         column: x => x.application_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "application",
                         principalColumn: "application_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "attribution_winning_submission_id_fkey",
                         column: x => x.winning_submission_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "submission",
                         principalColumn: "submission_id",
                         onDelete: ReferentialAction.Restrict);
@@ -1211,7 +1211,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "interview",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     interview_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1235,14 +1235,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "interview_application_id_fkey",
                         column: x => x.application_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "application",
                         principalColumn: "application_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "interview_created_by_fkey",
                         column: x => x.created_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
@@ -1250,7 +1250,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "offer",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     offer_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1272,14 +1272,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "offer_application_id_fkey",
                         column: x => x.application_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "application",
                         principalColumn: "application_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "offer_created_by_fkey",
                         column: x => x.created_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
@@ -1287,7 +1287,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "offer_approval",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     approval_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1304,14 +1304,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "offer_approval_offer_id_fkey",
                         column: x => x.offer_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "offer",
                         principalColumn: "offer_id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "offer_approval_user_id_fkey",
                         column: x => x.user_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
@@ -1320,7 +1320,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "placement",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     placement_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1339,14 +1339,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "fk_placement_offer_application",
                         columns: x => new { x.offer_id, x.application_id },
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "offer",
                         principalColumns: new[] { "offer_id", "application_id" },
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "placement_application_id_fkey",
                         column: x => x.application_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "application",
                         principalColumn: "application_id",
                         onDelete: ReferentialAction.Restrict);
@@ -1354,7 +1354,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "commission",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     commission_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1379,35 +1379,35 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "commission_approved_by_fkey",
                         column: x => x.approved_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "commission_attribution_id_fkey",
                         column: x => x.attribution_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "attribution",
                         principalColumn: "attribution_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "commission_commission_rule_id_fkey",
                         column: x => x.commission_rule_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "commission_rule",
                         principalColumn: "commission_rule_id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "commission_placement_id_fkey",
                         column: x => x.placement_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "placement",
                         principalColumn: "placement_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_commission_milestone",
                         column: x => x.milestone_type,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "commission_milestone",
                         principalColumn: "milestone_code",
                         onDelete: ReferentialAction.Restrict);
@@ -1416,7 +1416,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "probation",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     probation_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1435,14 +1435,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "probation_placement_id_fkey",
                         column: x => x.placement_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "placement",
                         principalColumn: "placement_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "probation_updated_by_fkey",
                         column: x => x.updated_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
@@ -1450,7 +1450,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "warranty",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     warranty_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1469,14 +1469,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "warranty_placement_id_fkey",
                         column: x => x.placement_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "placement",
                         principalColumn: "placement_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "warranty_updated_by_fkey",
                         column: x => x.updated_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
@@ -1485,7 +1485,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "commission_adjustment",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     commission_adjustment_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1502,14 +1502,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "commission_adjustment_adjusted_by_fkey",
                         column: x => x.adjusted_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "commission_adjustment_commission_id_fkey",
                         column: x => x.commission_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "commission",
                         principalColumn: "commission_id",
                         onDelete: ReferentialAction.Restrict);
@@ -1518,7 +1518,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "dispute",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     dispute_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1542,35 +1542,35 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "dispute_attribution_id_fkey",
                         column: x => x.attribution_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "attribution",
                         principalColumn: "attribution_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "dispute_commission_id_fkey",
                         column: x => x.commission_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "commission",
                         principalColumn: "commission_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "dispute_raised_by_fkey",
                         column: x => x.raised_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "dispute_resolved_by_fkey",
                         column: x => x.resolved_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "dispute_submission_id_fkey",
                         column: x => x.submission_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "submission",
                         principalColumn: "submission_id",
                         onDelete: ReferentialAction.Restrict);
@@ -1578,7 +1578,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "payout",
-                schema: "hr_connect",
+                schema: "public",
                 columns: table => new
                 {
                     payout_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
@@ -1600,14 +1600,14 @@ namespace HRConnect.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "payout_commission_id_fkey",
                         column: x => x.commission_id,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "commission",
                         principalColumn: "commission_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "payout_recorded_by_fkey",
                         column: x => x.recorded_by,
-                        principalSchema: "hr_connect",
+                        principalSchema: "public",
                         principalTable: "app_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
@@ -1616,27 +1616,27 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "admin_profile_employee_code_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "admin_profile",
                 column: "employee_code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "admin_profile_user_id_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "admin_profile",
                 column: "user_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_affiliate_application_reviewed_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "affiliate_application",
                 column: "reviewed_by");
 
             migrationBuilder.CreateIndex(
                 name: "uq_affiliate_application_open",
-                schema: "hr_connect",
+                schema: "public",
                 table: "affiliate_application",
                 column: "user_id",
                 unique: true,
@@ -1644,153 +1644,153 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "affiliate_performance_affiliate_id_period_start_period_end_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "affiliate_performance",
                 columns: new[] { "affiliate_id", "period_start", "period_end" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "idx_affiliate_performance_affiliate_period",
-                schema: "hr_connect",
+                schema: "public",
                 table: "affiliate_performance",
                 columns: new[] { "affiliate_id", "period_end" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "affiliate_profile_user_id_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "affiliate_profile",
                 column: "user_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ai_match_result_application_id_attempt_no_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "ai_match_result",
                 columns: new[] { "application_id", "attempt_no" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "idx_ai_match_application",
-                schema: "hr_connect",
+                schema: "public",
                 table: "ai_match_result",
                 columns: new[] { "application_id", "attempt_no" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "IX_ai_match_result_match_tier",
-                schema: "hr_connect",
+                schema: "public",
                 table: "ai_match_result",
                 column: "match_tier");
 
             migrationBuilder.CreateIndex(
                 name: "idx_app_user_normalized_phone",
-                schema: "hr_connect",
+                schema: "public",
                 table: "app_user",
                 column: "normalized_phone",
                 filter: "(normalized_phone IS NOT NULL)");
 
             migrationBuilder.CreateIndex(
                 name: "idx_app_user_status",
-                schema: "hr_connect",
+                schema: "public",
                 table: "app_user",
                 column: "status");
 
             migrationBuilder.CreateIndex(
                 name: "application_candidate_id_job_id_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "application",
                 columns: new[] { "candidate_id", "job_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "idx_application_candidate",
-                schema: "hr_connect",
+                schema: "public",
                 table: "application",
                 columns: new[] { "candidate_id", "updated_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "idx_application_job_status",
-                schema: "hr_connect",
+                schema: "public",
                 table: "application",
                 columns: new[] { "job_id", "status" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_application_accepted_submission_id_candidate_id_job_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "application",
                 columns: new[] { "accepted_submission_id", "candidate_id", "job_id" });
 
             migrationBuilder.CreateIndex(
                 name: "idx_application_status_history_app",
-                schema: "hr_connect",
+                schema: "public",
                 table: "application_status_history",
                 columns: new[] { "application_id", "changed_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "IX_application_status_history_changed_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "application_status_history",
                 column: "changed_by");
 
             migrationBuilder.CreateIndex(
                 name: "attribution_application_id_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "attribution",
                 column: "application_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "attribution_winning_submission_id_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "attribution",
                 column: "winning_submission_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_attribution_affiliate_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "attribution",
                 column: "affiliate_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_audit_log_actor",
-                schema: "hr_connect",
+                schema: "public",
                 table: "audit_log",
                 columns: new[] { "actor_user_id", "created_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "idx_audit_log_entity",
-                schema: "hr_connect",
+                schema: "public",
                 table: "audit_log",
                 columns: new[] { "entity_type", "entity_id", "created_at" },
                 descending: new[] { false, false, true });
 
             migrationBuilder.CreateIndex(
                 name: "candidate_user_id_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate",
                 column: "user_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "idx_candidate_status",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate",
                 column: "status");
 
             migrationBuilder.CreateIndex(
                 name: "IX_candidate_merged_into_candidate_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate",
                 column: "merged_into_candidate_id");
 
             migrationBuilder.CreateIndex(
                 name: "uq_candidate_identity_email",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate",
                 column: "normalized_email",
                 unique: true,
@@ -1798,7 +1798,7 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "uq_candidate_identity_phone",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate",
                 column: "normalized_phone",
                 unique: true,
@@ -1806,33 +1806,33 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "idx_candidate_cv_candidate",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate_cv",
                 columns: new[] { "candidate_id", "created_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "idx_candidate_cv_creation_method",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate_cv",
                 columns: new[] { "creation_method", "status" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_candidate_cv_cv_template_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate_cv",
                 column: "cv_template_id");
 
             migrationBuilder.CreateIndex(
                 name: "uq_candidate_cv_owner",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate_cv",
                 columns: new[] { "candidate_id", "cv_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_candidate_primary_cv",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate_cv",
                 column: "candidate_id",
                 unique: true,
@@ -1840,97 +1840,97 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "candidate_job_match_candidate_id_job_id_attempt_no_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate_job_match",
                 columns: new[] { "candidate_id", "job_id", "attempt_no" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "idx_candidate_job_match_candidate_score",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate_job_match",
                 columns: new[] { "candidate_id", "match_score", "generated_at" },
                 descending: new[] { false, true, true });
 
             migrationBuilder.CreateIndex(
                 name: "idx_candidate_job_match_job",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate_job_match",
                 columns: new[] { "job_id", "generated_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "IX_candidate_job_match_candidate_id_cv_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate_job_match",
                 columns: new[] { "candidate_id", "cv_id" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_candidate_job_match_match_tier",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate_job_match",
                 column: "match_tier");
 
             migrationBuilder.CreateIndex(
                 name: "IX_candidate_skill_skill_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "candidate_skill",
                 column: "skill_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_commission_status",
-                schema: "hr_connect",
+                schema: "public",
                 table: "commission",
                 columns: new[] { "status", "created_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "IX_commission_approved_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "commission",
                 column: "approved_by");
 
             migrationBuilder.CreateIndex(
                 name: "IX_commission_commission_rule_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "commission",
                 column: "commission_rule_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_commission_milestone_type",
-                schema: "hr_connect",
+                schema: "public",
                 table: "commission",
                 column: "milestone_type");
 
             migrationBuilder.CreateIndex(
                 name: "IX_commission_placement_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "commission",
                 column: "placement_id");
 
             migrationBuilder.CreateIndex(
                 name: "uq_commission_attribution_placement",
-                schema: "hr_connect",
+                schema: "public",
                 table: "commission",
                 columns: new[] { "attribution_id", "placement_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "idx_commission_adjustment_commission",
-                schema: "hr_connect",
+                schema: "public",
                 table: "commission_adjustment",
                 columns: new[] { "commission_id", "adjusted_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "IX_commission_adjustment_adjusted_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "commission_adjustment",
                 column: "adjusted_by");
 
             migrationBuilder.CreateIndex(
                 name: "idx_commission_rule_active",
-                schema: "hr_connect",
+                schema: "public",
                 table: "commission_rule",
                 columns: new[] { "service_type_id", "milestone_type", "effective_from" },
                 descending: new[] { false, false, true },
@@ -1938,13 +1938,13 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_commission_rule_milestone_type",
-                schema: "hr_connect",
+                schema: "public",
                 table: "commission_rule",
                 column: "milestone_type");
 
             migrationBuilder.CreateIndex(
                 name: "uq_company_tax_code",
-                schema: "hr_connect",
+                schema: "public",
                 table: "company",
                 column: "tax_code",
                 unique: true,
@@ -1952,20 +1952,20 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "company_user_company_id_user_id_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "company_user",
                 columns: new[] { "company_id", "user_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_company_user_user_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "company_user",
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "uq_company_primary_contact",
-                schema: "hr_connect",
+                schema: "public",
                 table: "company_user",
                 column: "company_id",
                 unique: true,
@@ -1973,19 +1973,19 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_company_verification_request_reviewed_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "company_verification_request",
                 column: "reviewed_by");
 
             migrationBuilder.CreateIndex(
                 name: "IX_company_verification_request_submitted_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "company_verification_request",
                 column: "submitted_by");
 
             migrationBuilder.CreateIndex(
                 name: "uq_company_verification_open",
-                schema: "hr_connect",
+                schema: "public",
                 table: "company_verification_request",
                 column: "company_id",
                 unique: true,
@@ -1993,84 +1993,84 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "cv_template_code_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "cv_template",
                 column: "code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_dispute_attribution_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "dispute",
                 column: "attribution_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_dispute_commission_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "dispute",
                 column: "commission_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_dispute_raised_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "dispute",
                 column: "raised_by");
 
             migrationBuilder.CreateIndex(
                 name: "IX_dispute_resolved_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "dispute",
                 column: "resolved_by");
 
             migrationBuilder.CreateIndex(
                 name: "IX_dispute_submission_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "dispute",
                 column: "submission_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_email_outbox_pending",
-                schema: "hr_connect",
+                schema: "public",
                 table: "email_outbox",
                 columns: new[] { "status", "next_retry_at", "created_at" },
                 filter: "((status)::text = ANY ((ARRAY['PENDING'::character varying, 'FAILED'::character varying])::text[]))");
 
             migrationBuilder.CreateIndex(
                 name: "IX_email_outbox_user_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "email_outbox",
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "internal_hr_profile_employee_code_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "internal_hr_profile",
                 column: "employee_code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "internal_hr_profile_user_id_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "internal_hr_profile",
                 column: "user_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "interview_application_id_interview_round_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "interview",
                 columns: new[] { "application_id", "interview_round" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_interview_created_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "interview",
                 column: "created_by");
 
             migrationBuilder.CreateIndex(
                 name: "idx_job_active",
-                schema: "hr_connect",
+                schema: "public",
                 table: "job",
                 columns: new[] { "company_id", "service_type_id", "posted_at" },
                 descending: new[] { false, false, true },
@@ -2078,57 +2078,57 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "idx_job_company_status",
-                schema: "hr_connect",
+                schema: "public",
                 table: "job",
                 columns: new[] { "company_id", "status" });
 
             migrationBuilder.CreateIndex(
                 name: "idx_job_service_type_status",
-                schema: "hr_connect",
+                schema: "public",
                 table: "job",
                 columns: new[] { "service_type_id", "status" });
 
             migrationBuilder.CreateIndex(
                 name: "idx_job_visibility_status",
-                schema: "hr_connect",
+                schema: "public",
                 table: "job",
                 columns: new[] { "visibility", "status", "posted_at" },
                 descending: new[] { false, false, true });
 
             migrationBuilder.CreateIndex(
                 name: "IX_job_created_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "job",
                 column: "created_by");
 
             migrationBuilder.CreateIndex(
                 name: "IX_job_requirement_job_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "job_requirement",
                 column: "job_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_job_skill_skill_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "job_skill",
                 column: "skill_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_job_status_history_job",
-                schema: "hr_connect",
+                schema: "public",
                 table: "job_status_history",
                 columns: new[] { "job_id", "changed_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "IX_job_status_history_changed_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "job_status_history",
                 column: "changed_by");
 
             migrationBuilder.CreateIndex(
                 name: "idx_notification_unread",
-                schema: "hr_connect",
+                schema: "public",
                 table: "notification",
                 columns: new[] { "user_id", "created_at" },
                 descending: new[] { false, true },
@@ -2136,107 +2136,107 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "idx_notification_user_created",
-                schema: "hr_connect",
+                schema: "public",
                 table: "notification",
                 columns: new[] { "user_id", "created_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "IX_offer_created_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "offer",
                 column: "created_by");
 
             migrationBuilder.CreateIndex(
                 name: "offer_application_id_offer_version_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "offer",
                 columns: new[] { "application_id", "offer_version" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_offer_application_pair",
-                schema: "hr_connect",
+                schema: "public",
                 table: "offer",
                 columns: new[] { "offer_id", "application_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_offer_approval_user_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "offer_approval",
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "offer_approval_offer_id_user_id_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "offer_approval",
                 columns: new[] { "offer_id", "user_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "idx_payout_commission_status",
-                schema: "hr_connect",
+                schema: "public",
                 table: "payout",
                 columns: new[] { "commission_id", "status", "created_at" },
                 descending: new[] { false, false, true });
 
             migrationBuilder.CreateIndex(
                 name: "IX_payout_recorded_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "payout",
                 column: "recorded_by");
 
             migrationBuilder.CreateIndex(
                 name: "uq_payout_attempt",
-                schema: "hr_connect",
+                schema: "public",
                 table: "payout",
                 columns: new[] { "commission_id", "attempt_no" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "permission_code_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "permission",
                 column: "code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_placement_offer_id_application_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "placement",
                 columns: new[] { "offer_id", "application_id" });
 
             migrationBuilder.CreateIndex(
                 name: "placement_application_id_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "placement",
                 column: "application_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "placement_offer_id_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "placement",
                 column: "offer_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_probation_updated_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "probation",
                 column: "updated_by");
 
             migrationBuilder.CreateIndex(
                 name: "probation_placement_id_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "probation",
                 column: "placement_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "idx_refresh_token_active",
-                schema: "hr_connect",
+                schema: "public",
                 table: "refresh_token",
                 columns: new[] { "user_id", "expires_at" },
                 descending: new[] { false, true },
@@ -2244,79 +2244,79 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_refresh_token_replaced_by_token_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "refresh_token",
                 column: "replaced_by_token_id");
 
             migrationBuilder.CreateIndex(
                 name: "refresh_token_token_hash_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "refresh_token",
                 column: "token_hash",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "role_code_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "role",
                 column: "code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_role_permission_permission_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "role_permission",
                 column: "permission_id");
 
             migrationBuilder.CreateIndex(
                 name: "service_type_code_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "service_type",
                 column: "code",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "skill_normalized_name_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "skill",
                 column: "normalized_name",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "idx_submission_job_candidate",
-                schema: "hr_connect",
+                schema: "public",
                 table: "submission",
                 columns: new[] { "job_id", "candidate_id", "submitted_at" });
 
             migrationBuilder.CreateIndex(
                 name: "idx_submission_submitted_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "submission",
                 columns: new[] { "submitted_by", "submitted_at" },
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
                 name: "IX_submission_candidate_id_cv_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "submission",
                 columns: new[] { "candidate_id", "cv_id" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_submission_duplicate_of_submission_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "submission",
                 column: "duplicate_of_submission_id");
 
             migrationBuilder.CreateIndex(
                 name: "uq_submission_identity",
-                schema: "hr_connect",
+                schema: "public",
                 table: "submission",
                 columns: new[] { "submission_id", "candidate_id", "job_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "uq_submission_one_accepted",
-                schema: "hr_connect",
+                schema: "public",
                 table: "submission",
                 columns: new[] { "job_id", "candidate_id" },
                 unique: true,
@@ -2324,52 +2324,52 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "idx_user_role_active_user",
-                schema: "hr_connect",
+                schema: "public",
                 table: "user_role",
                 columns: new[] { "user_id", "role_id" },
                 filter: "((status)::text = 'ACTIVE'::text)");
 
             migrationBuilder.CreateIndex(
                 name: "idx_user_role_role_id",
-                schema: "hr_connect",
+                schema: "public",
                 table: "user_role",
                 column: "role_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_user_role_assigned_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "user_role",
                 column: "assigned_by");
 
             migrationBuilder.CreateIndex(
                 name: "IX_user_role_revoked_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "user_role",
                 column: "revoked_by");
 
             migrationBuilder.CreateIndex(
                 name: "idx_user_token_active",
-                schema: "hr_connect",
+                schema: "public",
                 table: "user_token",
                 columns: new[] { "user_id", "token_type", "expires_at" },
                 filter: "(used_at IS NULL)");
 
             migrationBuilder.CreateIndex(
                 name: "idx_user_token_lookup",
-                schema: "hr_connect",
+                schema: "public",
                 table: "user_token",
                 columns: new[] { "user_id", "token_type", "expires_at" },
                 descending: new[] { false, false, true });
 
             migrationBuilder.CreateIndex(
                 name: "IX_warranty_updated_by",
-                schema: "hr_connect",
+                schema: "public",
                 table: "warranty",
                 column: "updated_by");
 
             migrationBuilder.CreateIndex(
                 name: "warranty_placement_id_key",
-                schema: "hr_connect",
+                schema: "public",
                 table: "warranty",
                 column: "placement_id",
                 unique: true);
@@ -2380,191 +2380,191 @@ namespace HRConnect.Infrastructure.Migrations
         {
             migrationBuilder.DropTable(
                 name: "admin_profile",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "affiliate_application",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "affiliate_performance",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "ai_match_result",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "application_status_history",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "audit_log",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "candidate_job_match",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "candidate_skill",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "commission_adjustment",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "company_user",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "company_verification_request",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "dispute",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "email_outbox",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "internal_hr_profile",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "interview",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "job_requirement",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "job_skill",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "job_status_history",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "notification",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "offer_approval",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "payout",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "probation",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "refresh_token",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "role_permission",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "user_role",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "user_token",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "warranty",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "match_tier_config",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "skill",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "commission",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "permission",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "role",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "attribution",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "commission_rule",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "placement",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "affiliate_profile",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "commission_milestone",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "offer",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "application",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "submission",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "candidate_cv",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "job",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "candidate",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "cv_template",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "company",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "service_type",
-                schema: "hr_connect");
+                schema: "public");
 
             migrationBuilder.DropTable(
                 name: "app_user",
-                schema: "hr_connect");
+                schema: "public");
         }
     }
 }

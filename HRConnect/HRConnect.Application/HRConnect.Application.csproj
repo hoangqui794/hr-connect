@@ -7,17 +7,23 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Features\Auth\Commands\Register\**" />
+    <EmbeddedResource Remove="Features\Auth\Commands\Register\**" />
+    <None Remove="Features\Auth\Commands\Register\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Common\Behaviors\" />
     <Folder Include="Common\Interfaces\" />
     <Folder Include="Common\Models\" />
     <Folder Include="DTOs\" />
-    <Folder Include="Features\Auth\Commands\Register\" />
     <Folder Include="Features\Auth\Queries\" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="MediatR" Version="14.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
   </ItemGroup>
 
   <ItemGroup>

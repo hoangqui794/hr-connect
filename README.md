@@ -99,30 +99,32 @@ d:/Ki_9/HRConnect/
 │
 ├── HRConnect.Application/      # [USE CASES] Xử lý nghiệp vụ & CQRS
 │   ├── Common/
-│   │   ├── Behaviors/          # MediatR Pipeline (ValidationBehavior, LoggingBehavior)
-│   │   ├── Interfaces/         # IApplicationDbContext, IPasswordHasher...
-│   │   └── Models/             # Result<T>, PaginatedList<T>
-│   ├── DTOs/                   # DTOs dùng chung
+│   │   ├── Exceptions/         # BadRequestException, ConflictException...
+│   │   ├── Interfaces/         # IPasswordHasher, IOtpService, IPhoneNormalizer...
+│   │   │   └── Repositories/   # IUserRepository, ICandidateRepository, IUnitOfWork...
+│   │   └── Models/             # AuthenticationSettings, EmailResult...
 │   ├── Features/               # Vertical Slice theo từng Module/Feature
 │   │   └── Auth/               # Module Xác thực tài khoản
 │   │       ├── Commands/       # Các tác vụ thay đổi dữ liệu (Create, Update, Delete)
-│   │       │   └── Register/   # Chức năng Đăng ký (Command, Handler, Validator, DTO)
+│   │       │   └── RegisterCandidate/ # Lát cắt Đăng ký Ứng viên (Command, Handler, Validator)
 │   │       └── Queries/        # Các tác vụ đọc dữ liệu (Read-only)
 │   └── DependencyInjection.cs  # Đăng ký MediatR, FluentValidation của tầng Application
 │
 ├── HRConnect.Infrastructure/   # [INFRASTRUCTURE] Kỹ thuật và giao tiếp bên ngoài
 │   ├── Migrations/             # Quản lý Database Migrations của EF Core
 │   ├── Persistence/            # Kết nối PostgreSQL (ApplicationDbContext)
-│   │   └── Configurations/     # Fluent API cấu hình bảng (UserConfiguration...)
-│   ├── Repositories/           # Triển khai Repository / Unit of Work (nếu có)
-│   ├── Services/               # BCrypt Hasher, JWT Generator, Email Service...
+│   ├── Repositories/           # UserRepository, CandidateRepository, UnitOfWork...
+│   ├── Services/
+│   │   ├── Email/              # ResendEmailService, ResendSettings...
+│   │   └── Identity/           # PasswordHasher, OtpService, PhoneNormalizer, EmailNormalizer...
 │   └── DependencyInjection.cs  # Đăng ký DbContext, PostgreSQL, Services ngoài
 │
 └── HRConnect.Presentation/     # [PRESENTATION] Tiếp nhận HTTP Request từ Client
     ├── Endpoints/
     │   └── V1/
-    │       └── Auth/           # Minimal API Endpoints (/api/v1/auth)
-    ├── Program.cs              # Nạp .env, CORS, Swagger JWT, Auth pipeline
+    │       ├── Auth/           # Minimal API Endpoints (/api/auth/register/candidate)
+    │       └── Emails/         # Minimal API Endpoints (/api/v1/emails/test-send)
+    ├── Program.cs              # Nạp .env, CORS, Swagger JWT, Minimal API route map
     └── appsettings.json
 ```
 
@@ -173,13 +175,30 @@ Dự án hỗ trợ nạp cấu hình tự động từ file `.env` qua thư vi�
    ASPNETCORE_ENVIRONMENT=Development
    ConnectionStrings__DefaultConnection=Host=localhost;Port=5432;Database=hrconnect_db;Username=postgres;Password=your_password
    JwtSettings__Secret=YourSuperSecretKeyWithAtLeast32CharactersLong!123456
+
+   # Resend Email Service
+   RESEND_API_KEY=re_your_api_key_here
+   Resend__ApiKey=re_your_api_key_here
+   Resend__FromEmail=onboarding@resend.dev
+   Resend__FromName="HRConnect System"
    ```
 > [!CAUTION]
 > File `.env` chứa mật khẩu nhạy cảm và đã được cấu hình trong `.gitignore`. **Tuyệt đối không push file `.env` lên GitHub.**
 
 ---
 
-## 7. Quy Trình Git Flow & CI/CD
+## 7. Dịch Vụ Gửi Email (Resend Email Service)
+
+Hệ thống tích hợp dịch vụ gửi email **Resend** theo chuẩn Clean Architecture:
+- **Interface**: `IEmailService` nằm trong `HRConnect.Application/Common/Interfaces/` (sử dụng được trong bất kỳ Command/Handler/Use Case nào mà không phụ thuộc vào hạ tầng bên ngoài).
+- **Implementation**: `ResendEmailService` nằm trong `HRConnect.Infrastructure/Services/` gọi trực tiếp Resend REST API thông qua `HttpClient`.
+- **Testing Swagger**: Bạn có thể kiểm tra gửi mail ngay tại Endpoint `POST /api/v1/emails/test-send`.
+  *(Lưu ý: Với tài khoản Resend Free dùng domain mặc định `onboarding@resend.dev`, Resend chỉ cho phép gửi đến chính email bạn đã đăng ký tài khoản Resend).*
+
+
+---
+
+## 8. Quy Trình Git Flow & CI/CD
 
 ### Quy tắc phân nhánh:
 - `main`: Nhánh tích hợp chung (Production).
@@ -193,7 +212,7 @@ Dự án hỗ trợ nạp cấu hình tự động từ file `.env` qua thư vi�
 
 ---
 
-## 8. Hướng Dẫn Chạy Dự Án (Getting Started)
+## 9. Hướng Dẫn Chạy Dự Án (Getting Started)
 
 ### Yêu cầu cài đặt:
 - [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)

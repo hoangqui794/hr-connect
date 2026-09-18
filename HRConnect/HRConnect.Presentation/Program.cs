@@ -5,6 +5,8 @@ using Microsoft.OpenApi.Models;
 using HRConnect.Application;
 using HRConnect.Infrastructure;
 using HRConnect.Infrastructure.Persistence;
+using HRConnect.Presentation.Endpoints.V1.Auth;
+using HRConnect.Presentation.Endpoints.V1.Emails;
 using Microsoft.EntityFrameworkCore;
 
 // ==============================================================================
@@ -129,8 +131,9 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// TODO: Sau này khi tạo Minimal API endpoints trong thư mục Endpoints/V1/Auth, map tại đây:
-// app.MapAuthEndpoints();
+// Minimal API Endpoints:
+app.MapAuthEndpoints();
+app.MapEmailEndpoints();
 
 // ==============================================================================
 // 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using HRConnect.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -123,7 +123,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.AdminProfileId).HasName("admin_profile_pkey");
 
-            entity.ToTable("admin_profile", "hr_connect");
+            entity.ToTable("admin_profile", "public");
 
             entity.HasIndex(e => e.EmployeeCode, "admin_profile_employee_code_key").IsUnique();
 
@@ -160,7 +160,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.AffiliateApplicationId).HasName("affiliate_application_pkey");
 
-            entity.ToTable("affiliate_application", "hr_connect", tb => tb.HasComment("Existing Candidate can apply to become Affiliate without creating a second app_user. Approval should add/re-activate AFFILIATE_RECRUITER role in the same transaction."));
+            entity.ToTable("affiliate_application", "public", tb => tb.HasComment("Existing Candidate can apply to become Affiliate without creating a second app_user. Approval should add/re-activate AFFILIATE_RECRUITER role in the same transaction."));
 
             entity.HasIndex(e => e.UserId, "uq_affiliate_application_open")
                 .IsUnique()
@@ -217,7 +217,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.AffiliatePerformanceId).HasName("affiliate_performance_pkey");
 
-            entity.ToTable("affiliate_performance", "hr_connect", tb => tb.HasComment("D17-ready performance snapshot. submission_to_hire_rate is supported; quality_rating stays nullable until the rating formula is approved."));
+            entity.ToTable("affiliate_performance", "public", tb => tb.HasComment("D17-ready performance snapshot. submission_to_hire_rate is supported; quality_rating stays nullable until the rating formula is approved."));
 
             entity.HasIndex(e => new { e.AffiliateId, e.PeriodStart, e.PeriodEnd }, "affiliate_performance_affiliate_id_period_start_period_end_key").IsUnique();
 
@@ -270,7 +270,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.AffiliateId).HasName("affiliate_profile_pkey");
 
-            entity.ToTable("affiliate_profile", "hr_connect");
+            entity.ToTable("affiliate_profile", "public");
 
             entity.HasIndex(e => e.UserId, "affiliate_profile_user_id_key").IsUnique();
 
@@ -317,7 +317,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.MatchResultId).HasName("ai_match_result_pkey");
 
-            entity.ToTable("ai_match_result", "hr_connect", tb => tb.HasComment("Post-application AI screening support. Match Score/Tier/Highlight support human review; AI does not auto-reject/shortlist/hire."));
+            entity.ToTable("ai_match_result", "public", tb => tb.HasComment("Post-application AI screening support. Match Score/Tier/Highlight support human review; AI does not auto-reject/shortlist/hire."));
 
             entity.HasIndex(e => new { e.ApplicationId, e.AttemptNo }, "ai_match_result_application_id_attempt_no_key").IsUnique();
 
@@ -377,7 +377,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.UserId).HasName("app_user_pkey");
 
-            entity.ToTable("app_user", "hr_connect", tb => tb.HasComment("One login identity. A user may simultaneously hold multiple roles through user_role. Candidate + Affiliate is supported on the same account."));
+            entity.ToTable("app_user", "public", tb => tb.HasComment("One login identity. A user may simultaneously hold multiple roles through user_role. Candidate + Affiliate is supported on the same account."));
 
             entity.HasIndex(e => e.NormalizedPhone, "idx_app_user_normalized_phone").HasFilter("(normalized_phone IS NOT NULL)");
 
@@ -420,7 +420,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.ApplicationId).HasName("application_pkey");
 
-            entity.ToTable("application", "hr_connect");
+            entity.ToTable("application", "public");
 
             entity.HasIndex(e => new { e.CandidateId, e.JobId }, "application_candidate_id_job_id_key").IsUnique();
 
@@ -471,7 +471,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.ApplicationStatusHistoryId).HasName("application_status_history_pkey");
 
-            entity.ToTable("application_status_history", "hr_connect");
+            entity.ToTable("application_status_history", "public");
 
             entity.HasIndex(e => new { e.ApplicationId, e.ChangedAt }, "idx_application_status_history_app").IsDescending(false, true);
 
@@ -506,7 +506,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.AttributionId).HasName("attribution_pkey");
 
-            entity.ToTable("attribution", "hr_connect", tb => tb.HasComment("First accepted Affiliate Submission attribution. Trigger validates source/status/Candidate/Job and blocks self-attribution by account/email/phone."));
+            entity.ToTable("attribution", "public", tb => tb.HasComment("First accepted Affiliate Submission attribution. Trigger validates source/status/Candidate/Job and blocks self-attribution by account/email/phone."));
 
             entity.HasIndex(e => e.ApplicationId, "attribution_application_id_key").IsUnique();
 
@@ -553,7 +553,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.AuditLogId).HasName("audit_log_pkey");
 
-            entity.ToTable("audit_log", "hr_connect", tb => tb.HasComment("Append-only audit trail. Set hr_connect.current_user_id in the application transaction when actor identity is available."));
+            entity.ToTable("audit_log", "public", tb => tb.HasComment("Append-only audit trail. Set hr_connect.current_user_id in the application transaction when actor identity is available."));
 
             entity.HasIndex(e => new { e.ActorUserId, e.CreatedAt }, "idx_audit_log_actor").IsDescending(false, true);
 
@@ -593,7 +593,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CandidateId).HasName("candidate_pkey");
 
-            entity.ToTable("candidate", "hr_connect");
+            entity.ToTable("candidate", "public");
 
             entity.HasIndex(e => e.UserId, "candidate_user_id_key").IsUnique();
 
@@ -671,7 +671,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CvId).HasName("candidate_cv_pkey");
 
-            entity.ToTable("candidate_cv", "hr_connect", tb => tb.HasComment("Supports PLATFORM_BUILDER, TEMPLATE_FORM and FILE_UPLOAD CV creation methods."));
+            entity.ToTable("candidate_cv", "public", tb => tb.HasComment("Supports PLATFORM_BUILDER, TEMPLATE_FORM and FILE_UPLOAD CV creation methods."));
 
             entity.HasIndex(e => new { e.CandidateId, e.CreatedAt }, "idx_candidate_cv_candidate").IsDescending(false, true);
 
@@ -738,7 +738,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CandidateJobMatchId).HasName("candidate_job_match_pkey");
 
-            entity.ToTable("candidate_job_match", "hr_connect", tb => tb.HasComment("OPTIONAL D16 capability. Keep disabled/out of baseline if pre-application job-fit recommendation is not approved."));
+            entity.ToTable("candidate_job_match", "public", tb => tb.HasComment("OPTIONAL D16 capability. Keep disabled/out of baseline if pre-application job-fit recommendation is not approved."));
 
             entity.HasIndex(e => new { e.CandidateId, e.JobId, e.AttemptNo }, "candidate_job_match_candidate_id_job_id_attempt_no_key").IsUnique();
 
@@ -808,7 +808,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => new { e.CandidateId, e.SkillId }).HasName("candidate_skill_pkey");
 
-            entity.ToTable("candidate_skill", "hr_connect");
+            entity.ToTable("candidate_skill", "public");
 
             entity.Property(e => e.CandidateId).HasColumnName("candidate_id");
             entity.Property(e => e.SkillId).HasColumnName("skill_id");
@@ -833,7 +833,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CommissionId).HasName("commission_pkey");
 
-            entity.ToTable("commission", "hr_connect", tb => tb.HasComment("Commission eligibility/calculation domain. PAYABLE means approved for payment; payment completion is represented by payout.status=COMPLETED."));
+            entity.ToTable("commission", "public", tb => tb.HasComment("Commission eligibility/calculation domain. PAYABLE means approved for payment; payment completion is represented by payout.status=COMPLETED."));
 
             entity.HasIndex(e => new { e.Status, e.CreatedAt }, "idx_commission_status").IsDescending(false, true);
 
@@ -907,7 +907,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CommissionAdjustmentId).HasName("commission_adjustment_pkey");
 
-            entity.ToTable("commission_adjustment", "hr_connect", tb => tb.HasComment("Append-only Commission adjustment event. UPDATE/DELETE are prohibited; corrections require a new adjustment event."));
+            entity.ToTable("commission_adjustment", "public", tb => tb.HasComment("Append-only Commission adjustment event. UPDATE/DELETE are prohibited; corrections require a new adjustment event."));
 
             entity.HasIndex(e => new { e.CommissionId, e.AdjustedAt }, "idx_commission_adjustment_commission").IsDescending(false, true);
 
@@ -942,7 +942,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.MilestoneCode).HasName("commission_milestone_pkey");
 
-            entity.ToTable("commission_milestone", "hr_connect");
+            entity.ToTable("commission_milestone", "public");
 
             entity.Property(e => e.MilestoneCode)
                 .HasMaxLength(60)
@@ -966,7 +966,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CommissionRuleId).HasName("commission_rule_pkey");
 
-            entity.ToTable("commission_rule", "hr_connect");
+            entity.ToTable("commission_rule", "public");
 
             entity.HasIndex(e => new { e.ServiceTypeId, e.MilestoneType, e.EffectiveFrom }, "idx_commission_rule_active")
                 .IsDescending(false, false, true)
@@ -1018,7 +1018,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CompanyId).HasName("company_pkey");
 
-            entity.ToTable("company", "hr_connect");
+            entity.ToTable("company", "public");
 
             entity.HasIndex(e => e.TaxCode, "uq_company_tax_code")
                 .IsUnique()
@@ -1061,7 +1061,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CompanyUserId).HasName("company_user_pkey");
 
-            entity.ToTable("company_user", "hr_connect");
+            entity.ToTable("company_user", "public");
 
             entity.HasIndex(e => new { e.CompanyId, e.UserId }, "company_user_company_id_user_id_key").IsUnique();
 
@@ -1106,7 +1106,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CompanyVerificationRequestId).HasName("company_verification_request_pkey");
 
-            entity.ToTable("company_verification_request", "hr_connect");
+            entity.ToTable("company_verification_request", "public");
 
             entity.HasIndex(e => e.CompanyId, "uq_company_verification_open")
                 .IsUnique()
@@ -1152,7 +1152,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CvTemplateId).HasName("cv_template_pkey");
 
-            entity.ToTable("cv_template", "hr_connect");
+            entity.ToTable("cv_template", "public");
 
             entity.HasIndex(e => e.Code, "cv_template_code_key").IsUnique();
 
@@ -1186,7 +1186,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.DisputeId).HasName("dispute_pkey");
 
-            entity.ToTable("dispute", "hr_connect");
+            entity.ToTable("dispute", "public");
 
             entity.Property(e => e.DisputeId)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -1247,7 +1247,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.EmailOutboxId).HasName("email_outbox_pkey");
 
-            entity.ToTable("email_outbox", "hr_connect");
+            entity.ToTable("email_outbox", "public");
 
             entity.HasIndex(e => new { e.Status, e.NextRetryAt, e.CreatedAt }, "idx_email_outbox_pending").HasFilter("((status)::text = ANY ((ARRAY['PENDING'::character varying, 'FAILED'::character varying])::text[]))");
 
@@ -1292,7 +1292,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.HrProfileId).HasName("internal_hr_profile_pkey");
 
-            entity.ToTable("internal_hr_profile", "hr_connect");
+            entity.ToTable("internal_hr_profile", "public");
 
             entity.HasIndex(e => e.EmployeeCode, "internal_hr_profile_employee_code_key").IsUnique();
 
@@ -1332,7 +1332,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.InterviewId).HasName("interview_pkey");
 
-            entity.ToTable("interview", "hr_connect");
+            entity.ToTable("interview", "public");
 
             entity.HasIndex(e => new { e.ApplicationId, e.InterviewRound }, "interview_application_id_interview_round_key").IsUnique();
 
@@ -1383,7 +1383,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.JobId).HasName("job_pkey");
 
-            entity.ToTable("job", "hr_connect");
+            entity.ToTable("job", "public");
 
             entity.HasIndex(e => new { e.CompanyId, e.ServiceTypeId, e.PostedAt }, "idx_job_active")
                 .IsDescending(false, false, true)
@@ -1465,7 +1465,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.RequirementId).HasName("job_requirement_pkey");
 
-            entity.ToTable("job_requirement", "hr_connect");
+            entity.ToTable("job_requirement", "public");
 
             entity.Property(e => e.RequirementId)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -1497,7 +1497,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => new { e.JobId, e.SkillId }).HasName("job_skill_pkey");
 
-            entity.ToTable("job_skill", "hr_connect");
+            entity.ToTable("job_skill", "public");
 
             entity.Property(e => e.JobId).HasColumnName("job_id");
             entity.Property(e => e.SkillId).HasColumnName("skill_id");
@@ -1522,7 +1522,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.JobStatusHistoryId).HasName("job_status_history_pkey");
 
-            entity.ToTable("job_status_history", "hr_connect");
+            entity.ToTable("job_status_history", "public");
 
             entity.HasIndex(e => new { e.JobId, e.ChangedAt }, "idx_job_status_history_job").IsDescending(false, true);
 
@@ -1557,7 +1557,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.TierCode).HasName("match_tier_config_pkey");
 
-            entity.ToTable("match_tier_config", "hr_connect");
+            entity.ToTable("match_tier_config", "public");
 
             entity.Property(e => e.TierCode)
                 .HasMaxLength(30)
@@ -1590,7 +1590,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.NotificationId).HasName("notification_pkey");
 
-            entity.ToTable("notification", "hr_connect", tb => tb.HasComment("In-app notification store. JOB_FIT notifications may reference a Job through related_entity_type/related_entity_id."));
+            entity.ToTable("notification", "public", tb => tb.HasComment("In-app notification store. JOB_FIT notifications may reference a Job through related_entity_type/related_entity_id."));
 
             entity.HasIndex(e => new { e.UserId, e.CreatedAt }, "idx_notification_unread")
                 .IsDescending(false, true)
@@ -1635,7 +1635,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.OfferId).HasName("offer_pkey");
 
-            entity.ToTable("offer", "hr_connect");
+            entity.ToTable("offer", "public");
 
             entity.HasIndex(e => new { e.ApplicationId, e.OfferVersion }, "offer_application_id_offer_version_key").IsUnique();
 
@@ -1685,7 +1685,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.ApprovalId).HasName("offer_approval_pkey");
 
-            entity.ToTable("offer_approval", "hr_connect", tb => tb.HasComment("PROPOSED. Remove if the team does not implement a separate offer approval workflow."));
+            entity.ToTable("offer_approval", "public", tb => tb.HasComment("PROPOSED. Remove if the team does not implement a separate offer approval workflow."));
 
             entity.HasIndex(e => new { e.OfferId, e.UserId }, "offer_approval_offer_id_user_id_key").IsUnique();
 
@@ -1719,7 +1719,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.PayoutId).HasName("payout_pkey");
 
-            entity.ToTable("payout", "hr_connect", tb => tb.HasComment("Manual/external payout ledger. Rows are never physically deleted. PENDING may become COMPLETED/FAILED/CANCELLED; terminal rows are immutable."));
+            entity.ToTable("payout", "public", tb => tb.HasComment("Manual/external payout ledger. Rows are never physically deleted. PENDING may become COMPLETED/FAILED/CANCELLED; terminal rows are immutable."));
 
             entity.HasIndex(e => new { e.CommissionId, e.Status, e.CreatedAt }, "idx_payout_commission_status").IsDescending(false, false, true);
 
@@ -1770,7 +1770,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.PermissionId).HasName("permission_pkey");
 
-            entity.ToTable("permission", "hr_connect");
+            entity.ToTable("permission", "public");
 
             entity.HasIndex(e => e.Code, "permission_code_key").IsUnique();
 
@@ -1802,7 +1802,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.PlacementId).HasName("placement_pkey");
 
-            entity.ToTable("placement", "hr_connect");
+            entity.ToTable("placement", "public");
 
             entity.HasIndex(e => e.ApplicationId, "placement_application_id_key").IsUnique();
 
@@ -1847,7 +1847,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.ProbationId).HasName("probation_pkey");
 
-            entity.ToTable("probation", "hr_connect");
+            entity.ToTable("probation", "public");
 
             entity.HasIndex(e => e.PlacementId, "probation_placement_id_key").IsUnique();
 
@@ -1884,7 +1884,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.RefreshTokenId).HasName("refresh_token_pkey");
 
-            entity.ToTable("refresh_token", "hr_connect");
+            entity.ToTable("refresh_token", "public");
 
             entity.HasIndex(e => new { e.UserId, e.ExpiresAt }, "idx_refresh_token_active")
                 .IsDescending(false, true)
@@ -1925,7 +1925,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.RoleId).HasName("role_pkey");
 
-            entity.ToTable("role", "hr_connect");
+            entity.ToTable("role", "public");
 
             entity.HasIndex(e => e.Code, "role_code_key").IsUnique();
 
@@ -1957,7 +1957,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => new { e.RoleId, e.PermissionId }).HasName("role_permission_pkey");
 
-            entity.ToTable("role_permission", "hr_connect");
+            entity.ToTable("role_permission", "public");
 
             entity.Property(e => e.RoleId).HasColumnName("role_id");
             entity.Property(e => e.PermissionId).HasColumnName("permission_id");
@@ -1979,7 +1979,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.ServiceTypeId).HasName("service_type_pkey");
 
-            entity.ToTable("service_type", "hr_connect");
+            entity.ToTable("service_type", "public");
 
             entity.HasIndex(e => e.Code, "service_type_code_key").IsUnique();
 
@@ -2008,7 +2008,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.SkillId).HasName("skill_pkey");
 
-            entity.ToTable("skill", "hr_connect");
+            entity.ToTable("skill", "public");
 
             entity.HasIndex(e => e.NormalizedName, "skill_normalized_name_key").IsUnique();
 
@@ -2036,7 +2036,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.SubmissionId).HasName("submission_pkey");
 
-            entity.ToTable("submission", "hr_connect", tb => tb.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed."));
+            entity.ToTable("submission", "public", tb => tb.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed."));
 
             entity.HasIndex(e => new { e.JobId, e.CandidateId, e.SubmittedAt }, "idx_submission_job_candidate");
 
@@ -2102,7 +2102,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => new { e.UserId, e.RoleId }).HasName("user_role_pkey");
 
-            entity.ToTable("user_role", "hr_connect", tb => tb.HasComment("Role ownership/lifecycle. Candidate and Affiliate may coexist on the same app_user. Other multi-role combinations remain subject to business policy."));
+            entity.ToTable("user_role", "public", tb => tb.HasComment("Role ownership/lifecycle. Candidate and Affiliate may coexist on the same app_user. Other multi-role combinations remain subject to business policy."));
 
             entity.HasIndex(e => new { e.UserId, e.RoleId }, "idx_user_role_active_user").HasFilter("((status)::text = 'ACTIVE'::text)");
 
@@ -2150,7 +2150,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.TokenId).HasName("user_token_pkey");
 
-            entity.ToTable("user_token", "hr_connect");
+            entity.ToTable("user_token", "public");
 
             entity.HasIndex(e => new { e.UserId, e.TokenType, e.ExpiresAt }, "idx_user_token_active").HasFilter("(used_at IS NULL)");
 
@@ -2185,7 +2185,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.WarrantyId).HasName("warranty_pkey");
 
-            entity.ToTable("warranty", "hr_connect", tb => tb.HasComment("Warranty exists only when applicable. No row may represent NOT_APPLICABLE; absence of a warranty row means not applicable."));
+            entity.ToTable("warranty", "public", tb => tb.HasComment("Warranty exists only when applicable. No row may represent NOT_APPLICABLE; absence of a warranty row means not applicable."));
 
             entity.HasIndex(e => e.PlacementId, "warranty_placement_id_key").IsUnique();
 

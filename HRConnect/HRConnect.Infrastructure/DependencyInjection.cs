@@ -1,4 +1,10 @@
+using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Infrastructure.Persistence;
+using HRConnect.Infrastructure.Repositories;
+using HRConnect.Infrastructure.Services.Email;
+using HRConnect.Infrastructure.Services.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,7 +19,34 @@ public static class DependencyInjection
 
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(connectionString, o => 
-                o.MigrationsHistoryTable("__EFMigrationsHistory", "hr_connect")));
+                o.MigrationsHistoryTable("__EFMigrationsHistory", "public")));
+
+        // 1. Dịch vụ Email (Resend)
+        services.Configure<ResendSettings>(configuration.GetSection(ResendSettings.SectionName));
+
+        services.AddHttpClient<IEmailService, ResendEmailService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.resend.com/");
+        });
+
+        // 2. Cấu hình Authentication & OTP
+        services.Configure<AuthenticationSettings>(
+            configuration.GetSection(AuthenticationSettings.SectionName));
+
+        // 3. Dịch vụ Identity & Bảo mật
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
+        services.AddSingleton<IOtpService, OtpService>();
+        services.AddSingleton<IPhoneNormalizer, PhoneNormalizer>();
+        services.AddSingleton<IEmailNormalizer, EmailNormalizer>();
+
+        // 4. Repositories & UnitOfWork
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ICandidateRepository, CandidateRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IUserRoleRepository, UserRoleRepository>();
+        services.AddScoped<IUserTokenRepository, UserTokenRepository>();
+        services.AddScoped<IEmailOutboxRepository, EmailOutboxRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;
     }
