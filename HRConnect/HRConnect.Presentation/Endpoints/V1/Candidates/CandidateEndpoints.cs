@@ -1,5 +1,7 @@
 using System.Security.Claims;
+using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Candidates.Commands.UpdateCandidateProfile;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -34,6 +36,54 @@ public static class CandidateEndpoints
             catch (NotFoundException ex)
             {
                 return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        });
+
+        // 2. PUT /api/v1/candidates/profile/me - Cập nhật hồ sơ ứng viên
+        group.MapPut("/me", async (
+            ClaimsPrincipal user,
+            [FromBody] UpdateCandidateProfileCommand command,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<UpdateCandidateProfileCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            command.UserId = userId.Value;
+
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu cập nhật hồ sơ không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
