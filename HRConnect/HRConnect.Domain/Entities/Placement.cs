@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace HRConnect.Domain.Entities;
@@ -19,11 +19,19 @@ public partial class Placement
 
     public string Status { get; set; } = null!;
 
+    public Guid? ConfirmedBy { get; set; }
+
+    public DateTime ConfirmedAt { get; set; }
+
+    public string? ConfirmationNote { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
 
     public virtual Application Application { get; set; } = null!;
+
+    public virtual AppUser? ConfirmedByNavigation { get; set; }
 
     public virtual ICollection<Commission> Commissions { get; set; } = new List<Commission>();
 

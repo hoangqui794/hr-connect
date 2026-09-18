@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using HRConnect.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -67,6 +67,8 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<InternalHrProfile> InternalHrProfiles { get; set; }
 
     public virtual DbSet<Interview> Interviews { get; set; }
+
+    public virtual DbSet<InterviewStatusHistory> InterviewStatusHistories { get; set; }
 
     public virtual DbSet<Job> Jobs { get; set; }
 
@@ -420,7 +422,10 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.ApplicationId).HasName("application_pkey");
 
-            entity.ToTable("application", "public");
+            entity.ToTable("application", "public", t => 
+            {
+                t.HasCheckConstraint("ck_application_status", "status IN ('SUBMITTED','SCREENING','SHORTLISTED','REJECTED','INTERVIEW','BACKUP','BACKUP_NOT_SELECTED','INTERVIEW_FAILED','OFFER_PENDING','OFFER_ACCEPTED','OFFER_DECLINED','NOT_STARTED','WITHDRAWN','PLACED','CLOSED')");
+            });
 
             entity.HasIndex(e => new { e.CandidateId, e.JobId }, "application_candidate_id_job_id_key").IsUnique();
 
@@ -1332,7 +1337,11 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.InterviewId).HasName("interview_pkey");
 
-            entity.ToTable("interview", "public");
+            entity.ToTable("interview", "public", t => 
+            {
+                t.HasCheckConstraint("ck_interview_round_positive", "interview_round > 0");
+                t.HasCheckConstraint("ck_interview_duration_positive", "duration_minutes IS NULL OR duration_minutes > 0");
+            });
 
             entity.HasIndex(e => new { e.ApplicationId, e.InterviewRound }, "interview_application_id_interview_round_key").IsUnique();
 
@@ -1377,6 +1386,43 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("interview_created_by_fkey");
+        });
+
+        modelBuilder.Entity<InterviewStatusHistory>(entity =>
+        {
+            entity.HasKey(e => e.InterviewStatusHistoryId).HasName("interview_status_history_pkey");
+
+            entity.ToTable("interview_status_history", "hr_connect");
+
+            entity.HasIndex(e => new { e.InterviewId, e.ChangedAt }, "idx_interview_status_history_interview").IsDescending(false, true);
+
+            entity.Property(e => e.InterviewStatusHistoryId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("interview_status_history_id");
+            entity.Property(e => e.InterviewId).HasColumnName("interview_id");
+            entity.Property(e => e.OldStatus)
+                .HasMaxLength(30)
+                .HasColumnName("old_status");
+            entity.Property(e => e.NewStatus)
+                .HasMaxLength(30)
+                .HasColumnName("new_status");
+            entity.Property(e => e.OldScheduledAt).HasColumnName("old_scheduled_at");
+            entity.Property(e => e.NewScheduledAt).HasColumnName("new_scheduled_at");
+            entity.Property(e => e.ChangedBy).HasColumnName("changed_by");
+            entity.Property(e => e.Reason).HasColumnName("reason");
+            entity.Property(e => e.ChangedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("changed_at");
+
+            entity.HasOne(d => d.Interview).WithMany(p => p.InterviewStatusHistories)
+                .HasForeignKey(d => d.InterviewId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("interview_status_history_interview_id_fkey");
+
+            entity.HasOne(d => d.ChangedByNavigation).WithMany(p => p.InterviewStatusHistories)
+                .HasForeignKey(d => d.ChangedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("interview_status_history_changed_by_fkey");
         });
 
         modelBuilder.Entity<Job>(entity =>
@@ -1635,7 +1681,14 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.OfferId).HasName("offer_pkey");
 
-            entity.ToTable("offer", "public");
+            entity.ToTable("offer", "public", t => 
+            {
+                t.HasCheckConstraint("ck_offer_version_positive", "offer_version > 0");
+                t.HasCheckConstraint("ck_offer_salary_positive", "salary IS NULL OR salary >= 0");
+                t.HasCheckConstraint("ck_offer_date_range", "expiry_date IS NULL OR start_date IS NULL OR expiry_date >= start_date");
+                t.HasCheckConstraint("ck_offer_response_time", "responded_at IS NULL OR sent_at IS NULL OR responded_at >= sent_at");
+                t.HasCheckConstraint("ck_offer_declined_response", "status <> 'DECLINED' OR responded_at IS NOT NULL");
+            });
 
             entity.HasIndex(e => new { e.ApplicationId, e.OfferVersion }, "offer_application_id_offer_version_key").IsUnique();
 
@@ -1654,13 +1707,17 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("'VND'::bpchar")
                 .IsFixedLength()
                 .HasColumnName("currency_code");
+            entity.Property(e => e.DeclineReason).HasColumnName("decline_reason");
             entity.Property(e => e.ExpiryDate).HasColumnName("expiry_date");
+            entity.Property(e => e.OfferDocumentUrl).HasColumnName("offer_document_url");
             entity.Property(e => e.OfferVersion)
                 .HasDefaultValue(1)
                 .HasColumnName("offer_version");
+            entity.Property(e => e.RespondedAt).HasColumnName("responded_at");
             entity.Property(e => e.Salary)
                 .HasPrecision(18, 2)
                 .HasColumnName("salary");
+            entity.Property(e => e.SentAt).HasColumnName("sent_at");
             entity.Property(e => e.StartDate).HasColumnName("start_date");
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
@@ -1813,6 +1870,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("placement_id");
             entity.Property(e => e.ActualStartDate).HasColumnName("actual_start_date");
             entity.Property(e => e.ApplicationId).HasColumnName("application_id");
+            entity.Property(e => e.ConfirmationNote).HasColumnName("confirmation_note");
+            entity.Property(e => e.ConfirmedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("confirmed_at");
+            entity.Property(e => e.ConfirmedBy).HasColumnName("confirmed_by");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
@@ -1835,6 +1897,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey<Placement>(d => d.ApplicationId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("placement_application_id_fkey");
+
+            entity.HasOne(d => d.ConfirmedByNavigation).WithMany(p => p.Placements)
+                .HasForeignKey(d => d.ConfirmedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("placement_confirmed_by_fkey");
 
             entity.HasOne(d => d.Offer).WithMany(p => p.Placements)
                 .HasPrincipalKey(p => new { p.OfferId, p.ApplicationId })

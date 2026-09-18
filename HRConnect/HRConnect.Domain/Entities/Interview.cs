@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace HRConnect.Domain.Entities;
@@ -36,5 +36,7 @@ public partial class Interview
     public virtual Application Application { get; set; } = null!;
 
     public virtual AppUser? CreatedByNavigation { get; set; }
+
+    public virtual ICollection<InterviewStatusHistory> InterviewStatusHistories { get; set; } = new List<InterviewStatusHistory>();
 }
 

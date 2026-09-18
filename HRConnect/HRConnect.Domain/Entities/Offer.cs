@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace HRConnect.Domain.Entities;
@@ -22,6 +22,14 @@ public partial class Offer
     public string Status { get; set; } = null!;
 
     public Guid? CreatedBy { get; set; }
+
+    public string? OfferDocumentUrl { get; set; }
+
+    public DateTime? SentAt { get; set; }
+
+    public DateTime? RespondedAt { get; set; }
+
+    public string? DeclineReason { get; set; }
 
     public DateTime CreatedAt { get; set; }
 

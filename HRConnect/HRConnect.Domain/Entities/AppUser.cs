@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace HRConnect.Domain.Entities;
@@ -66,6 +66,8 @@ public partial class AppUser
 
     public virtual ICollection<Interview> Interviews { get; set; } = new List<Interview>();
 
+    public virtual ICollection<InterviewStatusHistory> InterviewStatusHistories { get; set; } = new List<InterviewStatusHistory>();
+
     public virtual ICollection<JobStatusHistory> JobStatusHistories { get; set; } = new List<JobStatusHistory>();
 
     public virtual ICollection<Job> Jobs { get; set; } = new List<Job>();
@@ -77,6 +79,8 @@ public partial class AppUser
     public virtual ICollection<Offer> Offers { get; set; } = new List<Offer>();
 
     public virtual ICollection<Payout> Payouts { get; set; } = new List<Payout>();
+
+    public virtual ICollection<Placement> Placements { get; set; } = new List<Placement>();
 
     public virtual ICollection<Probation> Probations { get; set; } = new List<Probation>();
 
