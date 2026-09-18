@@ -4,6 +4,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using HRConnect.Application;
 using HRConnect.Infrastructure;
+using HRConnect.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 // ==============================================================================
 // 1. Nạp biến môi trường từ file .env
@@ -129,5 +131,20 @@ app.MapControllers();
 
 // TODO: Sau này khi tạo Minimal API endpoints trong thư mục Endpoints/V1/Auth, map tại đây:
 // app.MapAuthEndpoints();
+
+// ==============================================================================
+// 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động
+// ==============================================================================
+try
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await dbContext.Database.MigrateAsync();
+    app.Logger.LogInformation(">>> Database migrated successfully! <<<");
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, ">>> Có lỗi xảy ra khi tự động migrate Database! <<<");
+}
 
 app.Run();

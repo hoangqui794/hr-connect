@@ -12,7 +12,8 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(connectionString));
+            options.UseNpgsql(connectionString, o => 
+                o.MigrationsHistoryTable("__EFMigrationsHistory", "hr_connect")));
 
         return services;
     }
