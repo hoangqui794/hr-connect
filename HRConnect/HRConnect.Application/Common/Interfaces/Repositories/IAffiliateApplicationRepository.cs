@@ -10,5 +10,7 @@ public interface IAffiliateApplicationRepository
 
     Task<AffiliateApplication?> GetByIdAsync(Guid applicationId, CancellationToken cancellationToken = default);
 
+    Task<AffiliateApplication?> GetByIdWithDetailsAsync(Guid applicationId, CancellationToken cancellationToken = default);
+
     void Update(AffiliateApplication application);
 }

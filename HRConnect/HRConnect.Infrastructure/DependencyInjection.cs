@@ -42,13 +42,18 @@ public static class DependencyInjection
         services.AddSingleton<IEmailNormalizer, EmailNormalizer>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+
         // 4. Repositories & UnitOfWork
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ICandidateRepository, CandidateRepository>();
         services.AddScoped<IAffiliateApplicationRepository, AffiliateApplicationRepository>();
+        services.AddScoped<IAffiliateProfileRepository, AffiliateProfileRepository>();
         services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<ICompanyUserRepository, CompanyUserRepository>();
         services.AddScoped<ICompanyVerificationRequestRepository, CompanyVerificationRequestRepository>();
+        services.AddScoped<IApprovalRepository, ApprovalRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();
         services.AddScoped<IUserTokenRepository, UserTokenRepository>();

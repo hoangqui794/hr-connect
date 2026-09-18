@@ -21,11 +21,11 @@ public static class EmailEndpoints
             }
 
             var subject = string.IsNullOrWhiteSpace(request.Subject)
-                ? "Thư kiểm tra từ HRConnect System"
+                ? "Thư kiểm tra từ HR Connect System"
                 : request.Subject;
 
             var bodyHtml = string.IsNullOrWhiteSpace(request.BodyHtml)
-                ? "<div style='font-family: Arial, sans-serif; padding: 20px; color: #333;'><h2 style='color: #4F46E5;'>HRConnect System</h2><p>Xin chào!</p><p>Đây là email kiểm tra được gửi tự động từ hệ thống <strong>HRConnect</strong> thông qua dịch vụ <strong>Resend</strong>.</p><hr style='border: none; border-top: 1px solid #eee;' /><p style='font-size: 12px; color: #888;'>Hệ thống Tuyển dụng & Quản lý Nhân sự HRConnect</p></div>"
+                ? "<div style='font-family: Arial, sans-serif; padding: 20px; color: #333;'><h2 style='color: #4F46E5;'>HR Connect System</h2><p>Xin chào!</p><p>Đây là email kiểm tra được gửi tự động từ hệ thống <strong>HR Connect</strong> thông qua dịch vụ <strong>Resend</strong>.</p><hr style='border: none; border-top: 1px solid #eee;' /><p style='font-size: 12px; color: #888;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p></div>"
                 : request.BodyHtml;
 
             var result = await emailService.SendEmailAsync(request.To, subject, bodyHtml, cancellationToken);
