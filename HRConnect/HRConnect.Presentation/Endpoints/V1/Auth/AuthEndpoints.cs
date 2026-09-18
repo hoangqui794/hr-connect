@@ -110,6 +110,58 @@ public static class AuthEndpoints
         .Produces<HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp.VerifyEmailOtpResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest);
 
+        group.MapPost("/login", async (
+            [FromBody] HRConnect.Application.Features.Auth.Commands.Login.LoginCommand command,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<HRConnect.Application.Features.Auth.Commands.Login.LoginCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            // 1. Validate Command bằng FluentValidation
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu đăng nhập không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                            g => g.Key, 
+                            g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                // 2. Gửi Command vào MediatR Pipeline
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (UnauthorizedException ex)
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = ex.Message
+                }, statusCode: StatusCodes.Status401Unauthorized);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+        })
+        .WithName("Login")
+        .WithSummary("Đăng nhập hệ thống (Email + Mật khẩu)")
+        .WithDescription("Xác thực người dùng, trả về JWT Access Token (kèm Roles & Permissions), Refresh Token và thông tin tài khoản.")
+        .Produces<HRConnect.Application.Features.Auth.Commands.Login.LoginResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized);
+
         return app;
     }
 }

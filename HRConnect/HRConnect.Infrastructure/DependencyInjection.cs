@@ -29,15 +29,18 @@ public static class DependencyInjection
             client.BaseAddress = new Uri("https://api.resend.com/");
         });
 
-        // 2. Cấu hình Authentication & OTP
+        // 2. Cấu hình Authentication, OTP & JWT
         services.Configure<AuthenticationSettings>(
             configuration.GetSection(AuthenticationSettings.SectionName));
+        services.Configure<JwtSettings>(
+            configuration.GetSection(JwtSettings.SectionName));
 
         // 3. Dịch vụ Identity & Bảo mật
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IOtpService, OtpService>();
         services.AddSingleton<IPhoneNormalizer, PhoneNormalizer>();
         services.AddSingleton<IEmailNormalizer, EmailNormalizer>();
+        services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
         // 4. Repositories & UnitOfWork
         services.AddScoped<IUserRepository, UserRepository>();
@@ -45,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();
         services.AddScoped<IUserTokenRepository, UserTokenRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailOutboxRepository, EmailOutboxRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 

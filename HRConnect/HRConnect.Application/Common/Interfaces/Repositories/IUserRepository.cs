@@ -8,6 +8,8 @@ public interface IUserRepository
 
     Task<AppUser?> GetByEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default);
 
+    Task<AppUser?> GetByEmailWithRolesAndPermissionsAsync(string normalizedEmail, CancellationToken cancellationToken = default);
+
     Task<AppUser?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default);
 
     Task AddAsync(AppUser user, CancellationToken cancellationToken = default);

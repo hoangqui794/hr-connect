@@ -26,6 +26,16 @@ public class UserRepository : IUserRepository
             .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail, cancellationToken);
     }
 
+    public async Task<AppUser?> GetByEmailWithRolesAndPermissionsAsync(string normalizedEmail, CancellationToken cancellationToken = default)
+    {
+        return await _context.AppUsers
+            .Include(u => u.UserRoleUsers.Where(ur => ur.Status == "ACTIVE"))
+                .ThenInclude(ur => ur.Role)
+                    .ThenInclude(r => r.RolePermissions)
+                        .ThenInclude(rp => rp.Permission)
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail, cancellationToken);
+    }
+
     public async Task<AppUser?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _context.AppUsers
