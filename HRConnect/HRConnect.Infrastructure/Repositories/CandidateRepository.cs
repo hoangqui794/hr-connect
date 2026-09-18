@@ -50,4 +50,20 @@ public class CandidateRepository : ICandidateRepository
     {
         _context.Candidates.Update(candidate);
     }
+
+    public async Task<Candidate?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Candidates
+            .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken);
+    }
+
+    public async Task<Candidate?> GetByUserIdWithDetailsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Candidates
+            .Include(c => c.User)
+            .Include(c => c.CandidateSkills)
+                .ThenInclude(cs => cs.Skill)
+            .Include(c => c.CandidateCv)
+            .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken);
+    }
 }

@@ -6,6 +6,7 @@ using HRConnect.Application;
 using HRConnect.Infrastructure;
 using HRConnect.Infrastructure.Persistence;
 using HRConnect.Presentation.Endpoints.V1.Auth;
+using HRConnect.Presentation.Endpoints.V1.Candidates;
 using HRConnect.Presentation.Endpoints.V1.Emails;
 using Microsoft.EntityFrameworkCore;
 
@@ -133,6 +134,7 @@ app.MapControllers();
 
 // Minimal API Endpoints:
 app.MapAuthEndpoints();
+app.MapCandidateEndpoints();
 app.MapEmailEndpoints();
 
 // ==============================================================================

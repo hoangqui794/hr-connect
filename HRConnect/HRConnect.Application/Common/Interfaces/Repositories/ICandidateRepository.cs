@@ -13,4 +13,14 @@ public interface ICandidateRepository
     Task AddAsync(Candidate candidate, CancellationToken cancellationToken = default);
 
     void Update(Candidate candidate);
+
+    /// <summary>
+    /// Lấy thông tin ứng viên cơ bản theo UserId.
+    /// </summary>
+    Task<Candidate?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lấy thông tin chi tiết ứng viên theo UserId, kèm Skills và CV.
+    /// </summary>
+    Task<Candidate?> GetByUserIdWithDetailsAsync(Guid userId, CancellationToken cancellationToken = default);
 }
