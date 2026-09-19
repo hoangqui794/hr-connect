@@ -10,5 +10,7 @@ public interface ICompanyRepository
 
     Task<bool> ExistsByTaxCodeAsync(string taxCode, CancellationToken cancellationToken = default);
 
+    Task<bool> ExistsByTaxCodeAsync(string taxCode, Guid excludeCompanyId, CancellationToken cancellationToken = default);
+
     void Update(Company company);
 }
