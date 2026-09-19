@@ -281,6 +281,18 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("affiliate_id");
             entity.Property(e => e.Address).HasColumnName("address");
+            entity.Property(e => e.BankName)
+                .HasMaxLength(100)
+                .HasColumnName("bank_name");
+            entity.Property(e => e.BankAccountNumber)
+                .HasMaxLength(50)
+                .HasColumnName("bank_account_number");
+            entity.Property(e => e.BankAccountHolder)
+                .HasMaxLength(180)
+                .HasColumnName("bank_account_holder");
+            entity.Property(e => e.BankBranch)
+                .HasMaxLength(180)
+                .HasColumnName("bank_branch");
             entity.Property(e => e.AffiliateType)
                 .HasMaxLength(50)
                 .HasDefaultValueSql("'RECRUITER'::character varying")

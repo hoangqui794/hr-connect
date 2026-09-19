@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Affiliates.Commands.UpdateAffiliateBankAccount;
 using HRConnect.Application.Features.Affiliates.Commands.UpdateAffiliateProfile;
+using HRConnect.Application.Features.Affiliates.Queries.GetAffiliateBankAccount;
 using HRConnect.Application.Features.Affiliates.Queries.GetAffiliatePerformance;
 using HRConnect.Application.Features.Affiliates.Queries.GetAffiliateProfile;
 using MediatR;
@@ -137,6 +139,92 @@ public static class AffiliateEndpoints
         .WithSummary("Xem thống kê hiệu suất tuyển dụng của đối tác")
         .WithDescription("Lấy các chỉ số thống kê hiệu suất tuyển dụng mới nhất của đối tác tuyển dụng (tổng hồ sơ đã nộp, shortlist, phỏng vấn, tuyển dụng thành công, tỷ lệ tuyển dụng, xếp hạng chất lượng).")
         .Produces<AffiliatePerformanceResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // 4. GET /api/v1/affiliates/profile/me/bank-account - Xem thông tin tài khoản ngân hàng nhận hoa hồng
+        group.MapGet("/me/bank-account", async (
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var result = await sender.Send(new GetAffiliateBankAccountQuery(userId.Value), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("GetAffiliateBankAccount")
+        .WithSummary("Xem thông tin tài khoản ngân hàng nhận hoa hồng")
+        .WithDescription("Lấy thông tin tài khoản ngân hàng thụ hưởng nhận tiền hoa hồng của đối tác tuyển dụng (tên ngân hàng, số tài khoản, tên chủ tài khoản, chi nhánh, trạng thái cấu hình).")
+        .Produces<AffiliateBankAccountResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // 5. PUT /api/v1/affiliates/profile/me/bank-account - Cập nhật thông tin tài khoản ngân hàng nhận hoa hồng
+        group.MapPut("/me/bank-account", async (
+            ClaimsPrincipal user,
+            [FromBody] UpdateAffiliateBankAccountCommand command,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<UpdateAffiliateBankAccountCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            command.UserId = userId.Value;
+
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu tài khoản ngân hàng không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("UpdateAffiliateBankAccount")
+        .WithSummary("Cập nhật thông tin tài khoản ngân hàng nhận hoa hồng")
+        .WithDescription("Cập nhật hoặc thiết lập mới thông tin tài khoản ngân hàng thụ hưởng (ngân hàng, số tài khoản, tên chủ tài khoản, chi nhánh) để nhận tiền giải ngân hoa hồng từ Admin.")
+        .Produces<UpdateAffiliateBankAccountResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
