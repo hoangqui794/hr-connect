@@ -25,6 +25,23 @@ public class RefreshTokenRepository : IRefreshTokenRepository
             .FirstOrDefaultAsync(r => r.TokenHash == tokenHash, cancellationToken);
     }
 
+    public async Task RevokeAllByUserIdAsync(
+        Guid userId, 
+        string reason, 
+        CancellationToken cancellationToken = default)
+    {
+        var activeTokens = await _context.RefreshTokens
+            .Where(r => r.UserId == userId && r.RevokedAt == null && r.ExpiresAt > DateTime.UtcNow)
+            .ToListAsync(cancellationToken);
+
+        var now = DateTime.UtcNow;
+        foreach (var token in activeTokens)
+        {
+            token.RevokedAt = now;
+            token.RevokeReason = reason;
+        }
+    }
+
     public void Update(RefreshToken refreshToken)
     {
         _context.RefreshTokens.Update(refreshToken);

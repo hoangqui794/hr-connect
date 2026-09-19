@@ -6,6 +6,7 @@ using HRConnect.Application.Features.Auth.Commands.RegisterAffiliate;
 using HRConnect.Application.Features.Auth.Commands.RegisterCandidate;
 using HRConnect.Application.Features.Auth.Commands.RegisterClient;
 using HRConnect.Application.Features.Auth.Commands.ResendPasswordResetOtp;
+using HRConnect.Application.Features.Auth.Commands.ResetPassword;
 using HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -334,6 +335,48 @@ public static class AuthEndpoints
         .WithSummary("Gửi lại mã OTP đặt lại mật khẩu mới")
         .WithDescription("Vô hiệu hóa mã OTP cũ và gửi mã OTP mới nếu tài khoản hợp lệ. Có cơ chế giới hạn tần suất (cooldown 60s).")
         .Produces<ResendPasswordResetOtpResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest);
+
+        // 8. Đặt lại mật khẩu (Xác thực OTP và cập nhật mật khẩu mới)
+        group.MapPost("/reset-password", async (
+            [FromBody] ResetPasswordCommand command,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<ResetPasswordCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu yêu cầu không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                            g => g.Key, 
+                            g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+        })
+        .WithName("ResetPassword")
+        .WithSummary("Đặt lại mật khẩu với mã OTP")
+        .WithDescription("Xác thực mã OTP 6 chữ số, cập nhật mật khẩu mới và thu hồi toàn bộ Refresh Tokens hiện hành.")
+        .Produces<ResetPasswordResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest);
 
         return app;
