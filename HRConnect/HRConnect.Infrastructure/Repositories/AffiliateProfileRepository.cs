@@ -33,6 +33,14 @@ public class AffiliateProfileRepository : IAffiliateProfileRepository
             .FirstOrDefaultAsync(p => p.AffiliateId == affiliateId, cancellationToken);
     }
 
+    public async Task<AffiliatePerformance?> GetLatestPerformanceByAffiliateIdAsync(Guid affiliateId, CancellationToken cancellationToken = default)
+    {
+        return await _context.AffiliatePerformances
+            .Where(p => p.AffiliateId == affiliateId)
+            .OrderByDescending(p => p.PeriodEnd)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task AddAsync(AffiliateProfile profile, CancellationToken cancellationToken = default)
     {
         await _context.AffiliateProfiles.AddAsync(profile, cancellationToken);

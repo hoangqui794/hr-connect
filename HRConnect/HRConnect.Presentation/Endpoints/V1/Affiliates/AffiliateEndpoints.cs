@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Affiliates.Commands.UpdateAffiliateProfile;
+using HRConnect.Application.Features.Affiliates.Queries.GetAffiliatePerformance;
 using HRConnect.Application.Features.Affiliates.Queries.GetAffiliateProfile;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -102,6 +103,40 @@ public static class AffiliateEndpoints
         .WithDescription("Cập nhật thông tin hồ sơ cá nhân hoặc doanh nghiệp của đối tác tuyển dụng (tên hiển thị, người liên hệ, số điện thoại, địa chỉ, mã số thuế). Tự động đồng bộ tên và số điện thoại sang tài khoản người dùng.")
         .Produces<UpdateAffiliateProfileResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // 3. GET /api/v1/affiliates/profile/me/performance - Xem thống kê hiệu suất tuyển dụng
+        group.MapGet("/me/performance", async (
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var result = await sender.Send(new GetAffiliatePerformanceQuery(userId.Value), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("GetAffiliatePerformance")
+        .WithSummary("Xem thống kê hiệu suất tuyển dụng của đối tác")
+        .WithDescription("Lấy các chỉ số thống kê hiệu suất tuyển dụng mới nhất của đối tác tuyển dụng (tổng hồ sơ đã nộp, shortlist, phỏng vấn, tuyển dụng thành công, tỷ lệ tuyển dụng, xếp hạng chất lượng).")
+        .Produces<AffiliatePerformanceResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);

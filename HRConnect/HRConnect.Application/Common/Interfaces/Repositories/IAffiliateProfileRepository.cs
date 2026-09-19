@@ -10,6 +10,8 @@ public interface IAffiliateProfileRepository
 
     Task<AffiliateProfile?> GetByIdAsync(Guid affiliateId, CancellationToken cancellationToken = default);
 
+    Task<AffiliatePerformance?> GetLatestPerformanceByAffiliateIdAsync(Guid affiliateId, CancellationToken cancellationToken = default);
+
     Task AddAsync(AffiliateProfile profile, CancellationToken cancellationToken = default);
 
     void Update(AffiliateProfile profile);
