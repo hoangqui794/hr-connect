@@ -1,6 +1,8 @@
 using System;
 using System.Security.Claims;
+using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.ServiceTypes.Commands.CreateServiceType;
 using HRConnect.Application.Features.ServiceTypes.DTOs;
 using HRConnect.Application.Features.ServiceTypes.Queries.GetServiceTypeDetail;
 using HRConnect.Application.Features.ServiceTypes.Queries.GetServiceTypes;
@@ -97,6 +99,124 @@ public static class ServiceTypeEndpoints
         .WithName("GetServiceTypeDetailLegacy")
         .ExcludeFromDescription();
 
+        // ==============================================================================
+        // ADMIN ENDPOINTS
+        // ==============================================================================
+        var adminGroup = app.MapGroup("/api/v1/admin/service-types")
+                            .WithTags("Admin Service Types")
+                            .RequireAuthorization();
+
+        // 3. POST /api/v1/admin/service-types - Tạo mới loại dịch vụ (Platform Admin)
+        adminGroup.MapPost("/", async (
+            [FromBody] CreateServiceTypeCommand command,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<CreateServiceTypeCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!HasAdminAccess(user))
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Bạn không có quyền thực hiện thao tác này. Yêu cầu quyền quản trị viên."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu yêu cầu không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                            g => g.Key, 
+                            g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Created($"/api/v1/service-types/{result.Data?.Id}", result);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("CreateServiceType")
+        .WithSummary("Tạo loại dịch vụ tuyển dụng mới (Platform Admin)")
+        .WithDescription("Chỉ dành cho Platform Admin. Mã code được tự động chuẩn hóa sang UPPER_SNAKE_CASE và phải là duy nhất.")
+        .Produces<CreateServiceTypeResponse>(StatusCodes.Status201Created)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status409Conflict);
+
+        // Alias tương thích /api/admin/service-types
+        app.MapPost("/api/admin/service-types", async (
+            [FromBody] CreateServiceTypeCommand command,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<CreateServiceTypeCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!HasAdminAccess(user))
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Bạn không có quyền thực hiện thao tác này. Yêu cầu quyền quản trị viên."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu yêu cầu không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                            g => g.Key, 
+                            g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Created($"/api/v1/service-types/{result.Data?.Id}", result);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .RequireAuthorization()
+        .WithTags("Admin Service Types")
+        .WithName("CreateServiceTypeLegacy")
+        .ExcludeFromDescription();
+
         return app;
     }
+
+    private static bool HasAdminAccess(ClaimsPrincipal user) =>
+        user.IsInRole("PLATFORM_ADMIN") ||
+        user.HasClaim("permission", "service_type.manage") ||
+        user.HasClaim("permission", "system_config.manage");
 }
