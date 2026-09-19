@@ -1,0 +1,150 @@
+@baseUrl = https://localhost:7289
+@clientEmail = client@gmail.com
+@clientPassword = PASTE_DEMO_CLIENT_PASSWORD_HERE
+@serviceTypeId = 50ba8aaf-5cea-419b-92cc-13af04a95bbf
+
+# Đổi giá trị này trước mỗi lần chạy để dễ tìm dữ liệu trong PostgreSQL.
+@testRunId = DBTEST-20260919-01
+
+# Sau khi đăng nhập bằng tài khoản INTERNAL_HR, dán accessToken vào đây.
+# Token của PLATFORM_ADMIN không hợp lệ nếu tài khoản đó không có role INTERNAL_HR.
+@internalHrToken = PASTE_INTERNAL_HR_ACCESS_TOKEN_HERE
+
+### TC-00 - Đăng nhập Client
+# @name clientLogin
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{clientEmail}}",
+  "password": "{{clientPassword}}"
+}
+
+> {%
+    client.global.set("clientToken", response.body.data.accessToken);
+%}
+
+### TC-01 - Tạo Job Draft có dữ liệu thật
+# @name createJob
+POST {{baseUrl}}/api/v1/jobs
+Authorization: Bearer {{clientToken}}
+Content-Type: application/json
+
+{
+  "serviceTypeId": "{{serviceTypeId}}",
+  "title": "{{testRunId}} - Senior .NET Developer",
+  "description": "Bản ghi test database cho Main Flow 1.",
+  "location": "Ho Chi Minh City",
+  "employmentType": "FULL_TIME",
+  "salaryMin": 25000000,
+  "salaryMax": 40000000,
+  "currencyCode": "VND",
+  "quantity": 2,
+  "visibility": "PUBLIC",
+  "requirements": [
+    {
+      "requirementType": "MUST_HAVE",
+      "category": "TECHNICAL_SKILL",
+      "content": "Có kinh nghiệm ASP.NET Core và Entity Framework Core.",
+      "weight": 0.7
+    },
+    {
+      "requirementType": "SHOULD_HAVE",
+      "category": "LANGUAGE",
+      "content": "Có khả năng đọc tài liệu tiếng Anh.",
+      "weight": 0.3
+    }
+  ]
+}
+
+> {%
+    client.global.set("jobId", response.body.data.jobId);
+%}
+
+### TC-02 - Xem Job vừa tạo trong database thông qua API
+GET {{baseUrl}}/api/v1/jobs/{{jobId}}
+Authorization: Bearer {{clientToken}}
+
+### TC-03 - Cập nhật Draft và thay toàn bộ Requirements
+PUT {{baseUrl}}/api/v1/jobs/{{jobId}}
+Authorization: Bearer {{clientToken}}
+Content-Type: application/json
+
+{
+  "serviceTypeId": "{{serviceTypeId}}",
+  "title": "{{testRunId}} - Senior Backend Engineer - UPDATED",
+  "description": "Xây dựng và bảo trì HR Connect API bằng ASP.NET Core 8.",
+  "location": "Ho Chi Minh City - Hybrid",
+  "employmentType": "FULL_TIME",
+  "salaryMin": 30000000,
+  "salaryMax": 45000000,
+  "currencyCode": "VND",
+  "quantity": 3,
+  "visibility": "PUBLIC",
+  "requirements": [
+    {
+      "requirementType": "MUST_HAVE",
+      "category": "TECHNICAL_SKILL",
+      "content": "Tối thiểu 3 năm kinh nghiệm C# và ASP.NET Core.",
+      "weight": 0.6
+    },
+    {
+      "requirementType": "MUST_HAVE",
+      "category": "DATABASE",
+      "content": "Có kinh nghiệm PostgreSQL.",
+      "weight": 0.4
+    }
+  ]
+}
+
+### TC-04 - Submit để tạo lịch sử DRAFT -> PENDING_REVIEW
+POST {{baseUrl}}/api/v1/jobs/{{jobId}}/submit
+Authorization: Bearer {{clientToken}}
+
+### TC-05 - Kiểm tra Job xuất hiện trong danh sách của Client
+GET {{baseUrl}}/api/v1/jobs/mine?status=PENDING_REVIEW
+Authorization: Bearer {{clientToken}}
+
+### TC-06 - Internal HR xem hàng đợi duyệt
+GET {{baseUrl}}/api/v1/internal/jobs/review
+Authorization: Bearer {{internalHrToken}}
+
+### TC-07A - Approve và công bố Job
+# Chạy TC-07A cho luồng approve; không chạy TC-07B trên cùng Job.
+POST {{baseUrl}}/api/v1/internal/jobs/{{jobId}}/approve
+Authorization: Bearer {{internalHrToken}}
+
+### TC-08 - Pause Job ACTIVE
+POST {{baseUrl}}/api/v1/jobs/{{jobId}}/pause
+Authorization: Bearer {{clientToken}}
+Content-Type: application/json
+
+{
+  "reason": "Tạm dừng nhận CV để đánh giá hồ sơ hiện tại."
+}
+
+### TC-09 - Resume Job PAUSED
+POST {{baseUrl}}/api/v1/jobs/{{jobId}}/resume
+Authorization: Bearer {{clientToken}}
+
+### TC-10 - Close Job ACTIVE
+POST {{baseUrl}}/api/v1/jobs/{{jobId}}/close
+Authorization: Bearer {{clientToken}}
+Content-Type: application/json
+
+{
+  "reason": "Đã tuyển đủ số lượng cần thiết."
+}
+
+### TC-07B - Reject Job (tạo Job mới bằng TC-01 -> TC-04 trước khi chạy)
+POST {{baseUrl}}/api/v1/internal/jobs/{{jobId}}/reject
+Authorization: Bearer {{internalHrToken}}
+Content-Type: application/json
+
+{
+  "reason": "JD chưa mô tả rõ trách nhiệm và yêu cầu bắt buộc."
+}
+
+### TC-11 - Negative test: Closed Job không được submit lại, kỳ vọng HTTP 409
+POST {{baseUrl}}/api/v1/jobs/{{jobId}}/submit
+Authorization: Bearer {{clientToken}}
