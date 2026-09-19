@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Candidates.Commands.UpdateCandidateProfile;
+using HRConnect.Application.Features.Candidates.Commands.UpdateProfileVisibility;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -101,6 +102,62 @@ public static class CandidateEndpoints
         .WithSummary("Cập nhật thông tin hồ sơ ứng viên")
         .WithDescription("Cập nhật thông tin cá nhân của ứng viên đang đăng nhập (họ tên, số điện thoại, ngày sinh, giới tính, địa chỉ, học vấn, số năm kinh nghiệm, tóm tắt bản thân). Tự động đồng bộ họ tên và số điện thoại sang tài khoản người dùng.")
         .Produces<UpdateCandidateProfileResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // 3. PATCH /api/v1/candidates/profile/me/visibility - Cập nhật chế độ hiển thị hồ sơ ứng viên
+        group.MapPatch("/me/visibility", async (
+            ClaimsPrincipal user,
+            [FromBody] UpdateProfileVisibilityCommand command,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<UpdateProfileVisibilityCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            command.UserId = userId.Value;
+
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu chế độ hiển thị không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("UpdateCandidateProfileVisibility")
+        .WithSummary("Cập nhật chế độ hiển thị hồ sơ ứng viên (PUBLIC/PRIVATE)")
+        .WithDescription("Chuyển đổi chế độ hiển thị hồ sơ tìm việc của ứng viên: PUBLIC (cho phép nhà tuyển dụng tìm thấy) hoặc PRIVATE (ẩn hồ sơ).")
+        .Produces<UpdateProfileVisibilityResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status404NotFound)
