@@ -1,11 +1,16 @@
 using HRConnect.Domain.Entities;
+using HRConnect.Infrastructure.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace HRConnect.Infrastructure.Persistence;
 
 public static class DatabaseSeeder
 {
-    public static async Task SeedAsync(ApplicationDbContext context)
+    public static async Task SeedAsync(
+        ApplicationDbContext context,
+        ILogger? logger = null,
+        CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
 
@@ -21,7 +26,7 @@ public static class DatabaseSeeder
 
         foreach (var (code, name, description) in defaultRoles)
         {
-            var exists = await context.Roles.AnyAsync(r => r.Code == code);
+            var exists = await context.Roles.AnyAsync(r => r.Code == code, cancellationToken);
             if (!exists)
             {
                 await context.Roles.AddAsync(new Role
@@ -34,12 +39,15 @@ public static class DatabaseSeeder
                     IsActive = true,
                     CreatedAt = now,
                     UpdatedAt = now
-                });
+                }, cancellationToken);
             }
         }
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
 
-        // 2. Nếu không phải cơ sở dữ liệu quan hệ (ví dụ: InMemory trong UnitTests) thì dừng lại
+        // 2. Khởi tạo danh mục loại dịch vụ (Service Type) nếu chưa có (Idempotent seed)
+        await ServiceTypeSeeder.SeedAsync(context, logger, cancellationToken);
+
+        // 3. Nếu không phải cơ sở dữ liệu quan hệ (ví dụ: InMemory trong UnitTests) thì dừng lại
         if (!context.Database.IsRelational())
         {
             return;

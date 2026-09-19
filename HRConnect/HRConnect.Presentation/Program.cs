@@ -147,7 +147,7 @@ try
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await dbContext.Database.MigrateAsync();
-    await DatabaseSeeder.SeedAsync(dbContext);
+    await DatabaseSeeder.SeedAsync(dbContext, app.Logger);
     app.Logger.LogInformation(">>> Database migrated and seeded successfully! <<<");
 }
 catch (Exception ex)
