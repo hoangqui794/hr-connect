@@ -10,6 +10,7 @@ using HRConnect.Presentation.Endpoints.V1.Auth;
 using HRConnect.Presentation.Endpoints.V1.Candidates;
 using HRConnect.Presentation.Endpoints.V1.Affiliates;
 using HRConnect.Presentation.Endpoints.V1.Emails;
+using HRConnect.Presentation.Endpoints.V1.ServiceTypes;
 using Microsoft.EntityFrameworkCore;
 
 // ==============================================================================
@@ -140,6 +141,7 @@ app.MapCandidateEndpoints();
 app.MapAffiliateEndpoints();
 app.MapEmailEndpoints();
 app.MapAdminApprovalEndpoints();
+app.MapServiceTypeEndpoints();
 
 // ==============================================================================
 // 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động
