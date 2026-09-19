@@ -31,6 +31,12 @@ public class CompanyRepository : ICompanyRepository
             .AnyAsync(c => c.TaxCode != null && c.TaxCode.ToLower() == taxCode.ToLower(), cancellationToken);
     }
 
+    public async Task<bool> ExistsByTaxCodeAsync(string taxCode, Guid excludeCompanyId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Companies
+            .AnyAsync(c => c.CompanyId != excludeCompanyId && c.TaxCode != null && c.TaxCode.ToLower() == taxCode.ToLower(), cancellationToken);
+    }
+
     public void Update(Company company)
     {
         _context.Companies.Update(company);
