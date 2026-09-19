@@ -215,4 +215,286 @@ public class LoginCommandHandlerTests
         _userRepositoryMock.Verify(x => x.Update(user), Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_ShouldThrowForbiddenException_WhenAffiliateEmailNotVerified()
+    {
+        var command = new LoginCommand("affiliate@example.com", "Password@123");
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "affiliate@example.com",
+            PasswordHash = "hashed_password",
+            Status = "PENDING",
+            EmailVerifiedAt = null,
+            AffiliateApplicationUser = new AffiliateApplication
+            {
+                Status = "PENDING"
+            }
+        };
+
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns("affiliate@example.com");
+        _userRepositoryMock.Setup(x => x.GetByEmailWithRolesAndPermissionsAsync("affiliate@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordHasherMock.Setup(x => x.Verify("Password@123", "hashed_password"))
+            .Returns(true);
+
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Please verify your email before continuing.");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrowForbiddenException_WhenAffiliatePendingAdminApproval()
+    {
+        var command = new LoginCommand("affiliate@example.com", "Password@123");
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "affiliate@example.com",
+            PasswordHash = "hashed_password",
+            Status = "PENDING",
+            EmailVerifiedAt = DateTime.UtcNow,
+            AffiliateApplicationUser = new AffiliateApplication
+            {
+                Status = "UNDER_REVIEW"
+            }
+        };
+
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns("affiliate@example.com");
+        _userRepositoryMock.Setup(x => x.GetByEmailWithRolesAndPermissionsAsync("affiliate@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordHasherMock.Setup(x => x.Verify("Password@123", "hashed_password"))
+            .Returns(true);
+
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Your registration is pending Admin approval.");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrowForbiddenException_WhenAffiliateRejected()
+    {
+        var command = new LoginCommand("affiliate@example.com", "Password@123");
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "affiliate@example.com",
+            PasswordHash = "hashed_password",
+            Status = "PENDING",
+            EmailVerifiedAt = DateTime.UtcNow,
+            AffiliateApplicationUser = new AffiliateApplication
+            {
+                Status = "REJECTED"
+            }
+        };
+
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns("affiliate@example.com");
+        _userRepositoryMock.Setup(x => x.GetByEmailWithRolesAndPermissionsAsync("affiliate@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordHasherMock.Setup(x => x.Verify("Password@123", "hashed_password"))
+            .Returns(true);
+
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Your registration was rejected.");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrowForbiddenException_WhenClientEmailNotVerified()
+    {
+        var command = new LoginCommand("client@example.com", "Password@123");
+        var company = new Company { CompanyId = Guid.NewGuid(), VerificationStatus = "PENDING" };
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "client@example.com",
+            PasswordHash = "hashed_password",
+            Status = "PENDING",
+            EmailVerifiedAt = null
+        };
+        user.CompanyUsers.Add(new CompanyUser
+        {
+            Company = company,
+            CompanyId = company.CompanyId,
+            UserId = user.UserId
+        });
+
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns("client@example.com");
+        _userRepositoryMock.Setup(x => x.GetByEmailWithRolesAndPermissionsAsync("client@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordHasherMock.Setup(x => x.Verify("Password@123", "hashed_password"))
+            .Returns(true);
+
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Please verify your email before continuing.");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrowForbiddenException_WhenClientPendingAdminApproval()
+    {
+        var command = new LoginCommand("client@example.com", "Password@123");
+        var company = new Company { CompanyId = Guid.NewGuid(), VerificationStatus = "UNDER_REVIEW" };
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "client@example.com",
+            PasswordHash = "hashed_password",
+            Status = "PENDING",
+            EmailVerifiedAt = DateTime.UtcNow
+        };
+        user.CompanyUsers.Add(new CompanyUser
+        {
+            Company = company,
+            CompanyId = company.CompanyId,
+            UserId = user.UserId
+        });
+
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns("client@example.com");
+        _userRepositoryMock.Setup(x => x.GetByEmailWithRolesAndPermissionsAsync("client@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordHasherMock.Setup(x => x.Verify("Password@123", "hashed_password"))
+            .Returns(true);
+
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Your registration is pending Admin approval.");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrowForbiddenException_WhenClientRejected()
+    {
+        var command = new LoginCommand("client@example.com", "Password@123");
+        var company = new Company { CompanyId = Guid.NewGuid(), VerificationStatus = "REJECTED" };
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "client@example.com",
+            PasswordHash = "hashed_password",
+            Status = "PENDING",
+            EmailVerifiedAt = DateTime.UtcNow
+        };
+        user.CompanyUsers.Add(new CompanyUser
+        {
+            Company = company,
+            CompanyId = company.CompanyId,
+            UserId = user.UserId
+        });
+
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns("client@example.com");
+        _userRepositoryMock.Setup(x => x.GetByEmailWithRolesAndPermissionsAsync("client@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordHasherMock.Setup(x => x.Verify("Password@123", "hashed_password"))
+            .Returns(true);
+
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Your registration was rejected.");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldSuccessfullyLogin_WhenAffiliateIsApproved()
+    {
+        var command = new LoginCommand("approved_affiliate@example.com", "Password@123");
+        var role = new Role { RoleId = Guid.NewGuid(), Code = "AFFILIATE_RECRUITER", Name = "Affiliate Recruiter" };
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "approved_affiliate@example.com",
+            DisplayName = "Nguyen Van Affiliate",
+            PasswordHash = "hashed_password",
+            Status = "ACTIVE",
+            EmailVerifiedAt = DateTime.UtcNow,
+            AffiliateApplicationUser = new AffiliateApplication
+            {
+                Status = "APPROVED"
+            }
+        };
+        user.UserRoleUsers.Add(new UserRole
+        {
+            UserId = user.UserId,
+            RoleId = role.RoleId,
+            Role = role,
+            Status = "ACTIVE"
+        });
+
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns("approved_affiliate@example.com");
+        _userRepositoryMock.Setup(x => x.GetByEmailWithRolesAndPermissionsAsync("approved_affiliate@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordHasherMock.Setup(x => x.Verify("Password@123", "hashed_password"))
+            .Returns(true);
+
+        var expiresAt = DateTime.UtcNow.AddHours(1);
+        _jwtTokenGeneratorMock.Setup(x => x.GenerateAccessToken(user, It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+            .Returns(("affiliate_jwt_token", expiresAt));
+        _jwtTokenGeneratorMock.Setup(x => x.GenerateRefreshToken())
+            .Returns("refresh_token_64chars");
+        _otpServiceMock.Setup(x => x.HashOtp("refresh_token_64chars"))
+            .Returns("hashed_refresh_token");
+
+        var response = await _handler.Handle(command, CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.Success.Should().BeTrue();
+        response.Data!.AccessToken.Should().Be("affiliate_jwt_token");
+        response.Data.User.Roles.Should().ContainSingle().Which.Should().Be("AFFILIATE_RECRUITER");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldSuccessfullyLogin_WhenClientIsApproved()
+    {
+        var command = new LoginCommand("approved_client@example.com", "Password@123");
+        var role = new Role { RoleId = Guid.NewGuid(), Code = "CLIENT_COMPANY_USER", Name = "Client Company User" };
+        var company = new Company { CompanyId = Guid.NewGuid(), VerificationStatus = "VERIFIED" };
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "approved_client@example.com",
+            DisplayName = "Tran Thi Client",
+            PasswordHash = "hashed_password",
+            Status = "ACTIVE",
+            EmailVerifiedAt = DateTime.UtcNow
+        };
+        user.CompanyUsers.Add(new CompanyUser
+        {
+            Company = company,
+            CompanyId = company.CompanyId,
+            UserId = user.UserId
+        });
+        user.UserRoleUsers.Add(new UserRole
+        {
+            UserId = user.UserId,
+            RoleId = role.RoleId,
+            Role = role,
+            Status = "ACTIVE"
+        });
+
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns("approved_client@example.com");
+        _userRepositoryMock.Setup(x => x.GetByEmailWithRolesAndPermissionsAsync("approved_client@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordHasherMock.Setup(x => x.Verify("Password@123", "hashed_password"))
+            .Returns(true);
+
+        var expiresAt = DateTime.UtcNow.AddHours(1);
+        _jwtTokenGeneratorMock.Setup(x => x.GenerateAccessToken(user, It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+            .Returns(("client_jwt_token", expiresAt));
+        _jwtTokenGeneratorMock.Setup(x => x.GenerateRefreshToken())
+            .Returns("refresh_token_64chars");
+        _otpServiceMock.Setup(x => x.HashOtp("refresh_token_64chars"))
+            .Returns("hashed_refresh_token");
+
+        var response = await _handler.Handle(command, CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.Success.Should().BeTrue();
+        response.Data!.AccessToken.Should().Be("client_jwt_token");
+        response.Data.User.Roles.Should().ContainSingle().Which.Should().Be("CLIENT_COMPANY_USER");
+    }
 }

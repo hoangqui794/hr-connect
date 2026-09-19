@@ -246,18 +246,18 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
             {
                 try
                 {
-                    var subject = "Mã xác thực tài khoản ứng viên HRConnect";
+                    var subject = "Mã xác thực tài khoản Ứng viên - HR Connect";
                     var bodyHtml = $@"
                         <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                            <h2 style='color: #4F46E5; margin-top: 0;'>Chào mừng bạn đến với HRConnect!</h2>
+                            <h2 style='color: #4F46E5; margin-top: 0;'>Chào mừng bạn đến với HR Connect!</h2>
                             <p>Xin chào <strong>{request.FullName.Trim()}</strong>,</p>
-                            <p>Cảm ơn bạn đã đăng ký tài khoản Ứng viên trên nền tảng HRConnect. Để hoàn tất quy trình đăng ký, vui lòng sử dụng mã xác thực (OTP) dưới đây:</p>
+                            <p>Cảm ơn bạn đã đăng ký tài khoản Ứng viên trên hệ thống HR Connect. Để hoàn tất quy trình đăng ký, vui lòng sử dụng mã xác thực (OTP) dưới đây:</p>
                             <div style='background-color: #F3F4F6; padding: 16px; border-radius: 6px; text-align: center; margin: 24px 0;'>
                                 <span style='font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1F2937;'>{rawOtp}</span>
                             </div>
                             <p style='color: #4B5563; font-size: 14px;'>Mã xác thực này có hiệu lực trong vòng <strong>{expirationMinutes} phút</strong>. Tuyệt đối không chia sẻ mã này cho bất kỳ ai.</p>
                             <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                            <p style='color: #9CA3AF; font-size: 12px;'>Đây là email tự động từ hệ thống HRConnect. Vui lòng không trả lời thư này.</p>
+                            <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
                         </div>";
 
                     await _emailService.SendEmailAsync(newUser.Email, subject, bodyHtml, CancellationToken.None);

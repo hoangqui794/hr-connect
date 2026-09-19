@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using Microsoft.EntityFrameworkCore.Migrations;
 
@@ -17,6 +17,10 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.AlterDatabase()
                 .Annotation("Npgsql:PostgresExtension:pgcrypto", ",,");
+
+            migrationBuilder.CreateSequence<long>(
+                name: "audit_log_audit_log_id_seq",
+                schema: "public");
 
             migrationBuilder.CreateTable(
                 name: "app_user",
@@ -2564,6 +2568,10 @@ namespace HRConnect.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "app_user",
+                schema: "public");
+
+            migrationBuilder.DropSequence(
+                name: "audit_log_audit_log_id_seq",
                 schema: "public");
         }
     }

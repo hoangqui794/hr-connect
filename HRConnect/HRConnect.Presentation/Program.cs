@@ -5,7 +5,9 @@ using Microsoft.OpenApi.Models;
 using HRConnect.Application;
 using HRConnect.Infrastructure;
 using HRConnect.Infrastructure.Persistence;
+using HRConnect.Presentation.Endpoints.V1.Admin;
 using HRConnect.Presentation.Endpoints.V1.Auth;
+using HRConnect.Presentation.Endpoints.V1.Candidates;
 using HRConnect.Presentation.Endpoints.V1.Emails;
 using Microsoft.EntityFrameworkCore;
 
@@ -133,7 +135,9 @@ app.MapControllers();
 
 // Minimal API Endpoints:
 app.MapAuthEndpoints();
+app.MapCandidateEndpoints();
 app.MapEmailEndpoints();
+app.MapAdminApprovalEndpoints();
 
 // ==============================================================================
 // 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động
@@ -143,7 +147,8 @@ try
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await dbContext.Database.MigrateAsync();
-    app.Logger.LogInformation(">>> Database migrated successfully! <<<");
+    await DatabaseSeeder.SeedAsync(dbContext);
+    app.Logger.LogInformation(">>> Database migrated and seeded successfully! <<<");
 }
 catch (Exception ex)
 {
