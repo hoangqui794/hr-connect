@@ -8,5 +8,7 @@ public interface IUserTokenRepository
 
     Task<UserToken?> GetLatestActiveOtpAsync(Guid userId, string tokenType, CancellationToken cancellationToken = default);
 
+    Task InvalidateActiveTokensAsync(Guid userId, string tokenType, CancellationToken cancellationToken = default);
+
     void Update(UserToken userToken);
 }

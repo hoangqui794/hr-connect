@@ -30,6 +30,22 @@ public class UserTokenRepository : IUserTokenRepository
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task InvalidateActiveTokensAsync(
+        Guid userId, 
+        string tokenType, 
+        CancellationToken cancellationToken = default)
+    {
+        var activeTokens = await _context.UserTokens
+            .Where(t => t.UserId == userId && t.TokenType == tokenType && t.UsedAt == null)
+            .ToListAsync(cancellationToken);
+
+        var now = DateTime.UtcNow;
+        foreach (var token in activeTokens)
+        {
+            token.UsedAt = now;
+        }
+    }
+
     public void Update(UserToken userToken)
     {
         _context.UserTokens.Update(userToken);

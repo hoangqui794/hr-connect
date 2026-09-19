@@ -1,5 +1,6 @@
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Auth.Commands.ForgotPassword;
 using HRConnect.Application.Features.Auth.Commands.Login;
 using HRConnect.Application.Features.Auth.Commands.RegisterAffiliate;
 using HRConnect.Application.Features.Auth.Commands.RegisterCandidate;
@@ -272,8 +273,36 @@ public static class AuthEndpoints
         .WithDescription("Xác thực người dùng, trả về JWT Access Token kèm Roles & Permissions. Chặn tài khoản chưa xác thực email hoặc chưa được Admin phê duyệt.")
         .Produces<LoginResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
-        .Produces(StatusCodes.Status401Unauthorized)
-        .Produces(StatusCodes.Status403Forbidden);
+        // 6. Quên mật khẩu (Yêu cầu gửi OTP đặt lại mật khẩu)
+        group.MapPost("/forgot-password", async (
+            [FromBody] ForgotPasswordCommand command,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<ForgotPasswordCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu yêu cầu không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                            g => g.Key, 
+                            g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            var result = await sender.Send(command, cancellationToken);
+            return Results.Ok(result);
+        })
+        .WithName("ForgotPassword")
+        .WithSummary("Yêu cầu gửi mã OTP đặt lại mật khẩu")
+        .WithDescription("Nhận email và gửi mã xác thực đặt lại mật khẩu nếu email tồn tại trong hệ thống. Luôn trả về thông báo chung để chống lộ thông tin tài khoản.")
+        .Produces<ForgotPasswordResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest);
 
         return app;
     }
