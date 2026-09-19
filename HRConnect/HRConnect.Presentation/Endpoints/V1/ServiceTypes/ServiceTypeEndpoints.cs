@@ -1,5 +1,8 @@
+using System;
 using System.Security.Claims;
+using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.ServiceTypes.DTOs;
+using HRConnect.Application.Features.ServiceTypes.Queries.GetServiceTypeDetail;
 using HRConnect.Application.Features.ServiceTypes.Queries.GetServiceTypes;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -33,6 +36,28 @@ public static class ServiceTypeEndpoints
         .WithDescription("Cho phép lọc theo isActive, tìm kiếm theo code/name, phân trang và sắp xếp.")
         .Produces<GetServiceTypesResponse>(StatusCodes.Status200OK);
 
+        // 2. GET /api/v1/service-types/{id} - Chi tiết loại dịch vụ tuyển dụng
+        publicGroup.MapGet("/{id:guid}", async (
+            Guid id,
+            [FromServices] ISender sender = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            try
+            {
+                var result = await sender.Send(new GetServiceTypeDetailQuery(id), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetServiceTypeDetail")
+        .WithSummary("Xem chi tiết một loại dịch vụ tuyển dụng")
+        .WithDescription("Trả về thông tin chi tiết loại dịch vụ theo ID.")
+        .Produces<GetServiceTypeDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
+
         // Alias tương thích /api/service-types
         app.MapGet("/api/service-types", async (
             [FromQuery] string? search,
@@ -50,6 +75,26 @@ public static class ServiceTypeEndpoints
         })
         .WithTags("Service Types")
         .WithName("GetServiceTypesLegacy")
+        .ExcludeFromDescription();
+
+        // Alias tương thích /api/service-types/{id}
+        app.MapGet("/api/service-types/{id:guid}", async (
+            Guid id,
+            [FromServices] ISender sender = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            try
+            {
+                var result = await sender.Send(new GetServiceTypeDetailQuery(id), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+        })
+        .WithTags("Service Types")
+        .WithName("GetServiceTypeDetailLegacy")
         .ExcludeFromDescription();
 
         return app;
