@@ -5,6 +5,7 @@ using HRConnect.Application.Features.Auth.Commands.ChangePassword;
 using HRConnect.Application.Features.Auth.Commands.ForgotPassword;
 using HRConnect.Application.Features.Auth.Commands.Login;
 using HRConnect.Application.Features.Auth.Commands.Logout;
+using HRConnect.Application.Features.Auth.Commands.LogoutAll;
 using HRConnect.Application.Features.Auth.Commands.RefreshToken;
 using HRConnect.Application.Features.Auth.Commands.RegisterAffiliate;
 using HRConnect.Application.Features.Auth.Commands.RegisterCandidate;
@@ -572,6 +573,43 @@ public static class AuthEndpoints
         .WithDescription("Người dùng đã đăng nhập gửi Refresh Token để thu hồi phiên làm việc hiện tại trên hệ thống.")
         .Produces<LogoutResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized);
+
+        // 12. Đăng xuất khỏi tất cả thiết bị (Thu hồi toàn bộ Refresh Token của người dùng)
+        group.MapPost("/logout-all", async (
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                            ?? user.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            var command = new LogoutAllCommand { UserId = userId };
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (UnauthorizedException ex)
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = ex.Message
+                }, statusCode: StatusCodes.Status401Unauthorized);
+            }
+        })
+        .RequireAuthorization()
+        .WithName("LogoutAll")
+        .WithSummary("Đăng xuất khỏi tất cả thiết bị (Thu hồi toàn bộ phiên Refresh Token)")
+        .WithDescription("Người dùng đã đăng nhập yêu cầu thu hồi toàn bộ các Refresh Token đang hoạt động trên tất cả thiết bị.")
+        .Produces<LogoutAllResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized);
 
         return app;
