@@ -3,6 +3,11 @@ namespace HRConnect.Application.Features.Jobs.Common;
 public static class JobStatuses
 {
     public const string Draft = "DRAFT";
+    public const string PendingReview = "PENDING_REVIEW";
+    public const string Rejected = "REJECTED";
+    public const string Active = "ACTIVE";
+    public const string Paused = "PAUSED";
+    public const string Closed = "CLOSED";
 }
 
 public static class JobRequirementTypes

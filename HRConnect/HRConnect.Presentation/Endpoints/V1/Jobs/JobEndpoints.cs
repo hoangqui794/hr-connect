@@ -1,7 +1,17 @@
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Jobs.Commands.ApproveJob;
+using HRConnect.Application.Features.Jobs.Commands.CloseJob;
 using HRConnect.Application.Features.Jobs.Commands.CreateJob;
+using HRConnect.Application.Features.Jobs.Commands.PauseJob;
+using HRConnect.Application.Features.Jobs.Commands.RejectJob;
+using HRConnect.Application.Features.Jobs.Commands.ResumeJob;
+using HRConnect.Application.Features.Jobs.Commands.SubmitJob;
+using HRConnect.Application.Features.Jobs.Commands.UpdateJob;
+using HRConnect.Application.Features.Jobs.Queries.GetJobDetail;
+using HRConnect.Application.Features.Jobs.Queries.GetJobsForReview;
+using HRConnect.Application.Features.Jobs.Queries.GetMyJobs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,82 +21,72 @@ public static class JobEndpoints
 {
     public static IEndpointRouteBuilder MapJobEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/jobs")
-            .WithTags("Jobs")
-            .RequireAuthorization();
+        var jobs = app.MapGroup("/api/v1/jobs").WithTags("Jobs").RequireAuthorization();
+        var review = app.MapGroup("/api/v1/internal/jobs").WithTags("Job Review").RequireAuthorization();
 
-        group.MapPost(string.Empty, async (
-            ClaimsPrincipal user,
-            [FromBody] CreateJobCommand command,
-            [FromServices] ISender sender,
-            [FromServices] IValidator<CreateJobCommand> validator,
-            CancellationToken cancellationToken) =>
+        jobs.MapPost("", async (ClaimsPrincipal user, [FromBody] CreateJobCommand command, ISender sender, IValidator<CreateJobCommand> validator, CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
-            if (userId == null)
-            {
-                return Results.Unauthorized();
-            }
+            var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, "job.create")) return Forbidden();
+            command.UserId = id.Value; var invalid = await Validate(command, validator, ct); if (invalid != null) return invalid;
+            return await Run(async () => { var result = await sender.Send(command, ct); return Results.Created($"/api/v1/jobs/{result.Data.JobId}", result); });
+        }).WithName("CreateJobDraft").WithSummary("Tạo bản nháp công việc").Produces<CreateJobResponse>(201);
 
-            if (!CanCreateJob(user))
-            {
-                return Results.Json(new
-                {
-                    success = false,
-                    message = "Bạn không có quyền tạo công việc."
-                }, statusCode: StatusCodes.Status403Forbidden);
-            }
+        jobs.MapPut("/{jobId:guid}", async (Guid jobId, ClaimsPrincipal user, [FromBody] UpdateJobCommand command, ISender sender, IValidator<UpdateJobCommand> validator, CancellationToken ct) =>
+        {
+            var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, "job.update_own")) return Forbidden();
+            command.JobId = jobId; command.UserId = id.Value; var invalid = await Validate(command, validator, ct); if (invalid != null) return invalid;
+            return await Run(async () => Results.Ok(await sender.Send(command, ct)));
+        }).WithName("UpdateJob").WithSummary("Cập nhật Job Draft hoặc Job bị từ chối");
 
-            command.UserId = userId.Value;
+        jobs.MapPost("/{jobId:guid}/submit", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+            await ClientAction(user, "job.update_own", id => sender.Send(new SubmitJobCommand { JobId = jobId, UserId = id }, ct))
+        ).WithName("SubmitJob").WithSummary("Gửi Job để Internal HR xét duyệt");
+        jobs.MapPost("/{jobId:guid}/pause", async (Guid jobId, ClaimsPrincipal user, [FromBody] PauseJobCommand command, ISender sender, CancellationToken ct) =>
+        { command.JobId = jobId; return await ClientAction(user, "job.update_own", id => { command.UserId = id; return sender.Send(command, ct); }); }
+        ).WithName("PauseJob").WithSummary("Tạm dừng Job đang hoạt động");
+        jobs.MapPost("/{jobId:guid}/resume", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+            await ClientAction(user, "job.update_own", id => sender.Send(new ResumeJobCommand { JobId = jobId, UserId = id }, ct))
+        ).WithName("ResumeJob").WithSummary("Tiếp tục Job đang tạm dừng");
+        jobs.MapPost("/{jobId:guid}/close", async (Guid jobId, ClaimsPrincipal user, [FromBody] CloseJobCommand command, ISender sender, IValidator<CloseJobCommand> validator, CancellationToken ct) =>
+        { command.JobId = jobId; var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, "job.update_own")) return Forbidden(); command.UserId = id.Value;
+          var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async () => Results.Ok(await sender.Send(command, ct))); }
+        ).WithName("CloseJob").WithSummary("Đóng Job");
 
-            var validationResult = await validator.ValidateAsync(command, cancellationToken);
-            if (!validationResult.IsValid)
-            {
-                return Results.BadRequest(new
-                {
-                    success = false,
-                    message = "Dữ liệu tạo bản nháp công việc không hợp lệ.",
-                    errors = validationResult.Errors
-                        .GroupBy(error => error.PropertyName)
-                        .ToDictionary(
-                            group => group.Key,
-                            group => group.Select(error => error.ErrorMessage).ToArray())
-                });
-            }
+        jobs.MapGet("/mine", async (ClaimsPrincipal user, string? status, ISender sender, CancellationToken ct) =>
+        { var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, "job.view_own")) return Forbidden();
+          return await Run(async () => Results.Ok(await sender.Send(new GetMyJobsQuery(id.Value, status), ct))); }
+        ).WithName("GetMyJobs").WithSummary("Lấy danh sách Job của doanh nghiệp hiện tại");
+        jobs.MapGet("/{jobId:guid}", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+        { var id = UserId(user); if (id == null) return Results.Unauthorized(); var canReview = ReviewerCan(user, "job.review");
+          if (!canReview && !ClientCan(user, "job.view_own")) return Forbidden();
+          return await Run(async () => Results.Ok(await sender.Send(new GetJobDetailQuery(jobId, id.Value, canReview), ct))); }
+        ).WithName("GetJobDetail").WithSummary("Lấy chi tiết Job");
 
-            try
-            {
-                var result = await sender.Send(command, cancellationToken);
-                return Results.Created($"/api/v1/jobs/{result.Data.JobId}", result);
-            }
-            catch (ForbiddenException ex)
-            {
-                return Results.Json(
-                    new { success = false, message = ex.Message },
-                    statusCode: StatusCodes.Status403Forbidden);
-            }
-            catch (BadRequestException ex)
-            {
-                return Results.BadRequest(new { success = false, message = ex.Message });
-            }
-        })
-        .WithName("CreateJobDraft")
-        .WithSummary("Tạo bản nháp công việc")
-        .WithDescription("Client Company User tạo Job ở trạng thái DRAFT. Bản nháp có thể chưa đủ dữ liệu để submit xét duyệt.")
-        .Produces<CreateJobResponse>(StatusCodes.Status201Created)
-        .Produces(StatusCodes.Status400BadRequest)
-        .Produces(StatusCodes.Status401Unauthorized)
-        .Produces(StatusCodes.Status403Forbidden);
-
+        review.MapGet("/review", async (ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+        { if (!ReviewerCan(user, "job.review")) return Forbidden(); return await Run(async () => Results.Ok(await sender.Send(new GetJobsForReviewQuery(), ct))); }
+        ).WithName("GetJobsForReview").WithSummary("Lấy hàng đợi Job chờ xét duyệt");
+        review.MapPost("/{jobId:guid}/approve", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+        { var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.publish")) return Forbidden();
+          return await Run(async () => Results.Ok(await sender.Send(new ApproveJobCommand { JobId = jobId, UserId = id.Value }, ct))); }
+        ).WithName("ApproveJob").WithSummary("Duyệt và công bố Job");
+        review.MapPost("/{jobId:guid}/reject", async (Guid jobId, ClaimsPrincipal user, [FromBody] RejectJobCommand command, ISender sender, IValidator<RejectJobCommand> validator, CancellationToken ct) =>
+        { var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.review")) return Forbidden(); command.JobId = jobId; command.UserId = id.Value;
+          var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async () => Results.Ok(await sender.Send(command, ct))); }
+        ).WithName("RejectJob").WithSummary("Từ chối Job và trả lý do");
         return app;
     }
 
-    private static bool CanCreateJob(ClaimsPrincipal user) =>
-        user.IsInRole("CLIENT_COMPANY_USER") && user.HasClaim("permission", "job.create");
-
-    private static Guid? GetUserId(ClaimsPrincipal user)
-    {
-        var value = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
-        return Guid.TryParse(value, out var userId) ? userId : null;
-    }
+    private static async Task<IResult> ClientAction<T>(ClaimsPrincipal user, string permission, Func<Guid, Task<T>> action)
+    { var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, permission)) return Forbidden(); return await Run(async () => Results.Ok(await action(id.Value))); }
+    private static async Task<IResult?> Validate<T>(T command, IValidator<T> validator, CancellationToken ct)
+    { var result = await validator.ValidateAsync(command, ct); return result.IsValid ? null : Results.ValidationProblem(result.ToDictionary()); }
+    private static async Task<IResult> Run(Func<Task<IResult>> action)
+    { try { return await action(); } catch (NotFoundException ex) { return Results.NotFound(new { success = false, message = ex.Message }); }
+      catch (ForbiddenException ex) { return Results.Json(new { success = false, message = ex.Message }, statusCode: 403); }
+      catch (ConflictException ex) { return Results.Conflict(new { success = false, message = ex.Message }); }
+      catch (BadRequestException ex) { return Results.BadRequest(new { success = false, message = ex.Message }); } }
+    private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
+    private static bool ClientCan(ClaimsPrincipal user, string permission) => user.IsInRole("CLIENT_COMPANY_USER") && user.HasClaim("permission", permission);
+    private static bool ReviewerCan(ClaimsPrincipal user, string permission) => user.IsInRole("INTERNAL_HR") && user.HasClaim("permission", permission);
+    private static IResult Forbidden() => Results.Json(new { success = false, message = "Bạn không có quyền thực hiện thao tác này." }, statusCode: 403);
 }
