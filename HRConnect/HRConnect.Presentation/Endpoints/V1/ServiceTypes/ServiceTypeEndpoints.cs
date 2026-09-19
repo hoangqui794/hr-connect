@@ -3,6 +3,7 @@ using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.ServiceTypes.Commands.CreateServiceType;
+using HRConnect.Application.Features.ServiceTypes.Commands.DeleteServiceType;
 using HRConnect.Application.Features.ServiceTypes.Commands.UpdateServiceType;
 using HRConnect.Application.Features.ServiceTypes.DTOs;
 using HRConnect.Application.Features.ServiceTypes.Queries.GetServiceTypeDetail;
@@ -332,6 +333,71 @@ public static class ServiceTypeEndpoints
         .RequireAuthorization()
         .WithTags("Admin Service Types")
         .WithName("UpdateServiceTypeLegacy")
+        .ExcludeFromDescription();
+
+        // 5. DELETE /api/v1/admin/service-types/{id} - Xóa loại dịch vụ (Platform Admin)
+        adminGroup.MapDelete("/{id:guid}", async (
+            Guid id,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            if (!HasAdminAccess(user))
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Bạn không có quyền thực hiện thao tác này. Yêu cầu quyền quản trị viên."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            try
+            {
+                var result = await sender.Send(new DeleteServiceTypeCommand(id), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("DeleteServiceType")
+        .WithSummary("Xóa loại dịch vụ tuyển dụng (Platform Admin)")
+        .WithDescription("Chỉ dành cho Platform Admin. Nếu loại dịch vụ chưa liên kết dữ liệu sẽ bị xóa hoàn toàn; nếu đã được sử dụng sẽ chuyển sang trạng thái ngưng hoạt động (deactivated).")
+        .Produces<DeleteServiceTypeResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
+        // Alias tương thích /api/admin/service-types/{id}
+        app.MapDelete("/api/admin/service-types/{id:guid}", async (
+            Guid id,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            if (!HasAdminAccess(user))
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Bạn không có quyền thực hiện thao tác này. Yêu cầu quyền quản trị viên."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            try
+            {
+                var result = await sender.Send(new DeleteServiceTypeCommand(id), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+        })
+        .RequireAuthorization()
+        .WithTags("Admin Service Types")
+        .WithName("DeleteServiceTypeLegacy")
         .ExcludeFromDescription();
 
         return app;
