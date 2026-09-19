@@ -13,6 +13,7 @@ using HRConnect.Application.Features.Auth.Commands.RegisterClient;
 using HRConnect.Application.Features.Auth.Commands.ResendPasswordResetOtp;
 using HRConnect.Application.Features.Auth.Commands.ResetPassword;
 using HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp;
+using HRConnect.Application.Features.Auth.Queries.GetCurrentUser;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -611,6 +612,75 @@ public static class AuthEndpoints
         .WithDescription("Người dùng đã đăng nhập yêu cầu thu hồi toàn bộ các Refresh Token đang hoạt động trên tất cả thiết bị.")
         .Produces<LogoutAllResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized);
+
+        // 13. Lấy thông tin người dùng hiện tại (Get Current User / Auth Me)
+        group.MapGet("/me", async (
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                            ?? user.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var result = await sender.Send(new GetCurrentUserQuery(userId), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedException)
+            {
+                return Results.Unauthorized();
+            }
+        })
+        .RequireAuthorization()
+        .WithName("GetCurrentUser")
+        .WithSummary("Lấy thông tin người dùng hiện tại (Auth Me)")
+        .WithDescription("Trả về thông tin định danh, trạng thái tài khoản, vai trò và quyền hạn hiện tại từ cơ sở dữ liệu của người dùng đang đăng nhập.")
+        .Produces<CurrentUserResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound);
+
+        // Alias hỗ trợ cả /api/auth/me
+        app.MapGet("/api/auth/me", async (
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                            ?? user.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var result = await sender.Send(new GetCurrentUserQuery(userId), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedException)
+            {
+                return Results.Unauthorized();
+            }
+        })
+        .RequireAuthorization()
+        .WithTags("Auth")
+        .WithName("GetCurrentUserLegacy")
+        .ExcludeFromDescription();
 
         return app;
     }
