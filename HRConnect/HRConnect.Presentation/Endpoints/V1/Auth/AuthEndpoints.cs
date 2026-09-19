@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Auth.Commands.ChangePassword;
 using HRConnect.Application.Features.Auth.Commands.ForgotPassword;
 using HRConnect.Application.Features.Auth.Commands.Login;
+using HRConnect.Application.Features.Auth.Commands.RefreshToken;
 using HRConnect.Application.Features.Auth.Commands.RegisterAffiliate;
 using HRConnect.Application.Features.Auth.Commands.RegisterCandidate;
 using HRConnect.Application.Features.Auth.Commands.RegisterClient;
@@ -455,6 +456,67 @@ public static class AuthEndpoints
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status404NotFound);
+
+        // 10. Làm mới token (Refresh Token Rotation)
+        group.MapPost("/refresh-token", async (
+            [FromBody] RefreshTokenCommand command,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<RefreshTokenCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu yêu cầu không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                            g => g.Key, 
+                            g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = ex.Message
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (UnauthorizedException ex)
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = ex.Message
+                }, statusCode: StatusCodes.Status401Unauthorized);
+            }
+        })
+        .AllowAnonymous()
+        .WithName("RefreshToken")
+        .WithSummary("Làm mới Access Token (Refresh Token Rotation)")
+        .WithDescription("Gửi Refresh Token hợp lệ để nhận cặp Access Token mới và Refresh Token mới. Token cũ sẽ bị vô hiệu hóa ngay sau khi xoay vòng thành công.")
+        .Produces<RefreshTokenResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status401Unauthorized);
 
         return app;
     }

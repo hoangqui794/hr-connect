@@ -211,7 +211,7 @@ public class LoginCommandHandlerTests
         response.Data.User.Permissions.Should().Contain(new[] { "job.view", "application.create" });
 
         user.LastLoginAt.Should().NotBeNull();
-        _refreshTokenRepositoryMock.Verify(x => x.AddAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Once);
+        _refreshTokenRepositoryMock.Verify(x => x.AddAsync(It.IsAny<HRConnect.Domain.Entities.RefreshToken>(), It.IsAny<CancellationToken>()), Times.Once);
         _userRepositoryMock.Verify(x => x.Update(user), Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

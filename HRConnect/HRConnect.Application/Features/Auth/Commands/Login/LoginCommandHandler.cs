@@ -164,7 +164,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         var refreshExpiryDays = _jwtSettings.RefreshTokenExpiryDays > 0 ? _jwtSettings.RefreshTokenExpiryDays : 7;
         var now = DateTime.UtcNow;
 
-        var refreshTokenEntity = new RefreshToken
+        var refreshTokenEntity = new HRConnect.Domain.Entities.RefreshToken
         {
             RefreshTokenId = Guid.NewGuid(),
             UserId = user.UserId,
@@ -195,6 +195,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
                 RefreshToken = rawRefreshToken,
                 TokenType = "Bearer",
                 ExpiresAt = expiresAt,
+                RefreshTokenExpiresAt = refreshTokenEntity.ExpiresAt,
                 User = new UserInfoData
                 {
                     UserId = user.UserId,

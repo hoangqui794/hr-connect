@@ -48,6 +48,22 @@ public class UserRepository : IUserRepository
             .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
     }
 
+    public async Task<AppUser?> GetByIdWithRolesAndPermissionsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _context.AppUsers
+            .Include(u => u.UserRoleUsers.Where(ur => ur.Status == "ACTIVE"))
+                .ThenInclude(ur => ur.Role)
+                    .ThenInclude(r => r.RolePermissions)
+                        .ThenInclude(rp => rp.Permission)
+            .Include(u => u.AffiliateApplicationUser)
+            .Include(u => u.CompanyUsers)
+                .ThenInclude(cu => cu.Company)
+                    .ThenInclude(c => c.CompanyVerificationRequest)
+            .Include(u => u.CompanyVerificationRequestSubmittedByNavigations)
+                .ThenInclude(cvr => cvr.Company)
+            .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
+    }
+
     public async Task AddAsync(AppUser user, CancellationToken cancellationToken = default)
     {
         await _context.AppUsers.AddAsync(user, cancellationToken);

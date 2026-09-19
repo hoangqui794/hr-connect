@@ -21,6 +21,13 @@ public class RefreshTokenRepository : IRefreshTokenRepository
 
     public async Task<RefreshToken?> GetByHashAsync(string tokenHash, CancellationToken cancellationToken = default)
     {
+        if (_context.Database.IsRelational() && _context.Database.CurrentTransaction != null)
+        {
+            return await _context.RefreshTokens
+                .FromSqlInterpolated($"SELECT * FROM public.refresh_token WHERE token_hash = {tokenHash} FOR UPDATE")
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
         return await _context.RefreshTokens
             .FirstOrDefaultAsync(r => r.TokenHash == tokenHash, cancellationToken);
     }
