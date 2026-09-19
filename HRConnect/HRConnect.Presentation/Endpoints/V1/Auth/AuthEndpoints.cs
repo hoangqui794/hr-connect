@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Auth.Commands.ChangePassword;
 using HRConnect.Application.Features.Auth.Commands.ForgotPassword;
 using HRConnect.Application.Features.Auth.Commands.Login;
 using HRConnect.Application.Features.Auth.Commands.RegisterAffiliate;
@@ -381,6 +383,78 @@ public static class AuthEndpoints
         .WithDescription("Xác thực mã OTP 6 chữ số, cập nhật mật khẩu mới và thu hồi toàn bộ Refresh Tokens hiện hành.")
         .Produces<ResetPasswordResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest);
+
+        // 9. Đổi mật khẩu (Dành cho người dùng đã đăng nhập)
+        group.MapPut("/change-password", async (
+            [FromBody] ChangePasswordCommand command,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<ChangePasswordCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                            ?? user.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            command.UserId = userId;
+
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu yêu cầu không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                            g => g.Key, 
+                            g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (UnauthorizedException ex)
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = ex.Message
+                }, statusCode: StatusCodes.Status401Unauthorized);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+        })
+        .RequireAuthorization()
+        .WithName("ChangePassword")
+        .WithSummary("Đổi mật khẩu tài khoản (Yêu cầu đăng nhập)")
+        .WithDescription("Người dùng đã đăng nhập đổi mật khẩu bằng cách nhập mật khẩu hiện tại và mật khẩu mới.")
+        .Produces<ChangePasswordResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound);
 
         return app;
     }
