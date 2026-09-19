@@ -5,6 +5,7 @@ using HRConnect.Application.Features.Auth.Commands.Login;
 using HRConnect.Application.Features.Auth.Commands.RegisterAffiliate;
 using HRConnect.Application.Features.Auth.Commands.RegisterCandidate;
 using HRConnect.Application.Features.Auth.Commands.RegisterClient;
+using HRConnect.Application.Features.Auth.Commands.ResendPasswordResetOtp;
 using HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -302,6 +303,37 @@ public static class AuthEndpoints
         .WithSummary("Yêu cầu gửi mã OTP đặt lại mật khẩu")
         .WithDescription("Nhận email và gửi mã xác thực đặt lại mật khẩu nếu email tồn tại trong hệ thống. Luôn trả về thông báo chung để chống lộ thông tin tài khoản.")
         .Produces<ForgotPasswordResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest);
+
+        // 7. Gửi lại mã OTP đặt lại mật khẩu
+        group.MapPost("/forgot-password/resend", async (
+            [FromBody] ResendPasswordResetOtpCommand command,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<ResendPasswordResetOtpCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu yêu cầu không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                            g => g.Key, 
+                            g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            var result = await sender.Send(command, cancellationToken);
+            return Results.Ok(result);
+        })
+        .WithName("ResendPasswordResetOtp")
+        .WithSummary("Gửi lại mã OTP đặt lại mật khẩu mới")
+        .WithDescription("Vô hiệu hóa mã OTP cũ và gửi mã OTP mới nếu tài khoản hợp lệ. Có cơ chế giới hạn tần suất (cooldown 60s).")
+        .Produces<ResendPasswordResetOtpResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest);
 
         return app;
