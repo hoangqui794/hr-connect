@@ -275,6 +275,9 @@ public static class AuthEndpoints
         .WithDescription("Xác thực người dùng, trả về JWT Access Token kèm Roles & Permissions. Chặn tài khoản chưa xác thực email hoặc chưa được Admin phê duyệt.")
         .Produces<LoginResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden);
+
         // 6. Quên mật khẩu (Yêu cầu gửi OTP đặt lại mật khẩu)
         group.MapPost("/forgot-password", async (
             [FromBody] ForgotPasswordCommand command,
