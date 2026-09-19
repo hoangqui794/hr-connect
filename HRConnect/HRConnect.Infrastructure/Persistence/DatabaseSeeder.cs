@@ -1,3 +1,4 @@
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,10 @@ public static class DatabaseSeeder
     public static async Task SeedAsync(
         ApplicationDbContext context,
         ILogger? logger = null,
+        bool seedDemoAccounts = false,
+        IPasswordHasher? passwordHasher = null,
+        IEmailNormalizer? emailNormalizer = null,
+        IPhoneNormalizer? phoneNormalizer = null,
         CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
@@ -47,28 +52,31 @@ public static class DatabaseSeeder
         // 2. Khởi tạo danh mục loại dịch vụ (Service Type) nếu chưa có (Idempotent seed)
         await ServiceTypeSeeder.SeedAsync(context, logger, cancellationToken);
 
-        // 3. Nếu không phải cơ sở dữ liệu quan hệ (ví dụ: InMemory trong UnitTests) thì dừng lại
-        if (!context.Database.IsRelational())
-        {
-            return;
-        }
-
         // 3. Tự động nạp toàn bộ danh sách Permissions và Role-Permissions từ file Permission.md
-        try
+        if (context.Database.IsRelational())
         {
-            var sql = GetPermissionSeedSql();
-            if (!string.IsNullOrWhiteSpace(sql))
+            try
             {
-                // Loại bỏ BEGIN; và COMMIT; vì EF Core tự quản lý transaction
-                var cleanedSql = sql.Replace("BEGIN;", "", StringComparison.OrdinalIgnoreCase)
-                                    .Replace("COMMIT;", "", StringComparison.OrdinalIgnoreCase);
+                var sql = GetPermissionSeedSql();
+                if (!string.IsNullOrWhiteSpace(sql))
+                {
+                    // Loại bỏ BEGIN; và COMMIT; vì EF Core tự quản lý transaction
+                    var cleanedSql = sql.Replace("BEGIN;", "", StringComparison.OrdinalIgnoreCase)
+                                        .Replace("COMMIT;", "", StringComparison.OrdinalIgnoreCase);
 
-                await context.Database.ExecuteSqlRawAsync(cleanedSql);
+                    await context.Database.ExecuteSqlRawAsync(cleanedSql);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($">>> DatabaseSeeder: Lỗi nạp Permission seed data: {ex.Message}");
             }
         }
-        catch (Exception ex)
+
+        // 4. Khởi tạo tài khoản phát triển / demo nếu được bật
+        if (seedDemoAccounts)
         {
-            Console.WriteLine($">>> DatabaseSeeder: Lỗi nạp Permission seed data: {ex.Message}");
+            await DemoAccountSeeder.SeedAsync(context, passwordHasher, emailNormalizer, phoneNormalizer, logger, cancellationToken);
         }
     }
 

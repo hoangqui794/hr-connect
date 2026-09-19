@@ -10,6 +10,7 @@ using HRConnect.Presentation.Endpoints.V1.Auth;
 using HRConnect.Presentation.Endpoints.V1.Candidates;
 using HRConnect.Presentation.Endpoints.V1.Affiliates;
 using HRConnect.Presentation.Endpoints.V1.Emails;
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Presentation.Endpoints.V1.ServiceTypes;
 using Microsoft.EntityFrameworkCore;
 
@@ -150,8 +151,25 @@ try
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+    var emailNormalizer = scope.ServiceProvider.GetRequiredService<IEmailNormalizer>();
+    var phoneNormalizer = scope.ServiceProvider.GetRequiredService<IPhoneNormalizer>();
+
     await dbContext.Database.MigrateAsync();
-    await DatabaseSeeder.SeedAsync(dbContext, app.Logger);
+
+    var enableDemoAccounts = app.Environment.IsDevelopment()
+        || app.Environment.IsEnvironment("Testing")
+        || app.Environment.IsEnvironment("Demo")
+        || builder.Configuration.GetValue<bool>("SeedDemoAccounts", false);
+
+    await DatabaseSeeder.SeedAsync(
+        dbContext,
+        app.Logger,
+        seedDemoAccounts: enableDemoAccounts,
+        passwordHasher: passwordHasher,
+        emailNormalizer: emailNormalizer,
+        phoneNormalizer: phoneNormalizer);
+
     app.Logger.LogInformation(">>> Database migrated and seeded successfully! <<<");
 }
 catch (Exception ex)
