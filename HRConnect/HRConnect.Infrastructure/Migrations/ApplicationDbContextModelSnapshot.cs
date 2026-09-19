@@ -2015,7 +2015,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "InterviewId", "ChangedAt" }, "idx_interview_status_history_interview")
                         .IsDescending(false, true);
 
-                    b.ToTable("interview_status_history", "hr_connect");
+                    b.ToTable("interview_status_history", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Job", b =>

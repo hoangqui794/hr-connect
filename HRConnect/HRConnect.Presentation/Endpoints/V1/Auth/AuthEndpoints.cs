@@ -22,7 +22,7 @@ public static class AuthEndpoints
 {
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/auth")
+        var group = app.MapGroup("/api/v1/auth")
                        .WithTags("Auth");
 
         // 1. Đăng ký Candidate
@@ -50,7 +50,7 @@ public static class AuthEndpoints
             try
             {
                 var result = await sender.Send(command, cancellationToken);
-                return Results.Created($"/api/auth/candidate/{result.Data?.UserId}", result);
+                return Results.Created($"/api/v1/auth/candidate/{result.Data?.UserId}", result);
             }
             catch (ConflictException ex)
             {
@@ -102,7 +102,7 @@ public static class AuthEndpoints
             try
             {
                 var result = await sender.Send(command, cancellationToken);
-                return Results.Created($"/api/auth/affiliate/{result.Data?.UserId}", result);
+                return Results.Created($"/api/v1/auth/affiliate/{result.Data?.UserId}", result);
             }
             catch (ConflictException ex)
             {
@@ -154,7 +154,7 @@ public static class AuthEndpoints
             try
             {
                 var result = await sender.Send(command, cancellationToken);
-                return Results.Created($"/api/auth/client/{result.Data?.UserId}", result);
+                return Results.Created($"/api/v1/auth/client/{result.Data?.UserId}", result);
             }
             catch (ConflictException ex)
             {

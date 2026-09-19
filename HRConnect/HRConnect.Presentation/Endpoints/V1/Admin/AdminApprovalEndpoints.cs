@@ -17,7 +17,7 @@ public static class AdminApprovalEndpoints
 {
     public static IEndpointRouteBuilder MapAdminApprovalEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/admin")
+        var group = app.MapGroup("/api/v1/admin")
                        .WithTags("Admin Approvals")
                        .RequireAuthorization();
 

@@ -1393,7 +1393,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.InterviewStatusHistoryId).HasName("interview_status_history_pkey");
 
-            entity.ToTable("interview_status_history", "hr_connect");
+            entity.ToTable("interview_status_history", "public");
 
             entity.HasIndex(e => new { e.InterviewId, e.ChangedAt }, "idx_interview_status_history_interview").IsDescending(false, true);
 
