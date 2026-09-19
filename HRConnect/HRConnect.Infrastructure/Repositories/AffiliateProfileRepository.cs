@@ -20,6 +20,13 @@ public class AffiliateProfileRepository : IAffiliateProfileRepository
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
     }
 
+    public async Task<AffiliateProfile?> GetByUserIdWithDetailsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _context.AffiliateProfiles
+            .Include(p => p.User)
+            .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+    }
+
     public async Task<AffiliateProfile?> GetByIdAsync(Guid affiliateId, CancellationToken cancellationToken = default)
     {
         return await _context.AffiliateProfiles

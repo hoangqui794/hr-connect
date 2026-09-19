@@ -6,6 +6,8 @@ public interface IAffiliateProfileRepository
 {
     Task<AffiliateProfile?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    Task<AffiliateProfile?> GetByUserIdWithDetailsAsync(Guid userId, CancellationToken cancellationToken = default);
+
     Task<AffiliateProfile?> GetByIdAsync(Guid affiliateId, CancellationToken cancellationToken = default);
 
     Task AddAsync(AffiliateProfile profile, CancellationToken cancellationToken = default);
