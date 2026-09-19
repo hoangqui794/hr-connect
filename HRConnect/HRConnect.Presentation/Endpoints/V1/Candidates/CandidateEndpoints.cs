@@ -41,7 +41,14 @@ public static class CandidateEndpoints
             {
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
-        });
+        })
+        .WithName("GetCandidateProfile")
+        .WithSummary("Xem thông tin hồ sơ ứng viên hiện tại")
+        .WithDescription("Lấy toàn bộ thông tin chi tiết hồ sơ của ứng viên đang đăng nhập dựa trên JWT Bearer Token (bao gồm kỹ năng, học vấn, kinh nghiệm, thông tin liên hệ và CV chính).")
+        .Produces<CandidateProfileResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
 
         // 2. PUT /api/v1/candidates/profile/me - Cập nhật hồ sơ ứng viên
         group.MapPut("/me", async (
@@ -89,7 +96,15 @@ public static class CandidateEndpoints
             {
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
-        });
+        })
+        .WithName("UpdateCandidateProfile")
+        .WithSummary("Cập nhật thông tin hồ sơ ứng viên")
+        .WithDescription("Cập nhật thông tin cá nhân của ứng viên đang đăng nhập (họ tên, số điện thoại, ngày sinh, giới tính, địa chỉ, học vấn, số năm kinh nghiệm, tóm tắt bản thân). Tự động đồng bộ họ tên và số điện thoại sang tài khoản người dùng.")
+        .Produces<UpdateCandidateProfileResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
 
         return app;
     }
