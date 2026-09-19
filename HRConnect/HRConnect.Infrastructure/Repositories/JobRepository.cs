@@ -27,4 +27,31 @@ public class JobRepository : IJobRepository
     {
         await _context.Jobs.AddAsync(job, cancellationToken);
     }
+
+    public Task<Job?> GetByIdAsync(Guid jobId, CancellationToken cancellationToken = default) =>
+        _context.Jobs
+            .Include(job => job.ServiceType)
+            .Include(job => job.Company)
+            .Include(job => job.JobRequirements)
+            .Include(job => job.JobStatusHistories)
+            .FirstOrDefaultAsync(job => job.JobId == jobId, cancellationToken);
+
+    public async Task<IReadOnlyList<Job>> GetByCompanyIdAsync(Guid companyId, CancellationToken cancellationToken = default) =>
+        await _context.Jobs.AsNoTracking()
+            .Include(job => job.ServiceType)
+            .Include(job => job.JobRequirements)
+            .Where(job => job.CompanyId == companyId)
+            .OrderByDescending(job => job.UpdatedAt)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Job>> GetPendingReviewAsync(CancellationToken cancellationToken = default) =>
+        await _context.Jobs.AsNoTracking()
+            .Include(job => job.ServiceType)
+            .Include(job => job.Company)
+            .Include(job => job.JobRequirements)
+            .Where(job => job.Status == "PENDING_REVIEW")
+            .OrderBy(job => job.UpdatedAt)
+            .ToListAsync(cancellationToken);
+
+    public void Update(Job job) => _context.Jobs.Update(job);
 }
