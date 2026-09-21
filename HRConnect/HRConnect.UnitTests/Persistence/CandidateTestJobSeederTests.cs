@@ -1,11 +1,14 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using HRConnect.Infrastructure.Persistence.Seed;
+using HRConnect.Infrastructure.Services.Storage;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -180,5 +183,87 @@ public class CandidateTestJobSeederTests
 
         var count = await context.Jobs.CountAsync(j => j.Title == CandidateTestJobSeeder.SeedJobTitle);
         count.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CloudflareR2_LiveUploadAndCleanup_ShouldSucceed()
+    {
+        var possiblePaths = new[]
+        {
+            Path.Combine(Directory.GetCurrentDirectory(), "HRConnect", ".env"),
+            Path.Combine(Directory.GetCurrentDirectory(), "..", "HRConnect", ".env"),
+            Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "HRConnect", ".env"),
+            Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "HRConnect", ".env"),
+            @"D:\Ki_9\HRConnect\HRConnect\.env"
+        };
+
+        string? accessKey = null;
+        string? secretKey = null;
+
+        foreach (var path in possiblePaths)
+        {
+            if (File.Exists(path))
+            {
+                foreach (var line in File.ReadAllLines(path))
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.StartsWith("R2_ACCESS_KEY_ID=", StringComparison.OrdinalIgnoreCase))
+                        accessKey = trimmed["R2_ACCESS_KEY_ID=".Length..].Trim();
+                    if (trimmed.StartsWith("R2_SECRET_ACCESS_KEY=", StringComparison.OrdinalIgnoreCase))
+                        secretKey = trimmed["R2_SECRET_ACCESS_KEY=".Length..].Trim();
+                }
+                if (!string.IsNullOrWhiteSpace(accessKey) && !string.IsNullOrWhiteSpace(secretKey))
+                    break;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(accessKey) || string.IsNullOrWhiteSpace(secretKey))
+        {
+            // Bỏ qua nếu môi trường (CI/CD) không cấu hình credentials R2 thực tế
+            return;
+        }
+
+        var s3Config = new Amazon.S3.AmazonS3Config
+        {
+            ServiceURL = "https://ea997660e8c1f6c92b939eb22891843c.r2.cloudflarestorage.com",
+            ForcePathStyle = true
+        };
+        var credentials = new Amazon.Runtime.BasicAWSCredentials(accessKey, secretKey);
+        using var s3Client = new Amazon.S3.AmazonS3Client(credentials, s3Config);
+
+        var settings = new R2Settings
+        {
+            AccountId = "ea997660e8c1f6c92b939eb22891843c",
+            BucketName = "hrconnect-candidate-cvs",
+            Endpoint = "https://ea997660e8c1f6c92b939eb22891843c.r2.cloudflarestorage.com",
+            AccessKeyId = accessKey,
+            SecretAccessKey = secretKey
+        };
+
+        var service = new CloudflareR2StorageService(
+            s3Client,
+            Microsoft.Extensions.Options.Options.Create(settings),
+            Moq.Mock.Of<Microsoft.Extensions.Logging.ILogger<CloudflareR2StorageService>>());
+
+        var testKey = $"test-connectivity/{Guid.NewGuid()}.pdf";
+        using var stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes("%PDF-1.4 connectivity test"));
+
+        // 1. Upload
+        var uploadedKey = await service.UploadAsync(stream, testKey, "application/pdf");
+        uploadedKey.Should().Be(testKey);
+
+        // 2. Exists
+        var exists = await service.ExistsAsync(testKey);
+        exists.Should().BeTrue();
+
+        // 3. Presigned URL
+        var presignedUrl = await service.GetPresignedDownloadUrlAsync(testKey, TimeSpan.FromMinutes(5));
+        presignedUrl.Should().NotBeNullOrWhiteSpace();
+        presignedUrl.Should().Contain("hrconnect-candidate-cvs");
+
+        // 4. Cleanup / Delete
+        await service.DeleteAsync(testKey);
+        var existsAfterDelete = await service.ExistsAsync(testKey);
+        existsAfterDelete.Should().BeFalse();
     }
 }
