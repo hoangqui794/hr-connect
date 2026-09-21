@@ -1,0 +1,1 @@
+import{u as a}from"./useQuery-BPFndn8a.js";import{M as l}from"./mockData-C8hAKET2.js";const o=e=>new Promise(t=>setTimeout(t,e)),s={all:["jobs"],lists:()=>[...s.all,"list"],detail:e=>[...s.all,"detail",e]};function u(){return a({queryKey:s.lists(),queryFn:async()=>(await o(600),l),staleTime:3e4})}export{u};
