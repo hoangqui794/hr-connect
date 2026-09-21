@@ -43,9 +43,17 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
                 continue;
             }
 
-            job.JobRequirements.Add(new JobRequirement { RequirementId = Guid.NewGuid(), JobId = job.JobId,
-                RequirementType = item.RequirementType.Trim().ToUpperInvariant(), Category = Normalize(item.Category),
-                Content = item.Content.Trim(), Weight = item.Weight, CreatedAt = now, UpdatedAt = now });
+            job.JobRequirements.Add(new JobRequirement
+            {
+                RequirementId = Guid.NewGuid(),
+                JobId = job.JobId,
+                RequirementType = item.RequirementType.Trim().ToUpperInvariant(),
+                Category = Normalize(item.Category),
+                Content = item.Content.Trim(),
+                Weight = item.Weight,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
         }
 
         foreach (var removedRequirement in existingRequirements.Skip(request.Requirements.Count))
@@ -67,8 +75,13 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
                 continue;
             }
 
-            job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = item.SkillId,
-                IsMandatory = item.IsMandatory, Weight = item.Weight });
+            job.JobSkills.Add(new JobSkill
+            {
+                JobId = job.JobId,
+                SkillId = item.SkillId,
+                IsMandatory = item.IsMandatory,
+                Weight = item.Weight
+            });
         }
         await _uow.SaveChangesAsync(ct);
         return new(true, "Cập nhật công việc thành công.", JobDto.From(job));

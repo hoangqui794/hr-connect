@@ -376,7 +376,7 @@ public static class AdminApprovalEndpoints
 
     private static Guid? GetCurrentUserId(ClaimsPrincipal user)
     {
-        var idString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+        var idString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
                     ?? user.FindFirst("sub")?.Value;
 
         return Guid.TryParse(idString, out var guid) ? guid : null;

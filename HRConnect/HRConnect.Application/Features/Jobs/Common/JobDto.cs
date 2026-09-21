@@ -48,8 +48,13 @@ public static class JobTransitions
         job.UpdatedAt = now;
         job.JobStatusHistories.Add(new JobStatusHistory
         {
-            JobStatusHistoryId = Guid.NewGuid(), JobId = job.JobId, OldStatus = oldStatus,
-            NewStatus = newStatus, ChangedBy = userId, Reason = reason, ChangedAt = now
+            JobStatusHistoryId = Guid.NewGuid(),
+            JobId = job.JobId,
+            OldStatus = oldStatus,
+            NewStatus = newStatus,
+            ChangedBy = userId,
+            Reason = reason,
+            ChangedAt = now
         });
     }
 }

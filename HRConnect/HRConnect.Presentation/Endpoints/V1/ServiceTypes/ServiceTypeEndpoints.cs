@@ -135,7 +135,7 @@ public static class ServiceTypeEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -190,7 +190,7 @@ public static class ServiceTypeEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -244,7 +244,7 @@ public static class ServiceTypeEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -307,7 +307,7 @@ public static class ServiceTypeEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }

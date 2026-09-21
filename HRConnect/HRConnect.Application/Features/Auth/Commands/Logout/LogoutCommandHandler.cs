@@ -74,7 +74,7 @@ public class LogoutCommandHandler : IRequestHandler<LogoutCommand, LogoutRespons
             }
             else
             {
-                _logger.LogInformation("Người dùng {UserId} đăng xuất với token đã thu hồi trước đó ({Reason}).", 
+                _logger.LogInformation("Người dùng {UserId} đăng xuất với token đã thu hồi trước đó ({Reason}).",
                     userId.Value, existingToken.RevokeReason ?? "UNKNOWN");
             }
         }

@@ -13,7 +13,9 @@ public sealed class CloseJobCommandHandler : IRequestHandler<CloseJobCommand, Jo
     private readonly IJobRepository _jobs; private readonly ICompanyUserRepository _members; private readonly IUnitOfWork _uow;
     public CloseJobCommandHandler(IJobRepository jobs, ICompanyUserRepository members, IUnitOfWork uow) => (_jobs, _members, _uow) = (jobs, members, uow);
     public async Task<JobActionResponse> Handle(CloseJobCommand request, CancellationToken ct)
-    { var job = await JobHandlerGuards.GetOwnedJobAsync(_jobs, _members, request.JobId, request.UserId, ct); JobHandlerGuards.RequireStatus(job, JobStatuses.Active, JobStatuses.Paused);
-      JobTransitions.ChangeStatus(job, JobStatuses.Closed, request.UserId, request.Reason.Trim()); await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct); job.ClosedAt = DateTime.UtcNow;
-      await _uow.SaveChangesAsync(ct); return new(true, "Đóng công việc thành công.", JobDto.From(job)); }
+    {
+        var job = await JobHandlerGuards.GetOwnedJobAsync(_jobs, _members, request.JobId, request.UserId, ct); JobHandlerGuards.RequireStatus(job, JobStatuses.Active, JobStatuses.Paused);
+        JobTransitions.ChangeStatus(job, JobStatuses.Closed, request.UserId, request.Reason.Trim()); await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct); job.ClosedAt = DateTime.UtcNow;
+        await _uow.SaveChangesAsync(ct); return new(true, "Đóng công việc thành công.", JobDto.From(job));
+    }
 }

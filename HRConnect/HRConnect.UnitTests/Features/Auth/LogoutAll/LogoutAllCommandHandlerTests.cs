@@ -47,7 +47,7 @@ public class LogoutAllCommandHandlerTests
         response.Message.Should().Be("Đăng xuất khỏi tất cả thiết bị thành công.");
 
         _refreshTokenRepositoryMock.Verify(
-            x => x.RevokeAllByUserIdAsync(userId, "LOGOUT_ALL", It.IsAny<CancellationToken>()), 
+            x => x.RevokeAllByUserIdAsync(userId, "LOGOUT_ALL", It.IsAny<CancellationToken>()),
             Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -67,7 +67,7 @@ public class LogoutAllCommandHandlerTests
             .WithMessage("User is not authenticated.");
 
         _refreshTokenRepositoryMock.Verify(
-            x => x.RevokeAllByUserIdAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), 
+            x => x.RevokeAllByUserIdAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -88,7 +88,7 @@ public class LogoutAllCommandHandlerTests
         response.Message.Should().Be("Đăng xuất khỏi tất cả thiết bị thành công.");
 
         _refreshTokenRepositoryMock.Verify(
-            x => x.RevokeAllByUserIdAsync(userId, "LOGOUT_ALL", It.IsAny<CancellationToken>()), 
+            x => x.RevokeAllByUserIdAsync(userId, "LOGOUT_ALL", It.IsAny<CancellationToken>()),
             Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -110,7 +110,7 @@ public class LogoutAllCommandHandlerTests
         response.Message.Should().Be("Đăng xuất khỏi tất cả thiết bị thành công.");
 
         _refreshTokenRepositoryMock.Verify(
-            x => x.RevokeAllByUserIdAsync(userId, "LOGOUT_ALL", It.IsAny<CancellationToken>()), 
+            x => x.RevokeAllByUserIdAsync(userId, "LOGOUT_ALL", It.IsAny<CancellationToken>()),
             Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -131,10 +131,10 @@ public class LogoutAllCommandHandlerTests
         response.Success.Should().BeTrue();
 
         _refreshTokenRepositoryMock.Verify(
-            x => x.RevokeAllByUserIdAsync(currentUserId, "LOGOUT_ALL", It.IsAny<CancellationToken>()), 
+            x => x.RevokeAllByUserIdAsync(currentUserId, "LOGOUT_ALL", It.IsAny<CancellationToken>()),
             Times.Once);
         _refreshTokenRepositoryMock.Verify(
-            x => x.RevokeAllByUserIdAsync(anotherUserId, It.IsAny<string>(), It.IsAny<CancellationToken>()), 
+            x => x.RevokeAllByUserIdAsync(anotherUserId, It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 }

@@ -19,14 +19,14 @@ public class CurrentUserService : ICurrentUserService
     {
         get
         {
-            var userIdString = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+            var userIdString = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
                             ?? User?.FindFirst("sub")?.Value;
 
             return Guid.TryParse(userIdString, out var userId) ? userId : null;
         }
     }
 
-    public string? Email => User?.FindFirst(ClaimTypes.Email)?.Value 
+    public string? Email => User?.FindFirst(ClaimTypes.Email)?.Value
                          ?? User?.FindFirst("email")?.Value;
 
     public bool IsAuthenticated => User?.Identity?.IsAuthenticated ?? false;

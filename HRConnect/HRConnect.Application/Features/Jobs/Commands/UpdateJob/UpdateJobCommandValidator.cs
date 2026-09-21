@@ -18,10 +18,18 @@ public sealed class UpdateJobCommandValidator : AbstractValidator<UpdateJobComma
             {
                 var command = new CreateJobCommand
                 {
-                    ServiceTypeId = x.ServiceTypeId, Title = x.Title, Description = x.Description,
-                    Location = x.Location, EmploymentType = x.EmploymentType, SalaryMin = x.SalaryMin,
-                    SalaryMax = x.SalaryMax, CurrencyCode = x.CurrencyCode, Quantity = x.Quantity,
-                    Visibility = x.Visibility, Requirements = x.Requirements, Skills = x.Skills
+                    ServiceTypeId = x.ServiceTypeId,
+                    Title = x.Title,
+                    Description = x.Description,
+                    Location = x.Location,
+                    EmploymentType = x.EmploymentType,
+                    SalaryMin = x.SalaryMin,
+                    SalaryMax = x.SalaryMax,
+                    CurrencyCode = x.CurrencyCode,
+                    Quantity = x.Quantity,
+                    Visibility = x.Visibility,
+                    Requirements = x.Requirements,
+                    Skills = x.Skills
                 };
                 var result = new CreateJobCommandValidator().Validate(command);
                 foreach (var error in result.Errors)

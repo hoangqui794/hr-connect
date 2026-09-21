@@ -51,13 +51,17 @@ public static class JobEndpoints
             await ClientAction(user, "job.update_own", id => sender.Send(new ResumeJobCommand { JobId = jobId, UserId = id }, ct))
         ).WithName("ResumeJob").WithSummary("Tiếp tục Job đang tạm dừng");
         jobs.MapPost("/{jobId:guid}/close", async (Guid jobId, ClaimsPrincipal user, [FromBody] CloseJobCommand command, ISender sender, IValidator<CloseJobCommand> validator, CancellationToken ct) =>
-        { command.JobId = jobId; var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, "job.update_own")) return Forbidden(); command.UserId = id.Value;
-          var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async () => Results.Ok(await sender.Send(command, ct))); }
+        {
+            command.JobId = jobId; var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, "job.update_own")) return Forbidden(); command.UserId = id.Value;
+            var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async () => Results.Ok(await sender.Send(command, ct)));
+        }
         ).WithName("CloseJob").WithSummary("Đóng Job");
 
         jobs.MapGet("/mine", async (ClaimsPrincipal user, string? status, ISender sender, CancellationToken ct) =>
-        { var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, "job.view_own")) return Forbidden();
-          return await Run(async () => Results.Ok(await sender.Send(new GetMyJobsQuery(id.Value, status), ct))); }
+        {
+            var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, "job.view_own")) return Forbidden();
+            return await Run(async () => Results.Ok(await sender.Send(new GetMyJobsQuery(id.Value, status), ct)));
+        }
         ).WithName("GetMyJobs").WithSummary("Lấy danh sách Job của doanh nghiệp hiện tại");
         jobs.MapGet("", async (ClaimsPrincipal user, string? search, string? location, string? employmentType,
             int page, int pageSize, ISender sender, CancellationToken ct) =>
@@ -68,11 +72,13 @@ public static class JobEndpoints
                 page <= 0 ? 1 : page, pageSize <= 0 ? 20 : pageSize), ct)));
         }).WithName("GetPublicJobs").WithSummary("Tìm Job đang hoạt động theo quyền xem của Service Type");
         jobs.MapGet("/{jobId:guid}", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
-        { var id = UserId(user); if (id == null) return Results.Unauthorized();
-          var internalAccess = ReviewerCan(user, "job.review") || (user.IsInRole("PLATFORM_ADMIN") && user.HasClaim("permission", "job.view"));
-          var canAttemptView = internalAccess || ClientCan(user, "job.view_own") || user.HasClaim("permission", "job.view");
-          if (!canAttemptView) return Forbidden();
-          return await Run(async () => Results.Ok(await sender.Send(new GetJobDetailQuery(jobId, id.Value, internalAccess, RoleCodes(user)), ct))); }
+        {
+            var id = UserId(user); if (id == null) return Results.Unauthorized();
+            var internalAccess = ReviewerCan(user, "job.review") || (user.IsInRole("PLATFORM_ADMIN") && user.HasClaim("permission", "job.view"));
+            var canAttemptView = internalAccess || ClientCan(user, "job.view_own") || user.HasClaim("permission", "job.view");
+            if (!canAttemptView) return Forbidden();
+            return await Run(async () => Results.Ok(await sender.Send(new GetJobDetailQuery(jobId, id.Value, internalAccess, RoleCodes(user)), ct)));
+        }
         ).WithName("GetJobDetail").WithSummary("Lấy chi tiết Job");
 
         // POST /api/v1/jobs/{jobId}/apply - Ứng viên tự ứng tuyển vào công việc
@@ -165,12 +171,16 @@ public static class JobEndpoints
         { if (!ReviewerCan(user, "job.review")) return Forbidden(); return await Run(async () => Results.Ok(await sender.Send(new GetJobsForReviewQuery(), ct))); }
         ).WithName("GetJobsForReview").WithSummary("Lấy hàng đợi Job chờ xét duyệt");
         review.MapPost("/{jobId:guid}/approve", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
-        { var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.publish")) return Forbidden();
-          return await Run(async () => Results.Ok(await sender.Send(new ApproveJobCommand { JobId = jobId, UserId = id.Value }, ct))); }
+        {
+            var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.publish")) return Forbidden();
+            return await Run(async () => Results.Ok(await sender.Send(new ApproveJobCommand { JobId = jobId, UserId = id.Value }, ct)));
+        }
         ).WithName("ApproveJob").WithSummary("Duyệt và công bố Job");
         review.MapPost("/{jobId:guid}/reject", async (Guid jobId, ClaimsPrincipal user, [FromBody] RejectJobCommand command, ISender sender, IValidator<RejectJobCommand> validator, CancellationToken ct) =>
-        { var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.review")) return Forbidden(); command.JobId = jobId; command.UserId = id.Value;
-          var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async () => Results.Ok(await sender.Send(command, ct))); }
+        {
+            var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.review")) return Forbidden(); command.JobId = jobId; command.UserId = id.Value;
+            var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async () => Results.Ok(await sender.Send(command, ct)));
+        }
         ).WithName("RejectJob").WithSummary("Từ chối Job và trả lý do");
         return app;
     }
@@ -180,10 +190,13 @@ public static class JobEndpoints
     private static async Task<IResult?> Validate<T>(T command, IValidator<T> validator, CancellationToken ct)
     { var result = await validator.ValidateAsync(command, ct); return result.IsValid ? null : Results.ValidationProblem(result.ToDictionary()); }
     private static async Task<IResult> Run(Func<Task<IResult>> action)
-    { try { return await action(); } catch (NotFoundException ex) { return Results.NotFound(new { success = false, message = ex.Message }); }
-      catch (ForbiddenException ex) { return Results.Json(new { success = false, errorCode = ex.ErrorCode, message = ex.Message }, statusCode: 403); }
-      catch (ConflictException ex) { return Results.Conflict(new { success = false, message = ex.Message }); }
-      catch (BadRequestException ex) { return Results.BadRequest(new { success = false, message = ex.Message }); } }
+    {
+        try { return await action(); }
+        catch (NotFoundException ex) { return Results.NotFound(new { success = false, message = ex.Message }); }
+        catch (ForbiddenException ex) { return Results.Json(new { success = false, errorCode = ex.ErrorCode, message = ex.Message }, statusCode: 403); }
+        catch (ConflictException ex) { return Results.Conflict(new { success = false, message = ex.Message }); }
+        catch (BadRequestException ex) { return Results.BadRequest(new { success = false, message = ex.Message }); }
+    }
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
     private static bool ClientCan(ClaimsPrincipal user, string permission) => user.IsInRole("CLIENT_COMPANY_USER") && user.HasClaim("permission", permission);
     private static bool ReviewerCan(ClaimsPrincipal user, string permission) => user.IsInRole("INTERNAL_HR") && user.HasClaim("permission", permission);

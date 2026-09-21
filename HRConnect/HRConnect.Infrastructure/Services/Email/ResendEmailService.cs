@@ -38,18 +38,18 @@ public class ResendEmailService : IEmailService
     }
 
     public Task<EmailResult> SendEmailAsync(
-        string to, 
-        string subject, 
-        string bodyHtml, 
+        string to,
+        string subject,
+        string bodyHtml,
         CancellationToken cancellationToken = default)
     {
         return SendEmailAsync(new[] { to }, subject, bodyHtml, cancellationToken);
     }
 
     public async Task<EmailResult> SendEmailAsync(
-        IEnumerable<string> to, 
-        string subject, 
-        string bodyHtml, 
+        IEnumerable<string> to,
+        string subject,
+        string bodyHtml,
         CancellationToken cancellationToken = default)
     {
         var recipients = to.Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList();
@@ -88,7 +88,7 @@ public class ResendEmailService : IEmailService
 
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
 
-            _logger.LogInformation("Đang gửi email qua Resend đến {Recipients}, Tiêu đề: {Subject}", 
+            _logger.LogInformation("Đang gửi email qua Resend đến {Recipients}, Tiêu đề: {Subject}",
                 string.Join(", ", recipients), subject);
 
             var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -104,7 +104,7 @@ public class ResendEmailService : IEmailService
             {
                 var errorResult = JsonSerializer.Deserialize<ResendErrorResponse>(responseContent);
                 var errorMessage = errorResult?.Message ?? responseContent;
-                _logger.LogError("Lỗi khi gửi email qua Resend: Mã HTTP {StatusCode}, Chi tiết: {Error}", 
+                _logger.LogError("Lỗi khi gửi email qua Resend: Mã HTTP {StatusCode}, Chi tiết: {Error}",
                     (int)response.StatusCode, errorMessage);
 
                 return EmailResult.Failure($"Resend API Error ({(int)response.StatusCode}): {errorMessage}");

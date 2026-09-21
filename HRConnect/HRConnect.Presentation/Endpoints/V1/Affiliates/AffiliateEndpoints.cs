@@ -234,7 +234,7 @@ public static class AffiliateEndpoints
 
     private static Guid? GetUserIdFromClaims(ClaimsPrincipal user)
     {
-        var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+        var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
                       ?? user.FindFirst("sub")?.Value;
 
         if (Guid.TryParse(idClaim, out var userId))

@@ -15,8 +15,8 @@ public class CandidateRepository : ICandidateRepository
     }
 
     public async Task<Candidate?> FindByIdentityAsync(
-        string? normalizedEmail, 
-        string? normalizedPhone, 
+        string? normalizedEmail,
+        string? normalizedPhone,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(normalizedEmail) && string.IsNullOrWhiteSpace(normalizedPhone))

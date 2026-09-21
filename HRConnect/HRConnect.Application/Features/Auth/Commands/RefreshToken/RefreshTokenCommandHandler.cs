@@ -76,7 +76,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             // 3. Kiểm tra thời hạn hết hạn
             if (existingToken.ExpiresAt <= DateTime.UtcNow)
             {
-                _logger.LogWarning("Refresh token của UserId {UserId} đã hết hạn vào {ExpiresAt}", 
+                _logger.LogWarning("Refresh token của UserId {UserId} đã hết hạn vào {ExpiresAt}",
                     existingToken.UserId, existingToken.ExpiresAt);
                 throw new BadRequestException("Token làm mới không hợp lệ hoặc đã hết hạn.");
             }

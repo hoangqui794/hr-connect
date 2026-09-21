@@ -43,7 +43,7 @@ public static class AuthEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -95,7 +95,7 @@ public static class AuthEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -147,7 +147,7 @@ public static class AuthEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -199,7 +199,7 @@ public static class AuthEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -241,7 +241,7 @@ public static class AuthEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -301,7 +301,7 @@ public static class AuthEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -332,7 +332,7 @@ public static class AuthEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -363,7 +363,7 @@ public static class AuthEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -396,7 +396,7 @@ public static class AuthEndpoints
             [FromServices] IValidator<ChangePasswordCommand> validator,
             CancellationToken cancellationToken) =>
         {
-            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
                             ?? user.FindFirst("sub")?.Value;
 
             if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
@@ -416,7 +416,7 @@ public static class AuthEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -477,7 +477,7 @@ public static class AuthEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -529,7 +529,7 @@ public static class AuthEndpoints
             [FromServices] IValidator<LogoutCommand> validator,
             CancellationToken cancellationToken) =>
         {
-            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
                             ?? user.FindFirst("sub")?.Value;
 
             if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
@@ -549,7 +549,7 @@ public static class AuthEndpoints
                     errors = validationResult.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
-                            g => g.Key, 
+                            g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray())
                 });
             }
@@ -582,7 +582,7 @@ public static class AuthEndpoints
             [FromServices] ISender sender,
             CancellationToken cancellationToken) =>
         {
-            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
                             ?? user.FindFirst("sub")?.Value;
 
             if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
@@ -619,7 +619,7 @@ public static class AuthEndpoints
             [FromServices] ISender sender,
             CancellationToken cancellationToken) =>
         {
-            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
                             ?? user.FindFirst("sub")?.Value;
 
             if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
@@ -655,7 +655,7 @@ public static class AuthEndpoints
             [FromServices] ISender sender,
             CancellationToken cancellationToken) =>
         {
-            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+            var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
                             ?? user.FindFirst("sub")?.Value;
 
             if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))

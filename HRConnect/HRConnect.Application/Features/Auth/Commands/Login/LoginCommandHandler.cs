@@ -182,7 +182,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Người dùng {Email} (UserId: {UserId}) đăng nhập thành công với các quyền: [{Roles}]", 
+        _logger.LogInformation("Người dùng {Email} (UserId: {UserId}) đăng nhập thành công với các quyền: [{Roles}]",
             user.Email, user.UserId, string.Join(", ", activeRoles));
 
         return new LoginResponse

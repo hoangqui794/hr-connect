@@ -20,8 +20,8 @@ public class UserTokenRepository : IUserTokenRepository
     }
 
     public async Task<UserToken?> GetLatestActiveOtpAsync(
-        Guid userId, 
-        string tokenType, 
+        Guid userId,
+        string tokenType,
         CancellationToken cancellationToken = default)
     {
         return await _context.UserTokens
@@ -31,8 +31,8 @@ public class UserTokenRepository : IUserTokenRepository
     }
 
     public async Task InvalidateActiveTokensAsync(
-        Guid userId, 
-        string tokenType, 
+        Guid userId,
+        string tokenType,
         CancellationToken cancellationToken = default)
     {
         var activeTokens = await _context.UserTokens

@@ -437,7 +437,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.ApplicationId).HasName("application_pkey");
 
-            entity.ToTable("application", "public", t => 
+            entity.ToTable("application", "public", t =>
             {
                 t.HasCheckConstraint("ck_application_status", "status IN ('SUBMITTED','SCREENING','SHORTLISTED','REJECTED','INTERVIEW','BACKUP','BACKUP_NOT_SELECTED','INTERVIEW_FAILED','OFFER_PENDING','OFFER_ACCEPTED','OFFER_DECLINED','NOT_STARTED','WITHDRAWN','PLACED','CLOSED')");
             });
@@ -1352,7 +1352,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.InterviewId).HasName("interview_pkey");
 
-            entity.ToTable("interview", "public", t => 
+            entity.ToTable("interview", "public", t =>
             {
                 t.HasCheckConstraint("ck_interview_round_positive", "interview_round > 0");
                 t.HasCheckConstraint("ck_interview_duration_positive", "duration_minutes IS NULL OR duration_minutes > 0");
@@ -1696,7 +1696,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.OfferId).HasName("offer_pkey");
 
-            entity.ToTable("offer", "public", t => 
+            entity.ToTable("offer", "public", t =>
             {
                 t.HasCheckConstraint("ck_offer_version_positive", "offer_version > 0");
                 t.HasCheckConstraint("ck_offer_salary_positive", "salary IS NULL OR salary >= 0");

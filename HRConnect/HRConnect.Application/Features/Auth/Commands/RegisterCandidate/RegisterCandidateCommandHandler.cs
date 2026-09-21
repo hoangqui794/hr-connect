@@ -81,14 +81,14 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
 
         // 3. Kiểm tra danh tính Candidate hiện hữu (theo normalized_email hoặc normalized_phone)
         var existingCandidate = await _candidateRepository.FindByIdentityAsync(
-            normalizedEmail, 
-            normalizedPhone, 
+            normalizedEmail,
+            normalizedPhone,
             cancellationToken);
 
         // Nếu Candidate đã tồn tại và ĐÃ được liên kết với một tài khoản khác (user_id != null)
         if (existingCandidate != null && existingCandidate.UserId != null)
         {
-            _logger.LogWarning("Đăng ký thất bại: Hồ sơ ứng viên ({Email} / {Phone}) đã liên kết với UserId {UserId}", 
+            _logger.LogWarning("Đăng ký thất bại: Hồ sơ ứng viên ({Email} / {Phone}) đã liên kết với UserId {UserId}",
                 normalizedEmail, normalizedPhone, existingCandidate.UserId);
             throw new ConflictException("Hồ sơ ứng viên tương ứng với email hoặc số điện thoại này đã được liên kết với một tài khoản khác.");
         }
@@ -158,7 +158,7 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
                 };
 
                 await _candidateRepository.AddAsync(newCandidate, cancellationToken);
-                _logger.LogInformation("Tạo mới hồ sơ CandidateId {CandidateId} liên kết với UserId {UserId}", 
+                _logger.LogInformation("Tạo mới hồ sơ CandidateId {CandidateId} liên kết với UserId {UserId}",
                     newCandidate.CandidateId, newUser.UserId);
             }
             else
@@ -182,7 +182,7 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
                 }
 
                 _candidateRepository.Update(existingCandidate);
-                _logger.LogInformation("Liên kết hồ sơ ứng viên hiện hữu CandidateId {CandidateId} với UserId mới {UserId}", 
+                _logger.LogInformation("Liên kết hồ sơ ứng viên hiện hữu CandidateId {CandidateId} với UserId mới {UserId}",
                     existingCandidate.CandidateId, newUser.UserId);
             }
 
@@ -238,7 +238,7 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
             // 12. Commit Transaction
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
-            _logger.LogInformation("Đăng ký thành công tài khoản ứng viên UserId {UserId}, Email {Email}. Trạng thái: PENDING.", 
+            _logger.LogInformation("Đăng ký thành công tài khoản ứng viên UserId {UserId}, Email {Email}. Trạng thái: PENDING.",
                 newUser.UserId, newUser.Email);
 
             // 13. Gửi email chứa raw OTP đến ứng viên sau khi commit thành công

@@ -96,14 +96,14 @@ public class ApprovalRepository : IApprovalRepository
         var isAsc = string.Equals(sortDirection, "asc", StringComparison.OrdinalIgnoreCase);
         query = sortBy switch
         {
-            "status" => isAsc 
-                ? query.OrderBy(x => x.Status).ThenByDescending(x => x.SubmittedAt) 
+            "status" => isAsc
+                ? query.OrderBy(x => x.Status).ThenByDescending(x => x.SubmittedAt)
                 : query.OrderByDescending(x => x.Status).ThenByDescending(x => x.SubmittedAt),
-            "type" => isAsc 
-                ? query.OrderBy(x => x.Type).ThenByDescending(x => x.SubmittedAt) 
+            "type" => isAsc
+                ? query.OrderBy(x => x.Type).ThenByDescending(x => x.SubmittedAt)
                 : query.OrderByDescending(x => x.Type).ThenByDescending(x => x.SubmittedAt),
-            _ => isAsc 
-                ? query.OrderBy(x => x.SubmittedAt) 
+            _ => isAsc
+                ? query.OrderBy(x => x.SubmittedAt)
                 : query.OrderByDescending(x => x.SubmittedAt)
         };
 

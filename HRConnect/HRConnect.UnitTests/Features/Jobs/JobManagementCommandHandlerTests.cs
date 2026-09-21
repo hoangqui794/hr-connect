@@ -33,8 +33,14 @@ public class JobManagementCommandHandlerTests
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var result = await new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
         {
-            JobId = job.JobId, UserId = user, ServiceTypeId = serviceType, Title = " Senior Dev ",
-            Description = " API development ", CurrencyCode = "usd", Visibility = "private", Quantity = 2,
+            JobId = job.JobId,
+            UserId = user,
+            ServiceTypeId = serviceType,
+            Title = " Senior Dev ",
+            Description = " API development ",
+            CurrencyCode = "usd",
+            Visibility = "private",
+            Quantity = 2,
             Requirements = [new CreateJobRequirementRequest { RequirementType = "must_have", Content = "C#" }],
             Skills = [new JobSkillRequest { SkillId = existingSkill.SkillId, IsMandatory = true, Weight = 0.8m }]
         }, default);
@@ -114,9 +120,16 @@ public class JobManagementCommandHandlerTests
             new RejectJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), Reason = "Bổ sung JD" }, default);
         await new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
         {
-            JobId = job.JobId, UserId = owner, ServiceTypeId = job.ServiceTypeId,
-            Title = "Backend Developer Updated", Description = "Build APIs", Location = "HCM",
-            EmploymentType = "FULL_TIME", CurrencyCode = "VND", Quantity = 1, Visibility = "PUBLIC",
+            JobId = job.JobId,
+            UserId = owner,
+            ServiceTypeId = job.ServiceTypeId,
+            Title = "Backend Developer Updated",
+            Description = "Build APIs",
+            Location = "HCM",
+            EmploymentType = "FULL_TIME",
+            CurrencyCode = "VND",
+            Quantity = 1,
+            Visibility = "PUBLIC",
             Requirements = [new CreateJobRequirementRequest { RequirementType = JobRequirementTypes.MustHave, Content = "C#" }],
             Skills = [new JobSkillRequest { SkillId = job.JobSkills.Single().SkillId, IsMandatory = true, Weight = 0.8m }]
         }, default);
@@ -190,8 +203,20 @@ public class JobManagementCommandHandlerTests
     }
     private Job SetupJob(string status)
     {
-        var job = new Job { JobId = Guid.NewGuid(), CompanyId = Guid.NewGuid(), ServiceTypeId = Guid.NewGuid(), CreatedBy = Guid.NewGuid(),
-            Title = "", CurrencyCode = "VND", Quantity = 1, Status = status, Visibility = "PUBLIC", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(),
+            CompanyId = Guid.NewGuid(),
+            ServiceTypeId = Guid.NewGuid(),
+            CreatedBy = Guid.NewGuid(),
+            Title = "",
+            CurrencyCode = "VND",
+            Quantity = 1,
+            Status = status,
+            Visibility = "PUBLIC",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
         _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job); return job;
     }
     private static CompanyUser Member(Guid user, Guid company) => new() { CompanyUserId = Guid.NewGuid(), UserId = user, CompanyId = company, Status = "ACTIVE" };

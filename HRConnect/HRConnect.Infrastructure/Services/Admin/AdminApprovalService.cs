@@ -24,9 +24,9 @@ public class AdminApprovalService : IAdminApprovalService
     }
 
     public async Task ApproveAffiliateApplicationAsync(
-        Guid applicationId, 
-        Guid adminUserId, 
-        string? reviewNote = null, 
+        Guid applicationId,
+        Guid adminUserId,
+        string? reviewNote = null,
         CancellationToken cancellationToken = default)
     {
         var application = await _context.AffiliateApplications
@@ -162,9 +162,9 @@ public class AdminApprovalService : IAdminApprovalService
     }
 
     public async Task RejectAffiliateApplicationAsync(
-        Guid applicationId, 
-        Guid adminUserId, 
-        string? reviewNote = null, 
+        Guid applicationId,
+        Guid adminUserId,
+        string? reviewNote = null,
         CancellationToken cancellationToken = default)
     {
         var application = await _context.AffiliateApplications
@@ -239,9 +239,9 @@ public class AdminApprovalService : IAdminApprovalService
     }
 
     public async Task ApproveCompanyVerificationRequestAsync(
-        Guid requestId, 
-        Guid adminUserId, 
-        string? reviewNote = null, 
+        Guid requestId,
+        Guid adminUserId,
+        string? reviewNote = null,
         CancellationToken cancellationToken = default)
     {
         var request = await _context.CompanyVerificationRequests
@@ -364,9 +364,9 @@ public class AdminApprovalService : IAdminApprovalService
     }
 
     public async Task RejectCompanyVerificationRequestAsync(
-        Guid requestId, 
-        Guid adminUserId, 
-        string? reviewNote = null, 
+        Guid requestId,
+        Guid adminUserId,
+        string? reviewNote = null,
         CancellationToken cancellationToken = default)
     {
         var request = await _context.CompanyVerificationRequests
