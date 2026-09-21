@@ -200,5 +200,13 @@ public class CloudflareR2StorageService : IFileStorageService
         {
             throw new InvalidOperationException("Cấu hình R2_ENDPOINT chưa được thiết lập.");
         }
+        if (string.IsNullOrWhiteSpace(_settings.AccessKeyId))
+        {
+            throw new InvalidOperationException("Cấu hình R2_ACCESS_KEY_ID chưa được thiết lập trong file .env hoặc biến môi trường. Vui lòng cung cấp Access Key ID từ Cloudflare R2.");
+        }
+        if (string.IsNullOrWhiteSpace(_settings.SecretAccessKey))
+        {
+            throw new InvalidOperationException("Cấu hình R2_SECRET_ACCESS_KEY chưa được thiết lập trong file .env hoặc biến môi trường. Vui lòng cung cấp Secret Access Key từ Cloudflare R2.");
+        }
     }
 }
