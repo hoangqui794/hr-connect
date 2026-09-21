@@ -179,7 +179,7 @@ export const JobListTable: React.FC = () => {
       key: 'status',
       width: 130,
       render: (status: JobStatus) => {
-        const isActive = status === JobStatus.ACTIVE || status === 'ACTIVE';
+       const isActive = status === JobStatus.ACTIVE;
         return (
           <Tag
             style={{
