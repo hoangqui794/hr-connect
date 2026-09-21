@@ -175,7 +175,7 @@ public static class CandidateEndpoints
         // 4. POST /api/v1/candidates/cv - Tải lên hồ sơ CV PDF
         cvGroup.MapPost("", async (
             ClaimsPrincipal user,
-            [FromForm] IFormFile? file,
+            IFormFile? file,
             [FromForm] string? title,
             [FromForm] bool? isPrimary,
             [FromServices] ISender sender,
