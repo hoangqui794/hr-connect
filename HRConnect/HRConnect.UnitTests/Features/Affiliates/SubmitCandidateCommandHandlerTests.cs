@@ -682,4 +682,261 @@ public class SubmitCandidateCommandHandlerTests
         _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task Handle_WhenAffiliateBSubmitsCandidateAlreadySubmittedByAffiliateA_BlockedDuplicate_CannotStealAttribution()
+    {
+        // Arrange
+        var affiliateAId = Guid.NewGuid();
+        var affiliateBUserId = Guid.NewGuid();
+        var affiliateBId = Guid.NewGuid();
+        var affiliateB = new AffiliateProfile { AffiliateId = affiliateBId, UserId = affiliateBUserId, Status = "ACTIVE" };
+
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(affiliateBUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(affiliateB);
+
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var candidateId = Guid.NewGuid();
+        var candidate = new Candidate { CandidateId = candidateId, FullName = "Contested Candidate", Email = "contested@example.com" };
+        _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("contested@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+
+        var cvId = Guid.NewGuid();
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf" };
+        _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cv);
+
+        // Previous winning submission by Affiliate A
+        var winningSubmissionId = Guid.NewGuid();
+        var acceptedSubmissionA = new Submission
+        {
+            SubmissionId = winningSubmissionId,
+            CandidateId = candidateId,
+            JobId = jobId,
+            SubmittedBy = Guid.NewGuid(),
+            Source = "AFFILIATE",
+            Status = "ACCEPTED"
+        };
+        _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(acceptedSubmissionA);
+
+        var existingApp = new JobApplication
+        {
+            ApplicationId = Guid.NewGuid(),
+            JobId = jobId,
+            CandidateId = candidateId,
+            AcceptedSubmissionId = winningSubmissionId
+        };
+        _applicationRepositoryMock.Setup(r => r.GetByCandidateAndJobAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingApp);
+
+        var command = new SubmitCandidateCommand
+        {
+            UserId = affiliateBUserId,
+            JobId = jobId,
+            FullName = "Contested Candidate",
+            Email = "contested@example.com",
+            CvId = cvId,
+            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+        };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert - Duplicate blocked!
+        await act.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*đã được nộp vào công việc này trước đó*");
+
+        // Affiliate B cannot steal attribution or create application
+        _applicationRepositoryMock.Verify(a => a.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
+        _attributionRepositoryMock.Verify(a => a.AddAsync(It.IsAny<Attribution>(), It.IsAny<CancellationToken>()), Times.Never);
+        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSameCandidateSubmittedToDifferentJob_AllowedAndCreatesSecondApplication()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" };
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(affiliate);
+
+        var job2Id = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        var job2 = new Job { JobId = job2Id, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(job2Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job2);
+
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var candidateId = Guid.NewGuid();
+        var candidate = new Candidate { CandidateId = candidateId, FullName = "Candidate", Email = "c@example.com" };
+        _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("c@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+
+        var cvId = Guid.NewGuid();
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf" };
+        _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cv);
+
+        // For Job 2, candidate has NOT been submitted yet
+        _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(candidateId, job2Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Submission?)null);
+        _applicationRepositoryMock.Setup(r => r.GetByCandidateAndJobAsync(candidateId, job2Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((JobApplication?)null);
+
+        var command = new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = job2Id,
+            FullName = "Candidate",
+            Email = "c@example.com",
+            CvId = cvId,
+            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+        };
+
+        // Act
+        var response = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert - Allowed for different Job!
+        response.Success.Should().BeTrue();
+        response.Data!.JobId.Should().Be(job2Id);
+        _applicationRepositoryMock.Verify(a => a.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Once);
+        _attributionRepositoryMock.Verify(a => a.AddAsync(It.IsAny<Attribution>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenServiceTypeDenied_DoesNotUploadOrPersistCv_DoesNotTriggerMf03()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" };
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(affiliate);
+
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+
+        // Disallowed
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+        var command = new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            FullName = "Candidate",
+            Email = "c@example.com",
+            FileStream = stream,
+            FileName = "cv.pdf",
+            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+        };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<ForbiddenException>();
+        ex.Which.ErrorCode.Should().Be("SERVICE_TYPE_SUBMISSION_NOT_ALLOWED");
+
+        // Verify NO CV upload, NO DB persistence, NO MF-03
+        _cvStorageServiceMock.Verify(s => s.UploadCvPdfAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _submissionRepositoryMock.Verify(s => s.AddAsync(It.IsAny<Submission>(), It.IsAny<CancellationToken>()), Times.Never);
+        _applicationRepositoryMock.Verify(a => a.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
+        _attributionRepositoryMock.Verify(a => a.AddAsync(It.IsAny<Attribution>(), It.IsAny<CancellationToken>()), Times.Never);
+        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenJobClosed_ThrowsBadRequestException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" };
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(affiliate);
+
+        var jobId = Guid.NewGuid();
+        var job = new Job { JobId = jobId, Status = JobStatuses.Closed };
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+
+        var command = new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            FullName = "Candidate",
+            Email = "c@example.com",
+            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+        };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("Công việc hiện không ở trạng thái nhận hồ sơ ứng viên.");
+    }
+
+    [Fact]
+    public async Task Handle_WhenMultiRoleUserHasAnyAllowedRole_Succeeds()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" };
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(affiliate);
+
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+
+        var multiRoles = new[] { "CANDIDATE", "AFFILIATE_RECRUITER", "INTERNAL_HR" };
+
+        // CanAnyRoleSubmitJobAsync returns true if ANY role is allowed
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, multiRoles, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var candidateId = Guid.NewGuid();
+        var candidate = new Candidate { CandidateId = candidateId, FullName = "Candidate", Email = "c@example.com" };
+        _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("c@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+
+        var cvId = Guid.NewGuid();
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf" };
+        _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cv);
+
+        var command = new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            FullName = "Candidate",
+            Email = "c@example.com",
+            CvId = cvId,
+            RoleCodes = multiRoles
+        };
+
+        // Act
+        var response = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        response.Success.Should().BeTrue();
+    }
 }
