@@ -10,6 +10,7 @@ using HRConnect.Application.Features.Jobs.Commands.ResumeJob;
 using HRConnect.Application.Features.Jobs.Commands.SubmitJob;
 using HRConnect.Application.Features.Jobs.Commands.UpdateJob;
 using HRConnect.Application.Features.Candidates.Commands.ApplyJob;
+using HRConnect.Application.Features.Affiliates.Commands.SubmitCandidate;
 using HRConnect.Application.Features.Jobs.Queries.GetJobDetail;
 using HRConnect.Application.Features.Jobs.Queries.GetJobsForReview;
 using HRConnect.Application.Features.Jobs.Queries.GetMyJobs;
@@ -105,6 +106,55 @@ public static class JobEndpoints
         .WithDescription("Ứng viên nộp hồ sơ vào công việc bằng CV có sẵn hoặc tải lên tệp CV PDF mới. Hệ thống kiểm tra trùng lặp và phân quyền submit của Service Type.")
         .DisableAntiforgery()
         .Produces<ApplyJobResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
+        // POST /api/v1/jobs/{jobId}/candidate-submissions - Affiliate Recruiter nộp hồ sơ ứng viên
+        jobs.MapPost("/{jobId:guid}/candidate-submissions", async (
+            Guid jobId,
+            ClaimsPrincipal user,
+            [FromForm] string fullName,
+            [FromForm] string? email,
+            [FromForm] string? phone,
+            [FromForm] Guid? cvId,
+            [FromForm] string? note,
+            IFormFile? file,
+            ISender sender,
+            IValidator<SubmitCandidateCommand> validator,
+            CancellationToken ct) =>
+        {
+            var id = UserId(user);
+            if (id == null) return Results.Unauthorized();
+
+            var command = new SubmitCandidateCommand
+            {
+                JobId = jobId,
+                UserId = id.Value,
+                RoleCodes = RoleCodes(user),
+                FullName = fullName ?? string.Empty,
+                Email = email,
+                Phone = phone,
+                CvId = cvId,
+                Note = note,
+                FileStream = file?.OpenReadStream(),
+                FileName = file?.FileName,
+                ContentType = file?.ContentType,
+                FileSizeBytes = file?.Length
+            };
+
+            var invalid = await Validate(command, validator, ct);
+            if (invalid != null) return invalid;
+
+            return await Run(async () => Results.Ok(await sender.Send(command, ct)));
+        })
+        .WithName("AffiliateSubmitCandidate")
+        .WithSummary("Affiliate Recruiter nộp hồ sơ ứng viên vào Job")
+        .WithDescription("Đối tác tuyển dụng (Affiliate) nộp hồ sơ ứng viên vào công việc. Hệ thống tự động nhận diện ứng viên theo email/sđt, kiểm tra trùng lặp, xác thực quyền hạn Service Type và ghi nhận Attribution.")
+        .DisableAntiforgery()
+        .Produces<SubmitCandidateResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
