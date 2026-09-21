@@ -623,4 +623,63 @@ public class SubmitCandidateCommandHandlerTests
         _cvStorageServiceMock.Verify(s => s.DeleteCvAsync(cvId, It.IsAny<CancellationToken>()), Times.Once);
         _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task Handle_WhenMf03ScoringTriggerThrows_DoesNotFailSubmission_ReturnsSuccessWithPendingAiStatus()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var affiliateId = Guid.NewGuid();
+        var affiliate = new AffiliateProfile { AffiliateId = affiliateId, UserId = userId, Status = "ACTIVE" };
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(affiliate);
+
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var candidateId = Guid.NewGuid();
+        var candidate = new Candidate { CandidateId = candidateId, FullName = "Candidate", Email = "c@example.com" };
+        _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("c@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+
+        var cvId = Guid.NewGuid();
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf" };
+        _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cv);
+
+        _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Submission?)null);
+        _applicationRepositoryMock.Setup(r => r.GetByCandidateAndJobAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((JobApplication?)null);
+
+        // MF-03 downstream service fails
+        _scoringTriggerMock.Setup(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("MF-03 AI service unavailable"));
+
+        var command = new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            FullName = "Candidate",
+            Email = "c@example.com",
+            CvId = cvId,
+            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+        };
+
+        // Act
+        var response = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert - MF-02 remains completely successful!
+        response.Success.Should().BeTrue();
+        response.Data!.Status.Should().Be("ACCEPTED");
+        response.Data.AiStatus.Should().Be("PENDING");
+        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
