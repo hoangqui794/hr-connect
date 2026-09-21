@@ -3,7 +3,9 @@ using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Candidates.Commands.UpdateCandidateProfile;
 using HRConnect.Application.Features.Candidates.Commands.UpdateProfileVisibility;
+using HRConnect.Application.Features.Candidates.Commands.UploadCv;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
+using HRConnect.Application.Features.Candidates.Queries.GetCvDownloadUrl;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -160,6 +162,118 @@ public static class CandidateEndpoints
         .Produces<UpdateProfileVisibilityResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // ==============================================================================
+        // Candidate CV Storage Endpoints (Cloudflare R2 Integration)
+        // ==============================================================================
+        var cvGroup = app.MapGroup("/api/v1/candidates/cv")
+                         .WithTags("Candidate CV")
+                         .RequireAuthorization();
+
+        // 4. POST /api/v1/candidates/cv - Tải lên hồ sơ CV PDF
+        cvGroup.MapPost("", async (
+            ClaimsPrincipal user,
+            [FromForm] IFormFile? file,
+            [FromForm] string? title,
+            [FromForm] bool? isPrimary,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                return Results.BadRequest(new { success = false, message = "Vui lòng đính kèm tệp CV định dạng PDF." });
+            }
+
+            var command = new UploadCvCommand
+            {
+                UserId = userId.Value,
+                FileStream = file.OpenReadStream(),
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                FileSizeBytes = file.Length,
+                Title = title,
+                IsPrimary = isPrimary ?? false
+            };
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("UploadCandidateCv")
+        .WithSummary("Tải lên CV PDF cho ứng viên")
+        .WithDescription("Tải lên tệp CV PDF của ứng viên lên hệ thống Cloudflare R2 riêng tư, tự động sinh khóa lưu trữ candidates/{candidateId}/cvs/{cvId}.pdf.")
+        .DisableAntiforgery()
+        .Produces<UploadCvResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // 5. GET /api/v1/candidates/cv/{cvId:guid}/download-url - Lấy đường dẫn tải xuống CV tạm thời
+        cvGroup.MapGet("/{cvId:guid}/download-url", async (
+            ClaimsPrincipal user,
+            Guid cvId,
+            [FromQuery] int? expiryMinutes,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var result = await sender.Send(new GetCvDownloadUrlQuery(cvId, userId, expiryMinutes), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("GetCandidateCvDownloadUrl")
+        .WithSummary("Lấy URL tải xuống CV có chữ ký tạm thời (Presigned URL)")
+        .WithDescription("Sinh đường dẫn có chữ ký số (Presigned URL) có hiệu lực ngắn (mặc định 15 phút) để tải hoặc xem tệp CV trực tiếp từ Cloudflare R2.")
+        .Produces<GetCvDownloadUrlResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 

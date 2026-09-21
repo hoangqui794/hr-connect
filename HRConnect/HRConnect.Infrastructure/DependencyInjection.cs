@@ -48,6 +48,7 @@ public static class DependencyInjection
         // 4. Repositories & UnitOfWork
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ICandidateRepository, CandidateRepository>();
+        services.AddScoped<ICandidateCvRepository, CandidateCvRepository>();
         services.AddScoped<IAffiliateApplicationRepository, AffiliateApplicationRepository>();
         services.AddScoped<IAffiliateProfileRepository, AffiliateProfileRepository>();
         services.AddScoped<ICompanyRepository, CompanyRepository>();
@@ -64,6 +65,50 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAdminApprovalService, HRConnect.Infrastructure.Services.Admin.AdminApprovalService>();
 
+        // 5. Cloudflare R2 Object Storage & CV Storage
+        var r2Settings = new R2Settings();
+        configuration.GetSection(R2Settings.SectionName).Bind(r2Settings);
+
+        if (string.IsNullOrWhiteSpace(r2Settings.AccountId))
+            r2Settings.AccountId = configuration["R2_ACCOUNT_ID"] ?? "ea997660e8c1f6c92b939eb22891843c";
+
+        if (string.IsNullOrWhiteSpace(r2Settings.AccessKeyId))
+            r2Settings.AccessKeyId = configuration["R2_ACCESS_KEY_ID"] ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(r2Settings.SecretAccessKey))
+            r2Settings.SecretAccessKey = configuration["R2_SECRET_ACCESS_KEY"] ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(r2Settings.BucketName))
+            r2Settings.BucketName = configuration["R2_BUCKET_NAME"] ?? "hrconnect-candidate-cvs";
+
+        if (string.IsNullOrWhiteSpace(r2Settings.Endpoint))
+            r2Settings.Endpoint = configuration["R2_ENDPOINT"] ?? "https://ea997660e8c1f6c92b939eb22891843c.r2.cloudflarestorage.com";
+
+        if (int.TryParse(configuration["MAX_CV_FILE_SIZE_MB"], out var maxMb) && maxMb > 0)
+            r2Settings.MaxCvFileSizeMb = maxMb;
+
+        services.AddSingleton(Microsoft.Extensions.Options.Options.Create(r2Settings));
+
+        services.AddSingleton<Amazon.S3.IAmazonS3>(sp =>
+        {
+            var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<R2Settings>>().Value;
+            var s3Config = new Amazon.S3.AmazonS3Config
+            {
+                ServiceURL = string.IsNullOrWhiteSpace(options.Endpoint)
+                    ? "https://ea997660e8c1f6c92b939eb22891843c.r2.cloudflarestorage.com"
+                    : options.Endpoint,
+                ForcePathStyle = true
+            };
+            var accessKey = !string.IsNullOrWhiteSpace(options.AccessKeyId) ? options.AccessKeyId : "dummy";
+            var secretKey = !string.IsNullOrWhiteSpace(options.SecretAccessKey) ? options.SecretAccessKey : "dummy";
+            var credentials = new Amazon.Runtime.BasicAWSCredentials(accessKey, secretKey);
+            return new Amazon.S3.AmazonS3Client(credentials, s3Config);
+        });
+
+        services.AddScoped<IFileStorageService, HRConnect.Infrastructure.Services.Storage.CloudflareR2StorageService>();
+        services.AddScoped<ICvStorageService, HRConnect.Infrastructure.Services.Storage.CvStorageService>();
+
         return services;
+
     }
 }
