@@ -102,7 +102,7 @@ d:/Ki_9/HRConnect/
 ├── .env.example                      # Template cấu hình biến môi trường
 ├── .gitignore                        # Cấu hình bỏ qua các file nhạy cảm và build rác
 ├── README.md                         # Tài liệu hướng dẫn chuẩn cho Team & AI
-│
+│__ HRConnect-FE
 └── HRConnect/
     ├── Dockerfile                    # Multi-stage Dockerfile cho .NET 8 (Non-root user)
     ├── .dockerignore                 # Tối ưu hóa dung lượng build Docker
