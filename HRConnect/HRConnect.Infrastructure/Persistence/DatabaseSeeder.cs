@@ -80,6 +80,7 @@ public static class DatabaseSeeder
         if (seedDemoAccounts)
         {
             await DemoAccountSeeder.SeedAsync(context, passwordHasher, emailNormalizer, phoneNormalizer, logger, cancellationToken);
+            await CandidateTestJobSeeder.SeedAsync(context, logger, cancellationToken);
         }
     }
 
