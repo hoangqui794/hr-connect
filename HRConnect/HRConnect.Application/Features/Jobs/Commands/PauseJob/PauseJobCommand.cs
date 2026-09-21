@@ -12,6 +12,6 @@ public sealed class PauseJobCommandHandler : IRequestHandler<PauseJobCommand, Jo
     public PauseJobCommandHandler(IJobRepository jobs, ICompanyUserRepository members, IUnitOfWork uow) => (_jobs, _members, _uow) = (jobs, members, uow);
     public async Task<JobActionResponse> Handle(PauseJobCommand request, CancellationToken ct)
     { var job = await JobHandlerGuards.GetOwnedJobAsync(_jobs, _members, request.JobId, request.UserId, ct); JobHandlerGuards.RequireStatus(job, JobStatuses.Active);
-      JobTransitions.ChangeStatus(job, JobStatuses.Paused, request.UserId, request.Reason?.Trim()); _jobs.Update(job); await _uow.SaveChangesAsync(ct);
+      JobTransitions.ChangeStatus(job, JobStatuses.Paused, request.UserId, request.Reason?.Trim()); await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct); await _uow.SaveChangesAsync(ct);
       return new(true, "Tạm dừng công việc thành công.", JobDto.From(job)); }
 }

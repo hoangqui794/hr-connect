@@ -1,10 +1,16 @@
 @baseUrl = https://localhost:7289
 @clientEmail = client@gmail.com
 @clientPassword = PASTE_DEMO_CLIENT_PASSWORD_HERE
-@serviceTypeId = 50ba8aaf-5cea-419b-92cc-13af04a95bbf
+@cvApplicationServiceTypeId = PASTE_CV_APPLICATION_SERVICE_TYPE_ID
+@headhuntCodServiceTypeId = PASTE_HEADHUNT_COD_SERVICE_TYPE_ID
+@cvSourcingServiceTypeId = PASTE_CV_SOURCING_SERVICE_TYPE_ID
+@skillId = PASTE_ACTIVE_SKILL_ID
+@candidateToken = PASTE_CANDIDATE_ACCESS_TOKEN
+@affiliateToken = PASTE_AFFILIATE_ACCESS_TOKEN
+@headhuntJobId = PASTE_ACTIVE_HEADHUNT_JOB_ID
 
 # Đổi giá trị này trước mỗi lần chạy để dễ tìm dữ liệu trong PostgreSQL.
-@testRunId = DBTEST-20260919-01
+@testRunId = DBTEST-20260921-MF01-01
 
 # Sau khi đăng nhập bằng tài khoản INTERNAL_HR, dán accessToken vào đây.
 # Token của PLATFORM_ADMIN không hợp lệ nếu tài khoản đó không có role INTERNAL_HR.
@@ -31,7 +37,7 @@ Authorization: Bearer {{clientToken}}
 Content-Type: application/json
 
 {
-  "serviceTypeId": "{{serviceTypeId}}",
+  "serviceTypeId": "{{cvApplicationServiceTypeId}}",
   "title": "{{testRunId}} - Senior .NET Developer",
   "description": "Bản ghi test database cho Main Flow 1.",
   "location": "Ho Chi Minh City",
@@ -54,6 +60,13 @@ Content-Type: application/json
       "content": "Có khả năng đọc tài liệu tiếng Anh.",
       "weight": 0.3
     }
+  ],
+  "skills": [
+    {
+      "skillId": "{{skillId}}",
+      "isMandatory": true,
+      "weight": 0.8
+    }
   ]
 }
 
@@ -71,7 +84,7 @@ Authorization: Bearer {{clientToken}}
 Content-Type: application/json
 
 {
-  "serviceTypeId": "{{serviceTypeId}}",
+  "serviceTypeId": "{{cvApplicationServiceTypeId}}",
   "title": "{{testRunId}} - Senior Backend Engineer - UPDATED",
   "description": "Xây dựng và bảo trì HR Connect API bằng ASP.NET Core 8.",
   "location": "Ho Chi Minh City - Hybrid",
@@ -93,6 +106,13 @@ Content-Type: application/json
       "category": "DATABASE",
       "content": "Có kinh nghiệm PostgreSQL.",
       "weight": 0.4
+    }
+  ],
+  "skills": [
+    {
+      "skillId": "{{skillId}}",
+      "isMandatory": true,
+      "weight": 0.7
     }
   ]
 }
@@ -148,3 +168,21 @@ Content-Type: application/json
 ### TC-11 - Negative test: Closed Job không được submit lại, kỳ vọng HTTP 409
 POST {{baseUrl}}/api/v1/jobs/{{jobId}}/submit
 Authorization: Bearer {{clientToken}}
+
+### TC-12 - Candidate xem danh sách: CV_APPLICATION và CV_SOURCING được phép, HEADHUNT_COD bị lọc
+GET {{baseUrl}}/api/v1/jobs?page=1&pageSize=20
+Authorization: Bearer {{candidateToken}}
+
+### TC-13 - Affiliate xem danh sách: HEADHUNT_COD và CV_SOURCING được phép, CV_APPLICATION bị lọc
+GET {{baseUrl}}/api/v1/jobs?page=1&pageSize=20
+Authorization: Bearer {{affiliateToken}}
+
+### TC-14 - Negative detail: Candidate mở HEADHUNT_COD bằng UUID, kỳ vọng HTTP 403
+GET {{baseUrl}}/api/v1/jobs/{{headhuntJobId}}
+Authorization: Bearer {{candidateToken}}
+
+# Để chạy TC-12..14, đăng nhập bằng tài khoản test Candidate/Affiliate và gán token vào client variables:
+# @candidateToken = PASTE_CANDIDATE_ACCESS_TOKEN
+# @affiliateToken = PASTE_AFFILIATE_ACCESS_TOKEN
+# Tạo thêm Job ACTIVE cho HEADHUNT_COD và CV_SOURCING bằng cùng flow TC-01..07A,
+# sử dụng các Service Type ID tương ứng và lưu ID HEADHUNT vào @headhuntJobId.

@@ -8,5 +8,5 @@ public sealed class GetJobsForReviewQueryHandler : IRequestHandler<GetJobsForRev
 {
     private readonly IJobRepository _jobs; public GetJobsForReviewQueryHandler(IJobRepository jobs) => _jobs = jobs;
     public async Task<IReadOnlyList<JobDto>> Handle(GetJobsForReviewQuery request, CancellationToken ct) =>
-        (await _jobs.GetPendingReviewAsync(ct)).Select(JobDto.From).ToList();
+        (await _jobs.GetPendingReviewAsync(ct)).Select(x => JobDto.From(x)).ToList();
 }

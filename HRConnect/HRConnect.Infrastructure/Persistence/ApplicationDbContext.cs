@@ -102,6 +102,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<ServiceType> ServiceTypes { get; set; }
 
+    public virtual DbSet<ServiceTypeAllowedRole> ServiceTypeAllowedRoles { get; set; }
+
     public virtual DbSet<Skill> Skills { get; set; }
 
     public virtual DbSet<Submission> Submissions { get; set; }
@@ -2082,6 +2084,33 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<ServiceTypeAllowedRole>(entity =>
+        {
+            entity.HasKey(e => new { e.ServiceTypeId, e.RoleId })
+                .HasName("service_type_allowed_role_pkey");
+
+            entity.ToTable("service_type_allowed_role", "public");
+
+            entity.HasIndex(e => new { e.RoleId, e.CanView }, "idx_service_type_allowed_role_view");
+
+            entity.Property(e => e.ServiceTypeId).HasColumnName("service_type_id");
+            entity.Property(e => e.RoleId).HasColumnName("role_id");
+            entity.Property(e => e.CanView).HasDefaultValue(false).HasColumnName("can_view");
+            entity.Property(e => e.CanSubmit).HasDefaultValue(false).HasColumnName("can_submit");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+
+            entity.HasOne(d => d.ServiceType).WithMany(p => p.AllowedRoles)
+                .HasForeignKey(d => d.ServiceTypeId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("service_type_allowed_role_service_type_id_fkey");
+
+            entity.HasOne(d => d.Role).WithMany(p => p.ServiceTypeAllowedRoles)
+                .HasForeignKey(d => d.RoleId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("service_type_allowed_role_role_id_fkey");
         });
 
         modelBuilder.Entity<Skill>(entity =>
