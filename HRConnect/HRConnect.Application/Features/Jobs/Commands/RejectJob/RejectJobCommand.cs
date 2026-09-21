@@ -17,7 +17,8 @@ public sealed class RejectJobCommandHandler : IRequestHandler<RejectJobCommand, 
     {
         var job = await JobHandlerGuards.GetJobAsync(_jobs, request.JobId, ct); JobHandlerGuards.RequireStatus(job, JobStatuses.PendingReview);
         JobTransitions.ChangeStatus(job, JobStatuses.Rejected, request.UserId, request.Reason.Trim());
-        _jobs.Update(job); await _uow.SaveChangesAsync(ct);
+        await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
+        await _uow.SaveChangesAsync(ct);
         return new(true, "Từ chối công việc thành công.", JobDto.From(job));
     }
 }

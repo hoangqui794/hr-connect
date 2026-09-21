@@ -20,4 +20,5 @@ public sealed class UpdateJobCommand : IRequest<JobActionResponse>
     public int Quantity { get; set; } = 1;
     public string Visibility { get; set; } = "PUBLIC";
     public List<CreateJobRequirementRequest> Requirements { get; set; } = [];
+    public List<JobSkillRequest> Skills { get; set; } = [];
 }

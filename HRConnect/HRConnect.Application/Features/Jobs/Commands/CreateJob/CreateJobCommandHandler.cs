@@ -52,6 +52,12 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             throw new BadRequestException("Loại dịch vụ không tồn tại hoặc đã ngừng hoạt động.");
         }
 
+        var skillIds = request.Skills.Select(x => x.SkillId).Distinct().ToList();
+        if (skillIds.Count > 0 && !await _jobRepository.AreSkillsActiveAsync(skillIds, cancellationToken))
+        {
+            throw new BadRequestException("Một hoặc nhiều kỹ năng không tồn tại hoặc đã ngừng hoạt động.");
+        }
+
         var now = DateTime.UtcNow;
         var jobId = Guid.NewGuid();
         var job = new Job
@@ -92,6 +98,18 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             });
         }
 
+
+        foreach (var skill in request.Skills)
+        {
+            job.JobSkills.Add(new JobSkill
+            {
+                JobId = jobId,
+                SkillId = skill.SkillId,
+                IsMandatory = skill.IsMandatory,
+                Weight = skill.Weight
+            });
+        }
+
         job.JobStatusHistories.Add(new JobStatusHistory
         {
             JobStatusHistoryId = Guid.NewGuid(),
@@ -123,6 +141,7 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
                 Status = job.Status,
                 Visibility = job.Visibility,
                 RequirementCount = job.JobRequirements.Count,
+                SkillCount = job.JobSkills.Count,
                 CreatedAt = job.CreatedAt
             }
         };

@@ -67,4 +67,24 @@ public class CreateJobCommandValidatorTests
         result.Errors.Should().Contain(error =>
             error.PropertyName == "Requirements[0].RequirementType");
     }
+
+    [Fact]
+    public async Task Validate_ShouldRejectDuplicateSkillIdsAndOutOfRangeWeight()
+    {
+        var skillId = Guid.NewGuid();
+        var command = new CreateJobCommand
+        {
+            ServiceTypeId = Guid.NewGuid(),
+            Skills =
+            [
+                new JobSkillRequest { SkillId = skillId, Weight = 1.1m },
+                new JobSkillRequest { SkillId = skillId, Weight = 0.5m }
+            ]
+        };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.Skills);
+        result.Errors.Should().Contain(error => error.PropertyName == "Skills[0].Weight");
+    }
 }

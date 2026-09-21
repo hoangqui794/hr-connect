@@ -63,6 +63,27 @@ public class CreateJobCommandValidator : AbstractValidator<CreateJobCommand>
         RuleForEach(x => x.Requirements)
             .NotNull().WithMessage("Yêu cầu công việc không được là null.")
             .SetValidator(new CreateJobRequirementRequestValidator());
+
+        RuleFor(x => x.Skills)
+            .Must(skills => skills.Select(skill => skill.SkillId).Distinct().Count() == skills.Count)
+            .WithMessage("Danh sách kỹ năng không được chứa SkillId trùng nhau.");
+
+        RuleForEach(x => x.Skills)
+            .NotNull().WithMessage("Kỹ năng công việc không được là null.")
+            .SetValidator(new JobSkillRequestValidator());
+    }
+}
+
+public class JobSkillRequestValidator : AbstractValidator<JobSkillRequest>
+{
+    public JobSkillRequestValidator()
+    {
+        RuleFor(x => x.SkillId).NotEmpty().WithMessage("Kỹ năng không được để trống.");
+        When(x => x.Weight.HasValue, () =>
+        {
+            RuleFor(x => x.Weight)
+                .InclusiveBetween(0, 1).WithMessage("Trọng số kỹ năng phải nằm trong khoảng từ 0 đến 1.");
+        });
     }
 }
 

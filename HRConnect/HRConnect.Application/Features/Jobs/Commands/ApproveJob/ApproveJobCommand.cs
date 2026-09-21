@@ -16,8 +16,9 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
         var job = await JobHandlerGuards.GetJobAsync(_jobs, request.JobId, ct);
         JobHandlerGuards.RequireStatus(job, JobStatuses.PendingReview);
         JobTransitions.ChangeStatus(job, JobStatuses.Active, request.UserId, "Approved and published");
+        await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
         job.PostedAt = DateTime.UtcNow; job.ClosedAt = null;
-        _jobs.Update(job); await _uow.SaveChangesAsync(ct);
+        await _uow.SaveChangesAsync(ct);
         return new(true, "Duyệt và công bố công việc thành công.", JobDto.From(job));
     }
 }

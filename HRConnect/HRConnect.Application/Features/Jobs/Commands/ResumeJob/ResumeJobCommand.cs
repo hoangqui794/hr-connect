@@ -12,6 +12,6 @@ public sealed class ResumeJobCommandHandler : IRequestHandler<ResumeJobCommand, 
     public ResumeJobCommandHandler(IJobRepository jobs, ICompanyUserRepository members, IUnitOfWork uow) => (_jobs, _members, _uow) = (jobs, members, uow);
     public async Task<JobActionResponse> Handle(ResumeJobCommand request, CancellationToken ct)
     { var job = await JobHandlerGuards.GetOwnedJobAsync(_jobs, _members, request.JobId, request.UserId, ct); JobHandlerGuards.RequireStatus(job, JobStatuses.Paused);
-      JobTransitions.ChangeStatus(job, JobStatuses.Active, request.UserId, "Resumed"); _jobs.Update(job); await _uow.SaveChangesAsync(ct);
+      JobTransitions.ChangeStatus(job, JobStatuses.Active, request.UserId, "Resumed"); await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct); await _uow.SaveChangesAsync(ct);
       return new(true, "Tiếp tục công việc thành công.", JobDto.From(job)); }
 }
