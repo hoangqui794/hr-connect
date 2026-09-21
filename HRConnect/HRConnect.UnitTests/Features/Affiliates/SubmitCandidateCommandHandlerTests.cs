@@ -555,9 +555,72 @@ public class SubmitCandidateCommandHandlerTests
         createdAttribution.AffiliateId.Should().Be(affiliateId);
         createdAttribution.WinningSubmissionId.Should().Be(createdSubmission.SubmissionId);
 
-        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(
             It.Is<Mf03TriggerPayload>(p => p.ApplicationId == createdApplication.ApplicationId && p.CvId == cvId && p.JobId == jobId),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenConcurrentRaceViolatesUniqueConstraint_RollsBack_DeletesUploadedCv_AndThrowsConflict()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var affiliateId = Guid.NewGuid();
+        var affiliate = new AffiliateProfile { AffiliateId = affiliateId, UserId = userId, Status = "ACTIVE" };
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(affiliate);
+
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var candidateId = Guid.NewGuid();
+        var candidate = new Candidate { CandidateId = candidateId, FullName = "Racing Candidate", Email = "race@example.com" };
+        _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("race@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+
+        // Initial duplicate query returns null for both (both requests think they are first)
+        _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Submission?)null);
+        _applicationRepositoryMock.Setup(r => r.GetByCandidateAndJobAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((JobApplication?)null);
+
+        var cvId = Guid.NewGuid();
+        var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+        _cvStorageServiceMock.Setup(s => s.UploadCvPdfAsync(candidateId, stream, "cv.pdf", 3, null, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UploadCvResult { CvId = cvId, CandidateId = candidateId, FileName = "cv.pdf" });
+
+        // Database throws 23505 unique constraint violation on commit
+        _unitOfWorkMock.Setup(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("duplicate key value violates unique constraint \"uq_submission_one_accepted\" 23505"));
+
+        var command = new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            FullName = "Racing Candidate",
+            Email = "race@example.com",
+            FileStream = stream,
+            FileName = "cv.pdf",
+            FileSizeBytes = 3,
+            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+        };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*đã được nộp vào công việc này trước đó*");
+
+        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _cvStorageServiceMock.Verify(s => s.DeleteCvAsync(cvId, It.IsAny<CancellationToken>()), Times.Once);
+        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

@@ -78,6 +78,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
 
         // 4. Xử lý CV (Upload mới hoặc chọn CV có sẵn)
         Guid cvId;
+        Guid? newlyUploadedCvId = null;
         if (request.FileStream != null && request.FileStream != Stream.Null && !string.IsNullOrWhiteSpace(request.FileName))
         {
             var uploadResult = await _cvStorageService.UploadCvPdfAsync(
@@ -87,6 +88,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
                 request.FileSizeBytes ?? request.FileStream.Length,
                 cancellationToken: cancellationToken);
             cvId = uploadResult.CvId;
+            newlyUploadedCvId = cvId;
         }
         else if (request.CvId.HasValue && request.CvId.Value != Guid.Empty)
         {
@@ -123,11 +125,23 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             _logger.LogWarning("Phát hiện nộp trùng lặp: CandidateId={CandidateId}, JobId={JobId}. Ghi nhận BLOCKED_DUPLICATE.",
                 candidate.CandidateId, job.JobId);
 
+            if (newlyUploadedCvId.HasValue)
+            {
+                try
+                {
+                    await _cvStorageService.DeleteCvAsync(newlyUploadedCvId.Value, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Lỗi bồi hoàn xóa CV {CvId} trên R2 khi phát hiện nộp trùng", newlyUploadedCvId.Value);
+                }
+            }
+
             var blockedSubmission = new Submission
             {
                 SubmissionId = Guid.NewGuid(),
                 CandidateId = candidate.CandidateId,
-                CvId = cvId,
+                CvId = existingSubmission?.CvId ?? cvId,
                 JobId = job.JobId,
                 SubmittedBy = request.UserId,
                 Source = "CANDIDATE",
@@ -144,37 +158,109 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             throw new ConflictException("Bạn đã nộp hồ sơ ứng tuyển vào công việc này trước đó.");
         }
 
-        // 6. Tạo Submission ACCEPTED và Application chính thức
+        // 6. Tạo Submission ACCEPTED và Application chính thức trong Transaction
         var now = DateTime.UtcNow;
-        var submission = new Submission
-        {
-            SubmissionId = Guid.NewGuid(),
-            CandidateId = candidate.CandidateId,
-            CvId = cvId,
-            JobId = job.JobId,
-            SubmittedBy = request.UserId,
-            Source = "CANDIDATE",
-            Status = "ACCEPTED",
-            SubmittedAt = now,
-            UpdatedAt = now
-        };
-        await _submissionRepository.AddAsync(submission, cancellationToken);
+        JobApplication application;
+        Submission submission;
 
-        var application = new JobApplication
-        {
-            ApplicationId = Guid.NewGuid(),
-            JobId = job.JobId,
-            CandidateId = candidate.CandidateId,
-            AcceptedSubmissionId = submission.SubmissionId,
-            Status = "SUBMITTED",
-            CurrentStage = "SUBMITTED",
-            AppliedAt = now,
-            UpdatedAt = now
-        };
-        await _applicationRepository.AddAsync(application, cancellationToken);
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
-        // Commit transaction CSDL
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            submission = new Submission
+            {
+                SubmissionId = Guid.NewGuid(),
+                CandidateId = candidate.CandidateId,
+                CvId = cvId,
+                JobId = job.JobId,
+                SubmittedBy = request.UserId,
+                Source = "CANDIDATE",
+                Status = "ACCEPTED",
+                SubmittedAt = now,
+                UpdatedAt = now
+            };
+            await _submissionRepository.AddAsync(submission, cancellationToken);
+
+            application = new JobApplication
+            {
+                ApplicationId = Guid.NewGuid(),
+                JobId = job.JobId,
+                CandidateId = candidate.CandidateId,
+                AcceptedSubmissionId = submission.SubmissionId,
+                Status = "SUBMITTED",
+                CurrentStage = "SUBMITTED",
+                AppliedAt = now,
+                UpdatedAt = now
+            };
+            await _applicationRepository.AddAsync(application, cancellationToken);
+
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+        }
+        catch (Exception ex) when (IsDuplicateConstraintViolation(ex))
+        {
+            _logger.LogWarning(ex, "Phát hiện nộp trùng lặp ứng viên do tranh chấp đồng thời: CandidateId={CandidateId}, JobId={JobId}",
+                candidate.CandidateId, job.JobId);
+
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+
+            if (newlyUploadedCvId.HasValue)
+            {
+                try
+                {
+                    await _cvStorageService.DeleteCvAsync(newlyUploadedCvId.Value, CancellationToken.None);
+                }
+                catch (Exception delEx)
+                {
+                    _logger.LogError(delEx, "Lỗi bồi hoàn xóa CV {CvId} trên R2 sau tranh chấp đồng thời", newlyUploadedCvId.Value);
+                }
+            }
+
+            try
+            {
+                var winningSub = await _submissionRepository.GetAcceptedSubmissionAsync(candidate.CandidateId, job.JobId, CancellationToken.None);
+                var blockedSub = new Submission
+                {
+                    SubmissionId = Guid.NewGuid(),
+                    CandidateId = candidate.CandidateId,
+                    CvId = winningSub?.CvId ?? cvId,
+                    JobId = job.JobId,
+                    SubmittedBy = request.UserId,
+                    Source = "CANDIDATE",
+                    Status = "BLOCKED_DUPLICATE",
+                    DuplicateOfSubmissionId = winningSub?.SubmissionId,
+                    Note = "Nộp trùng lặp trong phiên đồng thời.",
+                    SubmittedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _submissionRepository.AddAsync(blockedSub, CancellationToken.None);
+                await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+            }
+            catch (Exception recEx)
+            {
+                _logger.LogWarning(recEx, "Không thể ghi nhận BLOCKED_DUPLICATE sau khi tranh chấp đồng thời.");
+            }
+
+            throw new ConflictException("Bạn đã nộp hồ sơ ứng tuyển vào công việc này trước đó.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi lưu trữ hồ sơ nộp vào database");
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+
+            if (newlyUploadedCvId.HasValue)
+            {
+                try
+                {
+                    await _cvStorageService.DeleteCvAsync(newlyUploadedCvId.Value, CancellationToken.None);
+                }
+                catch (Exception delEx)
+                {
+                    _logger.LogError(delEx, "Lỗi bồi hoàn xóa CV {CvId} trên R2 khi DB lỗi", newlyUploadedCvId.Value);
+                }
+            }
+
+            throw;
+        }
 
         _logger.LogInformation("Ứng tuyển thành công: ApplicationId={ApplicationId}, CandidateId={CandidateId}, JobId={JobId}, CvId={CvId}",
             application.ApplicationId, candidate.CandidateId, job.JobId, cvId);
@@ -207,5 +293,24 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
                 AppliedAt = application.AppliedAt
             }
         };
+    }
+
+    private static bool IsDuplicateConstraintViolation(Exception ex)
+    {
+        var current = ex;
+        while (current != null)
+        {
+            var message = current.Message;
+            if (message.Contains("23505", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("uq_submission_one_accepted", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("application_candidate_id_job_id_key", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            current = current.InnerException;
+        }
+        return false;
     }
 }

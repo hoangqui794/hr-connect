@@ -128,7 +128,7 @@ public class ApplyJobCommandHandlerTests
         createdApp.Status.Should().Be("SUBMITTED");
 
         // Verify Save & MF-03 trigger
-        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(
             It.Is<Mf03TriggerPayload>(p => p.ApplicationId == createdApp.ApplicationId && p.CvId == cvId && p.JobId == jobId),
             It.IsAny<CancellationToken>()), Times.Once);
@@ -286,6 +286,60 @@ public class ApplyJobCommandHandlerTests
 
         // Verify NO Application was added and NO MF-03 triggered
         _applicationRepositoryMock.Verify(a => a.AddAsync(It.IsAny<HRConnect.Domain.Entities.Application>(), It.IsAny<CancellationToken>()), Times.Never);
+        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenConcurrentRaceViolatesUniqueConstraint_RollsBack_DeletesUploadedCv_AndThrowsConflict()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var cvId = Guid.NewGuid();
+
+        var candidate = new Candidate { CandidateId = candidateId, UserId = userId };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid() };
+
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(job.ServiceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // First query returns null (racing past duplicate check)
+        _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Submission?)null);
+        _applicationRepositoryMock.Setup(r => r.GetByCandidateAndJobAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((HRConnect.Domain.Entities.Application?)null);
+
+        var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+        _cvStorageServiceMock.Setup(s => s.UploadCvPdfAsync(candidateId, stream, "cv.pdf", 3, null, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UploadCvResult { CvId = cvId, CandidateId = candidateId, FileName = "cv.pdf" });
+
+        // Commit throws 23505 unique constraint violation from postgres
+        _unitOfWorkMock.Setup(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("duplicate key value violates unique constraint \"uq_submission_one_accepted\" 23505"));
+
+        var command = new ApplyJobCommand
+        {
+            JobId = jobId,
+            UserId = userId,
+            FileStream = stream,
+            FileName = "cv.pdf",
+            FileSizeBytes = 3
+        };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*đã nộp hồ sơ ứng tuyển vào công việc này trước đó*");
+
+        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _cvStorageServiceMock.Verify(s => s.DeleteCvAsync(cvId, It.IsAny<CancellationToken>()), Times.Once);
         _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }
