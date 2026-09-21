@@ -12,6 +12,7 @@ using HRConnect.Application.Features.Jobs.Commands.UpdateJob;
 using HRConnect.Application.Features.Jobs.Queries.GetJobDetail;
 using HRConnect.Application.Features.Jobs.Queries.GetJobsForReview;
 using HRConnect.Application.Features.Jobs.Queries.GetMyJobs;
+using HRConnect.Application.Features.Jobs.Queries.GetPublicJobs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -56,10 +57,20 @@ public static class JobEndpoints
         { var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, "job.view_own")) return Forbidden();
           return await Run(async () => Results.Ok(await sender.Send(new GetMyJobsQuery(id.Value, status), ct))); }
         ).WithName("GetMyJobs").WithSummary("Lấy danh sách Job của doanh nghiệp hiện tại");
+        jobs.MapGet("", async (ClaimsPrincipal user, string? search, string? location, string? employmentType,
+            int page, int pageSize, ISender sender, CancellationToken ct) =>
+        {
+            if (!user.HasClaim("permission", "job.view")) return Forbidden();
+            return await Run(async () => Results.Ok(await sender.Send(new GetPublicJobsQuery(
+                RoleCodes(user), search, location, employmentType,
+                page <= 0 ? 1 : page, pageSize <= 0 ? 20 : pageSize), ct)));
+        }).WithName("GetPublicJobs").WithSummary("Tìm Job đang hoạt động theo quyền xem của Service Type");
         jobs.MapGet("/{jobId:guid}", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
-        { var id = UserId(user); if (id == null) return Results.Unauthorized(); var canReview = ReviewerCan(user, "job.review");
-          if (!canReview && !ClientCan(user, "job.view_own")) return Forbidden();
-          return await Run(async () => Results.Ok(await sender.Send(new GetJobDetailQuery(jobId, id.Value, canReview), ct))); }
+        { var id = UserId(user); if (id == null) return Results.Unauthorized();
+          var internalAccess = ReviewerCan(user, "job.review") || (user.IsInRole("PLATFORM_ADMIN") && user.HasClaim("permission", "job.view"));
+          var canAttemptView = internalAccess || ClientCan(user, "job.view_own") || user.HasClaim("permission", "job.view");
+          if (!canAttemptView) return Forbidden();
+          return await Run(async () => Results.Ok(await sender.Send(new GetJobDetailQuery(jobId, id.Value, internalAccess, RoleCodes(user)), ct))); }
         ).WithName("GetJobDetail").WithSummary("Lấy chi tiết Job");
 
         review.MapGet("/review", async (ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
@@ -88,5 +99,7 @@ public static class JobEndpoints
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
     private static bool ClientCan(ClaimsPrincipal user, string permission) => user.IsInRole("CLIENT_COMPANY_USER") && user.HasClaim("permission", permission);
     private static bool ReviewerCan(ClaimsPrincipal user, string permission) => user.IsInRole("INTERNAL_HR") && user.HasClaim("permission", permission);
+    private static string[] RoleCodes(ClaimsPrincipal user) =>
+        user.FindAll(ClaimTypes.Role).Select(claim => claim.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     private static IResult Forbidden() => Results.Json(new { success = false, message = "Bạn không có quyền thực hiện thao tác này." }, statusCode: 403);
 }

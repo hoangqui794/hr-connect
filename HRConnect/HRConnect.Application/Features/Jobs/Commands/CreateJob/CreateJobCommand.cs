@@ -29,6 +29,17 @@ public class CreateJobCommand : IRequest<CreateJobResponse>
     public string Visibility { get; set; } = "PUBLIC";
 
     public List<CreateJobRequirementRequest> Requirements { get; set; } = [];
+
+    public List<JobSkillRequest> Skills { get; set; } = [];
+}
+
+public class JobSkillRequest
+{
+    public Guid SkillId { get; set; }
+
+    public bool IsMandatory { get; set; }
+
+    public decimal? Weight { get; set; }
 }
 
 public class CreateJobRequirementRequest
@@ -66,6 +77,8 @@ public class CreateJobData
     public string Visibility { get; set; } = string.Empty;
 
     public int RequirementCount { get; set; }
+
+    public int SkillCount { get; set; }
 
     public DateTime CreatedAt { get; set; }
 }

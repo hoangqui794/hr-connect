@@ -22,5 +22,7 @@ public partial class ServiceType
     public virtual ICollection<CommissionRule> CommissionRules { get; set; } = new List<CommissionRule>();
 
     public virtual ICollection<Job> Jobs { get; set; } = new List<Job>();
+
+    public virtual ICollection<ServiceTypeAllowedRole> AllowedRoles { get; set; } = new List<ServiceTypeAllowedRole>();
 }
 

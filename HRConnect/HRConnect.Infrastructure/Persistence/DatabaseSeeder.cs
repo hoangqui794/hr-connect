@@ -52,7 +52,10 @@ public static class DatabaseSeeder
         // 2. Khởi tạo danh mục loại dịch vụ (Service Type) nếu chưa có (Idempotent seed)
         await ServiceTypeSeeder.SeedAsync(context, logger, cancellationToken);
 
-        // 3. Tự động nạp toàn bộ danh sách Permissions và Role-Permissions từ file Permission.md
+        // 3. Khởi tạo ma trận quyền xem/nộp theo Service Type và Role.
+        await ServiceTypeAllowedRoleSeeder.SeedAsync(context, logger, cancellationToken);
+
+        // 4. Tự động nạp toàn bộ danh sách Permissions và Role-Permissions từ file Permission.md
         if (context.Database.IsRelational())
         {
             try
@@ -73,7 +76,7 @@ public static class DatabaseSeeder
             }
         }
 
-        // 4. Khởi tạo tài khoản phát triển / demo nếu được bật
+        // 5. Khởi tạo tài khoản phát triển / demo nếu được bật
         if (seedDemoAccounts)
         {
             await DemoAccountSeeder.SeedAsync(context, passwordHasher, emailNormalizer, phoneNormalizer, logger, cancellationToken);

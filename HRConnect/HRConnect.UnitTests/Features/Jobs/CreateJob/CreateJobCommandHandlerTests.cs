@@ -48,7 +48,8 @@ public class CreateJobCommandHandlerTests
                     Content = " 3 years of .NET experience ",
                     Weight = 0.8m
                 }
-            ]
+            ],
+            Skills = [new JobSkillRequest { SkillId = Guid.NewGuid(), IsMandatory = true, Weight = 0.9m }]
         };
 
         _companyUserRepository
@@ -56,6 +57,9 @@ public class CreateJobCommandHandlerTests
             .ReturnsAsync(CreateActiveCompanyUser(userId, companyId));
         _jobRepository
             .Setup(repository => repository.IsServiceTypeActiveAsync(serviceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _jobRepository
+            .Setup(repository => repository.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         Job? createdJob = null;
@@ -79,6 +83,7 @@ public class CreateJobCommandHandlerTests
         createdJob.JobRequirements.Should().ContainSingle();
         createdJob.JobRequirements.Single().RequirementType.Should().Be("MUST_HAVE");
         createdJob.JobRequirements.Single().Content.Should().Be("3 years of .NET experience");
+        createdJob.JobSkills.Should().ContainSingle(skill => skill.IsMandatory && skill.Weight == 0.9m);
         createdJob.JobStatusHistories.Should().ContainSingle(history =>
             history.OldStatus == null &&
             history.NewStatus == "DRAFT" &&
@@ -88,6 +93,7 @@ public class CreateJobCommandHandlerTests
         result.Data.JobId.Should().Be(createdJob.JobId);
         result.Data.Status.Should().Be("DRAFT");
         result.Data.RequirementCount.Should().Be(1);
+        result.Data.SkillCount.Should().Be(1);
         _unitOfWork.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
