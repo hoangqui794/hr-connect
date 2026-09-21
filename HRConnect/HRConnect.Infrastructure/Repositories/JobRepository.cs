@@ -130,5 +130,23 @@ public class JobRepository : IJobRepository
                        mapping.Role.IsActive && roleCodes.Contains(mapping.Role.Code),
             cancellationToken);
 
+    public Task<bool> CanAnyRoleSubmitJobAsync(
+        Guid serviceTypeId,
+        IReadOnlyCollection<string> roleCodes,
+        CancellationToken cancellationToken = default) =>
+        _context.ServiceTypeAllowedRoles.AsNoTracking().AnyAsync(
+            mapping => mapping.ServiceTypeId == serviceTypeId && mapping.CanSubmit &&
+                       mapping.Role.IsActive && roleCodes.Contains(mapping.Role.Code),
+            cancellationToken);
+
+    public Task<bool> CanAnyRoleSubmitJobByIdsAsync(
+        Guid serviceTypeId,
+        IReadOnlyCollection<Guid> roleIds,
+        CancellationToken cancellationToken = default) =>
+        _context.ServiceTypeAllowedRoles.AsNoTracking().AnyAsync(
+            mapping => mapping.ServiceTypeId == serviceTypeId && mapping.CanSubmit &&
+                       mapping.Role.IsActive && roleIds.Contains(mapping.RoleId),
+            cancellationToken);
+
     public void Update(Job job) => _context.Jobs.Update(job);
 }

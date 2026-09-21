@@ -66,4 +66,24 @@ public class CandidateRepository : ICandidateRepository
             .Include(c => c.CandidateCv)
             .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken);
     }
+
+    public async Task<Candidate?> GetByIdAsync(Guid candidateId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Candidates
+            .FirstOrDefaultAsync(c => c.CandidateId == candidateId, cancellationToken);
+    }
+
+    public async Task<Candidate?> GetByNormalizedEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedEmail)) return null;
+        return await _context.Candidates
+            .FirstOrDefaultAsync(c => c.NormalizedEmail == normalizedEmail, cancellationToken);
+    }
+
+    public async Task<Candidate?> GetByNormalizedPhoneAsync(string normalizedPhone, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedPhone)) return null;
+        return await _context.Candidates
+            .FirstOrDefaultAsync(c => c.NormalizedPhone == normalizedPhone, cancellationToken);
+    }
 }

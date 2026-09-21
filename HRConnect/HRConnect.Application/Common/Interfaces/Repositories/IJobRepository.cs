@@ -32,5 +32,15 @@ public interface IJobRepository
         IReadOnlyCollection<string> roleCodes,
         CancellationToken cancellationToken = default);
 
+    Task<bool> CanAnyRoleSubmitJobAsync(
+        Guid serviceTypeId,
+        IReadOnlyCollection<string> roleCodes,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> CanAnyRoleSubmitJobByIdsAsync(
+        Guid serviceTypeId,
+        IReadOnlyCollection<Guid> roleIds,
+        CancellationToken cancellationToken = default);
+
     void Update(Job job);
 }

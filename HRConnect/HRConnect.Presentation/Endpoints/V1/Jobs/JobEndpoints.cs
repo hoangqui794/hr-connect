@@ -9,6 +9,7 @@ using HRConnect.Application.Features.Jobs.Commands.RejectJob;
 using HRConnect.Application.Features.Jobs.Commands.ResumeJob;
 using HRConnect.Application.Features.Jobs.Commands.SubmitJob;
 using HRConnect.Application.Features.Jobs.Commands.UpdateJob;
+using HRConnect.Application.Features.Candidates.Commands.ApplyJob;
 using HRConnect.Application.Features.Jobs.Queries.GetJobDetail;
 using HRConnect.Application.Features.Jobs.Queries.GetJobsForReview;
 using HRConnect.Application.Features.Jobs.Queries.GetMyJobs;
@@ -73,6 +74,43 @@ public static class JobEndpoints
           return await Run(async () => Results.Ok(await sender.Send(new GetJobDetailQuery(jobId, id.Value, internalAccess, RoleCodes(user)), ct))); }
         ).WithName("GetJobDetail").WithSummary("Lấy chi tiết Job");
 
+        // POST /api/v1/jobs/{jobId}/apply - Ứng viên tự ứng tuyển vào công việc
+        jobs.MapPost("/{jobId:guid}/apply", async (
+            Guid jobId,
+            ClaimsPrincipal user,
+            [FromForm] Guid? cvId,
+            IFormFile? file,
+            ISender sender,
+            CancellationToken ct) =>
+        {
+            var id = UserId(user);
+            if (id == null) return Results.Unauthorized();
+
+            var command = new ApplyJobCommand
+            {
+                JobId = jobId,
+                UserId = id.Value,
+                RoleCodes = RoleCodes(user),
+                CvId = cvId,
+                FileStream = file?.OpenReadStream(),
+                FileName = file?.FileName,
+                ContentType = file?.ContentType,
+                FileSizeBytes = file?.Length
+            };
+
+            return await Run(async () => Results.Ok(await sender.Send(command, ct)));
+        })
+        .WithName("CandidateApplyJob")
+        .WithSummary("Ứng viên tự ứng tuyển vào Job")
+        .WithDescription("Ứng viên nộp hồ sơ vào công việc bằng CV có sẵn hoặc tải lên tệp CV PDF mới. Hệ thống kiểm tra trùng lặp và phân quyền submit của Service Type.")
+        .DisableAntiforgery()
+        .Produces<ApplyJobResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         review.MapGet("/review", async (ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         { if (!ReviewerCan(user, "job.review")) return Forbidden(); return await Run(async () => Results.Ok(await sender.Send(new GetJobsForReviewQuery(), ct))); }
         ).WithName("GetJobsForReview").WithSummary("Lấy hàng đợi Job chờ xét duyệt");
@@ -93,7 +131,7 @@ public static class JobEndpoints
     { var result = await validator.ValidateAsync(command, ct); return result.IsValid ? null : Results.ValidationProblem(result.ToDictionary()); }
     private static async Task<IResult> Run(Func<Task<IResult>> action)
     { try { return await action(); } catch (NotFoundException ex) { return Results.NotFound(new { success = false, message = ex.Message }); }
-      catch (ForbiddenException ex) { return Results.Json(new { success = false, message = ex.Message }, statusCode: 403); }
+      catch (ForbiddenException ex) { return Results.Json(new { success = false, errorCode = ex.ErrorCode, message = ex.Message }, statusCode: 403); }
       catch (ConflictException ex) { return Results.Conflict(new { success = false, message = ex.Message }); }
       catch (BadRequestException ex) { return Results.BadRequest(new { success = false, message = ex.Message }); } }
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
