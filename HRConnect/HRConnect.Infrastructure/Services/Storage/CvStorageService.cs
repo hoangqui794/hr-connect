@@ -168,6 +168,8 @@ public class CvStorageService : ICvStorageService
         return new CvDownloadUrlResult
         {
             CvId = cvId,
+            FileName = cv.FileName ?? $"{cvId}.pdf",
+            MimeType = cv.MimeType ?? "application/pdf",
             DownloadUrl = downloadUrl,
             ExpiresAt = DateTime.UtcNow.Add(expirySpan)
         };
