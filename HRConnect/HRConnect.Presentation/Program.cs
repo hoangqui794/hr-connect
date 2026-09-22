@@ -15,6 +15,8 @@ using HRConnect.Presentation.Endpoints.V1.ServiceTypes;
 using HRConnect.Presentation.Endpoints.V1.Jobs;
 using HRConnect.Presentation.Endpoints.V1.Companies;
 using HRConnect.Presentation.Endpoints.V1.InternalHr;
+using HRConnect.Presentation.Endpoints.V1.Internal;
+using HRConnect.Presentation.Swagger;
 using Microsoft.EntityFrameworkCore;
 
 // ==============================================================================
@@ -63,6 +65,14 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "Bearer"
     });
 
+    options.AddSecurityDefinition("InternalServiceToken", new OpenApiSecurityScheme
+    {
+        Description = "Internal service token for service-to-service APIs (e.g. MF-03 AI Service). Enter your service token directly.",
+        Name = "X-Service-Token",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey
+    });
+
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -77,6 +87,8 @@ builder.Services.AddSwaggerGen(options =>
             Array.Empty<string>()
         }
     });
+
+    options.OperationFilter<InternalServiceAuthOperationFilter>();
 });
 
 // Cấu hình Xác thực JWT (Authentication)
@@ -149,6 +161,7 @@ app.MapServiceTypeEndpoints();
 app.MapJobEndpoints();
 app.MapCompanyEndpoints();
 app.MapInternalHrEndpoints();
+app.MapInternalCvEndpoints();
 
 // ==============================================================================
 // 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động

@@ -17,6 +17,8 @@ public class UploadCvResult
 public class CvDownloadUrlResult
 {
     public Guid CvId { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string MimeType { get; set; } = "application/pdf";
     public string DownloadUrl { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
 }

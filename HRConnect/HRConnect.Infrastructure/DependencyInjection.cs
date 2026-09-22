@@ -113,6 +113,27 @@ public static class DependencyInjection
         services.AddScoped<IFileStorageService, HRConnect.Infrastructure.Services.Storage.CloudflareR2StorageService>();
         services.AddScoped<ICvStorageService, HRConnect.Infrastructure.Services.Storage.CvStorageService>();
 
+        // 6. Dịch vụ AI & HRConnect Client (MF-03 Integration)
+        var clientOptions = new HRConnectClientOptions();
+        configuration.GetSection(HRConnectClientOptions.SectionName).Bind(clientOptions);
+
+        if (!string.IsNullOrWhiteSpace(configuration["HRCONNECT_BASE_URL"]))
+            clientOptions.BaseUrl = configuration["HRCONNECT_BASE_URL"]!;
+
+        if (!string.IsNullOrWhiteSpace(configuration["HRCONNECT_SERVICE_TOKEN"]))
+            clientOptions.ServiceToken = configuration["HRCONNECT_SERVICE_TOKEN"]!;
+
+        services.AddSingleton(Microsoft.Extensions.Options.Options.Create(clientOptions));
+
+        services.AddHttpClient<IHRConnectClient, HRConnect.Infrastructure.Services.Integration.HRConnectClient>((sp, client) =>
+        {
+            var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<HRConnectClientOptions>>().Value;
+            if (!string.IsNullOrWhiteSpace(opts.BaseUrl))
+            {
+                client.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
+            }
+        });
+
         return services;
 
     }
