@@ -27,6 +27,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
+import { useAuthStore } from '@/stores/authStore';
 import clientService from '@/services/clientService';
 import type { ProbationWarrantyDTO, WarrantyStatus } from '@/types/client';
 
@@ -44,18 +45,22 @@ export const ClientWarrantyPage: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [failForm] = Form.useForm();
 
+  const { user } = useAuthStore();
+  const isDemoClient = user?.id === 'client-001' || user?.company?.includes('TechCorp');
+  const companyId = isDemoClient ? 'client-001' : user?.id;
+
   // Load data from ClientService
   const loadWarrantyData = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await clientService.getWarrantyList();
+      const data = await clientService.getWarrantyList(companyId);
       setRecords(data);
     } catch (error) {
       message.error('Không thể tải danh sách bảo hành thử việc');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     loadWarrantyData();

@@ -28,6 +28,7 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
+import { getDashboardRouteForRole } from '@/routes/AppRoutes';
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -142,19 +143,14 @@ export const RegisterPage: React.FC = () => {
         role: selectedRole,
         fullName: values.fullName.trim(),
         email: values.email.trim().toLowerCase(),
+        password: values.password,
         phone: values.phone?.trim(),
-        companyName: values.companyName?.trim(),
-        companySize: values.companySize,
+        companyName: selectedRole === UserRole.CLIENT ? values.companyName?.trim() : undefined,
+        companySize: selectedRole === UserRole.CLIENT ? values.companySize : undefined,
       });
 
-      // Target dashboard redirect map
-      const redirectTargets: Record<RegisterableRole, string> = {
-        [UserRole.CANDIDATE]: '/',
-        [UserRole.CLIENT]: '/client/dashboard',
-        [UserRole.AFFILIATE]: '/affiliate/dashboard',
-      };
-
-      const destination = redirectTargets[selectedRole] || '/dashboard';
+      // Target dashboard redirect dynamically resolved by role
+      const destination = getDashboardRouteForRole(selectedRole);
 
       message.success({
         content: `Đăng ký thành công tài khoản ${activeOption.title}! Chào mừng ${newUser.name} gia nhập HR Connect.`,

@@ -28,8 +28,8 @@ export const Navbar: React.FC = () => {
   const { alerts, unreadCount, markAllRead, dismissAlert } = useAlertStore();
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const userName = user?.name || DEMO_USERS[role]?.name || 'Người dùng';
-  const userEmail = user?.email || DEMO_USERS[role]?.email || '';
+  const userName = user?.name || 'Người dùng';
+  const userEmail = user?.email || '';
   const userAvatar = user?.avatar || getInitials(userName);
 
   const handleLogout = () => {
@@ -51,6 +51,12 @@ export const Navbar: React.FC = () => {
       disabled: true,
     },
     { type: 'divider' as const },
+    {
+      key: 'dashboard',
+      icon: <DashboardOutlined style={{ color: '#0284c7' }} />,
+      label: 'Bảng điều khiển Ứng viên',
+      onClick: () => navigate('/candidate/dashboard'),
+    },
     {
       key: 'profile',
       icon: <IdcardOutlined style={{ color: '#8b5cf6' }} />,

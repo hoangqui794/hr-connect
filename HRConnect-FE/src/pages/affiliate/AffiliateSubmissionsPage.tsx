@@ -19,11 +19,15 @@ import {
   Table, Tag, Button, Input, Select, Card, Row, Col, Typography, Space,
   Avatar, Modal, Form, Tooltip, message, Alert,
 } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores/authStore';
 import {
   SearchOutlined, DownloadOutlined, ExclamationCircleOutlined,
   CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined,
   WarningOutlined,
   CalendarOutlined,
+  UserAddOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -146,7 +150,10 @@ const INITIAL_SUBMISSIONS: AffiliateSubmissionDTO[] = [
 ];
 
 export const AffiliateSubmissionsPage: React.FC = () => {
-  const [submissions, setSubmissions] = useState<AffiliateSubmissionDTO[]>(INITIAL_SUBMISSIONS);
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const isDemoAffiliate = user?.id === 'aff-001' || user?.email?.includes('david.tran');
+  const [submissions, setSubmissions] = useState<AffiliateSubmissionDTO[]>(isDemoAffiliate ? INITIAL_SUBMISSIONS : []);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
 
@@ -383,7 +390,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
           Hồ sơ đã giới thiệu & Tiến độ tuyển dụng
         </Title>
         <Text style={{ color: '#64748b' }}>
-          Headhunter: <strong style={{ color: '#0f172a' }}>David Tran</strong> (RecruitPro Network) • Giám sát trạng thái phễu tuyển dụng & bảo vệ bản quyền giới thiệu
+          Headhunter: <strong style={{ color: '#0f172a' }}>{user?.name || 'Chuyên viên Tuyển dụng'}</strong> ({user?.company || 'Cộng tác viên Độc lập'}) • Giám sát trạng thái phễu tuyển dụng & bảo vệ bản quyền giới thiệu
         </Text>
       </div>
 
@@ -437,50 +444,73 @@ export const AffiliateSubmissionsPage: React.FC = () => {
         style={{ marginBottom: 20, borderRadius: 8 }}
       />
 
-      {/* ─── FILTER CONTROLS ─────────────────────────────────────────────────── */}
-      <Card style={{ marginBottom: 20, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-        <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} md={12}>
-            <Input
-              placeholder="Tìm theo tên ứng viên, vị trí tuyển dụng, email..."
-              prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              allowClear
-            />
-          </Col>
-          <Col xs={24} md={12} style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-            <Select
-              value={selectedStatus}
-              onChange={setSelectedStatus}
-              style={{ width: 260 }}
-              options={[
-                { value: 'ALL', label: 'Tất cả trạng thái hồ sơ' },
-                { value: 'SUBMITTED', label: 'Chờ HR duyệt' },
-                { value: 'INTERVIEW', label: 'Đã vào phỏng vấn' },
-                { value: 'PROBATION', label: 'Đã nhận việc / Thử việc' },
-                { value: 'DUPLICATE', label: 'Bị báo trùng lặp (Duplicate)' },
-                { value: 'REJECTED', label: 'Bị từ chối' },
-              ]}
-            />
-          </Col>
-        </Row>
-      </Card>
+      {submissions.length === 0 ? (
+        <Card style={{ borderRadius: 14, textAlign: 'center', padding: '60px 20px', border: '1px solid #e2e8f0' }}>
+          <TeamOutlined style={{ fontSize: 48, color: '#cbd5e1', marginBottom: 16 }} />
+          <Title level={4} style={{ color: '#0f172a', marginBottom: 8 }}>
+            Bạn chưa giới thiệu ứng viên nào
+          </Title>
+          <Text type="secondary" style={{ display: 'block', maxWidth: 480, margin: '0 auto 24px', fontSize: 13.5 }}>
+            Khám phá các việc làm hấp dẫn trên sàn OPR Hub và giới thiệu ứng viên chất lượng để nhận hoa hồng lên tới 45.000.000 đ/deal.
+          </Text>
+          <Button
+            type="primary"
+            icon={<UserAddOutlined />}
+            size="large"
+            onClick={() => navigate('/affiliate/referral')}
+            style={{ borderRadius: 8, fontWeight: 700, background: '#f59e0b', borderColor: '#f59e0b' }}
+          >
+            Giới thiệu ứng viên đầu tiên
+          </Button>
+        </Card>
+      ) : (
+        <>
+          {/* ─── FILTER CONTROLS ─────────────────────────────────────────────────── */}
+          <Card style={{ marginBottom: 20, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+            <Row gutter={[16, 16]} align="middle">
+              <Col xs={24} md={12}>
+                <Input
+                  placeholder="Tìm theo tên ứng viên, vị trí tuyển dụng, email..."
+                  prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  allowClear
+                />
+              </Col>
+              <Col xs={24} md={12} style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                <Select
+                  value={selectedStatus}
+                  onChange={setSelectedStatus}
+                  style={{ width: 260 }}
+                  options={[
+                    { value: 'ALL', label: 'Tất cả trạng thái hồ sơ' },
+                    { value: 'SUBMITTED', label: 'Chờ HR duyệt' },
+                    { value: 'INTERVIEW', label: 'Đã vào phỏng vấn' },
+                    { value: 'PROBATION', label: 'Đã nhận việc / Thử việc' },
+                    { value: 'DUPLICATE', label: 'Bị báo trùng lặp (Duplicate)' },
+                    { value: 'REJECTED', label: 'Bị từ chối' },
+                  ]}
+                />
+              </Col>
+            </Row>
+          </Card>
 
-      {/* ─── SUBMISSIONS TABLE ────────────────────────────────────────────────── */}
-      <Card
-        style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}
-        styles={{ body: { padding: 0 } }}
-      >
-        <Table<AffiliateSubmissionDTO>
-          columns={columns}
-          dataSource={filteredSubmissions}
-          rowKey="id"
-          pagination={{ pageSize: 10, showTotal: (total) => `Tổng cộng ${total} hồ sơ đã giới thiệu` }}
-          scroll={{ x: 1080 }}
-          locale={{ emptyText: 'Chưa có hồ sơ giới thiệu nào phù hợp.' }}
-        />
-      </Card>
+          {/* ─── SUBMISSIONS TABLE ────────────────────────────────────────────────── */}
+          <Card
+            style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}
+            styles={{ body: { padding: 0 } }}
+          >
+            <Table<AffiliateSubmissionDTO>
+              columns={columns}
+              dataSource={filteredSubmissions}
+              rowKey="id"
+              pagination={{ pageSize: 10, showTotal: (total) => `Tổng cộng ${total} hồ sơ đã giới thiệu` }}
+              scroll={{ x: 1080 }}
+              locale={{ emptyText: 'Chưa có hồ sơ giới thiệu nào phù hợp.' }}
+            />
+          </Card>
+        </>
+      )}
 
       {/* ─── MODAL: KHIẾU NẠI TRANH CHẤP ATTRIBUTION ─────────────────────────── */}
       <Modal

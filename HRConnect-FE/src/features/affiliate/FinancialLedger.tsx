@@ -29,8 +29,8 @@ const DEFAULT_RECEIPT_PREVIEW =
 
 export const FinancialLedger: React.FC = () => {
   const { user } = useCurrentUser();
-  const { data: commissions, isLoading, refetch } = useCommissions('aff-001');
-  const { data: summary } = useLedgerSummary();
+  const { data: commissions, isLoading, refetch } = useCommissions(user?.id);
+  const { data: summary } = useLedgerSummary(user?.id);
   const { mutateAsync: recordOfflinePayout, isPending: recordingPayout } = useRecordOfflinePayout();
 
   // Role perspective mode: allows toggling between Affiliate view and Admin Ops view

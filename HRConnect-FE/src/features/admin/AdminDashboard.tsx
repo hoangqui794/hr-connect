@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Table, Card, Typography, Space, Tag, Button, Modal, Input,
-  Row, Col, Alert, Badge, Tabs, message,
+  Row, Col, Alert, Badge, Tabs, message, Empty,
 } from 'antd';
 import {
   SettingOutlined, ExclamationCircleOutlined, CheckCircleOutlined,
@@ -13,11 +13,16 @@ import { PayoutStatusBadge } from '@/components/common/StatusBadge';
 import { PayoutStatus } from '@/types/affiliate';
 import type { Commission } from '@/types/affiliate';
 import type { ColumnsType } from 'antd/es/table';
+import { useAuthStore } from '@/stores/authStore';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 export const AdminDashboard: React.FC = () => {
+  const { user } = useAuthStore();
+  const isDemoAdmin = user?.id === 'admin-001' || user?.email?.includes('admin@hrconnect');
+  const disputes = isDemoAdmin ? KNOWN_DUPLICATES : [];
+
   const { data: commissions } = useCommissions();
   const [resolveOpen, setResolveOpen] = useState(false);
   const [resolution, setResolution] = useState('');
@@ -113,10 +118,10 @@ export const AdminDashboard: React.FC = () => {
       {/* Admin Stats */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         {[
-          { label: 'Pending Disputes', value: KNOWN_DUPLICATES.length, color: '#ef4444', icon: <ExclamationCircleOutlined /> },
+          { label: 'Pending Disputes', value: disputes.length, color: '#ef4444', icon: <ExclamationCircleOutlined /> },
           { label: 'Payable Commissions', value: payableCommissions.length, color: '#10b981', icon: <DollarOutlined /> },
-          { label: 'Active Jobs', value: 5, color: '#0284c7', icon: <CheckCircleOutlined /> },
-          { label: 'Total Affiliates', value: 24, color: '#8b5cf6', icon: <UserOutlined /> },
+          { label: 'Active Jobs', value: isDemoAdmin ? 5 : 0, color: '#0284c7', icon: <CheckCircleOutlined /> },
+          { label: 'Total Affiliates', value: isDemoAdmin ? 24 : 0, color: '#8b5cf6', icon: <UserOutlined /> },
         ].map((s) => (
           <Col key={s.label} xs={12} sm={6}>
             <Card style={{ borderRadius: 14, border: '1px solid #e2e8f0' }}>
@@ -143,7 +148,7 @@ export const AdminDashboard: React.FC = () => {
               <Space>
                 <ExclamationCircleOutlined style={{ color: '#ef4444' }} />
                 Duplicate Disputes
-                <Badge count={KNOWN_DUPLICATES.length} style={{ background: '#ef4444' }} />
+                <Badge count={disputes.length} style={{ background: '#ef4444' }} />
               </Space>
             ),
             children: (
@@ -155,13 +160,20 @@ export const AdminDashboard: React.FC = () => {
                   description="All disputes are resolved using First-Submission Timestamps. Original submission timestamps are immutable and cryptographically logged."
                   style={{ marginBottom: 16, borderRadius: 10 }}
                 />
-                <Table
-                  dataSource={KNOWN_DUPLICATES}
-                  columns={disputeColumns}
-                  rowKey="originalSubmissionId"
-                  pagination={false}
-                  size="middle"
-                />
+                {disputes.length === 0 ? (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="Hiện không có tranh chấp trùng lặp ứng viên nào cần xử lý."
+                  />
+                ) : (
+                  <Table
+                    dataSource={disputes}
+                    columns={disputeColumns}
+                    rowKey="originalSubmissionId"
+                    pagination={false}
+                    size="middle"
+                  />
+                )}
               </Card>
             ),
           },

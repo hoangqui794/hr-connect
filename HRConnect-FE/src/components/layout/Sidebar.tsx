@@ -39,8 +39,10 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { role } = useAuthStore();
-  const user = DEMO_USERS[role];
+  const { role, user } = useAuthStore();
+  const displayName = user?.name || 'Người dùng';
+  const displayEmail = user?.email || '';
+  const displayAvatar = user?.avatar || (user?.name ? user.name.slice(0, 2).toUpperCase() : 'U');
 
   const menuItems = SIDEBAR_MENU_ITEMS[role] ?? [];
 
@@ -138,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
           justifyContent: collapsed ? 'center' : 'flex-start',
         }}
       >
-        <Tooltip title={collapsed ? user.name : ''} placement="right">
+        <Tooltip title={collapsed ? displayName : ''} placement="right">
           <Avatar
             size={32}
             style={{
@@ -149,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
               flexShrink: 0,
             }}
           >
-            {user.avatar ?? user.name.slice(0, 2).toUpperCase()}
+            {displayAvatar}
           </Avatar>
         </Tooltip>
         {!collapsed && (
@@ -164,7 +166,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
                 textOverflow: 'ellipsis',
               }}
             >
-              {user.name}
+              {displayName}
             </div>
             <div
               style={{
@@ -175,7 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
                 textOverflow: 'ellipsis',
               }}
             >
-              {user.email}
+              {displayEmail}
             </div>
           </div>
         )}

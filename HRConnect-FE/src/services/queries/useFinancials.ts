@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MOCK_COMMISSIONS, MOCK_LEDGER_SUMMARY } from '@/services/mockData';
-import { PayoutRequest, PayoutStatus } from '@/types/affiliate';
+import { PayoutRequest, PayoutStatus, LedgerSummary } from '@/types/affiliate';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -12,9 +12,9 @@ export const financialKeys = {
 
 export function useCommissions(affiliateId?: string) {
   return useQuery({
-    queryKey: financialKeys.commissions(),
+    queryKey: [...financialKeys.commissions(), affiliateId],
     queryFn: async () => {
-      await delay(600);
+      await delay(300);
       if (affiliateId) {
         return MOCK_COMMISSIONS.filter((c) => c.affiliateId === affiliateId);
       }
@@ -24,11 +24,22 @@ export function useCommissions(affiliateId?: string) {
   });
 }
 
-export function useLedgerSummary() {
+export function useLedgerSummary(affiliateId?: string) {
   return useQuery({
-    queryKey: financialKeys.summary(),
-    queryFn: async () => {
-      await delay(400);
+    queryKey: [...financialKeys.summary(), affiliateId],
+    queryFn: async (): Promise<LedgerSummary> => {
+      await delay(200);
+      if (affiliateId && affiliateId !== 'aff-001') {
+        return {
+          totalEarned: 0,
+          pendingAmount: 0,
+          payableAmount: 0,
+          paidAmount: 0,
+          totalPlacements: 0,
+          activeProbations: 0,
+          currency: 'VND',
+        };
+      }
       return MOCK_LEDGER_SUMMARY;
     },
     staleTime: 30000,

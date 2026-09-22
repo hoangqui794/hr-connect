@@ -35,14 +35,14 @@ export const CandidateHeader: React.FC = () => {
   const { alerts, unreadCount, markAllRead, dismissAlert } = useAlertStore();
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const userName = user?.name || DEMO_USERS[UserRole.CANDIDATE]?.name || 'Ứng viên';
-  const userEmail = user?.email || DEMO_USERS[UserRole.CANDIDATE]?.email || '';
+  const userName = user?.name || 'Ứng viên';
+  const userEmail = user?.email || '';
   const userAvatar = user?.avatar || getInitials(userName);
 
   const handleLogout = () => {
     logout();
     void message.success('Đã đăng xuất tài khoản thành công!');
-    navigate('/');
+    navigate('/login');
   };
 
   /**

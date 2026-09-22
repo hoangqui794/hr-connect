@@ -81,14 +81,14 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Fixed Headhunter Identity: David Tran - RecruitPro Network
+  // Headhunter Identity from active session
   const affiliateUser = {
-    name: user?.name || 'David Tran',
-    network: 'RecruitPro Network',
-    affiliateId: 'aff-001',
+    name: user?.name || 'Chuyên viên Tuyển dụng',
+    network: user?.company || 'Cộng tác viên Độc lập',
+    affiliateId: user?.id || 'aff-user',
     role: 'HEADHUNTER / AFFILIATE',
-    trustRating: 4.8,
-    avatar: user?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+    trustRating: user?.trustRating ?? 5.0,
+    avatar: user?.avatar || (user?.name ? user.name.slice(0, 2).toUpperCase() : 'HH'),
   };
 
   // Keyboard shortcut Ctrl+K / Cmd+K

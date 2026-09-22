@@ -301,11 +301,15 @@ let MOCK_DB_WARRANTY: ProbationWarrantyDTO[] = [
 // ─── CLIENT SERVICE CLASS IMPLEMENTATION ──────────────────────────────────────
 export class ClientService {
   /**
-   * Fetch company jobs strictly isolated by companyId (TechCorp Việt Nam)
+   * Fetch company jobs strictly isolated by companyId
    */
-  async getCompanyJobs(companyId: string = CURRENT_CLIENT_COMPANY_ID): Promise<JobDTO[]> {
+  async getCompanyJobs(companyId?: string): Promise<JobDTO[]> {
+    if (!companyId) return simulateNetworkLatency([]);
+    if (companyId === CURRENT_CLIENT_COMPANY_ID || companyId === 'client-001') {
+      return simulateNetworkLatency(MOCK_DB_JOBS.filter((j) => j.companyId === 'COMP_TECHCORP_VN'));
+    }
     const jobs = MOCK_DB_JOBS.filter(
-      (j) => j.companyId === companyId || companyId === CURRENT_CLIENT_COMPANY_ID
+      (j) => j.companyId === companyId
     );
     return simulateNetworkLatency(jobs);
   }
@@ -313,11 +317,15 @@ export class ClientService {
   /**
    * Create a new recruitment job
    */
-  async createJob(data: Partial<JobDTO>): Promise<JobDTO> {
+  async createJob(
+    data: Partial<JobDTO>,
+    companyId: string = CURRENT_CLIENT_COMPANY_ID,
+    companyName: string = CURRENT_CLIENT_COMPANY_NAME
+  ): Promise<JobDTO> {
     const newJob: JobDTO = {
-      id: `JOB-TC-${Date.now()}`,
-      companyId: CURRENT_CLIENT_COMPANY_ID,
-      companyName: CURRENT_CLIENT_COMPANY_NAME,
+      id: `JOB-${Date.now()}`,
+      companyId: companyId,
+      companyName: companyName,
       title: data.title || 'Vị trí tuyển dụng mới',
       serviceType: data.serviceType || 'HEADHUNT_COD',
       status: 'OPEN',
@@ -337,9 +345,10 @@ export class ClientService {
   /**
    * Get candidate pipeline applications for the company's jobs
    */
-  async getCandidatesByCompany(companyId: string = CURRENT_CLIENT_COMPANY_ID): Promise<CandidateApplicationDTO[]> {
-    // In real BE: JOIN applications with jobs WHERE job.company_id = companyId
+  async getCandidatesByCompany(companyId?: string): Promise<CandidateApplicationDTO[]> {
+    if (!companyId) return simulateNetworkLatency([]);
     const companyJobs = await this.getCompanyJobs(companyId);
+    if (companyJobs.length === 0) return simulateNetworkLatency([]);
     const validJobIds = new Set(companyJobs.map((j) => j.id));
     const candidates = MOCK_DB_CANDIDATES.filter((c) => validJobIds.has(c.jobId));
     return simulateNetworkLatency(candidates);
@@ -416,8 +425,12 @@ export class ClientService {
   /**
    * Get 60-day probation warranty records (HEADHUNT_COD package only)
    */
-  async getWarrantyList(_companyId: string = CURRENT_CLIENT_COMPANY_ID): Promise<ProbationWarrantyDTO[]> {
-    return simulateNetworkLatency([...MOCK_DB_WARRANTY]);
+  async getWarrantyList(companyId?: string): Promise<ProbationWarrantyDTO[]> {
+    if (!companyId) return simulateNetworkLatency([]);
+    if (companyId === CURRENT_CLIENT_COMPANY_ID || companyId === 'client-001') {
+      return simulateNetworkLatency([...MOCK_DB_WARRANTY]);
+    }
+    return simulateNetworkLatency([]);
   }
 
   /**

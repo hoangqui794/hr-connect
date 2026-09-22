@@ -105,11 +105,11 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [notifOpen, setNotifOpen] = useState<boolean>(false);
 
-  // User & Company Identity according to Spec A-04
-  const userName = user?.name || 'Sarah Chen';
-  const companyName = user?.company || 'TechCorp Việt Nam';
-  const userEmail = user?.email || 'sarah.chen@techcorp.vn';
-  const userAvatar = user?.avatar || 'SC';
+  // User & Company Identity from logged in session
+  const userName = user?.name || 'Doanh nghiệp';
+  const companyName = user?.company || 'Doanh nghiệp tuyển dụng';
+  const userEmail = user?.email || '';
+  const userAvatar = user?.avatar || (user?.name ? user.name.slice(0, 2).toUpperCase() : 'DN');
 
   // Listen for Ctrl+K or Cmd+K
   useEffect(() => {

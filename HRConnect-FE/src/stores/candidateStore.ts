@@ -113,7 +113,25 @@ interface CandidateState {
     cvUsed: string;
     note: string;
   }) => void;
+  resetCandidateStore: () => void;
+  loadDemoData: () => void;
+  initCandidateFromUser: (user: { name?: string; email?: string; phone?: string }) => void;
 }
+
+export const INITIAL_BLANK_PROFILE: CandidateProfile = {
+  fullName: '',
+  email: '',
+  phone: '',
+  targetRole: '',
+  expectedSalary: '',
+  currentLevel: '',
+  experienceYears: '',
+  foreignLanguages: '',
+  availableDate: '',
+  location: '',
+  skills: [],
+  bio: '',
+};
 
 const DEFAULT_PROFILE: CandidateProfile = {
   fullName: 'Nguyễn Văn Minh',
@@ -274,12 +292,45 @@ const DEFAULT_RECRUITER_CONNECTS: RecruiterConnectItem[] = [
 export const useCandidateStore = create<CandidateState>()(
   persist(
     (set, get) => ({
-      profile: DEFAULT_PROFILE,
-      cvs: DEFAULT_CVS,
-      savedJobIds: ['job-hot-003', 'job-hot-005'],
-      applications: DEFAULT_APPLICATIONS,
-      interviews: DEFAULT_INTERVIEWS,
-      recruiterConnects: DEFAULT_RECRUITER_CONNECTS,
+      profile: INITIAL_BLANK_PROFILE,
+      cvs: [],
+      savedJobIds: [],
+      applications: [],
+      interviews: [],
+      recruiterConnects: [],
+
+      resetCandidateStore: () => {
+        set({
+          profile: INITIAL_BLANK_PROFILE,
+          cvs: [],
+          savedJobIds: [],
+          applications: [],
+          interviews: [],
+          recruiterConnects: [],
+        });
+      },
+
+      loadDemoData: () => {
+        set({
+          profile: DEFAULT_PROFILE,
+          cvs: DEFAULT_CVS,
+          savedJobIds: ['job-hot-003', 'job-hot-005'],
+          applications: DEFAULT_APPLICATIONS,
+          interviews: DEFAULT_INTERVIEWS,
+          recruiterConnects: DEFAULT_RECRUITER_CONNECTS,
+        });
+      },
+
+      initCandidateFromUser: (user) => {
+        set((state) => ({
+          profile: {
+            ...state.profile,
+            fullName: state.profile.fullName || user.name || '',
+            email: state.profile.email || user.email || '',
+            phone: state.profile.phone || user.phone || '',
+          },
+        }));
+      },
 
       updateProfile: (profileUpdate) => {
         set((state) => ({
@@ -385,3 +436,9 @@ export const useCandidateStore = create<CandidateState>()(
     }
   )
 );
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('hrconnect:logout', () => {
+    useCandidateStore.getState().resetCandidateStore();
+  });
+}

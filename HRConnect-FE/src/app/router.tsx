@@ -158,7 +158,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'candidate/dashboard',
-        element: <Navigate to="/" replace />,
+        element: protectedPage('/candidate/dashboard', <AppRoutes.Dashboard />),
       },
       {
         path: 'profile',

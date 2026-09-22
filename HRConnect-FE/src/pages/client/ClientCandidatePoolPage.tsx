@@ -30,6 +30,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
+import { useAuthStore } from '@/stores/authStore';
 import clientService, { CURRENT_CLIENT_COMPANY_ID } from '@/services/clientService';
 import type {
   CandidateApplicationDTO,
@@ -122,18 +123,22 @@ export const ClientCandidatePoolPage: React.FC = () => {
   const [scheduleForm] = Form.useForm();
   const [offerForm] = Form.useForm();
 
+  const { user } = useAuthStore();
+  const isDemoClient = user?.id === 'client-001' || user?.company?.includes('TechCorp');
+  const companyId = isDemoClient ? CURRENT_CLIENT_COMPANY_ID : user?.id;
+
   // Load candidate applications via ClientService
   const loadCandidates = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await clientService.getCandidatesByCompany(CURRENT_CLIENT_COMPANY_ID);
+      const data = await clientService.getCandidatesByCompany(companyId);
       setCandidates(data);
     } catch (error) {
       message.error('Không thể tải danh sách ứng viên');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     loadCandidates();

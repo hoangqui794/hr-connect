@@ -29,6 +29,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
+import { useAuthStore } from '@/stores/authStore';
 import type { AffiliateCommissionDTO, CommissionPayoutStatus } from '@/types/affiliate';
 
 const { Title, Text } = Typography;
@@ -105,7 +106,9 @@ const INITIAL_COMMISSIONS: AffiliateCommissionDTO[] = [
 ];
 
 export const AffiliateCommissionsPage: React.FC = () => {
-  const [commissions, setCommissions] = useState<AffiliateCommissionDTO[]>(INITIAL_COMMISSIONS);
+  const { user } = useAuthStore();
+  const isDemoAffiliate = user?.id === 'aff-001' || user?.email?.includes('david.tran');
+  const [commissions, setCommissions] = useState<AffiliateCommissionDTO[]>(isDemoAffiliate ? INITIAL_COMMISSIONS : []);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
@@ -329,7 +332,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
           Sổ cái Hoa hồng & Quản lý Payout
         </Title>
         <Text style={{ color: '#64748b' }}>
-          Headhunter: <strong style={{ color: '#0f172a' }}>David Tran</strong> (RecruitPro Network) • Giám sát dòng tiền hoa hồng theo các mốc 60 ngày bảo hành
+          Headhunter: <strong style={{ color: '#0f172a' }}>{user?.name || 'Chuyên viên Tuyển dụng'}</strong> ({user?.company || 'Cộng tác viên Độc lập'}) • Giám sát dòng tiền hoa hồng theo các mốc 60 ngày bảo hành
         </Text>
       </div>
 

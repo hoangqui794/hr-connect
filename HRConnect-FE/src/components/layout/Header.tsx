@@ -43,10 +43,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
 
-  // Dynamic user display with fallback
-  const userName = user?.name || DEMO_USERS[role]?.name || 'Người dùng';
-  const userEmail = user?.email || DEMO_USERS[role]?.email || '';
-  const userAvatar = user?.avatar || (userName ? userName.trim().split(/\s+/).filter(Boolean).map(w => w[0]).slice(-2).join('').toUpperCase() : 'U');
+  // Dynamic user display without mock fallback
+  const userName = user?.name || 'Người dùng';
+  const userEmail = user?.email || '';
+  const userAvatar = user?.avatar || (user?.name ? user.name.trim().split(/\s+/).filter(Boolean).map(w => w[0]).slice(-2).join('').toUpperCase() : 'U');
 
   const filteredSearch = SEARCH_ITEMS.filter(
     (item) =>
@@ -58,7 +58,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
   const handleLogout = useCallback(() => {
     logout();
     void message.success('Đã đăng xuất thành công!');
-    navigate('/');
+    navigate('/login');
   }, [logout, navigate]);
 
   const userMenuItems: MenuProps['items'] = [

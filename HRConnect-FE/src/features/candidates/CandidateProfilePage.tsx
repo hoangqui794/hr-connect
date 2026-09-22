@@ -94,13 +94,29 @@ export const CandidateProfilePage: React.FC = () => {
   const activeTabKey = searchParams.get('tab') || 'career-info';
 
   const { user } = useAuthStore();
-  const { profile, updateProfile, cvs, addCV, setDefaultCV, deleteCV } = useCandidateStore();
+  const { profile, updateProfile, cvs, addCV, setDefaultCV, deleteCV, initCandidateFromUser } = useCandidateStore();
 
   const [form] = Form.useForm();
   const [savingProfile, setSavingProfile] = useState(false);
 
+  // Sync profile with logged in user if initial
+  React.useEffect(() => {
+    if (user && (!profile.fullName || !profile.email)) {
+      initCandidateFromUser({
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+      });
+      form.setFieldsValue({
+        fullName: user.name,
+        email: user.email,
+        phone: user.phone || '',
+      });
+    }
+  }, [user, profile.fullName, profile.email, initCandidateFromUser, form]);
+
   // Skill tags input state
-  const [skillsList, setSkillsList] = useState<string[]>(profile.skills || ['ReactJS', 'TypeScript', 'Node.js']);
+  const [skillsList, setSkillsList] = useState<string[]>(profile.skills || []);
   const [newSkillInput, setNewSkillInput] = useState('');
   const [showSkillInput, setShowSkillInput] = useState(false);
 
@@ -223,23 +239,23 @@ export const CandidateProfilePage: React.FC = () => {
         <Row align="middle" justify="space-between" gutter={[20, 20]}>
           <Col xs={24} sm={16} style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <Avatar size={76} style={{ background: '#0284c7', fontSize: 26, fontWeight: 800 }}>
-              {user?.name ? user.name.slice(0, 2).toUpperCase() : 'NM'}
+              {profile.fullName ? profile.fullName.slice(0, 2).toUpperCase() : (user?.name ? user.name.slice(0, 2).toUpperCase() : 'UV')}
             </Avatar>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Title level={3} style={{ color: '#fff', margin: 0, fontWeight: 800 }}>
-                  {profile.fullName || user?.name}
+                  {profile.fullName || user?.name || 'Chưa cập nhật họ tên'}
                 </Title>
                 <Tag color="#0284c7" style={{ borderRadius: 10, fontWeight: 700 }}>
-                  {profile.currentLevel}
+                  {profile.currentLevel || 'Ứng viên'}
                 </Tag>
               </div>
               <Text style={{ color: '#94a3b8', fontSize: 14 }}>
-                {profile.targetRole} • {profile.experienceYears}
+                {profile.targetRole || 'Chưa cập nhật vị trí mong muốn'}{profile.experienceYears ? ` • ${profile.experienceYears}` : ''}
               </Text>
               <div style={{ display: 'flex', gap: 16, marginTop: 6, color: '#cbd5e1', fontSize: 13 }}>
-                <span><MailOutlined /> {profile.email || user?.email}</span>
-                <span><PhoneOutlined /> {profile.phone}</span>
+                <span><MailOutlined /> {profile.email || user?.email || 'Chưa có email'}</span>
+                <span><PhoneOutlined /> {profile.phone || user?.phone || 'Chưa có số điện thoại'}</span>
               </div>
             </div>
           </Col>
@@ -250,7 +266,7 @@ export const CandidateProfilePage: React.FC = () => {
                 Lương kỳ vọng
               </Text>
               <div style={{ color: '#34d399', fontSize: 18, fontWeight: 800 }}>
-                {profile.expectedSalary}
+                {profile.expectedSalary || 'Thỏa thuận'}
               </div>
             </div>
           </Col>
