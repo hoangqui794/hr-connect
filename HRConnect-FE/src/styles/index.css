@@ -1,0 +1,240 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Custom Properties ─────────────────────────────── */
+:root {
+  --brand-primary: #0284c7;
+  --brand-primary-dark: #0369a1;
+  --brand-primary-light: #38bdf8;
+  --sidebar-bg: #0f172a;
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 64px;
+  --header-height: 64px;
+  --content-bg: #f8fafc;
+  --card-bg: #ffffff;
+  --border-color: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.10), 0 8px 10px -6px rgb(0 0 0 / 0.10);
+}
+
+/* ─── Global Reset & Base ───────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--content-bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ─── Scrollbar Styling ─────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ─── Antd Layout Overrides ─────────────────────────────── */
+.ant-layout {
+  min-height: 100vh;
+  background: var(--content-bg) !important;
+}
+
+.ant-layout-sider {
+  background: var(--sidebar-bg) !important;
+  box-shadow: 2px 0 8px rgb(0 0 0 / 0.15);
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+}
+
+.ant-layout-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  padding: 0 24px !important;
+  height: var(--header-height) !important;
+  line-height: var(--header-height) !important;
+  position: sticky !important;
+  top: 0;
+  z-index: 99;
+}
+
+.ant-layout-content {
+  background: var(--content-bg) !important;
+  overflow-y: auto;
+}
+
+/* ─── Sidebar Menu ──────────────────────────────────────── */
+.ant-menu-dark {
+  background: transparent !important;
+}
+
+.ant-menu-dark .ant-menu-item {
+  margin: 2px 8px !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.ant-menu-dark .ant-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.ant-menu-dark .ant-menu-item-selected {
+  background: var(--brand-primary) !important;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35) !important;
+}
+
+/* ─── Card Styles ───────────────────────────────────────── */
+.hrc-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.hrc-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.hrc-stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ─── Score Tier Colors ─────────────────────────────────── */
+.tier-top-fit { color: #ef4444; background: #fef2f2; border-color: #fecaca; }
+.tier-strong { color: #0d9488; background: #f0fdfa; border-color: #99f6e4; }
+.tier-moderate { color: #65a30d; background: #f7fee7; border-color: #d9f99d; }
+.tier-weak { color: #64748b; background: #f8fafc; border-color: #e2e8f0; }
+
+/* ─── Gradient Backgrounds ──────────────────────────────── */
+.gradient-brand {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #1e40af 100%);
+}
+
+.gradient-hero {
+  background: linear-gradient(
+    135deg,
+    #0f172a 0%,
+    #1e293b 25%,
+    #0c4a6e 50%,
+    #0f172a 75%,
+    #1e293b 100%
+  );
+  background-size: 400% 400%;
+  animation: gradient-x 15s ease infinite;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+}
+
+/* ─── Animations ────────────────────────────────────────── */
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.7; }
+}
+
+.animate-fade-in { animation: fade-in 0.35s ease-out forwards; }
+.animate-slide-in-right { animation: slide-in-right 0.3s ease-out forwards; }
+
+/* ─── Status Badge Colors ───────────────────────────────── */
+.status-on-hold { --badge-color: #f59e0b; }
+.status-payable { --badge-color: #10b981; }
+.status-paid { --badge-color: #0284c7; }
+.status-disputed { --badge-color: #ef4444; }
+
+/* ─── Split View Layout ─────────────────────────────────── */
+.split-view {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 16px;
+  height: calc(100vh - var(--header-height) - 48px);
+}
+
+/* ─── Command Search Modal ──────────────────────────────── */
+.command-search .ant-modal-content {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+/* ─── Wizard Steps ──────────────────────────────────────── */
+.ant-steps-item-finish .ant-steps-item-icon {
+  background: var(--brand-primary) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+/* ─── Table Overrides ───────────────────────────────────── */
+.ant-table-thead > tr > th {
+  background: #f1f5f9 !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  color: var(--text-secondary) !important;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: #f0f9ff !important;
+}
+
+/* ─── Progress Bar Overrides ────────────────────────────── */
+.probation-progress .ant-progress-bg {
+  background: linear-gradient(90deg, #10b981, #0284c7) !important;
+}
+
+/* ─── Responsive ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .split-view {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
