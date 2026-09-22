@@ -52,6 +52,20 @@ desktop.ini
 !.env.example
 !.env.e2e.example
 
+## Node / Frontend
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+## Frontend Build Outputs
+dist/
+**/dist/
+dist-ssr/
+*.local
+
 ## Local MF-03 E2E runtime
 .e2e/
 
