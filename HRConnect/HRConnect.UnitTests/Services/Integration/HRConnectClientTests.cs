@@ -204,7 +204,7 @@ public class HRConnectClientTests
             .Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.ToString().Contains("/api/internal/cvs")),
+                ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.ToString().Contains("/api/v1/internal/cvs")),
                 ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {
@@ -273,7 +273,7 @@ public class HRConnectClientTests
             .Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.ToString().Contains("/api/internal/cvs")),
+                ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.ToString().Contains("/api/v1/internal/cvs")),
                 ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync(() =>
             {
@@ -344,7 +344,7 @@ public class HRConnectClientTests
             .Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
-                ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.ToString().Contains("/api/internal/cvs")),
+                ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.ToString().Contains("/api/v1/internal/cvs")),
                 ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {

@@ -39,7 +39,7 @@ public class HRConnectClient : IHRConnectClient
         CancellationToken cancellationToken = default)
     {
         var expiry = expiryMinutes ?? _options.DefaultExpiryMinutes;
-        var relativeUrl = $"/api/internal/cvs/{cvId}/download-url?expiryMinutes={expiry}";
+        var relativeUrl = $"/api/v1/internal/cvs/{cvId}/download-url?expiryMinutes={expiry}";
 
         using var request = new HttpRequestMessage(HttpMethod.Get, relativeUrl);
         if (!string.IsNullOrWhiteSpace(_options.ServiceToken))
