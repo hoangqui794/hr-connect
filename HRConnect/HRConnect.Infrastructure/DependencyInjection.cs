@@ -70,6 +70,22 @@ public static class DependencyInjection
         services.AddScoped<IAdminApprovalService, HRConnect.Infrastructure.Services.Admin.AdminApprovalService>();
         services.AddScoped<IMf03ScoringTrigger, HRConnect.Infrastructure.Services.Integration.Mf03ScoringTrigger>();
 
+        services.Configure<Mf03IntegrationSettings>(configuration.GetSection(Mf03IntegrationSettings.SectionName));
+        services.PostConfigure<Mf03IntegrationSettings>(settings =>
+        {
+            settings.BaseUrl = configuration["MF03_BASE_URL"] ?? settings.BaseUrl;
+            settings.ServiceToken = configuration["HRCONNECT_SERVICE_TOKEN"] ?? settings.ServiceToken;
+        });
+        services.AddHttpClient("Mf03AiService", (provider, client) =>
+        {
+            var settings = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Mf03IntegrationSettings>>().Value;
+            client.BaseAddress = new Uri(settings.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(15);
+            if (!string.IsNullOrWhiteSpace(settings.ServiceToken))
+                client.DefaultRequestHeaders.Add("X-Service-Token", settings.ServiceToken);
+        });
+        services.AddHostedService<HRConnect.Infrastructure.Services.Integration.Mf03ScoringDispatcher>();
+
         // 5. Cloudflare R2 Object Storage & CV Storage
         var r2Settings = new R2Settings();
         configuration.GetSection(R2Settings.SectionName).Bind(r2Settings);

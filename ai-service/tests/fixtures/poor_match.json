@@ -1,0 +1,21 @@
+{
+  "requestId": "POOR-001",
+  "applicationId": "APP-003",
+  "attemptNo": 1,
+  "candidate": {
+    "summary": "Poor match graphic designer",
+    "yearsOfExperience": 2,
+    "highestEducation": "Bachelor",
+    "skills": [{"name": "Figma", "yearsOfExperience": 2}],
+    "cvText": "Created brand illustrations and user interface designs."
+  },
+  "job": {
+    "title": ".NET Backend Developer",
+    "description": "Develop REST backend services using .NET and PostgreSQL.",
+    "requirements": [
+      {"type": "MUST_HAVE", "category": "SKILL", "content": "ASP.NET Core"},
+      {"type": "MUST_HAVE", "category": "SKILL", "content": "PostgreSQL"},
+      {"type": "SHOULD_HAVE", "category": "SKILL", "content": "Docker"}
+    ]
+  }
+}

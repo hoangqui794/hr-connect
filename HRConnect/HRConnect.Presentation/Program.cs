@@ -17,6 +17,7 @@ using HRConnect.Presentation.Endpoints.V1.Companies;
 using HRConnect.Presentation.Endpoints.V1.InternalHr;
 using HRConnect.Presentation.Endpoints.V1.Internal;
 using HRConnect.Presentation.Swagger;
+using HRConnect.Presentation.Endpoints.Internal;
 using Microsoft.EntityFrameworkCore;
 
 // ==============================================================================
@@ -162,6 +163,7 @@ app.MapJobEndpoints();
 app.MapCompanyEndpoints();
 app.MapInternalHrEndpoints();
 app.MapInternalCvEndpoints();
+app.MapAiIntegrationEndpoints();
 
 // ==============================================================================
 // 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động

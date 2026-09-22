@@ -194,6 +194,11 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             };
             await _applicationRepository.AddAsync(application, cancellationToken);
 
+            // Persist the AI request in the same transaction. A hosted dispatcher sends it after commit.
+            await _scoringTrigger.TriggerScoringAsync(
+                new Mf03TriggerPayload(application.ApplicationId, cvId, job.JobId),
+                cancellationToken);
+
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
         catch (Exception ex) when (IsDuplicateConstraintViolation(ex))
@@ -264,18 +269,6 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
 
         _logger.LogInformation("Ứng tuyển thành công: ApplicationId={ApplicationId}, CandidateId={CandidateId}, JobId={JobId}, CvId={CvId}",
             application.ApplicationId, candidate.CandidateId, job.JobId, cvId);
-
-        // 7. Kích hoạt MF-03 bất đồng bộ (không chờ AI scoring hoàn tất)
-        try
-        {
-            await _scoringTrigger.TriggerScoringAsync(
-                new Mf03TriggerPayload(application.ApplicationId, cvId, job.JobId),
-                CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Lỗi khi kích hoạt MF-03 cho ApplicationId {ApplicationId}", application.ApplicationId);
-        }
 
         return new ApplyJobResponse
         {

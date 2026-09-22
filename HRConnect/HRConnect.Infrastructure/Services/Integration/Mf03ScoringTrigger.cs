@@ -1,4 +1,7 @@
 using HRConnect.Application.Common.Interfaces;
+using HRConnect.Domain.Entities;
+using HRConnect.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace HRConnect.Infrastructure.Services.Integration;
@@ -6,18 +9,34 @@ namespace HRConnect.Infrastructure.Services.Integration;
 public class Mf03ScoringTrigger : IMf03ScoringTrigger
 {
     private readonly ILogger<Mf03ScoringTrigger> _logger;
+    private readonly ApplicationDbContext _context;
 
-    public Mf03ScoringTrigger(ILogger<Mf03ScoringTrigger> logger)
+    public Mf03ScoringTrigger(ApplicationDbContext context, ILogger<Mf03ScoringTrigger> logger)
     {
+        _context = context;
         _logger = logger;
     }
 
-    public Task TriggerScoringAsync(Mf03TriggerPayload payload, CancellationToken cancellationToken = default)
+    public async Task TriggerScoringAsync(Mf03TriggerPayload payload, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("MF-03 Triggered: ApplicationId={ApplicationId}, CvId={CvId}, JobId={JobId}. AI scoring scheduled asynchronously.",
-            payload.ApplicationId, payload.CvId, payload.JobId);
+        var attemptNo = await _context.AiMatchResults
+            .Where(result => result.ApplicationId == payload.ApplicationId)
+            .Select(result => (int?)result.AttemptNo)
+            .MaxAsync(cancellationToken) ?? 0;
 
-        // Dispatches event asynchronously for MF-03 consumption.
-        return Task.CompletedTask;
+        var requestId = Guid.NewGuid();
+        await _context.AiMatchResults.AddAsync(new AiMatchResult
+        {
+            MatchResultId = requestId,
+            ApplicationId = payload.ApplicationId,
+            AttemptNo = attemptNo + 1,
+            ExternalReference = requestId.ToString(),
+            Status = "PENDING",
+            RequestedAt = DateTime.UtcNow
+        }, cancellationToken);
+
+        _logger.LogInformation(
+            "Queued MF-03 scoring request {RequestId}: ApplicationId={ApplicationId}, CvId={CvId}, JobId={JobId}, AttemptNo={AttemptNo}.",
+            requestId, payload.ApplicationId, payload.CvId, payload.JobId, attemptNo + 1);
     }
 }

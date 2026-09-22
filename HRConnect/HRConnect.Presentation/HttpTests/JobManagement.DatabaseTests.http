@@ -1,6 +1,8 @@
 @baseUrl = https://localhost:7289
 @clientEmail = client@gmail.com
-@clientPassword = PASTE_DEMO_CLIENT_PASSWORD_HERE
+@clientPassword = 111111Aa@
+@internalHrEmail = PASTE_INTERNAL_HR_EMAIL_HERE
+@internalHrPassword = PASTE_INTERNAL_HR_PASSWORD_HERE
 @cvApplicationServiceTypeId = PASTE_CV_APPLICATION_SERVICE_TYPE_ID
 @headhuntCodServiceTypeId = PASTE_HEADHUNT_COD_SERVICE_TYPE_ID
 @cvSourcingServiceTypeId = PASTE_CV_SOURCING_SERVICE_TYPE_ID
@@ -8,15 +10,14 @@
 @candidateToken = PASTE_CANDIDATE_ACCESS_TOKEN
 @affiliateToken = PASTE_AFFILIATE_ACCESS_TOKEN
 @headhuntJobId = PASTE_ACTIVE_HEADHUNT_JOB_ID
+@testRunId = MF01-VS-20260921-01
 
-# Đổi giá trị này trước mỗi lần chạy để dễ tìm dữ liệu trong PostgreSQL.
-@testRunId = DBTEST-20260921-MF01-01
+# Visual Studio 2022 17.12+ supports named-request response variables.
+# Run requests from top to bottom. Change testRunId before each complete run.
+# Fill the real INTERNAL_HR credentials before running TC-06 onward.
+# Fill all Service Type IDs and an active Skill ID from the current database before TC-01.
 
-# Sau khi đăng nhập bằng tài khoản INTERNAL_HR, dán accessToken vào đây.
-# Token của PLATFORM_ADMIN không hợp lệ nếu tài khoản đó không có role INTERNAL_HR.
-@internalHrToken = PASTE_INTERNAL_HR_ACCESS_TOKEN_HERE
-
-### TC-00 - Đăng nhập Client
+### TC-00 - Login Client Company
 # @name clientLogin
 POST {{baseUrl}}/api/v1/auth/login
 Content-Type: application/json
@@ -26,163 +27,262 @@ Content-Type: application/json
   "password": "{{clientPassword}}"
 }
 
-> {%
-    client.global.set("clientToken", response.body.data.accessToken);
-%}
-
-### TC-01 - Tạo Job Draft có dữ liệu thật
-# @name createJob
+### TC-01 - Create a realistic Job Draft for the approve flow
+# @name createApproveJob
 POST {{baseUrl}}/api/v1/jobs
-Authorization: Bearer {{clientToken}}
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
 Content-Type: application/json
 
 {
   "serviceTypeId": "{{cvApplicationServiceTypeId}}",
-  "title": "{{testRunId}} - Senior .NET Developer",
-  "description": "Bản ghi test database cho Main Flow 1.",
-  "location": "Ho Chi Minh City",
-  "employmentType": "FULL_TIME",
-  "salaryMin": 25000000,
-  "salaryMax": 40000000,
-  "currencyCode": "VND",
-  "quantity": 2,
-  "visibility": "PUBLIC",
-  "requirements": [
-    {
-      "requirementType": "MUST_HAVE",
-      "category": "TECHNICAL_SKILL",
-      "content": "Có kinh nghiệm ASP.NET Core và Entity Framework Core.",
-      "weight": 0.7
-    },
-    {
-      "requirementType": "SHOULD_HAVE",
-      "category": "LANGUAGE",
-      "content": "Có khả năng đọc tài liệu tiếng Anh.",
-      "weight": 0.3
-    }
-  ],
-  "skills": [
-    {
-      "skillId": "{{skillId}}",
-      "isMandatory": true,
-      "weight": 0.8
-    }
-  ]
-}
-
-> {%
-    client.global.set("jobId", response.body.data.jobId);
-%}
-
-### TC-02 - Xem Job vừa tạo trong database thông qua API
-GET {{baseUrl}}/api/v1/jobs/{{jobId}}
-Authorization: Bearer {{clientToken}}
-
-### TC-03 - Cập nhật Draft và thay toàn bộ Requirements
-PUT {{baseUrl}}/api/v1/jobs/{{jobId}}
-Authorization: Bearer {{clientToken}}
-Content-Type: application/json
-
-{
-  "serviceTypeId": "{{cvApplicationServiceTypeId}}",
-  "title": "{{testRunId}} - Senior Backend Engineer - UPDATED",
-  "description": "Xây dựng và bảo trì HR Connect API bằng ASP.NET Core 8.",
+  "title": "{{testRunId}} - Senior .NET Backend Developer",
+  "description": "Chúng tôi đang tìm kiếm Senior .NET Backend Developer tham gia phát triển nền tảng tuyển dụng HR Connect. Ứng viên chịu trách nhiệm thiết kế RESTful API bằng ASP.NET Core 8, áp dụng Clean Architecture và CQRS, làm việc với PostgreSQL, tối ưu truy vấn và tham gia review code.",
   "location": "Ho Chi Minh City - Hybrid",
   "employmentType": "FULL_TIME",
   "salaryMin": 30000000,
   "salaryMax": 45000000,
   "currencyCode": "VND",
-  "quantity": 3,
+  "quantity": 2,
   "visibility": "PUBLIC",
   "requirements": [
-    {
-      "requirementType": "MUST_HAVE",
-      "category": "TECHNICAL_SKILL",
-      "content": "Tối thiểu 3 năm kinh nghiệm C# và ASP.NET Core.",
-      "weight": 0.6
-    },
-    {
-      "requirementType": "MUST_HAVE",
-      "category": "DATABASE",
-      "content": "Có kinh nghiệm PostgreSQL.",
-      "weight": 0.4
-    }
+    { "requirementType": "MUST_HAVE", "category": "EXPERIENCE", "content": "Có tối thiểu 3 năm kinh nghiệm phát triển ứng dụng backend.", "weight": 0.2 },
+    { "requirementType": "MUST_HAVE", "category": "TECHNICAL_SKILL", "content": "Thành thạo C#, .NET 8 và ASP.NET Core Web API.", "weight": 0.2 },
+    { "requirementType": "MUST_HAVE", "category": "DATABASE", "content": "Có kinh nghiệm thiết kế cơ sở dữ liệu và tối ưu truy vấn PostgreSQL.", "weight": 0.15 },
+    { "requirementType": "MUST_HAVE", "category": "ARCHITECTURE", "content": "Hiểu và có kinh nghiệm áp dụng Clean Architecture, SOLID và Dependency Injection.", "weight": 0.15 },
+    { "requirementType": "MUST_HAVE", "category": "TECHNICAL_SKILL", "content": "Có kinh nghiệm xây dựng RESTful API và phân quyền bằng JWT.", "weight": 0.1 },
+    { "requirementType": "SHOULD_HAVE", "category": "DEVOPS", "content": "Có kinh nghiệm Docker, Docker Compose và CI/CD.", "weight": 0.05 },
+    { "requirementType": "SHOULD_HAVE", "category": "TECHNICAL_SKILL", "content": "Có kinh nghiệm Redis hoặc hệ thống caching tương đương.", "weight": 0.05 },
+    { "requirementType": "SHOULD_HAVE", "category": "CLOUD", "content": "Có kinh nghiệm triển khai ứng dụng trên AWS hoặc Azure.", "weight": 0.05 },
+    { "requirementType": "SHOULD_HAVE", "category": "LANGUAGE", "content": "Có khả năng đọc hiểu tài liệu kỹ thuật bằng tiếng Anh.", "weight": 0.05 }
   ],
   "skills": [
-    {
-      "skillId": "{{skillId}}",
-      "isMandatory": true,
-      "weight": 0.7
-    }
+    { "skillId": "{{skillId}}", "isMandatory": true, "weight": 0.8 }
   ]
 }
 
-### TC-04 - Submit để tạo lịch sử DRAFT -> PENDING_REVIEW
-POST {{baseUrl}}/api/v1/jobs/{{jobId}}/submit
-Authorization: Bearer {{clientToken}}
+### TC-02 - Read the created Job; expect DRAFT and 9 requirements
+GET {{baseUrl}}/api/v1/jobs/{{createApproveJob.response.body.$.data.jobId}}
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
 
-### TC-05 - Kiểm tra Job xuất hiện trong danh sách của Client
+### TC-03 - Update the Draft and replace its requirements
+PUT {{baseUrl}}/api/v1/jobs/{{createApproveJob.response.body.$.data.jobId}}
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "serviceTypeId": "{{cvApplicationServiceTypeId}}",
+  "title": "{{testRunId}} - Senior Backend Engineer - UPDATED",
+  "description": "Xây dựng và bảo trì HR Connect API bằng ASP.NET Core 8, PostgreSQL và Clean Architecture.",
+  "location": "Ho Chi Minh City - Hybrid",
+  "employmentType": "FULL_TIME",
+  "salaryMin": 32000000,
+  "salaryMax": 48000000,
+  "currencyCode": "VND",
+  "quantity": 3,
+  "visibility": "PUBLIC",
+  "requirements": [
+    { "requirementType": "MUST_HAVE", "category": "TECHNICAL_SKILL", "content": "Tối thiểu 3 năm kinh nghiệm C# và ASP.NET Core.", "weight": 0.6 },
+    { "requirementType": "MUST_HAVE", "category": "DATABASE", "content": "Có kinh nghiệm PostgreSQL.", "weight": 0.3 },
+    { "requirementType": "SHOULD_HAVE", "category": "DEVOPS", "content": "Có kinh nghiệm Docker và CI/CD.", "weight": 0.1 }
+  ],
+  "skills": [
+    { "skillId": "{{skillId}}", "isMandatory": true, "weight": 0.7 }
+  ]
+}
+
+### TC-04 - Submit; expect DRAFT -> PENDING_REVIEW
+POST {{baseUrl}}/api/v1/jobs/{{createApproveJob.response.body.$.data.jobId}}/submit
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+
+### TC-05 - Client lists PENDING_REVIEW Jobs
 GET {{baseUrl}}/api/v1/jobs/mine?status=PENDING_REVIEW
-Authorization: Bearer {{clientToken}}
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
 
-### TC-06 - Internal HR xem hàng đợi duyệt
+### TC-06 - Login Internal HR
+# @name internalHrLogin
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{internalHrEmail}}",
+  "password": "{{internalHrPassword}}"
+}
+
+### TC-07 - Internal HR reads the review queue
 GET {{baseUrl}}/api/v1/internal/jobs/review
-Authorization: Bearer {{internalHrToken}}
+Authorization: Bearer {{internalHrLogin.response.body.$.data.accessToken}}
 
-### TC-07A - Approve và công bố Job
-# Chạy TC-07A cho luồng approve; không chạy TC-07B trên cùng Job.
-POST {{baseUrl}}/api/v1/internal/jobs/{{jobId}}/approve
-Authorization: Bearer {{internalHrToken}}
+### TC-08 - Internal HR approves and publishes the Job
+POST {{baseUrl}}/api/v1/internal/jobs/{{createApproveJob.response.body.$.data.jobId}}/approve
+Authorization: Bearer {{internalHrLogin.response.body.$.data.accessToken}}
 
-### TC-08 - Pause Job ACTIVE
-POST {{baseUrl}}/api/v1/jobs/{{jobId}}/pause
-Authorization: Bearer {{clientToken}}
+### TC-09 - Negative: approve the ACTIVE Job again; expect HTTP 409
+POST {{baseUrl}}/api/v1/internal/jobs/{{createApproveJob.response.body.$.data.jobId}}/approve
+Authorization: Bearer {{internalHrLogin.response.body.$.data.accessToken}}
+
+### TC-10 - Client pauses the ACTIVE Job
+POST {{baseUrl}}/api/v1/jobs/{{createApproveJob.response.body.$.data.jobId}}/pause
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
 Content-Type: application/json
 
 {
   "reason": "Tạm dừng nhận CV để đánh giá hồ sơ hiện tại."
 }
 
-### TC-09 - Resume Job PAUSED
-POST {{baseUrl}}/api/v1/jobs/{{jobId}}/resume
-Authorization: Bearer {{clientToken}}
+### TC-11 - Client resumes the PAUSED Job
+POST {{baseUrl}}/api/v1/jobs/{{createApproveJob.response.body.$.data.jobId}}/resume
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
 
-### TC-10 - Close Job ACTIVE
-POST {{baseUrl}}/api/v1/jobs/{{jobId}}/close
-Authorization: Bearer {{clientToken}}
+### TC-12 - Client closes the ACTIVE Job
+POST {{baseUrl}}/api/v1/jobs/{{createApproveJob.response.body.$.data.jobId}}/close
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
 Content-Type: application/json
 
 {
   "reason": "Đã tuyển đủ số lượng cần thiết."
 }
 
-### TC-07B - Reject Job (tạo Job mới bằng TC-01 -> TC-04 trước khi chạy)
-POST {{baseUrl}}/api/v1/internal/jobs/{{jobId}}/reject
-Authorization: Bearer {{internalHrToken}}
+### TC-13 - Create a separate Job for the reject flow
+# @name createRejectJob
+POST {{baseUrl}}/api/v1/jobs
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "serviceTypeId": "{{cvApplicationServiceTypeId}}",
+  "title": "{{testRunId}} - Backend Developer - REJECT FLOW",
+  "description": "Tuyển Backend Developer tham gia phát triển REST API cho hệ thống tuyển dụng.",
+  "location": "Da Nang",
+  "employmentType": "FULL_TIME",
+  "salaryMin": 20000000,
+  "salaryMax": 35000000,
+  "currencyCode": "VND",
+  "quantity": 1,
+  "visibility": "PUBLIC",
+  "requirements": [
+    { "requirementType": "MUST_HAVE", "category": "TECHNICAL_SKILL", "content": "Có kinh nghiệm ASP.NET Core Web API.", "weight": 0.8 },
+    { "requirementType": "SHOULD_HAVE", "category": "DEVOPS", "content": "Có kinh nghiệm Docker.", "weight": 0.2 }
+  ],
+  "skills": [
+    { "skillId": "{{skillId}}", "isMandatory": true, "weight": 0.8 }
+  ]
+}
+
+### TC-14 - Submit the Job used by the reject flow
+POST {{baseUrl}}/api/v1/jobs/{{createRejectJob.response.body.$.data.jobId}}/submit
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+
+### TC-15 - Internal HR rejects the Job with a reason
+POST {{baseUrl}}/api/v1/internal/jobs/{{createRejectJob.response.body.$.data.jobId}}/reject
+Authorization: Bearer {{internalHrLogin.response.body.$.data.accessToken}}
 Content-Type: application/json
 
 {
   "reason": "JD chưa mô tả rõ trách nhiệm và yêu cầu bắt buộc."
 }
 
-### TC-11 - Negative test: Closed Job không được submit lại, kỳ vọng HTTP 409
-POST {{baseUrl}}/api/v1/jobs/{{jobId}}/submit
-Authorization: Bearer {{clientToken}}
+### TC-16 - Client revises the REJECTED Job
+PUT {{baseUrl}}/api/v1/jobs/{{createRejectJob.response.body.$.data.jobId}}
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+Content-Type: application/json
 
-### TC-12 - Candidate xem danh sách: CV_APPLICATION và CV_SOURCING được phép, HEADHUNT_COD bị lọc
+{
+  "serviceTypeId": "{{cvApplicationServiceTypeId}}",
+  "title": "{{testRunId}} - Backend Developer - REVISED",
+  "description": "Phát triển REST API, sửa lỗi production và viết unit test cho hệ thống HR Connect.",
+  "location": "Da Nang - Hybrid",
+  "employmentType": "FULL_TIME",
+  "salaryMin": 22000000,
+  "salaryMax": 38000000,
+  "currencyCode": "VND",
+  "quantity": 2,
+  "visibility": "PUBLIC",
+  "requirements": [
+    { "requirementType": "MUST_HAVE", "category": "TECHNICAL_SKILL", "content": "Có kinh nghiệm ASP.NET Core Web API và C#.", "weight": 0.7 },
+    { "requirementType": "SHOULD_HAVE", "category": "DEVOPS", "content": "Có kinh nghiệm Docker và CI/CD.", "weight": 0.3 }
+  ],
+  "skills": [
+    { "skillId": "{{skillId}}", "isMandatory": true, "weight": 0.7 }
+  ]
+}
+
+### TC-17 - Client resubmits the revised Job; expect PENDING_REVIEW
+POST {{baseUrl}}/api/v1/jobs/{{createRejectJob.response.body.$.data.jobId}}/submit
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+
+### TC-18 - Negative: Client attempts to approve; expect HTTP 403
+POST {{baseUrl}}/api/v1/internal/jobs/{{createRejectJob.response.body.$.data.jobId}}/approve
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+
+### TC-19 - Create an intentionally incomplete Draft
+# @name createIncompleteJob
+POST {{baseUrl}}/api/v1/jobs
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "serviceTypeId": "{{cvApplicationServiceTypeId}}",
+  "title": "",
+  "description": "",
+  "currencyCode": "VND",
+  "quantity": 1,
+  "visibility": "PUBLIC",
+  "requirements": []
+}
+
+### TC-20 - Negative: submit incomplete Draft; expect HTTP 400
+POST {{baseUrl}}/api/v1/jobs/{{createIncompleteJob.response.body.$.data.jobId}}/submit
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+
+### TC-21 - Negative: invalid requirementType; expect HTTP 400
+POST {{baseUrl}}/api/v1/jobs
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "serviceTypeId": "{{cvApplicationServiceTypeId}}",
+  "title": "{{testRunId}} - INVALID REQUIREMENT TYPE",
+  "description": "Kiểm tra validation của loại yêu cầu.",
+  "currencyCode": "VND",
+  "quantity": 1,
+  "visibility": "PUBLIC",
+  "requirements": [
+    { "requirementType": "REQUIRED", "category": "TECHNICAL_SKILL", "content": "ASP.NET Core", "weight": 0.5 }
+  ]
+}
+
+### TC-22 - Negative: salaryMax below salaryMin; expect HTTP 400
+POST {{baseUrl}}/api/v1/jobs
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "serviceTypeId": "{{cvApplicationServiceTypeId}}",
+  "title": "{{testRunId}} - INVALID SALARY",
+  "description": "Kiểm tra validation khoảng lương.",
+  "salaryMin": 40000000,
+  "salaryMax": 20000000,
+  "currencyCode": "VND",
+  "quantity": 1,
+  "visibility": "PUBLIC",
+  "requirements": []
+}
+
+### TC-23 - Negative: Closed Job cannot be submitted again; expect HTTP 409
+POST {{baseUrl}}/api/v1/jobs/{{createApproveJob.response.body.$.data.jobId}}/submit
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+
+### TC-24 - Candidate list: CV_APPLICATION and CV_SOURCING allowed, HEADHUNT_COD filtered out
 GET {{baseUrl}}/api/v1/jobs?page=1&pageSize=20
 Authorization: Bearer {{candidateToken}}
 
-### TC-13 - Affiliate xem danh sách: HEADHUNT_COD và CV_SOURCING được phép, CV_APPLICATION bị lọc
+### TC-25 - Affiliate list: HEADHUNT_COD and CV_SOURCING allowed, CV_APPLICATION filtered out
 GET {{baseUrl}}/api/v1/jobs?page=1&pageSize=20
 Authorization: Bearer {{affiliateToken}}
 
-### TC-14 - Negative detail: Candidate mở HEADHUNT_COD bằng UUID, kỳ vọng HTTP 403
+### TC-26 - Negative: Candidate opens a HEADHUNT_COD Job directly; expect HTTP 403
 GET {{baseUrl}}/api/v1/jobs/{{headhuntJobId}}
 Authorization: Bearer {{candidateToken}}
 
-# Để chạy TC-12..14, đăng nhập bằng tài khoản test Candidate/Affiliate và gán token vào client variables:
-# @candidateToken = PASTE_CANDIDATE_ACCESS_TOKEN
-# @affiliateToken = PASTE_AFFILIATE_ACCESS_TOKEN
-# Tạo thêm Job ACTIVE cho HEADHUNT_COD và CV_SOURCING bằng cùng flow TC-01..07A,
-# sử dụng các Service Type ID tương ứng và lưu ID HEADHUNT vào @headhuntJobId.
+# Before TC-24..26, fill candidateToken, affiliateToken and headhuntJobId.
+# Create and approve HEADHUNT_COD and CV_SOURCING Jobs using their Service Type IDs when testing visibility.

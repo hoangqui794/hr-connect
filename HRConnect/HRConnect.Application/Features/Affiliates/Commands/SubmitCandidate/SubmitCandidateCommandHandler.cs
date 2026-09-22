@@ -294,6 +294,11 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             };
             await _attributionRepository.AddAsync(attribution, cancellationToken);
 
+            // Persist the AI request atomically with the accepted submission/application.
+            await _scoringTrigger.TriggerScoringAsync(
+                new Mf03TriggerPayload(application.ApplicationId, cvId, job.JobId),
+                cancellationToken);
+
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
         catch (Exception ex) when (IsDuplicateConstraintViolation(ex))
@@ -369,17 +374,6 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             affiliate.AffiliateId, application.ApplicationId, attribution.AttributionId, candidate.CandidateId, job.JobId);
 
         // 8. Kích hoạt MF-03 bất đồng bộ (không chờ AI scoring hoàn tất)
-        try
-        {
-            await _scoringTrigger.TriggerScoringAsync(
-                new Mf03TriggerPayload(application.ApplicationId, cvId, job.JobId),
-                CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Lỗi khi kích hoạt MF-03 cho ApplicationId {ApplicationId}", application.ApplicationId);
-        }
-
         return new SubmitCandidateResponse
         {
             Success = true,

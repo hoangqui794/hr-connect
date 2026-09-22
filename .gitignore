@@ -50,4 +50,15 @@ desktop.ini
 .env
 .env.*
 !.env.example
+!.env.e2e.example
 
+## Local MF-03 E2E runtime
+.e2e/
+
+## GitNexus & AI Assistant Local Config
+.gitnexus/
+.claude/
+GITNEXUS_GUIDE.md
+AGENTS.md
+CLAUDE.md
+UI-UX-SKILLS-GUIDE.md

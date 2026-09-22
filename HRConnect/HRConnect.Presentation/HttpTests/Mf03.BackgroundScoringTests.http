@@ -1,0 +1,66 @@
+@backendUrl = http://127.0.0.1:7289
+@aiUrl = http://localhost:8001
+@candidateEmail = candidate@gmail.com
+@candidatePassword = 111111Aa@
+@serviceToken = hr-connect-local-secret
+@cvFilePath = C:\Users\truon\Downloads\CV.pdf
+
+# MF-03 background E2E test.
+# Prerequisites:
+# 1. HR Connect and ai-service are both running.
+# 2. The seeded ACTIVE Job exists and this Candidate has not applied to it.
+# 3. serviceToken matches HRCONNECT_SERVICE_TOKEN in both processes.
+# 4. cvFilePath points to a real PDF on this machine.
+# Run TC-00 through TC-05 in order. Re-run TC-05 until COMPLETED or FAILED.
+
+### TC-00 - AI health; expect HTTP 200
+GET {{aiUrl}}/health
+
+### TC-00B - AI integration readiness; expect HTTP 200
+GET {{aiUrl}}/ready
+
+### TC-01 - Candidate login; expect HTTP 200
+# @name candidateLogin
+POST {{backendUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{candidateEmail}}",
+  "password": "{{candidatePassword}}"
+}
+
+### TC-01B - Find the seeded ACTIVE Job; expect items[0].jobId
+# @name activeJobs
+GET {{backendUrl}}/api/v1/jobs?search=%5BSEED%5D%20Junior%20.NET%20Backend%20Developer&page=1&pageSize=20
+Authorization: Bearer {{candidateLogin.response.body.$.data.accessToken}}
+
+### TC-02 - Submit a new PDF CV; expect HTTP 200 and aiStatus=PENDING
+# @name candidateApply
+POST {{backendUrl}}/api/v1/jobs/{{activeJobs.response.body.$.items[0].jobId}}/apply
+Authorization: Bearer {{candidateLogin.response.body.$.data.accessToken}}
+Content-Type: multipart/form-data; boundary=MF03Boundary
+
+--MF03Boundary
+Content-Disposition: form-data; name="file"; filename="CV.pdf"
+Content-Type: application/pdf
+
+< {{cvFilePath}}
+--MF03Boundary--
+
+### TC-03 - Verify HR Connect can issue a temporary CV URL; expect HTTP 200
+GET {{backendUrl}}/api/v1/internal/cvs/{{candidateApply.response.body.$.data.cvId}}/download-url
+X-Service-Token: {{serviceToken}}
+
+### TC-04 - Verify MF-03 can read the Job/JD contract; expect HTTP 200
+GET {{backendUrl}}/api/v1/internal/jobs/{{activeJobs.response.body.$.items[0].jobId}}/jd
+X-Service-Token: {{serviceToken}}
+
+### TC-05 - Read latest AI result
+# First response may be PENDING or PROCESSING.
+# Re-run only this request after a few seconds until status is COMPLETED or FAILED.
+GET {{backendUrl}}/api/v1/internal/ai-results/{{candidateApply.response.body.$.data.applicationId}}
+X-Service-Token: {{serviceToken}}
+
+### TC-06 - Negative security check; expect HTTP 403
+GET {{backendUrl}}/api/v1/internal/ai-results/{{candidateApply.response.body.$.data.applicationId}}
+X-Service-Token: wrong-secret

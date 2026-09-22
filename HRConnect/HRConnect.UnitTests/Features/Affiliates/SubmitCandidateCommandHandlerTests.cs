@@ -621,11 +621,11 @@ public class SubmitCandidateCommandHandlerTests
 
         _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _cvStorageServiceMock.Verify(s => s.DeleteCvAsync(cvId, It.IsAny<CancellationToken>()), Times.Once);
-        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
+        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Handle_WhenMf03ScoringTriggerThrows_DoesNotFailSubmission_ReturnsSuccessWithPendingAiStatus()
+    public async Task Handle_WhenPersistentScoringEnqueueThrows_RollsBackSubmission()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -673,14 +673,11 @@ public class SubmitCandidateCommandHandlerTests
         };
 
         // Act
-        var response = await _handler.Handle(command, CancellationToken.None);
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
-        // Assert - MF-02 remains completely successful!
-        response.Success.Should().BeTrue();
-        response.Data!.Status.Should().Be("ACCEPTED");
-        response.Data.AiStatus.Should().Be("PENDING");
-        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        await act.Should().ThrowAsync<HttpRequestException>();
+        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
