@@ -14,6 +14,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Presentation.Endpoints.V1.ServiceTypes;
 using HRConnect.Presentation.Endpoints.V1.Jobs;
 using HRConnect.Presentation.Endpoints.V1.Companies;
+using HRConnect.Presentation.Endpoints.V1.InternalHr;
 using Microsoft.EntityFrameworkCore;
 
 // ==============================================================================
@@ -147,6 +148,7 @@ app.MapAdminApprovalEndpoints();
 app.MapServiceTypeEndpoints();
 app.MapJobEndpoints();
 app.MapCompanyEndpoints();
+app.MapInternalHrEndpoints();
 
 // ==============================================================================
 // 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động
