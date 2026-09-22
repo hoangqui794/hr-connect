@@ -5,12 +5,13 @@ import {
   DollarOutlined, UserAddOutlined, AppstoreOutlined, SearchOutlined,
   SettingOutlined, LoginOutlined, HomeOutlined, MenuFoldOutlined,
   MenuUnfoldOutlined, CalendarOutlined, SafetyCertificateOutlined,
-  PlusCircleOutlined,
+  PlusCircleOutlined, BankOutlined, ApartmentOutlined, AuditOutlined,
+  SolutionOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { DEMO_USERS } from '@/types/roles';
-import { SIDEBAR_MENU_ITEMS } from '@/constants/rbac';
+import { SIDEBAR_MENU_ITEMS, SidebarMenuItem } from '@/constants/rbac';
 
 const { Sider } = Layout;
 
@@ -29,6 +30,10 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   PlusCircleOutlined: <PlusCircleOutlined />,
   CalendarOutlined: <CalendarOutlined />,
   SafetyCertificateOutlined: <SafetyCertificateOutlined />,
+  BankOutlined: <BankOutlined />,
+  ApartmentOutlined: <ApartmentOutlined />,
+  AuditOutlined: <AuditOutlined />,
+  SolutionOutlined: <SolutionOutlined />,
 };
 
 interface SidebarProps {
@@ -46,12 +51,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
 
   const menuItems = SIDEBAR_MENU_ITEMS[role] ?? [];
 
-  const antdMenuItems = menuItems.map((item) => ({
-    key: item.key,
-    icon: ICON_MAP[item.icon],
-    label: item.label,
-    onClick: () => navigate(item.key),
-  }));
+  const transformMenuItem = (item: SidebarMenuItem): any => {
+    if (item.type === 'group') {
+      return {
+        type: 'group',
+        key: item.label,
+        label: (
+          <span
+            style={{
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: '#94a3b8',
+              fontWeight: 700,
+            }}
+          >
+            {item.label}
+          </span>
+        ),
+        children: item.children?.map(transformMenuItem),
+      };
+    }
+    return {
+      key: item.key,
+      icon: item.icon ? ICON_MAP[item.icon] : undefined,
+      label: item.label,
+      onClick: () => {
+        if (item.key) navigate(item.key);
+      },
+    };
+  };
+
+  const antdMenuItems = menuItems.map(transformMenuItem);
 
   return (
     <Sider

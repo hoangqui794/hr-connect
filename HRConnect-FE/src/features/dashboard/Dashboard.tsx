@@ -207,13 +207,13 @@ const HRDashboard: React.FC = () => {
     <div>
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         {[
-          { label: 'Vị trí cần sàng lọc', value: isDemoHR ? 4 : 0, color: '#ef4444' },
-          { label: 'Hồ sơ chờ duyệt', value: candidates.length, color: '#0284c7' },
-          { label: 'Phỏng vấn trong tuần', value: isDemoHR ? 3 : 0, color: '#10b981' },
-          { label: 'Đề nghị tuyển dụng (Offer)', value: isDemoHR ? 2 : 0, color: '#f59e0b' },
+          { label: 'Vị trí cần sàng lọc', value: isDemoHR ? 4 : 0, color: '#ef4444', action: () => navigate('/hr/screening') },
+          { label: 'Hồ sơ chờ duyệt', value: candidates.length, color: '#0284c7', action: () => navigate('/hr/candidates') },
+          { label: 'Phỏng vấn trong tuần', value: isDemoHR ? 3 : 0, color: '#10b981', action: () => navigate('/hr/interviews') },
+          { label: 'Đề nghị tuyển dụng (Offer)', value: isDemoHR ? 2 : 0, color: '#f59e0b', action: () => navigate('/hr/offers') },
         ].map((s) => (
           <Col key={s.label} xs={12} sm={6}>
-            <div className="hrc-stat-card">
+            <div className="hrc-stat-card" onClick={s.action} style={{ cursor: 'pointer' }}>
               <div style={{ fontSize: 32, fontWeight: 800, color: s.color }}>{s.value}</div>
               <div style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>{s.label}</div>
             </div>
@@ -223,7 +223,7 @@ const HRDashboard: React.FC = () => {
       <Card
         title={<Space><RobotOutlined style={{ color: '#0284c7' }} /><span style={{ fontWeight: 700 }}>Hàng đợi sàng lọc hồ sơ AI</span></Space>}
         style={{ borderRadius: 14 }}
-        extra={<Button type="primary" size="small" onClick={() => navigate('/screening')} style={{ borderRadius: 6 }}>Mở công cụ sàng lọc</Button>}
+        extra={<Button type="primary" size="small" onClick={() => navigate('/hr/screening')} style={{ borderRadius: 6 }}>Mở công cụ sàng lọc</Button>}
       >
         {candidates.length === 0 ? (
           <Empty description="Chưa có hồ sơ nào trong hàng đợi sàng lọc" style={{ padding: '24px 0' }} />
@@ -238,7 +238,7 @@ const HRDashboard: React.FC = () => {
                 <div style={{ fontSize: 11, color: '#64748b' }}>{c.currentTitle} · {c.highlightCard.yearsOfExperience} năm kinh nghiệm</div>
               </div>
               {c.aiScore !== undefined ? <ScoreTierTag score={c.aiScore} showScore /> : <Tag style={{ borderRadius: 6, fontSize: 11 }}>Chờ AI phân tích</Tag>}
-              <Button size="small" style={{ borderRadius: 6 }} onClick={() => navigate('/screening')}>Xem chi tiết</Button>
+              <Button size="small" style={{ borderRadius: 6 }} onClick={() => navigate('/hr/screening')}>Xem chi tiết</Button>
             </div>
           ))
         )}
@@ -349,7 +349,7 @@ export const Dashboard: React.FC = () => {
             </Button>
           )}
           {role === UserRole.INTERNAL_HR && (
-            <Button type="primary" icon={<RobotOutlined />} onClick={() => navigate('/screening')} style={{ borderRadius: 8, fontWeight: 600 }}>
+            <Button type="primary" icon={<RobotOutlined />} onClick={() => navigate('/hr/screening')} style={{ borderRadius: 8, fontWeight: 600 }}>
               Bắt đầu sàng lọc AI
             </Button>
           )}

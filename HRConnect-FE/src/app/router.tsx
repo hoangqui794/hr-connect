@@ -153,8 +153,28 @@ export const router = createBrowserRouter([
         element: protectedPage('/hr/dashboard', <AppRoutes.Dashboard />),
       },
       {
-        path: 'admin/dashboard',
-        element: protectedPage('/admin/dashboard', <AppRoutes.AdminDashboard />),
+        path: 'hr/jobs',
+        element: protectedPage('/hr/jobs', <AppRoutes.JobBoard />),
+      },
+      {
+        path: 'hr/candidates',
+        element: protectedPage('/hr/candidates', <AppRoutes.CandidateList />),
+      },
+      {
+        path: 'hr/screening',
+        element: protectedPage('/hr/screening', <AppRoutes.AIScreening />),
+      },
+      {
+        path: 'hr/interviews',
+        element: protectedPage('/hr/interviews', <AppRoutes.HRInterviewsPage />),
+      },
+      {
+        path: 'hr/offers',
+        element: protectedPage('/hr/offers', <AppRoutes.HROffersPage />),
+      },
+      {
+        path: 'hr/warranty-tracking',
+        element: protectedPage('/hr/warranty-tracking', <AppRoutes.HRWarrantyTrackingPage />),
       },
       {
         path: 'candidate/dashboard',
@@ -200,6 +220,46 @@ export const router = createBrowserRouter([
       {
         path: 'admin',
         element: protectedPage('/admin', <AppRoutes.AdminDashboard />),
+      },
+      {
+        path: 'admin/dashboard',
+        element: protectedPage('/admin/dashboard', <AppRoutes.AdminDashboard />),
+      },
+      {
+        path: 'admin/users',
+        element: protectedPage('/admin/users', <AppRoutes.AdminUsersPage />),
+      },
+      {
+        path: 'admin/companies',
+        element: protectedPage('/admin/companies', <AppRoutes.AdminCompaniesPage />),
+      },
+      {
+        path: 'admin/affiliates',
+        element: protectedPage('/admin/affiliates', <AppRoutes.AdminAffiliatesPage />),
+      },
+      {
+        path: 'admin/disputes',
+        element: protectedPage('/admin/disputes', <AppRoutes.AdminDisputesPage />),
+      },
+      {
+        path: 'admin/payouts',
+        element: protectedPage('/admin/payouts', <AppRoutes.AdminPayoutsPage />),
+      },
+      {
+        path: 'admin/finance',
+        element: protectedPage('/admin/finance', <AppRoutes.AdminPayoutsPage />),
+      },
+      {
+        path: 'admin/settings',
+        element: protectedPage('/admin/settings', <AppRoutes.AdminSettingsPage />),
+      },
+      {
+        path: 'admin/audit-trail',
+        element: protectedPage('/admin/audit-trail', <AppRoutes.AdminAuditTrailPage />),
+      },
+      {
+        path: 'admin/jobs',
+        element: protectedPage('/admin/jobs', <AppRoutes.JobBoard />),
       },
     ],
   },

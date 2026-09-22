@@ -495,7 +495,7 @@ export const JobListTable: React.FC = () => {
             }}
           />
 
-          {(role === UserRole.CLIENT || role === UserRole.ADMIN) && (
+          {role === UserRole.CLIENT && (
             <Button
               type="primary"
               icon={<PlusCircleOutlined />}

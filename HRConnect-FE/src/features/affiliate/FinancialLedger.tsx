@@ -123,7 +123,7 @@ export const FinancialLedger: React.FC = () => {
         receiptFileName: fileName,
         receiptFileSize: '485 KB',
         adminNotes: values.adminNotes as string | undefined,
-        recordedBy: `${user?.name || 'Alex Nguyen'} (${user?.role || 'Admin'})`,
+        recordedBy: `${user?.name || 'Platform Admin'} (${user?.role || 'Admin'})`,
       });
 
       setAdminModalOpen(false);
@@ -654,7 +654,7 @@ export const FinancialLedger: React.FC = () => {
                   label: (
                     <span style={{ fontSize: 12, fontWeight: 600, padding: '0 6px' }}>
                       <SafetyCertificateOutlined style={{ marginRight: 4 }} />
-                      Admin View (Alex Nguyen - Ghi nhận Payout)
+                      Admin View (Platform Admin - Ghi nhận Payout)
                     </span>
                   ),
                   value: 'ADMIN',

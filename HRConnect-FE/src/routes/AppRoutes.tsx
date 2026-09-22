@@ -71,6 +71,36 @@ const CandidateSavedJobsPage = React.lazy(() =>
 const AdminDashboard = React.lazy(() =>
   import('@/features/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
 );
+const AdminUsersPage = React.lazy(() =>
+  import('@/features/admin/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage }))
+);
+const AdminCompaniesPage = React.lazy(() =>
+  import('@/features/admin/AdminCompaniesPage').then((m) => ({ default: m.AdminCompaniesPage }))
+);
+const AdminAffiliatesPage = React.lazy(() =>
+  import('@/features/admin/AdminAffiliatesPage').then((m) => ({ default: m.AdminAffiliatesPage }))
+);
+const AdminDisputesPage = React.lazy(() =>
+  import('@/features/admin/AdminDisputesPage').then((m) => ({ default: m.AdminDisputesPage }))
+);
+const AdminPayoutsPage = React.lazy(() =>
+  import('@/features/admin/AdminPayoutsPage').then((m) => ({ default: m.AdminPayoutsPage }))
+);
+const AdminSettingsPage = React.lazy(() =>
+  import('@/features/admin/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage }))
+);
+const AdminAuditTrailPage = React.lazy(() =>
+  import('@/features/admin/AdminAuditTrailPage').then((m) => ({ default: m.AdminAuditTrailPage }))
+);
+const HRInterviewsPage = React.lazy(() =>
+  import('@/features/hr/HRInterviewsPage').then((m) => ({ default: m.HRInterviewsPage }))
+);
+const HROffersPage = React.lazy(() =>
+  import('@/features/hr/HROffersPage').then((m) => ({ default: m.HROffersPage }))
+);
+const HRWarrantyTrackingPage = React.lazy(() =>
+  import('@/features/hr/HRWarrantyTrackingPage').then((m) => ({ default: m.HRWarrantyTrackingPage }))
+);
 const ClientLayout = React.lazy(() =>
   import('@/components/layout/ClientLayout').then((m) => ({ default: m.ClientLayout }))
 );
@@ -191,7 +221,12 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/client/warranty': [UserRole.CLIENT, UserRole.ADMIN],
   '/affiliate/dashboard': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/hr/dashboard': [UserRole.INTERNAL_HR, UserRole.ADMIN],
-  '/admin/dashboard': [UserRole.ADMIN],
+  '/hr/jobs': [UserRole.INTERNAL_HR, UserRole.ADMIN],
+  '/hr/candidates': [UserRole.INTERNAL_HR, UserRole.ADMIN],
+  '/hr/screening': [UserRole.INTERNAL_HR, UserRole.ADMIN],
+  '/hr/interviews': [UserRole.INTERNAL_HR, UserRole.ADMIN],
+  '/hr/offers': [UserRole.INTERNAL_HR, UserRole.ADMIN],
+  '/hr/warranty-tracking': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/candidate/dashboard': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/profile': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/profile': [UserRole.CANDIDATE, UserRole.ADMIN],
@@ -215,6 +250,16 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/candidates': [UserRole.INTERNAL_HR, UserRole.ADMIN, UserRole.CLIENT],
   '/cv-builder': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/admin': [UserRole.ADMIN],
+  '/admin/dashboard': [UserRole.ADMIN],
+  '/admin/users': [UserRole.ADMIN],
+  '/admin/companies': [UserRole.ADMIN],
+  '/admin/affiliates': [UserRole.ADMIN],
+  '/admin/disputes': [UserRole.ADMIN],
+  '/admin/payouts': [UserRole.ADMIN],
+  '/admin/finance': [UserRole.ADMIN],
+  '/admin/settings': [UserRole.ADMIN],
+  '/admin/audit-trail': [UserRole.ADMIN],
+  '/admin/jobs': [UserRole.ADMIN],
 };
 
 /**
@@ -237,6 +282,16 @@ export const AppRoutes = {
   CandidateApplicationsPage,
   CandidateSavedJobsPage,
   AdminDashboard,
+  AdminUsersPage,
+  AdminCompaniesPage,
+  AdminAffiliatesPage,
+  AdminDisputesPage,
+  AdminPayoutsPage,
+  AdminSettingsPage,
+  AdminAuditTrailPage,
+  HRInterviewsPage,
+  HROffersPage,
+  HRWarrantyTrackingPage,
   ClientLayout,
   ClientJobsPage,
   ClientCandidatePoolPage,
