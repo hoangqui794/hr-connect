@@ -25,7 +25,7 @@ public class CandidateTestJobSeederTests
     }
 
     [Fact]
-    public async Task SeedAsync_ShouldSeedJobRequirementsAndSkills_WhenCalled()
+    public async Task SeedAsync_ShouldSeedAllThreeJobsRequirementsAndSkills_WhenCalled()
     {
         // Arrange
         using var context = CreateInMemoryDbContext();
@@ -39,49 +39,115 @@ public class CandidateTestJobSeederTests
             .Include(j => j.JobSkills)
                 .ThenInclude(js => js.Skill)
             .Include(j => j.Company)
+            .Include(j => j.ServiceType)
+            .OrderBy(j => j.Title)
             .ToListAsync();
 
-        jobs.Should().ContainSingle();
-        var job = jobs.Single();
+        // Exactly 3 representative Jobs must be seeded
+        jobs.Should().HaveCount(3);
 
-        job.Title.Should().Be(CandidateTestJobSeeder.SeedJobTitle);
-        job.Status.Should().Be(JobStatuses.Active);
-        job.Visibility.Should().Be(JobVisibilities.Public);
-        job.EmploymentType.Should().Be("FULL_TIME");
-        job.Location.Should().Be("Ho Chi Minh City");
-        job.SalaryMin.Should().Be(12000000m);
-        job.SalaryMax.Should().Be(18000000m);
-        job.CurrencyCode.Should().Be("VND");
-        job.Quantity.Should().Be(2);
-        job.PostedAt.Should().NotBeNull();
-        job.ClosedAt.Should().BeNull();
-
-        // Company & Creator
-        job.Company.CompanyName.Should().Be("HR Connect Demo Company");
         var clientUser = await context.AppUsers.FirstOrDefaultAsync(u => u.Email == "client@gmail.com");
         clientUser.Should().NotBeNull();
-        job.CreatedBy.Should().Be(clientUser!.UserId);
 
-        // ServiceType
-        var serviceType = await context.ServiceTypes.FirstOrDefaultAsync(st => st.ServiceTypeId == job.ServiceTypeId);
-        serviceType.Should().NotBeNull();
-        serviceType!.Code.Should().Be(CandidateTestJobSeeder.ExpectedServiceTypeCode);
+        // ----------------------------------------------------------------------
+        // 1. JOB 1 — CV_APPLICATION
+        // ----------------------------------------------------------------------
+        var job1 = jobs.FirstOrDefault(j => j.Title == CandidateTestJobSeeder.Job1Title);
+        job1.Should().NotBeNull();
+        job1!.ServiceType.Code.Should().Be("CV_APPLICATION");
+        job1.Status.Should().Be(JobStatuses.Active);
+        job1.Visibility.Should().Be(JobVisibilities.Public);
+        job1.EmploymentType.Should().Be("FULL_TIME");
+        job1.Location.Should().Be("Ho Chi Minh City");
+        job1.SalaryMin.Should().Be(12000000m);
+        job1.SalaryMax.Should().Be(18000000m);
+        job1.CurrencyCode.Should().Be("VND");
+        job1.Quantity.Should().Be(2);
+        job1.Company.CompanyName.Should().Be("HR Connect Demo Company");
+        job1.CreatedBy.Should().Be(clientUser!.UserId);
+        job1.PostedAt.Should().NotBeNull();
+        job1.ClosedAt.Should().BeNull();
 
-        // Job Requirements: exactly 5
-        job.JobRequirements.Should().HaveCount(5);
-        job.JobRequirements.Should().Contain(r => r.Category == "Experience" && r.RequirementType == JobRequirementTypes.MustHave && r.Weight == 0.25m);
-        job.JobRequirements.Should().Contain(r => r.Category == "Education" && r.RequirementType == JobRequirementTypes.MustHave && r.Weight == 0.15m);
-        job.JobRequirements.Should().Contain(r => r.Category == "Backend Development" && r.RequirementType == JobRequirementTypes.MustHave && r.Weight == 0.35m);
-        job.JobRequirements.Should().Contain(r => r.Category == "Communication" && r.RequirementType == JobRequirementTypes.ShouldHave && r.Weight == 0.10m);
-        job.JobRequirements.Should().Contain(r => r.Category == "English" && r.RequirementType == JobRequirementTypes.ShouldHave && r.Weight == 0.15m);
+        job1.JobRequirements.Should().HaveCount(5);
+        job1.JobRequirements.Should().Contain(r => r.Category == "Experience" && r.RequirementType == JobRequirementTypes.MustHave && r.Weight == 0.20m);
+        job1.JobRequirements.Should().Contain(r => r.Category == "Technical" && r.RequirementType == JobRequirementTypes.MustHave && r.Weight == 0.35m);
+        job1.JobRequirements.Should().Contain(r => r.Category == "Database" && r.RequirementType == JobRequirementTypes.MustHave && r.Weight == 0.15m);
+        job1.JobRequirements.Should().Contain(r => r.Category == "Education" && r.RequirementType == JobRequirementTypes.ShouldHave && r.Weight == 0.15m);
+        job1.JobRequirements.Should().Contain(r => r.Category == "Communication" && r.RequirementType == JobRequirementTypes.ShouldHave && r.Weight == 0.15m);
 
-        // Job Skills: exactly 5
-        job.JobSkills.Should().HaveCount(5);
-        job.JobSkills.Should().Contain(js => js.Skill.SkillName == "C#" && js.IsMandatory && js.Weight == 0.30m);
-        job.JobSkills.Should().Contain(js => js.Skill.SkillName == "ASP.NET Core" && js.IsMandatory && js.Weight == 0.30m);
-        job.JobSkills.Should().Contain(js => js.Skill.SkillName == "PostgreSQL" && !js.IsMandatory && js.Weight == 0.15m);
-        job.JobSkills.Should().Contain(js => js.Skill.SkillName == "REST API" && js.IsMandatory && js.Weight == 0.15m);
-        job.JobSkills.Should().Contain(js => js.Skill.SkillName == "Git" && !js.IsMandatory && js.Weight == 0.10m);
+        job1.JobSkills.Should().HaveCount(5);
+        job1.JobSkills.Should().Contain(js => js.Skill.SkillName == "C#" && js.IsMandatory && js.Weight == 0.30m);
+        job1.JobSkills.Should().Contain(js => js.Skill.SkillName == "ASP.NET Core" && js.IsMandatory && js.Weight == 0.30m);
+        job1.JobSkills.Should().Contain(js => js.Skill.SkillName == "PostgreSQL" && !js.IsMandatory && js.Weight == 0.15m);
+        job1.JobSkills.Should().Contain(js => js.Skill.SkillName == "REST API" && js.IsMandatory && js.Weight == 0.15m);
+        job1.JobSkills.Should().Contain(js => js.Skill.SkillName == "Git" && !js.IsMandatory && js.Weight == 0.10m);
+
+        // ----------------------------------------------------------------------
+        // 2. JOB 2 — HEADHUNT_COD
+        // ----------------------------------------------------------------------
+        var job2 = jobs.FirstOrDefault(j => j.Title == CandidateTestJobSeeder.Job2Title);
+        job2.Should().NotBeNull();
+        job2!.ServiceType.Code.Should().Be("HEADHUNT_COD");
+        job2.Status.Should().Be(JobStatuses.Active);
+        job2.Visibility.Should().Be(JobVisibilities.Public);
+        job2.EmploymentType.Should().Be("FULL_TIME");
+        job2.Location.Should().Be("Ho Chi Minh City");
+        job2.SalaryMin.Should().Be(25000000m);
+        job2.SalaryMax.Should().Be(40000000m);
+        job2.CurrencyCode.Should().Be("VND");
+        job2.Quantity.Should().Be(2);
+        job2.Company.CompanyName.Should().Be("HR Connect Demo Company");
+        job2.CreatedBy.Should().Be(clientUser!.UserId);
+        job2.PostedAt.Should().NotBeNull();
+        job2.ClosedAt.Should().BeNull();
+
+        job2.JobRequirements.Should().HaveCount(5);
+        job2.JobRequirements.Should().Contain(r => r.Category == "Experience" && r.RequirementType == JobRequirementTypes.MustHave && r.Weight == 0.30m);
+        job2.JobRequirements.Should().Contain(r => r.Category == "Technical" && r.RequirementType == JobRequirementTypes.MustHave && r.Weight == 0.30m);
+        job2.JobRequirements.Should().Contain(r => r.Category == "Database" && r.RequirementType == JobRequirementTypes.MustHave && r.Weight == 0.15m);
+        job2.JobRequirements.Should().Contain(r => r.Category == "Deployment/Engineering" && r.RequirementType == JobRequirementTypes.ShouldHave && r.Weight == 0.15m);
+        job2.JobRequirements.Should().Contain(r => r.Category == "Communication" && r.RequirementType == JobRequirementTypes.ShouldHave && r.Weight == 0.10m);
+
+        job2.JobSkills.Should().HaveCount(5);
+        job2.JobSkills.Should().Contain(js => js.Skill.SkillName == "C#" && js.IsMandatory && js.Weight == 0.25m);
+        job2.JobSkills.Should().Contain(js => js.Skill.SkillName == "ASP.NET Core" && js.IsMandatory && js.Weight == 0.25m);
+        job2.JobSkills.Should().Contain(js => js.Skill.SkillName == "PostgreSQL" && js.IsMandatory && js.Weight == 0.20m);
+        job2.JobSkills.Should().Contain(js => js.Skill.SkillName == "REST API" && js.IsMandatory && js.Weight == 0.15m);
+        job2.JobSkills.Should().Contain(js => js.Skill.SkillName == "Docker" && !js.IsMandatory && js.Weight == 0.15m);
+
+        // ----------------------------------------------------------------------
+        // 3. JOB 3 — CV_SOURCING
+        // ----------------------------------------------------------------------
+        var job3 = jobs.FirstOrDefault(j => j.Title == CandidateTestJobSeeder.Job3Title);
+        job3.Should().NotBeNull();
+        job3!.ServiceType.Code.Should().Be("CV_SOURCING");
+        job3.Status.Should().Be(JobStatuses.Active);
+        job3.Visibility.Should().Be(JobVisibilities.Public);
+        job3.EmploymentType.Should().Be("FULL_TIME");
+        job3.Location.Should().Be("Ho Chi Minh City");
+        job3.SalaryMin.Should().Be(18000000m);
+        job3.SalaryMax.Should().Be(30000000m);
+        job3.CurrencyCode.Should().Be("VND");
+        job3.Quantity.Should().Be(3);
+        job3.Company.CompanyName.Should().Be("HR Connect Demo Company");
+        job3.CreatedBy.Should().Be(clientUser!.UserId);
+        job3.PostedAt.Should().NotBeNull();
+        job3.ClosedAt.Should().BeNull();
+
+        job3.JobRequirements.Should().HaveCount(5);
+        job3.JobRequirements.Should().Contain(r => r.Category == "Experience" && r.RequirementType == JobRequirementTypes.MustHave && r.Weight == 0.20m);
+        job3.JobRequirements.Should().Contain(r => r.Category == "Backend" && r.RequirementType == JobRequirementTypes.MustHave && r.Weight == 0.25m);
+        job3.JobRequirements.Should().Contain(r => r.Category == "Frontend" && r.RequirementType == JobRequirementTypes.MustHave && r.Weight == 0.20m);
+        job3.JobRequirements.Should().Contain(r => r.Category == "Database" && r.RequirementType == JobRequirementTypes.MustHave && r.Weight == 0.15m);
+        job3.JobRequirements.Should().Contain(r => r.Category == "Software Engineering" && r.RequirementType == JobRequirementTypes.ShouldHave && r.Weight == 0.20m);
+
+        job3.JobSkills.Should().HaveCount(6);
+        job3.JobSkills.Should().Contain(js => js.Skill.SkillName == "C#" && js.IsMandatory && js.Weight == 0.20m);
+        job3.JobSkills.Should().Contain(js => js.Skill.SkillName == "ASP.NET Core" && js.IsMandatory && js.Weight == 0.20m);
+        job3.JobSkills.Should().Contain(js => js.Skill.SkillName == "React" && !js.IsMandatory && js.Weight == 0.20m);
+        job3.JobSkills.Should().Contain(js => js.Skill.SkillName == "PostgreSQL" && js.IsMandatory && js.Weight == 0.15m);
+        job3.JobSkills.Should().Contain(js => js.Skill.SkillName == "REST API" && js.IsMandatory && js.Weight == 0.15m);
+        job3.JobSkills.Should().Contain(js => js.Skill.SkillName == "Git" && !js.IsMandatory && js.Weight == 0.10m);
     }
 
     [Fact]
@@ -94,11 +160,11 @@ public class CandidateTestJobSeederTests
         // Act - Run seeder a second time
         await CandidateTestJobSeeder.SeedAsync(context);
 
-        // Assert - exactly 1 job, 5 requirements, 5 skills
-        (await context.Jobs.CountAsync()).Should().Be(1);
-        (await context.JobRequirements.CountAsync()).Should().Be(5);
-        (await context.JobSkills.CountAsync()).Should().Be(5);
-        (await context.Skills.CountAsync()).Should().Be(5);
+        // Assert - exactly 3 jobs, 15 requirements (5 * 3), 16 job_skills (5 + 5 + 6)
+        (await context.Jobs.CountAsync()).Should().Be(3);
+        (await context.JobRequirements.CountAsync()).Should().Be(15);
+        (await context.JobSkills.CountAsync()).Should().Be(16);
+        (await context.Skills.CountAsync()).Should().Be(7); // C#, ASP.NET Core, PostgreSQL, REST API, Git, Docker, React
     }
 
     [Fact]
@@ -111,7 +177,7 @@ public class CandidateTestJobSeederTests
         var job = await context.Jobs
             .Include(j => j.JobRequirements)
             .Include(j => j.JobSkills)
-            .FirstAsync();
+            .FirstAsync(j => j.Title == CandidateTestJobSeeder.Job1Title);
 
         // Remove one requirement and one skill
         var reqToRemove = job.JobRequirements.First();
@@ -120,36 +186,80 @@ public class CandidateTestJobSeederTests
         context.JobSkills.Remove(skillToRemove);
         await context.SaveChangesAsync();
 
-        (await context.JobRequirements.CountAsync()).Should().Be(4);
-        (await context.JobSkills.CountAsync()).Should().Be(4);
+        var job1ReqsCountBefore = await context.JobRequirements.CountAsync(r => r.JobId == job.JobId);
+        var job1SkillsCountBefore = await context.JobSkills.CountAsync(s => s.JobId == job.JobId);
+        job1ReqsCountBefore.Should().Be(4);
+        job1SkillsCountBefore.Should().Be(4);
 
         // Act - re-run seeder
         await CandidateTestJobSeeder.SeedAsync(context);
 
-        // Assert - restored to 5 requirements and 5 skills
-        (await context.JobRequirements.CountAsync()).Should().Be(5);
-        (await context.JobSkills.CountAsync()).Should().Be(5);
+        // Assert - restored to 5 requirements and 5 skills for Job 1
+        var job1ReqsCountAfter = await context.JobRequirements.CountAsync(r => r.JobId == job.JobId);
+        var job1SkillsCountAfter = await context.JobSkills.CountAsync(s => s.JobId == job.JobId);
+        job1ReqsCountAfter.Should().Be(5);
+        job1SkillsCountAfter.Should().Be(5);
     }
 
     [Fact]
-    public async Task SeedAsync_ShouldVerifyCandidateCanViewAndCanSubmit_ForCvApplication()
+    public async Task SeedAsync_ShouldVerifyAccessMatrixForAllServiceTypes()
     {
         // Arrange
         using var context = CreateInMemoryDbContext();
         await DatabaseSeeder.SeedAsync(context, seedDemoAccounts: true);
 
-        // Act
         var candidateRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "CANDIDATE");
-        var cvAppServiceType = await context.ServiceTypes.FirstOrDefaultAsync(st => st.Code == "CV_APPLICATION");
-        var mapping = await context.ServiceTypeAllowedRoles
-            .FirstOrDefaultAsync(star => star.ServiceTypeId == cvAppServiceType!.ServiceTypeId && star.RoleId == candidateRole!.RoleId);
-
-        // Assert
+        var affiliateRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "AFFILIATE_RECRUITER");
         candidateRole.Should().NotBeNull();
-        cvAppServiceType.Should().NotBeNull();
-        mapping.Should().NotBeNull();
-        mapping!.CanView.Should().BeTrue();
-        mapping.CanSubmit.Should().BeTrue();
+        affiliateRole.Should().NotBeNull();
+
+        // 1. CV_APPLICATION: CANDIDATE can_view=true, can_submit=true; AFFILIATE_RECRUITER can_view=false, can_submit=false
+        var cvAppSt = await context.ServiceTypes.FirstOrDefaultAsync(st => st.Code == "CV_APPLICATION");
+        cvAppSt.Should().NotBeNull();
+
+        var cvAppCand = await context.ServiceTypeAllowedRoles
+            .FirstOrDefaultAsync(star => star.ServiceTypeId == cvAppSt!.ServiceTypeId && star.RoleId == candidateRole!.RoleId);
+        cvAppCand.Should().NotBeNull();
+        cvAppCand!.CanView.Should().BeTrue();
+        cvAppCand.CanSubmit.Should().BeTrue();
+
+        var cvAppAff = await context.ServiceTypeAllowedRoles
+            .FirstOrDefaultAsync(star => star.ServiceTypeId == cvAppSt!.ServiceTypeId && star.RoleId == affiliateRole!.RoleId);
+        cvAppAff.Should().NotBeNull();
+        cvAppAff!.CanView.Should().BeFalse();
+        cvAppAff.CanSubmit.Should().BeFalse();
+
+        // 2. HEADHUNT_COD: AFFILIATE_RECRUITER can_view=true, can_submit=true; CANDIDATE can_view=false, can_submit=false
+        var headhuntSt = await context.ServiceTypes.FirstOrDefaultAsync(st => st.Code == "HEADHUNT_COD");
+        headhuntSt.Should().NotBeNull();
+
+        var headhuntAff = await context.ServiceTypeAllowedRoles
+            .FirstOrDefaultAsync(star => star.ServiceTypeId == headhuntSt!.ServiceTypeId && star.RoleId == affiliateRole!.RoleId);
+        headhuntAff.Should().NotBeNull();
+        headhuntAff!.CanView.Should().BeTrue();
+        headhuntAff.CanSubmit.Should().BeTrue();
+
+        var headhuntCand = await context.ServiceTypeAllowedRoles
+            .FirstOrDefaultAsync(star => star.ServiceTypeId == headhuntSt!.ServiceTypeId && star.RoleId == candidateRole!.RoleId);
+        headhuntCand.Should().NotBeNull();
+        headhuntCand!.CanView.Should().BeFalse();
+        headhuntCand.CanSubmit.Should().BeFalse();
+
+        // 3. CV_SOURCING: CANDIDATE can_view=true, can_submit=true AND AFFILIATE_RECRUITER can_view=true, can_submit=true
+        var sourcingSt = await context.ServiceTypes.FirstOrDefaultAsync(st => st.Code == "CV_SOURCING");
+        sourcingSt.Should().NotBeNull();
+
+        var sourcingCand = await context.ServiceTypeAllowedRoles
+            .FirstOrDefaultAsync(star => star.ServiceTypeId == sourcingSt!.ServiceTypeId && star.RoleId == candidateRole!.RoleId);
+        sourcingCand.Should().NotBeNull();
+        sourcingCand!.CanView.Should().BeTrue();
+        sourcingCand.CanSubmit.Should().BeTrue();
+
+        var sourcingAff = await context.ServiceTypeAllowedRoles
+            .FirstOrDefaultAsync(star => star.ServiceTypeId == sourcingSt!.ServiceTypeId && star.RoleId == affiliateRole!.RoleId);
+        sourcingAff.Should().NotBeNull();
+        sourcingAff!.CanView.Should().BeTrue();
+        sourcingAff.CanSubmit.Should().BeTrue();
     }
 
     [Fact]
@@ -174,23 +284,22 @@ public class CandidateTestJobSeederTests
             await DatabaseSeeder.SeedAsync(context, seedDemoAccounts: true);
 
             // Assert
-            var job = await context.Jobs
+            var seededJobs = await context.Jobs
                 .Include(j => j.JobRequirements)
                 .Include(j => j.JobSkills)
                     .ThenInclude(js => js.Skill)
                 .Include(j => j.Company)
-                .FirstOrDefaultAsync(j => j.Title == CandidateTestJobSeeder.SeedJobTitle);
+                .Where(j => CandidateTestJobSeeder.AllSeedJobTitles.Contains(j.Title))
+                .ToListAsync();
 
-            job.Should().NotBeNull();
-            job!.Status.Should().Be(JobStatuses.Active);
-            job.JobRequirements.Should().HaveCount(5);
-            job.JobSkills.Should().HaveCount(5);
+            seededJobs.Should().HaveCount(3);
+            seededJobs.Should().OnlyContain(j => j.Status == JobStatuses.Active);
 
             // Act - test idempotency on real PostgreSQL
             await CandidateTestJobSeeder.SeedAsync(context);
 
-            var count = await context.Jobs.CountAsync(j => j.Title == CandidateTestJobSeeder.SeedJobTitle);
-            count.Should().Be(1);
+            var count = await context.Jobs.CountAsync(j => CandidateTestJobSeeder.AllSeedJobTitles.Contains(j.Title));
+            count.Should().Be(3);
         }
         catch (Exception ex) when (ex is Npgsql.NpgsqlException || ex is System.Net.Sockets.SocketException || ex is InvalidOperationException)
         {
