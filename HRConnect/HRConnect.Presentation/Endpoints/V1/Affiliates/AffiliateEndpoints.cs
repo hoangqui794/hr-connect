@@ -292,6 +292,50 @@ public static class AffiliateEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
+        // GET /api/v1/affiliates/submissions/{submissionId} - Lấy chi tiết lượt nộp ứng viên của Affiliate
+        submissionsGroup.MapGet("/{submissionId:guid}", async (
+            Guid submissionId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var query = new HRConnect.Application.Features.Affiliates.Queries.GetAffiliateSubmissionDetail.GetAffiliateSubmissionDetailQuery(
+                    submissionId,
+                    userId.Value);
+
+                var result = await sender.Send(query, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("GetAffiliateSubmissionDetail")
+        .WithSummary("Lấy chi tiết lượt nộp ứng viên của Affiliate")
+        .WithDescription("Xem thông tin chi tiết một lượt nộp ứng viên của Affiliate Recruiter đang đăng nhập, bao gồm trạng thái (ACCEPTED hoặc BLOCKED_DUPLICATE), lý do nếu bị trùng lặp, thông tin ứng viên, công việc và CV.")
+        .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateSubmissionDetail.AffiliateSubmissionDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
         // ==============================================================================
         // Affiliate Attributions Endpoints
         // ==============================================================================
