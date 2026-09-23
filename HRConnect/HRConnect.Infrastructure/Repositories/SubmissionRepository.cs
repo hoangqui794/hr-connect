@@ -35,4 +35,75 @@ public class SubmissionRepository : ISubmissionRepository
     {
         _context.Submissions.Update(submission);
     }
+
+    public async Task<(IReadOnlyList<Submission> Items, int TotalCount)> GetAffiliateSubmissionsAsync(
+        Guid userId,
+        string? status,
+        Guid? jobId,
+        Guid? candidateId,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Submissions
+            .AsNoTracking()
+            .Where(s => s.SubmittedBy == userId);
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var normalized = status.Trim().ToUpperInvariant();
+            query = query.Where(s => s.Status == normalized);
+        }
+
+        if (jobId.HasValue)
+        {
+            query = query.Where(s => s.JobId == jobId.Value);
+        }
+
+        if (candidateId.HasValue)
+        {
+            query = query.Where(s => s.CandidateId == candidateId.Value);
+        }
+
+        if (fromDate.HasValue)
+        {
+            var fromUtc = fromDate.Value.ToUniversalTime();
+            query = query.Where(s => s.SubmittedAt >= fromUtc);
+        }
+
+        if (toDate.HasValue)
+        {
+            var toUtc = toDate.Value.ToUniversalTime();
+            query = query.Where(s => s.SubmittedAt <= toUtc);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .Include(s => s.Job)
+            .Include(s => s.Candidate)
+            .Include(s => s.Applications)
+            .Include(s => s.Attribution)
+            .OrderByDescending(s => s.SubmittedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    public async Task<Submission?> GetByIdWithDetailsAsync(Guid submissionId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Submissions
+            .AsNoTracking()
+            .Include(s => s.Job)
+                .ThenInclude(j => j.Company)
+            .Include(s => s.Candidate)
+            .Include(s => s.CandidateCv)
+            .Include(s => s.Applications)
+            .Include(s => s.Attribution)
+            .FirstOrDefaultAsync(s => s.SubmissionId == submissionId, cancellationToken);
+    }
 }

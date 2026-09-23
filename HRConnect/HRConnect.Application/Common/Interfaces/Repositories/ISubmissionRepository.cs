@@ -11,4 +11,17 @@ public interface ISubmissionRepository
     Task AddAsync(Submission submission, CancellationToken cancellationToken = default);
 
     void Update(Submission submission);
+
+    Task<(IReadOnlyList<Submission> Items, int TotalCount)> GetAffiliateSubmissionsAsync(
+        Guid userId,
+        string? status,
+        Guid? jobId,
+        Guid? candidateId,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
+    Task<Submission?> GetByIdWithDetailsAsync(Guid submissionId, CancellationToken cancellationToken = default);
 }
