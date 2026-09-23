@@ -274,6 +274,66 @@ public static class CandidateEndpoints
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
+        // ==============================================================================
+        // Candidate Applications History Endpoints
+        // ==============================================================================
+        var appGroup = app.MapGroup("/api/v1/candidates/applications")
+                          .WithTags("Candidate Applications")
+                          .RequireAuthorization();
+
+        // GET /api/v1/candidates/applications - Lấy lịch sử ứng tuyển của ứng viên hiện tại
+        appGroup.MapGet("/", async (
+            ClaimsPrincipal user,
+            [FromQuery] string? status,
+            [FromQuery] Guid? jobId,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var query = new HRConnect.Application.Features.Candidates.Queries.GetCandidateApplications.GetCandidateApplicationsQuery(
+                    userId.Value,
+                    status,
+                    jobId,
+                    fromDate,
+                    toDate,
+                    page ?? 1,
+                    pageSize ?? 20);
+
+                var result = await sender.Send(query, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("GetCandidateApplications")
+        .WithSummary("Lấy lịch sử ứng tuyển của ứng viên hiện tại")
+        .WithDescription("Lấy danh sách lịch sử các công việc đã ứng tuyển của ứng viên đang đăng nhập, kèm thông tin công việc, CV và trạng thái.")
+        .Produces<HRConnect.Application.Features.Candidates.Queries.GetCandidateApplications.CandidateApplicationsResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
