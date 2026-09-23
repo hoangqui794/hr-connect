@@ -337,6 +337,50 @@ public static class CandidateEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
+        // GET /api/v1/candidates/applications/{applicationId} - Lấy chi tiết hồ sơ ứng tuyển của ứng viên hiện tại
+        appGroup.MapGet("/{applicationId:guid}", async (
+            Guid applicationId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var query = new HRConnect.Application.Features.Candidates.Queries.GetCandidateApplicationDetail.GetCandidateApplicationDetailQuery(
+                    applicationId,
+                    userId.Value);
+
+                var result = await sender.Send(query, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("GetCandidateApplicationDetail")
+        .WithSummary("Lấy chi tiết hồ sơ ứng tuyển của ứng viên hiện tại")
+        .WithDescription("Xem thông tin chi tiết một đơn ứng tuyển của ứng viên đang đăng nhập, bao gồm trạng thái, công việc, CV và kết quả AI nếu có.")
+        .Produces<HRConnect.Application.Features.Candidates.Queries.GetCandidateApplicationDetail.CandidateApplicationDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
         return app;
     }
 
