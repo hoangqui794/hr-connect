@@ -11,4 +11,14 @@ public interface IAttributionRepository
     Task AddAsync(Attribution attribution, CancellationToken cancellationToken = default);
 
     void Update(Attribution attribution);
+
+    Task<(IReadOnlyList<Attribution> Items, int TotalCount)> GetAffiliateAttributionsAsync(
+        Guid affiliateId,
+        Guid? jobId,
+        Guid? candidateId,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 }

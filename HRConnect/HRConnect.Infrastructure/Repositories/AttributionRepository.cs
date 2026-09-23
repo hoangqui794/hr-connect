@@ -35,4 +35,56 @@ public class AttributionRepository : IAttributionRepository
     {
         _context.Attributions.Update(attribution);
     }
+
+    public async Task<(IReadOnlyList<Attribution> Items, int TotalCount)> GetAffiliateAttributionsAsync(
+        Guid affiliateId,
+        Guid? jobId,
+        Guid? candidateId,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Attributions
+            .AsNoTracking()
+            .Where(a => a.AffiliateId == affiliateId);
+
+        if (jobId.HasValue)
+        {
+            query = query.Where(a => a.Application.JobId == jobId.Value);
+        }
+
+        if (candidateId.HasValue)
+        {
+            query = query.Where(a => a.Application.CandidateId == candidateId.Value);
+        }
+
+        if (fromDate.HasValue)
+        {
+            var fromUtc = fromDate.Value.ToUniversalTime();
+            query = query.Where(a => a.EstablishedAt >= fromUtc);
+        }
+
+        if (toDate.HasValue)
+        {
+            var toUtc = toDate.Value.ToUniversalTime();
+            query = query.Where(a => a.EstablishedAt <= toUtc);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .Include(a => a.Application)
+                .ThenInclude(app => app.Job)
+            .Include(a => a.Application)
+                .ThenInclude(app => app.Candidate)
+            .Include(a => a.WinningSubmission)
+            .OrderByDescending(a => a.EstablishedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
 }

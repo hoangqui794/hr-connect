@@ -292,6 +292,67 @@ public static class AffiliateEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
+        // ==============================================================================
+        // Affiliate Attributions Endpoints
+        // ==============================================================================
+        var attributionsGroup = app.MapGroup("/api/v1/affiliates/attributions")
+                                   .WithTags("Affiliate Attributions")
+                                   .RequireAuthorization();
+
+        // GET /api/v1/affiliates/attributions - Lấy lịch sử Attribution của Affiliate
+        attributionsGroup.MapGet("/", async (
+            ClaimsPrincipal user,
+            [FromQuery] Guid? jobId,
+            [FromQuery] Guid? candidateId,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var query = new HRConnect.Application.Features.Affiliates.Queries.GetAffiliateAttributions.GetAffiliateAttributionsQuery(
+                    userId.Value,
+                    jobId,
+                    candidateId,
+                    fromDate,
+                    toDate,
+                    page ?? 1,
+                    pageSize ?? 20);
+
+                var result = await sender.Send(query, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("GetAffiliateAttributions")
+        .WithSummary("Lấy lịch sử Attribution của Affiliate")
+        .WithDescription("Lấy danh sách các bản ghi Attribution (ghi nhận nguồn giới thiệu thành công) của Affiliate Recruiter đang đăng nhập, kèm thông tin công việc, ứng viên và thời điểm ghi nhận.")
+        .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateAttributions.AffiliateAttributionsResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
         return app;
     }
 
