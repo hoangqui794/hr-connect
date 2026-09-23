@@ -9,7 +9,6 @@ using HRConnect.Presentation.Endpoints.V1.Admin;
 using HRConnect.Presentation.Endpoints.V1.Auth;
 using HRConnect.Presentation.Endpoints.V1.Candidates;
 using HRConnect.Presentation.Endpoints.V1.Affiliates;
-using HRConnect.Presentation.Endpoints.V1.Emails;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Presentation.Endpoints.V1.ServiceTypes;
 using HRConnect.Presentation.Endpoints.V1.Jobs;
@@ -90,6 +89,8 @@ builder.Services.AddSwaggerGen(options =>
     });
 
     options.OperationFilter<InternalServiceAuthOperationFilter>();
+    options.OperationFilter<SwaggerEndpointTagFilter>();
+    options.DocumentFilter<SwaggerTagOrderDocumentFilter>();
 });
 
 // Cấu hình Xác thực JWT (Authentication)
@@ -156,7 +157,6 @@ app.MapControllers();
 app.MapAuthEndpoints();
 app.MapCandidateEndpoints();
 app.MapAffiliateEndpoints();
-app.MapEmailEndpoints();
 app.MapAdminApprovalEndpoints();
 app.MapServiceTypeEndpoints();
 app.MapJobEndpoints();

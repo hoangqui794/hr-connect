@@ -107,6 +107,7 @@ public static class JobEndpoints
 
             return await Run(async () => Results.Ok(await sender.Send(command, ct)));
         })
+        .WithTags("Candidate Applications")
         .WithName("CandidateApplyJob")
         .WithSummary("Ứng viên tự ứng tuyển vào Job")
         .WithDescription("Ứng viên nộp hồ sơ vào công việc bằng CV có sẵn hoặc tải lên tệp CV PDF mới. Hệ thống kiểm tra trùng lặp và phân quyền submit của Service Type.")
@@ -156,6 +157,7 @@ public static class JobEndpoints
 
             return await Run(async () => Results.Ok(await sender.Send(command, ct)));
         })
+        .WithTags("Affiliate Submissions")
         .WithName("AffiliateSubmitCandidate")
         .WithSummary("Affiliate Recruiter nộp hồ sơ ứng viên vào Job")
         .WithDescription("Đối tác tuyển dụng (Affiliate) nộp hồ sơ ứng viên vào công việc. Hệ thống tự động nhận diện ứng viên theo email/sđt, kiểm tra trùng lặp, xác thực quyền hạn Service Type và ghi nhận Attribution.")
