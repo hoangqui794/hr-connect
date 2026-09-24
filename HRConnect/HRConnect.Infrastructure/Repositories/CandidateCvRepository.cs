@@ -35,8 +35,10 @@ public class CandidateCvRepository : ICandidateCvRepository
     public async Task<List<CandidateCv>> GetByCandidateIdAsync(Guid candidateId, CancellationToken cancellationToken = default)
     {
         return await _context.CandidateCvs
-            .Where(c => c.CandidateId == candidateId)
-            .OrderByDescending(c => c.CreatedAt)
+            .AsNoTracking()
+            .Where(c => c.CandidateId == candidateId && c.Status == "ACTIVE")
+            .OrderByDescending(c => c.IsPrimary)
+            .ThenByDescending(c => c.CreatedAt)
             .ToListAsync(cancellationToken);
     }
 

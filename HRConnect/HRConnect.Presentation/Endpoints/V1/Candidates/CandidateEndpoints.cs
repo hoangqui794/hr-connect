@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Candidates.Commands.UpdateCandidateProfile;
 using HRConnect.Application.Features.Candidates.Commands.UpdateProfileVisibility;
 using HRConnect.Application.Features.Candidates.Commands.UploadCv;
+using HRConnect.Application.Features.Candidates.Queries.GetCandidateCvs;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using HRConnect.Application.Features.Candidates.Queries.GetCvDownloadUrl;
 using MediatR;
@@ -228,6 +229,45 @@ public static class CandidateEndpoints
         .Produces<UploadCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // 4.1 GET /api/v1/candidates/cv - Lấy danh sách CV của ứng viên hiện tại
+        cvGroup.MapGet("", async (
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var result = await sender.Send(new GetCandidateCvsQuery(userId.Value), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("GetCandidateCvs")
+        .WithSummary("Lấy danh sách CV của ứng viên hiện tại")
+        .WithDescription("Ứng viên có thể lưu nhiều CV trong kho CV cá nhân. Một CV có thể được sử dụng cho nhiều hồ sơ ứng tuyển khác nhau. Danh sách sắp xếp ưu tiên CV chính lên đầu.")
+        .Produces<GetCandidateCvsResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
