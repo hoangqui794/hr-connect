@@ -1,9 +1,13 @@
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Candidates.Commands.DeleteCandidateCv;
+using HRConnect.Application.Features.Candidates.Commands.SetCandidatePrimaryCv;
+using HRConnect.Application.Features.Candidates.Commands.UpdateCandidateCv;
 using HRConnect.Application.Features.Candidates.Commands.UpdateCandidateProfile;
 using HRConnect.Application.Features.Candidates.Commands.UpdateProfileVisibility;
 using HRConnect.Application.Features.Candidates.Commands.UploadCv;
+using HRConnect.Application.Features.Candidates.Queries.GetCandidateCvs;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using HRConnect.Application.Features.Candidates.Queries.GetCvDownloadUrl;
 using MediatR;
@@ -222,12 +226,51 @@ public static class CandidateEndpoints
             }
         })
         .WithName("UploadCandidateCv")
-        .WithSummary("Tải lên CV PDF cho ứng viên")
+        .WithSummary("Tải lên CV mới vào kho CV của ứng viên")
         .WithDescription("Tải lên tệp CV PDF của ứng viên lên hệ thống Cloudflare R2 riêng tư, tự động sinh khóa lưu trữ candidates/{candidateId}/cvs/{cvId}.pdf.")
         .DisableAntiforgery()
         .Produces<UploadCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // 4.1 GET /api/v1/candidates/cv - Lấy danh sách CV của ứng viên hiện tại
+        cvGroup.MapGet("", async (
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var result = await sender.Send(new GetCandidateCvsQuery(userId.Value), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("GetCandidateCvs")
+        .WithSummary("Lấy danh sách CV của ứng viên hiện tại")
+        .WithDescription("Ứng viên có thể lưu nhiều CV trong kho CV cá nhân. Một CV có thể được sử dụng cho nhiều hồ sơ ứng tuyển khác nhau. Danh sách sắp xếp ưu tiên CV chính lên đầu.")
+        .Produces<GetCandidateCvsResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
@@ -268,13 +311,178 @@ public static class CandidateEndpoints
             }
         })
         .WithName("GetCandidateCvDownloadUrl")
-        .WithSummary("Lấy URL tải xuống CV có chữ ký tạm thời (Presigned URL)")
+        .WithSummary("Lấy URL tạm thời để xem hoặc tải CV của ứng viên")
         .WithDescription("Sinh đường dẫn có chữ ký số (Presigned URL) có hiệu lực ngắn (mặc định 15 phút) để tải hoặc xem tệp CV trực tiếp từ Cloudflare R2.")
         .Produces<GetCvDownloadUrlResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
+
+        // 6. PATCH /api/v1/candidates/cv/{cvId:guid} - Cập nhật thông tin CV của ứng viên
+        cvGroup.MapPatch("/{cvId:guid}", async (
+            ClaimsPrincipal user,
+            Guid cvId,
+            [FromBody] UpdateCandidateCvRequest request,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<UpdateCandidateCvCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var command = new UpdateCandidateCvCommand
+            {
+                CvId = cvId,
+                UserId = userId.Value,
+                Title = request?.Title ?? string.Empty
+            };
+
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu cập nhật CV không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("UpdateCandidateCvMetadata")
+        .WithSummary("Cập nhật thông tin CV của ứng viên")
+        .WithDescription("API này chỉ cập nhật metadata như title; không thay thế file PDF.")
+        .Produces<UpdateCandidateCvResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // 7. PATCH /api/v1/candidates/cv/{cvId:guid}/primary - Đặt CV làm CV chính của ứng viên
+        cvGroup.MapPatch("/{cvId:guid}/primary", async (
+            ClaimsPrincipal user,
+            Guid cvId,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var command = new SetCandidatePrimaryCvCommand
+            {
+                CvId = cvId,
+                UserId = userId.Value
+            };
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("SetCandidatePrimaryCv")
+        .WithSummary("Đặt CV làm CV chính của ứng viên")
+        .WithDescription("Đặt CV chính không thay đổi CV đã được sử dụng trong các Application trước đó.")
+        .Produces<SetCandidatePrimaryCvResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // 8. DELETE /api/v1/candidates/cv/{cvId:guid} - Xóa hoặc gỡ CV khỏi kho CV của ứng viên
+        cvGroup.MapDelete("/{cvId:guid}", async (
+            ClaimsPrincipal user,
+            Guid cvId,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var command = new DeleteCandidateCvCommand(cvId, userId.Value);
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("DeleteCandidateCv")
+        .WithSummary("Xóa hoặc gỡ CV khỏi kho CV của ứng viên")
+        .WithDescription("Xóa hoặc gỡ CV khỏi kho CV của ứng viên. Nếu CV đã được sử dụng trong hồ sơ ứng tuyển (Application), CV sẽ chỉ được gỡ khỏi kho hiển thị để bảo toàn dữ liệu lịch sử ứng tuyển; nếu chưa từng sử dụng, CV và tệp PDF sẽ được xóa hoàn toàn.")
+        .Produces<DeleteCandidateCvResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
 
         // ==============================================================================
         // Candidate Applications History Endpoints
