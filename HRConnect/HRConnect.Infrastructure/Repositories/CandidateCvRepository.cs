@@ -56,4 +56,10 @@ public class CandidateCvRepository : ICandidateCvRepository
     {
         _context.CandidateCvs.Remove(candidateCv);
     }
+
+    public async Task<bool> IsCvInUseAsync(Guid cvId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Submissions
+            .AnyAsync(s => s.CvId == cvId, cancellationToken);
+    }
 }

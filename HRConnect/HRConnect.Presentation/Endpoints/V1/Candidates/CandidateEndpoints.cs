@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Candidates.Commands.DeleteCandidateCv;
 using HRConnect.Application.Features.Candidates.Commands.SetCandidatePrimaryCv;
 using HRConnect.Application.Features.Candidates.Commands.UpdateCandidateCv;
 using HRConnect.Application.Features.Candidates.Commands.UpdateCandidateProfile;
@@ -430,6 +431,53 @@ public static class CandidateEndpoints
         .WithSummary("Đặt CV làm CV chính của ứng viên")
         .WithDescription("Đặt CV chính không thay đổi CV đã được sử dụng trong các Application trước đó.")
         .Produces<SetCandidatePrimaryCvResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // 8. DELETE /api/v1/candidates/cv/{cvId:guid} - Xóa hoặc gỡ CV khỏi kho CV của ứng viên
+        cvGroup.MapDelete("/{cvId:guid}", async (
+            ClaimsPrincipal user,
+            Guid cvId,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var command = new DeleteCandidateCvCommand(cvId, userId.Value);
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("DeleteCandidateCv")
+        .WithSummary("Xóa hoặc gỡ CV khỏi kho CV của ứng viên")
+        .WithDescription("Xóa hoặc gỡ CV khỏi kho CV của ứng viên. Nếu CV đã được sử dụng trong hồ sơ ứng tuyển (Application), CV sẽ chỉ được gỡ khỏi kho hiển thị để bảo toàn dữ liệu lịch sử ứng tuyển; nếu chưa từng sử dụng, CV và tệp PDF sẽ được xóa hoàn toàn.")
+        .Produces<DeleteCandidateCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
