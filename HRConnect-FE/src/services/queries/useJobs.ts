@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MOCK_JOBS } from '@/services/mockData';
-import { Job } from '@/types/job';
+import { Job, JobStatus } from '@/types/job';
+import { getAllJobs, saveJobToAllJobs } from '@/services/localStorageService';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -14,10 +14,10 @@ export function useJobs() {
   return useQuery({
     queryKey: jobKeys.lists(),
     queryFn: async () => {
-      await delay(600);
-      return MOCK_JOBS;
+      await delay(200);
+      return getAllJobs();
     },
-    staleTime: 30000,
+    staleTime: 5000,
   });
 }
 
@@ -25,8 +25,9 @@ export function useJob(id: string) {
   return useQuery({
     queryKey: jobKeys.detail(id),
     queryFn: async () => {
-      await delay(300);
-      const job = MOCK_JOBS.find((j) => j.id === id);
+      await delay(150);
+      const jobs = getAllJobs();
+      const job = jobs.find((j) => j.id === id);
       if (!job) throw new Error(`Job ${id} not found`);
       return job;
     },
@@ -38,16 +39,17 @@ export function useCreateJob() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (newJob: Omit<Job, 'id' | 'createdAt' | 'updatedAt' | 'applicationCount' | 'shortlistedCount'>) => {
-      await delay(800);
+      await delay(300);
       const job: Job = {
         ...newJob,
         id: `job-${Date.now()}`,
+        status: newJob.status || JobStatus.PENDING,
         applicationCount: 0,
         shortlistedCount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      MOCK_JOBS.push(job);
+      saveJobToAllJobs(job);
       return job;
     },
     onSuccess: () => {
@@ -55,3 +57,4 @@ export function useCreateJob() {
     },
   });
 }
+

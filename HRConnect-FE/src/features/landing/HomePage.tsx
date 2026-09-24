@@ -177,8 +177,64 @@ export const HomePage: React.FC = () => {
   const [selectedHeadhunter, setSelectedHeadhunter] = useState<OPRHeadhunter | null>(null);
   const [headhunterNote, setHeadhunterNote] = useState('');
 
+  // Public jobs loaded dynamically from hrconnect_all_jobs key in localStorage
+  const [allPublicJobs, setAllPublicJobs] = useState<FeaturedJobItem[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('hrconnect_all_jobs');
+      let storedJobs: any[] = [];
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          storedJobs = parsed;
+        }
+      }
+
+      // Convert stored active jobs to FeaturedJobItem format
+      const activeStoredJobs: FeaturedJobItem[] = storedJobs
+        .filter((j) => j.status === 'ACTIVE')
+        .map((j) => {
+          const salaryMin = j.salaryRange?.min || 20000000;
+          const salaryMax = j.salaryRange?.max || 45000000;
+          const commRate = j.engagementTerms?.commissionRate || 15;
+          const estComm = Math.round((salaryMax * commRate) / 100).toLocaleString('vi-VN') + '₫';
+          const tags = [
+            ...(j.mustHaveTags || []),
+            ...(j.shouldHaveTags || []),
+          ];
+
+          return {
+            id: j.id,
+            title: j.title,
+            company: j.company,
+            location: j.location || 'Hồ Chí Minh',
+            workMode: j.remote ? 'Remote' : 'Hybrid',
+            level: (j.level || 'Senior') as any,
+            salaryMin,
+            salaryMax,
+            serviceType: (j.serviceType || 'HEADHUNT_COD') as any,
+            commissionRate: commRate,
+            estimatedCommission: estComm,
+            tags: tags.length > 0 ? tags : ['Công nghệ', 'Fulltime'],
+            isUrgent: true,
+          };
+        });
+
+      // Merge: stored active jobs first, then FEATURED_HOT_JOBS (deduplicated by id)
+      const existingIds = new Set(activeStoredJobs.map((j) => j.id));
+      const merged = [
+        ...activeStoredJobs,
+        ...FEATURED_HOT_JOBS.filter((j) => !existingIds.has(j.id)),
+      ];
+      setAllPublicJobs(merged);
+    } catch {
+      setAllPublicJobs(FEATURED_HOT_JOBS);
+    }
+  }, []);
+
   // Filter Jobs
-  const filteredJobs = FEATURED_HOT_JOBS.filter((job) => {
+  const filteredJobs = (allPublicJobs.length > 0 ? allPublicJobs : FEATURED_HOT_JOBS).filter((job) => {
     const q = keyword.toLowerCase().trim();
     const matchKeyword =
       !q ||

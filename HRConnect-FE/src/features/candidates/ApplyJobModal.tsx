@@ -58,10 +58,16 @@ export const ApplyJobModal: React.FC<ApplyJobModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [isQuickUploadOpen, setIsQuickUploadOpen] = useState(false);
 
+  const currentUserEmail = (user?.email || '').toLowerCase().trim();
+  const userCvs = React.useMemo(() => {
+    if (!currentUserEmail) return [];
+    return (cvs || []).filter((c) => (c.userEmail || '').toLowerCase().trim() === currentUserEmail);
+  }, [currentUserEmail, cvs]);
+
   // Set default selected CV and contact info whenever modal opens
   useEffect(() => {
     if (open) {
-      const defaultCv = cvs.find((c) => c.isDefault) || cvs[0];
+      const defaultCv = userCvs.find((c) => c.isDefault) || userCvs[0];
       setSelectedCvId(defaultCv?.id || '');
 
       form.setFieldsValue({
@@ -71,7 +77,7 @@ export const ApplyJobModal: React.FC<ApplyJobModalProps> = ({
         coverLetter: '',
       });
     }
-  }, [open, cvs, profile, user, form]);
+  }, [open, userCvs, profile, user, form]);
 
   const uploadProps: UploadProps = {
     name: 'file',
@@ -83,9 +89,10 @@ export const ApplyJobModal: React.FC<ApplyJobModalProps> = ({
         name: file.name,
         updatedAt: 'Vừa tải lên',
         size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        isDefault: false,
+        isDefault: userCvs.length === 0,
         atsScore: 92,
         type: 'File Upload',
+        userEmail: currentUserEmail,
       };
       addCV(newCv);
       setSelectedCvId(newCv.id);
@@ -117,7 +124,7 @@ export const ApplyJobModal: React.FC<ApplyJobModalProps> = ({
       }
       if (!job) return;
 
-      const chosenCv = cvs.find((c) => c.id === selectedCvId) || cvs[0];
+      const chosenCv = userCvs.find((c) => c.id === selectedCvId) || userCvs[0];
 
       setSubmitting(true);
       setTimeout(() => {
@@ -252,54 +259,70 @@ export const ApplyJobModal: React.FC<ApplyJobModalProps> = ({
             onChange={(e) => setSelectedCvId(e.target.value)}
             style={{ width: '100%' }}
           >
-            <Space direction="vertical" style={{ width: '100%' }} size={10}>
-              {cvs.map((cv) => {
-                const isChecked = selectedCvId === cv.id;
-                return (
-                  <div
-                    key={cv.id}
-                    onClick={() => setSelectedCvId(cv.id)}
-                    style={{
-                      border: isChecked ? '1.5px solid #0284c7' : '1px solid #e2e8f0',
-                      background: isChecked ? '#f0f9ff' : '#ffffff',
-                      borderRadius: 10,
-                      padding: '12px 14px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <Radio value={cv.id} />
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontWeight: 700, fontSize: 13.5, color: '#0f172a' }}>
-                            {cv.name}
-                          </span>
-                          {cv.isDefault && (
-                            <Tag color="blue" style={{ borderRadius: 4, fontSize: 10, fontWeight: 700, margin: 0 }}>
-                              Mặc định
-                            </Tag>
-                          )}
-                        </div>
-                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                          Cập nhật: {cv.updatedAt} • Dung lượng: {cv.size}
+            {userCvs.length === 0 ? (
+              <div
+                style={{
+                  padding: '20px',
+                  borderRadius: 10,
+                  border: '1px dashed #cbd5e1',
+                  background: '#f8fafc',
+                  textAlign: 'center',
+                  color: '#64748b',
+                  fontSize: 13,
+                }}
+              >
+                Bạn chưa có bản CV nào trong hệ thống. Vui lòng bấm <strong>"+ Tải lên CV mới"</strong> ở trên để nộp hồ sơ.
+              </div>
+            ) : (
+              <Space direction="vertical" style={{ width: '100%' }} size={10}>
+                {userCvs.map((cv) => {
+                  const isChecked = selectedCvId === cv.id;
+                  return (
+                    <div
+                      key={cv.id}
+                      onClick={() => setSelectedCvId(cv.id)}
+                      style={{
+                        border: isChecked ? '1.5px solid #0284c7' : '1px solid #e2e8f0',
+                        background: isChecked ? '#f0f9ff' : '#ffffff',
+                        borderRadius: 10,
+                        padding: '12px 14px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Radio value={cv.id} />
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontWeight: 700, fontSize: 13.5, color: '#0f172a' }}>
+                              {cv.name}
+                            </span>
+                            {cv.isDefault && (
+                              <Tag color="blue" style={{ borderRadius: 4, fontSize: 10, fontWeight: 700, margin: 0 }}>
+                                Mặc định
+                              </Tag>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                            Cập nhật: {cv.updatedAt} • Dung lượng: {cv.size}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {getCvTypeBadge(cv.type)}
-                      <Tag color="cyan" style={{ borderRadius: 4, fontWeight: 700, fontSize: 11, margin: 0 }}>
-                        ATS {cv.atsScore}/100
-                      </Tag>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {getCvTypeBadge(cv.type)}
+                        <Tag color="cyan" style={{ borderRadius: 4, fontWeight: 700, fontSize: 11, margin: 0 }}>
+                          ATS {cv.atsScore}/100
+                        </Tag>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </Space>
+                  );
+                })}
+              </Space>
+            )}
           </Radio.Group>
         </div>
 

@@ -98,7 +98,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'client/dashboard',
-        element: protectedPage('/client/dashboard', <AppRoutes.Dashboard />),
+        element: protectedPage('/client/dashboard', <AppRoutes.ClientDashboardPage />),
       },
       {
         path: 'client/jobs',
@@ -109,12 +109,16 @@ export const router = createBrowserRouter([
         element: protectedPage('/client/jobs/create', <AppRoutes.CreateJobWizard />),
       },
       {
+        path: 'client/post-job',
+        element: protectedPage('/client/post-job', <AppRoutes.CreateJobWizard />),
+      },
+      {
         path: 'client/candidates',
         element: protectedPage('/client/candidates', <AppRoutes.ClientCandidatePoolPage />),
       },
       {
         path: 'client/interviews-offers',
-        element: protectedPage('/client/interviews-offers', <AppRoutes.ClientCandidatePoolPage />),
+        element: protectedPage('/client/interviews-offers', <AppRoutes.ClientInterviewsOffersPage />),
       },
       {
         path: 'client/warranty',
@@ -122,7 +126,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'affiliate/dashboard',
-        element: protectedPage('/affiliate/dashboard', <AppRoutes.Dashboard />),
+        element: protectedPage('/affiliate/dashboard', <AppRoutes.AffiliateDashboardPage />),
       },
       {
         path: 'affiliate/jobs',
@@ -133,12 +137,20 @@ export const router = createBrowserRouter([
         element: protectedPage('/affiliate/submissions', <AppRoutes.AffiliateSubmissionsPage />),
       },
       {
+        path: 'affiliate/candidates',
+        element: protectedPage('/affiliate/candidates', <AppRoutes.AffiliateSubmissionsPage />),
+      },
+      {
         path: 'affiliate/submit-candidate',
         element: protectedPage('/affiliate/submit-candidate', <AppRoutes.ReferralForm />),
       },
       {
         path: 'affiliate/referral',
         element: protectedPage('/affiliate/referral', <AppRoutes.ReferralForm />),
+      },
+      {
+        path: 'affiliate/refer',
+        element: protectedPage('/affiliate/refer', <AppRoutes.ReferralForm />),
       },
       {
         path: 'affiliate/commissions',
@@ -150,15 +162,35 @@ export const router = createBrowserRouter([
       },
       {
         path: 'hr/dashboard',
-        element: protectedPage('/hr/dashboard', <AppRoutes.Dashboard />),
+        element: protectedPage('/hr/dashboard', <AppRoutes.HRDashboardPage />),
       },
       {
-        path: 'admin/dashboard',
-        element: protectedPage('/admin/dashboard', <AppRoutes.AdminDashboard />),
+        path: 'hr/jobs',
+        element: protectedPage('/hr/jobs', <AppRoutes.JobBoard />),
+      },
+      {
+        path: 'hr/candidates',
+        element: protectedPage('/hr/candidates', <AppRoutes.CandidateList />),
+      },
+      {
+        path: 'hr/screening',
+        element: protectedPage('/hr/screening', <AppRoutes.AIScreening />),
+      },
+      {
+        path: 'hr/interviews',
+        element: protectedPage('/hr/interviews', <AppRoutes.HRInterviewsPage />),
+      },
+      {
+        path: 'hr/offers',
+        element: protectedPage('/hr/offers', <AppRoutes.HROffersPage />),
+      },
+      {
+        path: 'hr/warranty-tracking',
+        element: protectedPage('/hr/warranty-tracking', <AppRoutes.HRWarrantyTrackingPage />),
       },
       {
         path: 'candidate/dashboard',
-        element: <Navigate to="/" replace />,
+        element: protectedPage('/candidate/dashboard', <AppRoutes.CandidateDashboardPage />),
       },
       {
         path: 'profile',
@@ -200,6 +232,46 @@ export const router = createBrowserRouter([
       {
         path: 'admin',
         element: protectedPage('/admin', <AppRoutes.AdminDashboard />),
+      },
+      {
+        path: 'admin/dashboard',
+        element: protectedPage('/admin/dashboard', <AppRoutes.AdminDashboard />),
+      },
+      {
+        path: 'admin/users',
+        element: protectedPage('/admin/users', <AppRoutes.AdminUsersPage />),
+      },
+      {
+        path: 'admin/companies',
+        element: protectedPage('/admin/companies', <AppRoutes.AdminCompaniesPage />),
+      },
+      {
+        path: 'admin/affiliates',
+        element: protectedPage('/admin/affiliates', <AppRoutes.AdminAffiliatesPage />),
+      },
+      {
+        path: 'admin/disputes',
+        element: protectedPage('/admin/disputes', <AppRoutes.AdminDisputesPage />),
+      },
+      {
+        path: 'admin/payouts',
+        element: protectedPage('/admin/payouts', <AppRoutes.AdminPayoutsPage />),
+      },
+      {
+        path: 'admin/finance',
+        element: protectedPage('/admin/finance', <AppRoutes.AdminPayoutsPage />),
+      },
+      {
+        path: 'admin/settings',
+        element: protectedPage('/admin/settings', <AppRoutes.AdminSettingsPage />),
+      },
+      {
+        path: 'admin/audit-trail',
+        element: protectedPage('/admin/audit-trail', <AppRoutes.AdminAuditTrailPage />),
+      },
+      {
+        path: 'admin/jobs',
+        element: protectedPage('/admin/jobs', <AppRoutes.JobBoard />),
       },
     ],
   },

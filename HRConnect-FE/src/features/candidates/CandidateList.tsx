@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import {
   Input, Select, Table, Tag, Typography, Space, Card, Row, Col,
-  Avatar, Button, Tooltip,
+  Avatar, Button, Tooltip, Badge,
 } from 'antd';
-import { SearchOutlined, DownloadOutlined } from '@ant-design/icons';
+import { SearchOutlined, DownloadOutlined, UserAddOutlined } from '@ant-design/icons';
 import { useLargeCandidateSet } from '@/services/queries/useCandidates';
 import { ScoreTierTag } from '@/components/common/ScoreTierTag';
 import { AppStatusBadge } from '@/components/common/StatusBadge';
-import { ScoreTier, ApplicationStatus } from '@/types/candidate';
+import { ScoreTier, ApplicationStatus, CVMode } from '@/types/candidate';
+import { useApplicationStore, APPLICATION_STATUS_LABELS, APPLICATION_STATUS_COLORS } from '@/stores/applicationStore';
 import type { Candidate } from '@/types/candidate';
 import type { ColumnsType } from 'antd/es/table';
 
@@ -22,12 +23,55 @@ export const CandidateList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | ''>('');
   const [page, setPage] = useState(1);
 
+  // Shared store: convert CandidateApplicationRecord → Candidate shape
+  const sharedApps = useApplicationStore((s) => s.applications);
+  const sharedCandidates = useMemo<Candidate[]>(
+    () =>
+      sharedApps.map((a) => ({
+        id: a.id,
+        name: a.fullName,
+        email: a.email,
+        phone: a.phone || '',
+        location: 'Việt Nam',
+        currentTitle: `Ứng tuyển: ${a.jobTitle}`,
+        currentCompany: a.company,
+        cvMode: CVMode.FILE_UPLOAD,
+        highlightCard: {
+          currentSalary: 0,
+          expectedSalary: 0,
+          currency: 'VND',
+          yearsOfExperience: 0,
+          primaryLanguage: 'Tiếng Việt',
+          languageLevel: 'B2' as unknown as import('@/types/candidate').LanguageLevel,
+          availabilityDate: a.applyDate,
+          noticePeriod: 30,
+          headline: `Ứng viên nộp qua ${a.source === 'AFFILIATE' ? `CTV ${a.affiliateName}` : 'Trực tiếp'}`,
+        },
+        skills: [],
+        industries: [],
+        applicationStatus: ApplicationStatus.APPLIED,
+        aiScore: a.aiScore,
+        scoreTier: a.aiScore >= 80 ? ScoreTier.TOP_FIT : a.aiScore >= 70 ? ScoreTier.STRONG : ScoreTier.MODERATE,
+        createdAt: a.applyDate,
+        updatedAt: a.applyDate,
+      })),
+    [sharedApps]
+  );
+
   const filtered = useMemo(() => {
-    if (!allCandidates) return [];
-    return allCandidates.filter((c) => {
+    // Merge shared-store candidates first, then mock data, de-dup by id
+    const base = [...sharedCandidates, ...(allCandidates ?? [])];
+    const seen = new Set<string>();
+    const deduped = base.filter((c) => {
+      if (seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
+    return deduped.filter((c) => {
       const matchSearch =
         !search ||
         c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.email.toLowerCase().includes(search.toLowerCase()) ||
         c.currentTitle.toLowerCase().includes(search.toLowerCase()) ||
         c.currentCompany.toLowerCase().includes(search.toLowerCase()) ||
         c.skills.some((s) => s.toLowerCase().includes(search.toLowerCase()));
@@ -35,7 +79,7 @@ export const CandidateList: React.FC = () => {
       const matchStatus = !statusFilter || c.applicationStatus === statusFilter;
       return matchSearch && matchTier && matchStatus;
     });
-  }, [allCandidates, search, tierFilter, statusFilter]);
+  }, [sharedCandidates, allCandidates, search, tierFilter, statusFilter]);
 
   const paginated = useMemo(
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -46,30 +90,45 @@ export const CandidateList: React.FC = () => {
     {
       title: 'Ứng viên',
       key: 'candidate',
-      width: 230,
-      minWidth: 220,
+      width: 250,
+      minWidth: 230,
       fixed: 'left',
-      render: (_, record) => (
-        <Space size={10}>
-          <Avatar
-            size={36}
-            style={{
-              background: `hsl(${(record.name.charCodeAt(0) * 17) % 360}, 60%, 50%)`,
-              fontWeight: 700,
-              fontSize: 13,
-              flexShrink: 0,
-            }}
-          >
-            {record.name.slice(0, 2).toUpperCase()}
-          </Avatar>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a', lineHeight: 1.3 }}>
-              {record.name}
+      render: (_, record) => {
+        const headline = record.highlightCard?.headline || '';
+        const isFromAffiliate = headline.includes('CTV');
+        const isDirect = headline.includes('Trực tiếp');
+        return (
+          <Space size={10}>
+            <Avatar
+              size={36}
+              style={{
+                background: `hsl(${(record.name.charCodeAt(0) * 17) % 360}, 60%, 50%)`,
+                fontWeight: 700,
+                fontSize: 13,
+                flexShrink: 0,
+              }}
+            >
+              {record.name.slice(0, 2).toUpperCase()}
+            </Avatar>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a', lineHeight: 1.3 }}>
+                {record.name}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>{record.location}</div>
+              {isFromAffiliate && (
+                <Tag color="orange" style={{ borderRadius: 4, fontSize: 10, marginTop: 3, padding: '0 6px', fontWeight: 600 }}>
+                  {headline.replace('Ứng viên nộp qua ', '')}
+                </Tag>
+              )}
+              {isDirect && (
+                <Tag color="blue" style={{ borderRadius: 4, fontSize: 10, marginTop: 3, padding: '0 6px', fontWeight: 600 }}>
+                  Ứng tuyển trực tiếp
+                </Tag>
+              )}
             </div>
-            <div style={{ fontSize: 11, color: '#64748b' }}>{record.location}</div>
-          </div>
-        </Space>
-      ),
+          </Space>
+        );
+      },
     },
     {
       title: 'Vị trí hiện tại',

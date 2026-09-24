@@ -20,6 +20,7 @@ export const SERVICE_TYPE_DESCRIPTIONS: Record<ServiceType, string> = {
 };
 
 export enum JobStatus {
+  PENDING = 'PENDING',
   DRAFT = 'DRAFT',
   ACTIVE = 'ACTIVE',
   PAUSED = 'PAUSED',
@@ -73,6 +74,9 @@ export interface Job {
   internalHRId?: string;
   applicationCount: number;
   shortlistedCount: number;
+  clientEmail?: string;
+  clientId?: string;
+  servicePackage?: string;
 }
 
 export interface JobWizardDraft {

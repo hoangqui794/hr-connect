@@ -29,8 +29,11 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useJobStore } from '@/stores/jobStore';
-import { ServiceType } from '@/types/job';
-import type { JobWizardDraft } from '@/types/job';
+import { useAuthStore } from '@/stores/authStore';
+import { ServiceType, JobStatus, SERVICE_TYPE_LABELS } from '@/types/job';
+import type { JobWizardDraft, Job } from '@/types/job';
+import { saveClientJob } from '@/stores/clientJobStore';
+import { saveJobToAllJobs } from '@/services/localStorageService';
 import { WizardStep1ServiceType } from './CreateJobWizard/WizardStep1ServiceType';
 import { WizardStep2TagFilters } from './CreateJobWizard/WizardStep2TagFilters';
 import { WizardStep3Objectives } from './CreateJobWizard/WizardStep3Objectives';
@@ -109,6 +112,7 @@ async function mockPublishJob(_payload: PublishJobPayload): Promise<PublishJobRe
 export const CreateJobWizard: React.FC = () => {
   const navigate = useNavigate();
   const { token } = theme.useToken();
+  const { user } = useAuthStore();
   const [form] = Form.useForm();
   const {
     draft,
@@ -131,11 +135,16 @@ export const CreateJobWizard: React.FC = () => {
 
   // Sync form initial values from Zustand draft on mount
   useEffect(() => {
+    const defaultCompanyName = draft.step1.company || user?.companyName || (user as any)?.company || '';
+    if (!draft.step1.company && defaultCompanyName) {
+      updateStep1({ company: defaultCompanyName });
+    }
+
     form.setFieldsValue({
       // Step 1
       serviceType: draft.step1.serviceType,
       title: draft.step1.title,
-      company: draft.step1.company,
+      company: defaultCompanyName,
       industryCode: draft.step1.industryCode,
       location: draft.step1.location,
       remote: draft.step1.remote,
@@ -251,12 +260,87 @@ export const CreateJobWizard: React.FC = () => {
     setSubmitting(true);
     try {
       const result = await mockPublishJob({ draft });
-      setPublishedJobId(result.jobId);
+      const newJobId = result.jobId;
+      setPublishedJobId(newJobId);
       saveDraft();
+
+      // ─── Persist job to localStorage for HR review ───────────────────────
+      const industryLabels: Record<string, string> = {
+        IT: 'Công nghệ thông tin',
+        FINANCE: 'Tài chính – Ngân hàng',
+        MARKETING: 'Marketing – Truyền thông',
+        SALES: 'Kinh doanh – Bán hàng',
+        ENGINEERING: 'Kỹ thuật – Sản xuất',
+        HR: 'Nhân sự',
+        HEALTHCARE: 'Y tế – Dược phẩm',
+        EDUCATION: 'Giáo dục – Đào tạo',
+        LOGISTICS: 'Logistics – Vận tải',
+        LEGAL: 'Pháp lý',
+        OTHER: 'Khác',
+      };
+      const serviceType = draft.step1.serviceType || ServiceType.HEADHUNT_COD;
+      const formattedJob: Job = {
+        id: newJobId,
+        title: draft.step1.title || 'Vị trí chưa đặt tên',
+        company: draft.step1.company || user?.company || 'Công ty',
+        companyId: user?.id || 'client-unknown',
+        industryCode: draft.step1.industryCode || 'IT',
+        industryLabel: industryLabels[draft.step1.industryCode] || 'Khác',
+        serviceType,
+        status: JobStatus.PENDING,
+        location: draft.step1.location || 'Hồ Chí Minh, Việt Nam',
+        remote: draft.step1.remote || false,
+        salaryRange: {
+          min: (draft.step1.salaryMin || 0) * (draft.step1.currency === 'USD' ? 1 : 1),
+          max: (draft.step1.salaryMax || 0) * (draft.step1.currency === 'USD' ? 1 : 1),
+          currency: draft.step1.currency || 'VND',
+          negotiable: draft.step1.negotiable ?? true,
+        },
+        mustHaveTags: draft.step2.mustHaveTags || [],
+        shouldHaveTags: draft.step2.shouldHaveTags || [],
+        objectives: draft.step3.objectives || '',
+        description: draft.step2.description || '',
+        headcount: draft.step1.headcount || 1,
+        experienceYears: {
+          min: draft.step1.experienceMin || 0,
+          max: draft.step1.experienceMax || 5,
+        },
+        engagementTerms: {
+          timeline: draft.step4.timeline || 30,
+          commissionRate: draft.step4.commissionRate || 15,
+          retainerFee: draft.step4.retainerFee || 0,
+          budget: draft.step4.budget || 0,
+        },
+        requirements: draft.step2.requirements || [],
+        clientContactId: user?.id || 'client-unknown',
+        clientId: user?.id,
+        clientEmail: user?.email,
+        applicationCount: 0,
+        shortlistedCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        deadline: draft.step1.deadline || undefined,
+        servicePackage: SERVICE_TYPE_LABELS[serviceType] || 'Tuyển dụng trọn gói (COD)',
+      };
+
+      // Single Source of Truth: Save directly into hrconnect_all_jobs
+      saveJobToAllJobs(formattedJob);
+
+      // Backward-compat: also save to legacy client jobs store
+      saveClientJob({
+        ...formattedJob,
+        status: 'PENDING',
+        postedByName: user?.name || 'Client',
+        postedByEmail: user?.email,
+        clientId: user?.id,
+        clientEmail: user?.email,
+      });
+      // ─────────────────────────────────────────────────────────────────────
+
       setSubmitted(true);
       message.success({
-        content: 'Đăng tin tuyển dụng thành công! Các bên liên quan đã có thể xem và gửi hồ sơ ứng tuyển.',
-        duration: 4,
+        content: 'Tin tuyển dụng đã được gửi và đang chờ HR phê duyệt. Bạn sẽ nhận thông báo khi tin được kích hoạt.',
+        duration: 5,
       });
     } catch {
       message.error('Đăng tin thất bại. Vui lòng thử lại.');
@@ -279,39 +363,55 @@ export const CreateJobWizard: React.FC = () => {
       <div style={{ maxWidth: 640, margin: '60px auto' }}>
         <Result
           status="success"
-          title="Đăng tin tuyển dụng thành công! 🎉"
+          title="Tin tuyển dụng đã được gửi thành công! 🎉"
           subTitle={
-            <span>
-              Tin tuyển dụng{' '}
-              <strong>
-                ({draft.step1.serviceType === ServiceType.HEADHUNT_COD
-                  ? 'Tuyển dụng trọn gói (COD)'
-                  : draft.step1.serviceType === ServiceType.CV_SOURCING
-                  ? 'Cung cấp hồ sơ (CV Sourcing)'
-                  : 'Ứng tuyển mở (CV Application)'})
-              </strong>{' '}
-              đã được kích hoạt và hiển thị cho{' '}
-              {draft.step1.serviceType === ServiceType.HEADHUNT_COD
-                ? 'mạng lưới cộng tác viên tuyển dụng (Headhunter)'
-                : draft.step1.serviceType === ServiceType.CV_SOURCING
-                ? 'mạng lưới cộng tác viên (Cung cấp hồ sơ)'
-                : 'tất cả ứng viên trên cổng việc làm'}
-              . Hệ thống sẽ gửi thông báo trực tiếp khi có hồ sơ mới.
+            <div>
+              <div
+                style={{
+                  background: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  borderRadius: 10,
+                  padding: '12px 16px',
+                  marginBottom: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                }}
+              >
+                <Tag
+                  color="warning"
+                  style={{ borderRadius: 6, fontWeight: 700, fontSize: 12, padding: '3px 10px' }}
+                >
+                  ⏳ Chờ HR Phê duyệt
+                </Tag>
+                <span style={{ fontSize: 13, color: '#92400e' }}>
+                  Tin đang chờ HR nội bộ xem xét và phê duyệt. Sau khi được duyệt, tin sẽ tự động hiển thị trên sàn.
+                </span>
+              </div>
+              <div style={{ fontSize: 13, color: token.colorTextSecondary }}>
+                Gói dịch vụ:{' '}
+                <strong>
+                  {draft.step1.serviceType === ServiceType.HEADHUNT_COD
+                    ? 'Tuyển dụng trọn gói (COD)'
+                    : draft.step1.serviceType === ServiceType.CV_SOURCING
+                    ? 'Cung cấp hồ sơ (CV Sourcing)'
+                    : 'Ứng tuyển mở (CV Application)'}
+                </strong>
+              </div>
               {publishedJobId && (
                 <div style={{ marginTop: 8, fontSize: 12, color: token.colorTextTertiary }}>
                   Mã tin tuyển dụng: <code>{publishedJobId}</code>
                 </div>
               )}
-            </span>
+            </div>
           }
           extra={[
             <Button
-              type="primary"
-              key="board"
-              onClick={() => navigate('/jobs')}
+              key="manage"
+              onClick={() => navigate('/client/jobs')}
               size="large"
             >
-              Xem tin tuyển dụng đang mở
+              Quản lý tin tuyển dụng của tôi
             </Button>,
             <Button key="new" onClick={handleReset} size="large">
               Tạo thêm tin tuyển dụng khác
@@ -476,3 +576,6 @@ export const CreateJobWizard: React.FC = () => {
     </Form>
   );
 };
+
+export default CreateJobWizard;
+

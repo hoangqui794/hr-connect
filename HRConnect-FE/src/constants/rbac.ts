@@ -115,9 +115,102 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     allowedRoles: [UserRole.ADMIN],
     redirectTo: '/dashboard',
   },
+  {
+    path: '/admin/dashboard',
+    allowedRoles: [UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/admin/users',
+    allowedRoles: [UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/admin/companies',
+    allowedRoles: [UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/admin/affiliates',
+    allowedRoles: [UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/admin/disputes',
+    allowedRoles: [UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/admin/payouts',
+    allowedRoles: [UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/admin/finance',
+    allowedRoles: [UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/admin/settings',
+    allowedRoles: [UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/admin/audit-trail',
+    allowedRoles: [UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/admin/jobs',
+    allowedRoles: [UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/hr/dashboard',
+    allowedRoles: [UserRole.INTERNAL_HR, UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/hr/jobs',
+    allowedRoles: [UserRole.INTERNAL_HR, UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/hr/candidates',
+    allowedRoles: [UserRole.INTERNAL_HR, UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/hr/screening',
+    allowedRoles: [UserRole.INTERNAL_HR, UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/hr/interviews',
+    allowedRoles: [UserRole.INTERNAL_HR, UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/hr/offers',
+    allowedRoles: [UserRole.INTERNAL_HR, UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/hr/warranty-tracking',
+    allowedRoles: [UserRole.INTERNAL_HR, UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
 ];
 
-export const SIDEBAR_MENU_ITEMS = {
+export interface SidebarMenuItem {
+  key?: string;
+  label: string;
+  icon?: string;
+  type?: 'group';
+  children?: SidebarMenuItem[];
+}
+
+export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
   [UserRole.GUEST]: [
     { key: '/', label: 'Trang chủ', icon: 'HomeOutlined' },
     { key: '/login', label: 'Đăng nhập', icon: 'LoginOutlined' },
@@ -144,18 +237,46 @@ export const SIDEBAR_MENU_ITEMS = {
     { key: '/affiliate/commissions', label: 'Sổ cái hoa hồng & Payout', icon: 'DollarOutlined' },
   ],
   [UserRole.INTERNAL_HR]: [
-    { key: '/dashboard', label: 'Bảng điều khiển', icon: 'DashboardOutlined' },
-    { key: '/jobs', label: 'Tin tuyển dụng đang mở', icon: 'FileTextOutlined' },
-    { key: '/candidates', label: 'Kho hồ sơ ứng viên', icon: 'TeamOutlined' },
-    { key: '/screening', label: 'Sàng lọc AI', icon: 'RobotOutlined' },
-    { key: '/affiliate/ledger', label: 'Sổ cái hoa hồng CTV', icon: 'DollarOutlined' },
+    { key: '/hr/dashboard', label: 'Bảng điều khiển', icon: 'DashboardOutlined' },
+    { key: '/hr/jobs', label: 'Duyệt tin tuyển dụng', icon: 'FileTextOutlined' },
+    { key: '/hr/candidates', label: 'Kho hồ sơ ứng viên', icon: 'TeamOutlined' },
+    { key: '/hr/screening', label: 'Sàng lọc AI', icon: 'RobotOutlined' },
+    { key: '/hr/interviews', label: 'Lịch phỏng vấn', icon: 'CalendarOutlined' },
+    { key: '/hr/offers', label: 'Quản lý Offer & Onboarding', icon: 'SolutionOutlined' },
+    { key: '/hr/warranty-tracking', label: 'Theo dõi Bảo hành & Milestone', icon: 'SafetyCertificateOutlined' },
   ],
   [UserRole.ADMIN]: [
-    { key: '/dashboard', label: 'Bảng điều khiển', icon: 'DashboardOutlined' },
-    { key: '/jobs', label: 'Tất cả tin tuyển dụng', icon: 'FileTextOutlined' },
-    { key: '/candidates', label: 'Tất cả ứng viên', icon: 'TeamOutlined' },
-    { key: '/screening', label: 'Sàng lọc AI', icon: 'RobotOutlined' },
-    { key: '/affiliate/ledger', label: 'Sổ cái tài chính', icon: 'DollarOutlined' },
-    { key: '/admin', label: 'Quản trị hệ thống', icon: 'SettingOutlined' },
+    {
+      label: 'Bảng điều khiển',
+      type: 'group',
+      children: [
+        { key: '/admin/dashboard', label: 'Bảng điều khiển', icon: 'DashboardOutlined' },
+      ],
+    },
+    {
+      label: 'Quản lý tài khoản & Đối tác',
+      type: 'group',
+      children: [
+        { key: '/admin/users', label: 'Quản lý người dùng & phân quyền', icon: 'TeamOutlined' },
+        { key: '/admin/companies', label: 'Doanh nghiệp tuyển dụng', icon: 'BankOutlined' },
+        { key: '/admin/affiliates', label: 'Mạng lưới CTV & Headhunter', icon: 'ApartmentOutlined' },
+      ],
+    },
+    {
+      label: 'Vận hành & Tranh chấp',
+      type: 'group',
+      children: [
+        { key: '/admin/disputes', label: 'Xử lý tranh chấp hồ sơ', icon: 'SafetyCertificateOutlined' },
+        { key: '/admin/payouts', label: 'Duyệt chi trả hoa hồng', icon: 'DollarOutlined' },
+      ],
+    },
+    {
+      label: 'Cấu hình hệ thống & Audit',
+      type: 'group',
+      children: [
+        { key: '/admin/settings', label: 'Cấu hình hệ thống & hoa hồng', icon: 'SettingOutlined' },
+        { key: '/admin/audit-trail', label: 'Nhật ký kiểm toán hệ thống', icon: 'AuditOutlined' },
+      ],
+    },
   ],
 };

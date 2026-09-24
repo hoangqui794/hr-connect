@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file useAuthStore.ts
  * @description Zustand auth & role store for HR Connect.
  *
@@ -56,7 +56,7 @@ export function useRoleSwitcher(): {
 import type { UserProfile } from '@/types/roles';
 
 export function useCurrentUser(): {
-  user: UserProfile;
+  user: UserProfile | null;
   isAuthenticated: boolean;
 } {
   const user = _store((s) => s.user);

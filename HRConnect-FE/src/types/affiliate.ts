@@ -157,7 +157,7 @@ export interface AffiliateSubmissionDTO {
   avatar?: string;
 }
 
-export type CommissionPayoutStatus = 'PENDING' | 'ELIGIBLE' | 'APPROVED' | 'PAYABLE' | 'PAID';
+export type CommissionPayoutStatus = 'PENDING' | 'ELIGIBLE' | 'APPROVED' | 'PAYABLE' | 'PENDING_APPROVAL' | 'PAID';
 
 export interface AffiliateCommissionDTO {
   id: string;

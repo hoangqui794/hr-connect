@@ -18,6 +18,7 @@ import {
   CompassOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores/authStore';
 import { useCandidateStore } from '@/stores/candidateStore';
 import { FEATURED_HOT_JOBS, FeaturedJobItem } from '@/features/landing/components/FeaturedHotJobs';
 import { ApplyJobModal } from '@/features/candidates/ApplyJobModal';
@@ -26,10 +27,29 @@ const { Title, Text, Paragraph } = Typography;
 
 export const CandidateSavedJobsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { savedJobIds, toggleSaveJob } = useCandidateStore();
+  const { user } = useAuthStore();
+  const currentUserEmail = (user?.email || '').toLowerCase().trim();
+  const { savedJobs, toggleSaveJob } = useCandidateStore();
   const [selectedJobForApply, setSelectedJobForApply] = useState<FeaturedJobItem | null>(null);
 
-  const savedJobsList = FEATURED_HOT_JOBS.filter((job) => savedJobIds.includes(job.id));
+  // Read saved job ids isolated by currentUser.email from localStorage or store
+  const userSavedJobIds = React.useMemo(() => {
+    if (!currentUserEmail) return [];
+    try {
+      const userKey = `hrconnect_saved_jobs_${currentUserEmail}`;
+      const raw = localStorage.getItem(userKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    const list = savedJobs || [];
+    return list
+      .filter((j) => (j.userEmail || '').toLowerCase().trim() === currentUserEmail)
+      .map((j) => j.jobId);
+  }, [currentUserEmail, savedJobs]);
+
+  const savedJobsList = FEATURED_HOT_JOBS.filter((job) => userSavedJobIds.includes(job.id));
 
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto', paddingBottom: 60 }}>
@@ -161,7 +181,7 @@ export const CandidateSavedJobsPage: React.FC = () => {
                       danger
                       icon={<DeleteOutlined />}
                       onClick={() => {
-                        toggleSaveJob(job.id);
+                        toggleSaveJob(job.id, currentUserEmail);
                         message.success('Đã bỏ lưu tin việc làm!');
                       }}
                       style={{ borderRadius: 8, height: 38, fontWeight: 600 }}

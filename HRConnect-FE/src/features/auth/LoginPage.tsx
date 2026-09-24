@@ -7,9 +7,11 @@ import {
   ThunderboltOutlined, CheckCircleFilled,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore, type UserProfile } from '@/stores/authStore';
+import { useCandidateStore } from '@/stores/candidateStore';
 import { UserRole, ROLE_LABELS } from '@/types/roles';
-import { ROLE_DASHBOARD_ROUTES } from '@/routes/AppRoutes';
+import { getDashboardRouteForRole } from '@/routes/AppRoutes';
+import { findRegisteredAccountByEmail } from '@/services/accountService';
 
 const { Title, Text } = Typography;
 
@@ -26,7 +28,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: UserRole.CLIENT,
     title: 'Doanh nghiệp (Client)',
-    email: 'client@demo.com',
+    email: 'tuyendung5@gmail.com',
     workspaceName: 'Client Workspace',
     targetRoute: '/client/dashboard',
     color: '#0284c7',
@@ -34,34 +36,34 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: UserRole.AFFILIATE,
     title: 'Cộng tác viên (Affiliate)',
-    email: 'affiliate@demo.com',
+    email: 'cvt5@gmail.com',
     workspaceName: 'OPR Hub',
     targetRoute: '/affiliate/dashboard',
     color: '#f59e0b',
   },
   {
     role: UserRole.INTERNAL_HR,
-    title: 'Tuyển dụng Nội bộ (HR)',
-    email: 'hr@demo.com',
-    workspaceName: 'Internal HR Console',
+    title: 'HR Nội bộ (Internal HR)',
+    email: 'myhr@hrconnect.io',
+    workspaceName: 'HR Workspace',
     targetRoute: '/hr/dashboard',
     color: '#10b981',
   },
   {
-    role: UserRole.ADMIN,
-    title: 'Quản trị viên (Admin)',
-    email: 'admin@demo.com',
-    workspaceName: 'Admin Center',
-    targetRoute: '/admin/dashboard',
-    color: '#ef4444',
-  },
-  {
     role: UserRole.CANDIDATE,
     title: 'Ứng viên (Candidate)',
-    email: 'candidate@demo.com',
+    email: 'ungvien5@gmail.com',
     workspaceName: 'Candidate Portal',
     targetRoute: '/candidate/dashboard',
     color: '#8b5cf6',
+  },
+  {
+    role: UserRole.ADMIN,
+    title: 'Platform Admin',
+    email: 'myadmin@hrconnect.io',
+    workspaceName: 'Admin Control',
+    targetRoute: '/admin/dashboard',
+    color: '#ef4444',
   },
 ];
 
@@ -72,15 +74,16 @@ export const LoginPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
 
   // Authenticate and redirect based on role
-  const performLogin = async (role: UserRole, targetRoute?: string) => {
+  const performLogin = async (role: UserRole, customUser?: Partial<UserProfile>, targetRoute?: string) => {
     setSubmitting(true);
-    login(role);
+    const normalizedRole = ((customUser?.role || role || UserRole.CANDIDATE) as string).toUpperCase() as UserRole;
+    login(normalizedRole, customUser);
     await new Promise((r) => setTimeout(r, 250));
     setSubmitting(false);
 
-    const destination = targetRoute || ROLE_DASHBOARD_ROUTES[role] || '/dashboard';
+    const destination = targetRoute || getDashboardRouteForRole(normalizedRole);
     void message.success({
-      content: `Đăng nhập thành công với vai trò: ${ROLE_LABELS[role]}`,
+      content: `Đăng nhập thành công với vai trò: ${ROLE_LABELS[normalizedRole] || normalizedRole}`,
       icon: <CheckCircleFilled style={{ color: '#10b981' }} />,
     });
     navigate(destination);
@@ -90,30 +93,71 @@ export const LoginPage: React.FC = () => {
   const handleFormSubmit = async (values: { email: string; password?: string }) => {
     const emailLower = values.email.toLowerCase().trim();
 
-    // Map email to respective role
-    let role = UserRole.CLIENT;
-    if (emailLower.includes('affiliate') || emailLower === 'david.tran@recruitpro.vn') {
-      role = UserRole.AFFILIATE;
-    } else if (emailLower.includes('hr') || emailLower === 'lisa.pham@hrconnect.io') {
-      role = UserRole.INTERNAL_HR;
-    } else if (emailLower.includes('admin') || emailLower === 'alex@hrconnect.io') {
-      role = UserRole.ADMIN;
-    } else if (emailLower.includes('candidate') || emailLower === 'minh.nguyen@gmail.com') {
-      role = UserRole.CANDIDATE;
-    } else if (emailLower.includes('client') || emailLower === 'sarah.chen@techcorp.vn') {
-      role = UserRole.CLIENT;
+    // 1. Look up user account by email in persistent account repository
+    const account = findRegisteredAccountByEmail(emailLower);
+
+    if (!account) {
+      message.error({
+        content: 'Tài khoản chưa tồn tại trên hệ thống. Vui lòng kiểm tra lại email hoặc đăng ký tài khoản mới!',
+        duration: 4,
+      });
+      return;
     }
 
-    await performLogin(role);
+    // 2. Validate password (if set)
+    if (account.password && values.password && account.password !== values.password) {
+      message.error({
+        content: 'Mật khẩu không chính xác. Vui lòng kiểm tra lại!',
+        duration: 3,
+      });
+      return;
+    }
+
+    // 3. Extract exact registered role and profile details
+    const resolvedRole = account.role;
+    const customUser: Partial<UserProfile> = {
+      id: account.id,
+      name: account.fullName,
+      email: account.email,
+      role: resolvedRole,
+      phone: account.phone,
+      // STRICT: Only assign company if role is CLIENT!
+      company: resolvedRole === UserRole.CLIENT ? (account.companyName || `${account.fullName} Co.`) : undefined,
+      companySize: resolvedRole === UserRole.CLIENT ? account.companySize : undefined,
+    };
+
+    // 4. Authenticate and redirect based on the account's permanent role
+    await performLogin(resolvedRole, customUser);
   };
 
   // Quick-fill demo account click
   const handleQuickFill = async (demo: DemoAccount) => {
     form.setFieldsValue({
       email: demo.email,
-      password: 'demoPassword123',
+      password: '123456',
     });
-    await performLogin(demo.role, demo.targetRoute);
+    const account = findRegisteredAccountByEmail(demo.email.toLowerCase());
+    // For demo account click, only initialize demo candidate data for minh.nguyen demo account
+    if (demo.role === UserRole.CANDIDATE) {
+      if (demo.email === 'minh.nguyen@gmail.com') {
+        useCandidateStore.getState().loadDemoData();
+      } else {
+        useCandidateStore.getState().initCandidateFromUser({
+          name: account?.fullName || 'Ứng viên',
+          email: demo.email,
+        });
+      }
+    }
+    const customUser: Partial<UserProfile> | undefined = account
+      ? {
+          id: account.id,
+          name: account.fullName,
+          email: account.email,
+          role: account.role,
+          company: account.role === UserRole.CLIENT ? (account.companyName || 'Công ty TNHH Tuyển Dụng 5') : undefined,
+        }
+      : undefined;
+    await performLogin(demo.role, customUser, demo.targetRoute);
   };
 
   return (
@@ -196,7 +240,7 @@ export const LoginPage: React.FC = () => {
             >
               <Input
                 prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
-                placeholder="ten@congty.vn"
+                placeholder="ten@email.com"
                 size="large"
                 style={{ borderRadius: 10, height: 44 }}
               />

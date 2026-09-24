@@ -22,9 +22,11 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores/authStore';
 import { MOCK_JOBS } from '@/services/mockData';
 import { JobStatus, ServiceType } from '@/types/job';
 import type { Job } from '@/types/job';
+import { getJobsForClient, updateJobStatusInAllJobs } from '@/services/localStorageService';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -128,22 +130,22 @@ const TECHCORP_DEFAULT_JOBS: Job[] = [
 
 export const ClientJobsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Local state initialized with strictly TechCorp Việt Nam jobs
-  const [jobs, setJobs] = useState<Job[]>(TECHCORP_DEFAULT_JOBS);
+  // Load client jobs dynamically from Single Source of Truth: hrconnect_all_jobs
+  const jobs = useMemo(() => {
+    return getJobsForClient(user?.email, user?.company, user?.id);
+  }, [user?.email, user?.company, user?.id, refreshKey]);
 
   // Filters
   const [search, setSearch] = useState<string>('');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
 
-  // ─── Filter Logic: Strictly TechCorp Jobs Only ─────────────────────────────
+  // ─── Filter Logic: Strictly Scoped by Company ─────────────────────────────
   const filteredJobs = useMemo(() => {
     return jobs.filter((j) => {
-      // Strict Data Scope: Must belong to TechCorp Việt Nam
-      const isTechCorp = j.company.includes('TechCorp') || j.companyId === 'client-001';
-      if (!isTechCorp) return false;
-
       const matchSearch =
         !search ||
         j.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -156,21 +158,21 @@ export const ClientJobsPage: React.FC = () => {
     });
   }, [jobs, search, serviceTypeFilter, statusFilter]);
 
-  // Quick metrics for TechCorp
+  // Quick metrics for Client
   const metrics = useMemo(() => {
     const total = jobs.length;
     const active = jobs.filter((j) => j.status === JobStatus.ACTIVE).length;
+    const pending = jobs.filter((j) => j.status === JobStatus.PENDING).length;
     const paused = jobs.filter((j) => j.status === JobStatus.PAUSED).length;
     const totalApplications = jobs.reduce((acc, j) => acc + (j.applicationCount || 0), 0);
-    return { total, active, paused, totalApplications };
+    return { total, active, pending, paused, totalApplications };
   }, [jobs]);
 
-  // Handlers
+  // Handlers: Persist directly into hrconnect_all_jobs
   const handleToggleStatus = (jobId: string, currentStatus: JobStatus) => {
     const nextStatus = currentStatus === JobStatus.ACTIVE ? JobStatus.PAUSED : JobStatus.ACTIVE;
-    setJobs((prev) =>
-      prev.map((j) => (j.id === jobId ? { ...j, status: nextStatus } : j))
-    );
+    updateJobStatusInAllJobs(jobId, nextStatus);
+    setRefreshKey((k) => k + 1);
     const msg =
       nextStatus === JobStatus.ACTIVE
         ? 'Đã mở lại tin tuyển dụng thành công!'
@@ -179,9 +181,8 @@ export const ClientJobsPage: React.FC = () => {
   };
 
   const handleCloseJob = (jobId: string) => {
-    setJobs((prev) =>
-      prev.map((j) => (j.id === jobId ? { ...j, status: JobStatus.CLOSED } : j))
-    );
+    updateJobStatusInAllJobs(jobId, JobStatus.CLOSED);
+    setRefreshKey((k) => k + 1);
     void message.info('Đã đóng tin tuyển dụng và lưu vào kho lưu trữ!');
   };
 
@@ -273,6 +274,22 @@ export const ClientJobsPage: React.FC = () => {
       key: 'status',
       width: 140,
       render: (_, record) => {
+        if (record.status === JobStatus.PENDING || (record.status as string) === 'PENDING') {
+          return (
+            <Tag
+              style={{
+                borderRadius: 6,
+                fontWeight: 700,
+                fontSize: 11,
+                border: '1px solid #fde68a',
+                background: '#fffbeb',
+                color: '#92400e',
+              }}
+            >
+              ⏳ Chờ duyệt
+            </Tag>
+          );
+        }
         if (record.status === JobStatus.ACTIVE) {
           return <Tag color="success" style={{ borderRadius: 6, fontWeight: 600 }}>Đang tuyển</Tag>;
         }
@@ -354,7 +371,7 @@ export const ClientJobsPage: React.FC = () => {
             Tin tuyển dụng của tôi
           </Title>
           <Text type="secondary" style={{ fontSize: 13.5 }}>
-            Doanh nghiệp: <b style={{ color: '#0284c7' }}>TechCorp Việt Nam</b> · Quản lý bài đăng, gói dịch vụ áp dụng và phễu tuyển dụng
+            Doanh nghiệp: <b style={{ color: '#0284c7' }}>{user?.company || 'Doanh nghiệp'}</b> · Quản lý bài đăng, gói dịch vụ áp dụng và phễu tuyển dụng
           </Text>
         </div>
 
@@ -376,7 +393,7 @@ export const ClientJobsPage: React.FC = () => {
       {/* Metric Cards */}
       <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
         {[
-          { label: 'Tổng số tin của TechCorp', value: metrics.total, color: '#0284c7', icon: <FileTextOutlined /> },
+          { label: `Tổng số tin đăng`, value: metrics.total, color: '#0284c7', icon: <FileTextOutlined /> },
           { label: 'Tin đang tuyển (ACTIVE)', value: metrics.active, color: '#10b981', icon: <PlayCircleOutlined /> },
           { label: 'Tin tạm dừng (PAUSED)', value: metrics.paused, color: '#f59e0b', icon: <PauseCircleOutlined /> },
           { label: 'Tổng ứng viên nộp hồ sơ', value: metrics.totalApplications, color: '#8b5cf6', icon: <TeamOutlined /> },
@@ -400,10 +417,10 @@ export const ClientJobsPage: React.FC = () => {
                   {item.icon}
                 </div>
                 <div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
                     {item.value}
                   </div>
-                  <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 3 }}>
+                  <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 4 }}>
                     {item.label}
                   </div>
                 </div>
@@ -413,63 +430,88 @@ export const ClientJobsPage: React.FC = () => {
         ))}
       </Row>
 
-      {/* Filter Bar */}
-      <Card style={{ marginBottom: 16, borderRadius: 12, border: '1px solid #e2e8f0' }}>
-        <Row gutter={[12, 12]} align="middle">
-          <Col xs={24} md={10}>
-            <Input
-              prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-              placeholder="Tìm kiếm theo tiêu đề vị trí, kỹ năng cốt lõi..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              allowClear
-              style={{ borderRadius: 8 }}
-            />
-          </Col>
-          <Col xs={12} md={7}>
-            <Select
-              placeholder="Gói dịch vụ áp dụng"
-              value={serviceTypeFilter || undefined}
-              onChange={(val) => setServiceTypeFilter(val || '')}
-              allowClear
-              style={{ width: '100%' }}
-              options={[
-                { value: '', label: 'Tất cả các gói dịch vụ' },
-                { value: ServiceType.HEADHUNT_COD, label: 'Tuyển dụng trọn gói (COD - Bảo hành 60 ngày)' },
-                { value: ServiceType.CV_SOURCING, label: 'Cung cấp hồ sơ (CV Sourcing)' },
-                { value: ServiceType.CV_APPLICATION, label: 'Ứng tuyển mở (CV Application)' },
-              ]}
-            />
-          </Col>
-          <Col xs={12} md={7}>
-            <Select
-              placeholder="Trạng thái bài đăng"
-              value={statusFilter || undefined}
-              onChange={(val) => setStatusFilter(val || '')}
-              allowClear
-              style={{ width: '100%' }}
-              options={[
-                { value: '', label: 'Tất cả trạng thái' },
-                { value: JobStatus.ACTIVE, label: 'Đang tuyển (ACTIVE)' },
-                { value: JobStatus.PAUSED, label: 'Tạm dừng (PAUSED)' },
-                { value: JobStatus.CLOSED, label: 'Đã đóng (CLOSED)' },
-              ]}
-            />
-          </Col>
-        </Row>
-      </Card>
+      {jobs.length === 0 ? (
+        <Card style={{ borderRadius: 14, textAlign: 'center', padding: '60px 20px', border: '1px solid #e2e8f0' }}>
+          <FileTextOutlined style={{ fontSize: 48, color: '#cbd5e1', marginBottom: 16 }} />
+          <Title level={4} style={{ color: '#0f172a', marginBottom: 8 }}>
+            Doanh nghiệp của bạn chưa đăng tin tuyển dụng nào
+          </Title>
+          <Text type="secondary" style={{ display: 'block', maxWidth: 480, margin: '0 auto 24px', fontSize: 13.5 }}>
+            Bắt đầu tạo tin tuyển dụng mới với các gói dịch vụ linh hoạt (COD, CV Sourcing, CV Application) để kết nối ngay với các ứng viên tài năng.
+          </Text>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            size="large"
+            onClick={() => navigate('/client/jobs/create')}
+            style={{ borderRadius: 8, fontWeight: 700, background: '#0284c7' }}
+          >
+            Đăng tin tuyển dụng đầu tiên
+          </Button>
+        </Card>
+      ) : (
+        <>
+          {/* Filter Bar */}
+          <Card size="small" style={{ borderRadius: 12, marginBottom: 16, border: '1px solid #e2e8f0' }}>
+            <Row gutter={[12, 12]} align="middle">
+              <Col xs={24} md={10}>
+                <Input
+                  prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                  placeholder="Tìm theo tiêu đề, kỹ năng bắt buộc (Java, React...)"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  allowClear
+                />
+              </Col>
+              <Col xs={12} md={7}>
+                <Select
+                  placeholder="Gói dịch vụ tuyển dụng"
+                  value={serviceTypeFilter || undefined}
+                  onChange={(val) => setServiceTypeFilter(val || '')}
+                  allowClear
+                  style={{ width: '100%' }}
+                  options={[
+                    { value: '', label: 'Tất cả gói dịch vụ' },
+                    { value: ServiceType.HEADHUNT_COD, label: 'Trọn gói COD (Bảo hành 60 ngày)' },
+                    { value: ServiceType.CV_SOURCING, label: 'Tìm nguồn CV (Sourcing)' },
+                    { value: ServiceType.CV_APPLICATION, label: 'Ứng tuyển mở (CV Application)' },
+                  ]}
+                />
+              </Col>
+              <Col xs={12} md={7}>
+                <Select
+                  placeholder="Trạng thái bài đăng"
+                  value={statusFilter || undefined}
+                  onChange={(val) => setStatusFilter(val || '')}
+                  allowClear
+                  style={{ width: '100%' }}
+                  options={[
+                    { value: '', label: 'Tất cả trạng thái' },
+                    { value: JobStatus.ACTIVE, label: 'Đang tuyển (ACTIVE)' },
+                    { value: JobStatus.PAUSED, label: 'Tạm dừng (PAUSED)' },
+                    { value: JobStatus.CLOSED, label: 'Đã đóng (CLOSED)' },
+                  ]}
+                />
+              </Col>
+            </Row>
+          </Card>
 
-      {/* Table */}
-      <Card style={{ borderRadius: 14, border: '1px solid #e2e8f0', overflow: 'hidden' }} styles={{ body: { padding: 0 } }}>
-        <Table
-          columns={columns}
-          dataSource={filteredJobs}
-          rowKey="id"
-          scroll={{ x: 1300 }}
-          pagination={{ pageSize: 10, showTotal: (total) => `Tổng số ${total} bài đăng của TechCorp Việt Nam` }}
-          size="middle"
-        />
-      </Card>
+          {/* Table */}
+          <Card style={{ borderRadius: 14, border: '1px solid #e2e8f0', overflow: 'hidden' }} styles={{ body: { padding: 0 } }}>
+            <Table
+              columns={columns}
+              dataSource={filteredJobs}
+              rowKey="id"
+              scroll={{ x: 1300 }}
+              pagination={{ pageSize: 10, showTotal: (total) => `Tổng số ${total} bài đăng` }}
+              size="middle"
+            />
+          </Card>
+        </>
+      )}
     </div>
   );
 };
+
+export default ClientJobsPage;
+

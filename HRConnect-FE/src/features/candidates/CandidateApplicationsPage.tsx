@@ -33,6 +33,8 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCandidateStore, CandidateApplication } from '@/stores/candidateStore';
+import { useAuthStore } from '@/stores/authStore';
+import { useApplicationStore, APPLICATION_STATUS_LABELS, APPLICATION_STATUS_COLORS } from '@/stores/applicationStore';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -41,7 +43,73 @@ export const CandidateApplicationsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTabKey = searchParams.get('subtab') || 'applied';
 
-  const { applications, interviews, recruiterConnects, respondToOffer } = useCandidateStore();
+  const { applications: storeApplications, interviews, recruiterConnects, respondToOffer } = useCandidateStore();
+  const { user } = useAuthStore();
+  const sharedApps = useApplicationStore((s) => s.applications);
+
+  const currentUserEmail = (user?.email || '').toLowerCase().trim();
+
+  const mySharedApps = React.useMemo(() => {
+    if (!currentUserEmail) return [];
+    return sharedApps.filter((a) => {
+      const email = ((a as any).candidateEmail || a.email || '').toLowerCase().trim();
+      return email === currentUserEmail;
+    });
+  }, [currentUserEmail, sharedApps]);
+
+  const myStoreApps = React.useMemo(() => {
+    if (!currentUserEmail) return [];
+    return (storeApplications || []).filter((a) => {
+      const email = (a.candidateEmail || a.applicantEmail || '').toLowerCase().trim();
+      return email === currentUserEmail;
+    });
+  }, [currentUserEmail, storeApplications]);
+
+  const applications: CandidateApplication[] = React.useMemo(() => {
+    const fromShared: CandidateApplication[] = mySharedApps.map((a) => ({
+      id: a.id,
+      jobId: a.jobId,
+      jobTitle: a.jobTitle,
+      company: a.company,
+      salary: 'Thỏa thuận theo năng lực',
+      appliedDate: new Date(a.applyDate).toLocaleDateString('vi-VN'),
+      status:
+        a.status === 'OFFERED' || a.status === 'ONBOARDED'
+          ? 'OFFER'
+          : a.status === 'INTERVIEW_SCHEDULED' || a.status === 'INTERVIEW_PASSED'
+          ? 'INTERVIEW'
+          : a.status === 'SCREENING'
+          ? 'SCREENED'
+          : 'SUBMITTED',
+      statusLabel: APPLICATION_STATUS_LABELS[a.status] || a.status,
+      statusColor: APPLICATION_STATUS_COLORS[a.status] || '#0284c7',
+      cvUsed: 'CV Chuyên viên Phát triển Phần mềm (ATS Standard)',
+      applicantName: a.fullName,
+      applicantEmail: a.email,
+      candidateEmail: a.email,
+      applicantPhone: a.phone,
+    }));
+
+    const sharedJobIds = new Set(fromShared.map((f) => f.jobId));
+    const rest = myStoreApps.filter((app) => !sharedJobIds.has(app.jobId));
+    return [...fromShared, ...rest];
+  }, [mySharedApps, myStoreApps]);
+
+  const userInterviews = React.useMemo(() => {
+    if (!currentUserEmail) return [];
+    return (interviews || []).filter((i) => {
+      const email = (i.candidateEmail || i.applicantEmail || '').toLowerCase().trim();
+      return email === currentUserEmail;
+    });
+  }, [currentUserEmail, interviews]);
+
+  const userRecruiterConnects = React.useMemo(() => {
+    if (!currentUserEmail) return [];
+    return (recruiterConnects || []).filter((r) => {
+      const email = (r.candidateEmail || r.userEmail || '').toLowerCase().trim();
+      return email === currentUserEmail;
+    });
+  }, [currentUserEmail, recruiterConnects]);
 
   // Offer Letter Modal State
   const [selectedOfferApp, setSelectedOfferApp] = useState<CandidateApplication | null>(null);
@@ -106,11 +174,11 @@ export const CandidateApplicationsPage: React.FC = () => {
               <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Việc làm đã nộp</div>
             </div>
             <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.06)', padding: '8px 18px', borderRadius: 12 }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#a78bfa' }}>{interviews.length}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#a78bfa' }}>{userInterviews.length}</div>
               <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Lịch PV sắp tới</div>
             </div>
             <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.06)', padding: '8px 18px', borderRadius: 12 }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#34d399' }}>{recruiterConnects.length}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#34d399' }}>{userRecruiterConnects.length}</div>
               <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Hồ sơ gửi Recruiter</div>
             </div>
           </div>
@@ -252,16 +320,16 @@ export const CandidateApplicationsPage: React.FC = () => {
               label: (
                 <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <CalendarOutlined />
-                  Lịch phỏng vấn sắp tới ({interviews.length})
+                  Lịch phỏng vấn sắp tới ({userInterviews.length})
                 </span>
               ),
               children: (
                 <div style={{ paddingTop: 10 }}>
-                  {interviews.length === 0 ? (
+                  {userInterviews.length === 0 ? (
                     <Empty description="Hiện chưa có lịch phỏng vấn nào được xếp." style={{ padding: '40px 0' }} />
                   ) : (
                     <Row gutter={[20, 20]}>
-                      {interviews.map((item) => (
+                      {userInterviews.map((item) => (
                         <Col xs={24} md={12} key={item.id}>
                           <Card
                             hoverable
@@ -360,12 +428,12 @@ export const CandidateApplicationsPage: React.FC = () => {
               label: (
                 <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <TeamOutlined />
-                  Hồ sơ gửi Recruiter ({recruiterConnects.length})
+                  Hồ sơ gửi Recruiter ({userRecruiterConnects.length})
                 </span>
               ),
               children: (
                 <div style={{ paddingTop: 10 }}>
-                  {recruiterConnects.length === 0 ? (
+                  {userRecruiterConnects.length === 0 ? (
                     <Empty
                       description="Bạn chưa gửi gắm hồ sơ cho chuyên gia Recruiter nào."
                       style={{ padding: '40px 0' }}
@@ -376,7 +444,7 @@ export const CandidateApplicationsPage: React.FC = () => {
                     </Empty>
                   ) : (
                     <Table
-                      dataSource={recruiterConnects}
+                      dataSource={userRecruiterConnects}
                       rowKey="id"
                       pagination={false}
                       columns={[
@@ -534,3 +602,6 @@ export const CandidateApplicationsPage: React.FC = () => {
     </div>
   );
 };
+
+export default CandidateApplicationsPage;
+
