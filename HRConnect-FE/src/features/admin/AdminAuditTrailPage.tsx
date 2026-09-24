@@ -83,6 +83,7 @@ const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
 
 const ACTION_CONFIGS: Record<string, { label: string; color: string }> = {
   PAYOUT_EXECUTED: { label: 'Chi trả Payout', color: 'green' },
+  'Chi trả Payout': { label: 'Chi trả Payout', color: 'green' },
   DISPUTE_RESOLVED: { label: 'Xử lý tranh chấp', color: 'orange' },
   USER_LOCKED: { label: 'Khóa tài khoản', color: 'red' },
   USER_UNLOCKED: { label: 'Mở khóa tài khoản', color: 'blue' },
@@ -90,10 +91,45 @@ const ACTION_CONFIGS: Record<string, { label: string; color: string }> = {
   CONFIG_UPDATED: { label: 'Đổi cấu hình', color: 'cyan' },
 };
 
+/**
+ * Load audit logs directly from localStorage 'hrconnect_audit_logs' with newly generated logs on top
+ */
+function loadAuditLogs(): AuditLogEntry[] {
+  let storedLogs: any[] = [];
+  try {
+    const raw = localStorage.getItem('hrconnect_audit_logs');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        storedLogs = parsed.map((item: any) => ({
+          id: item.id,
+          timestamp: item.timestamp ? new Date(item.timestamp).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN'),
+          actorName: item.actor || item.actorName || 'Platform Admin',
+          actorRole: item.actorRole || 'ADMIN',
+          action: (item.action === 'Chi trả Payout' ? 'PAYOUT_EXECUTED' : item.action) as any,
+          target: item.target || 'Khoản chi trả hoa hồng CTV',
+          details: item.details || `Thực thi lệnh giải ngân: ${item.target}`,
+          ipAddress: item.ipAddress || '118.69.182.45',
+          integrityHash: item.integrityHash || 'sha256-' + Math.random().toString(36).substring(2, 12),
+        }));
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load hrconnect_audit_logs:', e);
+  }
+
+  const existingIds = new Set(storedLogs.map((l) => l.id));
+  return [...storedLogs, ...INITIAL_AUDIT_LOGS.filter((l) => !existingIds.has(l.id))];
+}
+
 export const AdminAuditTrailPage: React.FC = () => {
-  const [logs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOGS);
+  const [logs, setLogs] = useState<AuditLogEntry[]>(loadAuditLogs);
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('ALL');
+
+  const handleRefresh = () => {
+    setLogs(loadAuditLogs());
+  };
 
   const filteredLogs = logs.filter((l) => {
     const matchesSearch =

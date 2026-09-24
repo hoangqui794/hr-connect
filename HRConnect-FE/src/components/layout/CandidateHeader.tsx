@@ -35,6 +35,39 @@ export const CandidateHeader: React.FC = () => {
   const { alerts, unreadCount, markAllRead, dismissAlert } = useAlertStore();
   const [notifOpen, setNotifOpen] = useState(false);
 
+  // Dynamic notification state from hrconnect_notifications filtered by currentUser.email
+  const [unreadNotifsCount, setUnreadNotifsCount] = useState<number>(0);
+  const [userNotifications, setUserNotifications] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    const fetchNotifications = () => {
+      try {
+        const raw = localStorage.getItem('hrconnect_notifications');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const currentEmail = user?.email?.toLowerCase().trim();
+            const filtered = parsed.filter((n: any) =>
+              !currentEmail || !n.recipientEmail || n.recipientEmail.toLowerCase().trim() === currentEmail
+            );
+            setUserNotifications(filtered);
+            const unread = filtered.filter((n: any) => n.isRead === false).length;
+            setUnreadNotifsCount(unread);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to read hrconnect_notifications:', e);
+      }
+      setUnreadNotifsCount(0);
+      setUserNotifications([]);
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 1500);
+    return () => clearInterval(interval);
+  }, [user?.email]);
+
   const userName = user?.name || 'Ứng viên';
   const userEmail = user?.email || '';
   const userAvatar = user?.avatar || getInitials(userName);
@@ -288,7 +321,7 @@ export const CandidateHeader: React.FC = () => {
             </div>
           )}
         >
-          <Badge count={unreadCount} size="small" offset={[-2, 2]}>
+          <Badge count={unreadNotifsCount !== 0 ? unreadNotifsCount : unreadCount} size="small" offset={[-2, 2]}>
             <Button type="text" shape="circle" icon={<BellOutlined style={{ fontSize: 18, color: '#475569' }} />} style={{ width: 38, height: 38 }} />
           </Badge>
         </Dropdown>

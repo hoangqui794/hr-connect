@@ -1,8 +1,8 @@
 import React from 'react';
-import { Row, Col, Card, Typography, Button, Tag, Space, Progress, Avatar, Empty } from 'antd';
+import { Row, Col, Card, Typography, Button, Tag, Space, Progress, Avatar, Empty, Table } from 'antd';
 import {
   ArrowUpOutlined, TeamOutlined, FileTextOutlined, RightOutlined,
-  RobotOutlined, ClockCircleOutlined, TrophyOutlined,
+  RobotOutlined, ClockCircleOutlined, TrophyOutlined, CheckCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -13,6 +13,7 @@ import { PayoutStatusBadge } from '@/components/common/StatusBadge';
 import { RoleBadge } from '@/components/common/RoleBadge';
 import { AdminDashboard } from '@/features/admin/AdminDashboard';
 import { useCandidateStore } from '@/stores/candidateStore';
+import { useApplicationStore, APPLICATION_STATUS_LABELS, APPLICATION_STATUS_COLORS } from '@/stores/applicationStore';
 
 const { Title, Text } = Typography;
 
@@ -249,7 +250,48 @@ const HRDashboard: React.FC = () => {
 
 const CandidateDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { cvs, applications, savedJobIds } = useCandidateStore();
+  const { user } = useAuthStore();
+  const { cvs, applications: storeApps, savedJobIds } = useCandidateStore();
+  const sharedApps = useApplicationStore((s) => s.applications);
+
+  // Merge: shared store apps for this email + candidateStore apps, deduplicated
+  const mySharedApps = user?.email
+    ? sharedApps.filter((a) => a.email.toLowerCase() === user.email!.toLowerCase())
+    : [];
+
+  const allMyApps = [
+    ...mySharedApps.map((a) => ({
+      id: a.id,
+      jobTitle: a.jobTitle,
+      company: a.company,
+      appliedDate: new Date(a.applyDate).toLocaleDateString('vi-VN'),
+      status: a.status as string,
+      statusLabel: APPLICATION_STATUS_LABELS[a.status] || a.status,
+      statusColor: APPLICATION_STATUS_COLORS[a.status] || '#64748b',
+    })),
+    ...storeApps.map((a) => ({
+      id: a.id,
+      jobTitle: a.jobTitle,
+      company: a.company,
+      appliedDate: a.appliedDate,
+      status: a.status,
+      statusLabel: a.statusLabel,
+      statusColor: a.statusColor,
+    })),
+  ];
+
+  // Deduplicate by jobTitle+company
+  const dedupSeen = new Set<string>();
+  const dedupedApps = allMyApps.filter((a) => {
+    const key = `${a.jobTitle}__${a.company}`;
+    if (dedupSeen.has(key)) return false;
+    dedupSeen.add(key);
+    return true;
+  });
+
+  const interviewCount = mySharedApps.filter(
+    (a) => a.status === 'INTERVIEW_SCHEDULED' || a.status === 'INTERVIEW_PASSED'
+  ).length;
 
   return (
     <div>
@@ -257,8 +299,8 @@ const CandidateDashboard: React.FC = () => {
         {[
           { label: 'CV đã tạo', value: cvs.length, icon: <FileTextOutlined />, color: '#8b5cf6', action: () => navigate('/candidate/profile') },
           { label: 'Việc làm đã lưu', value: savedJobIds.length, icon: <TrophyOutlined />, color: '#0284c7', action: () => navigate('/candidate/saved-jobs') },
-          { label: 'Đơn ứng tuyển', value: applications.length, icon: <TeamOutlined />, color: '#10b981', action: () => navigate('/candidate/applications') },
-          { label: 'Lịch phỏng vấn', value: 0, icon: <ClockCircleOutlined />, color: '#f59e0b', action: () => navigate('/candidate/applications') },
+          { label: 'Đơn ứng tuyển', value: dedupedApps.length, icon: <TeamOutlined />, color: '#10b981', action: () => navigate('/candidate/applications') },
+          { label: 'Lịch phỏng vấn', value: interviewCount, icon: <ClockCircleOutlined />, color: '#f59e0b', action: () => navigate('/candidate/applications') },
         ].map((stat) => (
           <Col key={stat.label} xs={12} sm={6}>
             <div className="hrc-stat-card" onClick={stat.action} style={{ cursor: 'pointer' }}>
@@ -275,27 +317,81 @@ const CandidateDashboard: React.FC = () => {
         ))}
       </Row>
 
-      <Card style={{ borderRadius: 14, textAlign: 'center', padding: '36px 20px' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🎯</div>
-        <Title level={3} style={{ margin: '0 0 8px' }}>Không gian tìm việc & Phát triển sự nghiệp</Title>
-        <Text type="secondary">Khám phá các vị trí tuyển dụng hấp dẫn, tạo CV chuẩn ATS và theo dõi tiến độ ứng tuyển.</Text>
-        <div style={{ marginTop: 24 }}>
-          <Space wrap size="middle">
-            <Button type="primary" size="large" onClick={() => navigate('/jobs')} style={{ borderRadius: 8, fontWeight: 600 }}>
-              Khám phá việc làm
-            </Button>
-            <Button size="large" onClick={() => navigate('/cv-builder')} style={{ borderRadius: 8, fontWeight: 600 }}>
-              Tạo CV chuyên nghiệp
-            </Button>
-            <Button size="large" onClick={() => navigate('/candidate/profile')} style={{ borderRadius: 8 }}>
-              Cập nhật hồ sơ cá nhân
-            </Button>
-          </Space>
-        </div>
-      </Card>
+      {dedupedApps.length > 0 ? (
+        <Card
+          title={<span style={{ fontWeight: 700 }}>Hồ sơ ứng tuyển của tôi</span>}
+          style={{ borderRadius: 14 }}
+          extra={<Button type="link" size="small" onClick={() => navigate('/candidate/applications')}>Xem tất cả</Button>}
+        >
+          <Table
+            dataSource={dedupedApps.slice(0, 5)}
+            rowKey="id"
+            size="small"
+            pagination={false}
+            columns={[
+              {
+                title: 'Vị trí',
+                key: 'job',
+                render: (_, r) => (
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{r.jobTitle}</div>
+                    <div style={{ fontSize: 11, color: '#64748b' }}>{r.company}</div>
+                  </div>
+                ),
+              },
+              {
+                title: 'Ngày nộp',
+                dataIndex: 'appliedDate',
+                key: 'appliedDate',
+                width: 120,
+                render: (v) => <span style={{ fontSize: 12, color: '#64748b' }}>{v}</span>,
+              },
+              {
+                title: 'Trạng thái',
+                key: 'status',
+                width: 180,
+                render: (_, r) => (
+                  <Tag
+                    style={{
+                      borderRadius: 6,
+                      fontWeight: 600,
+                      fontSize: 11,
+                      color: r.statusColor,
+                      background: `${r.statusColor}15`,
+                      border: `1px solid ${r.statusColor}40`,
+                    }}
+                  >
+                    {r.statusLabel}
+                  </Tag>
+                ),
+              },
+            ]}
+          />
+        </Card>
+      ) : (
+        <Card style={{ borderRadius: 14, textAlign: 'center', padding: '36px 20px' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🎯</div>
+          <Title level={3} style={{ margin: '0 0 8px' }}>Không gian tìm việc &amp; Phát triển sự nghiệp</Title>
+          <Text type="secondary">Khám phá các vị trí tuyển dụng hấp dẫn, tạo CV chuẩn ATS và theo dõi tiến độ ứng tuyển.</Text>
+          <div style={{ marginTop: 24 }}>
+            <Space wrap size="middle">
+              <Button type="primary" size="large" onClick={() => navigate('/jobs')} style={{ borderRadius: 8, fontWeight: 600 }}>
+                Khám phá việc làm
+              </Button>
+              <Button size="large" onClick={() => navigate('/cv-builder')} style={{ borderRadius: 8, fontWeight: 600 }}>
+                Tạo CV chuyên nghiệp
+              </Button>
+              <Button size="large" onClick={() => navigate('/candidate/profile')} style={{ borderRadius: 8 }}>
+                Cập nhật hồ sơ cá nhân
+              </Button>
+            </Space>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };
+
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
@@ -380,3 +476,6 @@ export const Dashboard: React.FC = () => {
     </div>
   );
 };
+
+export default Dashboard;
+

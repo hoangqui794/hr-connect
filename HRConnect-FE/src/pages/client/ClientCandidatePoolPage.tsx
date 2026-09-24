@@ -127,18 +127,82 @@ export const ClientCandidatePoolPage: React.FC = () => {
   const isDemoClient = user?.id === 'client-001' || user?.company?.includes('TechCorp');
   const companyId = isDemoClient ? CURRENT_CLIENT_COMPANY_ID : user?.id;
 
-  // Load candidate applications via ClientService
+  // Load candidate applications via ClientService & hrconnect_candidate_applications
   const loadCandidates = useCallback(async () => {
     try {
       setLoading(true);
       const data = await clientService.getCandidatesByCompany(companyId);
-      setCandidates(data);
+
+      // Read shared applications from localStorage 'hrconnect_candidate_applications'
+      let sharedApps: any[] = [];
+      try {
+        const raw = localStorage.getItem('hrconnect_candidate_applications');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            sharedApps = parsed;
+          } else if (parsed && Array.isArray(parsed.state?.applications)) {
+            sharedApps = parsed.state.applications;
+          }
+        }
+      } catch {
+        // noop
+      }
+
+      // Convert shared apps to CandidateApplicationDTO
+      const convertedApps: CandidateApplicationDTO[] = sharedApps.map((a: any) => ({
+        id: a.id,
+        jobId: a.jobId,
+        jobTitle: a.jobTitle,
+        candidateName: a.fullName || a.candidateName,
+        currentRole: a.currentTitle || a.jobTitle,
+        currentCompany: a.company || 'Đang cập nhật',
+        companyName: a.company,
+        clientEmail: a.clientEmail,
+        clientId: a.clientId,
+        yoe: 3,
+        expectedSalary: a.salaryExpectation || 30000000,
+        status: (a.status === 'APPLIED' ? 'NEW_SUBMISSION' : a.status === 'ONBOARDED' ? 'HIRED' : a.status === 'OFFERED' ? 'OFFER_SENT' : 'AI_SCREENED') as any,
+        aiMatchScore: a.aiScore || 85,
+        aiScoreTier: (a.aiScore >= 85 ? 'EXCELLENT' : a.aiScore >= 70 ? 'HIGH' : 'MODERATE') as any,
+        aiHighlights: [
+          'Hồ sơ ứng viên được đồng bộ từ hệ thống HRConnect',
+          `Điểm đánh giá AI ATS: ${a.aiScore || 85}/100`,
+        ],
+        cvUrl: a.cvUrl || '/files/CV_Default.pdf',
+        email: a.email,
+        phone: a.phone,
+      }));
+
+      // Combine and filter by client criteria:
+      // item.clientEmail === currentUser.email || item.clientId === currentUser.id || item.companyName === currentUser.companyName
+      const currentUser = user;
+      const combined = [...data];
+      convertedApps.forEach((ca) => {
+        if (!combined.some((item) => item.id === ca.id || (item.candidateName === ca.candidateName && item.jobTitle === ca.jobTitle))) {
+          combined.push(ca);
+        }
+      });
+
+      const filteredByClient = combined.filter((item: any) => {
+        if (!currentUser) return true;
+        const currentCompanyName = currentUser.companyName || (currentUser as any).company || (isDemoClient ? 'TechCorp Việt Nam' : '');
+        const matchCondition =
+          (item.clientEmail && currentUser.email && item.clientEmail.toLowerCase() === currentUser.email.toLowerCase()) ||
+          (item.clientId && currentUser.id && item.clientId === currentUser.id) ||
+          ((item.companyName || item.currentCompany) && (item.companyName || item.currentCompany) === currentCompanyName);
+
+        if (isDemoClient && (!item.clientEmail && !item.clientId)) return true;
+        return matchCondition;
+      });
+
+      setCandidates(filteredByClient);
     } catch (error) {
       message.error('Không thể tải danh sách ứng viên');
     } finally {
       setLoading(false);
     }
-  }, [companyId]);
+  }, [companyId, user, isDemoClient]);
 
   useEffect(() => {
     loadCandidates();
@@ -400,7 +464,7 @@ export const ClientCandidatePoolPage: React.FC = () => {
           Phễu Quản lý Ứng viên (Candidate Pipeline)
         </Title>
         <Text style={{ color: '#64748b' }}>
-          Doanh nghiệp: <strong style={{ color: '#0f172a' }}>TechCorp Việt Nam</strong> • Đánh giá AI Matching, Lên lịch phỏng vấn & Phát hành Offer
+          Doanh nghiệp: <strong style={{ color: '#0f172a' }}>{user?.companyName || (user as any)?.company || user?.name || 'TechCorp Việt Nam'}</strong> • Đánh giá AI Matching, Lên lịch phỏng vấn & Phát hành Offer
         </Text>
       </div>
 

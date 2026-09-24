@@ -42,10 +42,17 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       setRole: (role: UserRole) => {
+        const newUser = role === UserRole.GUEST ? null : DEMO_USERS[role];
         set({
           role,
+          user: newUser,
           isAuthenticated: role !== UserRole.GUEST,
         });
+        if (role !== UserRole.GUEST) {
+          localStorage.setItem('auth_token', `token-${role.toLowerCase()}-${Date.now()}`);
+        } else {
+          localStorage.removeItem('auth_token');
+        }
       },
 
       login: (role: UserRole, customUser?: Partial<UserProfile>) => {
@@ -123,13 +130,25 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           isAuthenticated: false,
         });
-        resetAllAppStores();
-        // Dispatch custom event for stores that need resetting in-memory
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('token');
+        sessionStorage.clear();
+        // Dispatch custom event for stores that need notification
         window.dispatchEvent(new CustomEvent('hrconnect:logout'));
       },
     }),
     {
       name: 'hr-connect-auth',
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          if (state.role && state.role !== UserRole.GUEST) {
+            if (!state.user || state.user.role !== state.role) {
+              state.user = DEMO_USERS[state.role] || null;
+            }
+            state.isAuthenticated = true;
+          }
+        }
+      },
     }
   )
 );

@@ -18,6 +18,7 @@ export interface CandidateProfile {
 
 export interface CandidateCV {
   id: string;
+  userEmail?: string;
   name: string;
   updatedAt: string;
   size: string;
@@ -30,6 +31,7 @@ export interface CandidateCV {
 
 export interface CandidateApplication {
   id: string;
+  candidateEmail?: string;
   jobId: string;
   jobTitle: string;
   company: string;
@@ -54,6 +56,8 @@ export interface CandidateApplication {
 
 export interface InterviewSchedule {
   id: string;
+  candidateEmail?: string;
+  applicantEmail?: string;
   jobTitle: string;
   company: string;
   datetime: string;
@@ -62,10 +66,13 @@ export interface InterviewSchedule {
   address?: string;
   interviewers: string;
   notes: string;
+  status?: string;
 }
 
 export interface RecruiterConnectItem {
   id: string;
+  candidateEmail?: string;
+  userEmail?: string;
   recruiterId: string;
   recruiterName: string;
   recruiterTitle: string;
@@ -79,17 +86,23 @@ export interface RecruiterConnectItem {
   matchedJob?: string;
 }
 
+export interface SavedJobItem {
+  jobId: string;
+  userEmail: string;
+}
+
 interface CandidateState {
   profile: CandidateProfile;
   cvs: CandidateCV[];
+  savedJobs: SavedJobItem[];
   savedJobIds: string[];
   applications: CandidateApplication[];
   interviews: InterviewSchedule[];
   recruiterConnects: RecruiterConnectItem[];
 
   updateProfile: (profile: Partial<CandidateProfile>) => void;
-  toggleSaveJob: (jobId: string) => boolean;
-  isJobSaved: (jobId: string) => boolean;
+  toggleSaveJob: (jobId: string, email?: string) => boolean;
+  isJobSaved: (jobId: string, email?: string) => boolean;
   applyJob: (application: {
     jobId: string;
     jobTitle: string;
@@ -112,6 +125,7 @@ interface CandidateState {
     recruiterAvatar: string;
     cvUsed: string;
     note: string;
+    candidateEmail?: string;
   }) => void;
   resetCandidateStore: () => void;
   loadDemoData: () => void;
@@ -148,9 +162,24 @@ const DEFAULT_PROFILE: CandidateProfile = {
   bio: 'Kỹ sư phần mềm 5+ năm kinh nghiệm chuyên sâu về ReactJS, TypeScript và kiến trúc Microservices. Đam mê xây dựng trải nghiệm người dùng hiệu năng cao, tối ưu SEO và thiết kế hệ thống mở rộng.',
 };
 
+const resolveUserEmail = (email?: string): string => {
+  if (email) return email.toLowerCase().trim();
+  try {
+    const raw = localStorage.getItem('auth-storage');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.state?.user?.email) {
+        return parsed.state.user.email.toLowerCase().trim();
+      }
+    }
+  } catch {}
+  return '';
+};
+
 const DEFAULT_CVS: CandidateCV[] = [
   {
     id: 'cv-01',
+    userEmail: 'minh.nguyen@gmail.com',
     name: 'CV Senior Fullstack Engineer (ATS Standard 2026)',
     updatedAt: '16/09/2026',
     size: '2.4 MB',
@@ -160,6 +189,7 @@ const DEFAULT_CVS: CandidateCV[] = [
   },
   {
     id: 'cv-02',
+    userEmail: 'minh.nguyen@gmail.com',
     name: 'CV Frontend Lead & React Architecture',
     updatedAt: '08/09/2026',
     size: '1.8 MB',
@@ -169,6 +199,7 @@ const DEFAULT_CVS: CandidateCV[] = [
   },
   {
     id: 'cv-03',
+    userEmail: 'minh.nguyen@gmail.com',
     name: 'Nguyen_Van_Minh_Resume_English.pdf',
     updatedAt: '01/09/2026',
     size: '3.1 MB',
@@ -176,6 +207,11 @@ const DEFAULT_CVS: CandidateCV[] = [
     atsScore: 92,
     type: 'File Upload',
   },
+];
+
+const DEFAULT_SAVED_JOBS: SavedJobItem[] = [
+  { jobId: 'job-hot-003', userEmail: 'minh.nguyen@gmail.com' },
+  { jobId: 'job-hot-005', userEmail: 'minh.nguyen@gmail.com' },
 ];
 
 const DEFAULT_APPLICATIONS: CandidateApplication[] = [
@@ -193,6 +229,7 @@ const DEFAULT_APPLICATIONS: CandidateApplication[] = [
     coverLetter: 'Tôi có hơn 5 năm kinh nghiệm về Java Spring Boot và hệ thống Microservices quy mô hàng triệu người dùng.',
     applicantName: 'Nguyễn Văn Minh',
     applicantEmail: 'minh.nguyen@gmail.com',
+    candidateEmail: 'minh.nguyen@gmail.com',
     applicantPhone: '0912 345 678',
     offerDetails: {
       salary: '58.000.000 đ/tháng (Gross) + Thưởng hiệu suất OPR',
@@ -216,6 +253,7 @@ const DEFAULT_APPLICATIONS: CandidateApplication[] = [
     coverLetter: 'Mong muốn được đóng góp chuyên môn React, TypeScript và tối ưu Core Web Vitals cho ứng dụng FinTech.',
     applicantName: 'Nguyễn Văn Minh',
     applicantEmail: 'minh.nguyen@gmail.com',
+    candidateEmail: 'minh.nguyen@gmail.com',
     applicantPhone: '0912 345 678',
   },
   {
@@ -232,6 +270,7 @@ const DEFAULT_APPLICATIONS: CandidateApplication[] = [
     coverLetter: 'Hồ sơ đã qua vòng thẩm định tự động của HR Connect AI.',
     applicantName: 'Nguyễn Văn Minh',
     applicantEmail: 'minh.nguyen@gmail.com',
+    candidateEmail: 'minh.nguyen@gmail.com',
     applicantPhone: '0912 345 678',
   },
 ];
@@ -239,20 +278,26 @@ const DEFAULT_APPLICATIONS: CandidateApplication[] = [
 const DEFAULT_INTERVIEWS: InterviewSchedule[] = [
   {
     id: 'int-01',
+    candidateEmail: 'minh.nguyen@gmail.com',
+    applicantEmail: 'minh.nguyen@gmail.com',
     jobTitle: 'Senior Frontend Developer (React / Next.js)',
     company: 'DigitalWave FinTech Agency',
     datetime: '14:30 - Thứ Năm, 24/09/2026',
     mode: 'ONLINE',
+    status: 'SCHEDULED',
     link: 'https://meet.google.com/hrc-tech-interview-2026',
     interviewers: 'Trần Long Quân (Head of Engineering) & Đặng Thu Thảo (Talent Acquisition)',
     notes: 'Phỏng vấn Live Coding 45 phút trên CodeSandbox (TypeScript & React Component Architecture) + Q&A kỹ thuật chuyên sâu.',
   },
   {
     id: 'int-02',
+    candidateEmail: 'minh.nguyen@gmail.com',
+    applicantEmail: 'minh.nguyen@gmail.com',
     jobTitle: 'Tech Lead / Frontend Architect',
     company: 'NextGen Digital Labs',
     datetime: '09:30 - Thứ Hai, 28/09/2026',
     mode: 'OFFLINE',
+    status: 'SCHEDULED',
     address: 'Tầng 18, Tòa nhà Bitexco Financial Tower, Số 2 Hải Triều, Bến Nghé, Quận 1, TP. Hồ Chí Minh',
     interviewers: 'Nguyễn Hoàng Nam (CTO) & Hội đồng Ban Giám đốc',
     notes: 'Trao đổi định hướng phát triển sản phẩm quy mô khu vực và chế độ đãi ngộ ESOP.',
@@ -262,6 +307,8 @@ const DEFAULT_INTERVIEWS: InterviewSchedule[] = [
 const DEFAULT_RECRUITER_CONNECTS: RecruiterConnectItem[] = [
   {
     id: 'rec-con-01',
+    candidateEmail: 'minh.nguyen@gmail.com',
+    userEmail: 'minh.nguyen@gmail.com',
     recruiterId: 'hh-01',
     recruiterName: 'Nguyễn Thu Trang',
     recruiterTitle: 'Senior IT Headhunter & Sourcing Lead (TalentX Vietnam)',
@@ -276,6 +323,8 @@ const DEFAULT_RECRUITER_CONNECTS: RecruiterConnectItem[] = [
   },
   {
     id: 'rec-con-02',
+    candidateEmail: 'minh.nguyen@gmail.com',
+    userEmail: 'minh.nguyen@gmail.com',
     recruiterId: 'hh-04',
     recruiterName: 'Lê Quốc Hưng',
     recruiterTitle: 'Tech Lead & CTO Executive Search (Prime Talent)',
@@ -294,6 +343,7 @@ export const useCandidateStore = create<CandidateState>()(
     (set, get) => ({
       profile: INITIAL_BLANK_PROFILE,
       cvs: [],
+      savedJobs: [],
       savedJobIds: [],
       applications: [],
       interviews: [],
@@ -303,6 +353,7 @@ export const useCandidateStore = create<CandidateState>()(
         set({
           profile: INITIAL_BLANK_PROFILE,
           cvs: [],
+          savedJobs: [],
           savedJobIds: [],
           applications: [],
           interviews: [],
@@ -314,6 +365,7 @@ export const useCandidateStore = create<CandidateState>()(
         set({
           profile: DEFAULT_PROFILE,
           cvs: DEFAULT_CVS,
+          savedJobs: DEFAULT_SAVED_JOBS,
           savedJobIds: ['job-hot-003', 'job-hot-005'],
           applications: DEFAULT_APPLICATIONS,
           interviews: DEFAULT_INTERVIEWS,
@@ -325,9 +377,10 @@ export const useCandidateStore = create<CandidateState>()(
         set((state) => ({
           profile: {
             ...state.profile,
-            fullName: state.profile.fullName || user.name || '',
-            email: state.profile.email || user.email || '',
-            phone: state.profile.phone || user.phone || '',
+            // Always overwrite identity fields from the logged-in account
+            fullName: user.name || state.profile.fullName || '',
+            email:    user.email || state.profile.email || '',
+            phone:    user.phone || state.profile.phone || '',
           },
         }));
       },
@@ -338,19 +391,47 @@ export const useCandidateStore = create<CandidateState>()(
         }));
       },
 
-      toggleSaveJob: (jobId) => {
-        const { savedJobIds } = get();
-        const exists = savedJobIds.includes(jobId);
-        const newSaved = exists ? savedJobIds.filter((id) => id !== jobId) : [...savedJobIds, jobId];
-        set({ savedJobIds: newSaved });
+      toggleSaveJob: (jobId, email) => {
+        const userEmail = resolveUserEmail(email);
+        if (!userEmail) return false;
+        const currentSaved = get().savedJobs || [];
+        const exists = currentSaved.some(
+          (j) => j.jobId === jobId && (j.userEmail || '').toLowerCase().trim() === userEmail
+        );
+        const newSaved = exists
+          ? currentSaved.filter(
+              (j) => !(j.jobId === jobId && (j.userEmail || '').toLowerCase().trim() === userEmail)
+            )
+          : [...currentSaved, { jobId, userEmail }];
+
+        try {
+          const userKey = `hrconnect_saved_jobs_${userEmail}`;
+          const userJobIds = newSaved
+            .filter((j) => (j.userEmail || '').toLowerCase().trim() === userEmail)
+            .map((j) => j.jobId);
+          localStorage.setItem(userKey, JSON.stringify(userJobIds));
+        } catch {}
+
+        set({
+          savedJobs: newSaved,
+          savedJobIds: newSaved
+            .filter((j) => (j.userEmail || '').toLowerCase().trim() === userEmail)
+            .map((j) => j.jobId),
+        });
         return !exists;
       },
 
-      isJobSaved: (jobId) => {
-        return get().savedJobIds.includes(jobId);
+      isJobSaved: (jobId, email) => {
+        const userEmail = resolveUserEmail(email);
+        if (!userEmail) return false;
+        const currentSaved = get().savedJobs || [];
+        return currentSaved.some(
+          (j) => j.jobId === jobId && (j.userEmail || '').toLowerCase().trim() === userEmail
+        );
       },
 
       applyJob: (applicationData) => {
+        const userEmail = applicationData.applicantEmail || resolveUserEmail();
         const newApp: CandidateApplication = {
           id: `app-${Date.now()}`,
           jobId: applicationData.jobId,
@@ -360,7 +441,8 @@ export const useCandidateStore = create<CandidateState>()(
           cvUsed: applicationData.cvUsed,
           coverLetter: applicationData.coverLetter,
           applicantName: applicationData.applicantName,
-          applicantEmail: applicationData.applicantEmail,
+          applicantEmail: userEmail,
+          candidateEmail: userEmail,
           applicantPhone: applicationData.applicantPhone,
           appliedDate: 'Hôm nay (Vừa xong)',
           status: 'SUBMITTED',
@@ -413,6 +495,7 @@ export const useCandidateStore = create<CandidateState>()(
       },
 
       addRecruiterConnect: (item) => {
+        const userEmail = item.candidateEmail || resolveUserEmail();
         const newConnect: RecruiterConnectItem = {
           id: `rec-con-${Date.now()}`,
           recruiterId: item.recruiterId,
@@ -421,6 +504,8 @@ export const useCandidateStore = create<CandidateState>()(
           recruiterAvatar: item.recruiterAvatar,
           cvUsed: item.cvUsed,
           note: item.note,
+          candidateEmail: userEmail,
+          userEmail: userEmail,
           sentDate: 'Hôm nay',
           status: 'SENT',
           statusLabel: 'Đã gửi hồ sơ thành công',
@@ -439,6 +524,6 @@ export const useCandidateStore = create<CandidateState>()(
 
 if (typeof window !== 'undefined') {
   window.addEventListener('hrconnect:logout', () => {
-    useCandidateStore.getState().resetCandidateStore();
+    // Preserve candidate store data across role switches and reloads
   });
 }

@@ -26,6 +26,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { MOCK_JOBS } from '@/services/mockData';
 import { JobStatus, ServiceType } from '@/types/job';
 import type { Job } from '@/types/job';
+import { getJobsForClient, updateJobStatusInAllJobs } from '@/services/localStorageService';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -130,10 +131,12 @@ const TECHCORP_DEFAULT_JOBS: Job[] = [
 export const ClientJobsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const isDemoClient = user?.id === 'client-001' || user?.company?.includes('TechCorp');
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Local state initialized according to client identity
-  const [jobs, setJobs] = useState<Job[]>(isDemoClient ? TECHCORP_DEFAULT_JOBS : []);
+  // Load client jobs dynamically from Single Source of Truth: hrconnect_all_jobs
+  const jobs = useMemo(() => {
+    return getJobsForClient(user?.email, user?.company, user?.id);
+  }, [user?.email, user?.company, user?.id, refreshKey]);
 
   // Filters
   const [search, setSearch] = useState<string>('');
@@ -143,11 +146,6 @@ export const ClientJobsPage: React.FC = () => {
   // ─── Filter Logic: Strictly Scoped by Company ─────────────────────────────
   const filteredJobs = useMemo(() => {
     return jobs.filter((j) => {
-      const matchCompany = isDemoClient
-        ? (j.company.includes('TechCorp') || j.companyId === 'client-001')
-        : (j.company === user?.company || j.companyId === user?.id);
-      if (!matchCompany && jobs.length > 0) return false;
-
       const matchSearch =
         !search ||
         j.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -158,23 +156,23 @@ export const ClientJobsPage: React.FC = () => {
 
       return matchSearch && matchService && matchStatus;
     });
-  }, [jobs, search, serviceTypeFilter, statusFilter, isDemoClient, user?.company, user?.id]);
+  }, [jobs, search, serviceTypeFilter, statusFilter]);
 
-  // Quick metrics for TechCorp
+  // Quick metrics for Client
   const metrics = useMemo(() => {
     const total = jobs.length;
     const active = jobs.filter((j) => j.status === JobStatus.ACTIVE).length;
+    const pending = jobs.filter((j) => j.status === JobStatus.PENDING).length;
     const paused = jobs.filter((j) => j.status === JobStatus.PAUSED).length;
     const totalApplications = jobs.reduce((acc, j) => acc + (j.applicationCount || 0), 0);
-    return { total, active, paused, totalApplications };
+    return { total, active, pending, paused, totalApplications };
   }, [jobs]);
 
-  // Handlers
+  // Handlers: Persist directly into hrconnect_all_jobs
   const handleToggleStatus = (jobId: string, currentStatus: JobStatus) => {
     const nextStatus = currentStatus === JobStatus.ACTIVE ? JobStatus.PAUSED : JobStatus.ACTIVE;
-    setJobs((prev) =>
-      prev.map((j) => (j.id === jobId ? { ...j, status: nextStatus } : j))
-    );
+    updateJobStatusInAllJobs(jobId, nextStatus);
+    setRefreshKey((k) => k + 1);
     const msg =
       nextStatus === JobStatus.ACTIVE
         ? 'Đã mở lại tin tuyển dụng thành công!'
@@ -183,9 +181,8 @@ export const ClientJobsPage: React.FC = () => {
   };
 
   const handleCloseJob = (jobId: string) => {
-    setJobs((prev) =>
-      prev.map((j) => (j.id === jobId ? { ...j, status: JobStatus.CLOSED } : j))
-    );
+    updateJobStatusInAllJobs(jobId, JobStatus.CLOSED);
+    setRefreshKey((k) => k + 1);
     void message.info('Đã đóng tin tuyển dụng và lưu vào kho lưu trữ!');
   };
 
@@ -277,6 +274,22 @@ export const ClientJobsPage: React.FC = () => {
       key: 'status',
       width: 140,
       render: (_, record) => {
+        if (record.status === JobStatus.PENDING || (record.status as string) === 'PENDING') {
+          return (
+            <Tag
+              style={{
+                borderRadius: 6,
+                fontWeight: 700,
+                fontSize: 11,
+                border: '1px solid #fde68a',
+                background: '#fffbeb',
+                color: '#92400e',
+              }}
+            >
+              ⏳ Chờ duyệt
+            </Tag>
+          );
+        }
         if (record.status === JobStatus.ACTIVE) {
           return <Tag color="success" style={{ borderRadius: 6, fontWeight: 600 }}>Đang tuyển</Tag>;
         }
@@ -499,3 +512,6 @@ export const ClientJobsPage: React.FC = () => {
     </div>
   );
 };
+
+export default ClientJobsPage;
+

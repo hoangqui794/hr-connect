@@ -18,6 +18,7 @@ import {
   message,
   Typography,
   Divider,
+  Empty,
 } from 'antd';
 import {
   UserOutlined,
@@ -38,6 +39,7 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useCandidateStore, CandidateProfile, CandidateCV } from '@/stores/candidateStore';
+import { saveHRConnectUser, findHRConnectUserByEmail } from '@/services/localStorageService';
 import type { UploadProps } from 'antd';
 
 const { Title, Text, Paragraph } = Typography;
@@ -94,26 +96,78 @@ export const CandidateProfilePage: React.FC = () => {
   const activeTabKey = searchParams.get('tab') || 'career-info';
 
   const { user } = useAuthStore();
+  const currentUserEmail = (user?.email || '').toLowerCase().trim();
   const { profile, updateProfile, cvs, addCV, setDefaultCV, deleteCV, initCandidateFromUser } = useCandidateStore();
+
+  // Only display CVs created or uploaded by current user
+  const myCvs = React.useMemo(() => {
+    if (!currentUserEmail) return [];
+    return (cvs || []).filter((c) => (c.userEmail || '').toLowerCase().trim() === currentUserEmail);
+  }, [currentUserEmail, cvs]);
 
   const [form] = Form.useForm();
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // Sync profile with logged in user if initial
+  // --- Form & Banner state: always reflects the logged-in account & latest saved values ---
+  const [formData, setFormData] = useState(() => {
+    const storedUser = user ? findHRConnectUserByEmail(user.email) : null;
+    return {
+      fullName:       storedUser?.fullName  || user?.name  || '',
+      email:          storedUser?.email      || user?.email || '',
+      phone:          storedUser?.phone      || user?.phone || '',
+      jobTitle:       profile?.targetRole    || '',
+      targetRole:     profile?.targetRole    || '',
+      expectedSalary: profile?.expectedSalary|| '',
+      currentLevel:   profile?.currentLevel  || '',
+      experienceYears:profile?.experienceYears || '',
+    };
+  });
+
+  /** Returns initials: first char of first word + first char of last word */
+  const getInitials = (name?: string): string => {
+    if (!name) return 'UV';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  // ALWAYS sync identity fields from the logged-in user account
+  // so switching accounts refreshes name / email / phone in the form.
   React.useEffect(() => {
-    if (user && (!profile.fullName || !profile.email)) {
-      initCandidateFromUser({
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-      });
-      form.setFieldsValue({
-        fullName: user.name,
-        email: user.email,
-        phone: user.phone || '',
-      });
-    }
-  }, [user, profile.fullName, profile.email, initCandidateFromUser, form]);
+    if (!user) return;
+
+    // Look up the full stored record (may have more info than authStore)
+    const storedUser = findHRConnectUserByEmail(user.email);
+    const resolvedName  = storedUser?.fullName  || user.name  || '';
+    const resolvedEmail = storedUser?.email      || user.email || '';
+    const resolvedPhone = storedUser?.phone      || user.phone || '';
+
+    // Force-init candidateStore profile with current user identity
+    initCandidateFromUser({
+      name:  resolvedName,
+      email: resolvedEmail,
+      phone: resolvedPhone,
+    });
+
+    // Populate form — always overwrite identity fields so they match the account
+    form.setFieldsValue({
+      fullName: resolvedName,
+      email:    resolvedEmail,
+      phone:    resolvedPhone,
+    });
+
+    // Sync banner immediately
+    setFormData((prev) => ({
+      ...prev,
+      fullName: resolvedName,
+      email:    resolvedEmail,
+      phone:    resolvedPhone,
+      jobTitle: profile.targetRole || prev.jobTitle,
+      targetRole: profile.targetRole || prev.targetRole,
+      expectedSalary: profile.expectedSalary || prev.expectedSalary,
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email]); // Re-run whenever the logged-in account changes
 
   // Skill tags input state
   const [skillsList, setSkillsList] = useState<string[]>(profile.skills || []);
@@ -131,14 +185,55 @@ export const CandidateProfilePage: React.FC = () => {
   // Modal 3: File Upload
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  // Handle Profile Update
+  // Handle Profile Update — saves to candidateStore + hrconnect_users + authStore + formData
   const handleSaveProfile = async (values: any) => {
     setSavingProfile(true);
     setTimeout(() => {
+      // 1. Update candidateStore (local UI state + persist)
       updateProfile({
         ...values,
+        targetRole: values.jobTitle || values.targetRole,
         skills: skillsList,
       });
+
+      // 2. Persist identity changes back to hrconnect_users localStorage
+      if (user) {
+        const storedUser = findHRConnectUserByEmail(user.email);
+        saveHRConnectUser({
+          id: storedUser?.id || user.id,
+          email: (values.email || user.email).toLowerCase().trim(),
+          role: user.role,
+          fullName: (values.fullName || user.name).trim(),
+          phone: values.phone?.trim() || storedUser?.phone,
+          password: storedUser?.password || '123456',
+          companyName: storedUser?.companyName,
+          companySize: storedUser?.companySize,
+        });
+
+        // 3. Sync name + phone into authStore in-memory user object
+        useAuthStore.setState((state) => ({
+          user: state.user
+            ? {
+                ...state.user,
+                name: (values.fullName || state.user.name).trim(),
+                phone: values.phone?.trim() || state.user.phone,
+              }
+            : null,
+        }));
+      }
+
+      // 4. Update banner immediately so it reflects new values without reload
+      setFormData({
+        fullName:       (values.fullName || user?.name || '').trim(),
+        email:          (values.email    || user?.email || '').toLowerCase().trim(),
+        phone:          (values.phone    || user?.phone || '').trim(),
+        jobTitle:       values.jobTitle || values.targetRole || '',
+        targetRole:     values.targetRole || values.jobTitle || '',
+        expectedSalary: values.expectedSalary || '',
+        currentLevel:   values.currentLevel   || '',
+        experienceYears:values.experienceYears || '',
+      });
+
       setSavingProfile(false);
       message.success('Cập nhật thông tin nghề nghiệp thành công!');
     }, 400);
@@ -166,9 +261,10 @@ export const CandidateProfilePage: React.FC = () => {
         name: `CV ${values.roleTarget || profile.targetRole} (Online ATS)`,
         updatedAt: 'Hôm nay',
         size: '1.9 MB',
-        isDefault: cvs.length === 0,
+        isDefault: myCvs.length === 0,
         atsScore: 95,
         type: 'Platform Builder',
+        userEmail: currentUserEmail,
       };
       addCV(newCv);
       setIsBuilderModalOpen(false);
@@ -187,9 +283,10 @@ export const CandidateProfilePage: React.FC = () => {
       name: `CV ${profile.targetRole} (${selectedTemplate.name})`,
       updatedAt: 'Hôm nay',
       size: '2.1 MB',
-      isDefault: false,
+      isDefault: myCvs.length === 0,
       atsScore: selectedTemplate.score,
       type: 'Template ATS',
+      userEmail: currentUserEmail,
     };
     addCV(newCv);
     setIsTemplateModalOpen(false);
@@ -212,9 +309,10 @@ export const CandidateProfilePage: React.FC = () => {
         name: file.name,
         updatedAt: 'Hôm nay',
         size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        isDefault: false,
+        isDefault: myCvs.length === 0,
         atsScore: 93,
         type: 'File Upload',
+        userEmail: currentUserEmail,
       };
       addCV(newCv);
       setIsUploadModalOpen(false);
@@ -225,7 +323,7 @@ export const CandidateProfilePage: React.FC = () => {
 
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto', paddingBottom: 60 }}>
-      {/* Header Profile Summary */}
+      {/* Header Profile Summary — driven by user and formData (live updates on save) */}
       <Card
         bordered={false}
         style={{
@@ -239,23 +337,24 @@ export const CandidateProfilePage: React.FC = () => {
         <Row align="middle" justify="space-between" gutter={[20, 20]}>
           <Col xs={24} sm={16} style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <Avatar size={76} style={{ background: '#0284c7', fontSize: 26, fontWeight: 800 }}>
-              {profile.fullName ? profile.fullName.slice(0, 2).toUpperCase() : (user?.name ? user.name.slice(0, 2).toUpperCase() : 'UV')}
+              {getInitials(user?.name || formData.fullName)}
             </Avatar>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Title level={3} style={{ color: '#fff', margin: 0, fontWeight: 800 }}>
-                  {profile.fullName || user?.name || 'Chưa cập nhật họ tên'}
+                  {user?.name || formData.fullName || 'Chưa cập nhật họ tên'}
                 </Title>
                 <Tag color="#0284c7" style={{ borderRadius: 10, fontWeight: 700 }}>
-                  {profile.currentLevel || 'Ứng viên'}
+                  {formData.currentLevel || profile.currentLevel || 'Ứng viên'}
                 </Tag>
               </div>
               <Text style={{ color: '#94a3b8', fontSize: 14 }}>
-                {profile.targetRole || 'Chưa cập nhật vị trí mong muốn'}{profile.experienceYears ? ` • ${profile.experienceYears}` : ''}
+                {formData.jobTitle || formData.targetRole || profile.targetRole || 'Chưa cập nhật chức danh'}
+                {(formData.experienceYears || profile.experienceYears) ? ` • ${formData.experienceYears || profile.experienceYears}` : ''}
               </Text>
               <div style={{ display: 'flex', gap: 16, marginTop: 6, color: '#cbd5e1', fontSize: 13 }}>
-                <span><MailOutlined /> {profile.email || user?.email || 'Chưa có email'}</span>
-                <span><PhoneOutlined /> {profile.phone || user?.phone || 'Chưa có số điện thoại'}</span>
+                <span><MailOutlined /> {user?.email || formData.email || 'Chưa có email'}</span>
+                <span><PhoneOutlined /> {user?.phone || formData.phone || 'Chưa có số điện thoại'}</span>
               </div>
             </div>
           </Col>
@@ -266,7 +365,7 @@ export const CandidateProfilePage: React.FC = () => {
                 Lương kỳ vọng
               </Text>
               <div style={{ color: '#34d399', fontSize: 18, fontWeight: 800 }}>
-                {profile.expectedSalary || 'Thỏa thuận'}
+                {formData.expectedSalary || profile.expectedSalary || 'Thỏa thuận'}
               </div>
             </div>
           </Col>
@@ -646,112 +745,119 @@ export const CandidateProfilePage: React.FC = () => {
                   <div style={{ marginTop: 24 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                       <Title level={5} style={{ margin: 0, fontWeight: 800 }}>
-                        Danh sách hồ sơ CV đã tạo ({cvs.length})
+                        Danh sách hồ sơ CV đã tạo ({myCvs.length})
                       </Title>
                       <Text type="secondary" style={{ fontSize: 13 }}>
                         Bản CV được đặt làm mặc định sẽ tự động chọn sẵn khi ứng tuyển việc làm ngoài Trang chủ.
                       </Text>
                     </div>
 
-                    <Table
-                      dataSource={cvs}
-                      rowKey="id"
-                      pagination={false}
-                      columns={[
-                        {
-                          title: 'Tên bản CV',
-                          key: 'name',
-                          render: (_, record) => (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <FileTextOutlined style={{ color: '#0284c7', fontSize: 18 }} />
-                              <div>
-                                <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
-                                  {record.name}
-                                </div>
-                                <div style={{ fontSize: 12, color: '#64748b' }}>
-                                  Dung lượng: {record.size} • Cập nhật: {record.updatedAt}
+                    {myCvs.length === 0 ? (
+                      <Empty
+                        description="Bạn chưa tạo hoặc tải lên bản CV nào. Hãy sử dụng một trong các chế độ tạo CV ở trên!"
+                        style={{ padding: '36px 0' }}
+                      />
+                    ) : (
+                      <Table
+                        dataSource={myCvs}
+                        rowKey="id"
+                        pagination={false}
+                        columns={[
+                          {
+                            title: 'Tên bản CV',
+                            key: 'name',
+                            render: (_, record) => (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <FileTextOutlined style={{ color: '#0284c7', fontSize: 18 }} />
+                                <div>
+                                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
+                                    {record.name}
+                                  </div>
+                                  <div style={{ fontSize: 12, color: '#64748b' }}>
+                                    Dung lượng: {record.size} • Cập nhật: {record.updatedAt}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ),
-                        },
-                        {
-                          title: 'Chế độ tạo',
-                          dataIndex: 'type',
-                          key: 'type',
-                          render: (type) => (
-                            <Tag
-                              color={type === 'Platform Builder' ? 'purple' : type === 'Template ATS' ? 'blue' : 'green'}
-                              style={{ borderRadius: 6, fontWeight: 700 }}
-                            >
-                              {type}
-                            </Tag>
-                          ),
-                        },
-                        {
-                          title: 'Điểm chuẩn ATS',
-                          dataIndex: 'atsScore',
-                          key: 'atsScore',
-                          render: (score) => (
-                            <Tag color="cyan" style={{ borderRadius: 6, fontWeight: 700 }}>
-                              ATS {score}/100
-                            </Tag>
-                          ),
-                        },
-                        {
-                          title: 'Trạng thái',
-                          key: 'isDefault',
-                          render: (_, record) => (
-                            record.isDefault ? (
-                              <Tag color="success" style={{ borderRadius: 6, fontWeight: 700 }}>
-                                ✓ CV Mặc định
+                            ),
+                          },
+                          {
+                            title: 'Chế độ tạo',
+                            dataIndex: 'type',
+                            key: 'type',
+                            render: (type) => (
+                              <Tag
+                                color={type === 'Platform Builder' ? 'purple' : type === 'Template ATS' ? 'blue' : 'green'}
+                                style={{ borderRadius: 6, fontWeight: 700 }}
+                              >
+                                {type}
                               </Tag>
-                            ) : (
-                              <Button
-                                size="small"
-                                onClick={() => {
-                                  setDefaultCV(record.id);
-                                  message.success(`Đã đặt "${record.name}" làm CV mặc định!`);
-                                }}
-                                style={{ borderRadius: 6, fontSize: 12 }}
-                              >
-                                Đặt làm mặc định
-                              </Button>
-                            )
-                          ),
-                        },
-                        {
-                          title: 'Thao tác',
-                          key: 'actions',
-                          align: 'right',
-                          render: (_, record) => (
-                            <Space size={8}>
-                              <Button
-                                size="small"
-                                icon={<DownloadOutlined />}
-                                onClick={() => message.success(`Đang chuẩn bị tải xuống "${record.name}"...`)}
-                                style={{ borderRadius: 6 }}
-                              >
-                                Tải xuống
-                              </Button>
+                            ),
+                          },
+                          {
+                            title: 'Điểm chuẩn ATS',
+                            dataIndex: 'atsScore',
+                            key: 'atsScore',
+                            render: (score) => (
+                              <Tag color="cyan" style={{ borderRadius: 6, fontWeight: 700 }}>
+                                ATS {score}/100
+                              </Tag>
+                            ),
+                          },
+                          {
+                            title: 'Trạng thái',
+                            key: 'isDefault',
+                            render: (_, record) => (
+                              record.isDefault ? (
+                                <Tag color="success" style={{ borderRadius: 6, fontWeight: 700 }}>
+                                  ✓ CV Mặc định
+                                </Tag>
+                              ) : (
+                                <Button
+                                  size="small"
+                                  onClick={() => {
+                                    setDefaultCV(record.id);
+                                    message.success(`Đã đặt "${record.name}" làm CV mặc định!`);
+                                  }}
+                                  style={{ borderRadius: 6, fontSize: 12 }}
+                                >
+                                  Đặt làm mặc định
+                                </Button>
+                              )
+                            ),
+                          },
+                          {
+                            title: 'Thao tác',
+                            key: 'actions',
+                            align: 'right',
+                            render: (_, record) => (
+                              <Space size={8}>
+                                <Button
+                                  size="small"
+                                  icon={<DownloadOutlined />}
+                                  onClick={() => message.success(`Đang chuẩn bị tải xuống "${record.name}"...`)}
+                                  style={{ borderRadius: 6 }}
+                                >
+                                  Tải xuống
+                                </Button>
 
-                              <Popconfirm
-                                title="Xóa bản CV này?"
-                                description="Bạn có chắc muốn xóa bản CV này khỏi danh sách hồ sơ?"
-                                onConfirm={() => {
-                                  deleteCV(record.id);
-                                  message.success('Đã xóa CV thành công.');
-                                }}
-                                okText="Xóa"
-                                cancelText="Hủy"
-                              >
-                                <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 6 }} />
-                              </Popconfirm>
-                            </Space>
-                          ),
-                        },
-                      ]}
-                    />
+                                <Popconfirm
+                                  title="Xóa bản CV này?"
+                                  description="Bạn có chắc muốn xóa bản CV này khỏi danh sách hồ sơ?"
+                                  onConfirm={() => {
+                                    deleteCV(record.id);
+                                    message.success('Đã xóa CV thành công.');
+                                  }}
+                                  okText="Xóa"
+                                  cancelText="Hủy"
+                                >
+                                  <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 6 }} />
+                                </Popconfirm>
+                              </Space>
+                            ),
+                          },
+                        ]}
+                      />
+                    )}
                   </div>
                 </div>
               ),

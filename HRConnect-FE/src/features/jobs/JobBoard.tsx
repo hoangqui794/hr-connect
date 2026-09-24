@@ -6,3 +6,6 @@ export { JobListTable };
 export const JobBoard: React.FC = () => {
   return <JobListTable />;
 };
+
+export default JobBoard;
+

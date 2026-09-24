@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Layout, Input, Badge, Dropdown, Avatar, Space, Modal, List,
   Typography, Tooltip, Button, Tag, message,
@@ -42,6 +42,62 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
+
+  // Dynamic notification state from hrconnect_notifications filtered by currentUser.email
+  const [unreadNotifsCount, setUnreadNotifsCount] = useState<number>(0);
+  const [userNotifications, setUserNotifications] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchNotifications = () => {
+      try {
+        const raw = localStorage.getItem('hrconnect_notifications');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const currentEmail = user?.email?.toLowerCase().trim();
+            const filtered = parsed.filter((n: any) =>
+              !currentEmail || !n.recipientEmail || n.recipientEmail.toLowerCase().trim() === currentEmail
+            );
+            setUserNotifications(filtered);
+            const unread = filtered.filter((n: any) => n.isRead === false).length;
+            setUnreadNotifsCount(unread);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to read hrconnect_notifications:', e);
+      }
+      setUnreadNotifsCount(0);
+      setUserNotifications([]);
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 1500);
+    return () => clearInterval(interval);
+  }, [user?.email]);
+
+  const handleClearAllNotifications = () => {
+    useAlertStore.getState().clearAll();
+    try {
+      const raw = localStorage.getItem('hrconnect_notifications');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const currentEmail = user?.email?.toLowerCase().trim();
+          const updated = parsed.map((n: any) => {
+            if (!currentEmail || !n.recipientEmail || n.recipientEmail.toLowerCase().trim() === currentEmail) {
+              return { ...n, isRead: true };
+            }
+            return n;
+          });
+          localStorage.setItem('hrconnect_notifications', JSON.stringify(updated));
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setUnreadNotifsCount(0);
+  };
 
   // Dynamic user display without mock fallback
   const userName = user?.name || 'Người dùng';
@@ -202,20 +258,29 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
                   <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
                     Thông báo trực tiếp
                   </span>
-                  <span style={{ color: '#0284c7', fontSize: 12, cursor: 'pointer' }} onClick={() => useAlertStore.getState().clearAll()}>
+                  <span style={{ color: '#0284c7', fontSize: 12, cursor: 'pointer' }} onClick={handleClearAllNotifications}>
                     Xóa tất cả
                   </span>
                 </div>
                 <div style={{ maxHeight: 380, overflowY: 'auto' }}>
-                  {alerts.length === 0 ? (
+                  {userNotifications.length === 0 && alerts.length === 0 ? (
                     <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8' }}>
                       <BellOutlined style={{ fontSize: 24, marginBottom: 8, display: 'block' }} />
                       Chưa có thông báo nào
                     </div>
                   ) : (
                     <List
-                      dataSource={alerts.slice(0, 15)}
-                      renderItem={(alert) => (
+                      dataSource={[
+                        ...userNotifications.map((n) => ({
+                          id: n.id,
+                          title: n.title,
+                          message: n.content,
+                          read: n.isRead,
+                          isCustom: true,
+                        })),
+                        ...alerts,
+                      ].slice(0, 15)}
+                      renderItem={(alert: any) => (
                         <List.Item
                           key={alert.id}
                           style={{
@@ -228,7 +293,23 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
                             <span
                               key="dismiss"
                               style={{ fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}
-                              onClick={() => dismissAlert(alert.id)}
+                              onClick={() => {
+                                if (alert.isCustom) {
+                                  try {
+                                    const raw = localStorage.getItem('hrconnect_notifications');
+                                    if (raw) {
+                                      const parsed = JSON.parse(raw);
+                                      const updated = parsed.map((x: any) => x.id === alert.id ? { ...x, isRead: true } : x);
+                                      localStorage.setItem('hrconnect_notifications', JSON.stringify(updated));
+                                      setUnreadNotifsCount((prev) => Math.max(0, prev - 1));
+                                    }
+                                  } catch (e) {
+                                    console.error(e);
+                                  }
+                                } else {
+                                  dismissAlert(alert.id);
+                                }
+                              }}
                             >
                               ✕
                             </span>,
@@ -252,7 +333,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
               </div>
             )}
           >
-            <Badge count={unreadCount} size="small" offset={[-2, 2]}>
+            <Badge count={unreadNotifsCount !== 0 ? unreadNotifsCount : unreadCount} size="small" offset={[-2, 2]}>
               <Button
                 type="text"
                 shape="circle"

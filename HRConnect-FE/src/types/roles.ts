@@ -15,6 +15,7 @@ export interface UserProfile {
   avatar?: string;
   role: UserRole;
   company?: string;
+  companyName?: string;
   companySize?: string;
   trustRating?: number; // For affiliates: 0-5
 }
@@ -40,48 +41,48 @@ export const ROLE_COLORS: Record<UserRole, string> = {
 export const DEMO_USERS: Record<UserRole, UserProfile> = {
   [UserRole.GUEST]: {
     id: 'guest-001',
-    name: 'Guest User',
-    email: 'guest@example.com',
+    name: 'Khách Vãng Lai',
+    email: 'guest@hrconnect.io',
     role: UserRole.GUEST,
   },
   [UserRole.CLIENT]: {
-    id: 'client-001',
-    name: 'Sarah Chen',
-    email: 'sarah.chen@techcorp.vn',
+    id: 'usr-client-005',
+    name: 'Doanh nghiệp Tuyển Dụng 5',
+    email: 'tuyendung5@gmail.com',
     role: UserRole.CLIENT,
-    company: 'TechCorp Vietnam',
-    avatar: 'SC',
+    company: 'Công ty TNHH Tuyển Dụng 5',
+    avatar: 'TD',
   },
   [UserRole.CANDIDATE]: {
-    id: 'cand-001',
-    name: 'Nguyen Van Minh',
-    email: 'minh.nguyen@gmail.com',
+    id: 'usr-candidate-005',
+    name: 'Nguyễn Văn B (Ứng viên 5)',
+    email: 'ungvien5@gmail.com',
     role: UserRole.CANDIDATE,
-    avatar: 'NM',
+    avatar: 'VB',
   },
   [UserRole.AFFILIATE]: {
-    id: 'aff-001',
-    name: 'David Tran',
-    email: 'david.tran@recruitpro.vn',
+    id: 'usr-affiliate-005',
+    name: 'Cộng Tác Viên 5',
+    email: 'cvt5@gmail.com',
     role: UserRole.AFFILIATE,
-    company: 'RecruitPro Network',
-    trustRating: 4.8,
-    avatar: 'DT',
+    company: 'Headhunter Network',
+    trustRating: 4.9,
+    avatar: 'CV',
   },
   [UserRole.INTERNAL_HR]: {
-    id: 'hr-001',
-    name: 'Lisa Pham',
-    email: 'lisa.pham@hrconnect.io',
+    id: 'usr-hr-test-01',
+    name: 'My Test HR',
+    email: 'myhr@hrconnect.io',
     role: UserRole.INTERNAL_HR,
-    company: 'HR Connect',
-    avatar: 'LP',
+    company: 'HR Connect Internal',
+    avatar: 'HR',
   },
   [UserRole.ADMIN]: {
-    id: 'admin-001',
-    name: 'Alex Nguyen',
-    email: 'alex@hrconnect.io',
+    id: 'usr-admin-test-01',
+    name: 'Platform Admin',
+    email: 'myadmin@hrconnect.io',
     role: UserRole.ADMIN,
-    company: 'HR Connect',
-    avatar: 'AN',
+    company: 'HR Connect Platform',
+    avatar: 'AD',
   },
 };

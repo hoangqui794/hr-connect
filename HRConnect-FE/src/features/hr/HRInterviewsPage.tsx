@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Table, Card, Typography, Space, Tag, Button, Modal, Input,
   DatePicker, Select, Row, Col, Badge, Avatar, message, Popconfirm,
@@ -11,24 +11,14 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
+import { useApplicationStore } from '@/stores/applicationStore';
+import { getInterviews, saveInterview, type InterviewRecord } from '@/services/localStorageService';
 
 const { Title, Text } = Typography;
 
-interface InterviewSchedule {
-  id: string;
-  candidateName: string;
-  candidateEmail: string;
-  companyName: string;
-  jobTitle: string;
-  roundName: string;
-  scheduledTime: string;
-  meetingLink: string;
-  interviewerName: string;
-  status: 'SCHEDULED' | 'PASSED' | 'FAILED' | 'RESCHEDULED';
-  notes?: string;
-}
-
-const INITIAL_INTERVIEWS: InterviewSchedule[] = [
+// Use InterviewRecord from localStorageService (same shape).
+// Keep seed data as the default baseline merged with persisted records.
+const SEED_INTERVIEWS: InterviewRecord[] = [
   {
     id: 'int-001',
     candidateName: 'Le Hoang Minh',
@@ -96,17 +86,77 @@ const INITIAL_INTERVIEWS: InterviewSchedule[] = [
   },
 ];
 
+/**
+ * Merge seed interviews with persisted localStorage records.
+ * Persisted records (from AIScreening shortlist) take precedence over seed
+ * for same IDs; new records are prepended.
+ */
+function loadMergedInterviews(): InterviewRecord[] {
+  const persisted = getInterviews();
+  if (persisted.length === 0) return SEED_INTERVIEWS;
+
+  const seedMap = new Map(SEED_INTERVIEWS.map((s) => [s.id, s]));
+  // Override seed entries with persisted versions
+  persisted.forEach((p) => seedMap.set(p.id, p));
+
+  // Return persisted-first (new ones), then seeds not overridden
+  const persistedIds = new Set(persisted.map((p) => p.id));
+  const seedOnly = SEED_INTERVIEWS.filter((s) => !persistedIds.has(s.id));
+  return [...persisted, ...seedOnly];
+}
+
 export const HRInterviewsPage: React.FC = () => {
-  const [interviews, setInterviews] = useState<InterviewSchedule[]>(INITIAL_INTERVIEWS);
+  const [interviews, setInterviews] = useState<InterviewRecord[]>(loadMergedInterviews);
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
-  const [selectedInterview, setSelectedInterview] = useState<InterviewSchedule | null>(null);
+  const [selectedInterview, setSelectedInterview] = useState<InterviewRecord | null>(null);
   const [newTime, setNewTime] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
+  const { updateApplicationStatus } = useApplicationStore();
+
+  /** Reload from localStorage to pick up records added by other pages */
+  const handleReload = useCallback(() => {
+    setInterviews(loadMergedInterviews());
+    message.success('Dữ liệu phỏng vấn đã được làm mới!');
+  }, []);
 
   const handleUpdateStatus = (id: string, status: 'PASSED' | 'FAILED') => {
     setInterviews((prev) =>
       prev.map((i) => (i.id === id ? { ...i, status } : i))
     );
+    // Persist to localStorage and sync application store
+    const target = interviews.find((i) => i.id === id);
+    if (target) {
+      saveInterview({ ...target, status });
+      const sharedApps = useApplicationStore.getState().applications;
+      const match = sharedApps.find(
+        (a) =>
+          a.email.toLowerCase() === target.candidateEmail.toLowerCase() &&
+          (a.jobTitle === target.jobTitle || a.company === target.companyName)
+      );
+      if (match) {
+        updateApplicationStatus(
+          match.id,
+          status === 'PASSED' ? 'INTERVIEW_PASSED' : 'INTERVIEW_FAILED',
+          {
+            interviewTime: target.scheduledTime,
+            interviewLink: target.meetingLink,
+            interviewerName: target.interviewerName,
+          }
+        );
+      } else {
+        useApplicationStore.getState().addApplication({
+          fullName: target.candidateName,
+          email: target.candidateEmail,
+          jobId: 'job-int-' + target.id,
+          jobTitle: target.jobTitle,
+          company: target.companyName,
+          source: 'DIRECT',
+          status: status === 'PASSED' ? 'INTERVIEW_PASSED' : 'INTERVIEW_FAILED',
+          aiScore: 92,
+        });
+      }
+    }
     if (status === 'PASSED') {
       message.success('Đã cập nhật kết quả: ĐẠT (PASS) — Đã chuyển ứng viên sang phễu xem xét Offer!');
     } else {
@@ -116,13 +166,14 @@ export const HRInterviewsPage: React.FC = () => {
 
   const handleReschedule = () => {
     if (!selectedInterview || !newTime) return;
+    const updated = { ...selectedInterview, scheduledTime: newTime, status: 'RESCHEDULED' as const };
     setInterviews((prev) =>
       prev.map((i) =>
-        i.id === selectedInterview.id
-          ? { ...i, scheduledTime: newTime, status: 'RESCHEDULED' }
-          : i
+        i.id === selectedInterview.id ? updated : i
       )
     );
+    // Persist rescheduled record
+    saveInterview(updated);
     message.success(`Đã xếp lại lịch phỏng vấn cho ${selectedInterview.candidateName} sang ${newTime}!`);
     setRescheduleModalOpen(false);
   };
@@ -134,7 +185,7 @@ export const HRInterviewsPage: React.FC = () => {
     statusFilter === 'ALL' ? true : i.status === statusFilter
   );
 
-  const columns: ColumnsType<InterviewSchedule> = [
+  const columns: ColumnsType<InterviewRecord> = [
     {
       title: 'Ứng viên & Vị trí',
       key: 'candidate',
@@ -348,8 +399,12 @@ export const HRInterviewsPage: React.FC = () => {
               ]}
             />
           </Space>
-          <Button icon={<ReloadOutlined />} onClick={() => setStatusFilter('ALL')} style={{ borderRadius: 8 }}>
-            Làm mới
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => { setStatusFilter('ALL'); handleReload(); }}
+            style={{ borderRadius: 8 }}
+          >
+            Làm mới dữ liệu
           </Button>
         </div>
       </Card>

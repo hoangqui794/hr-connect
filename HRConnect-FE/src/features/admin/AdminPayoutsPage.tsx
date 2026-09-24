@@ -12,21 +12,14 @@ import { useCommissions } from '@/services/queries/useFinancials';
 import { PayoutStatus } from '@/types/affiliate';
 import type { Commission } from '@/types/affiliate';
 import type { ColumnsType } from 'antd/es/table';
+import {
+  getPayouts,
+  updatePayoutStatus as updateStoredPayout,
+  PayoutRecord as PayoutItem,
+} from '@/services/localStorageService';
+import { ReloadOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
-
-interface PayoutItem {
-  id: string;
-  candidateName: string;
-  affiliateName: string;
-  affiliateBank: string;
-  affiliateBankAccount: string;
-  jobTitle: string;
-  hiredDate: string;
-  warrantyEndDate: string;
-  commissionAmount: number;
-  status: PayoutStatus;
-}
 
 const INITIAL_PAYOUTS: PayoutItem[] = [
   {
@@ -145,37 +138,146 @@ const REVENUE_SPLITS: RevenueSplit[] = [
   },
 ];
 
+
 export const AdminPayoutsPage: React.FC = () => {
-  const [payouts, setPayouts] = useState<PayoutItem[]>(INITIAL_PAYOUTS);
+  const [payouts, setPayouts] = useState<PayoutItem[]>(getPayouts);
+
+  const handleRefresh = () => {
+    setPayouts(getPayouts());
+  };
 
   const payablePayouts = payouts.filter((p) => p.status === PayoutStatus.PAYABLE);
   const totalPayableAmount = payablePayouts.reduce((acc, p) => acc + p.commissionAmount, 0);
   const paidPayouts = payouts.filter((p) => p.status === PayoutStatus.PAID);
   const totalPaidAmount = paidPayouts.reduce((acc, p) => acc + p.commissionAmount, 0);
 
+  // Helper format currency
+  const formatCurrency = (amount: number): string => `${amount.toLocaleString('vi-VN')} đ`;
+
+  const recordPayoutAuditAndNotification = (item: PayoutItem) => {
+    // 1. Update status in hrconnect_commissions to 'PAID'
+    try {
+      const comRaw = localStorage.getItem('hrconnect_commissions');
+      if (comRaw) {
+        const parsed = JSON.parse(comRaw);
+        if (Array.isArray(parsed)) {
+          const updated = parsed.map((c: any) => {
+            if (
+              (c.candidateName && item.candidateName && c.candidateName.toLowerCase() === item.candidateName.toLowerCase()) ||
+              (c.affiliateName && item.affiliateName && c.affiliateName.toLowerCase() === item.affiliateName.toLowerCase())
+            ) {
+              return { ...c, status: 'PAID', updatedAt: new Date().toISOString() };
+            }
+            return c;
+          });
+          localStorage.setItem('hrconnect_commissions', JSON.stringify(updated));
+        }
+      }
+    } catch (e) {
+      console.error('Failed to update hrconnect_commissions:', e);
+    }
+
+    // 2. Resolve affiliate email from hrconnect_users
+    let affiliateEmail = (item as any).affiliateEmail;
+    if (!affiliateEmail) {
+      try {
+        const usersRaw = localStorage.getItem('hrconnect_users');
+        if (usersRaw) {
+          const users = JSON.parse(usersRaw);
+          if (Array.isArray(users)) {
+            const matchUser = users.find(
+              (u: any) => (u.fullName && item.affiliateName && u.fullName.toLowerCase() === item.affiliateName.toLowerCase()) ||
+                          (u.name && item.affiliateName && u.name.toLowerCase() === item.affiliateName.toLowerCase())
+            );
+            if (matchUser) affiliateEmail = matchUser.email;
+          }
+        }
+      } catch {
+        // noop
+      }
+    }
+    if (!affiliateEmail) affiliateEmail = 'affiliate@demo.com';
+
+    // 3. Write log into hrconnect_audit_logs:
+    // { id: 'AUD-' + Date.now(), timestamp: new Date().toISOString(), action: 'Chi trả Payout', target: 'CTV ' + affiliateName + ' - ' + formatCurrency(amount), actor: 'Platform Admin' }
+    try {
+      const logRaw = localStorage.getItem('hrconnect_audit_logs');
+      let logList: any[] = [];
+      if (logRaw) {
+        const parsed = JSON.parse(logRaw);
+        if (Array.isArray(parsed)) logList = parsed;
+      }
+      const newAuditLog = {
+        id: 'AUD-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        timestamp: new Date().toISOString(),
+        action: 'Chi trả Payout',
+        target: 'CTV ' + item.affiliateName + ' - ' + formatCurrency(item.commissionAmount),
+        actor: 'Platform Admin',
+      };
+      logList.unshift(newAuditLog);
+      localStorage.setItem('hrconnect_audit_logs', JSON.stringify(logList));
+    } catch (e) {
+      console.error('Failed to record audit log:', e);
+    }
+
+    // 4. Create notification into hrconnect_notifications:
+    // { id: 'NOTIF-' + Date.now(), recipientEmail: affiliateEmail, title: 'Hoa hồng đã được thanh toán', content: 'Khoản chi trả hoa hồng ' + formatCurrency(amount) + ' đã được phê duyệt.', createdAt: new Date().toISOString(), isRead: false }
+    try {
+      const notifRaw = localStorage.getItem('hrconnect_notifications');
+      let notifList: any[] = [];
+      if (notifRaw) {
+        const parsed = JSON.parse(notifRaw);
+        if (Array.isArray(parsed)) notifList = parsed;
+      }
+      const newNotif = {
+        id: 'NOTIF-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        recipientEmail: affiliateEmail,
+        title: 'Hoa hồng đã được thanh toán',
+        content: 'Khoản chi trả hoa hồng ' + formatCurrency(item.commissionAmount) + ' đã được phê duyệt.',
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      };
+      notifList.unshift(newNotif);
+      localStorage.setItem('hrconnect_notifications', JSON.stringify(notifList));
+    } catch (e) {
+      console.error('Failed to trigger notification:', e);
+    }
+  };
+
   // Execute single payout
   const handleExecutePayout = (item: PayoutItem) => {
+    updateStoredPayout(item.id, PayoutStatus.PAID);
+    recordPayoutAuditAndNotification(item);
+
     setPayouts((prev) =>
       prev.map((p) => (p.id === item.id ? { ...p, status: PayoutStatus.PAID } : p))
     );
     message.success(
-      `Đã thực thi lệnh chi trả ${item.commissionAmount.toLocaleString('vi-VN')} đ tới ${
+      `Đã thực thi lệnh chi trả ${formatCurrency(item.commissionAmount)} tới ${
         item.affiliateName
       } (${item.affiliateBank} - ${item.affiliateBankAccount})!`
     );
   };
 
+  const handleApprovePayout = handleExecutePayout;
+
   // Batch execute all payable payouts
   const handleBatchPayout = () => {
+    payablePayouts.forEach((p) => {
+      updateStoredPayout(p.id, PayoutStatus.PAID);
+      recordPayoutAuditAndNotification(p);
+    });
     setPayouts((prev) =>
       prev.map((p) => (p.status === PayoutStatus.PAYABLE ? { ...p, status: PayoutStatus.PAID } : p))
     );
     message.success(
       `Đã thực thi chi trả hàng loạt thành công cho ${
         payablePayouts.length
-      } khoản hoa hồng (Tổng cộng: ${totalPayableAmount.toLocaleString('vi-VN')} đ)!`
+      } khoản hoa hồng (Tổng cộng: ${formatCurrency(totalPayableAmount)})!`
     );
   };
+
+  const handleBatchApprove = handleBatchPayout;
 
   const payoutColumns: ColumnsType<PayoutItem> = [
     {
@@ -495,3 +597,6 @@ export const AdminPayoutsPage: React.FC = () => {
     </div>
   );
 };
+
+export default AdminPayoutsPage;
+

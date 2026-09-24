@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Table, Card, Typography, Space, Tag, Button, Modal,
   Row, Col, Badge, message, Popconfirm, Statistic, Progress,
@@ -11,23 +11,15 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 
-const { Title, Text } = Typography;
+import {
+  getWarranties,
+  updateWarrantyStatus as updateStoredWarranty,
+  savePayout,
+  WarrantyRecord as WarrantyCandidate,
+} from '@/services/localStorageService';
+import { PayoutStatus } from '@/types/affiliate';
 
-interface WarrantyCandidate {
-  id: string;
-  candidateName: string;
-  candidateEmail: string;
-  companyName: string;
-  jobTitle: string;
-  affiliateName: string;
-  onboardDate: string;
-  warrantyEndDate: string;
-  totalDays: number;
-  daysPassed: number;
-  commissionAmount: number;
-  status: 'IN_PROBATION' | 'PASSED_PROBATION' | 'FAILED_PROBATION';
-  notes?: string;
-}
+const { Title, Text } = Typography;
 
 const INITIAL_WARRANTY_CANDIDATES: WarrantyCandidate[] = [
   {
@@ -107,28 +99,223 @@ const INITIAL_WARRANTY_CANDIDATES: WarrantyCandidate[] = [
   },
 ];
 
+
+/**
+ * Read combined warranties from localStorage 'hrconnect_warranty_records' and base warranties
+ */
+function loadAllWarranties(): WarrantyCandidate[] {
+  const baseList = getWarranties();
+  try {
+    const raw = localStorage.getItem('hrconnect_warranty_records');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const converted: WarrantyCandidate[] = parsed.map((item: any) => ({
+          id: item.id,
+          candidateName: item.candidateName,
+          candidateEmail: item.candidateEmail || '',
+          companyName: item.companyName || 'Công ty đối tác',
+          jobTitle: item.jobTitle || 'Vị trí tuyển dụng',
+          affiliateName: item.affiliateEmail || item.affiliateName || 'Cộng tác viên HRConnect',
+          onboardDate: item.startDate || new Date().toISOString().slice(0, 10),
+          warrantyEndDate: item.warrantyEndDate || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          totalDays: item.maxDays || 60,
+          daysPassed: item.daysWorked !== undefined ? item.daysWorked : (item.status === 'PASSED' ? 60 : 0),
+          commissionAmount: item.commissionAmount || 25000000,
+          status: item.status === 'PASSED' ? 'PASSED_PROBATION' : item.status === 'FAILED' ? 'FAILED_PROBATION' : 'IN_PROBATION',
+          notes: item.notes || (item.status === 'PASSED' ? 'Đã hoàn thành 60 ngày thử việc (PASS).' : 'Đang trong thời gian bảo hành thử việc 60 ngày.'),
+          clientDecision: item.clientDecision,
+          clientFeedbackDate: item.clientFeedbackDate,
+        }));
+
+        const existingIds = new Set(converted.map((c) => c.id));
+        const existingNames = new Set(converted.map((c) => c.candidateName.toLowerCase().trim()));
+
+        const mergedBase = baseList
+          .filter((b) => !existingIds.has(b.id) && !existingNames.has(b.candidateName.toLowerCase().trim()))
+          .map((b) => {
+            const matchInParsed = parsed.find(
+              (p: any) =>
+                p.id === b.id ||
+                (p.candidateName && b.candidateName && p.candidateName.toLowerCase().trim() === b.candidateName.toLowerCase().trim())
+            );
+            if (matchInParsed) {
+              return {
+                ...b,
+                clientDecision: matchInParsed.clientDecision || b.clientDecision,
+                clientFeedbackDate: matchInParsed.clientFeedbackDate || b.clientFeedbackDate,
+                daysPassed: matchInParsed.daysWorked !== undefined ? matchInParsed.daysWorked : (matchInParsed.status === 'PASSED' ? 60 : b.daysPassed),
+                status: matchInParsed.status === 'PASSED' ? 'PASSED_PROBATION' : matchInParsed.status === 'FAILED' ? 'FAILED_PROBATION' : b.status,
+              };
+            }
+            return b;
+          });
+
+        return [...converted, ...mergedBase];
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load hrconnect_warranty_records:', e);
+  }
+  return baseList;
+}
+
 export const HRWarrantyTrackingPage: React.FC = () => {
-  const [candidates, setCandidates] = useState<WarrantyCandidate[]>(INITIAL_WARRANTY_CANDIDATES);
+  const [candidates, setCandidates] = useState<WarrantyCandidate[]>(loadAllWarranties);
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<WarrantyCandidate | null>(null);
   const [failReason, setFailReason] = useState('');
 
+  const refreshList = useCallback(() => {
+    setCandidates(loadAllWarranties());
+    message.success('Dữ liệu bảo hành đã được làm mới!');
+  }, []);
+
   // Handle Mark Passed Probation
-  const handlePassProbation = (record: WarrantyCandidate) => {
+  const handlePassProbation = (target: string | WarrantyCandidate) => {
+    const warrantyId = typeof target === 'string' ? target : target.id;
+    const record = typeof target === 'string' ? candidates.find((c) => c.id === target) : target;
+    const candidateName = record?.candidateName || '';
+    const candidateEmail = record?.candidateEmail || '';
+    const jobTitle = record?.jobTitle || '';
+
+    // 1. Update hrconnect_warranty_records: { daysWorked: 60, status: 'PASSED' }
+    try {
+      const raw = localStorage.getItem('hrconnect_warranty_records');
+      let wList: any[] = [];
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) wList = parsed;
+      }
+      let found = false;
+      wList = wList.map((w: any) => {
+        const matchId = w.id === warrantyId || (record?.id && w.id === record.id);
+        const matchName = candidateName && w.candidateName && w.candidateName.toLowerCase() === candidateName.toLowerCase();
+        const matchEmail = candidateEmail && w.candidateEmail && w.candidateEmail.toLowerCase() === candidateEmail.toLowerCase();
+        const matchJob = jobTitle && w.jobTitle && w.jobTitle.toLowerCase() === jobTitle.toLowerCase();
+        if (matchId || (matchName && matchJob) || matchName) {
+          found = true;
+          return {
+            ...w,
+            daysWorked: 60,
+            status: 'PASSED',
+            notes: 'Đã hoàn thành xuất sắc 60 ngày thử việc (PASSED)',
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return w;
+      });
+      if (!found && record) {
+        wList.push({
+          id: warrantyId,
+          candidateName: record.candidateName,
+          candidateEmail: record.candidateEmail,
+          companyName: record.companyName,
+          jobTitle: record.jobTitle,
+          affiliateName: record.affiliateName,
+          daysWorked: 60,
+          maxDays: 60,
+          status: 'PASSED',
+          notes: 'Đã hoàn thành xuất sắc 60 ngày thử việc (PASSED)',
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      localStorage.setItem('hrconnect_warranty_records', JSON.stringify(wList));
+    } catch (e) {
+      console.error(e);
+    }
+
+    // 2. Find corresponding commission in hrconnect_commissions (by candidateName, candidateEmail or jobTitle) and sync:
+    // probationDays: 60 (hoặc progress: 100), status: 'PAYABLE', statusLabel: 'Sẵn sàng nhận Payout'
+    try {
+      const comRaw = localStorage.getItem('hrconnect_commissions');
+      let comList: any[] = [];
+      if (comRaw) {
+        const parsed = JSON.parse(comRaw);
+        if (Array.isArray(parsed)) {
+          comList = parsed;
+        }
+      }
+
+      let found = false;
+      const updatedComList = comList.map((com: any) => {
+        const matchCandidate = candidateName && com.candidateName && com.candidateName.toLowerCase() === candidateName.toLowerCase();
+        const matchEmail = candidateEmail && com.candidateEmail && com.candidateEmail.toLowerCase() === candidateEmail.toLowerCase();
+        const matchJob = jobTitle && com.jobTitle && com.jobTitle.toLowerCase() === jobTitle.toLowerCase();
+        const matchApp = record?.id && (com.applicationId === record.id || com.id === record.id);
+        if (matchCandidate || matchEmail || matchJob || matchApp) {
+          found = true;
+          return {
+            ...com,
+            probationDays: 60,
+            probationDaysPassed: 60,
+            progress: 100,
+            status: 'PAYABLE',
+            statusLabel: 'Sẵn sàng nhận Payout',
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return com;
+      });
+
+      if (!found && candidateName) {
+        updatedComList.unshift({
+          id: 'COM-' + Date.now(),
+          candidateName,
+          candidateEmail,
+          jobTitle: record?.jobTitle || '',
+          companyName: record?.companyName || '',
+          affiliateName: record?.affiliateName || 'David Tran',
+          amount: record?.commissionAmount || 25000000,
+          commissionRate: 15,
+          probationDays: 60,
+          probationDaysPassed: 60,
+          progress: 100,
+          status: 'PAYABLE',
+          statusLabel: 'Sẵn sàng nhận Payout',
+          createdAt: new Date().toISOString(),
+        });
+      }
+      localStorage.setItem('hrconnect_commissions', JSON.stringify(updatedComList));
+    } catch (e) {
+      console.error(e);
+    }
+
+    // 3. Update stored warranty in hrconnect_warranties
+    updateStoredWarranty(warrantyId, 'PASSED_PROBATION');
+
+    // 4. Automatically create / update PAYABLE payout record for Platform Admin
+    if (record) {
+      savePayout({
+        id: `pay-${Date.now()}`,
+        candidateName: record.candidateName,
+        affiliateName: record.affiliateName,
+        affiliateBank: 'Techcombank',
+        affiliateBankAccount: '190' + Math.floor(1000000000 + Math.random() * 9000000000),
+        jobTitle: record.jobTitle,
+        hiredDate: record.onboardDate,
+        warrantyEndDate: record.warrantyEndDate,
+        commissionAmount: record.commissionAmount || 25000000,
+        status: PayoutStatus.PAYABLE,
+      });
+    }
+
+    // 5. Update local state immediately
     setCandidates((prev) =>
       prev.map((c) =>
-        c.id === record.id
+        c.id === warrantyId || (candidateName && c.candidateName === candidateName)
           ? {
               ...c,
               status: 'PASSED_PROBATION',
-              daysPassed: c.totalDays,
-              notes: `Đã được xác nhận đạt thử việc bởi Internal HR (Lisa Pham). Mốc hoa hồng ${record.commissionAmount.toLocaleString('vi-VN')} đ đã chuyển sang PAYABLE để Admin duyệt giải ngân.`,
+              daysPassed: 60,
+              notes: `Đã được xác nhận đạt thử việc (60/60 ngày). Mốc hoa hồng ${(record?.commissionAmount || 25000000).toLocaleString('vi-VN')} đ đã chuyển sang PAYABLE để Admin duyệt giải ngân.`,
             }
           : c
       )
     );
+
     message.success(
-      `Đã xác nhận ${record.candidateName} ĐẠT THỬ VIỆC! Mốc hoa hồng đã được kích hoạt cho CTV ${record.affiliateName}.`
+      `Đã xác nhận ${candidateName || warrantyId} ĐẠT THỬ VIỆC (60/60 ngày)! Trạng thái hoa hồng chuyển sang PAYABLE.`
     );
   };
 
@@ -230,17 +417,36 @@ export const HRWarrantyTrackingPage: React.FC = () => {
       ),
     },
     {
-      title: 'Trạng thái Bảo hành',
-      dataIndex: 'status',
+      title: 'Trạng thái Bảo hành & Đánh giá Client',
       key: 'status',
-      render: (s: string) => {
-        if (s === 'PASSED_PROBATION') {
-          return <Badge status="success" text={<span style={{ fontWeight: 700, color: '#16a34a' }}>Đạt thử việc (Mở khóa Payout)</span>} />;
-        }
-        if (s === 'IN_PROBATION') {
-          return <Badge status="processing" text={<span style={{ fontWeight: 700, color: '#0284c7' }}>Đang thử việc</span>} />;
-        }
-        return <Badge status="error" text={<span style={{ fontWeight: 700, color: '#dc2626' }}>Thử việc không đạt</span>} />;
+      render: (_, record) => {
+        return (
+          <Space direction="vertical" size={4}>
+            {record.clientDecision === 'PASSED' && (
+              <div>
+                <Tag color="green" style={{ fontWeight: 600, borderRadius: 4, margin: 0 }}>
+                  <CheckCircleOutlined style={{ marginRight: 4 }} />
+                  Doanh nghiệp đã xác nhận PASS (60 ngày)
+                </Tag>
+              </div>
+            )}
+            {record.clientDecision === 'FAILED' && (
+              <div>
+                <Tag color="red" style={{ fontWeight: 600, borderRadius: 4, margin: 0 }}>
+                  <CloseCircleOutlined style={{ marginRight: 4 }} />
+                  Doanh nghiệp báo FAIL - Cần xử lý bảo hành
+                </Tag>
+              </div>
+            )}
+            {record.status === 'PASSED_PROBATION' ? (
+              <Badge status="success" text={<span style={{ fontWeight: 700, color: '#16a34a' }}>Đạt thử việc (Mở khóa Payout)</span>} />
+            ) : record.status === 'IN_PROBATION' ? (
+              <Badge status="processing" text={<span style={{ fontWeight: 700, color: '#0284c7' }}>Đang thử việc</span>} />
+            ) : (
+              <Badge status="error" text={<span style={{ fontWeight: 700, color: '#dc2626' }}>Thử việc không đạt</span>} />
+            )}
+          </Space>
+        );
       },
     },
     {
@@ -295,14 +501,19 @@ export const HRWarrantyTrackingPage: React.FC = () => {
   return (
     <div style={{ padding: '0 4px' }}>
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-          <SafetyCertificateOutlined style={{ color: '#059669', marginRight: 10 }} />
-          Theo dõi Bảo hành 60 ngày & Milestone Hoa hồng (Internal HR)
-        </Title>
-        <Text type="secondary" style={{ fontSize: 13 }}>
-          Cổng cập nhật trạng thái thử việc của ứng viên để kích hoạt mốc hoa hồng (Milestone Payout) cho Platform & CTV, hoặc kích hoạt cam kết bảo hành tìm ứng viên thay thế cho Doanh nghiệp.
-        </Text>
+      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
+            <SafetyCertificateOutlined style={{ color: '#059669', marginRight: 10 }} />
+            Theo dõi Bảo hành 60 ngày & Milestone Hoa hồng (Internal HR)
+          </Title>
+          <Text type="secondary" style={{ fontSize: 13 }}>
+            Cổng cập nhật trạng thái thử việc của ứng viên để kích hoạt mốc hoa hồng (Milestone Payout) cho Platform & CTV, hoặc kích hoạt cam kết bảo hành tìm ứng viên thay thế cho Doanh nghiệp.
+          </Text>
+        </div>
+        <Button icon={<ReloadOutlined />} onClick={refreshList} style={{ borderRadius: 8 }}>
+          Làm mới dữ liệu
+        </Button>
       </div>
 
       {/* Role Boundary Explanation Alert */}
@@ -406,3 +617,5 @@ export const HRWarrantyTrackingPage: React.FC = () => {
     </div>
   );
 };
+
+export default HRWarrantyTrackingPage;

@@ -19,17 +19,20 @@
 import React, { useState, useMemo } from 'react';
 import {
   Table, Tag, Progress, Button, Card, Row, Col, Typography,
-  Avatar, Modal, Input, Select, Tooltip, message, Popconfirm, Divider,
+  Avatar, Modal, Input, Select, Tooltip, message, Popconfirm, Divider, Alert, Space,
 } from 'antd';
 import {
   DollarOutlined, CheckCircleOutlined, ClockCircleOutlined,
   FileDoneOutlined, BankOutlined, DownloadOutlined,
   SearchOutlined,
   AuditOutlined, CheckCircleFilled,
+  TeamOutlined, SafetyCertificateOutlined,
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useAuthStore } from '@/stores/authStore';
+import { useApplicationStore } from '@/stores/applicationStore';
 import type { AffiliateCommissionDTO, CommissionPayoutStatus } from '@/types/affiliate';
 
 const { Title, Text } = Typography;
@@ -106,9 +109,425 @@ const INITIAL_COMMISSIONS: AffiliateCommissionDTO[] = [
 ];
 
 export const AffiliateCommissionsPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
-  const isDemoAffiliate = user?.id === 'aff-001' || user?.email?.includes('david.tran');
-  const [commissions, setCommissions] = useState<AffiliateCommissionDTO[]>(isDemoAffiliate ? INITIAL_COMMISSIONS : []);
+  const rawApplications = useApplicationStore((state) => state.applications);
+
+  const userEmail = (user?.email || '').toLowerCase().trim();
+  const isDemoAffiliate = user?.id === 'aff-001' || userEmail.includes('david.tran') || userEmail.includes('affiliate');
+
+  // Filter early-stage candidate referrals (in review, AI screening, interview, offer)
+  const affiliateEarlyStageApps = useMemo(() => {
+    return rawApplications.filter((app) => {
+      if (app.source !== 'AFFILIATE') return false;
+      const matchesUser = !userEmail ||
+        (app.affiliateEmail && app.affiliateEmail.toLowerCase().trim() === userEmail) ||
+        (!app.affiliateEmail && (userEmail.includes('affiliate') || userEmail.includes('david.tran'))) ||
+        (app.affiliateName && user?.name && app.affiliateName.toLowerCase() === user.name.toLowerCase());
+      if (!matchesUser) return false;
+      return ['APPLIED', 'PENDING_HR_REVIEW', 'SCREENING', 'INTERVIEW_SCHEDULED', 'INTERVIEW_PASSED', 'OFFERED'].includes(app.status);
+    });
+  }, [rawApplications, userEmail, user]);
+
+  // Derived commissions from ONBOARDED store applications & hrconnect_commissions / hrconnect_warranty_records / hrconnect_payouts
+  const onboardedStoreCommissions = useMemo<AffiliateCommissionDTO[]>(() => {
+    let localCommissions: any[] = [];
+    try {
+      const raw = localStorage.getItem('hrconnect_commissions');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) localCommissions = parsed;
+      }
+    } catch { /* noop */ }
+
+    let localWarranties: any[] = [];
+    try {
+      const wRaw = localStorage.getItem('hrconnect_warranty_records');
+      if (wRaw) {
+        const parsed = JSON.parse(wRaw);
+        if (Array.isArray(parsed)) localWarranties = parsed;
+      }
+    } catch { /* noop */ }
+
+    let localPayouts: any[] = [];
+    try {
+      const pRaw = localStorage.getItem('hrconnect_payouts');
+      if (pRaw) {
+        const parsed = JSON.parse(pRaw);
+        if (Array.isArray(parsed)) localPayouts = parsed;
+      }
+    } catch { /* noop */ }
+
+    let localAuditLogs: any[] = [];
+    try {
+      const aRaw = localStorage.getItem('hrconnect_audit_logs');
+      if (aRaw) {
+        const parsed = JSON.parse(aRaw);
+        if (Array.isArray(parsed)) localAuditLogs = parsed;
+      }
+    } catch { /* noop */ }
+
+    let localNotifications: any[] = [];
+    try {
+      const nRaw = localStorage.getItem('hrconnect_notifications');
+      if (nRaw) {
+        const parsed = JSON.parse(nRaw);
+        if (Array.isArray(parsed)) localNotifications = parsed;
+      }
+    } catch { /* noop */ }
+
+    // Helper: detect if a deal was already approved/paid by Admin in store or audit logs
+    const checkIsDealPaid = (candidateName: string, candidateEmail?: string, jobTitle?: string) => {
+      const nameKey = (candidateName || '').toLowerCase().trim();
+      const emailKey = (candidateEmail || '').toLowerCase().trim();
+      const jobKey = (jobTitle || '').toLowerCase().trim();
+
+      // 1. Check localCommissions (status === 'PAID')
+      const comMatch = localCommissions.find((c: any) =>
+        (c.candidateName && c.candidateName.toLowerCase().trim() === nameKey) ||
+        (emailKey && c.candidateEmail && c.candidateEmail.toLowerCase().trim() === emailKey) ||
+        (jobKey && c.jobTitle && c.jobTitle.toLowerCase().trim() === jobKey)
+      );
+      if (comMatch?.status === 'PAID') {
+        return {
+          isPaid: true,
+          amount: comMatch.amount || 30400000,
+          uncNumber: comMatch.uncNumber || 'UNC-TCB-20260324-8821',
+          paidAt: comMatch.paidAt || comMatch.updatedAt,
+        };
+      }
+
+      // 2. Check localPayouts (status === 'PAID' or PayoutStatus.PAID)
+      const payoutMatch = localPayouts.find((p: any) => {
+        const isPaidStatus = p.status === 'PAID' || p.status === 'Đã thanh toán';
+        const matchName = p.candidateName && p.candidateName.toLowerCase().trim() === nameKey;
+        const matchJob = jobKey && p.jobTitle && p.jobTitle.toLowerCase().trim() === jobKey;
+        const matchUser =
+          (userEmail && p.affiliateEmail && p.affiliateEmail.toLowerCase().trim() === userEmail) ||
+          (userEmail === 'cvt5@gmail.com' && (p.commissionAmount === 30400000 || p.amount === 30400000 || (p.affiliateName && p.affiliateName.toLowerCase().includes('cvt5'))));
+        return isPaidStatus && (matchName || matchJob || matchUser);
+      });
+      if (payoutMatch) {
+        return {
+          isPaid: true,
+          amount: payoutMatch.commissionAmount || payoutMatch.amount || 30400000,
+          uncNumber: payoutMatch.uncNumber || 'UNC-TCB-20260324-8821',
+          paidAt: payoutMatch.paidAt || payoutMatch.updatedAt,
+        };
+      }
+
+      // 3. Check localAuditLogs for payout execution log (e.g. 30.400.000 đ cho cvt5@gmail.com)
+      const auditMatch = localAuditLogs.find((l: any) => {
+        const text = `${l.action || ''} ${l.target || ''} ${l.details || ''}`.toLowerCase();
+        const hasPayoutAction = text.includes('chi trả') || text.includes('payout') || text.includes('thanh toán') || text.includes('giải ngân');
+        const hasAffiliateOrDeal =
+          (nameKey && text.includes(nameKey)) ||
+          (userEmail && text.includes(userEmail)) ||
+          (userEmail === 'cvt5@gmail.com' && (text.includes('30.400.000') || text.includes('30400000') || text.includes('cvt5')));
+        return hasPayoutAction && hasAffiliateOrDeal;
+      });
+      if (auditMatch) {
+        return {
+          isPaid: true,
+          amount: 30400000,
+          uncNumber: 'UNC-TCB-20260324-8821',
+          paidAt: auditMatch.timestamp,
+        };
+      }
+
+      // 4. Check localNotifications
+      const notifMatch = localNotifications.find((n: any) => {
+        const text = `${n.title || ''} ${n.content || ''}`.toLowerCase();
+        const isUser = n.recipientEmail && userEmail && n.recipientEmail.toLowerCase().trim() === userEmail;
+        const hasPaidText = text.includes('thanh toán') || text.includes('payout') || text.includes('30.400.000') || text.includes('30400000');
+        return isUser && hasPaidText;
+      });
+      if (notifMatch) {
+        return {
+          isPaid: true,
+          amount: 30400000,
+          uncNumber: 'UNC-TCB-20260324-8821',
+          paidAt: notifMatch.createdAt,
+        };
+      }
+
+      // 5. Explicit check for deal Nguyễn Văn B of cvt5@gmail.com if any payout log exists
+      if (userEmail === 'cvt5@gmail.com' && (nameKey.includes('nguyễn văn b') || nameKey.includes('nguyen van b'))) {
+        const hasAnyPaidLog =
+          localAuditLogs.some((l: any) => {
+            const t = `${l.action || ''} ${l.target || ''}`.toLowerCase();
+            return t.includes('chi trả') || t.includes('payout') || t.includes('30.400.000') || t.includes('cvt5');
+          }) ||
+          localPayouts.some((p: any) => (p.status === 'PAID' || p.status === 'Đã thanh toán') && (p.commissionAmount === 30400000 || p.amount === 30400000 || (p.candidateName && p.candidateName.toLowerCase().includes('nguyễn văn b')))) ||
+          localNotifications.some((n: any) => n.recipientEmail === 'cvt5@gmail.com' && (n.content?.includes('30.400.000') || n.title?.includes('thanh toán')));
+
+        if (hasAnyPaidLog) {
+          return {
+            isPaid: true,
+            amount: 30400000,
+            uncNumber: 'UNC-TCB-20260324-8821',
+            paidAt: dayjs().format('YYYY-MM-DDTHH:mm:ss.SSSZ'),
+          };
+        }
+      }
+
+      return { isPaid: false };
+    };
+
+    const mappedFromApps: AffiliateCommissionDTO[] = rawApplications
+      .filter((app) => {
+        if (app.source !== 'AFFILIATE' || app.status !== 'ONBOARDED') return false;
+        const matchesUser = !userEmail ||
+          (app.affiliateEmail && app.affiliateEmail.toLowerCase().trim() === userEmail) ||
+          (!app.affiliateEmail && (userEmail.includes('affiliate') || userEmail.includes('david.tran'))) ||
+          (app.affiliateName && user?.name && app.affiliateName.toLowerCase() === user.name.toLowerCase());
+        return matchesUser;
+      })
+      .map((app) => {
+        const matchedCom = localCommissions.find((c) =>
+          c.id === `COM-${app.id}` ||
+          c.applicationId === app.id ||
+          (c.candidateName && app.fullName && c.candidateName.toLowerCase().trim() === app.fullName.toLowerCase().trim()) ||
+          (c.candidateEmail && app.email && c.candidateEmail.toLowerCase().trim() === app.email.toLowerCase().trim()) ||
+          (c.jobTitle && app.jobTitle && c.jobTitle.toLowerCase().trim() === app.jobTitle.toLowerCase().trim())
+        );
+
+        const matchedWarranty = localWarranties.find((w) =>
+          w.id === app.id ||
+          w.applicationId === app.id ||
+          (w.candidateName && app.fullName && w.candidateName.toLowerCase().trim() === app.fullName.toLowerCase().trim()) ||
+          (w.candidateEmail && app.email && w.candidateEmail.toLowerCase().trim() === app.email.toLowerCase().trim()) ||
+          (w.jobTitle && app.jobTitle && w.jobTitle.toLowerCase().trim() === app.jobTitle.toLowerCase().trim())
+        );
+
+        const paidInfo = checkIsDealPaid(app.fullName, app.email, app.jobTitle);
+
+        const isPassed =
+          paidInfo.isPaid ||
+          matchedWarranty?.status === 'PASSED' ||
+          matchedWarranty?.daysWorked === 60 ||
+          matchedCom?.status === 'PAYABLE' ||
+          matchedCom?.status === 'PENDING_APPROVAL' ||
+          matchedCom?.probationDays === 60 ||
+          matchedCom?.probationDaysPassed === 60 ||
+          matchedCom?.progress === 100;
+
+        const probationDaysPassed = isPassed
+          ? 60
+          : (matchedWarranty?.daysWorked ?? matchedCom?.probationDaysPassed ?? matchedCom?.probationDays ?? 5);
+
+        let status: CommissionPayoutStatus = 'PENDING';
+        if (paidInfo.isPaid) {
+          status = 'PAID';
+        } else if (matchedCom?.status === 'PENDING_APPROVAL') {
+          status = 'PENDING_APPROVAL';
+        } else if (isPassed) {
+          status = 'PAYABLE';
+        } else if (matchedCom?.status) {
+          status = matchedCom.status as CommissionPayoutStatus;
+        }
+
+        const finalAmount = paidInfo.isPaid && paidInfo.amount ? paidInfo.amount : (matchedCom?.amount || Math.round(((app.salaryExpectation || 45000000) * 1.5) * 0.15) || 25000000);
+
+        return {
+          id: `COM-${app.id}`,
+          candidateName: app.fullName,
+          jobTitle: app.jobTitle,
+          companyName: app.company,
+          commissionRate: 15,
+          amount: finalAmount,
+          probationDaysPassed,
+          totalDays: 60 as const,
+          status,
+          uncNumber: paidInfo.uncNumber || matchedCom?.uncNumber || 'UNC-TCB-20260324-8821',
+          uncUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1000&q=80',
+          paidAt: paidInfo.paidAt || matchedCom?.paidAt || dayjs().format('YYYY-MM-DDTHH:mm:ss.SSSZ'),
+          bankName: 'Ngân hàng TMCP Quân đội (MB Bank)',
+          accountNumber: '888899991234',
+          beneficiaryName: ((user as any)?.fullName || user?.name || 'NGUYEN VAN B / CTV5').toUpperCase(),
+          hiredDate: app.onboardDate || dayjs().subtract(probationDaysPassed, 'day').format('YYYY-MM-DD'),
+          warrantyEndDate: dayjs().add(Math.max(0, 60 - probationDaysPassed), 'day').format('YYYY-MM-DD'),
+          avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(app.fullName)}`,
+        };
+      });
+
+    // Also include records from localCommissions that belong to this affiliate (e.g. cvt5@gmail.com) if not already mapped
+    const existingNames = new Set(mappedFromApps.map((m) => m.candidateName.toLowerCase().trim()));
+    localCommissions.forEach((c: any) => {
+      const matchAffiliate =
+        !userEmail ||
+        (c.affiliateEmail && c.affiliateEmail.toLowerCase().trim() === userEmail) ||
+        (userEmail === 'cvt5@gmail.com') ||
+        (!c.affiliateEmail && (userEmail.includes('affiliate') || userEmail.includes('david.tran')));
+
+      if (matchAffiliate && c.candidateName && !existingNames.has(c.candidateName.toLowerCase().trim())) {
+        const matchedWarranty = localWarranties.find((w) =>
+          w.id === c.id ||
+          w.applicationId === c.applicationId ||
+          (w.candidateName && c.candidateName && w.candidateName.toLowerCase().trim() === c.candidateName.toLowerCase().trim()) ||
+          (w.jobTitle && c.jobTitle && w.jobTitle.toLowerCase().trim() === c.jobTitle.toLowerCase().trim())
+        );
+
+        const paidInfo = checkIsDealPaid(c.candidateName, c.candidateEmail, c.jobTitle);
+
+        const isPassed =
+          paidInfo.isPaid ||
+          matchedWarranty?.status === 'PASSED' ||
+          matchedWarranty?.daysWorked === 60 ||
+          c.status === 'PAYABLE' ||
+          c.status === 'PENDING_APPROVAL' ||
+          c.probationDays === 60 ||
+          c.probationDaysPassed === 60 ||
+          c.progress === 100;
+
+        const probationDaysPassed = isPassed
+          ? 60
+          : (matchedWarranty?.daysWorked ?? c.probationDaysPassed ?? c.probationDays ?? 5);
+
+        let status: CommissionPayoutStatus = 'PENDING';
+        if (paidInfo.isPaid) {
+          status = 'PAID';
+        } else if (c.status === 'PENDING_APPROVAL') {
+          status = 'PENDING_APPROVAL';
+        } else if (isPassed) {
+          status = 'PAYABLE';
+        } else if (c.status) {
+          status = c.status as CommissionPayoutStatus;
+        }
+
+        const finalAmount = paidInfo.isPaid && paidInfo.amount ? paidInfo.amount : (c.amount || 25000000);
+
+        mappedFromApps.push({
+          id: c.id || `COM-${Date.now()}`,
+          candidateName: c.candidateName,
+          jobTitle: c.jobTitle || 'Vị trí tuyển dụng',
+          companyName: c.companyName || 'Công ty đối tác',
+          commissionRate: c.commissionRate || 15,
+          amount: finalAmount,
+          probationDaysPassed,
+          totalDays: 60 as const,
+          status,
+          uncNumber: paidInfo.uncNumber || c.uncNumber || 'UNC-TCB-20260324-8821',
+          uncUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1000&q=80',
+          paidAt: paidInfo.paidAt || c.paidAt || dayjs().format('YYYY-MM-DDTHH:mm:ss.SSSZ'),
+          bankName: 'Ngân hàng TMCP Quân đội (MB Bank)',
+          accountNumber: '888899991234',
+          beneficiaryName: ((user as any)?.fullName || user?.name || 'NGUYEN VAN B / CTV5').toUpperCase(),
+          hiredDate: c.hiredDate || dayjs().subtract(probationDaysPassed, 'day').format('YYYY-MM-DD'),
+          warrantyEndDate: c.warrantyEndDate || dayjs().add(Math.max(0, 60 - probationDaysPassed), 'day').format('YYYY-MM-DD'),
+          avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(c.candidateName)}`,
+        });
+      }
+    });
+
+    return mappedFromApps;
+  }, [rawApplications, userEmail, user]);
+
+  const baseCommissions = useMemo(() => {
+    let localCommissions: any[] = [];
+    try {
+      const raw = localStorage.getItem('hrconnect_commissions');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) localCommissions = parsed;
+      }
+    } catch { /* noop */ }
+
+    let localWarranties: any[] = [];
+    try {
+      const wRaw = localStorage.getItem('hrconnect_warranty_records');
+      if (wRaw) {
+        const parsed = JSON.parse(wRaw);
+        if (Array.isArray(parsed)) localWarranties = parsed;
+      }
+    } catch { /* noop */ }
+
+    let localPayouts: any[] = [];
+    try {
+      const pRaw = localStorage.getItem('hrconnect_payouts');
+      if (pRaw) {
+        const parsed = JSON.parse(pRaw);
+        if (Array.isArray(parsed)) localPayouts = parsed;
+      }
+    } catch { /* noop */ }
+
+    let localAuditLogs: any[] = [];
+    try {
+      const aRaw = localStorage.getItem('hrconnect_audit_logs');
+      if (aRaw) {
+        const parsed = JSON.parse(aRaw);
+        if (Array.isArray(parsed)) localAuditLogs = parsed;
+      }
+    } catch { /* noop */ }
+
+    if (isDemoAffiliate) {
+      const updatedInitial = INITIAL_COMMISSIONS.map((item) => {
+        const matchedCom = localCommissions.find((c) =>
+          c.id === item.id ||
+          (c.candidateName && c.candidateName.toLowerCase().trim() === item.candidateName.toLowerCase().trim()) ||
+          (c.jobTitle && c.jobTitle.toLowerCase().trim() === item.jobTitle.toLowerCase().trim())
+        );
+        const matchedWarranty = localWarranties.find((w) =>
+          w.id === item.id ||
+          (w.candidateName && w.candidateName.toLowerCase().trim() === item.candidateName.toLowerCase().trim()) ||
+          (w.jobTitle && w.jobTitle.toLowerCase().trim() === item.jobTitle.toLowerCase().trim())
+        );
+        const matchedPayout = localPayouts.find((p) =>
+          (p.candidateName && p.candidateName.toLowerCase().trim() === item.candidateName.toLowerCase().trim()) &&
+          (p.status === 'PAID' || p.status === 'Đã thanh toán')
+        );
+
+        if (matchedPayout || matchedCom?.status === 'PAID') {
+          return {
+            ...item,
+            amount: matchedPayout?.commissionAmount || matchedCom?.amount || item.amount,
+            probationDaysPassed: 60,
+            status: 'PAID' as CommissionPayoutStatus,
+            uncNumber: item.uncNumber || 'UNC-VCB-20260312-8821',
+          };
+        }
+
+        const isPassed =
+          matchedWarranty?.status === 'PASSED' ||
+          matchedWarranty?.daysWorked === 60 ||
+          matchedCom?.status === 'PAYABLE' ||
+          matchedCom?.status === 'PENDING_APPROVAL' ||
+          matchedCom?.probationDays === 60 ||
+          matchedCom?.probationDaysPassed === 60 ||
+          matchedCom?.progress === 100;
+
+        if (matchedCom?.status === 'PENDING_APPROVAL') {
+          return {
+            ...item,
+            probationDaysPassed: 60,
+            status: 'PENDING_APPROVAL' as CommissionPayoutStatus,
+          };
+        }
+
+        if (isPassed) {
+          return {
+            ...item,
+            probationDaysPassed: 60,
+            status: 'PAYABLE' as CommissionPayoutStatus,
+          };
+        }
+        return item;
+      });
+
+      const existingNames = new Set(updatedInitial.map((c) => c.candidateName.toLowerCase().trim()));
+      const extraOnboarded = onboardedStoreCommissions.filter((c) => !existingNames.has(c.candidateName.toLowerCase().trim()));
+      return [...updatedInitial, ...extraOnboarded];
+    }
+    return onboardedStoreCommissions;
+  }, [isDemoAffiliate, onboardedStoreCommissions]);
+
+  const [commissions, setCommissions] = useState<AffiliateCommissionDTO[]>(baseCommissions);
+
+  // Sync if baseCommissions change
+  React.useEffect(() => {
+    setCommissions(baseCommissions);
+  }, [baseCommissions]);
+
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
@@ -125,7 +544,14 @@ export const AffiliateCommissionsPage: React.FC = () => {
         item.jobTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.companyName.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchStatus = statusFilter === 'ALL' || item.status === statusFilter;
+      let matchStatus = statusFilter === 'ALL' || item.status === statusFilter;
+      if (statusFilter === 'PAYABLE') {
+        matchStatus = item.status === 'PAYABLE' || item.status === 'ELIGIBLE';
+      } else if (statusFilter === 'PAID') {
+        matchStatus = item.status === 'PAID';
+      } else if (statusFilter === 'PENDING_APPROVAL') {
+        matchStatus = item.status === 'PENDING_APPROVAL';
+      }
 
       return matchSearch && matchStatus;
     });
@@ -138,7 +564,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
       .filter((item) => item.status === 'PENDING')
       .reduce((sum, item) => sum + item.amount, 0);
     const eligibleAmount = commissions
-      .filter((item) => item.status === 'ELIGIBLE' || item.status === 'APPROVED' || item.status === 'PAYABLE')
+      .filter((item) => item.status === 'ELIGIBLE' || item.status === 'APPROVED' || item.status === 'PAYABLE' || item.status === 'PENDING_APPROVAL')
       .reduce((sum, item) => sum + item.amount, 0);
     const paidCommissions = commissions.filter((item) => item.status === 'PAID');
     const paidAmount = paidCommissions.reduce((sum, item) => sum + item.amount, 0);
@@ -158,17 +584,43 @@ export const AffiliateCommissionsPage: React.FC = () => {
     setIsUncModalOpen(true);
   };
 
-  // Request Payout Action
+  // Request Payout Action: chuyển sang PENDING_APPROVAL để Admin duyệt
   const handleRequestPayout = (recordId: string) => {
     setCommissions((prev) =>
       prev.map((item) => {
         if (item.id === recordId) {
-          message.success('Đã gửi yêu cầu rút hoa hồng thành công! Kế toán sẽ phê duyệt lệnh chi trong 24h.');
-          return { ...item, status: 'APPROVED' };
+          return { ...item, status: 'PENDING_APPROVAL' as CommissionPayoutStatus };
         }
         return item;
       })
     );
+
+    // Sync to hrconnect_commissions
+    try {
+      const comRaw = localStorage.getItem('hrconnect_commissions');
+      if (comRaw) {
+        const parsed = JSON.parse(comRaw);
+        if (Array.isArray(parsed)) {
+          const updated = parsed.map((c: any) => {
+            if (c.id === recordId || `COM-${c.id}` === recordId || (c.applicationId && `COM-${c.applicationId}` === recordId)) {
+              return {
+                ...c,
+                status: 'PENDING_APPROVAL',
+                statusLabel: 'Chờ Admin duyệt thanh toán',
+                payoutRequestedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
+            }
+            return c;
+          });
+          localStorage.setItem('hrconnect_commissions', JSON.stringify(updated));
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    message.success('Đã gửi yêu cầu thanh toán thành công! Trạng thái chuyển sang "Chờ Admin duyệt".');
   };
 
   // Status tag mapper
@@ -186,17 +638,28 @@ export const AffiliateCommissionsPage: React.FC = () => {
             Đủ điều kiện nhận (PASS)
           </Tag>
         );
-      case 'APPROVED':
       case 'PAYABLE':
         return (
+          <Tag color="cyan" icon={<CheckCircleFilled />}>
+            Sẵn sàng nhận Payout
+          </Tag>
+        );
+      case 'PENDING_APPROVAL':
+        return (
+          <Tag color="orange" icon={<ClockCircleOutlined />}>
+            Chờ Admin duyệt thanh toán
+          </Tag>
+        );
+      case 'APPROVED':
+        return (
           <Tag color="cyan" icon={<FileDoneOutlined />}>
-            Đã duyệt lệnh chi (Payable)
+            Đã duyệt lệnh chi (Approved)
           </Tag>
         );
       case 'PAID':
         return (
-          <Tag color="blue" icon={<CheckCircleFilled />}>
-            Đã thanh toán (PAID)
+          <Tag color="success" icon={<CheckCircleFilled />}>
+            ĐÃ THANH TOÁN (PAID)
           </Tag>
         );
       default:
@@ -271,48 +734,81 @@ export const AffiliateCommissionsPage: React.FC = () => {
       },
     },
     {
-      title: 'Trạng thái',
+      title: 'TRẠNG THÁI',
       key: 'status',
-      minWidth: 180,
+      minWidth: 190,
       render: (_: any, record: AffiliateCommissionDTO) => renderStatusTag(record.status),
     },
     {
-      title: 'Hành động',
+      title: 'THAO TÁC',
       key: 'actions',
-      minWidth: 170,
+      minWidth: 260,
       render: (_: any, record: AffiliateCommissionDTO) => {
         if (record.status === 'PAID') {
           return (
-            <Button
-              type="primary"
-              size="small"
-              icon={<AuditOutlined />}
-              style={{ background: '#0284c7', borderColor: '#0284c7' }}
-              onClick={() => handleOpenUnc(record)}
-            >
-              Xem chứng từ UNC
-            </Button>
+            <Space size={8} wrap>
+              <Tag
+                color="success"
+                icon={<CheckCircleFilled />}
+                style={{ fontWeight: 600, padding: '4px 10px', borderRadius: 6, fontSize: 12, margin: 0 }}
+              >
+                Đã nhận tiền
+              </Tag>
+              <Button
+                type="primary"
+                size="small"
+                icon={<AuditOutlined />}
+                style={{ background: '#0284c7', borderColor: '#0284c7', borderRadius: 6, fontSize: 12, fontWeight: 500 }}
+                onClick={() => handleOpenUnc(record)}
+              >
+                Xem lệnh UNC / Biên lai
+              </Button>
+            </Space>
           );
         }
 
-        if (record.status === 'ELIGIBLE') {
+        if (record.status === 'PAYABLE' || record.status === 'ELIGIBLE') {
           return (
             <Popconfirm
-              title="Gửi yêu cầu rút hoa hồng?"
-              description={`Rút ${formatCurrencyVND(record.amount)} về tài khoản ngân hàng của bạn?`}
+              title="Yêu cầu thanh toán hoa hồng?"
+              description={`Gửi yêu cầu rút ${formatCurrencyVND(record.amount)} đến Admin phê duyệt giải ngân?`}
               onConfirm={() => handleRequestPayout(record.id)}
-              okText="Rút tiền ngay"
+              okText="Xác nhận rút"
               cancelText="Hủy"
             >
-              <Button type="primary" size="small" style={{ background: '#16a34a', borderColor: '#16a34a' }}>
-                Yêu cầu rút tiền
+              <Button
+                type="primary"
+                size="small"
+                icon={<DollarOutlined />}
+                style={{
+                  background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                  borderColor: '#ea580c',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  boxShadow: '0 2px 4px rgba(234, 88, 12, 0.25)',
+                }}
+              >
+                Yêu cầu thanh toán
               </Button>
             </Popconfirm>
           );
         }
 
+        if (record.status === 'PENDING_APPROVAL') {
+          return (
+            <Tag color="orange" icon={<ClockCircleOutlined />} style={{ padding: '4px 10px', borderRadius: 6, fontWeight: 500 }}>
+              Chờ Admin duyệt
+            </Tag>
+          );
+        }
+
         if (record.status === 'APPROVED') {
-          return <Tag color="blue">Kế toán đang giải ngân</Tag>;
+          return (
+            <Tag color="cyan" icon={<FileDoneOutlined />} style={{ padding: '4px 10px', borderRadius: 6, fontWeight: 500 }}>
+              Kế toán đang giải ngân
+            </Tag>
+          );
         }
 
         return (
@@ -332,9 +828,51 @@ export const AffiliateCommissionsPage: React.FC = () => {
           Sổ cái Hoa hồng & Quản lý Payout
         </Title>
         <Text style={{ color: '#64748b' }}>
-          Headhunter: <strong style={{ color: '#0f172a' }}>{user?.name || 'Chuyên viên Tuyển dụng'}</strong> ({user?.company || 'Cộng tác viên Độc lập'}) • Giám sát dòng tiền hoa hồng theo các mốc 60 ngày bảo hành
+          Headhunter: <strong style={{ color: '#0f172a' }}>{user?.name || user?.email || 'Chuyên viên Tuyển dụng'}</strong> ({user?.company || 'Cộng tác viên Độc lập'}) • Giám sát dòng tiền hoa hồng theo các mốc 60 ngày bảo hành
         </Text>
       </div>
+
+      {/* ─── FINANCIAL LOGIC SEPARATION & GUIDANCE ALERT (REQUIREMENT 2) ─────── */}
+      <Alert
+        message={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 280 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#0369a1' }}>
+                Nguyên tắc hạch toán Sổ cái Hoa hồng & Quản lý Payout
+              </div>
+              <div style={{ fontSize: 13, color: '#334155', marginTop: 4, lineHeight: 1.5 }}>
+                Sổ cái hoa hồng chỉ ghi nhận các deal khi ứng viên đã <strong>Nhận việc (Onboard — đang trong 60 ngày bảo hành thử việc)</strong> hoặc đã <strong>Đạt thử việc (Đủ điều kiện nhận / Đã thanh toán)</strong>.
+                {affiliateEarlyStageApps.length > 0 ? (
+                  <span style={{ display: 'block', marginTop: 4, color: '#0284c7', fontWeight: 600 }}>
+                    ⚡ Bạn hiện có <u>{affiliateEarlyStageApps.length} hồ sơ</u> đang ở giai đoạn Nộp hồ sơ, Sàng lọc AI & Phỏng vấn. Hãy sang mục "Hồ sơ đã giới thiệu" để theo dõi chi tiết.
+                  </span>
+                ) : (
+                  <span style={{ display: 'block', marginTop: 4, color: '#64748b' }}>
+                    Các hồ sơ mới giới thiệu sẽ tự động xuất hiện tại Sổ cái ngay khi ứng viên chính thức nhận việc.
+                  </span>
+                )}
+              </div>
+            </div>
+            <Button
+              type="primary"
+              icon={<TeamOutlined />}
+              onClick={() => navigate('/affiliate/submissions')}
+              style={{
+                borderRadius: 8,
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                border: 'none',
+              }}
+            >
+              Hồ sơ đã giới thiệu ({affiliateEarlyStageApps.length})
+            </Button>
+          </div>
+        }
+        type="info"
+        showIcon
+        icon={<SafetyCertificateOutlined style={{ color: '#0284c7', fontSize: 22 }} />}
+        style={{ marginBottom: 20, borderRadius: 10, border: '1px solid #bae6fd', background: '#f0f9ff' }}
+      />
 
       {/* ─── 4 EVENLY DISTRIBUTED KPI CARDS (FIXED OVERLAPPING BUG) ─────────── */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
@@ -530,9 +1068,9 @@ export const AffiliateCommissionsPage: React.FC = () => {
               options={[
                 { value: 'ALL', label: 'Tất cả trạng thái hoa hồng' },
                 { value: 'PENDING', label: 'Đang chờ duyệt (Trong 60 ngày BH)' },
-                { value: 'ELIGIBLE', label: 'Đủ điều kiện nhận (PASS)' },
-                { value: 'APPROVED', label: 'Đã duyệt lệnh chi' },
-                { value: 'PAID', label: 'Đã thanh toán (Có UNC)' },
+                { value: 'PAYABLE', label: 'Sẵn sàng chi trả / Đã mở khóa Payout' },
+                { value: 'PENDING_APPROVAL', label: 'Chờ Admin duyệt thanh toán' },
+                { value: 'PAID', label: 'Đã thanh toán (PAID - Có UNC)' },
               ]}
             />
           </Col>

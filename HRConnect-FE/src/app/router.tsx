@@ -98,7 +98,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'client/dashboard',
-        element: protectedPage('/client/dashboard', <AppRoutes.Dashboard />),
+        element: protectedPage('/client/dashboard', <AppRoutes.ClientDashboardPage />),
       },
       {
         path: 'client/jobs',
@@ -109,12 +109,16 @@ export const router = createBrowserRouter([
         element: protectedPage('/client/jobs/create', <AppRoutes.CreateJobWizard />),
       },
       {
+        path: 'client/post-job',
+        element: protectedPage('/client/post-job', <AppRoutes.CreateJobWizard />),
+      },
+      {
         path: 'client/candidates',
         element: protectedPage('/client/candidates', <AppRoutes.ClientCandidatePoolPage />),
       },
       {
         path: 'client/interviews-offers',
-        element: protectedPage('/client/interviews-offers', <AppRoutes.ClientCandidatePoolPage />),
+        element: protectedPage('/client/interviews-offers', <AppRoutes.ClientInterviewsOffersPage />),
       },
       {
         path: 'client/warranty',
@@ -122,7 +126,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'affiliate/dashboard',
-        element: protectedPage('/affiliate/dashboard', <AppRoutes.Dashboard />),
+        element: protectedPage('/affiliate/dashboard', <AppRoutes.AffiliateDashboardPage />),
       },
       {
         path: 'affiliate/jobs',
@@ -133,12 +137,20 @@ export const router = createBrowserRouter([
         element: protectedPage('/affiliate/submissions', <AppRoutes.AffiliateSubmissionsPage />),
       },
       {
+        path: 'affiliate/candidates',
+        element: protectedPage('/affiliate/candidates', <AppRoutes.AffiliateSubmissionsPage />),
+      },
+      {
         path: 'affiliate/submit-candidate',
         element: protectedPage('/affiliate/submit-candidate', <AppRoutes.ReferralForm />),
       },
       {
         path: 'affiliate/referral',
         element: protectedPage('/affiliate/referral', <AppRoutes.ReferralForm />),
+      },
+      {
+        path: 'affiliate/refer',
+        element: protectedPage('/affiliate/refer', <AppRoutes.ReferralForm />),
       },
       {
         path: 'affiliate/commissions',
@@ -150,7 +162,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'hr/dashboard',
-        element: protectedPage('/hr/dashboard', <AppRoutes.Dashboard />),
+        element: protectedPage('/hr/dashboard', <AppRoutes.HRDashboardPage />),
       },
       {
         path: 'hr/jobs',
@@ -178,7 +190,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'candidate/dashboard',
-        element: protectedPage('/candidate/dashboard', <AppRoutes.Dashboard />),
+        element: protectedPage('/candidate/dashboard', <AppRoutes.CandidateDashboardPage />),
       },
       {
         path: 'profile',

@@ -106,8 +106,84 @@ const RANK_BADGES: Record<string, { label: string; color: string; bg: string }> 
   SILVER: { label: 'Silver Recruiter', color: '#64748b', bg: '#f8fafc' },
 };
 
+/**
+ * Load affiliates from hrconnect_users (role === 'AFFILIATE') and bind applications and commissions
+ */
+function loadAffiliatesFromStorage(): AffiliateRecord[] {
+  let affiliateUsers: any[] = [];
+  try {
+    const rawUsers = localStorage.getItem('hrconnect_users');
+    if (rawUsers) {
+      const parsed = JSON.parse(rawUsers);
+      if (Array.isArray(parsed)) {
+        affiliateUsers = parsed.filter((u: any) => u.role === 'AFFILIATE');
+      }
+    }
+  } catch (e) {
+    console.error('Failed to read hrconnect_users in AdminAffiliatesPage:', e);
+  }
+
+  let allApps: any[] = [];
+  try {
+    const rawApps = localStorage.getItem('hrconnect_candidate_applications');
+    if (rawApps) {
+      const parsed = JSON.parse(rawApps);
+      allApps = Array.isArray(parsed) ? parsed : (parsed?.state?.applications || []);
+    }
+  } catch (e) {
+    console.error('Failed to read applications in AdminAffiliatesPage:', e);
+  }
+
+  let allCommissions: any[] = [];
+  try {
+    const rawCom = localStorage.getItem('hrconnect_commissions');
+    if (rawCom) {
+      const parsed = JSON.parse(rawCom);
+      if (Array.isArray(parsed)) allCommissions = parsed;
+    }
+  } catch (e) {
+    console.error('Failed to read hrconnect_commissions in AdminAffiliatesPage:', e);
+  }
+
+  const dynamicAffiliates: AffiliateRecord[] = affiliateUsers.map((u: any, idx: number) => {
+    const affName = u.fullName || u.name || 'CTV ' + (idx + 1);
+    const matchingApps = allApps.filter((a: any) =>
+      (a.affiliateEmail && u.email && a.affiliateEmail.toLowerCase() === u.email.toLowerCase()) ||
+      (a.affiliateName && a.affiliateName.toLowerCase() === affName.toLowerCase())
+    );
+    const matchingComms = allCommissions.filter((c: any) =>
+      (c.affiliateEmail && u.email && c.affiliateEmail.toLowerCase() === u.email.toLowerCase()) ||
+      (c.affiliateName && c.affiliateName.toLowerCase() === affName.toLowerCase())
+    );
+    const totalCommission = matchingComms.reduce((acc: number, c: any) => acc + (c.amount || 0), 0);
+
+    return {
+      id: u.id || `aff-usr-${idx}`,
+      name: affName,
+      email: u.email,
+      phone: u.phone || '0909 112 233',
+      taxCode: u.taxCode || '840' + Math.floor(1000000 + Math.random() * 9000000),
+      rank: totalCommission > 200000000 ? 'PLATINUM' : totalCommission > 100000000 ? 'GOLD' : 'SILVER',
+      totalSubmitted: matchingApps.length > 0 ? matchingApps.length : (u.email?.includes('affiliate@demo.com') ? 48 : 5),
+      successfulHires: matchingApps.filter((a: any) => a.status === 'ONBOARDED').length || (u.email?.includes('affiliate@demo.com') ? 14 : 1),
+      warrantyPassRate: 90,
+      totalCommissionEarned: totalCommission > 0 ? totalCommission : (u.email?.includes('affiliate@demo.com') ? 245000000 : 25000000),
+      status: 'ACTIVE',
+      joinedDate: u.createdAt ? u.createdAt.slice(0, 10) : '2026-01-10',
+    };
+  });
+
+  const existingEmails = new Set(dynamicAffiliates.map((a) => a.email.toLowerCase()));
+  const merged = [
+    ...dynamicAffiliates,
+    ...INITIAL_AFFILIATES.filter((a) => !existingEmails.has(a.email.toLowerCase())),
+  ];
+
+  return merged;
+}
+
 export const AdminAffiliatesPage: React.FC = () => {
-  const [affiliates, setAffiliates] = useState<AffiliateRecord[]>(INITIAL_AFFILIATES);
+  const [affiliates, setAffiliates] = useState<AffiliateRecord[]>(loadAffiliatesFromStorage);
   const [selectedAffiliate, setSelectedAffiliate] = useState<AffiliateRecord | null>(null);
   const [kycModalOpen, setKycModalOpen] = useState(false);
 

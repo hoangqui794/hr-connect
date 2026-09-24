@@ -64,6 +64,9 @@ export interface CandidateApplicationDTO {
   candidateName: string;
   currentRole: string;
   currentCompany: string;
+  companyName?: string;
+  clientEmail?: string;
+  clientId?: string;
   yoe: number;
   expectedSalary: number;
   status: CandidatePipelineStatus;
@@ -95,7 +98,11 @@ export interface ProbationWarrantyDTO {
   id: string;
   applicationId: string;
   candidateName: string;
+  candidateEmail?: string;
   jobTitle: string;
+  companyName?: string;
+  clientEmail?: string;
+  clientId?: string;
   serviceType: 'HEADHUNT_COD';
   startDate: string; // YYYY-MM-DD
   probationDaysTotal: 60;
@@ -107,4 +114,6 @@ export interface ProbationWarrantyDTO {
   resignationDate?: string;
   failReason?: string;
   note?: string;
+  clientDecision?: 'PASSED' | 'FAILED';
+  clientFeedbackDate?: string;
 }

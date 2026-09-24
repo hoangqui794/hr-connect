@@ -28,7 +28,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: UserRole.CLIENT,
     title: 'Doanh nghiệp (Client)',
-    email: 'client@demo.com',
+    email: 'tuyendung5@gmail.com',
     workspaceName: 'Client Workspace',
     targetRoute: '/client/dashboard',
     color: '#0284c7',
@@ -36,7 +36,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: UserRole.AFFILIATE,
     title: 'Cộng tác viên (Affiliate)',
-    email: 'affiliate@demo.com',
+    email: 'cvt5@gmail.com',
     workspaceName: 'OPR Hub',
     targetRoute: '/affiliate/dashboard',
     color: '#f59e0b',
@@ -44,7 +44,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: UserRole.INTERNAL_HR,
     title: 'HR Nội bộ (Internal HR)',
-    email: 'hr@demo.com',
+    email: 'myhr@hrconnect.io',
     workspaceName: 'HR Workspace',
     targetRoute: '/hr/dashboard',
     color: '#10b981',
@@ -52,7 +52,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: UserRole.CANDIDATE,
     title: 'Ứng viên (Candidate)',
-    email: 'candidate@demo.com',
+    email: 'ungvien5@gmail.com',
     workspaceName: 'Candidate Portal',
     targetRoute: '/candidate/dashboard',
     color: '#8b5cf6',
@@ -60,7 +60,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: UserRole.ADMIN,
     title: 'Platform Admin',
-    email: 'admin@demo.com',
+    email: 'myadmin@hrconnect.io',
     workspaceName: 'Admin Control',
     targetRoute: '/admin/dashboard',
     color: '#ef4444',
@@ -134,13 +134,30 @@ export const LoginPage: React.FC = () => {
   const handleQuickFill = async (demo: DemoAccount) => {
     form.setFieldsValue({
       email: demo.email,
-      password: 'demoPassword123',
+      password: '123456',
     });
-    // For demo account click, initialize demo candidate data if candidate role
+    const account = findRegisteredAccountByEmail(demo.email.toLowerCase());
+    // For demo account click, only initialize demo candidate data for minh.nguyen demo account
     if (demo.role === UserRole.CANDIDATE) {
-      useCandidateStore.getState().loadDemoData();
+      if (demo.email === 'minh.nguyen@gmail.com') {
+        useCandidateStore.getState().loadDemoData();
+      } else {
+        useCandidateStore.getState().initCandidateFromUser({
+          name: account?.fullName || 'Ứng viên',
+          email: demo.email,
+        });
+      }
     }
-    await performLogin(demo.role, undefined, demo.targetRoute);
+    const customUser: Partial<UserProfile> | undefined = account
+      ? {
+          id: account.id,
+          name: account.fullName,
+          email: account.email,
+          role: account.role,
+          company: account.role === UserRole.CLIENT ? (account.companyName || 'Công ty TNHH Tuyển Dụng 5') : undefined,
+        }
+      : undefined;
+    await performLogin(demo.role, customUser, demo.targetRoute);
   };
 
   return (

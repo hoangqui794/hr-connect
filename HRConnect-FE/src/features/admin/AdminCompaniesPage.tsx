@@ -93,8 +93,71 @@ const INITIAL_COMPANIES: CompanyRecord[] = [
   },
 ];
 
+/**
+ * Load company list by reading hrconnect_users (role === 'CLIENT') and binding active jobs from hrconnect_all_jobs
+ */
+function loadCompaniesFromStorage(): CompanyRecord[] {
+  let clientUsers: any[] = [];
+  try {
+    const rawUsers = localStorage.getItem('hrconnect_users');
+    if (rawUsers) {
+      const parsed = JSON.parse(rawUsers);
+      if (Array.isArray(parsed)) {
+        clientUsers = parsed.filter((u: any) => u.role === 'CLIENT');
+      }
+    }
+  } catch (e) {
+    console.error('Failed to read hrconnect_users in AdminCompaniesPage:', e);
+  }
+
+  let allJobs: any[] = [];
+  try {
+    const rawJobs = localStorage.getItem('hrconnect_all_jobs');
+    if (rawJobs) {
+      const parsed = JSON.parse(rawJobs);
+      if (Array.isArray(parsed)) {
+        allJobs = parsed;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to read hrconnect_all_jobs in AdminCompaniesPage:', e);
+  }
+
+  const dynamicCompanies: CompanyRecord[] = clientUsers.map((u: any, idx: number) => {
+    const userCompany = u.companyName || u.name || 'Doanh nghiệp ' + (idx + 1);
+    // Count jobs matching this client
+    const matchingJobs = allJobs.filter((j: any) =>
+      (j.clientEmail && u.email && j.clientEmail.toLowerCase() === u.email.toLowerCase()) ||
+      (j.clientId && j.clientId === u.id) ||
+      (j.company && j.company.trim().toLowerCase() === userCompany.trim().toLowerCase())
+    );
+
+    return {
+      id: u.id || `comp-usr-${idx}`,
+      name: userCompany,
+      taxCode: u.taxCode || '031' + Math.floor(1000000 + Math.random() * 9000000),
+      contactPerson: u.fullName || u.name || 'Người đại diện',
+      email: u.email,
+      phone: u.phone || '0901 234 567',
+      activeJobs: matchingJobs.length > 0 ? matchingJobs.length : (u.email?.includes('client@demo.com') ? 4 : 1),
+      packageType: 'COD',
+      status: 'VERIFIED',
+      registrationDate: u.createdAt ? u.createdAt.slice(0, 10) : '2026-03-01',
+      address: u.address || 'Hà Nội / TP. Hồ Chí Minh',
+    };
+  });
+
+  const existingEmails = new Set(dynamicCompanies.map((c) => c.email.toLowerCase()));
+  const merged = [
+    ...dynamicCompanies,
+    ...INITIAL_COMPANIES.filter((c) => !existingEmails.has(c.email.toLowerCase())),
+  ];
+
+  return merged;
+}
+
 export const AdminCompaniesPage: React.FC = () => {
-  const [companies, setCompanies] = useState<CompanyRecord[]>(INITIAL_COMPANIES);
+  const [companies, setCompanies] = useState<CompanyRecord[]>(loadCompaniesFromStorage);
   const [selectedCompany, setSelectedCompany] = useState<CompanyRecord | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
 

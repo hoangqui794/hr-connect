@@ -40,8 +40,10 @@ import {
 import { useCandidates, useScreeningResult } from '@/services/queries/useCandidates';
 import { useJobs } from '@/services/queries/useJobs';
 import { ScoreTierTag } from '@/components/common/ScoreTierTag';
-import { getScoreTier, SCORE_TIER_CONFIG } from '@/types/candidate';
+import { getScoreTier, SCORE_TIER_CONFIG, ScoreTier, ApplicationStatus, CVMode } from '@/types/candidate';
 import { scoreToColorTier, COLOR_TIER_CONFIG, ColorTier } from '@/types/domain';
+import { useApplicationStore } from '@/stores/applicationStore';
+import { saveInterview } from '@/services/localStorageService';
 import type { Candidate } from '@/types/candidate';
 import type { Job } from '@/types/job';
 
@@ -304,9 +306,43 @@ const JDPanel: React.FC<JDPanelProps> = ({ job, candidateSkills }) => {
 export const AIScreening: React.FC = () => {
   const { data: candidates, isLoading: candidatesLoading } = useCandidates();
   const { data: jobs, isLoading: jobsLoading } = useJobs();
+  const sharedApps = useApplicationStore((s) => s.applications);
 
-  const [selectedCandidateId, setSelectedCandidateId] = useState('cand-101');
-  const [selectedJobId, setSelectedJobId] = useState('job-001');
+  // Build merged candidate dropdown options: shared apps first, then mock
+  const candidateOptions = React.useMemo(() => {
+    const sharedOptions = sharedApps.map((a) => ({
+      value: `shared-${a.id}`,
+      label: `★ ${a.fullName} — Ứng tuyển: ${a.jobTitle} (${a.source === 'AFFILIATE' ? `CTV ${a.affiliateName}` : 'Trực tiếp'})`,
+      isShared: true,
+      appData: a,
+    }));
+    const mockOptions = (candidates ?? []).map((c) => ({
+      value: c.id,
+      label: `${c.name} — ${c.currentTitle}`,
+      isShared: false,
+      appData: null,
+    }));
+    // Deduplicate by email from shared vs mock
+    const sharedEmails = new Set(sharedApps.map((a) => a.email.toLowerCase()));
+    const filteredMock = mockOptions.filter(
+      (o) => !sharedEmails.has((candidates?.find((c) => c.id === o.value)?.email ?? '').toLowerCase())
+    );
+    return [...sharedOptions, ...filteredMock];
+  }, [sharedApps, candidates]);
+
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string>(() => {
+    return sharedApps.length > 0 ? `shared-${sharedApps[0].id}` : 'cand-101';
+  });
+  const [selectedJobId, setSelectedJobId] = useState<string>(() => {
+    return sharedApps.length > 0 && sharedApps[0].jobId ? sharedApps[0].jobId : 'job-001';
+  });
+
+  React.useEffect(() => {
+    if (sharedApps.length > 0 && selectedCandidateId === 'cand-101') {
+      setSelectedCandidateId(`shared-${sharedApps[0].id}`);
+      if (sharedApps[0].jobId) setSelectedJobId(sharedApps[0].jobId);
+    }
+  }, [sharedApps]);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [actionDone, setActionDone] = useState<'shortlisted' | 'rejected' | null>(null);
   const [rejectReasonKey, setRejectReasonKey] = useState('');
@@ -317,16 +353,105 @@ export const AIScreening: React.FC = () => {
     selectedJobId
   );
 
-  const selectedCandidate = candidates?.find((c) => c.id === selectedCandidateId);
+  const selectedCandidate = React.useMemo<Candidate | undefined>(() => {
+    if (selectedCandidateId.startsWith('shared-')) {
+      const rawId = selectedCandidateId.replace('shared-', '');
+      const app = sharedApps.find((a) => a.id === rawId);
+      if (app) {
+        return {
+          id: selectedCandidateId,
+          name: app.fullName,
+          email: app.email,
+          phone: app.phone || '0901234567',
+          location: 'Hồ Chí Minh, Việt Nam',
+          currentTitle: app.jobTitle,
+          currentCompany: app.company,
+          cvMode: CVMode.FILE_UPLOAD,
+          highlightCard: {
+            currentSalary: 25000000,
+            expectedSalary: 35000000,
+            currency: 'VND',
+            yearsOfExperience: 3,
+            primaryLanguage: 'Tiếng Việt',
+            languageLevel: 'B2' as unknown as import('@/types/candidate').LanguageLevel,
+            availabilityDate: app.applyDate,
+            noticePeriod: 30,
+            headline: `Ứng viên nộp qua ${app.source === 'AFFILIATE' ? `CTV ${app.affiliateName || 'Đối tác'}` : 'Trực tiếp'}`,
+          },
+          skills: ['React', 'TypeScript', 'Node.js', 'REST API', 'PostgreSQL', 'Docker', 'Git'],
+          industries: ['Software Development', 'Fintech'],
+          applicationStatus: ApplicationStatus.SCREENING,
+          aiScore: app.aiScore,
+          scoreTier: app.aiScore >= 80 ? ScoreTier.TOP_FIT : ScoreTier.STRONG,
+          createdAt: app.applyDate,
+          updatedAt: app.applyDate,
+        };
+      }
+    }
+    return candidates?.find((c) => c.id === selectedCandidateId);
+  }, [selectedCandidateId, sharedApps, candidates]);
+
   const selectedJob = jobs?.find((j) => j.id === selectedJobId);
 
-  const score = screeningResult?.semanticScore ?? selectedCandidate?.aiScore ?? 0;
+  const score = selectedCandidateId.startsWith('shared-')
+    ? (selectedCandidate?.aiScore ?? 88)
+    : (screeningResult?.semanticScore ?? selectedCandidate?.aiScore ?? 0);
   const scoreTier = getScoreTier(score);
   const scoreTierConfig = SCORE_TIER_CONFIG[scoreTier];
   const colorTier = scoreToColorTier(score);
   const colorTierConfig = COLOR_TIER_CONFIG[colorTier];
 
-  const handleShortlist = () => setActionDone('shortlisted');
+  /**
+   * Shortlist handler — approves the candidate for interview:
+   *  1. Updates the application status to INTERVIEW_SCHEDULED in applicationStore.
+   *  2. Writes a new InterviewRecord into hrconnect_interviews localStorage.
+   */
+  const handleShortlist = () => {
+    if (!selectedCandidate) {
+      setActionDone('shortlisted');
+      return;
+    }
+
+    // --- 1. Update applicationStore status ---
+    if (selectedCandidateId.startsWith('shared-')) {
+      const rawId = selectedCandidateId.replace('shared-', '');
+      const app = sharedApps.find((a) => a.id === rawId);
+      if (app) {
+        const interviewDate = new Date();
+        interviewDate.setDate(interviewDate.getDate() + 1);
+        const isoDate = interviewDate.toISOString().slice(0, 10);
+        const timeStr = `${isoDate} 10:00`;
+
+        useApplicationStore.getState().updateApplicationStatus(
+          app.id,
+          'INTERVIEW_SCHEDULED',
+          {
+            interviewTime: timeStr,
+            interviewLink: 'https://meet.google.com/hrc-screen-' + app.id.slice(-5),
+            interviewerName: 'HR Connect — Ban tuyển dụng',
+          }
+        );
+
+        // --- 2. Persist InterviewRecord ---
+        saveInterview({
+          id: 'int-screen-' + app.id,
+          candidateName: app.fullName,
+          candidateEmail: app.email,
+          companyName: app.company || selectedJob?.company || 'HRConnect',
+          jobTitle: app.jobTitle,
+          roundName: 'Vòng 1 — Phỏng vấn chuyên môn',
+          scheduledTime: timeStr,
+          meetingLink: 'https://meet.google.com/hrc-screen-' + app.id.slice(-5),
+          interviewerName: 'HR Connect — Ban tuyển dụng',
+          status: 'SCHEDULED',
+          notes: `Ứng viên được duyệt qua AI Screening (Score: ${score}/100). Nguồn: ${app.source === 'AFFILIATE' ? 'CTV ' + (app.affiliateName || 'Chưa rõ') : 'Tự ứng tuyển'}.`,
+          applicationId: app.id,
+        });
+      }
+    }
+
+    setActionDone('shortlisted');
+  };
 
   const handleRejectConfirm = () => {
     if (!rejectReasonKey) return; // disabled if no reason
@@ -365,18 +490,37 @@ export const AIScreening: React.FC = () => {
           <Space wrap>
             <Select
               value={selectedCandidateId}
-              onChange={setSelectedCandidateId}
-              style={{ width: 250 }}
+              onChange={(val) => {
+                setSelectedCandidateId(val);
+                if (val.startsWith('shared-')) {
+                  const rawId = val.replace('shared-', '');
+                  const app = sharedApps.find((a) => a.id === rawId);
+                  if (app?.jobId) setSelectedJobId(app.jobId);
+                }
+              }}
+              style={{ width: 320 }}
               loading={candidatesLoading}
               placeholder="Chọn ứng viên"
               showSearch
               filterOption={(input, option) =>
                 String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
               }
-              options={candidates?.map((c) => ({
-                value: c.id,
-                label: `${c.name} — ${c.currentTitle}`,
-              }))}
+              options={[
+                {
+                  label: '★ Vừa nộp hồ sơ (Real-time)',
+                  options: candidateOptions.filter((o) => o.isShared).map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                  })),
+                },
+                {
+                  label: 'Hồ sơ kho (Mock Data)',
+                  options: candidateOptions.filter((o) => !o.isShared).map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                  })),
+                },
+              ]}
             />
             <Select
               value={selectedJobId}

@@ -49,18 +49,76 @@ export const ClientWarrantyPage: React.FC = () => {
   const isDemoClient = user?.id === 'client-001' || user?.company?.includes('TechCorp');
   const companyId = isDemoClient ? 'client-001' : user?.id;
 
-  // Load data from ClientService
+  // Load data from ClientService & hrconnect_warranty_records
   const loadWarrantyData = useCallback(async () => {
     try {
       setLoading(true);
       const data = await clientService.getWarrantyList(companyId);
-      setRecords(data);
+
+      // Read warranty records from localStorage 'hrconnect_warranty_records'
+      let storedWarranties: any[] = [];
+      try {
+        const raw = localStorage.getItem('hrconnect_warranty_records');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            storedWarranties = parsed;
+          }
+        }
+      } catch {
+        // noop
+      }
+
+      // Map stored warranties to ProbationWarrantyDTO
+      const convertedWarranties: ProbationWarrantyDTO[] = storedWarranties.map((w: any) => ({
+        id: w.id,
+        applicationId: w.applicationId || `APP-${w.id}`,
+        candidateName: w.candidateName,
+        candidateEmail: w.candidateEmail,
+        jobTitle: w.jobTitle,
+        companyName: w.companyName,
+        clientEmail: w.clientEmail,
+        clientId: w.clientId,
+        serviceType: 'HEADHUNT_COD',
+        startDate: w.startDate || new Date().toISOString().slice(0, 10),
+        probationDaysTotal: (w.maxDays || 60) as 60,
+        passedDays: w.daysWorked !== undefined ? w.daysWorked : (w.status === 'PASSED' ? 60 : 0),
+        status: w.status === 'PASSED' ? 'PASSED' : w.status === 'FAILED' ? 'FAILED_WARRANTY_TRIGGERED' : 'IN_PROBATION',
+        warrantyEndDate: w.warrantyEndDate || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        note: w.notes || (w.status === 'PASSED' ? 'Nghiệm thu thử việc thành công (PASS).' : 'Đang trong chu kỳ bảo hành 60 ngày thử việc'),
+        clientDecision: w.clientDecision || (w.status === 'PASSED' ? 'PASSED' : w.status === 'FAILED' ? 'FAILED' : undefined),
+        clientFeedbackDate: w.clientFeedbackDate,
+      }));
+
+      const currentUser = user;
+      const combined = [...data];
+      convertedWarranties.forEach((cw) => {
+        if (!combined.some((item) => item.id === cw.id || (item.candidateName === cw.candidateName && item.jobTitle === cw.jobTitle))) {
+          combined.push(cw);
+        }
+      });
+
+      // Filter: item.clientEmail === currentUser.email || item.clientId === currentUser.id || item.companyName === currentUser.companyName
+      const filteredByClient = combined.filter((item: any) => {
+        if (!currentUser) return true;
+        const currentCompanyName = currentUser.companyName || (currentUser as any).company || (isDemoClient ? 'TechCorp Việt Nam' : '');
+        const matchCondition =
+          (item.clientEmail && currentUser.email && item.clientEmail.toLowerCase() === currentUser.email.toLowerCase()) ||
+          (item.clientId && currentUser.id && item.clientId === currentUser.id) ||
+          (item.companyName && item.companyName === currentCompanyName);
+
+        if (isDemoClient && (!item.clientEmail && !item.clientId)) return true;
+        return matchCondition;
+      });
+
+      setRecords(filteredByClient);
     } catch (error) {
       message.error('Không thể tải danh sách bảo hành thử việc');
     } finally {
       setLoading(false);
     }
-  }, [companyId]);
+  }, [companyId, user, isDemoClient]);
 
   useEffect(() => {
     loadWarrantyData();
@@ -71,6 +129,142 @@ export const ClientWarrantyPage: React.FC = () => {
     try {
       setActionLoading(true);
       await clientService.confirmProbationResult(recordId, 'PASS');
+
+      const record = records.find((r) => r.id === recordId);
+      const candidateName = record?.candidateName || '';
+      const candidateEmail = record?.candidateEmail || '';
+      const jobTitle = record?.jobTitle || '';
+
+      // 1. Cập nhật record bảo hành trong hrconnect_warranty_records: daysWorked: 60, status: 'PASSED', clientDecision: 'PASSED'
+      try {
+        const raw = localStorage.getItem('hrconnect_warranty_records');
+        let wList: any[] = [];
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) wList = parsed;
+        }
+
+        let foundW = false;
+        wList = wList.map((w: any) => {
+          const matchId = w.id === recordId || (record?.applicationId && w.applicationId === record.applicationId);
+          const matchName = candidateName && w.candidateName && w.candidateName.toLowerCase() === candidateName.toLowerCase();
+          const matchJob = jobTitle && w.jobTitle && w.jobTitle.toLowerCase() === jobTitle.toLowerCase();
+          if (matchId || (matchName && matchJob) || matchName) {
+            foundW = true;
+            return {
+              ...w,
+              daysWorked: 60,
+              status: 'PASSED',
+              clientDecision: 'PASSED',
+              clientFeedbackDate: new Date().toISOString(),
+              notes: 'Doanh nghiệp đã xác nhận PASS (60 ngày thử việc)',
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return w;
+        });
+
+        if (!foundW) {
+          wList.push({
+            id: recordId,
+            applicationId: record?.applicationId || `APP-${recordId}`,
+            candidateName,
+            candidateEmail,
+            companyName: record?.companyName || user?.companyName || 'Công ty đối tác',
+            jobTitle,
+            daysWorked: 60,
+            maxDays: 60,
+            status: 'PASSED',
+            clientDecision: 'PASSED',
+            clientFeedbackDate: new Date().toISOString(),
+            notes: 'Doanh nghiệp đã xác nhận PASS (60 ngày thử việc)',
+            updatedAt: new Date().toISOString(),
+          });
+        }
+        localStorage.setItem('hrconnect_warranty_records', JSON.stringify(wList));
+      } catch (e) {
+        console.error('Lỗi cập nhật hrconnect_warranty_records:', e);
+      }
+
+      // 2. Tìm bản ghi hoa hồng tương ứng trong hrconnect_commissions và cập nhật đồng bộ:
+      // probationDays: 60 (hoặc progress: 100), status: 'PAYABLE', statusLabel: 'Sẵn sàng nhận Payout'
+      try {
+        const comRaw = localStorage.getItem('hrconnect_commissions');
+        let comList: any[] = [];
+        if (comRaw) {
+          const parsed = JSON.parse(comRaw);
+          if (Array.isArray(parsed)) comList = parsed;
+        }
+
+        let foundCom = false;
+        comList = comList.map((c: any) => {
+          const matchId = c.id === recordId || c.applicationId === recordId || (record?.applicationId && c.applicationId === record.applicationId);
+          const matchName = candidateName && c.candidateName && c.candidateName.toLowerCase() === candidateName.toLowerCase();
+          const matchEmail = candidateEmail && c.candidateEmail && c.candidateEmail.toLowerCase() === candidateEmail.toLowerCase();
+          const matchJob = jobTitle && c.jobTitle && c.jobTitle.toLowerCase() === jobTitle.toLowerCase();
+          if (matchId || matchName || matchEmail || matchJob) {
+            foundCom = true;
+            return {
+              ...c,
+              probationDays: 60,
+              probationDaysPassed: 60,
+              progress: 100,
+              status: 'PAYABLE',
+              statusLabel: 'Sẵn sàng nhận Payout',
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return c;
+        });
+
+        if (!foundCom && candidateName) {
+          comList.unshift({
+            id: 'COM-' + Date.now(),
+            candidateName,
+            candidateEmail,
+            jobTitle,
+            companyName: record?.companyName || user?.companyName || '',
+            affiliateName: 'Cộng tác viên HRConnect',
+            amount: 25000000,
+            commissionRate: 15,
+            probationDays: 60,
+            probationDaysPassed: 60,
+            progress: 100,
+            status: 'PAYABLE',
+            statusLabel: 'Sẵn sàng nhận Payout',
+            createdAt: new Date().toISOString(),
+          });
+        }
+        localStorage.setItem('hrconnect_commissions', JSON.stringify(comList));
+      } catch (e) {
+        console.error('Lỗi cập nhật hrconnect_commissions:', e);
+      }
+
+      // Đồng bộ thêm vào hrconnect_warranties nếu có
+      try {
+        const wRaw = localStorage.getItem('hrconnect_warranties');
+        if (wRaw) {
+          const wList = JSON.parse(wRaw);
+          if (Array.isArray(wList)) {
+            const updated = wList.map((w: any) => {
+              if (w.id === recordId || (candidateName && w.candidateName && w.candidateName.toLowerCase() === candidateName.toLowerCase())) {
+                return {
+                  ...w,
+                  status: 'PASSED_PROBATION',
+                  daysPassed: 60,
+                  clientDecision: 'PASSED',
+                  clientFeedbackDate: new Date().toISOString(),
+                };
+              }
+              return w;
+            });
+            localStorage.setItem('hrconnect_warranties', JSON.stringify(updated));
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+
       message.success('Đã xác nhận ứng viên VƯỢT QUA thử việc (PASS)! Chu kỳ bảo hành kết thúc thành công.');
       await loadWarrantyData();
     } catch (error) {
@@ -102,6 +296,81 @@ export const ClientWarrantyPage: React.FC = () => {
       setActionLoading(true);
       const fullNote = `Nghỉ việc ngày: ${values.resignationDate.format('DD/MM/YYYY')}. Lý do: ${values.reason}. Ghi chú: ${values.notes || 'Không'}`;
       await clientService.confirmProbationResult(selectedRecord.id, 'FAIL', fullNote);
+
+      // Ghi nhận trường clientDecision: 'FAILED' và clientFeedbackDate vào hrconnect_warranty_records
+      try {
+        const raw = localStorage.getItem('hrconnect_warranty_records');
+        let wList: any[] = [];
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) wList = parsed;
+        }
+
+        let found = false;
+        const candidateName = selectedRecord.candidateName;
+        const jobTitle = selectedRecord.jobTitle;
+
+        wList = wList.map((w: any) => {
+          const matchId = w.id === selectedRecord.id || (selectedRecord.applicationId && w.applicationId === selectedRecord.applicationId);
+          const matchName = candidateName && w.candidateName && w.candidateName.toLowerCase() === candidateName.toLowerCase();
+          const matchJob = jobTitle && w.jobTitle && w.jobTitle.toLowerCase() === jobTitle.toLowerCase();
+          if (matchId || (matchName && matchJob) || matchName) {
+            found = true;
+            return {
+              ...w,
+              status: 'FAILED',
+              clientDecision: 'FAILED',
+              clientFeedbackDate: new Date().toISOString(),
+              notes: fullNote,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return w;
+        });
+
+        if (!found) {
+          wList.push({
+            id: selectedRecord.id,
+            applicationId: selectedRecord.applicationId,
+            candidateName: selectedRecord.candidateName,
+            candidateEmail: selectedRecord.candidateEmail,
+            companyName: selectedRecord.companyName,
+            jobTitle: selectedRecord.jobTitle,
+            status: 'FAILED',
+            clientDecision: 'FAILED',
+            clientFeedbackDate: new Date().toISOString(),
+            notes: fullNote,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+        localStorage.setItem('hrconnect_warranty_records', JSON.stringify(wList));
+      } catch (e) {
+        console.error('Lỗi cập nhật hrconnect_warranty_records khi Fail:', e);
+      }
+
+      // Đồng bộ thêm vào hrconnect_warranties nếu có
+      try {
+        const wRaw = localStorage.getItem('hrconnect_warranties');
+        if (wRaw) {
+          const wList = JSON.parse(wRaw);
+          if (Array.isArray(wList)) {
+            const updated = wList.map((w: any) => {
+              if (w.id === selectedRecord.id || (selectedRecord.candidateName && w.candidateName && w.candidateName.toLowerCase() === selectedRecord.candidateName.toLowerCase())) {
+                return {
+                  ...w,
+                  status: 'FAILED_PROBATION',
+                  clientDecision: 'FAILED',
+                  clientFeedbackDate: new Date().toISOString(),
+                };
+              }
+              return w;
+            });
+            localStorage.setItem('hrconnect_warranties', JSON.stringify(updated));
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
 
       message.warning(
         `Đã kích hoạt bảo hành tìm ứng viên thay thế miễn phí cho vị trí "${selectedRecord.jobTitle}". Yêu cầu đã chuyển đến Headhunter phụ trách!`
@@ -266,7 +535,7 @@ export const ClientWarrantyPage: React.FC = () => {
           Theo dõi Bảo hành 60 ngày (Gói HEADHUNT_COD)
         </Title>
         <Text style={{ color: '#64748b' }}>
-          Doanh nghiệp: <strong style={{ color: '#0f172a' }}>TechCorp Việt Nam</strong> • Giám sát ứng viên thử việc & cam kết bảo hành tìm nhân sự thay thế miễn phí
+          Doanh nghiệp: <strong style={{ color: '#0f172a' }}>{user?.companyName || (user as any)?.company || user?.name || 'TechCorp Việt Nam'}</strong> • Giám sát ứng viên thử việc & cam kết bảo hành tìm nhân sự thay thế miễn phí
         </Text>
       </div>
 

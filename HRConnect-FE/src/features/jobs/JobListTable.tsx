@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Card, Table, Tag, Button, Space, Typography, Input, Modal, Radio, message,
-  Row, Col, Select, Tooltip, Empty, Segmented, Badge, Avatar,
+  Row, Col, Select, Tooltip, Empty, Segmented, Badge, Avatar, Drawer, Popconfirm,
 } from 'antd';
 import {
   SearchOutlined,
@@ -21,15 +21,24 @@ import {
   BankOutlined,
   CheckCircleOutlined,
   FilterOutlined,
+  TeamOutlined,
+  StopOutlined,
+  DollarOutlined,
+  SafetyCertificateOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useJobs } from '@/services/queries/useJobs';
 import { ServiceType, JobStatus, SERVICE_TYPE_LABELS } from '@/types/job';
 import { useAuthStore } from '@/stores/authStore';
 import { useCandidateStore } from '@/stores/candidateStore';
+import { useApplicationStore, APPLICATION_STATUS_LABELS, APPLICATION_STATUS_COLORS } from '@/stores/applicationStore';
+import { getClientJobs, updateClientJobStatus } from '@/stores/clientJobStore';
+import { updateJobStatusInAllJobs, getAllJobs } from '@/services/localStorageService';
 import { UserRole } from '@/types/roles';
 import type { Job } from '@/types/job';
 import type { ColumnsType } from 'antd/es/table';
+import { ReferralModal } from '@/features/affiliate/ReferralModal';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -90,6 +99,108 @@ export const JobListTable: React.FC = () => {
   const [selectedJobForDetail, setSelectedJobForDetail] = useState<Job | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
+  // Candidate Drawer state (HR/Admin: view applicants per job)
+  const [drawerJob, setDrawerJob] = useState<Job | null>(null);
+  const [isCandidateDrawerOpen, setIsCandidateDrawerOpen] = useState(false);
+
+  // Quick Referral Modal state for Affiliate
+  const [referralModalOpen, setReferralModalOpen] = useState(false);
+  const [referralJob, setReferralJob] = useState<{ id: string; title: string } | null>(null);
+
+  const handleOpenReferral = (job: { id: string; title: string }) => {
+    setReferralJob(job);
+    setReferralModalOpen(true);
+  };
+
+  // Shared application store
+  const { addApplication } = useApplicationStore();
+  const allSharedApps = useApplicationStore((s) => s.applications);
+
+  // HR job status local overrides (approve/reject for MOCK jobs)
+  const [jobStatusOverrides, setJobStatusOverrides] = useState<Record<string, JobStatus>>({});
+
+  // Client-submitted pending jobs from localStorage (HR/Admin only)
+  const [clientJobRefreshKey, setClientJobRefreshKey] = useState(0);
+
+  // Dynamic jobs read from Single Source of Truth: hrconnect_all_jobs in localStorage
+  const [allJobsFromStorage, setAllJobsFromStorage] = useState<Job[]>(() => {
+    try {
+      const stored = getAllJobs();
+      if (stored && stored.length > 0) return stored;
+    } catch {
+      // noop
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      const stored = getAllJobs();
+      if (stored && stored.length > 0) {
+        setAllJobsFromStorage(stored);
+      }
+    } catch (e) {
+      console.error('Failed to load all jobs from storage:', e);
+    }
+  }, [clientJobRefreshKey]);
+
+  const clientPendingJobs = useMemo<Job[]>(() => {
+    if (role !== UserRole.INTERNAL_HR && role !== UserRole.ADMIN) return [];
+    return getClientJobs()
+      .filter((cj) => cj.status === 'PENDING' || jobStatusOverrides[cj.id] !== undefined)
+      .map((cj) => ({
+        id: cj.id,
+        title: cj.title,
+        company: cj.company,
+        companyId: cj.companyId,
+        industryCode: cj.industryCode,
+        industryLabel: cj.industryLabel,
+        serviceType: cj.serviceType,
+        // DRAFT = signal "chờ duyệt" in the status column render
+        status: (jobStatusOverrides[cj.id] ?? JobStatus.DRAFT) as JobStatus,
+        location: cj.location,
+        remote: cj.remote,
+        salaryRange: cj.salaryRange as Job['salaryRange'],
+        mustHaveTags: cj.mustHaveTags,
+        shouldHaveTags: cj.shouldHaveTags,
+        objectives: cj.objectives,
+        description: cj.description,
+        headcount: cj.headcount,
+        experienceYears: cj.experienceYears,
+        engagementTerms: cj.engagementTerms,
+        requirements: cj.requirements,
+        clientContactId: cj.clientContactId,
+        applicationCount: cj.applicationCount,
+        shortlistedCount: cj.shortlistedCount,
+        createdAt: cj.createdAt,
+        updatedAt: cj.updatedAt,
+        deadline: cj.deadline,
+      } as Job));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientJobRefreshKey, role, jobStatusOverrides]);
+
+  /** True if this record originated from hrconnect_client_jobs */
+  const isClientPostedJob = (jobId: string) =>
+    getClientJobs().some((cj) => cj.id === jobId);
+
+  const handleApproveClientJob = (jobId: string) => {
+    updateClientJobStatus(jobId, 'ACTIVE');
+    updateJobStatusInAllJobs(jobId, JobStatus.ACTIVE);
+    setJobStatusOverrides((prev) => ({ ...prev, [jobId]: JobStatus.ACTIVE }));
+    setClientJobRefreshKey((k) => k + 1);
+    setIsDetailModalOpen(false);
+    message.success('✅ Đã phê duyệt! Tin tuyển dụng đã được kích hoạt trên sàn.');
+  };
+
+  const handleRejectClientJob = (jobId: string) => {
+    updateClientJobStatus(jobId, 'REJECTED');
+    setJobStatusOverrides((prev) => ({ ...prev, [jobId]: JobStatus.CLOSED }));
+    setClientJobRefreshKey((k) => k + 1);
+    setIsDetailModalOpen(false);
+    message.error('Đã từ chối tin tuyển dụng. Doanh nghiệp sẽ nhận thông báo.');
+  };
+
+
   const handleOpenApplyModal = (job: Job) => {
     setSelectedJobForApply(job);
     setIsApplyModalOpen(true);
@@ -118,6 +229,7 @@ export const JobListTable: React.FC = () => {
     const selectedCvObj = cvs.find((c) => c.id === selectedCv);
     const cvName = selectedCvObj ? selectedCvObj.name : 'CV Mặc định (ATS Standard)';
 
+    // Write to candidate-specific store
     applyJob({
       jobId: selectedJobForApply.id,
       jobTitle: selectedJobForApply.title,
@@ -134,6 +246,21 @@ export const JobListTable: React.FC = () => {
       applicantPhone: user?.phone,
     });
 
+    // Also write to shared application store (key: hrconnect_candidate_applications)
+    const applicantEmail = user?.email || 'candidate@demo.com';
+    const applicantName = user?.name || applicantEmail.split('@')[0];
+    addApplication({
+      fullName: applicantName,
+      email: applicantEmail,
+      phone: user?.phone || '0901234567',
+      jobId: selectedJobForApply.id,
+      jobTitle: selectedJobForApply.title,
+      company: selectedJobForApply.company,
+      source: 'DIRECT',
+      status: 'APPLIED',
+      aiScore: Math.floor(Math.random() * 6) + 85,
+    });
+
     setSubmittingApply(false);
     setIsApplyModalOpen(false);
     setCoverNote('');
@@ -142,6 +269,34 @@ export const JobListTable: React.FC = () => {
       icon: <CheckCircleFilled style={{ color: '#10b981' }} />,
       duration: 3.5,
     });
+  };
+
+  // HR: approve/reject job (covers both mock jobs AND client-submitted jobs)
+  const handleHRApprove = (jobId: string) => {
+    setJobStatusOverrides((prev) => ({ ...prev, [jobId]: JobStatus.ACTIVE }));
+    updateJobStatusInAllJobs(jobId, JobStatus.ACTIVE);
+    if (isClientPostedJob(jobId)) {
+      updateClientJobStatus(jobId, 'ACTIVE');
+    }
+    setClientJobRefreshKey((k) => k + 1);
+    setIsDetailModalOpen(false);
+    message.success('✅ Đã phê duyệt — Tin tuyển dụng đã được kích hoạt trên sàn.');
+  };
+
+  const handleHRReject = (jobId: string) => {
+    setJobStatusOverrides((prev) => ({ ...prev, [jobId]: JobStatus.CLOSED }));
+    updateJobStatusInAllJobs(jobId, JobStatus.CLOSED);
+    if (isClientPostedJob(jobId)) {
+      updateClientJobStatus(jobId, 'REJECTED');
+    }
+    setClientJobRefreshKey((k) => k + 1);
+    setIsDetailModalOpen(false);
+    message.error('Đã từ chối (REJECTED) — Tin tuyển dụng bị đưa về trạng thái Đã đóng.');
+  };
+
+  const handleHRRequestEdit = () => {
+    setIsDetailModalOpen(false);
+    message.warning('Yêu cầu chỉnh sửa đã gửi tới Doanh nghiệp. Tin tuyển dụng tạm giữ trạng thái chờ duyệt.');
   };
 
   const handleResetFilters = () => {
@@ -159,9 +314,28 @@ export const JobListTable: React.FC = () => {
     workTypeFilter !== 'ALL' ||
     levelFilter !== 'ALL';
 
-  // Lọc đa tiêu chí theo từ khóa, địa điểm, mức lương, hình thức làm việc và cấp bậc
+  // Merge client-pending jobs FIRST (HR/Admin only), then filtered mock/real jobs
   const filteredJobs = useMemo(() => {
-    return (jobs ?? []).filter((j) => {
+    // Dynamic source jobs prioritizing hrconnect_all_jobs
+    const sourceJobs = allJobsFromStorage.length > 0 ? allJobsFromStorage : (jobs ?? []);
+
+    // Apply local status overrides to jobs
+    const effectiveJobs = sourceJobs.map((j) => {
+      const override = jobStatusOverrides[j.id];
+      return override ? { ...j, status: override } : j;
+    });
+
+    const baseFiltered = effectiveJobs.filter((j) => {
+      // 0. Role-based visibility check:
+      // Affiliate & Candidate & Guest ONLY see ACTIVE jobs
+      if (
+        role === UserRole.CANDIDATE ||
+        role === UserRole.AFFILIATE ||
+        role === UserRole.GUEST
+      ) {
+        if (j.status !== JobStatus.ACTIVE) return false;
+      }
+
       // 1. Keyword search (title, company, mustHaveTags, shouldHaveTags, objectives)
       if (search.trim()) {
         const query = search.toLowerCase().trim();
@@ -214,7 +388,22 @@ export const JobListTable: React.FC = () => {
 
       return true;
     });
-  }, [jobs, search, locationFilter, salaryFilter, workTypeFilter, levelFilter]);
+
+    // For HR/Admin: sort PENDING jobs to the top
+    if (role === UserRole.INTERNAL_HR || role === UserRole.ADMIN) {
+      const baseIds = new Set(baseFiltered.map((j) => j.id));
+      const freshClientJobs = clientPendingJobs.filter((cj) => !baseIds.has(cj.id));
+      const combined = [...freshClientJobs, ...baseFiltered];
+
+      return combined.sort((a, b) => {
+        const aPending = a.status === JobStatus.PENDING || (a.status as string) === 'PENDING' ? 1 : 0;
+        const bPending = b.status === JobStatus.PENDING || (b.status as string) === 'PENDING' ? 1 : 0;
+        return bPending - aPending;
+      });
+    }
+
+    return baseFiltered;
+  }, [jobs, search, locationFilter, salaryFilter, workTypeFilter, levelFilter, clientPendingJobs, role]);
 
   // Cấu hình cột bảng: Đã ẨN hoàn toàn các cột nghiệp vụ nội bộ ('Gói dịch vụ', 'Số ứng viên') đối với Ứng viên
   const columns: ColumnsType<Job> = [
@@ -334,9 +523,30 @@ export const JobListTable: React.FC = () => {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      width: 120,
-      render: (status: JobStatus) => {
+      width: 140,
+      render: (status: JobStatus, record: Job) => {
         const isActive = status === JobStatus.ACTIVE;
+        const isPending =
+          status === JobStatus.PENDING ||
+          (status as string) === 'PENDING' ||
+          (status === JobStatus.DRAFT && isClientPostedJob(record.id));
+        if (isPending) {
+          return (
+            <Tag
+              style={{
+                borderRadius: 6,
+                fontWeight: 700,
+                fontSize: 11,
+                padding: '2px 8px',
+                border: '1px solid #fde68a',
+                background: '#fffbeb',
+                color: '#92400e',
+              }}
+            >
+              ⏳ Chờ duyệt
+            </Tag>
+          );
+        }
         return (
           <Tag
             style={{
@@ -366,85 +576,149 @@ export const JobListTable: React.FC = () => {
           {
             title: 'Số ứng viên',
             key: 'applicants',
-            width: 130,
-            render: (_: unknown, record: Job) => (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontWeight: 800, fontSize: 15, color: '#0f172a' }}>
-                  {record.applicationCount}
+            width: 160,
+            render: (_: unknown, record: Job) => {
+              const sharedCount = allSharedApps.filter((a) => a.jobId === record.id).length;
+              const total = record.applicationCount + sharedCount;
+              return (
+                <div style={{ textAlign: 'center' }}>
+                  <Tooltip title="Bấm để xem danh sách hồ sơ ứng tuyển">
+                    <div
+                      onClick={() => {
+                        setDrawerJob(record);
+                        setIsCandidateDrawerOpen(true);
+                      }}
+                      style={{
+                        fontWeight: 800,
+                        fontSize: 16,
+                        color: '#0284c7',
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: '3px',
+                      }}
+                    >
+                      {total}
+                    </div>
+                  </Tooltip>
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
+                    {record.shortlistedCount} đã sơ loại
+                  </div>
+                  {(role === UserRole.INTERNAL_HR || role === UserRole.ADMIN || role === UserRole.CLIENT) && (
+                    <Button
+                      size="small"
+                      type="link"
+                      icon={<TeamOutlined />}
+                      onClick={() => {
+                        setDrawerJob(record);
+                        setIsCandidateDrawerOpen(true);
+                      }}
+                      style={{ padding: 0, fontSize: 11, marginTop: 2 }}
+                    >
+                      Xem hồ sơ
+                    </Button>
+                  )}
                 </div>
-                <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
-                  {record.shortlistedCount} đã sơ loại
-                </div>
-              </div>
-            ),
+              );
+            },
           },
         ]
       : []),
     {
       title: 'Thao tác',
       key: 'action',
-      width: 180,
-      render: (_, record) => (
-        <Space size="small">
-          {role === UserRole.AFFILIATE && (
-            <Button
-              type="primary"
-              size="small"
-              icon={<UserAddOutlined />}
-              onClick={() => navigate('/affiliate/referral')}
-              style={{
-                borderRadius: 6,
-                fontWeight: 600,
-                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                border: 'none',
-              }}
-            >
-              Giới thiệu
-            </Button>
-          )}
-
-          <Button
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleOpenDetailModal(record)}
-            style={{ borderRadius: 6, fontSize: 12 }}
-          >
-            Chi tiết
-          </Button>
-
-          {(role === UserRole.CANDIDATE || role === UserRole.GUEST) && (
-            <>
-              <Tooltip title={isJobSaved(record.id) ? 'Bỏ lưu việc làm' : 'Lưu việc làm'}>
-                <Button
-                  size="small"
-                  icon={
-                    isJobSaved(record.id) ? (
-                      <HeartFilled style={{ color: '#ef4444' }} />
-                    ) : (
-                      <HeartOutlined style={{ color: '#94a3b8' }} />
-                    )
-                  }
-                  onClick={(e) => handleToggleBookmark(e, record.id)}
-                  style={{ borderRadius: 6 }}
-                />
-              </Tooltip>
+      width: 220,
+      render: (_, record) => {
+        const isPendingJob =
+          record.status === JobStatus.PENDING ||
+          (record.status as string) === 'PENDING' ||
+          (record.status === JobStatus.DRAFT && isClientPostedJob(record.id));
+        return (
+          <Space size="small" wrap>
+            {role === UserRole.AFFILIATE && (
               <Button
                 type="primary"
                 size="small"
+                icon={<UserAddOutlined />}
+                onClick={() => handleOpenReferral({ id: record.id, title: record.title })}
                 style={{
                   borderRadius: 6,
-                  fontWeight: 700,
-                  background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                  fontWeight: 600,
+                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
                   border: 'none',
                 }}
-                onClick={() => handleOpenApplyModal(record)}
               >
-                Ứng tuyển
+                Giới thiệu
               </Button>
-            </>
-          )}
-        </Space>
-      ),
+            )}
+
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => handleOpenDetailModal(record)}
+              style={{ borderRadius: 6, fontSize: 12 }}
+            >
+              Chi tiết
+            </Button>
+
+            {(role === UserRole.CANDIDATE || role === UserRole.GUEST) && (
+              <>
+                <Tooltip title={isJobSaved(record.id) ? 'Bỏ lưu việc làm' : 'Lưu việc làm'}>
+                  <Button
+                    size="small"
+                    icon={
+                      isJobSaved(record.id) ? (
+                        <HeartFilled style={{ color: '#ef4444' }} />
+                      ) : (
+                        <HeartOutlined style={{ color: '#94a3b8' }} />
+                      )
+                    }
+                    onClick={(e) => handleToggleBookmark(e, record.id)}
+                    style={{ borderRadius: 6 }}
+                  />
+                </Tooltip>
+                <Button
+                  type="primary"
+                  size="small"
+                  style={{
+                    borderRadius: 6,
+                    fontWeight: 700,
+                    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                    border: 'none',
+                  }}
+                  onClick={() => handleOpenApplyModal(record)}
+                >
+                  Ứng tuyển
+                </Button>
+              </>
+            )}
+
+            {/* HR/Admin: quick approve button for ANY PENDING jobs */}
+            {isPendingJob && (role === UserRole.INTERNAL_HR || role === UserRole.ADMIN) && (
+              <Popconfirm
+                title="Phê duyệt tin tuyển dụng?"
+                description="Tin sẽ được kích hoạt và hiển thị trên sàn ngay lập tức."
+                onConfirm={() => handleHRApprove(record.id)}
+                okText="Phê duyệt"
+                cancelText="Hủy"
+              >
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<CheckCircleOutlined />}
+                  style={{
+                    borderRadius: 6,
+                    fontWeight: 700,
+                    background: 'linear-gradient(135deg, #059669, #047857)',
+                    border: 'none',
+                  }}
+                >
+                  Duyệt
+                </Button>
+              </Popconfirm>
+            )}
+          </Space>
+        );
+      },
     },
   ];
 
@@ -476,6 +750,27 @@ export const JobListTable: React.FC = () => {
               ? 'Tìm kiếm công việc lý tưởng với mức đãi ngộ minh bạch, nộp hồ sơ chuẩn ATS 1-click.'
               : 'Quản lý, theo dõi tiến độ tuyển dụng và hồ sơ ứng viên trên hệ thống.'}
           </Text>
+          {/* Pending badge for HR/Admin */}
+          {(role === UserRole.INTERNAL_HR || role === UserRole.ADMIN) && clientPendingJobs.filter(j => j.status === JobStatus.DRAFT).length > 0 && (
+            <div style={{ marginTop: 6 }}>
+              <Tag
+                color="warning"
+                icon={<ClockCircleOutlined />}
+                style={{ borderRadius: 6, fontWeight: 700, fontSize: 12, padding: '3px 10px' }}
+              >
+                {clientPendingJobs.filter(j => j.status === JobStatus.DRAFT).length} tin chờ phê duyệt
+              </Tag>
+              <Button
+                type="link"
+                size="small"
+                icon={<ReloadOutlined />}
+                style={{ fontSize: 12, color: '#64748b', padding: '0 4px' }}
+                onClick={() => setClientJobRefreshKey(k => k + 1)}
+              >
+                Làm mới
+              </Button>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -897,7 +1192,7 @@ export const JobListTable: React.FC = () => {
                               type="primary"
                               size="small"
                               icon={<UserAddOutlined />}
-                              onClick={() => navigate('/affiliate/referral')}
+                              onClick={() => handleOpenReferral({ id: job.id, title: job.title })}
                               style={{
                                 borderRadius: 6,
                                 fontWeight: 700,
@@ -994,6 +1289,36 @@ export const JobListTable: React.FC = () => {
       >
         {selectedJobForDetail && (
           <div style={{ marginTop: 16 }}>
+            {/* Pending banner: only shown for client-submitted jobs in PENDING state */}
+            {selectedJobForDetail && isClientPostedJob(selectedJobForDetail.id)
+              && (jobStatusOverrides[selectedJobForDetail.id] === undefined
+                  || jobStatusOverrides[selectedJobForDetail.id] === JobStatus.DRAFT) && (
+              <div
+                style={{
+                  background: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  borderRadius: 10,
+                  padding: '12px 16px',
+                  marginBottom: 16,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                }}
+              >
+                <ClockCircleOutlined style={{ color: '#d97706', fontSize: 16 }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: '#92400e' }}>
+                    Tin tuyển dụng đang chờ phê duyệt
+                  </div>
+                  <div style={{ fontSize: 12, color: '#b45309' }}>
+                    Dịch vụ: {(() => {
+                      const sj = getClientJobs().find(cj => cj.id === selectedJobForDetail.id);
+                      return sj ? `${sj.postedByName || 'Client'} (${sj.postedByEmail || ''})` : 'Client';
+                    })()}
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Quick highlight box */}
             <div
               style={{
@@ -1069,6 +1394,46 @@ export const JobListTable: React.FC = () => {
               </div>
             </div>
 
+            {/* ─── HR Business Info (chỉ hiện với HR/Admin) ─── */}
+            {(role === UserRole.INTERNAL_HR || role === UserRole.ADMIN) && (
+              <div
+                style={{
+                  background: '#f0f9ff',
+                  border: '1px solid #bae6fd',
+                  borderRadius: 10,
+                  padding: '12px 16px',
+                  marginBottom: 18,
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#0284c7', marginBottom: 10 }}>
+                  📊 Thông tin nghiệp vụ nội bộ (HR Only)
+                </div>
+                <Row gutter={[12, 8]}>
+                  <Col span={8}>
+                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>GÓI DỊCH VỤ</div>
+                    <Tag
+                      style={{ marginTop: 4, borderRadius: 6, fontWeight: 700, fontSize: 12 }}
+                      color={selectedJobForDetail.serviceType === ServiceType.HEADHUNT_COD ? 'blue' : 'green'}
+                    >
+                      {SERVICE_TYPE_LABELS[selectedJobForDetail.serviceType] || selectedJobForDetail.serviceType}
+                    </Tag>
+                  </Col>
+                  <Col span={8}>
+                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>TỶ LỆ HOA HỒNG CTV</div>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: '#0284c7', marginTop: 4 }}>
+                      {selectedJobForDetail.engagementTerms?.commissionRate || 15}%
+                    </div>
+                  </Col>
+                  <Col span={8}>
+                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>BẢO HÀNH THỬ VIỆC</div>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: '#f59e0b', marginTop: 4 }}>
+                      60 ngày
+                    </div>
+                  </Col>
+                </Row>
+              </div>
+            )}
+
             {/* Modal Bottom Actions */}
             <div
               style={{
@@ -1078,43 +1443,126 @@ export const JobListTable: React.FC = () => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 10,
               }}
             >
-              <Button
-                icon={
-                  isJobSaved(selectedJobForDetail.id) ? (
-                    <HeartFilled style={{ color: '#ef4444' }} />
-                  ) : (
-                    <HeartOutlined />
-                  )
-                }
-                onClick={(e) => handleToggleBookmark(e, selectedJobForDetail.id)}
-                style={{ borderRadius: 8 }}
-              >
-                {isJobSaved(selectedJobForDetail.id) ? 'Đã lưu việc làm' : 'Lưu tin tuyển dụng'}
-              </Button>
+              {/* ─── Candidate / Guest: bookmark + apply ─── */}
+              {(role === UserRole.CANDIDATE || role === UserRole.GUEST) && (
+                <>
+                  <Button
+                    icon={
+                      isJobSaved(selectedJobForDetail.id) ? (
+                        <HeartFilled style={{ color: '#ef4444' }} />
+                      ) : (
+                        <HeartOutlined />
+                      )
+                    }
+                    onClick={(e) => handleToggleBookmark(e, selectedJobForDetail.id)}
+                    style={{ borderRadius: 8 }}
+                  >
+                    {isJobSaved(selectedJobForDetail.id) ? 'Đã lưu việc làm' : 'Lưu tin tuyển dụng'}
+                  </Button>
 
-              <Space>
-                <Button onClick={() => setIsDetailModalOpen(false)} style={{ borderRadius: 8 }}>
-                  Đóng
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<SendOutlined />}
-                  onClick={() => {
-                    setIsDetailModalOpen(false);
-                    handleOpenApplyModal(selectedJobForDetail);
-                  }}
-                  style={{
-                    borderRadius: 8,
-                    fontWeight: 700,
-                    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-                    border: 'none',
-                  }}
-                >
-                  Ứng tuyển ngay
-                </Button>
-              </Space>
+                  <Space>
+                    <Button onClick={() => setIsDetailModalOpen(false)} style={{ borderRadius: 8 }}>
+                      Đóng
+                    </Button>
+                    <Button
+                      type="primary"
+                      icon={<SendOutlined />}
+                      onClick={() => {
+                        setIsDetailModalOpen(false);
+                        handleOpenApplyModal(selectedJobForDetail);
+                      }}
+                      style={{
+                        borderRadius: 8,
+                        fontWeight: 700,
+                        background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                        border: 'none',
+                      }}
+                    >
+                      Ứng tuyển ngay
+                    </Button>
+                  </Space>
+                </>
+              )}
+
+              {/* ─── Affiliate: close only (apply via referral form) ─── */}
+              {role === UserRole.AFFILIATE && (
+                <>
+                  <Button onClick={() => setIsDetailModalOpen(false)} style={{ borderRadius: 8 }}>Đóng</Button>
+                  <Button
+                    type="primary"
+                    icon={<UserAddOutlined />}
+                    onClick={() => {
+                      const cur = selectedJobForDetail;
+                      setIsDetailModalOpen(false);
+                      if (cur) {
+                        handleOpenReferral({ id: cur.id, title: cur.title });
+                      } else {
+                        navigate('/affiliate/referral');
+                      }
+                    }}
+                    style={{ borderRadius: 8, fontWeight: 700, background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none' }}
+                  >
+                    Giới thiệu ứng viên
+                  </Button>
+                </>
+              )}
+
+              {/* ─── Internal HR / Admin: approve / request-edit / reject ─── */}
+              {(role === UserRole.INTERNAL_HR || role === UserRole.ADMIN) && (
+                <>
+                  <Button onClick={() => setIsDetailModalOpen(false)} style={{ borderRadius: 8 }}>Đóng</Button>
+                  <Space wrap>
+                    <Popconfirm
+                      title="Yêu cầu chỉnh sửa?"
+                      description="Tin tuyển dụng sẽ được trả về doanh nghiệp để cập nhật."
+                      onConfirm={handleHRRequestEdit}
+                      okText="Xác nhận"
+                      cancelText="Hủy"
+                    >
+                      <Button
+                        icon={<EditOutlined />}
+                        style={{ borderRadius: 8, borderColor: '#f59e0b', color: '#d97706' }}
+                      >
+                        Yêu cầu chỉnh sửa
+                      </Button>
+                    </Popconfirm>
+                    <Popconfirm
+                      title="Từ chối tin tuyển dụng?"
+                      description="Tin sẽ bị đóng và doanh nghiệp sẽ nhận thông báo."
+                      onConfirm={() => handleHRReject(selectedJobForDetail.id)}
+                      okText="Từ chối"
+                      okButtonProps={{ danger: true }}
+                      cancelText="Hủy"
+                    >
+                      <Button danger icon={<StopOutlined />} style={{ borderRadius: 8 }}>
+                        Từ chối (REJECT)
+                      </Button>
+                    </Popconfirm>
+                    <Button
+                      type="primary"
+                      icon={<CheckCircleOutlined />}
+                      onClick={() => handleHRApprove(selectedJobForDetail.id)}
+                      style={{
+                        borderRadius: 8,
+                        fontWeight: 700,
+                        background: 'linear-gradient(135deg, #059669, #047857)',
+                        border: 'none',
+                      }}
+                    >
+                      Phê duyệt (ACTIVE)
+                    </Button>
+                  </Space>
+                </>
+              )}
+
+              {/* ─── Client: close only (manage via own portal) ─── */}
+              {role === UserRole.CLIENT && (
+                <Button onClick={() => setIsDetailModalOpen(false)} style={{ borderRadius: 8 }}>Đóng</Button>
+              )}
             </div>
           </div>
         )}
@@ -1282,11 +1730,127 @@ export const JobListTable: React.FC = () => {
                 border: 'none',
               }}
             >
-              Xác nhận nộp hồ sơ tức thì
+            Xác nhận nộp hồ sơ tức thì
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* ─── DRAWER: DANH SÁCH ỨNG VIÊN THEO JOB (HR/Admin only) ─── */}
+      <Drawer
+        open={isCandidateDrawerOpen}
+        onClose={() => setIsCandidateDrawerOpen(false)}
+        title={
+          <Space>
+            <TeamOutlined style={{ color: '#0284c7' }} />
+            <span>
+              Hồ sơ ứng tuyển — {drawerJob?.title}
+            </span>
+          </Space>
+        }
+        width={680}
+        destroyOnClose
+      >
+        {drawerJob && (() => {
+          const jobApps = allSharedApps.filter((a) => a.jobId === drawerJob.id);
+          if (jobApps.length === 0) {
+            return (
+              <Empty
+                description="Chưa có hồ sơ nào được nộp vào vị trí này qua hệ thống"
+                style={{ padding: '40px 0' }}
+              />
+            );
+          }
+          return (
+            <Table
+              dataSource={jobApps}
+              rowKey="id"
+              size="small"
+              pagination={{ pageSize: 10 }}
+              columns={[
+                {
+                  title: 'Ứng viên',
+                  key: 'candidate',
+                  render: (_, r) => (
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{r.fullName}</div>
+                      <div style={{ fontSize: 11, color: '#64748b' }}>{r.email}</div>
+                      {r.phone && <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.phone}</div>}
+                    </div>
+                  ),
+                },
+                {
+                  title: 'Nguồn',
+                  key: 'source',
+                  width: 130,
+                  render: (_, r) => (
+                    r.source === 'AFFILIATE' ? (
+                      <div>
+                        <Tag color="orange" style={{ borderRadius: 6, fontWeight: 600, fontSize: 11 }}>
+                          CTV Giới thiệu
+                        </Tag>
+                        {r.affiliateName && (
+                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{r.affiliateName}</div>
+                        )}
+                      </div>
+                    ) : (
+                      <Tag color="blue" style={{ borderRadius: 6, fontWeight: 600, fontSize: 11 }}>
+                        Trực tiếp
+                      </Tag>
+                    )
+                  ),
+                },
+                {
+                  title: 'Điểm AI',
+                  key: 'aiScore',
+                  width: 90,
+                  render: (_, r) => (
+                    <div style={{ textAlign: 'center' }}>
+                      <div
+                        style={{
+                          fontWeight: 800,
+                          fontSize: 15,
+                          color: r.aiScore >= 88 ? '#059669' : r.aiScore >= 85 ? '#0284c7' : '#f59e0b',
+                        }}
+                      >
+                        {r.aiScore}
+                      </div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>/100</div>
+                    </div>
+                  ),
+                },
+                {
+                  title: 'Trạng thái',
+                  key: 'status',
+                  width: 150,
+                  render: (_, r) => (
+                    <Tag
+                      style={{
+                        borderRadius: 6,
+                        fontWeight: 600,
+                        fontSize: 11,
+                        color: APPLICATION_STATUS_COLORS[r.status],
+                        background: `${APPLICATION_STATUS_COLORS[r.status]}15`,
+                        border: `1px solid ${APPLICATION_STATUS_COLORS[r.status]}40`,
+                      }}
+                    >
+                      {APPLICATION_STATUS_LABELS[r.status]}
+                    </Tag>
+                  ),
+                },
+              ]}
+            />
+          );
+        })()}
+      </Drawer>
+
+      {/* ─── Quick Referral Modal for Affiliate ─── */}
+      <ReferralModal
+        open={referralModalOpen}
+        onClose={() => setReferralModalOpen(false)}
+        jobId={referralJob?.id}
+        jobTitle={referralJob?.title}
+      />
     </div>
   );
 };
