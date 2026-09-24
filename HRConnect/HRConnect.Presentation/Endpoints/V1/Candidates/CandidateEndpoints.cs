@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Candidates.Commands.UpdateCandidateCv;
 using HRConnect.Application.Features.Candidates.Commands.UpdateCandidateProfile;
 using HRConnect.Application.Features.Candidates.Commands.UpdateProfileVisibility;
 using HRConnect.Application.Features.Candidates.Commands.UploadCv;
@@ -315,6 +316,73 @@ public static class CandidateEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
+
+        // 6. PATCH /api/v1/candidates/cv/{cvId:guid} - Cập nhật thông tin CV của ứng viên
+        cvGroup.MapPatch("/{cvId:guid}", async (
+            ClaimsPrincipal user,
+            Guid cvId,
+            [FromBody] UpdateCandidateCvRequest request,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<UpdateCandidateCvCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var command = new UpdateCandidateCvCommand
+            {
+                CvId = cvId,
+                UserId = userId.Value,
+                Title = request?.Title ?? string.Empty
+            };
+
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu cập nhật CV không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("UpdateCandidateCvMetadata")
+        .WithSummary("Cập nhật thông tin CV của ứng viên")
+        .WithDescription("API này chỉ cập nhật metadata như title; không thay thế file PDF.")
+        .Produces<UpdateCandidateCvResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
 
         // ==============================================================================
         // Candidate Applications History Endpoints
