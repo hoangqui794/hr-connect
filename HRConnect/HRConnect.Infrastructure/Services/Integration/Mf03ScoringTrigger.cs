@@ -3,6 +3,7 @@ using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace HRConnect.Infrastructure.Services.Integration;
 
@@ -33,6 +34,23 @@ public class Mf03ScoringTrigger : IMf03ScoringTrigger
             ExternalReference = requestId.ToString(),
             Status = "PENDING",
             RequestedAt = DateTime.UtcNow
+        }, cancellationToken);
+
+        await _context.AuditLogs.AddAsync(new AuditLog
+        {
+            ActorUserId = payload.ActorUserId,
+            Action = attemptNo == 0 ? "AI_SCORING_REQUESTED" : "AI_SCORING_RETRY_REQUESTED",
+            EntityType = "APPLICATION",
+            EntityId = payload.ApplicationId,
+            NewValues = JsonSerializer.Serialize(new
+            {
+                status = "PENDING",
+                attemptNo = attemptNo + 1,
+                cvId = payload.CvId,
+                jobId = payload.JobId
+            }),
+            CorrelationId = requestId,
+            CreatedAt = DateTime.UtcNow
         }, cancellationToken);
 
         _logger.LogInformation(

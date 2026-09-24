@@ -1,14 +1,13 @@
 import json
 import logging
-from functools import lru_cache
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
-from app.api.matching import get_semantic_matcher
 from app.core.config import get_settings
+from app.core.dependencies import get_document_parser, get_semantic_matcher
 from app.schemas.cv import (
     CvParseResponse,
     DocumentMetadata,
@@ -18,17 +17,11 @@ from app.schemas.cv import (
 from app.schemas.matching_request import Candidate, CandidateSkill, MatchingRequest, RequirementCategory
 from app.services.document_parser import CvProcessingError, DocumentParser
 from app.services.matching_service import MatchingService
-from app.services.ocr_service import get_ocr_engine
 from app.services.semantic_matcher import SemanticMatcher
 from app.services.structured_cv_parser import StructuredCvParser
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["cv"])
-
-
-@lru_cache(maxsize=1)
-def get_document_parser() -> DocumentParser:
-    return DocumentParser(get_settings(), get_ocr_engine())
 
 
 async def _read_upload(file: UploadFile) -> bytes:

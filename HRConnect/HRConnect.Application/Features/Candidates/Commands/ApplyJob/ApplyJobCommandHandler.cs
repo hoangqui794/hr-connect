@@ -196,7 +196,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
 
             // Persist the AI request in the same transaction. A hosted dispatcher sends it after commit.
             await _scoringTrigger.TriggerScoringAsync(
-                new Mf03TriggerPayload(application.ApplicationId, cvId, job.JobId),
+                new Mf03TriggerPayload(application.ApplicationId, cvId, job.JobId, request.UserId),
                 cancellationToken);
 
             await _unitOfWork.CommitTransactionAsync(cancellationToken);

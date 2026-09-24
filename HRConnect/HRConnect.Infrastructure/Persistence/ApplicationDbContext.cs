@@ -351,7 +351,13 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnType("jsonb")
                 .HasColumnName("candidate_highlight");
             entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
+            entity.Property(e => e.DispatchCount)
+                .HasDefaultValue(0)
+                .HasColumnName("dispatch_count");
             entity.Property(e => e.ErrorMessage).HasColumnName("error_message");
+            entity.Property(e => e.FailureCode)
+                .HasMaxLength(100)
+                .HasColumnName("failure_code");
             entity.Property(e => e.ExternalReference)
                 .HasMaxLength(255)
                 .HasColumnName("external_reference");
@@ -362,6 +368,9 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(30)
                 .HasComment("Semantic tier (for example HIGH/MEDIUM_HIGH/MEDIUM/LOW). UI color comes from match_tier_config; AI does not make the final hiring decision.")
                 .HasColumnName("match_tier");
+            entity.Property(e => e.ModelVersion)
+                .HasMaxLength(255)
+                .HasColumnName("model_version");
             entity.Property(e => e.MustHaveResult)
                 .HasColumnType("jsonb")
                 .HasColumnName("must_have_result");
@@ -371,6 +380,8 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.RequestedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("requested_at");
+            entity.Property(e => e.ProcessingStartedAt).HasColumnName("processing_started_at");
+            entity.Property(e => e.LastDispatchedAt).HasColumnName("last_dispatched_at");
             entity.Property(e => e.ShouldHaveResult)
                 .HasColumnType("jsonb")
                 .HasColumnName("should_have_result");

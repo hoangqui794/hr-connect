@@ -1,9 +1,8 @@
-from fastapi.testclient import TestClient
-
 from app import main
+from tests.support import ApiTestClient
 
 
-def test_health(client: TestClient) -> None:
+def test_health(client: ApiTestClient) -> None:
     response = client.get("/health")
 
     assert response.status_code == 200
@@ -20,8 +19,7 @@ def test_readiness_reports_ready_with_integration_configuration(monkeypatch) -> 
     monkeypatch.setattr(main, "get_settings", lambda: settings)
     application = main.create_app()
 
-    with TestClient(application) as test_client:
-        response = test_client.get("/ready")
+    response = ApiTestClient(application).get("/ready")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ready", "service": "hr-connect-ai"}
@@ -32,8 +30,7 @@ def test_readiness_reports_missing_service_token(monkeypatch) -> None:
     monkeypatch.setattr(main, "get_settings", lambda: settings)
     application = main.create_app()
 
-    with TestClient(application) as test_client:
-        response = test_client.get("/ready")
+    response = ApiTestClient(application).get("/ready")
 
     assert response.status_code == 503
     assert response.json()["missing"] == ["HRCONNECT_SERVICE_TOKEN"]

@@ -296,7 +296,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
 
             // Persist the AI request atomically with the accepted submission/application.
             await _scoringTrigger.TriggerScoringAsync(
-                new Mf03TriggerPayload(application.ApplicationId, cvId, job.JobId),
+                new Mf03TriggerPayload(application.ApplicationId, cvId, job.JobId, request.UserId),
                 cancellationToken);
 
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
