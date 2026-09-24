@@ -31,7 +31,7 @@ public class SwaggerTagOrderDocumentFilter : IDocumentFilter
         new() { Name = "Jobs", Description = "Quản lý bài đăng tuyển dụng doanh nghiệp và tìm kiếm việc làm" },
         new() { Name = "Service Types", Description = "Danh mục loại dịch vụ tuyển dụng công khai" },
         new() { Name = "Candidate Profile", Description = "Hồ sơ cá nhân của ứng viên" },
-        new() { Name = "Candidate CV", Description = "Quản lý tệp CV ứng viên (Tải lên, Tải xuống qua Cloudflare R2)" },
+        new() { Name = "Candidate CV", Description = "Kho CV cá nhân và quản lý tệp CV ứng viên (Tải lên, Danh sách, Cập nhật, Đặt CV chính, Xóa, Tải xuống qua Cloudflare R2)" },
         new() { Name = "Candidate Applications", Description = "Lịch sử và chi tiết hồ sơ ứng tuyển của ứng viên" },
         new() { Name = "Affiliate Profile", Description = "Hồ sơ đối tác tuyển dụng (Affiliate Recruiter, Hiệu suất, Tài khoản ngân hàng)" },
         new() { Name = "Affiliate Submissions", Description = "Lịch sử và chi tiết nộp hồ sơ ứng viên của Affiliate" },

@@ -226,7 +226,7 @@ public static class CandidateEndpoints
             }
         })
         .WithName("UploadCandidateCv")
-        .WithSummary("Tải lên CV PDF cho ứng viên")
+        .WithSummary("Tải lên CV mới vào kho CV của ứng viên")
         .WithDescription("Tải lên tệp CV PDF của ứng viên lên hệ thống Cloudflare R2 riêng tư, tự động sinh khóa lưu trữ candidates/{candidateId}/cvs/{cvId}.pdf.")
         .DisableAntiforgery()
         .Produces<UploadCvResponse>(StatusCodes.Status200OK)
@@ -311,7 +311,7 @@ public static class CandidateEndpoints
             }
         })
         .WithName("GetCandidateCvDownloadUrl")
-        .WithSummary("Lấy URL tải xuống CV có chữ ký tạm thời (Presigned URL)")
+        .WithSummary("Lấy URL tạm thời để xem hoặc tải CV của ứng viên")
         .WithDescription("Sinh đường dẫn có chữ ký số (Presigned URL) có hiệu lực ngắn (mặc định 15 phút) để tải hoặc xem tệp CV trực tiếp từ Cloudflare R2.")
         .Produces<GetCvDownloadUrlResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
