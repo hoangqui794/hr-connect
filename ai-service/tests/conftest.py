@@ -3,10 +3,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.api.matching import get_semantic_matcher
 from app.main import app
+from tests.support import ApiTestClient
 
 
 class StubSemanticMatcher:
@@ -22,11 +22,12 @@ class StubSemanticMatcher:
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client() -> ApiTestClient:
     app.dependency_overrides[get_semantic_matcher] = lambda: StubSemanticMatcher()
-    with TestClient(app) as test_client:
-        yield test_client
-    app.dependency_overrides.clear()
+    try:
+        yield ApiTestClient(app)
+    finally:
+        app.dependency_overrides.clear()
 
 
 @pytest.fixture

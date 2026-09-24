@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi.testclient import TestClient
+from tests.support import ApiTestClient
 
 
 def _contains_decision(value: Any) -> bool:
@@ -11,7 +11,7 @@ def _contains_decision(value: Any) -> bool:
     return value in {"SHORTLIST", "REJECT", "HIRE"}
 
 
-def test_strong_medium_poor_ranking(client: TestClient, load_fixture) -> None:
+def test_strong_medium_poor_ranking(client: ApiTestClient, load_fixture) -> None:
     responses = [
         client.post("/api/v1/match", json=load_fixture(name))
         for name in ("strong_match.json", "medium_match.json", "poor_match.json")
@@ -25,7 +25,7 @@ def test_strong_medium_poor_ranking(client: TestClient, load_fixture) -> None:
     assert strong["modelName"] == "BAAI/bge-m3"
 
 
-def test_missing_must_have_appears_in_explanation(client: TestClient, load_fixture) -> None:
+def test_missing_must_have_appears_in_explanation(client: ApiTestClient, load_fixture) -> None:
     response = client.post("/api/v1/match", json=load_fixture("missing_must_have.json"))
 
     assert response.status_code == 200
@@ -36,7 +36,7 @@ def test_missing_must_have_appears_in_explanation(client: TestClient, load_fixtu
     assert not _contains_decision(body)
 
 
-def test_unrelated_cv_scores_below_related_candidate(client: TestClient, load_fixture) -> None:
+def test_unrelated_cv_scores_below_related_candidate(client: ApiTestClient, load_fixture) -> None:
     related = client.post("/api/v1/match", json=load_fixture("strong_match.json")).json()
     unrelated_payload = load_fixture("poor_match.json")
     unrelated_payload["candidate"]["summary"] = "Unrelated visual artist"
@@ -46,7 +46,7 @@ def test_unrelated_cv_scores_below_related_candidate(client: TestClient, load_fi
     assert len(unrelated["missingRequirements"]) == 3
 
 
-def test_same_meaning_with_different_wording(client: TestClient, load_fixture) -> None:
+def test_same_meaning_with_different_wording(client: ApiTestClient, load_fixture) -> None:
     payload = load_fixture("medium_match.json")
     payload["candidate"]["cvText"] = "Created RESTful server-side services with the Microsoft .NET platform."
     response = client.post("/api/v1/match", json=payload)
@@ -55,7 +55,7 @@ def test_same_meaning_with_different_wording(client: TestClient, load_fixture) -
     assert response.json()["semanticScore"] == 0.60
 
 
-def test_vietnamese_cv_with_english_job(client: TestClient, load_fixture) -> None:
+def test_vietnamese_cv_with_english_job(client: ApiTestClient, load_fixture) -> None:
     payload = load_fixture("strong_match.json")
     payload["candidate"]["cvText"] = "Phát triển dịch vụ backend và REST API bằng ASP.NET Core."
     response = client.post("/api/v1/match", json=payload)
@@ -64,7 +64,7 @@ def test_vietnamese_cv_with_english_job(client: TestClient, load_fixture) -> Non
     assert response.json()["semanticScore"] == 0.90
 
 
-def test_english_cv_with_vietnamese_job(client: TestClient, load_fixture) -> None:
+def test_english_cv_with_vietnamese_job(client: ApiTestClient, load_fixture) -> None:
     payload = load_fixture("strong_match.json")
     payload["job"]["description"] = "Phát triển dịch vụ backend bằng .NET và PostgreSQL."
     response = client.post("/api/v1/match", json=payload)
@@ -73,7 +73,7 @@ def test_english_cv_with_vietnamese_job(client: TestClient, load_fixture) -> Non
     assert response.json()["semanticScore"] == 0.90
 
 
-def test_invalid_attempt_no(client: TestClient, load_fixture) -> None:
+def test_invalid_attempt_no(client: ApiTestClient, load_fixture) -> None:
     payload = load_fixture("strong_match.json")
     payload["attemptNo"] = 0
 
@@ -82,7 +82,7 @@ def test_invalid_attempt_no(client: TestClient, load_fixture) -> None:
     assert response.status_code == 422
 
 
-def test_empty_cv_is_rejected(client: TestClient, load_fixture) -> None:
+def test_empty_cv_is_rejected(client: ApiTestClient, load_fixture) -> None:
     payload = load_fixture("strong_match.json")
     payload["candidate"]["cvText"] = "   "
 
@@ -91,7 +91,7 @@ def test_empty_cv_is_rejected(client: TestClient, load_fixture) -> None:
     assert response.status_code == 422
 
 
-def test_invalid_request_is_rejected(client: TestClient) -> None:
+def test_invalid_request_is_rejected(client: ApiTestClient) -> None:
     response = client.post("/api/v1/match", json={"requestId": "X"})
 
     assert response.status_code == 422

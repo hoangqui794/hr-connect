@@ -27,6 +27,7 @@
     <ProjectReference Include="..\HRConnect.Application\HRConnect.Application.csproj" />
     <ProjectReference Include="..\HRConnect.Infrastructure\HRConnect.Infrastructure.csproj" />
     <ProjectReference Include="..\HRConnect.Domain\HRConnect.Domain.csproj" />
+    <ProjectReference Include="..\HRConnect.Presentation\HRConnect.Presentation.csproj" />
   </ItemGroup>
 
 </Project>

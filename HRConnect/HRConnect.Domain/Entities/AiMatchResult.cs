@@ -35,7 +35,17 @@ public partial class AiMatchResult
 
     public string? ErrorMessage { get; set; }
 
+    public string? FailureCode { get; set; }
+
+    public string? ModelVersion { get; set; }
+
     public DateTime RequestedAt { get; set; }
+
+    public DateTime? ProcessingStartedAt { get; set; }
+
+    public DateTime? LastDispatchedAt { get; set; }
+
+    public int DispatchCount { get; set; }
 
     public DateTime? CompletedAt { get; set; }
 

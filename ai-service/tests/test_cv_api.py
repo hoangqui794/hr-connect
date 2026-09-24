@@ -1,10 +1,9 @@
 import json
 
-from fastapi.testclient import TestClient
-
 from app.api.cv import get_document_parser
 from app.main import app
 from app.services.document_parser import CvProcessingError, ExtractedDocument
+from tests.support import ApiTestClient
 
 
 class StubDocumentParser:
@@ -56,7 +55,7 @@ def _metadata() -> dict:
     }
 
 
-def test_parse_cv_returns_raw_and_structured_data(client: TestClient) -> None:
+def test_parse_cv_returns_raw_and_structured_data(client: ApiTestClient) -> None:
     app.dependency_overrides[get_document_parser] = lambda: StubDocumentParser()
 
     response = client.post("/api/v1/cv/parse", files=_upload())
@@ -73,7 +72,7 @@ def test_parse_cv_returns_raw_and_structured_data(client: TestClient) -> None:
     }
 
 
-def test_match_file_parses_then_scores_without_recruitment_decision(client: TestClient) -> None:
+def test_match_file_parses_then_scores_without_recruitment_decision(client: ApiTestClient) -> None:
     app.dependency_overrides[get_document_parser] = lambda: StubDocumentParser()
 
     response = client.post(
@@ -91,7 +90,7 @@ def test_match_file_parses_then_scores_without_recruitment_decision(client: Test
     assert "matchtier" not in serialized
 
 
-def test_match_file_rejects_invalid_metadata(client: TestClient) -> None:
+def test_match_file_rejects_invalid_metadata(client: ApiTestClient) -> None:
     response = client.post(
         "/api/v1/match-file",
         files=_upload(),
@@ -101,7 +100,7 @@ def test_match_file_rejects_invalid_metadata(client: TestClient) -> None:
     assert response.status_code == 422
 
 
-def test_cv_processing_error_keeps_specific_status(client: TestClient) -> None:
+def test_cv_processing_error_keeps_specific_status(client: ApiTestClient) -> None:
     app.dependency_overrides[get_document_parser] = lambda: FailingDocumentParser(
         CvProcessingError(415, "Unsupported CV format")
     )
@@ -112,7 +111,7 @@ def test_cv_processing_error_keeps_specific_status(client: TestClient) -> None:
     assert response.json()["detail"] == "Unsupported CV format"
 
 
-def test_unexpected_cv_failure_returns_manual_review_503(client: TestClient) -> None:
+def test_unexpected_cv_failure_returns_manual_review_503(client: ApiTestClient) -> None:
     app.dependency_overrides[get_document_parser] = lambda: FailingDocumentParser(
         RuntimeError("OCR unavailable")
     )

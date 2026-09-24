@@ -1,4 +1,3 @@
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,7 +7,8 @@ from app.api.cv import router as cv_router
 from app.api.matching import router as matching_router
 from app.api.scoring_jobs import router as scoring_jobs_router
 from app.core.config import get_settings
-from app.services.scoring_worker import scoring_job_queue
+from app.core.logging_config import configure_logging
+from app.services.scoring_queue import scoring_job_queue
 
 
 @asynccontextmanager
@@ -22,7 +22,7 @@ async def lifespan(_: FastAPI):
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    logging.basicConfig(level=logging.INFO)
+    configure_logging(settings.log_level)
     application = FastAPI(
         title=settings.app_name,
         version=settings.app_version,

@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     app_host: str = "0.0.0.0"
     app_port: int = 8001
+    log_level: str = "INFO"
     embedding_model: str = "BAAI/bge-m3"
     must_have_weight: float = 0.50
     should_have_weight: float = 0.20
@@ -28,6 +29,7 @@ class Settings(BaseSettings):
     ocr_max_concurrency: int = Field(default=1, ge=1, le=8)
     hrconnect_base_url: str = "https://localhost:7289"
     hrconnect_service_token: str = ""
+    hrconnect_verify_ssl: bool = False
     scoring_worker_count: int = Field(default=1, ge=1, le=8)
     scoring_queue_size: int = Field(default=2000, ge=1, le=10000)
     internal_request_timeout_seconds: int = Field(default=30, ge=5, le=300)

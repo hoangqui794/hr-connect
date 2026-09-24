@@ -54,6 +54,7 @@ $env:MF03_BASE_URL="http://127.0.0.1:8001"
 # Terminal running ai-service
 $env:HRCONNECT_SERVICE_TOKEN="replace-with-a-long-random-secret"
 $env:HRCONNECT_BASE_URL="https://localhost:7289"
+$env:HRCONNECT_VERIFY_SSL="false" # local HTTPS only; use true with a trusted production certificate
 ```
 
 The internal endpoints are:
@@ -66,6 +67,23 @@ The internal endpoints are:
 All require `X-Service-Token`. The unversioned `/api/internal` Job/JD and AI-result routes remain temporary compatibility aliases. A timed-out `PROCESSING` job is returned to the dispatch path so a stopped AI process does not permanently lose the scoring request. The presigned storage download is made without this header so the service token is never sent to Cloudflare R2.
 
 The first real matching request may download and load `BAAI/bge-m3`. The first OCR request may download EasyOCR's Vietnamese/English models. Both model families are lazily loaded and cached. Model files and Hugging Face caches are excluded from Git.
+
+## Logging and audit
+
+The service writes structured JSON logs to stdout. Scoring events carry `requestId`, `applicationId`, `cvId`, `jobId`, and `attemptNo` so they can be correlated with HR Connect's `ai_match_result` and `audit_log` records. Configure verbosity with `LOG_LEVEL`.
+
+Logs intentionally omit CV text, structured CV content, presigned download URLs, and service tokens. HR Connect owns durable status/result persistence and business audit records; the standalone AI service does not write directly to PostgreSQL.
+
+## Internal structure
+
+- `app/api`: thin FastAPI transport layer.
+- `app/clients`: outbound HR Connect HTTP boundary.
+- `app/core/dependencies.py`: shared cached parser/model factories.
+- `app/services/scoring_queue.py`: bounded in-process work queue.
+- `app/services/scoring_orchestrator.py`: one-job parse, match, and callback workflow.
+- `app/services/scoring_worker.py`: compatibility imports for older callers; new code should import the queue or orchestrator directly.
+
+The in-process queue is suitable for local and initial standalone operation. HR Connect remains the durable owner of `PENDING`/`PROCESSING` work and can redispatch timed-out jobs. A production deployment with multiple AI processes will require a shared durable queue.
 
 `/api/v1/cv/parse` uses multipart form data with a `file` field. `/api/v1/match-file` uses a `file` field plus a `metadata` JSON string containing `requestId`, `applicationId`, `attemptNo`, and `job`.
 

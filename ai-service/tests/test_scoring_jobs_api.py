@@ -1,19 +1,18 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from fastapi.testclient import TestClient
-
 from app.api import scoring_jobs
+from tests.support import ApiTestClient
 
 
-def test_scoring_job_rejects_missing_internal_key(client: TestClient) -> None:
+def test_scoring_job_rejects_missing_internal_key(client: ApiTestClient) -> None:
     response = client.post("/api/v1/scoring-jobs", json=_payload())
 
     assert response.status_code == 401
 
 
 def test_scoring_job_rejects_invalid_service_token(
-    client: TestClient, monkeypatch,
+    client: ApiTestClient, monkeypatch,
 ) -> None:
     monkeypatch.setattr(
         scoring_jobs,
@@ -31,7 +30,7 @@ def test_scoring_job_rejects_invalid_service_token(
 
 
 def test_scoring_job_accepts_valid_internal_key(
-    client: TestClient, monkeypatch,
+    client: ApiTestClient, monkeypatch,
 ) -> None:
     enqueue = AsyncMock(return_value=True)
     monkeypatch.setattr(
