@@ -54,6 +54,7 @@ public class CandidateRepository : ICandidateRepository
     public async Task<Candidate?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _context.Candidates
+            .AsNoTracking()
             .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken);
     }
 
