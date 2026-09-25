@@ -8,6 +8,7 @@ using HRConnect.Application.Features.Affiliates.Queries.GetAffiliatePerformance;
 using HRConnect.Application.Features.Affiliates.Queries.GetAffiliateProfile;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using HRConnect.Presentation.Authorization;
 
 namespace HRConnect.Presentation.Endpoints.V1.Affiliates;
 
@@ -255,6 +256,11 @@ public static class AffiliateEndpoints
                 return Results.Unauthorized();
             }
 
+            if (!PermissionAuthorization.HasPermission(user, "submission.view_own"))
+            {
+                return PermissionAuthorization.Forbidden("submission.view_own");
+            }
+
             try
             {
                 var query = new HRConnect.Application.Features.Affiliates.Queries.GetAffiliateSubmissions.GetAffiliateSubmissionsQuery(
@@ -285,7 +291,7 @@ public static class AffiliateEndpoints
         })
         .WithName("GetAffiliateSubmissions")
         .WithSummary("Lấy lịch sử nộp ứng viên của Affiliate")
-        .WithDescription("Lấy danh sách toàn bộ lịch sử các lần nộp ứng viên của Affiliate Recruiter đang đăng nhập, bao gồm cả trạng thái ACCEPTED và BLOCKED_DUPLICATE kèm lý do trùng lặp.")
+        .WithDescription("Yêu cầu permission submission.view_own. Lấy danh sách toàn bộ lịch sử các lần nộp ứng viên của Affiliate Recruiter đang đăng nhập, bao gồm cả trạng thái ACCEPTED và BLOCKED_DUPLICATE kèm lý do trùng lặp.")
         .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateSubmissions.AffiliateSubmissionsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
