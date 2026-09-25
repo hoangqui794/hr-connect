@@ -158,6 +158,7 @@ app.MapAuthEndpoints();
 app.MapCandidateEndpoints();
 app.MapAffiliateEndpoints();
 app.MapAdminApprovalEndpoints();
+app.MapAdminProfileEndpoints();
 app.MapServiceTypeEndpoints();
 app.MapJobEndpoints();
 app.MapCompanyEndpoints();

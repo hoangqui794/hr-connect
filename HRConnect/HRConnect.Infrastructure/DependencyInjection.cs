@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<ICompanyUserRepository, CompanyUserRepository>();
         services.AddScoped<ICompanyVerificationRequestRepository, CompanyVerificationRequestRepository>();
         services.AddScoped<IInternalHrProfileRepository, InternalHrProfileRepository>();
+        services.AddScoped<IAdminProfileRepository, AdminProfileRepository>();
         services.AddScoped<IApprovalRepository, ApprovalRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();
