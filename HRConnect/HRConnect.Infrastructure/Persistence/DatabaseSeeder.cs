@@ -129,6 +129,7 @@ public static class DatabaseSeeder
         ('affiliate.profile.update_own', 'affiliate_profile', 'update_own', 'Update own affiliate profile'),
         ('submission.create', 'submission', 'create', 'Submit a candidate and CV for a job'),
         ('submission.view_own', 'submission', 'view_own', 'View own submissions'),
+        ('attribution.view_own', 'attribution', 'view_own', 'View own affiliate attribution'),
         ('dispute.create', 'dispute', 'create', 'Raise duplicate or attribution dispute'),
         ('dispute.view_own', 'dispute', 'view_own', 'View own disputes'),
         ('commission.view_own', 'commission', 'view_own', 'View own commissions'),
@@ -198,7 +199,7 @@ public static class DatabaseSeeder
     FROM public.role r
     JOIN public.permission p ON p.code IN (
         'job.view', 'notification.view_own', 'affiliate.profile.view_own', 'affiliate.profile.update_own',
-        'submission.create', 'submission.view_own', 'dispute.create', 'dispute.view_own',
+        'submission.create', 'submission.view_own', 'attribution.view_own', 'dispute.create', 'dispute.view_own',
         'commission.view_own', 'payout.view_own', 'affiliate.performance.view_own'
     )
     WHERE r.code = 'AFFILIATE_RECRUITER'

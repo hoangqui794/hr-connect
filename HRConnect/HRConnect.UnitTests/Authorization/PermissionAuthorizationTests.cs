@@ -15,6 +15,7 @@ public class PermissionAuthorizationTests
     [InlineData("submission.create")]
     [InlineData("application.view_own")]
     [InlineData("submission.view_own")]
+    [InlineData("attribution.view_own")]
     public void HasPermission_AllowsExactClaimAndRejectsMissingClaim(string permission)
     {
         var allowed = new ClaimsPrincipal(new ClaimsIdentity(
@@ -126,6 +127,30 @@ public class PermissionAuthorizationTests
     public void AffiliateSubmissionList_RequiresSubmissionViewOwn()
     {
         const string requiredPermission = "submission.view_own";
+        var allowed = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim("permission", requiredPermission) }, "test"));
+        var denied = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test"));
+
+        PermissionAuthorization.HasPermission(allowed, requiredPermission).Should().BeTrue();
+        PermissionAuthorization.HasPermission(denied, requiredPermission).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AffiliateSubmissionDetail_RequiresSubmissionViewOwn()
+    {
+        const string requiredPermission = "submission.view_own";
+        var allowed = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim("permission", requiredPermission) }, "test"));
+        var denied = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test"));
+
+        PermissionAuthorization.HasPermission(allowed, requiredPermission).Should().BeTrue();
+        PermissionAuthorization.HasPermission(denied, requiredPermission).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AffiliateAttributionList_RequiresAttributionViewOwn()
+    {
+        const string requiredPermission = "attribution.view_own";
         var allowed = new ClaimsPrincipal(new ClaimsIdentity(
             new[] { new Claim("permission", requiredPermission) }, "test"));
         var denied = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test"));
