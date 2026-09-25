@@ -296,6 +296,11 @@ public static class CandidateEndpoints
                 return Results.Unauthorized();
             }
 
+            if (!PermissionAuthorization.HasPermission(user, "cv.view_own"))
+            {
+                return PermissionAuthorization.Forbidden("cv.view_own");
+            }
+
             try
             {
                 var result = await sender.Send(new GetCvDownloadUrlQuery(cvId, userId, expiryMinutes), cancellationToken);
@@ -320,7 +325,7 @@ public static class CandidateEndpoints
         })
         .WithName("GetCandidateCvDownloadUrl")
         .WithSummary("Lấy URL tạm thời để xem hoặc tải CV của ứng viên")
-        .WithDescription("Sinh đường dẫn có chữ ký số (Presigned URL) có hiệu lực ngắn (mặc định 15 phút) để tải hoặc xem tệp CV trực tiếp từ Cloudflare R2.")
+        .WithDescription("Yêu cầu permission cv.view_own. Sinh đường dẫn có chữ ký số (Presigned URL) có hiệu lực ngắn (mặc định 15 phút) để tải hoặc xem tệp CV trực tiếp từ Cloudflare R2.")
         .Produces<GetCvDownloadUrlResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)

@@ -19,4 +19,16 @@ public class PermissionAuthorizationTests
         PermissionAuthorization.HasPermission(denied, permission).Should().BeFalse();
         PermissionAuthorization.HasPermission(allowed, permission + ".other").Should().BeFalse();
     }
+
+    [Fact]
+    public void CandidateCvDownload_RequiresCvViewOwn()
+    {
+        const string requiredPermission = "cv.view_own";
+        var allowed = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim("permission", requiredPermission) }, "test"));
+        var denied = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test"));
+
+        PermissionAuthorization.HasPermission(allowed, requiredPermission).Should().BeTrue();
+        PermissionAuthorization.HasPermission(denied, requiredPermission).Should().BeFalse();
+    }
 }
