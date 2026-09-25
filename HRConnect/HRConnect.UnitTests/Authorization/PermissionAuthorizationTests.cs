@@ -108,4 +108,16 @@ public class PermissionAuthorizationTests
         PermissionAuthorization.HasPermission(allowed, requiredPermission).Should().BeTrue();
         PermissionAuthorization.HasPermission(denied, requiredPermission).Should().BeFalse();
     }
+
+    [Fact]
+    public void CandidateApplicationDetail_RequiresApplicationViewOwn()
+    {
+        const string requiredPermission = "application.view_own";
+        var allowed = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim("permission", requiredPermission) }, "test"));
+        var denied = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test"));
+
+        PermissionAuthorization.HasPermission(allowed, requiredPermission).Should().BeTrue();
+        PermissionAuthorization.HasPermission(denied, requiredPermission).Should().BeFalse();
+    }
 }
