@@ -64,7 +64,7 @@ public class CandidateRepository : ICandidateRepository
             .Include(c => c.User)
             .Include(c => c.CandidateSkills)
                 .ThenInclude(cs => cs.Skill)
-            .Include(c => c.CandidateCv)
+            .Include(c => c.CandidateCvs.Where(cv => cv.IsPrimary && cv.Status == "ACTIVE"))
             .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken);
     }
 

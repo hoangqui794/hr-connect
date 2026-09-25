@@ -46,7 +46,7 @@ public partial class Candidate
 
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
 
-    public virtual CandidateCv? CandidateCv { get; set; }
+    public virtual ICollection<CandidateCv> CandidateCvs { get; set; } = new List<CandidateCv>();
 
     public virtual ICollection<CandidateJobMatch> CandidateJobMatches { get; set; } = new List<CandidateJobMatch>();
 
