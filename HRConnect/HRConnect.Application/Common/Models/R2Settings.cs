@@ -19,4 +19,10 @@ public class R2Settings
     public long MaxCvFileSizeBytes => (long)MaxCvFileSizeMb * 1024 * 1024;
 
     public int PresignedUrlExpiryMinutes { get; set; } = 15;
+
+    public int MaxAvatarFileSizeMb { get; set; } = 5;
+
+    public long MaxAvatarFileSizeBytes => (long)MaxAvatarFileSizeMb * 1024 * 1024;
+
+    public string? PublicBaseUrl { get; set; }
 }
