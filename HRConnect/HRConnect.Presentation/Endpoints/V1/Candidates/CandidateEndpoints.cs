@@ -417,6 +417,11 @@ public static class CandidateEndpoints
                 return Results.Unauthorized();
             }
 
+            if (!PermissionAuthorization.HasPermission(user, "cv.update_own"))
+            {
+                return PermissionAuthorization.Forbidden("cv.update_own");
+            }
+
             var command = new SetCandidatePrimaryCvCommand
             {
                 CvId = cvId,
@@ -447,7 +452,7 @@ public static class CandidateEndpoints
         })
         .WithName("SetCandidatePrimaryCv")
         .WithSummary("Đặt CV làm CV chính của ứng viên")
-        .WithDescription("Đặt CV chính không thay đổi CV đã được sử dụng trong các Application trước đó.")
+        .WithDescription("Yêu cầu permission cv.update_own. Đặt CV chính không thay đổi CV đã được sử dụng trong các Application trước đó.")
         .Produces<SetCandidatePrimaryCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
