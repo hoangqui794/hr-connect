@@ -754,8 +754,8 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
 
-            entity.HasOne(d => d.Candidate).WithOne(p => p.CandidateCv)
-                .HasForeignKey<CandidateCv>(d => d.CandidateId)
+            entity.HasOne(d => d.Candidate).WithMany(p => p.CandidateCvs)
+                .HasForeignKey(d => d.CandidateId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("candidate_cv_candidate_id_fkey");
 

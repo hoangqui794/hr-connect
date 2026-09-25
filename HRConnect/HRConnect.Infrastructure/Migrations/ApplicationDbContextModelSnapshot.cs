@@ -3628,8 +3628,8 @@ namespace HRConnect.Infrastructure.Migrations
             modelBuilder.Entity("HRConnect.Domain.Entities.CandidateCv", b =>
                 {
                     b.HasOne("HRConnect.Domain.Entities.Candidate", "Candidate")
-                        .WithOne("CandidateCv")
-                        .HasForeignKey("HRConnect.Domain.Entities.CandidateCv", "CandidateId")
+                        .WithMany("CandidateCvs")
+                        .HasForeignKey("CandidateId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("candidate_cv_candidate_id_fkey");
@@ -3676,7 +3676,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.Navigation("Candidate");
 
-                    b.Navigation("CandidateCv");
+                    b.Navigation("CandidateCvs");
 
                     b.Navigation("Job");
 
@@ -4436,7 +4436,7 @@ namespace HRConnect.Infrastructure.Migrations
                 {
                     b.Navigation("Applications");
 
-                    b.Navigation("CandidateCv");
+                    b.Navigation("CandidateCvs");
 
                     b.Navigation("CandidateJobMatches");
 

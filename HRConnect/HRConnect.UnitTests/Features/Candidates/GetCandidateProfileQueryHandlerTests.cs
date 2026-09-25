@@ -88,4 +88,61 @@ public class GetCandidateProfileQueryHandlerTests
         await act.Should().ThrowAsync<NotFoundException>()
             .WithMessage("*Không tìm thấy hồ sơ ứng viên*");
     }
+
+    [Fact]
+    public async Task Handle_WhenCandidateHasMultipleCvs_ReturnsOnlyActivePrimaryCv()
+    {
+        var userId = Guid.NewGuid();
+        var primaryId = Guid.NewGuid();
+        var candidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            UserId = userId,
+            FullName = "Candidate",
+            ProfileVisibility = "PRIVATE",
+            Status = "ACTIVE",
+            CandidateCvs = new List<CandidateCv>
+            {
+                new()
+                {
+                    CvId = primaryId,
+                    Title = "Primary CV",
+                    CreationMethod = "FILE_UPLOAD",
+                    Status = "ACTIVE",
+                    IsPrimary = true
+                }
+            }
+        };
+        _candidateRepositoryMock
+            .Setup(r => r.GetByUserIdWithDetailsAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+
+        var result = await _handler.Handle(new GetCandidateProfileQuery(userId), CancellationToken.None);
+
+        result.Data!.PrimaryCv.Should().NotBeNull();
+        result.Data.PrimaryCv!.CvId.Should().Be(primaryId);
+        result.Data.PrimaryCv.IsPrimary.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_WhenNoActivePrimaryCv_ReturnsNullPrimaryCv()
+    {
+        var userId = Guid.NewGuid();
+        var candidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            UserId = userId,
+            FullName = "Candidate",
+            ProfileVisibility = "PRIVATE",
+            Status = "ACTIVE",
+            CandidateCvs = new List<CandidateCv>()
+        };
+        _candidateRepositoryMock
+            .Setup(r => r.GetByUserIdWithDetailsAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+
+        var result = await _handler.Handle(new GetCandidateProfileQuery(userId), CancellationToken.None);
+
+        result.Data!.PrimaryCv.Should().BeNull();
+    }
 }
