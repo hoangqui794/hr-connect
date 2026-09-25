@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Users.Commands.UploadAvatar;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -171,6 +173,53 @@ public static class UserEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
+
+        // 2. GET /api/v1/users/{userId:guid}/avatar - Xem ảnh đại diện của người dùng
+        group.MapGet("/{userId:guid}/avatar", async (
+            Guid userId,
+            [FromServices] IUserRepository userRepository,
+            [FromServices] IFileStorageService fileStorageService,
+            CancellationToken cancellationToken) =>
+        {
+            var targetUser = await userRepository.GetByIdAsync(userId, cancellationToken);
+            if (targetUser == null || string.IsNullOrWhiteSpace(targetUser.AvatarUrl))
+            {
+                return Results.NotFound(new
+                {
+                    success = false,
+                    message = "Không tìm thấy ảnh đại diện của người dùng."
+                });
+            }
+
+            if (targetUser.AvatarUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                targetUser.AvatarUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.Redirect(targetUser.AvatarUrl);
+            }
+
+            try
+            {
+                var presignedUrl = await fileStorageService.GetPresignedDownloadUrlAsync(
+                    targetUser.AvatarUrl,
+                    TimeSpan.FromHours(24),
+                    cancellationToken);
+
+                return Results.Redirect(presignedUrl);
+            }
+            catch
+            {
+                return Results.NotFound(new
+                {
+                    success = false,
+                    message = "Không thể tạo đường dẫn tải ảnh đại diện."
+                });
+            }
+        })
+        .WithName("GetUserAvatar")
+        .WithSummary("Lấy đường dẫn ảnh đại diện của người dùng theo UserId")
+        .WithDescription("Chuyển hướng (302 Redirect) đến URL ảnh đại diện của người dùng.")
+        .Produces(StatusCodes.Status302Found)
+        .Produces(StatusCodes.Status404NotFound);
 
         return app;
     }
