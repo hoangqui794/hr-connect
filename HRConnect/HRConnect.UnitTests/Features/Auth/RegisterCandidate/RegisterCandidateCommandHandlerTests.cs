@@ -121,7 +121,7 @@ public class RegisterCandidateCommandHandlerTests
             UserId = Guid.NewGuid() // Already linked!
         };
 
-        _candidateRepositoryMock.Setup(x => x.FindByIdentityAsync("candidate@example.com", "0901234567", It.IsAny<CancellationToken>()))
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedEmailAsync("candidate@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingCandidate);
 
         // Act
@@ -132,8 +132,10 @@ public class RegisterCandidateCommandHandlerTests
             .WithMessage("*đã được liên kết với một tài khoản khác*");
     }
 
-    [Fact]
-    public async Task Handle_ShouldSuccessfullyRegisterAndLinkCandidate_WhenCandidateExistsWithoutUserId()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Handle_ShouldRegisterWithoutClaimingExistingCandidateBeforeOtp(bool candidateExists)
     {
         // Arrange
         var command = new RegisterCandidateCommand(
@@ -156,8 +158,8 @@ public class RegisterCandidateCommandHandlerTests
             UserId = null // Unlinked candidate record!
         };
 
-        _candidateRepositoryMock.Setup(x => x.FindByIdentityAsync("candidate@example.com", "0901234567", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(unlinkedCandidate);
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedEmailAsync("candidate@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidateExists ? unlinkedCandidate : null);
 
         var candidateRole = new Role
         {
@@ -187,9 +189,11 @@ public class RegisterCandidateCommandHandlerTests
         result.Data!.Email.Should().Be("candidate@example.com");
         result.Data.Status.Should().Be("PENDING");
 
-        // Verify Candidate link was updated
-        unlinkedCandidate.UserId.Should().NotBeNull();
-        _candidateRepositoryMock.Verify(x => x.Update(unlinkedCandidate), Times.Once);
+        // Existing recruitment data must remain unclaimed until email verification succeeds.
+        unlinkedCandidate.UserId.Should().BeNull();
+        _candidateRepositoryMock.Verify(x => x.Update(It.IsAny<Candidate>()), Times.Never);
+        _candidateRepositoryMock.Verify(x => x.TryLinkByVerifiedEmailAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _candidateRepositoryMock.Verify(x => x.AddAsync(It.Is<Candidate>(c => c.UserId == result.Data.UserId), It.IsAny<CancellationToken>()), candidateExists ? Times.Never() : Times.Once());
 
         // Verify user added and transaction committed
         _userRepositoryMock.Verify(x => x.AddAsync(It.IsAny<AppUser>(), It.IsAny<CancellationToken>()), Times.Once);

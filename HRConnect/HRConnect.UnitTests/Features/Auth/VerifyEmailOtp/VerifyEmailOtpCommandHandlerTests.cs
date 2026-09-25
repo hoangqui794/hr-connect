@@ -21,6 +21,7 @@ public class VerifyEmailOtpCommandHandlerTests
     private readonly Mock<IOtpService> _otpServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<ILogger<VerifyEmailOtpCommandHandler>> _loggerMock;
+    private readonly Mock<ICandidateRepository> _candidateRepositoryMock = new();
 
     private readonly VerifyEmailOtpCommandHandler _handler;
 
@@ -47,7 +48,33 @@ public class VerifyEmailOtpCommandHandlerTests
             _emailNormalizerMock.Object,
             _otpServiceMock.Object,
             _unitOfWorkMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _candidateRepositoryMock.Object);
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task Handle_MustNotActivateOrClaimCandidate_WhenOtpOrAtomicClaimFails(bool validOtp, bool claimSucceeds)
+    {
+        var user = new AppUser { UserId = Guid.NewGuid(), Email = "candidate@example.com", Status = "PENDING" };
+        var candidate = new Candidate { CandidateId = Guid.NewGuid(), NormalizedEmail = user.Email };
+        var token = new UserToken { TokenId = Guid.NewGuid(), UserId = user.UserId, TokenHash = "hash", ExpiresAt = DateTime.UtcNow.AddMinutes(5) };
+        _emailNormalizerMock.Setup(x => x.Normalize(user.Email)).Returns(user.Email);
+        _userRepositoryMock.Setup(x => x.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _userTokenRepositoryMock.Setup(x => x.GetLatestActiveOtpAsync(user.UserId, "EMAIL_OTP", It.IsAny<CancellationToken>())).ReturnsAsync(token);
+        _otpServiceMock.Setup(x => x.VerifyOtp("123456", "hash")).Returns(validOtp);
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(candidate);
+        _candidateRepositoryMock.Setup(x => x.TryLinkByVerifiedEmailAsync(candidate.CandidateId, user.Email, user.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(claimSucceeds);
+
+        var action = () => _handler.Handle(new VerifyEmailOtpCommand(user.Email, "123456"), CancellationToken.None);
+        if (validOtp) await action.Should().ThrowAsync<ConflictException>();
+        else await action.Should().ThrowAsync<BadRequestException>();
+        user.Status.Should().Be("PENDING");
+        candidate.UserId.Should().BeNull();
+        _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()), validOtp ? Times.Once() : Times.Never());
+        _candidateRepositoryMock.Verify(x => x.TryLinkByVerifiedEmailAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), validOtp ? Times.Once() : Times.Never());
     }
 
     [Fact]
@@ -207,8 +234,10 @@ public class VerifyEmailOtpCommandHandlerTests
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    [Fact]
-    public async Task Handle_ShouldActivateUserAndMarkTokenUsed_WhenCandidateVerifiesOtp()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Handle_ShouldActivateUserAndMarkTokenUsed_WhenCandidateVerifiesOtp(bool existingUnclaimedCandidate)
     {
         var command = new VerifyEmailOtpCommand("candidate@example.com", "123456");
         var pendingUser = new AppUser
@@ -240,6 +269,10 @@ public class VerifyEmailOtpCommandHandlerTests
         _companyVerificationRequestRepositoryMock.Setup(x => x.GetByUserIdAsync(pendingUser.UserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((CompanyVerificationRequest?)null);
 
+        var candidate = new Candidate { CandidateId = Guid.NewGuid(), NormalizedEmail = command.Email, UserId = existingUnclaimedCandidate ? null : pendingUser.UserId };
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(candidate);
+        _candidateRepositoryMock.Setup(x => x.TryLinkByVerifiedEmailAsync(candidate.CandidateId, command.Email, pendingUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.Should().NotBeNull();
@@ -253,7 +286,8 @@ public class VerifyEmailOtpCommandHandlerTests
 
         _userRepositoryMock.Verify(x => x.Update(pendingUser), Times.Once);
         _userTokenRepositoryMock.Verify(x => x.Update(token), Times.Once);
-        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _candidateRepositoryMock.Verify(x => x.TryLinkByVerifiedEmailAsync(candidate.CandidateId, command.Email, pendingUser.UserId, It.IsAny<CancellationToken>()), existingUnclaimedCandidate ? Times.Once() : Times.Never());
     }
 
     [Fact]

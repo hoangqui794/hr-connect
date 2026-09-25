@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using HRConnect.Application.Features.Auth.Common;
 
 namespace HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp;
 
@@ -20,6 +21,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
     private readonly IOtpService _otpService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<VerifyEmailOtpCommandHandler> _logger;
+    private readonly ICandidateRepository _candidateRepository;
 
     public VerifyEmailOtpCommandHandler(
         IUserRepository userRepository,
@@ -31,7 +33,8 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         IEmailNormalizer emailNormalizer,
         IOtpService otpService,
         IUnitOfWork unitOfWork,
-        ILogger<VerifyEmailOtpCommandHandler> logger)
+        ILogger<VerifyEmailOtpCommandHandler> logger,
+        ICandidateRepository candidateRepository)
     {
         _userRepository = userRepository;
         _userTokenRepository = userTokenRepository;
@@ -43,6 +46,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         _otpService = otpService;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _candidateRepository = candidateRepository;
     }
 
     public async Task<VerifyEmailOtpResponse> Handle(VerifyEmailOtpCommand request, CancellationToken cancellationToken)
@@ -264,10 +268,27 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         }
 
         // Case C: Tài khoản Candidate (Ứng viên)
-        user.Status = "ACTIVE";
-        _userRepository.Update(user);
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var candidate = await CandidateRegistrationIdentity.ResolveAsync(
+                _candidateRepository, normalizedEmail, user.NormalizedPhone, cancellationToken, user.UserId);
+            if (candidate == null)
+                throw new ConflictException("Không tìm thấy hồ sơ ứng viên khớp với email đã xác minh.");
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+            if (candidate.UserId == null && !await _candidateRepository.TryLinkByVerifiedEmailAsync(
+                    candidate.CandidateId, normalizedEmail, user.UserId, cancellationToken))
+                throw new ConflictException("Hồ sơ ứng viên đã thay đổi hoặc đã được liên kết với một tài khoản khác.");
+
+            user.Status = "ACTIVE";
+            _userRepository.Update(user);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+            throw;
+        }
 
         _logger.LogInformation("Xác thực email thành công cho Candidate UserId {UserId}, Email {Email}. Tài khoản đã chuyển sang ACTIVE.",
             user.UserId, user.Email);
