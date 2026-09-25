@@ -1,0 +1,29 @@
+@backendUrl = https://localhost:7289
+@internalHrEmail = admin@gmail.com
+@internalHrPassword =111111Aa@
+@failedApplicationId =42403110-37d5-44fe-88fa-f9d87df760bb
+
+# Retry a FAILED MF-03 attempt without submitting the CV again.
+# Prerequisites:
+# 1. Restart HR Connect once so the permission seed is applied.
+# 2. Login with INTERNAL_HR or PLATFORM_ADMIN that has application.retry_ai_scoring.
+# 3. failedApplicationId has a latest AI attempt with status FAILED.
+
+### TC-R01 - Internal HR login; expect HTTP 200
+# @name internalHrLogin
+POST {{backendUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{internalHrEmail}}",
+  "password": "{{internalHrPassword}}"
+}
+
+### TC-R02 - Queue a retry; expect HTTP 202 and aiStatus=PENDING
+POST {{backendUrl}}/api/v1/internal/applications/{{failedApplicationId}}/ai-scoring/retry
+Authorization: Bearer {{internalHrLogin.response.body.$.data.accessToken}}
+
+### TC-R03 - The same retry cannot be queued twice; expect HTTP 409
+POST {{backendUrl}}/api/v1/internal/applications/{{failedApplicationId}}/ai-scoring/retry
+Authorization: Bearer {{internalHrLogin.response.body.$.data.accessToken}}
+
