@@ -476,7 +476,7 @@ public static class CandidateEndpoints
         })
         .WithName("DeleteCandidateCv")
         .WithSummary("Xóa hoặc gỡ CV khỏi kho CV của ứng viên")
-        .WithDescription("Xóa hoặc gỡ CV khỏi kho CV của ứng viên. Nếu CV đã được sử dụng trong hồ sơ ứng tuyển (Application), CV sẽ chỉ được gỡ khỏi kho hiển thị để bảo toàn dữ liệu lịch sử ứng tuyển; nếu chưa từng sử dụng, CV và tệp PDF sẽ được xóa hoàn toàn.")
+        .WithDescription("Xóa hoặc gỡ CV khỏi kho CV của ứng viên. CV đã được Application sử dụng không bị hard delete và tệp PDF vẫn được giữ để bảo toàn lịch sử. CV chưa sử dụng được xóa khỏi DB trước, sau đó hệ thống dọn tệp PDF an toàn.")
         .Produces<DeleteCandidateCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
