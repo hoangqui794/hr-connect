@@ -246,6 +246,9 @@ public static class CandidateEndpoints
             [FromServices] ISender sender,
             CancellationToken cancellationToken) =>
         {
+            if (!PermissionAuthorization.HasPermission(user, "cv.view_own"))
+                return PermissionAuthorization.Forbidden("cv.view_own");
+
             var userId = GetUserIdFromClaims(user);
             if (userId == null)
             {
@@ -272,7 +275,7 @@ public static class CandidateEndpoints
         })
         .WithName("GetCandidateCvs")
         .WithSummary("Lấy danh sách CV của ứng viên hiện tại")
-        .WithDescription("Ứng viên có thể lưu nhiều CV trong kho CV cá nhân. Một CV có thể được sử dụng cho nhiều hồ sơ ứng tuyển khác nhau. Danh sách sắp xếp ưu tiên CV chính lên đầu.")
+        .WithDescription("Yêu cầu permission cv.view_own. Ứng viên có thể lưu nhiều CV trong kho CV cá nhân. Một CV có thể được sử dụng cho nhiều hồ sơ ứng tuyển khác nhau. Danh sách sắp xếp ưu tiên CV chính lên đầu.")
         .Produces<GetCandidateCvsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)

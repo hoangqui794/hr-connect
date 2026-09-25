@@ -8,6 +8,7 @@ public class PermissionAuthorizationTests
 {
     [Theory]
     [InlineData("cv.create")]
+    [InlineData("cv.view_own")]
     public void HasPermission_AllowsExactClaimAndRejectsMissingClaim(string permission)
     {
         var allowed = new ClaimsPrincipal(new ClaimsIdentity(
