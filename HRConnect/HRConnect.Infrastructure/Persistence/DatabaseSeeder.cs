@@ -153,6 +153,7 @@ public static class DatabaseSeeder
         ('candidate.view', 'candidate', 'view', 'View candidate information'),
         ('application.view', 'application', 'view', 'View applications'),
         ('application.screen', 'application', 'screen', 'Screen applications'),
+        ('application.retry_ai_scoring', 'application', 'retry_ai_scoring', 'Retry failed AI scoring'),
         ('submission.view', 'submission', 'view', 'View submissions'),
         ('attribution.view', 'attribution', 'view', 'View affiliate attribution'),
         ('interview.manage', 'interview', 'manage', 'Manage interviews'),
@@ -219,7 +220,7 @@ public static class DatabaseSeeder
     FROM public.role r
     JOIN public.permission p ON p.code IN (
         'job.view', 'notification.view_own', 'company.view', 'job.review', 'job.publish', 'candidate.view',
-        'application.view', 'application.screen', 'submission.view', 'attribution.view',
+        'application.view', 'application.screen', 'application.retry_ai_scoring', 'submission.view', 'attribution.view',
         'interview.manage', 'offer.manage', 'placement.manage', 'probation.manage', 'warranty.manage',
         'commission.view', 'payout.view'
     )
@@ -233,7 +234,7 @@ public static class DatabaseSeeder
         'job.view', 'notification.view_own', 'user.view', 'user.manage', 'role.view', 'role.manage',
         'permission.view', 'permission.manage', 'company.verify', 'affiliate.verify',
         'dispute.view', 'dispute.resolve', 'commission.manage', 'payout.manage',
-        'system_config.view', 'system_config.manage', 'report.view', 'audit.view'
+        'system_config.view', 'system_config.manage', 'report.view', 'audit.view', 'application.retry_ai_scoring'
     )
     WHERE r.code = 'PLATFORM_ADMIN'
     ON CONFLICT (role_id, permission_id) DO NOTHING;

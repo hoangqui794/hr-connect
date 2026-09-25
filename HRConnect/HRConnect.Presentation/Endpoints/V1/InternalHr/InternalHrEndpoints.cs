@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.InternalHr.Commands.UpdateInternalHrProfile;
+using HRConnect.Application.Features.InternalHr.Commands.RetryAiScoring;
 using HRConnect.Application.Features.InternalHr.Queries.GetInternalHrProfile;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -111,6 +112,44 @@ public static class InternalHrEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
+        var applicationsGroup = app.MapGroup("/api/v1/internal/applications")
+            .WithTags("Internal HR AI Screening")
+            .RequireAuthorization();
+
+        applicationsGroup.MapPost("/{applicationId:guid}/ai-scoring/retry", async (
+            Guid applicationId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null) return Results.Unauthorized();
+            if (!CanRetryAiScoring(user))
+                return Results.Json(new { success = false, message = "Bạn không có quyền yêu cầu chấm AI lại." }, statusCode: StatusCodes.Status403Forbidden);
+
+            try
+            {
+                var result = await sender.Send(new RetryAiScoringCommand(applicationId, userId.Value), cancellationToken);
+                return Results.Json(result, statusCode: StatusCodes.Status202Accepted);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("RetryAiScoring")
+        .WithSummary("Yêu cầu AI chấm lại một hồ sơ thất bại")
+        .WithDescription("Chỉ Internal HR hoặc Platform Admin có quyền mới được tạo lượt chấm AI mới cho Application có attempt gần nhất FAILED. Không tạo Submission hoặc CV mới.")
+        .Produces<RetryAiScoringResponse>(StatusCodes.Status202Accepted)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -126,4 +165,8 @@ public static class InternalHrEndpoints
 
         return null;
     }
+
+    private static bool CanRetryAiScoring(ClaimsPrincipal user) =>
+        (user.IsInRole("INTERNAL_HR") || user.IsInRole("PLATFORM_ADMIN")) &&
+        user.HasClaim("permission", "application.retry_ai_scoring");
 }

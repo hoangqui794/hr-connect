@@ -237,6 +237,11 @@ VALUES
      'screen',
      'Screen applications'),
 
+    ('application.retry_ai_scoring',
+     'application',
+     'retry_ai_scoring',
+     'Retry failed AI scoring'),
+
     ('submission.view',
      'submission',
      'view',
@@ -492,6 +497,7 @@ JOIN public.permission p
 
         'application.view',
         'application.screen',
+        'application.retry_ai_scoring',
 
         'submission.view',
         'attribution.view',
@@ -543,7 +549,9 @@ JOIN public.permission p
         'system_config.manage',
 
         'report.view',
-        'audit.view'
+        'audit.view',
+
+        'application.retry_ai_scoring'
     )
 WHERE r.code = 'PLATFORM_ADMIN'
 ON CONFLICT (role_id, permission_id) DO NOTHING;

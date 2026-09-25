@@ -1,15 +1,14 @@
 @backendUrl = https://localhost:7289
 @aiUrl = http://127.0.0.1:8001
-@candidateEmail = REPLACE_WITH_CANDIDATE_EMAIL
-@candidatePassword = REPLACE_WITH_CANDIDATE_PASSWORD
-@serviceToken = REPLACE_WITH_HRCONNECT_SERVICE_TOKEN
+@candidateEmail =candidate@gmail.com
+@candidatePassword = 111111Aa@
+@serviceToken = ccadf1fcb245c6d59a92c6b4770e207d21298d2614cd09ce37c650586b7ade34
 @cvFilePath = C:\Users\truon\Downloads\CV.pdf
-@jobSearch = %5BSEED%5D%20Junior%20.NET%20Backend%20Developer
 
 # MF-02 -> MF-03 real local flow.
 # This file uses the normal HRConnect database and the configured R2 bucket.
 # It does NOT use hr_connect_e2e.
-#
+
 # Before running:
 # 1. Start ai-service on port 8001 and HRConnect on https://localhost:7289.
 # 2. Both services must use the same HRCONNECT_SERVICE_TOKEN.
@@ -40,7 +39,7 @@ Authorization: Bearer {{candidateLogin.response.body.$.data.accessToken}}
 
 ### TC-03 - Automatically select the seeded CV_APPLICATION Job; expect items[0].jobId
 # @name candidateJobs
-GET {{backendUrl}}/api/v1/jobs?search={{jobSearch}}&page=1&pageSize=20
+GET {{backendUrl}}/api/v1/jobs?search=%5BSEED%5D%20Full%20Stack%20.NET%20Developer%20-%20CV%20Sourcing&page=1&pageSize=20
 Authorization: Bearer {{candidateLogin.response.body.$.data.accessToken}}
 
 ### TC-04 - Verify the selected Job before uploading; expect HTTP 200
@@ -80,5 +79,5 @@ GET {{backendUrl}}/api/v1/internal/ai-results/{{candidateApply.response.body.$.d
 X-Service-Token: wrong-secret
 
 # If TC-05 returns HTTP 409, this Candidate already applied to the selected Job.
-# Change jobSearch to another Candidate-visible ACTIVE Job, for example:
-# %5BSEED%5D%20Full%20Stack%20.NET%20Developer%20-%20CV%20Sourcing
+# If that Job becomes unavailable, replace the encoded search text in TC-03
+# with another Candidate-visible ACTIVE Job title.
