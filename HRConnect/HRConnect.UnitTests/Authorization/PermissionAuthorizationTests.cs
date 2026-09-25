@@ -10,6 +10,7 @@ public class PermissionAuthorizationTests
     [InlineData("cv.create")]
     [InlineData("cv.view_own")]
     [InlineData("cv.update_own")]
+    [InlineData("cv.delete_own")]
     public void HasPermission_AllowsExactClaimAndRejectsMissingClaim(string permission)
     {
         var allowed = new ClaimsPrincipal(new ClaimsIdentity(
@@ -49,6 +50,18 @@ public class PermissionAuthorizationTests
     public void SetCandidatePrimaryCv_RequiresCvUpdateOwn()
     {
         const string requiredPermission = "cv.update_own";
+        var allowed = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim("permission", requiredPermission) }, "test"));
+        var denied = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test"));
+
+        PermissionAuthorization.HasPermission(allowed, requiredPermission).Should().BeTrue();
+        PermissionAuthorization.HasPermission(denied, requiredPermission).Should().BeFalse();
+    }
+
+    [Fact]
+    public void DeleteCandidateCv_RequiresCvDeleteOwn()
+    {
+        const string requiredPermission = "cv.delete_own";
         var allowed = new ClaimsPrincipal(new ClaimsIdentity(
             new[] { new Claim("permission", requiredPermission) }, "test"));
         var denied = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test"));

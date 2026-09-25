@@ -473,6 +473,11 @@ public static class CandidateEndpoints
                 return Results.Unauthorized();
             }
 
+            if (!PermissionAuthorization.HasPermission(user, "cv.delete_own"))
+            {
+                return PermissionAuthorization.Forbidden("cv.delete_own");
+            }
+
             var command = new DeleteCandidateCvCommand(cvId, userId.Value);
 
             try
@@ -499,7 +504,7 @@ public static class CandidateEndpoints
         })
         .WithName("DeleteCandidateCv")
         .WithSummary("Xóa hoặc gỡ CV khỏi kho CV của ứng viên")
-        .WithDescription("Xóa hoặc gỡ CV khỏi kho CV của ứng viên. Nếu CV đã được sử dụng trong hồ sơ ứng tuyển (Application), CV sẽ chỉ được gỡ khỏi kho hiển thị để bảo toàn dữ liệu lịch sử ứng tuyển; nếu chưa từng sử dụng, CV và tệp PDF sẽ được xóa hoàn toàn.")
+        .WithDescription("Yêu cầu permission cv.delete_own. Xóa hoặc gỡ CV khỏi kho CV của ứng viên. Nếu CV đã được sử dụng trong hồ sơ ứng tuyển (Application), CV sẽ chỉ được gỡ khỏi kho hiển thị để bảo toàn dữ liệu lịch sử ứng tuyển; nếu chưa từng sử dụng, CV và tệp PDF sẽ được xóa hoàn toàn.")
         .Produces<DeleteCandidateCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
