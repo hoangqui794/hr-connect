@@ -537,6 +537,11 @@ public static class CandidateEndpoints
                 return Results.Unauthorized();
             }
 
+            if (!PermissionAuthorization.HasPermission(user, "application.view_own"))
+            {
+                return PermissionAuthorization.Forbidden("application.view_own");
+            }
+
             try
             {
                 var query = new HRConnect.Application.Features.Candidates.Queries.GetCandidateApplications.GetCandidateApplicationsQuery(
@@ -566,7 +571,7 @@ public static class CandidateEndpoints
         })
         .WithName("GetCandidateApplications")
         .WithSummary("Lấy lịch sử ứng tuyển của ứng viên hiện tại")
-        .WithDescription("Lấy danh sách lịch sử các công việc đã ứng tuyển của ứng viên đang đăng nhập, kèm thông tin công việc, CV và trạng thái.")
+        .WithDescription("Yêu cầu permission application.view_own. Lấy danh sách lịch sử các công việc đã ứng tuyển của ứng viên đang đăng nhập, kèm thông tin công việc, CV và trạng thái.")
         .Produces<HRConnect.Application.Features.Candidates.Queries.GetCandidateApplications.CandidateApplicationsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
