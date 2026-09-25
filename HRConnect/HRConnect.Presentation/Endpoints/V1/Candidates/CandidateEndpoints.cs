@@ -12,6 +12,7 @@ using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using HRConnect.Application.Features.Candidates.Queries.GetCvDownloadUrl;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using HRConnect.Presentation.Authorization;
 
 namespace HRConnect.Presentation.Endpoints.V1.Candidates;
 
@@ -185,6 +186,9 @@ public static class CandidateEndpoints
             [FromServices] ISender sender,
             CancellationToken cancellationToken) =>
         {
+            if (!PermissionAuthorization.HasPermission(user, "cv.create"))
+                return PermissionAuthorization.Forbidden("cv.create");
+
             var userId = GetUserIdFromClaims(user);
             if (userId == null)
             {
@@ -227,11 +231,12 @@ public static class CandidateEndpoints
         })
         .WithName("UploadCandidateCv")
         .WithSummary("Tải lên CV mới vào kho CV của ứng viên")
-        .WithDescription("Tải lên tệp CV PDF của ứng viên lên hệ thống Cloudflare R2 riêng tư, tự động sinh khóa lưu trữ candidates/{candidateId}/cvs/{cvId}.pdf.")
+        .WithDescription("Yêu cầu permission cv.create. Tải lên tệp CV PDF của ứng viên lên hệ thống Cloudflare R2 riêng tư, tự động sinh khóa lưu trữ candidates/{candidateId}/cvs/{cvId}.pdf.")
         .DisableAntiforgery()
         .Produces<UploadCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
@@ -241,6 +246,9 @@ public static class CandidateEndpoints
             [FromServices] ISender sender,
             CancellationToken cancellationToken) =>
         {
+            if (!PermissionAuthorization.HasPermission(user, "cv.view_own"))
+                return PermissionAuthorization.Forbidden("cv.view_own");
+
             var userId = GetUserIdFromClaims(user);
             if (userId == null)
             {
@@ -267,7 +275,7 @@ public static class CandidateEndpoints
         })
         .WithName("GetCandidateCvs")
         .WithSummary("Lấy danh sách CV của ứng viên hiện tại")
-        .WithDescription("Ứng viên có thể lưu nhiều CV trong kho CV cá nhân. Một CV có thể được sử dụng cho nhiều hồ sơ ứng tuyển khác nhau. Danh sách sắp xếp ưu tiên CV chính lên đầu.")
+        .WithDescription("Yêu cầu permission cv.view_own. Ứng viên có thể lưu nhiều CV trong kho CV cá nhân. Một CV có thể được sử dụng cho nhiều hồ sơ ứng tuyển khác nhau. Danh sách sắp xếp ưu tiên CV chính lên đầu.")
         .Produces<GetCandidateCvsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
@@ -286,6 +294,11 @@ public static class CandidateEndpoints
             if (userId == null)
             {
                 return Results.Unauthorized();
+            }
+
+            if (!PermissionAuthorization.HasPermission(user, "cv.view_own"))
+            {
+                return PermissionAuthorization.Forbidden("cv.view_own");
             }
 
             try
@@ -312,7 +325,7 @@ public static class CandidateEndpoints
         })
         .WithName("GetCandidateCvDownloadUrl")
         .WithSummary("Lấy URL tạm thời để xem hoặc tải CV của ứng viên")
-        .WithDescription("Sinh đường dẫn có chữ ký số (Presigned URL) có hiệu lực ngắn (mặc định 15 phút) để tải hoặc xem tệp CV trực tiếp từ Cloudflare R2.")
+        .WithDescription("Yêu cầu permission cv.view_own. Sinh đường dẫn có chữ ký số (Presigned URL) có hiệu lực ngắn (mặc định 15 phút) để tải hoặc xem tệp CV trực tiếp từ Cloudflare R2.")
         .Produces<GetCvDownloadUrlResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -332,6 +345,11 @@ public static class CandidateEndpoints
             if (userId == null)
             {
                 return Results.Unauthorized();
+            }
+
+            if (!PermissionAuthorization.HasPermission(user, "cv.update_own"))
+            {
+                return PermissionAuthorization.Forbidden("cv.update_own");
             }
 
             var command = new UpdateCandidateCvCommand
@@ -378,7 +396,7 @@ public static class CandidateEndpoints
         })
         .WithName("UpdateCandidateCvMetadata")
         .WithSummary("Cập nhật thông tin CV của ứng viên")
-        .WithDescription("API này chỉ cập nhật metadata như title; không thay thế file PDF.")
+        .WithDescription("Yêu cầu permission cv.update_own. API này chỉ cập nhật metadata như title; không thay thế file PDF.")
         .Produces<UpdateCandidateCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -397,6 +415,11 @@ public static class CandidateEndpoints
             if (userId == null)
             {
                 return Results.Unauthorized();
+            }
+
+            if (!PermissionAuthorization.HasPermission(user, "cv.update_own"))
+            {
+                return PermissionAuthorization.Forbidden("cv.update_own");
             }
 
             var command = new SetCandidatePrimaryCvCommand
@@ -429,7 +452,7 @@ public static class CandidateEndpoints
         })
         .WithName("SetCandidatePrimaryCv")
         .WithSummary("Đặt CV làm CV chính của ứng viên")
-        .WithDescription("Đặt CV chính không thay đổi CV đã được sử dụng trong các Application trước đó.")
+        .WithDescription("Yêu cầu permission cv.update_own. Đặt CV chính không thay đổi CV đã được sử dụng trong các Application trước đó.")
         .Produces<SetCandidatePrimaryCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -448,6 +471,11 @@ public static class CandidateEndpoints
             if (userId == null)
             {
                 return Results.Unauthorized();
+            }
+
+            if (!PermissionAuthorization.HasPermission(user, "cv.delete_own"))
+            {
+                return PermissionAuthorization.Forbidden("cv.delete_own");
             }
 
             var command = new DeleteCandidateCvCommand(cvId, userId.Value);
@@ -476,7 +504,7 @@ public static class CandidateEndpoints
         })
         .WithName("DeleteCandidateCv")
         .WithSummary("Xóa hoặc gỡ CV khỏi kho CV của ứng viên")
-        .WithDescription("Xóa hoặc gỡ CV khỏi kho CV của ứng viên. CV đã được Application sử dụng không bị hard delete và tệp PDF vẫn được giữ để bảo toàn lịch sử. CV chưa sử dụng được xóa khỏi DB trước, sau đó hệ thống dọn tệp PDF an toàn.")
+        .WithDescription("Yêu cầu permission cv.delete_own. CV đã được Application sử dụng không bị hard delete và tệp PDF vẫn được giữ để bảo toàn lịch sử. CV chưa sử dụng được xóa khỏi DB trước, sau đó hệ thống dọn tệp PDF an toàn.")
         .Produces<DeleteCandidateCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -509,6 +537,11 @@ public static class CandidateEndpoints
                 return Results.Unauthorized();
             }
 
+            if (!PermissionAuthorization.HasPermission(user, "application.view_own"))
+            {
+                return PermissionAuthorization.Forbidden("application.view_own");
+            }
+
             try
             {
                 var query = new HRConnect.Application.Features.Candidates.Queries.GetCandidateApplications.GetCandidateApplicationsQuery(
@@ -538,7 +571,7 @@ public static class CandidateEndpoints
         })
         .WithName("GetCandidateApplications")
         .WithSummary("Lấy lịch sử ứng tuyển của ứng viên hiện tại")
-        .WithDescription("Lấy danh sách lịch sử các công việc đã ứng tuyển của ứng viên đang đăng nhập, kèm thông tin công việc, CV và trạng thái.")
+        .WithDescription("Yêu cầu permission application.view_own. Lấy danh sách lịch sử các công việc đã ứng tuyển của ứng viên đang đăng nhập, kèm thông tin công việc, CV và trạng thái.")
         .Produces<HRConnect.Application.Features.Candidates.Queries.GetCandidateApplications.CandidateApplicationsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
@@ -556,6 +589,11 @@ public static class CandidateEndpoints
             if (userId == null)
             {
                 return Results.Unauthorized();
+            }
+
+            if (!PermissionAuthorization.HasPermission(user, "application.view_own"))
+            {
+                return PermissionAuthorization.Forbidden("application.view_own");
             }
 
             try
@@ -582,7 +620,7 @@ public static class CandidateEndpoints
         })
         .WithName("GetCandidateApplicationDetail")
         .WithSummary("Lấy chi tiết hồ sơ ứng tuyển của ứng viên hiện tại")
-        .WithDescription("Xem thông tin chi tiết một đơn ứng tuyển của ứng viên đang đăng nhập, bao gồm trạng thái, công việc, CV và kết quả AI nếu có.")
+        .WithDescription("Yêu cầu permission application.view_own. Xem thông tin chi tiết một đơn ứng tuyển của ứng viên đang đăng nhập, bao gồm trạng thái, công việc, CV và kết quả AI nếu có.")
         .Produces<HRConnect.Application.Features.Candidates.Queries.GetCandidateApplicationDetail.CandidateApplicationDetailResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
