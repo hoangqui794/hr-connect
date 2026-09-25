@@ -17,4 +17,6 @@ public interface ICandidateCvRepository
     void Update(CandidateCv candidateCv);
 
     void Delete(CandidateCv candidateCv);
+
+    Task<bool> IsCvInUseAsync(Guid cvId, CancellationToken cancellationToken = default);
 }
