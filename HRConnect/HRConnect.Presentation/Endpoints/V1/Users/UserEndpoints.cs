@@ -3,6 +3,7 @@ using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Users.Commands.DeleteAvatar;
 using HRConnect.Application.Features.Users.Commands.UploadAvatar;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -220,6 +221,41 @@ public static class UserEndpoints
         .WithDescription("Chuyển hướng (302 Redirect) đến URL ảnh đại diện của người dùng.")
         .Produces(StatusCodes.Status302Found)
         .Produces(StatusCodes.Status404NotFound);
+
+        // 3. DELETE /api/v1/users/me/avatar - Xóa ảnh đại diện hiện tại
+        group.MapDelete("/me/avatar", async (
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var result = await sender.Send(new DeleteAvatarCommand { UserId = userId.Value }, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .RequireAuthorization()
+        .WithName("DeleteUserAvatar")
+        .WithSummary("Xóa ảnh đại diện của người dùng hiện tại")
+        .WithDescription("Xóa ảnh đại diện trên Cloudflare R2 và xóa avatar_url trong tài khoản người dùng.")
+        .Produces<DeleteAvatarResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
 
         return app;
     }
