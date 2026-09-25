@@ -232,7 +232,7 @@ public class CvStorageServiceTests
     }
 
     [Fact]
-    public async Task DeleteCvAsync_WhenCvExists_DeletesFromR2AndDatabase()
+    public async Task DeleteCvAsync_WhenCvExists_DeletesDatabaseBeforeR2()
     {
         // Arrange
         var cvId = Guid.NewGuid();
@@ -248,6 +248,14 @@ public class CvStorageServiceTests
             .Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cv);
 
+        var sequence = new MockSequence();
+        _unitOfWorkMock.InSequence(sequence)
+            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _fileStorageServiceMock.InSequence(sequence)
+            .Setup(s => s.DeleteAsync(objectKey, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         // Act
         await _service.DeleteCvAsync(cvId);
 
@@ -255,5 +263,46 @@ public class CvStorageServiceTests
         _fileStorageServiceMock.Verify(s => s.DeleteAsync(objectKey, It.IsAny<CancellationToken>()), Times.Once);
         _candidateCvRepositoryMock.Verify(r => r.Delete(cv), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteCvAsync_WhenDatabaseDeleteFails_DoesNotDeleteR2Object()
+    {
+        var cvId = Guid.NewGuid();
+        var objectKey = $"candidates/123/cvs/{cvId}.pdf";
+        var cv = new CandidateCv { CvId = cvId, SourceFileUrl = objectKey, Status = "ACTIVE" };
+        _candidateCvRepositoryMock
+            .Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cv);
+        _unitOfWorkMock
+            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("foreign key conflict"));
+
+        var action = () => _service.DeleteCvAsync(cvId);
+
+        await action.Should().ThrowAsync<InvalidOperationException>();
+        _candidateCvRepositoryMock.Verify(r => r.Delete(cv), Times.Once);
+        _fileStorageServiceMock.Verify(s => s.DeleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteCvAsync_WhenR2CleanupFails_KeepsSuccessfulDatabaseDelete()
+    {
+        var cvId = Guid.NewGuid();
+        var objectKey = $"candidates/123/cvs/{cvId}.pdf";
+        var cv = new CandidateCv { CvId = cvId, SourceFileUrl = objectKey, Status = "ACTIVE" };
+        _candidateCvRepositoryMock
+            .Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cv);
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _fileStorageServiceMock
+            .Setup(s => s.DeleteAsync(objectKey, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new IOException("R2 unavailable"));
+
+        var action = () => _service.DeleteCvAsync(cvId);
+
+        await action.Should().NotThrowAsync();
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _fileStorageServiceMock.Verify(s => s.DeleteAsync(objectKey, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

@@ -26,7 +26,8 @@ public interface ICvStorageService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deletes a CV from both Cloudflare R2 storage and the database.
+    /// Deletes the database record first, then performs best-effort Cloudflare R2 cleanup.
+    /// The storage object is never removed when the database delete fails.
     /// </summary>
     Task DeleteCvAsync(
         Guid cvId,

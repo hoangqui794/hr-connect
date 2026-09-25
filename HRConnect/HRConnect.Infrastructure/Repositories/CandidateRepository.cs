@@ -64,7 +64,7 @@ public class CandidateRepository : ICandidateRepository
             .Include(c => c.User)
             .Include(c => c.CandidateSkills)
                 .ThenInclude(cs => cs.Skill)
-            .Include(c => c.CandidateCv)
+            .Include(c => c.CandidateCvs.Where(cv => cv.IsPrimary && cv.Status == "ACTIVE"))
             .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken);
     }
 
@@ -86,5 +86,14 @@ public class CandidateRepository : ICandidateRepository
         if (string.IsNullOrWhiteSpace(normalizedPhone)) return null;
         return await _context.Candidates
             .FirstOrDefaultAsync(c => c.NormalizedPhone == normalizedPhone, cancellationToken);
+    }
+
+    public async Task<bool> TryLinkByVerifiedEmailAsync(Guid candidateId, string normalizedEmail, Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Candidates
+            .Where(c => c.CandidateId == candidateId && c.NormalizedEmail == normalizedEmail && c.UserId == null)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(c => c.UserId, userId)
+                .SetProperty(c => c.UpdatedAt, DateTime.UtcNow), cancellationToken) == 1;
     }
 }

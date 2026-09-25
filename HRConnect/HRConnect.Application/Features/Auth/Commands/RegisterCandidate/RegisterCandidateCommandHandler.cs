@@ -8,6 +8,7 @@ using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using HRConnect.Application.Features.Auth.Common;
 
 namespace HRConnect.Application.Features.Auth.Commands.RegisterCandidate;
 
@@ -80,7 +81,8 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
         }
 
         // 3. Kiểm tra danh tính Candidate hiện hữu (theo normalized_email hoặc normalized_phone)
-        var existingCandidate = await _candidateRepository.FindByIdentityAsync(
+        var existingCandidate = await CandidateRegistrationIdentity.ResolveAsync(
+            _candidateRepository,
             normalizedEmail,
             normalizedPhone,
             cancellationToken);
@@ -163,26 +165,8 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
             }
             else
             {
-                existingCandidate.UserId = newUser.UserId;
-                existingCandidate.UpdatedAt = now;
-
-                if (string.IsNullOrWhiteSpace(existingCandidate.FullName))
-                {
-                    existingCandidate.FullName = request.FullName.Trim();
-                }
-                if (string.IsNullOrWhiteSpace(existingCandidate.Email))
-                {
-                    existingCandidate.Email = request.Email.Trim();
-                    existingCandidate.NormalizedEmail = normalizedEmail;
-                }
-                if (string.IsNullOrWhiteSpace(existingCandidate.Phone) && !string.IsNullOrWhiteSpace(request.Phone))
-                {
-                    existingCandidate.Phone = request.Phone.Trim();
-                    existingCandidate.NormalizedPhone = normalizedPhone;
-                }
-
-                _candidateRepository.Update(existingCandidate);
-                _logger.LogInformation("Liên kết hồ sơ ứng viên hiện hữu CandidateId {CandidateId} với UserId mới {UserId}",
+                // Existing business data remains unclaimed until the matching email OTP is verified.
+                _logger.LogInformation("Chờ xác minh email để liên kết CandidateId {CandidateId} với UserId {UserId}",
                     existingCandidate.CandidateId, newUser.UserId);
             }
 

@@ -111,6 +111,11 @@ VALUES
      'view_own',
      'View own submissions'),
 
+    ('attribution.view_own',
+     'attribution',
+     'view_own',
+     'View own affiliate attribution'),
+
     ('dispute.create',
      'dispute',
      'create',
@@ -430,6 +435,7 @@ JOIN public.permission p
 
         'submission.create',
         'submission.view_own',
+        'attribution.view_own',
 
         'dispute.create',
         'dispute.view_own',

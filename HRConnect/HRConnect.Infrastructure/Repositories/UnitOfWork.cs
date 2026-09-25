@@ -71,6 +71,11 @@ public class UnitOfWork : IUnitOfWork
                 await _currentTransaction.DisposeAsync();
                 _currentTransaction = null;
             }
+
+            // A database rollback does not reset EF Core's tracked entity states.
+            // Clear the failed unit of work so a later audit SaveChanges does not
+            // retry the rejected ACCEPTED submission/application graph.
+            _context.ChangeTracker.Clear();
         }
     }
 }

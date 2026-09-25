@@ -72,7 +72,7 @@ public static class AuthEndpoints
         })
         .WithName("RegisterCandidate")
         .WithSummary("Đăng ký tài khoản Ứng viên (Candidate Registration)")
-        .WithDescription("Đăng ký tài khoản ứng viên mới hoặc liên kết hồ sơ ứng viên hiện hữu. Trạng thái PENDING chờ xác thực email OTP.")
+        .WithDescription("Đăng ký tài khoản ứng viên ở trạng thái PENDING. Hồ sơ ứng viên hiện hữu chỉ được liên kết sau khi xác minh OTP của email khớp. Không nhận hồ sơ chỉ bằng số điện thoại; danh tính xung đột trả 409.")
         .Produces<RegisterCandidateResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status409Conflict)
@@ -217,12 +217,17 @@ public static class AuthEndpoints
                     message = ex.Message
                 });
             }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
         })
         .WithName("VerifyEmailOtp")
         .WithSummary("Xác thực mã OTP gửi về Email để kích hoạt tài khoản / xác nhận đăng ký")
-        .WithDescription("Nhập email và mã OTP 6 số. Candidate chuyển sang ACTIVE. Affiliate và Client chuyển sang PENDING_ADMIN_APPROVAL.")
+        .WithDescription("Nhập email và mã OTP 6 số. Candidate chỉ nhận hồ sơ khớp sau xác minh email và chuyển sang ACTIVE; hồ sơ xung đột/đã được nhận trả 409. Affiliate và Client chuyển sang PENDING_ADMIN_APPROVAL.")
         .Produces<VerifyEmailOtpResponse>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status400BadRequest);
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status409Conflict);
 
         // 5. Đăng nhập hệ thống
         group.MapPost("/login", async (

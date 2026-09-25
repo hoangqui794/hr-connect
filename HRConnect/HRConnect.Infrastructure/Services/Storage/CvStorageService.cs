@@ -185,22 +185,27 @@ public class CvStorageService : ICvStorageService
             throw new NotFoundException($"Không tìm thấy CV với mã {cvId}.");
         }
 
-        if (!string.IsNullOrWhiteSpace(cv.SourceFileUrl))
+        var objectKey = cv.SourceFileUrl;
+        _candidateCvRepository.Delete(cv);
+        // Commit the relational delete first. A concurrent Submission referencing this CV
+        // will make this operation fail before the R2 object can be removed.
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(objectKey))
         {
             try
             {
-                await _fileStorageService.DeleteAsync(cv.SourceFileUrl, cancellationToken);
+                await _fileStorageService.DeleteAsync(objectKey, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Không thể xóa tệp R2 {Key} khi xóa CV {CvId}", cv.SourceFileUrl, cvId);
+                // DB is already the source of truth. A failed external cleanup leaves an
+                // orphan object, which is safer than deleting a file still used by history.
+                _logger.LogWarning(ex, "Đã xóa metadata CV {CvId} nhưng chưa thể dọn tệp R2 {Key}", cvId, objectKey);
             }
         }
 
-        _candidateCvRepository.Delete(cv);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        _logger.LogInformation("Đã xóa hoàn toàn CV {CvId} khỏi hệ thống.", cvId);
+        _logger.LogInformation("Đã xóa metadata CV {CvId}; hoàn tất yêu cầu dọn tệp lưu trữ nếu có.", cvId);
     }
 
     private void ValidatePdfFile(Stream stream, string fileName, long fileSizeBytes)
