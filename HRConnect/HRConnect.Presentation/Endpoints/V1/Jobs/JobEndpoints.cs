@@ -138,6 +138,8 @@ public static class JobEndpoints
         {
             var id = UserId(user);
             if (id == null) return Results.Unauthorized();
+            if (!PermissionAuthorization.HasPermission(user, "submission.create"))
+                return PermissionAuthorization.Forbidden("submission.create");
 
             var command = new SubmitCandidateCommand
             {
@@ -163,7 +165,7 @@ public static class JobEndpoints
         .WithTags("Affiliate Submissions")
         .WithName("AffiliateSubmitCandidate")
         .WithSummary("Affiliate Recruiter nộp hồ sơ ứng viên vào Job")
-        .WithDescription("Đối tác tuyển dụng (Affiliate) nộp hồ sơ ứng viên vào công việc. Hệ thống tự động nhận diện ứng viên theo email/sđt, kiểm tra trùng lặp, xác thực quyền hạn Service Type và ghi nhận Attribution.")
+        .WithDescription("Yêu cầu permission submission.create. Đối tác tuyển dụng (Affiliate) nộp hồ sơ ứng viên vào công việc. Hệ thống vẫn kiểm tra hồ sơ Affiliate, quyền submit của Service Type, trùng lặp và ghi nhận Attribution.")
         .DisableAntiforgery()
         .Produces<SubmitCandidateResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)

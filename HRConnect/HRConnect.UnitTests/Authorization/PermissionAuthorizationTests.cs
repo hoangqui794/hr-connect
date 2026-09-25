@@ -12,6 +12,7 @@ public class PermissionAuthorizationTests
     [InlineData("cv.update_own")]
     [InlineData("cv.delete_own")]
     [InlineData("application.create")]
+    [InlineData("submission.create")]
     public void HasPermission_AllowsExactClaimAndRejectsMissingClaim(string permission)
     {
         var allowed = new ClaimsPrincipal(new ClaimsIdentity(
@@ -75,6 +76,18 @@ public class PermissionAuthorizationTests
     public void CandidateApplyJob_RequiresApplicationCreate()
     {
         const string requiredPermission = "application.create";
+        var allowed = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim("permission", requiredPermission) }, "test"));
+        var denied = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test"));
+
+        PermissionAuthorization.HasPermission(allowed, requiredPermission).Should().BeTrue();
+        PermissionAuthorization.HasPermission(denied, requiredPermission).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AffiliateSubmitCandidate_RequiresSubmissionCreate()
+    {
+        const string requiredPermission = "submission.create";
         var allowed = new ClaimsPrincipal(new ClaimsIdentity(
             new[] { new Claim("permission", requiredPermission) }, "test"));
         var denied = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test"));
