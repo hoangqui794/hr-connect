@@ -87,4 +87,13 @@ public class CandidateRepository : ICandidateRepository
         return await _context.Candidates
             .FirstOrDefaultAsync(c => c.NormalizedPhone == normalizedPhone, cancellationToken);
     }
+
+    public async Task<bool> TryLinkByVerifiedEmailAsync(Guid candidateId, string normalizedEmail, Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Candidates
+            .Where(c => c.CandidateId == candidateId && c.NormalizedEmail == normalizedEmail && c.UserId == null)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(c => c.UserId, userId)
+                .SetProperty(c => c.UpdatedAt, DateTime.UtcNow), cancellationToken) == 1;
+    }
 }
