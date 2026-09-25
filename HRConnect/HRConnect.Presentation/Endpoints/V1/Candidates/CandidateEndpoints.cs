@@ -12,6 +12,7 @@ using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using HRConnect.Application.Features.Candidates.Queries.GetCvDownloadUrl;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using HRConnect.Presentation.Authorization;
 
 namespace HRConnect.Presentation.Endpoints.V1.Candidates;
 
@@ -185,6 +186,9 @@ public static class CandidateEndpoints
             [FromServices] ISender sender,
             CancellationToken cancellationToken) =>
         {
+            if (!PermissionAuthorization.HasPermission(user, "cv.create"))
+                return PermissionAuthorization.Forbidden("cv.create");
+
             var userId = GetUserIdFromClaims(user);
             if (userId == null)
             {
@@ -227,11 +231,12 @@ public static class CandidateEndpoints
         })
         .WithName("UploadCandidateCv")
         .WithSummary("Tải lên CV mới vào kho CV của ứng viên")
-        .WithDescription("Tải lên tệp CV PDF của ứng viên lên hệ thống Cloudflare R2 riêng tư, tự động sinh khóa lưu trữ candidates/{candidateId}/cvs/{cvId}.pdf.")
+        .WithDescription("Yêu cầu permission cv.create. Tải lên tệp CV PDF của ứng viên lên hệ thống Cloudflare R2 riêng tư, tự động sinh khóa lưu trữ candidates/{candidateId}/cvs/{cvId}.pdf.")
         .DisableAntiforgery()
         .Produces<UploadCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
