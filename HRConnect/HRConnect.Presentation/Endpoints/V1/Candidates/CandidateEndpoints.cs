@@ -347,6 +347,11 @@ public static class CandidateEndpoints
                 return Results.Unauthorized();
             }
 
+            if (!PermissionAuthorization.HasPermission(user, "cv.update_own"))
+            {
+                return PermissionAuthorization.Forbidden("cv.update_own");
+            }
+
             var command = new UpdateCandidateCvCommand
             {
                 CvId = cvId,
@@ -391,7 +396,7 @@ public static class CandidateEndpoints
         })
         .WithName("UpdateCandidateCvMetadata")
         .WithSummary("Cập nhật thông tin CV của ứng viên")
-        .WithDescription("API này chỉ cập nhật metadata như title; không thay thế file PDF.")
+        .WithDescription("Yêu cầu permission cv.update_own. API này chỉ cập nhật metadata như title; không thay thế file PDF.")
         .Produces<UpdateCandidateCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
