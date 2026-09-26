@@ -50,7 +50,8 @@ public class AdminApprovalServiceTests
         {
             RoleId = Guid.NewGuid(),
             Code = "AFFILIATE_RECRUITER",
-            Name = "Affiliate Recruiter"
+            Name = "Affiliate Recruiter",
+            IsActive = true
         };
         var application = new AffiliateApplication
         {
@@ -148,7 +149,8 @@ public class AdminApprovalServiceTests
         {
             RoleId = Guid.NewGuid(),
             Code = "CLIENT_COMPANY_USER",
-            Name = "Client Company User"
+            Name = "Client Company User",
+            IsActive = true
         };
         var company = new Company
         {
@@ -376,6 +378,84 @@ public class AdminApprovalServiceTests
         request.Status.Should().Be("PENDING");
         company.VerificationStatus.Should().Be("PENDING");
         user.Status.Should().Be("PENDING");
+    }
+
+    [Fact]
+    public async Task ApproveAffiliateApplicationAsync_WhenRequiredRoleIsInactive_DoesNotApproveAnything()
+    {
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "affiliate.role-disabled@example.com",
+            PasswordHash = "hash",
+            Status = "PENDING",
+            EmailVerifiedAt = DateTime.UtcNow
+        };
+        var application = new AffiliateApplication
+        {
+            AffiliateApplicationId = Guid.NewGuid(),
+            UserId = user.UserId,
+            AffiliateType = "RECRUITER",
+            Status = "UNDER_REVIEW",
+            SubmittedData = "{}"
+        };
+        var role = new Role
+        {
+            RoleId = Guid.NewGuid(),
+            Code = "AFFILIATE_RECRUITER",
+            Name = "Affiliate Recruiter",
+            IsActive = false
+        };
+        await _context.AddRangeAsync(user, application, role);
+        await _context.SaveChangesAsync();
+
+        var action = () => _service.ApproveAffiliateApplicationAsync(
+            application.AffiliateApplicationId, Guid.NewGuid());
+
+        await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*thiếu hoặc đã bị tắt*");
+        application.Status.Should().Be("UNDER_REVIEW");
+        user.Status.Should().Be("PENDING");
+        (await _context.UserRoles.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ApproveCompanyVerificationRequestAsync_WhenRequiredRoleIsMissing_DoesNotApproveAnything()
+    {
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "client.role-missing@example.com",
+            PasswordHash = "hash",
+            Status = "PENDING",
+            EmailVerifiedAt = DateTime.UtcNow
+        };
+        var company = new Company
+        {
+            CompanyId = Guid.NewGuid(),
+            CompanyName = "Missing Role Corp",
+            VerificationStatus = "UNDER_REVIEW"
+        };
+        var request = new CompanyVerificationRequest
+        {
+            CompanyVerificationRequestId = Guid.NewGuid(),
+            CompanyId = company.CompanyId,
+            SubmittedBy = user.UserId,
+            Status = "UNDER_REVIEW",
+            SubmittedPayload = "{}"
+        };
+        await _context.AddRangeAsync(user, company, request);
+        await _context.SaveChangesAsync();
+
+        var action = () => _service.ApproveCompanyVerificationRequestAsync(
+            request.CompanyVerificationRequestId, Guid.NewGuid());
+
+        await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*thiếu hoặc đã bị tắt*");
+        request.Status.Should().Be("UNDER_REVIEW");
+        company.VerificationStatus.Should().Be("UNDER_REVIEW");
+        user.Status.Should().Be("PENDING");
+        (await _context.UserRoles.CountAsync()).Should().Be(0);
     }
 
     [Fact]
