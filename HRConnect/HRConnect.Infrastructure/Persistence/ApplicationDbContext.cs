@@ -425,7 +425,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("email");
             entity.Property(e => e.EmailVerifiedAt).HasColumnName("email_verified_at");
+            entity.Property(e => e.FailedLoginAttempts)
+                .HasDefaultValue(0)
+                .HasColumnName("failed_login_attempts");
             entity.Property(e => e.LastLoginAt).HasColumnName("last_login_at");
+            entity.Property(e => e.LockoutEndAt).HasColumnName("lockout_end_at");
             entity.Property(e => e.NormalizedPhone)
                 .HasMaxLength(30)
                 .HasColumnName("normalized_phone");

@@ -11,6 +11,8 @@ namespace HRConnect.Application.Features.Auth.Commands.Login;
 
 public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 {
+    private const int MaxFailedLoginAttempts = 5;
+    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IPasswordHasher _passwordHasher;
@@ -60,13 +62,38 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             throw new UnauthorizedException("Email hoặc mật khẩu không chính xác.");
         }
 
+        var now = DateTime.UtcNow;
+        if (user.LockoutEndAt.HasValue && user.LockoutEndAt.Value > now)
+        {
+            _logger.LogWarning("Đăng nhập bị giới hạn tạm thời cho tài khoản {Email}", normalizedEmail);
+            throw new UnauthorizedException("Tài khoản tạm thời bị khóa do đăng nhập sai nhiều lần. Vui lòng thử lại sau.");
+        }
+
+        if (user.LockoutEndAt.HasValue && user.LockoutEndAt.Value <= now)
+        {
+            user.LockoutEndAt = null;
+            user.FailedLoginAttempts = 0;
+        }
+
         // 3. Xác thực mật khẩu
         var isPasswordValid = _passwordHasher.Verify(request.Password, user.PasswordHash);
         if (!isPasswordValid)
         {
+            user.FailedLoginAttempts++;
+            if (user.FailedLoginAttempts >= MaxFailedLoginAttempts)
+            {
+                user.LockoutEndAt = now.Add(LockoutDuration);
+                user.FailedLoginAttempts = 0;
+            }
+            user.UpdatedAt = now;
+            _userRepository.Update(user);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
             _logger.LogWarning("Đăng nhập thất bại: Sai mật khẩu cho tài khoản {Email}", normalizedEmail);
             throw new UnauthorizedException("Email hoặc mật khẩu không chính xác.");
         }
+
+        user.FailedLoginAttempts = 0;
+        user.LockoutEndAt = null;
 
         // 4. Kiểm tra các ràng buộc đặc thù cho Affiliate Recruiter và Client Company User
         if (user.AffiliateApplicationUser != null)
@@ -165,8 +192,6 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         var rawRefreshToken = _jwtTokenGenerator.GenerateRefreshToken();
         var refreshTokenHash = _otpService.HashOtp(rawRefreshToken);
         var refreshExpiryDays = _jwtSettings.RefreshTokenExpiryDays > 0 ? _jwtSettings.RefreshTokenExpiryDays : 7;
-        var now = DateTime.UtcNow;
-
         var refreshTokenEntity = new HRConnect.Domain.Entities.RefreshToken
         {
             RefreshTokenId = Guid.NewGuid(),

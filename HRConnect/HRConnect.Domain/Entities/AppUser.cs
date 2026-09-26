@@ -28,6 +28,10 @@ public partial class AppUser
 
     public DateTime? LastLoginAt { get; set; }
 
+    public int FailedLoginAttempts { get; set; }
+
+    public DateTime? LockoutEndAt { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

@@ -579,4 +579,69 @@ public class LoginCommandHandlerTests
         response.Data!.User.Permissions.Should().Equal("job.view");
         response.Data.User.Permissions.Should().NotContain("admin.delete");
     }
+
+    [Fact]
+    public async Task Handle_AfterFiveWrongPasswords_TemporarilyLocksAccount()
+    {
+        var command = new LoginCommand("lockout@example.com", "wrong-password");
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = command.Email,
+            PasswordHash = "hash",
+            Status = "ACTIVE"
+        };
+        _emailNormalizerMock.Setup(service => service.Normalize(command.Email)).Returns(command.Email);
+        _userRepositoryMock
+            .Setup(repository => repository.GetByEmailWithRolesAndPermissionsAsync(command.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordHasherMock.Setup(service => service.Verify(command.Password, user.PasswordHash)).Returns(false);
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            await FluentActions.Invoking(() => _handler.Handle(command, CancellationToken.None))
+                .Should().ThrowAsync<UnauthorizedException>();
+        }
+
+        user.LockoutEndAt.Should().BeAfter(DateTime.UtcNow.AddMinutes(14));
+        user.FailedLoginAttempts.Should().Be(0);
+        _unitOfWorkMock.Verify(
+            unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Exactly(5));
+
+        await FluentActions.Invoking(() => _handler.Handle(command, CancellationToken.None))
+            .Should().ThrowAsync<UnauthorizedException>()
+            .WithMessage("*tạm thời bị khóa*");
+        _passwordHasherMock.Verify(
+            service => service.Verify(It.IsAny<string>(), It.IsAny<string>()),
+            Times.Exactly(5));
+    }
+
+    [Fact]
+    public async Task Handle_WhenCredentialsBecomeValid_ResetsPreviousFailures()
+    {
+        var command = new LoginCommand("recovered@example.com", "correct");
+        var role = new Role { RoleId = Guid.NewGuid(), Code = "CANDIDATE", Name = "Candidate", IsActive = true };
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(), Email = command.Email, PasswordHash = "hash", Status = "ACTIVE",
+            FailedLoginAttempts = 4
+        };
+        user.UserRoleUsers.Add(new UserRole { UserId = user.UserId, RoleId = role.RoleId, Role = role, Status = "ACTIVE" });
+        _emailNormalizerMock.Setup(service => service.Normalize(command.Email)).Returns(command.Email);
+        _userRepositoryMock
+            .Setup(repository => repository.GetByEmailWithRolesAndPermissionsAsync(command.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordHasherMock.Setup(service => service.Verify(command.Password, user.PasswordHash)).Returns(true);
+        _jwtTokenGeneratorMock
+            .Setup(service => service.GenerateAccessToken(user, It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+            .Returns(("access", DateTime.UtcNow.AddMinutes(15)));
+        _jwtTokenGeneratorMock.Setup(service => service.GenerateRefreshToken()).Returns("refresh");
+        _otpServiceMock.Setup(service => service.HashOtp("refresh")).Returns("hash");
+
+        await _handler.Handle(command, CancellationToken.None);
+
+        user.FailedLoginAttempts.Should().Be(0);
+        user.LockoutEndAt.Should().BeNull();
+    }
 }
