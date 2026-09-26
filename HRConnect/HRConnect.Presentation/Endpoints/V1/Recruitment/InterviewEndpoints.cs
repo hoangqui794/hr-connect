@@ -8,6 +8,7 @@ using HRConnect.Application.Features.Interviews.Commands.UpdateInterview;
 using HRConnect.Application.Features.Interviews.Commands.RescheduleInterview;
 using HRConnect.Application.Features.Interviews.Commands.CancelInterview;
 using HRConnect.Application.Features.Interviews.Commands.RecordInterviewResult;
+using HRConnect.Application.Features.Interviews.Queries.GetInterviewHistory;
 using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -485,6 +486,64 @@ public static class InterviewEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
+
+        // I08: GET /api/v1/interviews/{interviewId:guid}/history
+        group.MapGet("/{interviewId:guid}/history", async (
+            Guid interviewId,
+            [FromServices] ISender sender = null!,
+            ClaimsPrincipal user = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var isClient = PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isCandidate = PermissionAuthorization.HasPermission(user, ViewOwnPermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!isClient && !isInternal && !isCandidate && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(ManagePermission);
+            }
+
+            try
+            {
+                var query = new GetInterviewHistoryQuery(
+                    interviewId,
+                    userId.Value,
+                    IsClientCompanyUser: isClient && !isInternal && !isAdmin,
+                    IsInternalHrOrAdmin: isInternal || isAdmin,
+                    IsCandidate: isCandidate && !isClient && !isInternal && !isAdmin
+                );
+
+                var response = await sender.Send(query, cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetInterviewHistory")
+        .WithSummary("Lấy lịch sử thay đổi trạng thái, dời, hủy lịch phỏng vấn")
+        .WithDescription("Dành cho Client Company (interview.view_company), Candidate (interview.view_own) hoặc Internal HR / Admin (interview.manage). Trả về danh sách biến động trạng thái và lý do theo thời gian.")
+        .Produces<GetInterviewHistoryResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
 
         return app;
     }
