@@ -11,6 +11,7 @@ using HRConnect.Application.Features.Auth.Commands.RegisterAffiliate;
 using HRConnect.Application.Features.Auth.Commands.RegisterCandidate;
 using HRConnect.Application.Features.Auth.Commands.RegisterClient;
 using HRConnect.Application.Features.Auth.Commands.ResendPasswordResetOtp;
+using HRConnect.Application.Features.Auth.Commands.ResendRegistrationOtp;
 using HRConnect.Application.Features.Auth.Commands.ResetPassword;
 using HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp;
 using HRConnect.Application.Features.Auth.Queries.GetCurrentUser;
@@ -289,7 +290,42 @@ public static class AuthEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden);
 
-        // 6. Quên mật khẩu (Yêu cầu gửi OTP đặt lại mật khẩu)
+        // 6. Gửi lại mã OTP xác thực đăng ký
+        group.MapPost("/verify-email-otp/resend", async (
+            [FromBody] ResendRegistrationOtpCommand command,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<ResendRegistrationOtpCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu yêu cầu không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                return Results.Ok(await sender.Send(command, cancellationToken));
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("ResendRegistrationOtp")
+        .WithSummary("Gửi lại mã OTP xác thực đăng ký")
+        .WithDescription("Cấp mã EMAIL_OTP mới cho tài khoản còn PENDING và chưa xác thực email. Mã cũ bị vô hiệu hóa; giới hạn một lần mỗi 60 giây.")
+        .Produces<ResendRegistrationOtpResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest);
+
+        // 7. Quên mật khẩu (Yêu cầu gửi OTP đặt lại mật khẩu)
         group.MapPost("/forgot-password", async (
             [FromBody] ForgotPasswordCommand command,
             [FromServices] ISender sender,
