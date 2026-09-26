@@ -30,6 +30,7 @@ public static class DependencyInjection
         {
             client.BaseAddress = new Uri("https://api.resend.com/");
         });
+        services.AddHostedService<RegistrationOtpOutboxWorker>();
 
         // 2. Cấu hình Authentication, OTP & JWT
         services.Configure<AuthenticationSettings>(
