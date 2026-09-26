@@ -2,6 +2,7 @@ using System;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateCvs;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -13,17 +14,20 @@ public class SetCandidatePrimaryCvCommandHandler : IRequestHandler<SetCandidateP
     private readonly ICandidateRepository _candidateRepository;
     private readonly ICandidateCvRepository _candidateCvRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogService _auditLogService;
     private readonly ILogger<SetCandidatePrimaryCvCommandHandler> _logger;
 
     public SetCandidatePrimaryCvCommandHandler(
         ICandidateRepository candidateRepository,
         ICandidateCvRepository candidateCvRepository,
         IUnitOfWork unitOfWork,
+        IAuditLogService auditLogService,
         ILogger<SetCandidatePrimaryCvCommandHandler> logger)
     {
         _candidateRepository = candidateRepository;
         _candidateCvRepository = candidateCvRepository;
         _unitOfWork = unitOfWork;
+        _auditLogService = auditLogService;
         _logger = logger;
     }
 
@@ -67,12 +71,20 @@ public class SetCandidatePrimaryCvCommandHandler : IRequestHandler<SetCandidateP
             currentPrimary.IsPrimary = false;
             currentPrimary.UpdatedAt = now;
             _candidateCvRepository.Update(currentPrimary);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         targetCv.IsPrimary = true;
         targetCv.UpdatedAt = now;
         _candidateCvRepository.Update(targetCv);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.CvPrimarySet,
+            EntityType = "CANDIDATE_CV",
+            EntityId = targetCv.CvId,
+            ActorUserId = request.UserId,
+            OldValues = new { previousPrimaryCvId = currentPrimary?.CvId },
+            NewValues = new { primaryCvId = targetCv.CvId }
+        }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Ứng viên {CandidateId} đã thiết lập CV {CvId} làm CV chính.", candidate.CandidateId, targetCv.CvId);

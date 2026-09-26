@@ -15,6 +15,7 @@ public class CvStorageService : ICvStorageService
     private readonly IFileStorageService _fileStorageService;
     private readonly ICandidateCvRepository _candidateCvRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogService _auditLogService;
     private readonly R2Settings _settings;
     private readonly ILogger<CvStorageService> _logger;
 
@@ -22,12 +23,14 @@ public class CvStorageService : ICvStorageService
         IFileStorageService fileStorageService,
         ICandidateCvRepository candidateCvRepository,
         IUnitOfWork unitOfWork,
+        IAuditLogService auditLogService,
         IOptions<R2Settings> options,
         ILogger<CvStorageService> logger)
     {
         _fileStorageService = fileStorageService;
         _candidateCvRepository = candidateCvRepository;
         _unitOfWork = unitOfWork;
+        _auditLogService = auditLogService;
         _settings = options.Value;
         _logger = logger;
     }
@@ -161,6 +164,21 @@ public class CvStorageService : ICvStorageService
             };
 
             await _candidateCvRepository.AddAsync(candidateCv, cancellationToken);
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.CvUploaded,
+                EntityType = "CANDIDATE_CV",
+                EntityId = cvId,
+                ActorUserId = uploadedByUserId,
+                NewValues = new
+                {
+                    candidateId,
+                    creationMethod,
+                    fileSizeBytes,
+                    isPrimary,
+                    status = candidateCv.Status
+                }
+            }, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Lưu CV vào CSDL thành công cho CandidateId={CandidateId}, CvId={CvId}, Key={Key}",
@@ -250,6 +268,19 @@ public class CvStorageService : ICvStorageService
 
         var objectKey = cv.SourceFileUrl;
         _candidateCvRepository.Delete(cv);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.CvDeleted,
+            EntityType = "CANDIDATE_CV",
+            EntityId = cv.CvId,
+            NewValues = new
+            {
+                cv.CandidateId,
+                deletionMode = "HARD_DELETE",
+                cv.CreationMethod,
+                cv.UploadedByUserId
+            }
+        }, cancellationToken);
         // Commit the relational delete first. A concurrent Submission referencing this CV
         // will make this operation fail before the R2 object can be removed.
         await _unitOfWork.SaveChangesAsync(cancellationToken);

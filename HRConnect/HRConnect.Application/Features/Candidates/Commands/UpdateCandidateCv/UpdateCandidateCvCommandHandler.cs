@@ -2,6 +2,7 @@ using System;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateCvs;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -13,17 +14,20 @@ public class UpdateCandidateCvCommandHandler : IRequestHandler<UpdateCandidateCv
     private readonly ICandidateRepository _candidateRepository;
     private readonly ICandidateCvRepository _candidateCvRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogService _auditLogService;
     private readonly ILogger<UpdateCandidateCvCommandHandler> _logger;
 
     public UpdateCandidateCvCommandHandler(
         ICandidateRepository candidateRepository,
         ICandidateCvRepository candidateCvRepository,
         IUnitOfWork unitOfWork,
+        IAuditLogService auditLogService,
         ILogger<UpdateCandidateCvCommandHandler> logger)
     {
         _candidateRepository = candidateRepository;
         _candidateCvRepository = candidateCvRepository;
         _unitOfWork = unitOfWork;
+        _auditLogService = auditLogService;
         _logger = logger;
     }
 
@@ -50,11 +54,21 @@ public class UpdateCandidateCvCommandHandler : IRequestHandler<UpdateCandidateCv
             throw new ForbiddenException("Bạn không có quyền chỉnh sửa thông tin CV này.");
         }
 
+        var oldTitle = cv.Title;
         var trimmedTitle = request.Title.Trim();
         cv.Title = trimmedTitle;
         cv.UpdatedAt = DateTime.UtcNow;
 
         _candidateCvRepository.Update(cv);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.CvUpdated,
+            EntityType = "CANDIDATE_CV",
+            EntityId = cv.CvId,
+            ActorUserId = request.UserId,
+            OldValues = new { title = oldTitle },
+            NewValues = new { title = trimmedTitle }
+        }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Ứng viên {CandidateId} đã cập nhật tiêu đề CV {CvId} thành '{Title}'.",

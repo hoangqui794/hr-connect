@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -23,6 +24,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
     private readonly IPhoneNormalizer _phoneNormalizer;
     private readonly IMf03ScoringTrigger _scoringTrigger;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogService _auditLogService;
     private readonly ILogger<SubmitCandidateCommandHandler> _logger;
 
     public SubmitCandidateCommandHandler(
@@ -38,6 +40,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         IPhoneNormalizer phoneNormalizer,
         IMf03ScoringTrigger scoringTrigger,
         IUnitOfWork unitOfWork,
+        IAuditLogService auditLogService,
         ILogger<SubmitCandidateCommandHandler> logger)
     {
         _affiliateProfileRepository = affiliateProfileRepository;
@@ -52,6 +55,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         _phoneNormalizer = phoneNormalizer;
         _scoringTrigger = scoringTrigger;
         _unitOfWork = unitOfWork;
+        _auditLogService = auditLogService;
         _logger = logger;
     }
 
@@ -225,6 +229,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 };
 
                 await _submissionRepository.AddAsync(blockedSubmission, cancellationToken);
+                await AddDuplicateAuditAsync(blockedSubmission, request.UserId, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 throw new ConflictException("Ứng viên này đã được nộp vào công việc này trước đó.");
@@ -305,6 +310,26 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 new Mf03TriggerPayload(application.ApplicationId, cvId, job.JobId, request.UserId),
                 cancellationToken);
 
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.AffiliateSubmissionCreated,
+                EntityType = "SUBMISSION",
+                EntityId = submission.SubmissionId,
+                ActorUserId = request.UserId,
+                NewValues = new
+                {
+                    application.ApplicationId,
+                    submission.SubmissionId,
+                    candidate.CandidateId,
+                    affiliate.AffiliateId,
+                    attribution.AttributionId,
+                    job.JobId,
+                    cvId,
+                    source = "AFFILIATE",
+                    aiStatus = "PENDING"
+                }
+            }, cancellationToken);
+
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
         catch (Exception ex) when (IsDuplicateConstraintViolation(ex))
@@ -346,6 +371,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                         UpdatedAt = DateTime.UtcNow
                     };
                     await _submissionRepository.AddAsync(blockedSub, CancellationToken.None);
+                    await AddDuplicateAuditAsync(blockedSub, request.UserId, CancellationToken.None);
                     await _unitOfWork.SaveChangesAsync(CancellationToken.None);
                 }
                 catch (Exception recEx)
@@ -417,5 +443,24 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             current = current.InnerException;
         }
         return false;
+    }
+
+    private Task AddDuplicateAuditAsync(Submission submission, Guid actorUserId, CancellationToken cancellationToken)
+    {
+        return _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.SubmissionDuplicateBlocked,
+            EntityType = "SUBMISSION",
+            EntityId = submission.SubmissionId,
+            ActorUserId = actorUserId,
+            NewValues = new
+            {
+                submission.CandidateId,
+                submission.JobId,
+                submission.DuplicateOfSubmissionId,
+                submission.Source,
+                submission.Status
+            }
+        }, cancellationToken);
     }
 }

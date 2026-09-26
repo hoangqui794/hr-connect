@@ -27,6 +27,7 @@ public class SubmitCandidateCommandHandlerTests
     private readonly Mock<IPhoneNormalizer> _phoneNormalizerMock;
     private readonly Mock<IMf03ScoringTrigger> _scoringTriggerMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<ILogger<SubmitCandidateCommandHandler>> _loggerMock;
     private readonly SubmitCandidateCommandHandler _handler;
 
@@ -44,6 +45,7 @@ public class SubmitCandidateCommandHandlerTests
         _phoneNormalizerMock = new Mock<IPhoneNormalizer>();
         _scoringTriggerMock = new Mock<IMf03ScoringTrigger>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _loggerMock = new Mock<ILogger<SubmitCandidateCommandHandler>>();
 
         _emailNormalizerMock.Setup(n => n.Normalize(It.IsAny<string>()))
@@ -64,6 +66,7 @@ public class SubmitCandidateCommandHandlerTests
             _phoneNormalizerMock.Object,
             _scoringTriggerMock.Object,
             _unitOfWorkMock.Object,
+            _auditLogServiceMock.Object,
             _loggerMock.Object);
     }
 
@@ -558,6 +561,9 @@ public class SubmitCandidateCommandHandlerTests
         _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(
             It.Is<Mf03TriggerPayload>(p => p.ApplicationId == createdApplication.ApplicationId && p.CvId == cvId && p.JobId == jobId),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _auditLogServiceMock.Verify(a => a.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.AffiliateSubmissionCreated && entry.EntityId == createdSubmission.SubmissionId),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
