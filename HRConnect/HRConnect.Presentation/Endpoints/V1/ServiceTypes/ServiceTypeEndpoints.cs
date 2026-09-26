@@ -4,6 +4,7 @@ using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.ServiceTypes.Commands.CreateServiceType;
 using HRConnect.Application.Features.ServiceTypes.Commands.DeleteServiceType;
+using HRConnect.Application.Features.ServiceTypes.Commands.ReplaceServiceTypeAllowedRoles;
 using HRConnect.Application.Features.ServiceTypes.Commands.UpdateServiceType;
 using HRConnect.Application.Features.ServiceTypes.DTOs;
 using HRConnect.Application.Features.ServiceTypes.Queries.GetServiceTypeDetail;
@@ -142,6 +143,61 @@ public static class ServiceTypeEndpoints
         .Produces(StatusCodes.Status404NotFound);
 
         // 3. POST /api/v1/admin/service-types - Tạo mới loại dịch vụ (Platform Admin)
+        adminGroup.MapPut("/{serviceTypeId:guid}/allowed-roles", async (
+            Guid serviceTypeId,
+            [FromBody] ReplaceServiceTypeAllowedRolesCommand command,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<ReplaceServiceTypeAllowedRolesCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!HasAdminAccess(user))
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Ban khong co quyen thuc hien thao tac nay. Yeu cau quyen quan tri vien."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            command.ServiceTypeId = serviceTypeId;
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Du lieu yeu cau khong hop le.",
+                    errors = validationResult.Errors
+                        .GroupBy(error => error.PropertyName)
+                        .ToDictionary(
+                            group => group.Key,
+                            group => group.Select(error => error.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                return Results.Ok(await sender.Send(command, cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("ReplaceServiceTypeAllowedRoles")
+        .WithSummary("Thay the cau hinh role duoc xem va submit theo Service Type")
+        .WithDescription("Platform Admin gui day du danh sach mapping can_view va can_submit. Mapping khong co trong body se bi go bo; danh sach rong dung de vo hieu hoa toan bo public access cua Service Type. Job va MF-02 doc mapping nay tu database, khong hardcode theo Service Type.")
+        .Produces<ReplaceServiceTypeAllowedRolesResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
         adminGroup.MapPost("/", async (
             [FromBody] CreateServiceTypeCommand command,
             ClaimsPrincipal user,
