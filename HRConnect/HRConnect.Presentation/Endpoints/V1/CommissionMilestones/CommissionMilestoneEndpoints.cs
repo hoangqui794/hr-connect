@@ -31,8 +31,8 @@ public static class CommissionMilestoneEndpoints
             return Results.Ok(await sender.Send(new GetCommissionMilestonesQuery(isActive ?? true), cancellationToken));
         })
         .WithName("GetCommissionMilestones")
-        .WithSummary("Lay danh sach commission milestones de cau hinh Commission Rule")
-        .WithDescription("Platform Admin lay cac moc kich hoat commission. Mac dinh chi tra moc active; dung ?isActive=false de xem cac moc inactive.")
+        .WithSummary("Lấy danh sách mốc hoa hồng")
+        .WithDescription("Admin lấy các mốc để tạo quy tắc hoa hồng. Mặc định chỉ trả mốc đang hoạt động.")
         .Produces<GetCommissionMilestonesResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden);
