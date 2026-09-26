@@ -63,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailOutboxRepository, EmailOutboxRepository>();
         services.AddScoped<IServiceTypeRepository, ServiceTypeRepository>();
+        services.AddScoped<ICommissionMilestoneRepository, CommissionMilestoneRepository>();
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<ISubmissionRepository, SubmissionRepository>();
         services.AddScoped<IApplicationRepository, ApplicationRepository>();

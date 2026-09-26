@@ -55,6 +55,8 @@ public static class DatabaseSeeder
         // 3. Khởi tạo ma trận quyền xem/nộp theo Service Type và Role.
         await ServiceTypeAllowedRoleSeeder.SeedAsync(context, logger, cancellationToken);
 
+        await CommissionMilestoneSeeder.SeedAsync(context, logger, cancellationToken);
+
         // 4. Tự động nạp toàn bộ danh sách Permissions và Role-Permissions từ file Permission.md
         if (context.Database.IsRelational())
         {

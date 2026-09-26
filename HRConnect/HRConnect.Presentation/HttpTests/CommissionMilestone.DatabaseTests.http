@@ -1,0 +1,16 @@
+@baseUrl = https://localhost:7289
+@adminToken = REPLACE_WITH_PLATFORM_ADMIN_BEARER_TOKEN
+
+### MF-01: Platform Admin loads active milestones for the Commission Rule form.
+GET {{baseUrl}}/api/v1/admin/commission-milestones
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Expected: 200 and APPLICATION_CREATED, START_WORK, PROBATION_PASSED, WARRANTY_PASSED.
+
+### MF-01: Verify inactive milestone filtering after an admin management API exists.
+GET {{baseUrl}}/api/v1/admin/commission-milestones?isActive=false
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Expected errors: 403 for a non-admin JWT and 401 when no JWT is supplied.
