@@ -143,7 +143,8 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             }
 
             var activeRoles = user.UserRoleUsers
-                .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+                .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
+                             ur.Role.IsActive)
                 .Select(ur => ur.Role.Code)
                 .Distinct()
                 .ToList();
@@ -155,8 +156,10 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             }
 
             var activePermissions = user.UserRoleUsers
-                .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+                .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
+                             ur.Role.IsActive)
                 .SelectMany(ur => ur.Role.RolePermissions)
+                .Where(rp => rp.Permission.IsActive)
                 .Select(rp => rp.Permission.Code)
                 .Distinct()
                 .OrderBy(p => p)

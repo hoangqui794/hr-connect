@@ -54,9 +54,10 @@ public class RefreshTokenCommandHandlerTests
         {
             RoleId = Guid.NewGuid(),
             Code = roleCode,
+            IsActive = true,
             RolePermissions = new List<RolePermission>
             {
-                new() { Permission = new Permission { Code = permissionCode } }
+                new() { Permission = new Permission { Code = permissionCode, IsActive = true } }
             }
         };
 
@@ -493,6 +494,69 @@ public class RefreshTokenCommandHandlerTests
         // Assert
         await act.Should().ThrowAsync<ForbiddenException>()
             .WithMessage("Tài khoản chưa được phân quyền truy cập hệ thống.");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRejectRefresh_WhenAssignedRoleIsDisabled()
+    {
+        var rawToken = "token_disabled_role";
+        var userId = Guid.NewGuid();
+        var existingToken = new Domain.Entities.RefreshToken
+        {
+            RefreshTokenId = Guid.NewGuid(),
+            UserId = userId,
+            TokenHash = "hashed_disabled_role",
+            ExpiresAt = DateTime.UtcNow.AddDays(1)
+        };
+        var user = CreateActiveUser(userId);
+        user.UserRoleUsers.Single().Role.IsActive = false;
+
+        _otpServiceMock.Setup(x => x.HashOtp(rawToken)).Returns(existingToken.TokenHash);
+        _refreshTokenRepositoryMock.Setup(x => x.GetByHashAsync(existingToken.TokenHash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingToken);
+        _userRepositoryMock.Setup(x => x.GetByIdWithRolesAndPermissionsAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var act = () => _handler.Handle(new RefreshTokenCommand(rawToken), CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Tài khoản chưa được phân quyền truy cập hệ thống.");
+        _jwtTokenGeneratorMock.Verify(x => x.GenerateAccessToken(
+            It.IsAny<AppUser>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldExcludeDisabledPermission_WhenRefreshingToken()
+    {
+        var rawToken = "token_disabled_permission";
+        var userId = Guid.NewGuid();
+        var existingToken = new Domain.Entities.RefreshToken
+        {
+            RefreshTokenId = Guid.NewGuid(),
+            UserId = userId,
+            TokenHash = "hashed_disabled_permission",
+            ExpiresAt = DateTime.UtcNow.AddDays(1)
+        };
+        var user = CreateActiveUser(userId, permissionCode: "disabled.permission");
+        user.UserRoleUsers.Single().Role.RolePermissions.Single().Permission.IsActive = false;
+
+        _otpServiceMock.Setup(x => x.HashOtp(rawToken)).Returns(existingToken.TokenHash);
+        _otpServiceMock.Setup(x => x.HashOtp("new-refresh")).Returns("new-refresh-hash");
+        _refreshTokenRepositoryMock.Setup(x => x.GetByHashAsync(existingToken.TokenHash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingToken);
+        _userRepositoryMock.Setup(x => x.GetByIdWithRolesAndPermissionsAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _jwtTokenGeneratorMock.Setup(x => x.GenerateAccessToken(
+                user,
+                It.IsAny<IEnumerable<string>>(),
+                It.Is<IEnumerable<string>>(permissions => !permissions.Any())))
+            .Returns(("new-access", DateTime.UtcNow.AddHours(1)));
+        _jwtTokenGeneratorMock.Setup(x => x.GenerateRefreshToken()).Returns("new-refresh");
+
+        var response = await _handler.Handle(new RefreshTokenCommand(rawToken), CancellationToken.None);
+
+        response.Data!.User.Permissions.Should().BeEmpty();
+        _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
