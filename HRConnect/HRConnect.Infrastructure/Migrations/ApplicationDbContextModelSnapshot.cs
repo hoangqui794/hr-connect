@@ -506,9 +506,19 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("email_verified_at");
 
+                    b.Property<int>("FailedLoginAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("failed_login_attempts");
+
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_login_at");
+
+                    b.Property<DateTime?>("LockoutEndAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lockout_end_at");
 
                     b.Property<string>("NormalizedPhone")
                         .HasMaxLength(30)
@@ -947,6 +957,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(40)")
                         .HasColumnName("creation_method");
 
+                    b.Property<Guid?>("UploadedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by_user_id");
+
                     b.Property<Guid?>("CvTemplateId")
                         .HasColumnType("uuid")
                         .HasColumnName("cv_template_id");
@@ -1016,6 +1030,8 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsDescending(false, true);
 
                     b.HasIndex(new[] { "CreationMethod", "Status" }, "idx_candidate_cv_creation_method");
+
+                    b.HasIndex("UploadedByUserId", "idx_candidate_cv_uploaded_by");
 
                     b.HasIndex(new[] { "CandidateId", "CvId" }, "uq_candidate_cv_owner")
                         .IsUnique();
@@ -3676,7 +3692,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.Navigation("Candidate");
 
-                    b.Navigation("CandidateCvs");
+                    b.Navigation("CandidateCv");
 
                     b.Navigation("Job");
 

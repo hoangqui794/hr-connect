@@ -73,8 +73,9 @@ public class ApprovalRepository : IApprovalRepository
             var normalizedStatus = status.Trim().ToUpperInvariant();
             if (normalizedStatus == "PENDING")
             {
-                // Trạng thái chờ admin duyệt gồm cả PENDING và UNDER_REVIEW
-                query = query.Where(x => x.Status == "PENDING" || x.Status == "UNDER_REVIEW");
+                // Với Admin, "PENDING" là hàng chờ duyệt sau khi người dùng đã xác thực OTP.
+                // PENDING ở domain vẫn là hồ sơ đang chờ xác thực email và không được lộ vào hàng chờ này.
+                query = query.Where(x => x.Status == "UNDER_REVIEW");
             }
             else
             {

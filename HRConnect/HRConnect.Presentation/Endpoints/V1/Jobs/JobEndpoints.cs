@@ -165,7 +165,7 @@ public static class JobEndpoints
         .WithTags("Affiliate Submissions")
         .WithName("AffiliateSubmitCandidate")
         .WithSummary("Affiliate Recruiter nộp hồ sơ ứng viên vào Job")
-        .WithDescription("Yêu cầu permission submission.create. Đối tác tuyển dụng (Affiliate) nộp hồ sơ ứng viên vào công việc. Hệ thống vẫn kiểm tra hồ sơ Affiliate, quyền submit của Service Type, trùng lặp và ghi nhận Attribution.")
+        .WithDescription("Yêu cầu permission submission.create. Affiliate phải tải PDF mới hoặc dùng lại đúng CV do chính mình đã tải trước đó; không thể dùng CV riêng của Candidate hay của Affiliate khác. Hệ thống kiểm tra quyền Service Type, trùng lặp và ghi nhận Attribution.")
         .DisableAntiforgery()
         .Produces<SubmitCandidateResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)

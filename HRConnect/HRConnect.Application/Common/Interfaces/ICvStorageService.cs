@@ -18,6 +18,19 @@ public interface ICvStorageService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Uploads a CV supplied by an affiliate and records its provenance. Affiliate
+    /// uploads are submission documents and are not part of the candidate's personal CV library.
+    /// </summary>
+    Task<UploadCvResult> UploadAffiliateCvPdfAsync(
+        Guid candidateId,
+        Guid affiliateUserId,
+        Stream fileStream,
+        string fileName,
+        long fileSizeBytes,
+        string? title = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Generates a temporary presigned GET URL for downloading the private CV PDF.
     /// </summary>
     Task<CvDownloadUrlResult> GetCvDownloadUrlAsync(

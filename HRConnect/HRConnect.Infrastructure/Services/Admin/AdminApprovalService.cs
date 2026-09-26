@@ -38,10 +38,23 @@ public class AdminApprovalService : IAdminApprovalService
             throw new NotFoundException("Không tìm thấy đơn đăng ký Affiliate.");
         }
 
-        // Chống phê duyệt kép / kiểm tra trạng thái hợp lệ
-        if (application.Status == "APPROVED" || application.Status == "REJECTED")
+        if (application.User.EmailVerifiedAt == null)
         {
-            throw new ConflictException($"Đơn đăng ký Affiliate đã ở trạng thái {application.Status}, không thể phê duyệt lại.");
+            throw new ConflictException("Người dùng chưa xác thực email bằng OTP, không thể phê duyệt hồ sơ Affiliate.");
+        }
+
+        if (!string.Equals(application.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException($"Đơn đăng ký Affiliate đang ở trạng thái {application.Status}; chỉ hồ sơ UNDER_REVIEW mới được phê duyệt.");
+        }
+
+        var affiliateRole = await _context.Roles
+            .FirstOrDefaultAsync(
+                role => role.Code == "AFFILIATE_RECRUITER" && role.IsActive,
+                cancellationToken);
+        if (affiliateRole == null)
+        {
+            throw new ConflictException("Role AFFILIATE_RECRUITER đang thiếu hoặc đã bị tắt; chưa thể phê duyệt hồ sơ.");
         }
 
         var now = DateTime.UtcNow;
@@ -83,31 +96,25 @@ public class AdminApprovalService : IAdminApprovalService
             }
 
             // 3. Gán Role AFFILIATE_RECRUITER
-            var affiliateRole = await _context.Roles
-                .FirstOrDefaultAsync(r => r.Code == "AFFILIATE_RECRUITER", cancellationToken);
+            var existingUserRole = await _context.UserRoles
+                .FirstOrDefaultAsync(ur => ur.UserId == application.UserId && ur.RoleId == affiliateRole.RoleId, cancellationToken);
 
-            if (affiliateRole != null)
+            if (existingUserRole == null)
             {
-                var existingUserRole = await _context.UserRoles
-                    .FirstOrDefaultAsync(ur => ur.UserId == application.UserId && ur.RoleId == affiliateRole.RoleId, cancellationToken);
-
-                if (existingUserRole == null)
+                await _context.UserRoles.AddAsync(new UserRole
                 {
-                    await _context.UserRoles.AddAsync(new UserRole
-                    {
-                        UserId = application.UserId,
-                        RoleId = affiliateRole.RoleId,
-                        AssignmentSource = "AFFILIATE_APPROVAL",
-                        AssignedBy = adminUserId,
-                        AssignedAt = now,
-                        Status = "ACTIVE"
-                    }, cancellationToken);
-                }
-                else
-                {
-                    existingUserRole.Status = "ACTIVE";
-                    _context.UserRoles.Update(existingUserRole);
-                }
+                    UserId = application.UserId,
+                    RoleId = affiliateRole.RoleId,
+                    AssignmentSource = "AFFILIATE_APPROVAL",
+                    AssignedBy = adminUserId,
+                    AssignedAt = now,
+                    Status = "ACTIVE"
+                }, cancellationToken);
+            }
+            else
+            {
+                existingUserRole.Status = "ACTIVE";
+                _context.UserRoles.Update(existingUserRole);
             }
 
             // 4. Kích hoạt tài khoản AppUser
@@ -176,10 +183,14 @@ public class AdminApprovalService : IAdminApprovalService
             throw new NotFoundException("Không tìm thấy đơn đăng ký Affiliate.");
         }
 
-        // Chống phê duyệt kép / kiểm tra trạng thái hợp lệ
-        if (application.Status == "APPROVED" || application.Status == "REJECTED")
+        if (application.User.EmailVerifiedAt == null)
         {
-            throw new ConflictException($"Đơn đăng ký Affiliate đã ở trạng thái {application.Status}, không thể từ chối lại.");
+            throw new ConflictException("Người dùng chưa xác thực email bằng OTP, không thể từ chối hồ sơ Affiliate.");
+        }
+
+        if (!string.Equals(application.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException($"Đơn đăng ký Affiliate đang ở trạng thái {application.Status}; chỉ hồ sơ UNDER_REVIEW mới được từ chối.");
         }
 
         var now = DateTime.UtcNow;
@@ -254,10 +265,24 @@ public class AdminApprovalService : IAdminApprovalService
             throw new NotFoundException("Không tìm thấy yêu cầu xác thực doanh nghiệp.");
         }
 
-        // Chống phê duyệt kép / kiểm tra trạng thái hợp lệ
-        if (request.Status == "APPROVED" || request.Status == "REJECTED")
+        if (request.SubmittedByNavigation.EmailVerifiedAt == null)
         {
-            throw new ConflictException($"Yêu cầu xác thực doanh nghiệp đã ở trạng thái {request.Status}, không thể phê duyệt lại.");
+            throw new ConflictException("Người dùng chưa xác thực email bằng OTP, không thể phê duyệt hồ sơ doanh nghiệp.");
+        }
+
+        if (!string.Equals(request.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(request.Company.VerificationStatus, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException($"Hồ sơ doanh nghiệp chưa sẵn sàng để phê duyệt (request: {request.Status}, company: {request.Company.VerificationStatus}).");
+        }
+
+        var clientRole = await _context.Roles
+            .FirstOrDefaultAsync(
+                role => role.Code == "CLIENT_COMPANY_USER" && role.IsActive,
+                cancellationToken);
+        if (clientRole == null)
+        {
+            throw new ConflictException("Role CLIENT_COMPANY_USER đang thiếu hoặc đã bị tắt; chưa thể phê duyệt hồ sơ.");
         }
 
         var now = DateTime.UtcNow;
@@ -286,31 +311,25 @@ public class AdminApprovalService : IAdminApprovalService
             }
 
             // 4. Gán Role CLIENT_COMPANY_USER
-            var clientRole = await _context.Roles
-                .FirstOrDefaultAsync(r => r.Code == "CLIENT_COMPANY_USER", cancellationToken);
+            var existingUserRole = await _context.UserRoles
+                .FirstOrDefaultAsync(ur => ur.UserId == request.SubmittedBy && ur.RoleId == clientRole.RoleId, cancellationToken);
 
-            if (clientRole != null)
+            if (existingUserRole == null)
             {
-                var existingUserRole = await _context.UserRoles
-                    .FirstOrDefaultAsync(ur => ur.UserId == request.SubmittedBy && ur.RoleId == clientRole.RoleId, cancellationToken);
-
-                if (existingUserRole == null)
+                await _context.UserRoles.AddAsync(new UserRole
                 {
-                    await _context.UserRoles.AddAsync(new UserRole
-                    {
-                        UserId = request.SubmittedBy,
-                        RoleId = clientRole.RoleId,
-                        AssignmentSource = "COMPANY_VERIFICATION",
-                        AssignedBy = adminUserId,
-                        AssignedAt = now,
-                        Status = "ACTIVE"
-                    }, cancellationToken);
-                }
-                else
-                {
-                    existingUserRole.Status = "ACTIVE";
-                    _context.UserRoles.Update(existingUserRole);
-                }
+                    UserId = request.SubmittedBy,
+                    RoleId = clientRole.RoleId,
+                    AssignmentSource = "COMPANY_VERIFICATION",
+                    AssignedBy = adminUserId,
+                    AssignedAt = now,
+                    Status = "ACTIVE"
+                }, cancellationToken);
+            }
+            else
+            {
+                existingUserRole.Status = "ACTIVE";
+                _context.UserRoles.Update(existingUserRole);
             }
 
             // 5. Kích hoạt tài khoản AppUser
@@ -379,10 +398,15 @@ public class AdminApprovalService : IAdminApprovalService
             throw new NotFoundException("Không tìm thấy yêu cầu xác thực doanh nghiệp.");
         }
 
-        // Chống phê duyệt kép / kiểm tra trạng thái hợp lệ
-        if (request.Status == "APPROVED" || request.Status == "REJECTED")
+        if (request.SubmittedByNavigation.EmailVerifiedAt == null)
         {
-            throw new ConflictException($"Yêu cầu xác thực doanh nghiệp đã ở trạng thái {request.Status}, không thể từ chối lại.");
+            throw new ConflictException("Người dùng chưa xác thực email bằng OTP, không thể từ chối hồ sơ doanh nghiệp.");
+        }
+
+        if (!string.Equals(request.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(request.Company.VerificationStatus, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException($"Hồ sơ doanh nghiệp chưa sẵn sàng để từ chối (request: {request.Status}, company: {request.Company.VerificationStatus}).");
         }
 
         var now = DateTime.UtcNow;
