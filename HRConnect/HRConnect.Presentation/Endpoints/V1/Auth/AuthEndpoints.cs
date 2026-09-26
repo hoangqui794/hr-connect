@@ -59,6 +59,7 @@ public static class AuthEndpoints
                 return Results.Conflict(new
                 {
                     success = false,
+                    code = ex.ErrorCode,
                     message = ex.Message
                 });
             }
@@ -74,7 +75,7 @@ public static class AuthEndpoints
         .RequireRateLimiting("auth-registration")
         .WithName("RegisterCandidate")
         .WithSummary("Đăng ký tài khoản Ứng viên (Candidate Registration)")
-        .WithDescription("Đăng ký tài khoản ứng viên ở trạng thái PENDING. Hồ sơ ứng viên hiện hữu chỉ được liên kết sau khi xác minh OTP của email khớp. Không nhận hồ sơ chỉ bằng số điện thoại; danh tính xung đột trả 409.")
+        .WithDescription("Đăng ký tài khoản ứng viên ở trạng thái PENDING và gửi OTP một lần. Nếu email đã đăng ký nhưng chưa xác thực, trả 409 với code EMAIL_PENDING_VERIFICATION để giao diện đưa người dùng về màn hình OTP; hệ thống chỉ gửi mã mới khi người dùng gọi API resend. Hồ sơ ứng viên hiện hữu chỉ được liên kết sau khi xác minh OTP của email khớp. Không nhận hồ sơ chỉ bằng số điện thoại; danh tính xung đột trả 409.")
         .Produces<RegisterCandidateResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status409Conflict)
@@ -112,6 +113,7 @@ public static class AuthEndpoints
                 return Results.Conflict(new
                 {
                     success = false,
+                    code = ex.ErrorCode,
                     message = ex.Message
                 });
             }
@@ -127,7 +129,7 @@ public static class AuthEndpoints
         .RequireRateLimiting("auth-registration")
         .WithName("RegisterAffiliate")
         .WithSummary("Đăng ký tài khoản Đối tác tuyển dụng (Affiliate Recruiter)")
-        .WithDescription("Đăng ký tài khoản đối tác tuyển dụng mới. Trạng thái PENDING chờ xác thực email OTP. Chưa cấp quyền AFFILIATE_RECRUITER.")
+        .WithDescription("Đăng ký tài khoản đối tác tuyển dụng mới, gửi OTP một lần và giữ trạng thái PENDING chờ xác thực email. Nếu email đang chờ xác thực, trả 409 với code EMAIL_PENDING_VERIFICATION; chỉ API resend mới gửi mã mới. Chưa cấp quyền AFFILIATE_RECRUITER.")
         .Produces<RegisterAffiliateResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status409Conflict)
@@ -165,6 +167,7 @@ public static class AuthEndpoints
                 return Results.Conflict(new
                 {
                     success = false,
+                    code = ex.ErrorCode,
                     message = ex.Message
                 });
             }
@@ -180,7 +183,7 @@ public static class AuthEndpoints
         .RequireRateLimiting("auth-registration")
         .WithName("RegisterClient")
         .WithSummary("Đăng ký tài khoản Doanh nghiệp tuyển dụng (Client Company User)")
-        .WithDescription("Đăng ký tài khoản đại diện doanh nghiệp và công ty mới. Trạng thái PENDING chờ xác thực email OTP. Chưa cấp quyền CLIENT_COMPANY_USER.")
+        .WithDescription("Đăng ký tài khoản đại diện doanh nghiệp và công ty mới, gửi OTP một lần và giữ trạng thái PENDING chờ xác thực email. Nếu email đang chờ xác thực, trả 409 với code EMAIL_PENDING_VERIFICATION; chỉ API resend mới gửi mã mới. Chưa cấp quyền CLIENT_COMPANY_USER.")
         .Produces<RegisterClientResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status409Conflict)
@@ -327,7 +330,7 @@ public static class AuthEndpoints
         .RequireRateLimiting("auth-sensitive")
         .WithName("ResendRegistrationOtp")
         .WithSummary("Gửi lại mã OTP xác thực đăng ký")
-        .WithDescription("Cấp mã EMAIL_OTP mới cho tài khoản còn PENDING và chưa xác thực email. Mã cũ bị vô hiệu hóa; giới hạn một lần mỗi 60 giây.")
+        .WithDescription("Chỉ cấp mã EMAIL_OTP mới khi người dùng chủ động gọi API này cho tài khoản còn PENDING và chưa xác thực email. Hệ thống không tự gửi lại mã. Mã cũ bị vô hiệu hóa; giới hạn một lần mỗi 60 giây.")
         .Produces<ResendRegistrationOtpResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest);
 

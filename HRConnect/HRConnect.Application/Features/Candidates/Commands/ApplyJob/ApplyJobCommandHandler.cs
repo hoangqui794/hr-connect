@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -19,6 +20,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
     private readonly IApplicationRepository _applicationRepository;
     private readonly IMf03ScoringTrigger _scoringTrigger;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogService _auditLogService;
     private readonly ILogger<ApplyJobCommandHandler> _logger;
 
     public ApplyJobCommandHandler(
@@ -30,6 +32,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         IApplicationRepository applicationRepository,
         IMf03ScoringTrigger scoringTrigger,
         IUnitOfWork unitOfWork,
+        IAuditLogService auditLogService,
         ILogger<ApplyJobCommandHandler> logger)
     {
         _candidateRepository = candidateRepository;
@@ -40,6 +43,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         _applicationRepository = applicationRepository;
         _scoringTrigger = scoringTrigger;
         _unitOfWork = unitOfWork;
+        _auditLogService = auditLogService;
         _logger = logger;
     }
 
@@ -153,6 +157,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             };
 
             await _submissionRepository.AddAsync(blockedSubmission, cancellationToken);
+            await AddDuplicateAuditAsync(blockedSubmission, request.UserId, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             throw new ConflictException("Bạn đã nộp hồ sơ ứng tuyển vào công việc này trước đó.");
@@ -199,6 +204,24 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
                 new Mf03TriggerPayload(application.ApplicationId, cvId, job.JobId, request.UserId),
                 cancellationToken);
 
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.ApplicationSubmitted,
+                EntityType = "APPLICATION",
+                EntityId = application.ApplicationId,
+                ActorUserId = request.UserId,
+                NewValues = new
+                {
+                    application.ApplicationId,
+                    submission.SubmissionId,
+                    candidate.CandidateId,
+                    job.JobId,
+                    cvId,
+                    source = "CANDIDATE",
+                    aiStatus = "PENDING"
+                }
+            }, cancellationToken);
+
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
         catch (Exception ex) when (IsDuplicateConstraintViolation(ex))
@@ -238,6 +261,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
                     UpdatedAt = DateTime.UtcNow
                 };
                 await _submissionRepository.AddAsync(blockedSub, CancellationToken.None);
+                await AddDuplicateAuditAsync(blockedSub, request.UserId, CancellationToken.None);
                 await _unitOfWork.SaveChangesAsync(CancellationToken.None);
             }
             catch (Exception recEx)
@@ -305,5 +329,24 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             current = current.InnerException;
         }
         return false;
+    }
+
+    private Task AddDuplicateAuditAsync(Submission submission, Guid actorUserId, CancellationToken cancellationToken)
+    {
+        return _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.SubmissionDuplicateBlocked,
+            EntityType = "SUBMISSION",
+            EntityId = submission.SubmissionId,
+            ActorUserId = actorUserId,
+            NewValues = new
+            {
+                submission.CandidateId,
+                submission.JobId,
+                submission.DuplicateOfSubmissionId,
+                submission.Source,
+                submission.Status
+            }
+        }, cancellationToken);
     }
 }

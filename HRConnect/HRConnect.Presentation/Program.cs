@@ -21,6 +21,7 @@ using HRConnect.Presentation.Swagger;
 using HRConnect.Presentation.Endpoints.Internal;
 using HRConnect.Presentation.Endpoints.V1.Users;
 using Microsoft.EntityFrameworkCore;
+using HRConnect.Presentation.Middleware;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 
@@ -109,11 +110,12 @@ builder.Services.AddSwaggerGen(options =>
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Nhập token theo định dạng: Bearer {token}",
+        Description = "Dán JWT access token. Swagger sẽ tự thêm tiền tố Bearer vào Authorization header.",
         Name = "Authorization",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
     });
 
     options.AddSecurityDefinition("InternalServiceToken", new OpenApiSecurityScheme
@@ -177,6 +179,10 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 
 var app = builder.Build();
 
+// Correlation scope wraps the remaining pipeline, including exception handling,
+// so framework and application logs from one request share the same identifier.
+app.UseMiddleware<RequestLoggingMiddleware>();
+
 // ==============================================================================
 // 3. Cấu hình HTTP Request Pipeline (Middleware)
 // ==============================================================================
@@ -187,6 +193,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "HRConnect API V1");
+        c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
+        c.EnableFilter();
+        c.DisplayRequestDuration();
     });
 }
 
@@ -211,6 +220,7 @@ app.MapCandidateEndpoints();
 app.MapAffiliateEndpoints();
 app.MapAdminApprovalEndpoints();
 app.MapAdminProfileEndpoints();
+app.MapAdminAuditLogEndpoints();
 app.MapServiceTypeEndpoints();
 app.MapCommissionMilestoneEndpoints();
 app.MapCommissionRuleEndpoints();

@@ -2,6 +2,7 @@ using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Candidates.Commands.DeleteCandidateCv;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -16,6 +17,7 @@ public class DeleteCandidateCvCommandHandlerTests
     private readonly Mock<ICandidateCvRepository> _candidateCvRepositoryMock;
     private readonly Mock<ICvStorageService> _cvStorageServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<ILogger<DeleteCandidateCvCommandHandler>> _loggerMock;
     private readonly DeleteCandidateCvCommandHandler _handler;
 
@@ -25,6 +27,7 @@ public class DeleteCandidateCvCommandHandlerTests
         _candidateCvRepositoryMock = new Mock<ICandidateCvRepository>();
         _cvStorageServiceMock = new Mock<ICvStorageService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _loggerMock = new Mock<ILogger<DeleteCandidateCvCommandHandler>>();
 
         _handler = new DeleteCandidateCvCommandHandler(
@@ -32,6 +35,7 @@ public class DeleteCandidateCvCommandHandlerTests
             _candidateCvRepositoryMock.Object,
             _cvStorageServiceMock.Object,
             _unitOfWorkMock.Object,
+            _auditLogServiceMock.Object,
             _loggerMock.Object);
     }
 
@@ -125,6 +129,9 @@ public class DeleteCandidateCvCommandHandlerTests
         _candidateCvRepositoryMock.Verify(r => r.Update(cv), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _cvStorageServiceMock.Verify(s => s.DeleteCvAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _auditLogServiceMock.Verify(a => a.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.CvDeleted && entry.EntityId == cvId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

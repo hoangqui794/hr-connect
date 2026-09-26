@@ -20,6 +20,8 @@ public interface ICvStorageService
     /// <summary>
     /// Uploads a CV supplied by an affiliate and records its provenance. Affiliate
     /// uploads are submission documents and are not part of the candidate's personal CV library.
+    /// The relational CV metadata and audit event are staged in the current unit of work;
+    /// the caller must commit them with the submission transaction.
     /// </summary>
     Task<UploadCvResult> UploadAffiliateCvPdfAsync(
         Guid candidateId,
@@ -28,6 +30,14 @@ public interface ICvStorageService
         string fileName,
         long fileSizeBytes,
         string? title = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes an object uploaded for a transaction that later rolled back.
+    /// This method only compensates object storage and does not change database state.
+    /// </summary>
+    Task CompensateUploadAsync(
+        string objectKey,
         CancellationToken cancellationToken = default);
 
     /// <summary>

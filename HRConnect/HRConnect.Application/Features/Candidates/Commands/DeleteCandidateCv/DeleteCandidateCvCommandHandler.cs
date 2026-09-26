@@ -2,6 +2,7 @@ using System;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -13,6 +14,7 @@ public class DeleteCandidateCvCommandHandler : IRequestHandler<DeleteCandidateCv
     private readonly ICandidateCvRepository _candidateCvRepository;
     private readonly ICvStorageService _cvStorageService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogService _auditLogService;
     private readonly ILogger<DeleteCandidateCvCommandHandler> _logger;
 
     public DeleteCandidateCvCommandHandler(
@@ -20,12 +22,14 @@ public class DeleteCandidateCvCommandHandler : IRequestHandler<DeleteCandidateCv
         ICandidateCvRepository candidateCvRepository,
         ICvStorageService cvStorageService,
         IUnitOfWork unitOfWork,
+        IAuditLogService auditLogService,
         ILogger<DeleteCandidateCvCommandHandler> logger)
     {
         _candidateRepository = candidateRepository;
         _candidateCvRepository = candidateCvRepository;
         _cvStorageService = cvStorageService;
         _unitOfWork = unitOfWork;
+        _auditLogService = auditLogService;
         _logger = logger;
     }
 
@@ -63,6 +67,19 @@ public class DeleteCandidateCvCommandHandler : IRequestHandler<DeleteCandidateCv
             cv.UpdatedAt = DateTime.UtcNow;
 
             _candidateCvRepository.Update(cv);
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.CvDeleted,
+                EntityType = "CANDIDATE_CV",
+                EntityId = cv.CvId,
+                ActorUserId = request.UserId,
+                NewValues = new
+                {
+                    candidate.CandidateId,
+                    deletionMode = "SOFT_DELETE",
+                    status = cv.Status
+                }
+            }, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("CV {CvId} đã được tham chiếu trong Application; đã ẩn khỏi kho CV của Candidate {CandidateId}.",

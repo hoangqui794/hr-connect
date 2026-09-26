@@ -76,6 +76,16 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
         var userExists = await _userRepository.ExistsByEmailAsync(normalizedEmail, cancellationToken);
         if (userExists)
         {
+            var existingUser = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+            if (existingUser != null &&
+                existingUser.EmailVerifiedAt == null &&
+                string.Equals(existingUser.Status, "PENDING", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ConflictException(
+                    "Email đang chờ xác thực. Vui lòng quay lại màn hình nhập OTP và bấm gửi lại mã nếu mã cũ đã hết hạn.",
+                    "EMAIL_PENDING_VERIFICATION");
+            }
+
             _logger.LogWarning("Đăng ký thất bại: Email {Email} đã tồn tại trong hệ thống.", normalizedEmail);
             throw new ConflictException("Email này đã được sử dụng bởi một tài khoản khác.");
         }
