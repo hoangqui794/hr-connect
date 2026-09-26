@@ -2,6 +2,7 @@ using System;
 using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Recruitment.Queries.GetInterviews;
+using HRConnect.Application.Features.Interviews.Queries.GetInterviewDetail;
 using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -88,6 +89,64 @@ public static class InterviewEndpoints
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden);
+
+        // I02: GET /api/v1/interviews/{interviewId:guid}
+        group.MapGet("/{interviewId:guid}", async (
+            Guid interviewId,
+            [FromServices] ISender sender = null!,
+            ClaimsPrincipal user = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var isClient = PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isCandidate = PermissionAuthorization.HasPermission(user, ViewOwnPermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!isClient && !isInternal && !isCandidate && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(ManagePermission);
+            }
+
+            try
+            {
+                var query = new GetInterviewDetailQuery(
+                    interviewId,
+                    userId.Value,
+                    IsClientCompanyUser: isClient && !isInternal && !isAdmin,
+                    IsInternalHrOrAdmin: isInternal || isAdmin,
+                    IsCandidate: isCandidate && !isClient && !isInternal && !isAdmin
+                );
+
+                var response = await sender.Send(query, cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetInterviewDetail")
+        .WithSummary("Lấy chi tiết một lịch phỏng vấn")
+        .WithDescription("Dành cho Client Company (interview.view_company), Internal HR / Admin (interview.manage), hoặc Candidate (interview.view_own). Trả về chi tiết ứng viên, công việc, hình thức, link/địa điểm, danh sách người tham gia, lịch sử dời/hủy lịch và kết quả đánh giá.")
+        .Produces<GetInterviewDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
 
         return app;
     }
