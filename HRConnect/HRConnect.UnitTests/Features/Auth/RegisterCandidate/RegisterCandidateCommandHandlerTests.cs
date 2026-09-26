@@ -180,6 +180,10 @@ public class RegisterCandidateCommandHandlerTests
         _emailServiceMock.Setup(x => x.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(EmailResult.Success("msg_123"));
 
+        EmailOutbox? capturedOutbox = null;
+        _emailOutboxRepositoryMock.Setup(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailOutbox, CancellationToken>((outbox, _) => capturedOutbox = outbox);
+
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -201,5 +205,9 @@ public class RegisterCandidateCommandHandlerTests
         _userTokenRepositoryMock.Verify(x => x.AddAsync(It.IsAny<UserToken>(), It.IsAny<CancellationToken>()), Times.Once);
         _emailOutboxRepositoryMock.Verify(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        capturedOutbox!.Status.Should().Be("SENT");
+        capturedOutbox.SentAt.Should().NotBeNull();
+        capturedOutbox.Payload.Should().NotContain("123456");
     }
 }
