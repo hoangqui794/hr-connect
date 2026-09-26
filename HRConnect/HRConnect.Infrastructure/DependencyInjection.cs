@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authentication;
 using HRConnect.Infrastructure.Authentication;
+using HRConnect.Infrastructure.Services.Audit;
 
 namespace HRConnect.Infrastructure;
 
@@ -47,6 +48,8 @@ public static class DependencyInjection
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IRequestContext, HttpRequestContext>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IClaimsTransformation, ActiveAuthorizationClaimsTransformation>();
 
         // 4. Repositories & UnitOfWork
