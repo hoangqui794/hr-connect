@@ -115,6 +115,13 @@ public class RegisterAffiliateCommandHandlerTests
             .Returns("654321");
         _otpServiceMock.Setup(x => x.HashOtp("654321"))
             .Returns("hashed_otp_token");
+        _emailServiceMock
+            .Setup(x => x.SendEmailAsync(
+                command.Email,
+                It.IsAny<string>(),
+                It.Is<string>(body => body.Contains("654321")),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(EmailResult.Success("message-id"));
 
         AppUser? capturedUser = null;
         _userRepositoryMock.Setup(x => x.AddAsync(It.IsAny<AppUser>(), It.IsAny<CancellationToken>()))
@@ -129,6 +136,12 @@ public class RegisterAffiliateCommandHandlerTests
         UserToken? capturedToken = null;
         _userTokenRepositoryMock.Setup(x => x.AddAsync(It.IsAny<UserToken>(), It.IsAny<CancellationToken>()))
             .Callback<UserToken, CancellationToken>((t, ct) => capturedToken = t)
+            .Returns(Task.CompletedTask);
+
+        EmailOutbox? capturedOutbox = null;
+        _emailOutboxRepositoryMock
+            .Setup(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailOutbox, CancellationToken>((outbox, _) => capturedOutbox = outbox)
             .Returns(Task.CompletedTask);
 
         // Act
@@ -155,7 +168,43 @@ public class RegisterAffiliateCommandHandlerTests
         capturedToken.TokenHash.Should().Be("hashed_otp_token");
         capturedToken.UsedAt.Should().BeNull();
 
+        capturedOutbox.Should().NotBeNull();
+        capturedOutbox!.Status.Should().Be("SENT");
+        capturedOutbox.SentAt.Should().NotBeNull();
+        capturedOutbox.Payload.Should().NotContain("654321");
+
         _unitOfWorkMock.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _emailServiceMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldKeepRegistrationRecoverable_WhenEmailProviderFails()
+    {
+        var command = new RegisterAffiliateCommand(
+            "mail-failure@example.com", "Password@123", "Affiliate Mail Failure");
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns(command.Email);
+        _userRepositoryMock.Setup(x => x.ExistsByEmailAsync(command.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _passwordHasherMock.Setup(x => x.Hash(command.Password)).Returns("password-hash");
+        _otpServiceMock.Setup(x => x.GenerateNumericOtp(6)).Returns("123456");
+        _otpServiceMock.Setup(x => x.HashOtp("123456")).Returns("otp-hash");
+        _emailServiceMock.Setup(x => x.SendEmailAsync(
+                command.Email, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(EmailResult.Failure("provider unavailable"));
+
+        EmailOutbox? outbox = null;
+        _emailOutboxRepositoryMock.Setup(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailOutbox, CancellationToken>((value, _) => outbox = value);
+
+        var response = await _handler.Handle(command, CancellationToken.None);
+
+        response.Success.Should().BeTrue();
+        response.Data!.Status.Should().Be("PENDING_EMAIL_VERIFICATION");
+        outbox!.Status.Should().Be("FAILED");
+        outbox.RetryCount.Should().Be(1);
+        outbox.LastError.Should().Be("provider unavailable");
+        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
