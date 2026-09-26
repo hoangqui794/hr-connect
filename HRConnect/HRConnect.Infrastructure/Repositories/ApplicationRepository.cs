@@ -31,6 +31,7 @@ public class ApplicationRepository : IApplicationRepository
             .Include(a => a.Interviews)
             .Include(a => a.Attribution)
             .Include(a => a.Submission)
+            .Include(a => a.ApplicationStatusHistories)
             .FirstOrDefaultAsync(a => a.ApplicationId == applicationId, cancellationToken);
     }
 

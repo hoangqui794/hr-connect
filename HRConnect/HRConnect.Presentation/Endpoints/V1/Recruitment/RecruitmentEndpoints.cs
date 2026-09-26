@@ -1,6 +1,7 @@
 using System;
 using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Recruitment.Commands.DecideBackupApplication;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplications;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationTimeline;
@@ -14,6 +15,7 @@ public static class RecruitmentEndpoints
 {
     private const string ViewCompanyPermission = "application.view_company";
     private const string ViewAllPermission = "application.view";
+    private const string DecideBackupPermission = "application.decide_backup";
 
     public static IEndpointRouteBuilder MapRecruitmentEndpoints(this IEndpointRouteBuilder app)
     {
@@ -198,6 +200,74 @@ public static class RecruitmentEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
 
+        // A04: PUT /api/v1/recruitment/applications/{id:guid}/decide-backup
+        group.MapPut("/applications/{id:guid}/decide-backup", async (
+            Guid id,
+            [FromBody] DecideBackupApplicationRequest request,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var hasPermission = PermissionAuthorization.HasPermission(user, DecideBackupPermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!hasPermission && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(DecideBackupPermission);
+            }
+
+            var isInternalOrAdmin = user.IsInRole("INTERNAL_HR") || isAdmin || PermissionAuthorization.HasPermission(user, "application.view");
+            var isClient = !isInternalOrAdmin;
+
+            try
+            {
+                var command = new DecideBackupApplicationCommand(
+                    ApplicationId: id,
+                    Decision: request.Decision,
+                    Reason: request.Reason,
+                    Note: request.Note,
+                    ConcurrencyToken: request.ConcurrencyToken,
+                    CurrentUserId: userId.Value,
+                    IsClientCompanyUser: isClient,
+                    IsInternalHrOrAdmin: isInternalOrAdmin
+                );
+
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("DecideBackupApplication")
+        .WithSummary("Quyết định chọn hoặc xử lý ứng viên dự phòng (Backup candidate)")
+        .WithDescription("Dành cho Client Company HR / Admin hoặc Internal HR (quyền application.decide_backup). Kích hoạt ứng viên dự phòng bước vào quy trình phỏng vấn / tuyển dụng tiếp theo, từ chối hoặc tiếp tục giữ làm dự phòng.")
+        .Produces<DecideBackupApplicationResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -213,4 +283,12 @@ public static class RecruitmentEndpoints
 
         return null;
     }
+}
+
+public class DecideBackupApplicationRequest
+{
+    public string Decision { get; set; } = string.Empty;
+    public string? Reason { get; set; }
+    public string? Note { get; set; }
+    public Guid? ConcurrencyToken { get; set; }
 }
