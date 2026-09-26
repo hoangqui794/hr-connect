@@ -15,4 +15,6 @@ public interface IAuditLogRepository
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
+
+    Task<AuditLog?> GetByIdAsync(long auditLogId, CancellationToken cancellationToken = default);
 }

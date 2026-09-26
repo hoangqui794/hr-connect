@@ -53,6 +53,35 @@ public class AuditLogRepositoryTests
         items[0].ActorUser!.Email.Should().Be("admin@example.com");
     }
 
+    [Fact]
+    public async Task GetByIdAsync_ReturnsActorDetails()
+    {
+        await using var context = CreateDbContext();
+        var actor = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "admin@example.com",
+            PasswordHash = "hash",
+            Status = "ACTIVE"
+        };
+        await context.AppUsers.AddAsync(actor);
+        await context.AuditLogs.AddAsync(new AuditLog
+        {
+            AuditLogId = 12,
+            ActorUserId = actor.UserId,
+            Action = "CV_DELETED",
+            CreatedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
+        var repository = new AuditLogRepository(context);
+
+        var result = await repository.GetByIdAsync(12);
+
+        result.Should().NotBeNull();
+        result!.ActorUser.Should().NotBeNull();
+        result.ActorUser!.Email.Should().Be("admin@example.com");
+    }
+
     private static ApplicationDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()

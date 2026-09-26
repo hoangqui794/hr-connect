@@ -61,6 +61,38 @@ public static class AdminAuditLogEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden);
 
+        group.MapGet("/{auditLogId:long}", async (
+            long auditLogId,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, AuditViewPermission))
+                return PermissionAuthorization.Forbidden(AuditViewPermission);
+
+            try
+            {
+                var result = await sender.Send(new GetAuditLogDetailQuery(auditLogId), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetAuditLogDetail")
+        .WithSummary("Xem chi tiết audit log")
+        .WithDescription("Yêu cầu quyền audit.view. Trả về metadata truy vết cùng dữ liệu trước và sau thay đổi.")
+        .Produces<GetAuditLogDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
         return app;
     }
 

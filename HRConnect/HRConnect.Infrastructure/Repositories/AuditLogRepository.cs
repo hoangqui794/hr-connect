@@ -56,4 +56,12 @@ public sealed class AuditLogRepository : IAuditLogRepository
 
         return (items, totalCount);
     }
+
+    public Task<AuditLog?> GetByIdAsync(long auditLogId, CancellationToken cancellationToken = default)
+    {
+        return _context.AuditLogs
+            .AsNoTracking()
+            .Include(log => log.ActorUser)
+            .SingleOrDefaultAsync(log => log.AuditLogId == auditLogId, cancellationToken);
+    }
 }
