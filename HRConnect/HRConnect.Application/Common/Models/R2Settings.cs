@@ -20,6 +20,8 @@ public class R2Settings
 
     public int PresignedUrlExpiryMinutes { get; set; } = 15;
 
+    public int MaxPresignedUrlExpiryMinutes { get; set; } = 60;
+
     public int MaxAvatarFileSizeMb { get; set; } = 5;
 
     public long MaxAvatarFileSizeBytes => (long)MaxAvatarFileSizeMb * 1024 * 1024;

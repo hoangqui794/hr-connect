@@ -110,6 +110,9 @@ public static class DependencyInjection
         if (int.TryParse(configuration["MAX_CV_FILE_SIZE_MB"], out var maxMb) && maxMb > 0)
             r2Settings.MaxCvFileSizeMb = maxMb;
 
+        if (int.TryParse(configuration["MAX_PRESIGNED_URL_EXPIRY_MINUTES"], out var maxExpiryMinutes) && maxExpiryMinutes > 0)
+            r2Settings.MaxPresignedUrlExpiryMinutes = maxExpiryMinutes;
+
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(r2Settings));
 
         services.AddSingleton<Amazon.S3.IAmazonS3>(sp =>

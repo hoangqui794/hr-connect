@@ -166,6 +166,12 @@ public class CvStorageService : ICvStorageService
         }
 
         var expirySpan = expiry ?? TimeSpan.FromMinutes(_settings.PresignedUrlExpiryMinutes);
+        var maxExpiry = TimeSpan.FromMinutes(_settings.MaxPresignedUrlExpiryMinutes);
+        if (expirySpan <= TimeSpan.Zero || expirySpan > maxExpiry)
+        {
+            throw new BadRequestException(
+                $"Thời hạn đường dẫn tải CV phải từ 1 đến {_settings.MaxPresignedUrlExpiryMinutes} phút.");
+        }
 
         var downloadUrl = await _fileStorageService.GetPresignedDownloadUrlAsync(
             cv.SourceFileUrl,

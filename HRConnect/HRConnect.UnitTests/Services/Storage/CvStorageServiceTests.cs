@@ -35,7 +35,8 @@ public class CvStorageServiceTests
             BucketName = "hrconnect-candidate-cvs",
             Endpoint = "https://ea997660e8c1f6c92b939eb22891843c.r2.cloudflarestorage.com",
             MaxCvFileSizeMb = 10,
-            PresignedUrlExpiryMinutes = 15
+            PresignedUrlExpiryMinutes = 15,
+            MaxPresignedUrlExpiryMinutes = 60
         };
 
         var options = Options.Create(_settings);
@@ -359,6 +360,33 @@ public class CvStorageServiceTests
         await action.Should().NotThrowAsync();
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _fileStorageServiceMock.Verify(s => s.DeleteAsync(objectKey, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(61)]
+    [InlineData(525600)]
+    public async Task GetCvDownloadUrlAsync_WhenExpiryIsOutsideAllowedRange_Rejects(int expiryMinutes)
+    {
+        var cvId = Guid.NewGuid();
+        var cv = new CandidateCv
+        {
+            CvId = cvId,
+            SourceFileUrl = $"candidates/test/cvs/{cvId}.pdf",
+            Status = "ACTIVE"
+        };
+        _candidateCvRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cv);
+
+        var action = () => _service.GetCvDownloadUrlAsync(cvId, TimeSpan.FromMinutes(expiryMinutes));
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*1 đến 60 phút*");
+        _fileStorageServiceMock.Verify(
+            service => service.GetPresignedDownloadUrlAsync(
+                It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     private static byte[] CreateMinimalPdf(string catalogExtra = "")
