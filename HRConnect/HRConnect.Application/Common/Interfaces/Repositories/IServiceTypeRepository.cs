@@ -23,6 +23,11 @@ public interface IServiceTypeRepository
 
     Task<IReadOnlyList<ServiceTypeAllowedRole>> GetAllowedRolesAsync(Guid serviceTypeId, CancellationToken cancellationToken = default);
 
+    Task ReplaceAllowedRolesAsync(
+        Guid serviceTypeId,
+        IReadOnlyCollection<ServiceTypeAllowedRole> mappings,
+        CancellationToken cancellationToken = default);
+
     Task<bool> ExistsByCodeAsync(string code, Guid? excludeId = null, CancellationToken cancellationToken = default);
 
     Task<bool> IsReferencedAsync(Guid id, CancellationToken cancellationToken = default);

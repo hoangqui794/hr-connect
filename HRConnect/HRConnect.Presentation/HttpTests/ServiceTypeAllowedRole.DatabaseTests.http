@@ -9,3 +9,27 @@ Accept: application/json
 
 ### Expected: 200 with service type metadata and role mappings (roleCode, canView, canSubmit).
 ### Use a non-existent UUID to verify the 404 path. Use a non-admin JWT to verify 403.
+
+### MF-01: Platform Admin replaces all role mappings for a Service Type.
+### Use role IDs returned by GET above. Omitted roles are removed intentionally.
+PUT {{baseUrl}}/api/v1/admin/service-types/{{serviceTypeId}}/allowed-roles
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "roles": [
+    {
+      "roleId": "REPLACE_WITH_AFFILIATE_RECRUITER_ROLE_ID",
+      "canView": true,
+      "canSubmit": true
+    },
+    {
+      "roleId": "REPLACE_WITH_CANDIDATE_ROLE_ID",
+      "canView": false,
+      "canSubmit": false
+    }
+  ]
+}
+
+### Expected: 200. Then repeat GET to verify persistence.
+### Expected errors: 400 for duplicate/unknown roleId, 403 for non-admin, 404 for unknown serviceTypeId.

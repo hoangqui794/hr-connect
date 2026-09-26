@@ -87,6 +87,39 @@ public class ServiceTypeRepository : IServiceTypeRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task ReplaceAllowedRolesAsync(
+        Guid serviceTypeId,
+        IReadOnlyCollection<ServiceTypeAllowedRole> mappings,
+        CancellationToken cancellationToken = default)
+    {
+        var existingMappings = await _context.ServiceTypeAllowedRoles
+            .Where(mapping => mapping.ServiceTypeId == serviceTypeId)
+            .ToDictionaryAsync(mapping => mapping.RoleId, cancellationToken);
+
+        var requestedRoleIds = mappings.Select(mapping => mapping.RoleId).ToHashSet();
+        var now = DateTime.UtcNow;
+
+        foreach (var mapping in mappings)
+        {
+            if (existingMappings.TryGetValue(mapping.RoleId, out var existing))
+            {
+                existing.CanView = mapping.CanView;
+                existing.CanSubmit = mapping.CanSubmit;
+                existing.UpdatedAt = now;
+                continue;
+            }
+
+            mapping.ServiceTypeId = serviceTypeId;
+            mapping.CreatedAt = now;
+            mapping.UpdatedAt = now;
+            await _context.ServiceTypeAllowedRoles.AddAsync(mapping, cancellationToken);
+        }
+
+        var removedMappings = existingMappings.Values
+            .Where(mapping => !requestedRoleIds.Contains(mapping.RoleId));
+        _context.ServiceTypeAllowedRoles.RemoveRange(removedMappings);
+    }
+
     public async Task<bool> ExistsByCodeAsync(string code, Guid? excludeId = null, CancellationToken cancellationToken = default)
     {
         var normalized = code.Trim().ToUpperInvariant();
