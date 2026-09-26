@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.CommissionRules.Commands.CreateCommissionRule;
+using HRConnect.Application.Features.CommissionRules.Queries.GetCommissionRules;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,6 +15,35 @@ public static class CommissionRuleEndpoints
         var group = app.MapGroup("/api/v1/admin/commission-rules")
             .WithTags("Admin Commission Rules")
             .RequireAuthorization();
+
+        group.MapGet("", async (
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromQuery] Guid? serviceTypeId,
+            [FromQuery] string? milestoneType,
+            [FromQuery] bool? isActive,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            CancellationToken cancellationToken = default) =>
+        {
+            if (!HasAdminAccess(user))
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Ban khong co quyen thuc hien thao tac nay. Yeu cau quyen quan tri vien."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            return Results.Ok(await sender.Send(new GetCommissionRulesQuery(
+                serviceTypeId, milestoneType, isActive, page, pageSize), cancellationToken));
+        })
+        .WithName("GetCommissionRules")
+        .WithSummary("Lấy danh sách quy tắc hoa hồng")
+        .WithDescription("Admin xem và lọc quy tắc theo loại dịch vụ, mốc hoa hồng và trạng thái.")
+        .Produces<GetCommissionRulesResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden);
 
         group.MapPost("", async (
             [FromBody] CreateCommissionRuleCommand command,
@@ -61,8 +91,8 @@ public static class CommissionRuleEndpoints
             }
         })
         .WithName("CreateCommissionRule")
-        .WithSummary("Create a Commission Rule for a Service Type and milestone")
-        .WithDescription("Platform Admin configures the rate used later by the commission engine. The Job stores only serviceTypeId; it never stores commissionRuleId.")
+        .WithSummary("Tạo quy tắc hoa hồng")
+        .WithDescription("Admin cấu hình mức hoa hồng theo loại dịch vụ và mốc hoa hồng. Job chỉ lưu serviceTypeId.")
         .Produces<CreateCommissionRuleResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
