@@ -32,7 +32,7 @@ public class CvStorageService : ICvStorageService
         _logger = logger;
     }
 
-    public async Task<UploadCvResult> UploadCvPdfAsync(
+    public Task<UploadCvResult> UploadCvPdfAsync(
         Guid candidateId,
         Stream fileStream,
         string fileName,
@@ -40,6 +40,55 @@ public class CvStorageService : ICvStorageService
         string? title = null,
         bool isPrimary = false,
         CancellationToken cancellationToken = default)
+    {
+        return UploadCvPdfCoreAsync(
+            candidateId,
+            uploadedByUserId: null,
+            creationMethod: "FILE_UPLOAD",
+            fileStream,
+            fileName,
+            fileSizeBytes,
+            title,
+            isPrimary,
+            cancellationToken);
+    }
+
+    public Task<UploadCvResult> UploadAffiliateCvPdfAsync(
+        Guid candidateId,
+        Guid affiliateUserId,
+        Stream fileStream,
+        string fileName,
+        long fileSizeBytes,
+        string? title = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (affiliateUserId == Guid.Empty)
+        {
+            throw new BadRequestException("Không xác định được Affiliate đã tải CV.");
+        }
+
+        return UploadCvPdfCoreAsync(
+            candidateId,
+            affiliateUserId,
+            "AFFILIATE_UPLOAD",
+            fileStream,
+            fileName,
+            fileSizeBytes,
+            title,
+            isPrimary: false,
+            cancellationToken);
+    }
+
+    private async Task<UploadCvResult> UploadCvPdfCoreAsync(
+        Guid candidateId,
+        Guid? uploadedByUserId,
+        string creationMethod,
+        Stream fileStream,
+        string fileName,
+        long fileSizeBytes,
+        string? title,
+        bool isPrimary,
+        CancellationToken cancellationToken)
     {
         // Read and validate the exact bytes that will be uploaded. This prevents a
         // renamed/non-PDF payload and a declared-size mismatch from reaching R2/MF03.
@@ -99,7 +148,8 @@ public class CvStorageService : ICvStorageService
                 CvId = cvId,
                 CandidateId = candidateId,
                 Title = cvTitle,
-                CreationMethod = "FILE_UPLOAD",
+                CreationMethod = creationMethod,
+                UploadedByUserId = uploadedByUserId,
                 SourceFileUrl = uploadedKey, // Lưu object key ổn định thay vì temporary URL
                 FileName = Path.GetFileName(fileName),
                 MimeType = "application/pdf",

@@ -16,6 +16,8 @@ public partial class CandidateCv
 
     public string CreationMethod { get; set; } = null!;
 
+    public Guid? UploadedByUserId { get; set; }
+
     public Guid? CvTemplateId { get; set; }
 
     public string? StructuredContent { get; set; }

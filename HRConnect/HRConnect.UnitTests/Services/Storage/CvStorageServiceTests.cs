@@ -140,6 +140,37 @@ public class CvStorageServiceTests
     }
 
     [Fact]
+    public async Task UploadAffiliateCvPdfAsync_RecordsAffiliateProvenanceAndNeverSetsPrimary()
+    {
+        var candidateId = Guid.NewGuid();
+        var affiliateUserId = Guid.NewGuid();
+        var pdf = CreateMinimalPdf();
+        using var stream = new MemoryStream(pdf);
+
+        _fileStorageServiceMock
+            .Setup(service => service.UploadAsync(
+                It.IsAny<Stream>(), It.IsAny<string>(), "application/pdf", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Stream _, string key, string _, CancellationToken _) => key);
+
+        CandidateCv? savedCv = null;
+        _candidateCvRepositoryMock
+            .Setup(repository => repository.AddAsync(It.IsAny<CandidateCv>(), It.IsAny<CancellationToken>()))
+            .Callback<CandidateCv, CancellationToken>((cv, _) => savedCv = cv)
+            .Returns(Task.CompletedTask);
+        _unitOfWorkMock
+            .Setup(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        await _service.UploadAffiliateCvPdfAsync(
+            candidateId, affiliateUserId, stream, "affiliate-cv.pdf", pdf.Length);
+
+        savedCv.Should().NotBeNull();
+        savedCv!.CreationMethod.Should().Be("AFFILIATE_UPLOAD");
+        savedCv.UploadedByUserId.Should().Be(affiliateUserId);
+        savedCv.IsPrimary.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task UploadCvPdfAsync_WhenPayloadOnlyLooksLikePdf_RejectsBeforeUpload()
     {
         var fakePdf = Encoding.ASCII.GetBytes("%PDF-1.4 Minimal PDF CV B content");

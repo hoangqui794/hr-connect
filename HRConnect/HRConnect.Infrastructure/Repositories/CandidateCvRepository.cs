@@ -36,7 +36,9 @@ public class CandidateCvRepository : ICandidateCvRepository
     {
         return await _context.CandidateCvs
             .AsNoTracking()
-            .Where(c => c.CandidateId == candidateId && c.Status == "ACTIVE")
+            .Where(c => c.CandidateId == candidateId &&
+                        c.Status == "ACTIVE" &&
+                        c.CreationMethod != "AFFILIATE_UPLOAD")
             .OrderByDescending(c => c.IsPrimary)
             .ThenByDescending(c => c.CreatedAt)
             .ToListAsync(cancellationToken);

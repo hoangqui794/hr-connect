@@ -152,8 +152,9 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         Guid? newlyUploadedCvId = null;
         if (request.FileStream != null && request.FileStream != Stream.Null && !string.IsNullOrWhiteSpace(request.FileName))
         {
-            var uploadResult = await _cvStorageService.UploadCvPdfAsync(
+            var uploadResult = await _cvStorageService.UploadAffiliateCvPdfAsync(
                 candidate?.CandidateId ?? Guid.NewGuid(),
+                request.UserId,
                 request.FileStream,
                 request.FileName,
                 request.FileSizeBytes ?? request.FileStream.Length,
@@ -167,6 +168,11 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             if (cv == null || (candidate != null && cv.CandidateId != candidate.CandidateId))
             {
                 throw new BadRequestException("CV được chọn không hợp lệ cho ứng viên này.");
+            }
+            if (!string.Equals(cv.CreationMethod, "AFFILIATE_UPLOAD", StringComparison.Ordinal) ||
+                cv.UploadedByUserId != request.UserId)
+            {
+                throw new ForbiddenException("Affiliate không được sử dụng CV riêng của ứng viên hoặc CV do Affiliate khác tải lên.");
             }
             if (cv.Status != "ACTIVE" || string.IsNullOrWhiteSpace(cv.SourceFileUrl))
             {

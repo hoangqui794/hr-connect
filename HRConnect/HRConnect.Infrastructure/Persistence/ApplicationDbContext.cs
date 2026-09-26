@@ -708,6 +708,8 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => new { e.CreationMethod, e.Status }, "idx_candidate_cv_creation_method");
 
+            entity.HasIndex(e => e.UploadedByUserId, "idx_candidate_cv_uploaded_by");
+
             entity.HasIndex(e => new { e.CandidateId, e.CvId }, "uq_candidate_cv_owner").IsUnique();
 
             entity.HasIndex(e => e.CandidateId, "uq_candidate_primary_cv")
@@ -724,6 +726,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CreationMethod)
                 .HasMaxLength(40)
                 .HasColumnName("creation_method");
+            entity.Property(e => e.UploadedByUserId).HasColumnName("uploaded_by_user_id");
             entity.Property(e => e.CvTemplateId).HasColumnName("cv_template_id");
             entity.Property(e => e.FileName)
                 .HasMaxLength(255)

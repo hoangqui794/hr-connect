@@ -947,6 +947,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(40)")
                         .HasColumnName("creation_method");
 
+                    b.Property<Guid?>("UploadedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by_user_id");
+
                     b.Property<Guid?>("CvTemplateId")
                         .HasColumnType("uuid")
                         .HasColumnName("cv_template_id");
@@ -1016,6 +1020,8 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsDescending(false, true);
 
                     b.HasIndex(new[] { "CreationMethod", "Status" }, "idx_candidate_cv_creation_method");
+
+                    b.HasIndex("UploadedByUserId", "idx_candidate_cv_uploaded_by");
 
                     b.HasIndex(new[] { "CandidateId", "CvId" }, "uq_candidate_cv_owner")
                         .IsUnique();
