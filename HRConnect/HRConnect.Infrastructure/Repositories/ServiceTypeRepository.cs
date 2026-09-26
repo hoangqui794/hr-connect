@@ -75,6 +75,18 @@ public class ServiceTypeRepository : IServiceTypeRepository
             .FirstOrDefaultAsync(st => st.Code.ToUpper() == normalized, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ServiceTypeAllowedRole>> GetAllowedRolesAsync(
+        Guid serviceTypeId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.ServiceTypeAllowedRoles
+            .AsNoTracking()
+            .Include(mapping => mapping.Role)
+            .Where(mapping => mapping.ServiceTypeId == serviceTypeId)
+            .OrderBy(mapping => mapping.Role.Code)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> ExistsByCodeAsync(string code, Guid? excludeId = null, CancellationToken cancellationToken = default)
     {
         var normalized = code.Trim().ToUpperInvariant();

@@ -1,0 +1,11 @@
+@baseUrl = https://localhost:7289
+@adminToken = REPLACE_WITH_PLATFORM_ADMIN_BEARER_TOKEN
+@serviceTypeId = REPLACE_WITH_SERVICE_TYPE_ID
+
+### MF-01: Platform Admin reads the role mapping used by Job view/submit authorization.
+GET {{baseUrl}}/api/v1/admin/service-types/{{serviceTypeId}}/allowed-roles
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Expected: 200 with service type metadata and role mappings (roleCode, canView, canSubmit).
+### Use a non-existent UUID to verify the 404 path. Use a non-admin JWT to verify 403.
