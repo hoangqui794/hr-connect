@@ -18,6 +18,7 @@ public class CvStorageServiceTests
     private readonly Mock<IFileStorageService> _fileStorageServiceMock;
     private readonly Mock<ICandidateCvRepository> _candidateCvRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<ILogger<CvStorageService>> _loggerMock;
     private readonly R2Settings _settings;
     private readonly CvStorageService _service;
@@ -27,6 +28,7 @@ public class CvStorageServiceTests
         _fileStorageServiceMock = new Mock<IFileStorageService>();
         _candidateCvRepositoryMock = new Mock<ICandidateCvRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _loggerMock = new Mock<ILogger<CvStorageService>>();
 
         _settings = new R2Settings
@@ -44,6 +46,7 @@ public class CvStorageServiceTests
             _fileStorageServiceMock.Object,
             _candidateCvRepositoryMock.Object,
             _unitOfWorkMock.Object,
+            _auditLogServiceMock.Object,
             options,
             _loggerMock.Object);
     }
@@ -104,6 +107,9 @@ public class CvStorageServiceTests
         savedCv.Status.Should().Be("ACTIVE");
 
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _auditLogServiceMock.Verify(a => a.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.CvUploaded && entry.EntityId == result.CvId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Theory]
@@ -168,6 +174,27 @@ public class CvStorageServiceTests
         savedCv!.CreationMethod.Should().Be("AFFILIATE_UPLOAD");
         savedCv.UploadedByUserId.Should().Be(affiliateUserId);
         savedCv.IsPrimary.Should().BeFalse();
+        _unitOfWorkMock.Verify(
+            unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+        _auditLogServiceMock.Verify(audit => audit.AddAsync(
+            It.Is<AuditEntry>(entry =>
+                entry.Action == AuditActions.CvUploaded &&
+                entry.ActorUserId == affiliateUserId),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CompensateUploadAsync_DeletesOnlyTheR2Object()
+    {
+        const string objectKey = "candidates/candidate/cvs/cv.pdf";
+
+        await _service.CompensateUploadAsync(objectKey);
+
+        _fileStorageServiceMock.Verify(storage => storage.DeleteAsync(
+            objectKey, It.IsAny<CancellationToken>()), Times.Once);
+        _candidateCvRepositoryMock.Verify(repository => repository.Delete(It.IsAny<CandidateCv>()), Times.Never);
+        _unitOfWorkMock.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

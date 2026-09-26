@@ -27,6 +27,7 @@ public class SubmitCandidateCommandHandlerTests
     private readonly Mock<IPhoneNormalizer> _phoneNormalizerMock;
     private readonly Mock<IMf03ScoringTrigger> _scoringTriggerMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<ILogger<SubmitCandidateCommandHandler>> _loggerMock;
     private readonly SubmitCandidateCommandHandler _handler;
 
@@ -44,6 +45,7 @@ public class SubmitCandidateCommandHandlerTests
         _phoneNormalizerMock = new Mock<IPhoneNormalizer>();
         _scoringTriggerMock = new Mock<IMf03ScoringTrigger>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _loggerMock = new Mock<ILogger<SubmitCandidateCommandHandler>>();
 
         _emailNormalizerMock.Setup(n => n.Normalize(It.IsAny<string>()))
@@ -64,6 +66,7 @@ public class SubmitCandidateCommandHandlerTests
             _phoneNormalizerMock.Object,
             _scoringTriggerMock.Object,
             _unitOfWorkMock.Object,
+            _auditLogServiceMock.Object,
             _loggerMock.Object);
     }
 
@@ -362,6 +365,58 @@ public class SubmitCandidateCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenNewCandidateTransactionFails_RollsBackAndRemovesUploadedObject()
+    {
+        var userId = Guid.NewGuid();
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId });
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(
+                serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync(
+                "rollback@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Candidate?)null);
+        _candidateRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Candidate>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        const string objectKey = "candidates/new/cvs/rollback.pdf";
+        _cvStorageServiceMock.Setup(service => service.UploadAffiliateCvPdfAsync(
+                It.IsAny<Guid>(), userId, It.IsAny<Stream>(), "cv.pdf", 3, null,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UploadCvResult
+            {
+                CvId = Guid.NewGuid(),
+                ObjectKey = objectKey,
+                FileName = "cv.pdf"
+            });
+        _unitOfWorkMock.Setup(unit => unit.CommitTransactionAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("database unavailable"));
+
+        var action = () => _handler.Handle(new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            FullName = "Rollback Candidate",
+            Email = "rollback@example.com",
+            FileStream = new MemoryStream(new byte[] { 1, 2, 3 }),
+            FileName = "cv.pdf",
+            FileSizeBytes = 3,
+            RoleCodes = ["AFFILIATE_RECRUITER"]
+        }, CancellationToken.None);
+
+        await action.Should().ThrowAsync<InvalidOperationException>();
+        _unitOfWorkMock.Verify(unit => unit.RollbackTransactionAsync(
+            It.IsAny<CancellationToken>()), Times.Once);
+        _cvStorageServiceMock.Verify(service => service.CompensateUploadAsync(
+            objectKey, It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(unit => unit.SaveChangesAsync(
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Handle_WhenCandidateFoundByPhone_ReusesExistingCandidate()
     {
         // Arrange
@@ -435,13 +490,15 @@ public class SubmitCandidateCommandHandlerTests
         _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("dup@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingCandidate);
 
-        var cvId = Guid.NewGuid();
-        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = userId };
-        _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(cv);
-
         var previousSubmissionId = Guid.NewGuid();
-        var acceptedSubmission = new Submission { SubmissionId = previousSubmissionId, CandidateId = candidateId, JobId = jobId, Status = "ACCEPTED" };
+        var acceptedSubmission = new Submission
+        {
+            SubmissionId = previousSubmissionId,
+            CandidateId = candidateId,
+            CvId = Guid.NewGuid(),
+            JobId = jobId,
+            Status = "ACCEPTED"
+        };
         _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(acceptedSubmission);
 
@@ -456,7 +513,9 @@ public class SubmitCandidateCommandHandlerTests
             JobId = jobId,
             FullName = "Dup",
             Email = "dup@example.com",
-            CvId = cvId,
+            FileStream = new MemoryStream(new byte[] { 1, 2, 3 }),
+            FileName = "duplicate.pdf",
+            FileSizeBytes = 3,
             RoleCodes = new[] { "AFFILIATE_RECRUITER" }
         };
 
@@ -472,6 +531,44 @@ public class SubmitCandidateCommandHandlerTests
         _applicationRepositoryMock.Verify(r => r.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
         _attributionRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Attribution>(), It.IsAny<CancellationToken>()), Times.Never);
         _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
+        _cvStorageServiceMock.Verify(service => service.UploadAffiliateCvPdfAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(),
+            It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidateIsNew_RejectsExistingCvId()
+    {
+        var userId = Guid.NewGuid();
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId });
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(
+                serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync(
+                "new@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Candidate?)null);
+
+        var action = () => _handler.Handle(new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            FullName = "New Candidate",
+            Email = "new@example.com",
+            CvId = Guid.NewGuid(),
+            RoleCodes = ["AFFILIATE_RECRUITER"]
+        }, CancellationToken.None);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*ứng viên chưa tồn tại*");
+        _candidateRepositoryMock.Verify(r => r.AddAsync(
+            It.IsAny<Candidate>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(r => r.BeginTransactionAsync(
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -559,6 +656,9 @@ public class SubmitCandidateCommandHandlerTests
         _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(
             It.Is<Mf03TriggerPayload>(p => p.ApplicationId == createdApplication.ApplicationId && p.CvId == cvId && p.JobId == jobId),
             It.IsAny<CancellationToken>()), Times.Once);
+        _auditLogServiceMock.Verify(a => a.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.AffiliateSubmissionCreated && entry.EntityId == createdSubmission.SubmissionId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -594,7 +694,13 @@ public class SubmitCandidateCommandHandlerTests
         var cvId = Guid.NewGuid();
         var stream = new MemoryStream(new byte[] { 1, 2, 3 });
         _cvStorageServiceMock.Setup(s => s.UploadAffiliateCvPdfAsync(candidateId, userId, stream, "cv.pdf", 3, null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new UploadCvResult { CvId = cvId, CandidateId = candidateId, FileName = "cv.pdf" });
+            .ReturnsAsync(new UploadCvResult
+            {
+                CvId = cvId,
+                CandidateId = candidateId,
+                ObjectKey = "candidates/race/cvs/cv.pdf",
+                FileName = "cv.pdf"
+            });
 
         // Database throws 23505 unique constraint violation on commit
         _unitOfWorkMock.Setup(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()))
@@ -620,7 +726,8 @@ public class SubmitCandidateCommandHandlerTests
             .WithMessage("*đã được nộp vào công việc này trước đó*");
 
         _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _cvStorageServiceMock.Verify(s => s.DeleteCvAsync(cvId, It.IsAny<CancellationToken>()), Times.Once);
+        _cvStorageServiceMock.Verify(s => s.CompensateUploadAsync(
+            "candidates/race/cvs/cv.pdf", It.IsAny<CancellationToken>()), Times.Once);
         _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 

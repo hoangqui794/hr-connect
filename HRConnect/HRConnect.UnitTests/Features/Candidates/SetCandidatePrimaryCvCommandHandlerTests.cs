@@ -2,6 +2,7 @@ using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Candidates.Commands.SetCandidatePrimaryCv;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,7 @@ public class SetCandidatePrimaryCvCommandHandlerTests
     private readonly Mock<ICandidateRepository> _candidateRepositoryMock;
     private readonly Mock<ICandidateCvRepository> _candidateCvRepositoryMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<ILogger<SetCandidatePrimaryCvCommandHandler>> _loggerMock;
     private readonly SetCandidatePrimaryCvCommandHandler _handler;
 
@@ -23,12 +25,14 @@ public class SetCandidatePrimaryCvCommandHandlerTests
         _candidateRepositoryMock = new Mock<ICandidateRepository>();
         _candidateCvRepositoryMock = new Mock<ICandidateCvRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _loggerMock = new Mock<ILogger<SetCandidatePrimaryCvCommandHandler>>();
 
         _handler = new SetCandidatePrimaryCvCommandHandler(
             _candidateRepositoryMock.Object,
             _candidateCvRepositoryMock.Object,
             _unitOfWorkMock.Object,
+            _auditLogServiceMock.Object,
             _loggerMock.Object);
     }
 
@@ -96,7 +100,10 @@ public class SetCandidatePrimaryCvCommandHandlerTests
 
         _candidateCvRepositoryMock.Verify(r => r.Update(previousPrimaryCv), Times.Once);
         _candidateCvRepositoryMock.Verify(r => r.Update(targetCv), Times.Once);
-        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _auditLogServiceMock.Verify(a => a.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.CvPrimarySet && entry.EntityId == targetCvId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

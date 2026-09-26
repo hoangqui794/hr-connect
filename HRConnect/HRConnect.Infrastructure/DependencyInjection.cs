@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authentication;
 using HRConnect.Infrastructure.Authentication;
+using HRConnect.Infrastructure.Services.Audit;
 
 namespace HRConnect.Infrastructure;
 
@@ -30,7 +31,8 @@ public static class DependencyInjection
         {
             client.BaseAddress = new Uri("https://api.resend.com/");
         });
-        services.AddHostedService<RegistrationOtpOutboxWorker>();
+        // Registration OTP is sent once by the registration request. Further delivery
+        // happens only through the explicit resend endpoint; never replay stale outbox rows.
 
         // 2. Cấu hình Authentication, OTP & JWT
         services.Configure<AuthenticationSettings>(
@@ -47,6 +49,8 @@ public static class DependencyInjection
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IRequestContext, HttpRequestContext>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IClaimsTransformation, ActiveAuthorizationClaimsTransformation>();
 
         // 4. Repositories & UnitOfWork
@@ -61,6 +65,7 @@ public static class DependencyInjection
         services.AddScoped<IInternalHrProfileRepository, InternalHrProfileRepository>();
         services.AddScoped<IAdminProfileRepository, AdminProfileRepository>();
         services.AddScoped<IApprovalRepository, ApprovalRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();
         services.AddScoped<IUserTokenRepository, UserTokenRepository>();

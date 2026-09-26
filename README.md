@@ -14,11 +14,11 @@ HR Connect là nền tảng tuyển dụng hiện đại dành cho Agency, kết
 
 | STT | Thành viên | Mã sinh viên | Vai trò | Trách nhiệm chính |
 |:---:|---|:---:|:---:|---|
-| 1 | **Trương Hoàng Quí** | SE184355 | **Leader** | Quản lý dự án, Thiết kế kiến trúc Backend, AI Integration |
-| 2 | **Lê Thị Trà Mi** | SE184379 | **Member** | Phân tích nghiệp vụ, Frontend Developer |
-| 3 | **Cao Hữu Trí** | SE184047 | **Member** | Backend Developer, Database, DevOps & CI/CD |
-| 4 | **Khúc Ngọc Sơn** | SE184040 | **Member** | Frontend Developer, UI/UX Designer |
-| 5 | **Nguyễn Văn Sang** | SE183276 | **Member** | Fullstack Developer, QA & Testing |
+| 1 | **Trương Hoàng Quí** | SE184355 | **Leader** | Quản lý dự án, Phân tích nghiệp vụ, Database, AI Integration |
+| 2 | **Lê Thị Trà Mi** | SE184379 | **Member** | Phân tích nghiệp vụ, Backend Developer, Frontend Developer |
+| 3 | **Cao Hữu Trí** | SE184047 | **Member** | Phân tích nghiệp vụ, Backend Developer, Thiết kế kiến trúc Backend, Database, DevOps & CI/CD |
+| 4 | **Khúc Ngọc Sơn** | SE184040 | **Member** | Phân tích nghiệp vụ, Backend Developer, Frontend Developer |
+| 5 | **Nguyễn Văn Sang** | SE183276 | **Member** | Frontend Develope, UI/UX Designer |
 
 ---
 

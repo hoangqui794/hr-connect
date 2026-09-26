@@ -594,6 +594,8 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => new { e.EntityType, e.EntityId, e.CreatedAt }, "idx_audit_log_entity").IsDescending(false, false, true);
 
+            entity.HasIndex(e => new { e.CorrelationId, e.CreatedAt }, "idx_audit_log_correlation").IsDescending(false, true);
+
             entity.Property(e => e.AuditLogId)
                 .HasDefaultValueSql("nextval('audit_log_audit_log_id_seq'::regclass)")
                 .HasColumnName("audit_log_id");

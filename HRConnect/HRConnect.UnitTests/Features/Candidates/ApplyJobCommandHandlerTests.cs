@@ -22,6 +22,7 @@ public class ApplyJobCommandHandlerTests
     private readonly Mock<IApplicationRepository> _applicationRepositoryMock;
     private readonly Mock<IMf03ScoringTrigger> _scoringTriggerMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<ILogger<ApplyJobCommandHandler>> _loggerMock;
     private readonly ApplyJobCommandHandler _handler;
 
@@ -35,6 +36,7 @@ public class ApplyJobCommandHandlerTests
         _applicationRepositoryMock = new Mock<IApplicationRepository>();
         _scoringTriggerMock = new Mock<IMf03ScoringTrigger>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _loggerMock = new Mock<ILogger<ApplyJobCommandHandler>>();
 
         _handler = new ApplyJobCommandHandler(
@@ -46,6 +48,7 @@ public class ApplyJobCommandHandlerTests
             _applicationRepositoryMock.Object,
             _scoringTriggerMock.Object,
             _unitOfWorkMock.Object,
+            _auditLogServiceMock.Object,
             _loggerMock.Object);
     }
 
@@ -131,6 +134,9 @@ public class ApplyJobCommandHandlerTests
         _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(
             It.Is<Mf03TriggerPayload>(p => p.ApplicationId == createdApp.ApplicationId && p.CvId == cvId && p.JobId == jobId),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _auditLogServiceMock.Verify(a => a.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.ApplicationSubmitted && entry.EntityId == createdApp.ApplicationId),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
