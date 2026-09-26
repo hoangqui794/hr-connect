@@ -2,6 +2,16 @@
 @adminToken = REPLACE_WITH_PLATFORM_ADMIN_BEARER_TOKEN
 @headHuntServiceTypeId = REPLACE_WITH_HEADHUNT_COD_SERVICE_TYPE_ID
 
+### MF-01: Platform Admin lists commission rules for the admin screen.
+GET {{baseUrl}}/api/v1/admin/commission-rules?page=1&pageSize=20
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Filter example: only active HEADHUNT_COD rules at the probation milestone.
+GET {{baseUrl}}/api/v1/admin/commission-rules?serviceTypeId={{headHuntServiceTypeId}}&milestoneType=PROBATION_PASSED&isActive=true
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
 ### MF-01: Platform Admin creates a probation-based 8 percent commission rule.
 POST {{baseUrl}}/api/v1/admin/commission-rules
 Authorization: Bearer {{adminToken}}
