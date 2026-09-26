@@ -5,6 +5,7 @@ using HRConnect.Application.Features.Recruitment.Queries.GetInterviews;
 using HRConnect.Application.Features.Interviews.Queries.GetInterviewDetail;
 using HRConnect.Application.Features.Interviews.Commands.ScheduleInterview;
 using HRConnect.Application.Features.Interviews.Commands.UpdateInterview;
+using HRConnect.Application.Features.Interviews.Commands.RescheduleInterview;
 using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -283,6 +284,74 @@ public static class InterviewEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
+        // I05: PUT /api/v1/interviews/{interviewId:guid}/reschedule
+        group.MapPut("/{interviewId:guid}/reschedule", async (
+            Guid interviewId,
+            [FromBody] RescheduleInterviewRequest request,
+            [FromServices] ISender sender = null!,
+            ClaimsPrincipal user = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var canUpdate = PermissionAuthorization.HasPermission(user, UpdatePermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!canUpdate && !isInternal && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(UpdatePermission);
+            }
+
+            try
+            {
+                var command = new RescheduleInterviewCommand(
+                    InterviewId: interviewId,
+                    NewScheduledAt: request.NewScheduledAt,
+                    Reason: request.Reason,
+                    DurationMinutes: request.DurationMinutes,
+                    Location: request.Location,
+                    MeetingLink: request.MeetingLink,
+                    ConcurrencyToken: request.ConcurrencyToken,
+                    CurrentUserId: userId.Value,
+                    IsClientCompanyUser: canUpdate && !isInternal && !isAdmin,
+                    IsInternalHrOrAdmin: isInternal || isAdmin
+                );
+
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("RescheduleInterview")
+        .WithSummary("Dời lịch phỏng vấn sang thời gian mới")
+        .WithDescription("Dành cho Client Company (interview.update) hoặc Internal HR / Admin (interview.manage). Bắt buộc nhập thời gian mới và lý do dời lịch. Tự động ghi lại lịch sử trạng thái RESCHEDULED.")
+        .Produces<RescheduleInterviewResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -317,5 +386,14 @@ public record UpdateInterviewRequest(
     string? Location,
     string? MeetingLink,
     List<ScheduleInterviewParticipantDto>? Participants,
+    Guid? ConcurrencyToken
+);
+
+public record RescheduleInterviewRequest(
+    DateTime NewScheduledAt,
+    string Reason,
+    int? DurationMinutes,
+    string? Location,
+    string? MeetingLink,
     Guid? ConcurrencyToken
 );
