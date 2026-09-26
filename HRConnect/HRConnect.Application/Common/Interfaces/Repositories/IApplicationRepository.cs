@@ -33,6 +33,8 @@ public interface IApplicationRepository
 
     Task<JobApplication?> GetRecruitmentApplicationDetailAsync(Guid applicationId, CancellationToken cancellationToken = default);
 
+    Task<JobApplication?> GetApplicationTimelineDataAsync(Guid applicationId, CancellationToken cancellationToken = default);
+
     Task<bool> ExistsAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default);
 
     Task AddAsync(JobApplication application, CancellationToken cancellationToken = default);
