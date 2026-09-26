@@ -118,33 +118,42 @@ public class ResendPasswordResetOtpCommandHandler : IRequestHandler<ResendPasswo
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // 9. Gửi email chứa mã OTP đặt lại mật khẩu mới
-        _ = Task.Run(async () =>
+        try
         {
+            var recipientName = string.IsNullOrWhiteSpace(user.DisplayName) ? "bạn" : user.DisplayName.Trim();
+            var bodyHtml = $@"
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
+                    <h2>HR Connect - Đặt lại mật khẩu</h2>
+                    <p>Xin chào <strong>{recipientName}</strong>,</p>
+                    <p>Mã OTP của bạn là <strong style='font-size: 28px; letter-spacing: 5px;'>{rawOtp}</strong>.</p>
+                    <p>Mã có hiệu lực trong {expirationMinutes} phút. Không chia sẻ mã này cho bất kỳ ai.</p>
+                </div>";
+
+            var emailResult = await _emailService.SendEmailAsync(
+                user.Email, "HR Connect - Mã xác thực đặt lại mật khẩu mới", bodyHtml, cancellationToken);
+            if (!emailResult.IsSuccess)
+            {
+                userToken.UsedAt = DateTime.UtcNow;
+                await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+                _logger.LogError("Lỗi gửi lại email mã đặt lại mật khẩu tới UserId {UserId}: {Error}",
+                    user.UserId, emailResult.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            // A code that was never delivered must not remain usable. The generic
+            // response below still prevents account enumeration.
+            userToken.UsedAt = DateTime.UtcNow;
             try
             {
-                var subject = "HR Connect - Mã xác thực đặt lại mật khẩu mới";
-                var recipientName = string.IsNullOrWhiteSpace(user.DisplayName) ? "bạn" : user.DisplayName.Trim();
-                var bodyHtml = $@"
-                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                        <h2 style='color: #4F46E5; margin-top: 0;'>HR Connect - Mã đặt lại mật khẩu mới</h2>
-                        <p>Xin chào <strong>{recipientName}</strong>,</p>
-                        <p>Bạn vừa yêu cầu gửi lại mã xác thực (OTP) đặt lại mật khẩu cho tài khoản HR Connect. Mã OTP mới của bạn là:</p>
-                        <div style='background-color: #F3F4F6; padding: 16px; border-radius: 6px; text-align: center; margin: 24px 0;'>
-                            <span style='font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1F2937;'>{rawOtp}</span>
-                        </div>
-                        <p style='color: #4B5563; font-size: 14px;'>Mã xác thực mới này có hiệu lực trong vòng <strong>{expirationMinutes} phút</strong>. Các mã OTP cũ trước đó đã bị vô hiệu hóa.</p>
-                        <p style='color: #4B5563; font-size: 14px;'>Tuyệt đối không chia sẻ mã xác thực cho bất kỳ ai. Nếu bạn không yêu cầu, vui lòng bỏ qua thư này.</p>
-                        <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                        <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
-                    </div>";
-
-                await _emailService.SendEmailAsync(user.Email, subject, bodyHtml, CancellationToken.None);
+                await _unitOfWork.SaveChangesAsync(CancellationToken.None);
             }
-            catch (Exception ex)
+            catch (Exception saveException)
             {
-                _logger.LogError(ex, "Lỗi gửi email cấp lại mã OTP đặt lại mật khẩu tới {Email}", user.Email);
+                _logger.LogError(saveException, "Không thể vô hiệu hóa OTP chưa gửi cho UserId {UserId}", user.UserId);
             }
-        }, CancellationToken.None);
+            _logger.LogError(ex, "Lỗi gửi lại email mã đặt lại mật khẩu tới UserId {UserId}", user.UserId);
+        }
 
         // 10. Trả về phản hồi an toàn
         return new ResendPasswordResetOtpResponse();
