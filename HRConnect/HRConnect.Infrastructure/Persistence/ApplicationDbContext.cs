@@ -68,6 +68,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Interview> Interviews { get; set; }
 
+    public virtual DbSet<InterviewParticipant> InterviewParticipants { get; set; }
+
     public virtual DbSet<InterviewStatusHistory> InterviewStatusHistories { get; set; }
 
     public virtual DbSet<Job> Jobs { get; set; }
@@ -481,6 +483,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasComment("Allowed Application states. Exact transition graph is enforced by application service until Business Rule state machine is formally baselined.")
                 .HasColumnName("status");
             entity.Property(e => e.StatusReason).HasColumnName("status_reason");
+            entity.Property(e => e.PlannedStartDate).HasColumnName("planned_start_date");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
@@ -1408,6 +1415,12 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(30)
                 .HasDefaultValueSql("'SCHEDULED'::character varying")
                 .HasColumnName("status");
+            entity.Property(e => e.RecordedBy).HasColumnName("recorded_by");
+            entity.Property(e => e.RecordedAt).HasColumnName("recorded_at");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
@@ -1421,6 +1434,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("interview_created_by_fkey");
+
+            entity.HasOne(d => d.RecordedByNavigation).WithMany(p => p.InterviewRecordedByNavigations)
+                .HasForeignKey(d => d.RecordedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("interview_recorded_by_fkey");
         });
 
         modelBuilder.Entity<InterviewStatusHistory>(entity =>
@@ -1458,6 +1476,38 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.ChangedBy)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("interview_status_history_changed_by_fkey");
+        });
+
+        modelBuilder.Entity<InterviewParticipant>(entity =>
+        {
+            entity.HasKey(e => e.InterviewParticipantId).HasName("interview_participant_pkey");
+
+            entity.ToTable("interview_participant", "public");
+
+            entity.HasIndex(e => new { e.InterviewId, e.UserId }, "uq_interview_participant_interview_user").IsUnique();
+
+            entity.Property(e => e.InterviewParticipantId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("interview_participant_id");
+            entity.Property(e => e.InterviewId).HasColumnName("interview_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Role)
+                .HasMaxLength(50)
+                .HasDefaultValueSql("'INTERVIEWER'::character varying")
+                .HasColumnName("role");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.Interview).WithMany(p => p.InterviewParticipants)
+                .HasForeignKey(d => d.InterviewId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("interview_participant_interview_id_fkey");
+
+            entity.HasOne(d => d.User).WithMany(p => p.InterviewParticipants)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("interview_participant_user_id_fkey");
         });
 
         modelBuilder.Entity<Job>(entity =>
@@ -1720,7 +1770,6 @@ public partial class ApplicationDbContext : DbContext
             {
                 t.HasCheckConstraint("ck_offer_version_positive", "offer_version > 0");
                 t.HasCheckConstraint("ck_offer_salary_positive", "salary IS NULL OR salary >= 0");
-                t.HasCheckConstraint("ck_offer_date_range", "expiry_date IS NULL OR start_date IS NULL OR expiry_date >= start_date");
                 t.HasCheckConstraint("ck_offer_response_time", "responded_at IS NULL OR sent_at IS NULL OR responded_at >= sent_at");
                 t.HasCheckConstraint("ck_offer_declined_response", "status <> 'DECLINED' OR responded_at IS NOT NULL");
             });
@@ -1733,6 +1782,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("offer_id");
             entity.Property(e => e.ApplicationId).HasColumnName("application_id");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");

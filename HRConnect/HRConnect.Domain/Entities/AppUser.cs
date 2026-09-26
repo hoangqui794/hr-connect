@@ -70,6 +70,10 @@ public partial class AppUser
 
     public virtual ICollection<Interview> Interviews { get; set; } = new List<Interview>();
 
+    public virtual ICollection<Interview> InterviewRecordedByNavigations { get; set; } = new List<Interview>();
+
+    public virtual ICollection<InterviewParticipant> InterviewParticipants { get; set; } = new List<InterviewParticipant>();
+
     public virtual ICollection<InterviewStatusHistory> InterviewStatusHistories { get; set; } = new List<InterviewStatusHistory>();
 
     public virtual ICollection<JobStatusHistory> JobStatusHistories { get; set; } = new List<JobStatusHistory>();
