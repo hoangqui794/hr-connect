@@ -8,6 +8,7 @@ using HRConnect.Infrastructure.Services.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using System.Text;
 using Xunit;
 
 namespace HRConnect.UnitTests.Services.Storage;
@@ -52,7 +53,7 @@ public class CvStorageServiceTests
         // Arrange
         var candidateId = Guid.NewGuid();
         var fileName = "my-resume.pdf";
-        var fileBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 }; // %PDF
+        var fileBytes = CreateMinimalPdf();
         using var stream = new MemoryStream(fileBytes);
         var fileSize = (long)fileBytes.Length;
 
@@ -138,6 +139,59 @@ public class CvStorageServiceTests
     }
 
     [Fact]
+    public async Task UploadCvPdfAsync_WhenPayloadOnlyLooksLikePdf_RejectsBeforeUpload()
+    {
+        var fakePdf = Encoding.ASCII.GetBytes("%PDF-1.4 Minimal PDF CV B content");
+        using var stream = new MemoryStream(fakePdf);
+
+        var action = () => _service.UploadCvPdfAsync(
+            Guid.NewGuid(), stream, "fake.pdf", fakePdf.Length);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*PDF*");
+        _fileStorageServiceMock.Verify(
+            service => service.UploadAsync(
+                It.IsAny<Stream>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task UploadCvPdfAsync_WhenDeclaredSizeDiffersFromPayload_RejectsBeforeUpload()
+    {
+        var validPdf = CreateMinimalPdf();
+        using var stream = new MemoryStream(validPdf);
+
+        var action = () => _service.UploadCvPdfAsync(
+            Guid.NewGuid(), stream, "cv.pdf", validPdf.Length + 1);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*Kích thước thực tế*");
+        _fileStorageServiceMock.Verify(
+            service => service.UploadAsync(
+                It.IsAny<Stream>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task UploadCvPdfAsync_WhenPdfContainsActiveContent_RejectsBeforeUpload()
+    {
+        var activePdf = CreateMinimalPdf("/OpenAction 2 0 R");
+        using var stream = new MemoryStream(activePdf);
+
+        var action = () => _service.UploadCvPdfAsync(
+            Guid.NewGuid(), stream, "active.pdf", activePdf.Length);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*không được phép*");
+    }
+
+    [Fact]
     public async Task UploadCvPdfAsync_WhenStreamEmptyOrNull_ThrowsBadRequestException()
     {
         // Act
@@ -153,7 +207,8 @@ public class CvStorageServiceTests
     {
         // Arrange
         var candidateId = Guid.NewGuid();
-        using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+        var pdf = CreateMinimalPdf();
+        using var stream = new MemoryStream(pdf);
         string? uploadedKey = null;
 
         _fileStorageServiceMock
@@ -167,7 +222,7 @@ public class CvStorageServiceTests
             .ThrowsAsync(new Exception("Database connection lost"));
 
         // Act
-        Func<Task> act = async () => await _service.UploadCvPdfAsync(candidateId, stream, "test.pdf", 100);
+        Func<Task> act = async () => await _service.UploadCvPdfAsync(candidateId, stream, "test.pdf", pdf.Length);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -304,5 +359,37 @@ public class CvStorageServiceTests
         await action.Should().NotThrowAsync();
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _fileStorageServiceMock.Verify(s => s.DeleteAsync(objectKey, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private static byte[] CreateMinimalPdf(string catalogExtra = "")
+    {
+        var objects = new[]
+        {
+            $"1 0 obj\n<< /Type /Catalog /Pages 2 0 R {catalogExtra} >>\nendobj\n",
+            "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
+            "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n",
+            "4 0 obj\n<< /Length 0 >>\nstream\n\nendstream\nendobj\n"
+        };
+
+        var builder = new StringBuilder("%PDF-1.4\n");
+        var offsets = new List<int> { 0 };
+        foreach (var item in objects)
+        {
+            offsets.Add(Encoding.ASCII.GetByteCount(builder.ToString()));
+            builder.Append(item);
+        }
+
+        var xrefOffset = Encoding.ASCII.GetByteCount(builder.ToString());
+        builder.Append("xref\n0 5\n0000000000 65535 f \n");
+        foreach (var offset in offsets.Skip(1))
+        {
+            builder.Append(offset.ToString("D10")).Append(" 00000 n \n");
+        }
+
+        builder.Append("trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n")
+            .Append(xrefOffset)
+            .Append("\n%%EOF\n");
+
+        return Encoding.ASCII.GetBytes(builder.ToString());
     }
 }
