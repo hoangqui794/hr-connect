@@ -20,6 +20,17 @@ public interface IApplicationRepository
         int pageSize,
         CancellationToken cancellationToken = default);
 
+    Task<(IReadOnlyList<JobApplication> Items, int TotalCount)> GetRecruitmentApplicationsAsync(
+        Guid? companyId,
+        Guid? jobId,
+        string? status,
+        string? candidateName,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
     Task<bool> ExistsAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default);
 
     Task AddAsync(JobApplication application, CancellationToken cancellationToken = default);
