@@ -160,6 +160,30 @@ public class ApplicationRepository : IApplicationRepository
         return (items, totalCount);
     }
 
+    public async Task<JobApplication?> GetRecruitmentApplicationDetailAsync(Guid applicationId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Applications
+            .AsNoTracking()
+            .Include(a => a.Job)
+                .ThenInclude(j => j.Company)
+            .Include(a => a.Candidate)
+            .Include(a => a.Submission)
+                .ThenInclude(s => s!.CandidateCv)
+            .Include(a => a.AiMatchResults)
+            .Include(a => a.Interviews)
+                .ThenInclude(i => i.InterviewParticipants)
+            .Include(a => a.Interviews)
+                .ThenInclude(i => i.CreatedByNavigation)
+            .Include(a => a.Interviews)
+                .ThenInclude(i => i.RecordedByNavigation)
+            .Include(a => a.Offers)
+                .ThenInclude(o => o.CreatedByNavigation)
+            .Include(a => a.Placement)
+                .ThenInclude(p => p!.ConfirmedByNavigation)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(a => a.ApplicationId == applicationId, cancellationToken);
+    }
+
     public async Task<bool> ExistsAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default)
     {
         return await _context.Applications
