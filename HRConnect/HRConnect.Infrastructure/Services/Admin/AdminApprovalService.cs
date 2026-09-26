@@ -38,10 +38,14 @@ public class AdminApprovalService : IAdminApprovalService
             throw new NotFoundException("Không tìm thấy đơn đăng ký Affiliate.");
         }
 
-        // Chống phê duyệt kép / kiểm tra trạng thái hợp lệ
-        if (application.Status == "APPROVED" || application.Status == "REJECTED")
+        if (application.User.EmailVerifiedAt == null)
         {
-            throw new ConflictException($"Đơn đăng ký Affiliate đã ở trạng thái {application.Status}, không thể phê duyệt lại.");
+            throw new ConflictException("Người dùng chưa xác thực email bằng OTP, không thể phê duyệt hồ sơ Affiliate.");
+        }
+
+        if (!string.Equals(application.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException($"Đơn đăng ký Affiliate đang ở trạng thái {application.Status}; chỉ hồ sơ UNDER_REVIEW mới được phê duyệt.");
         }
 
         var now = DateTime.UtcNow;
@@ -176,10 +180,14 @@ public class AdminApprovalService : IAdminApprovalService
             throw new NotFoundException("Không tìm thấy đơn đăng ký Affiliate.");
         }
 
-        // Chống phê duyệt kép / kiểm tra trạng thái hợp lệ
-        if (application.Status == "APPROVED" || application.Status == "REJECTED")
+        if (application.User.EmailVerifiedAt == null)
         {
-            throw new ConflictException($"Đơn đăng ký Affiliate đã ở trạng thái {application.Status}, không thể từ chối lại.");
+            throw new ConflictException("Người dùng chưa xác thực email bằng OTP, không thể từ chối hồ sơ Affiliate.");
+        }
+
+        if (!string.Equals(application.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException($"Đơn đăng ký Affiliate đang ở trạng thái {application.Status}; chỉ hồ sơ UNDER_REVIEW mới được từ chối.");
         }
 
         var now = DateTime.UtcNow;
@@ -254,10 +262,15 @@ public class AdminApprovalService : IAdminApprovalService
             throw new NotFoundException("Không tìm thấy yêu cầu xác thực doanh nghiệp.");
         }
 
-        // Chống phê duyệt kép / kiểm tra trạng thái hợp lệ
-        if (request.Status == "APPROVED" || request.Status == "REJECTED")
+        if (request.SubmittedByNavigation.EmailVerifiedAt == null)
         {
-            throw new ConflictException($"Yêu cầu xác thực doanh nghiệp đã ở trạng thái {request.Status}, không thể phê duyệt lại.");
+            throw new ConflictException("Người dùng chưa xác thực email bằng OTP, không thể phê duyệt hồ sơ doanh nghiệp.");
+        }
+
+        if (!string.Equals(request.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(request.Company.VerificationStatus, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException($"Hồ sơ doanh nghiệp chưa sẵn sàng để phê duyệt (request: {request.Status}, company: {request.Company.VerificationStatus}).");
         }
 
         var now = DateTime.UtcNow;
@@ -379,10 +392,15 @@ public class AdminApprovalService : IAdminApprovalService
             throw new NotFoundException("Không tìm thấy yêu cầu xác thực doanh nghiệp.");
         }
 
-        // Chống phê duyệt kép / kiểm tra trạng thái hợp lệ
-        if (request.Status == "APPROVED" || request.Status == "REJECTED")
+        if (request.SubmittedByNavigation.EmailVerifiedAt == null)
         {
-            throw new ConflictException($"Yêu cầu xác thực doanh nghiệp đã ở trạng thái {request.Status}, không thể từ chối lại.");
+            throw new ConflictException("Người dùng chưa xác thực email bằng OTP, không thể từ chối hồ sơ doanh nghiệp.");
+        }
+
+        if (!string.Equals(request.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(request.Company.VerificationStatus, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException($"Hồ sơ doanh nghiệp chưa sẵn sàng để từ chối (request: {request.Status}, company: {request.Company.VerificationStatus}).");
         }
 
         var now = DateTime.UtcNow;

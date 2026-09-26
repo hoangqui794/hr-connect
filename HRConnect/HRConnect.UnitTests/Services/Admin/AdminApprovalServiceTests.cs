@@ -43,7 +43,8 @@ public class AdminApprovalServiceTests
             Email = "affiliate@example.com",
             PasswordHash = "hash",
             DisplayName = "Affiliate Recruiter",
-            Status = "PENDING"
+            Status = "PENDING",
+            EmailVerifiedAt = DateTime.UtcNow
         };
         var role = new Role
         {
@@ -99,7 +100,8 @@ public class AdminApprovalServiceTests
             Email = "affiliate_rej@example.com",
             PasswordHash = "hash",
             DisplayName = "Affiliate Rejected",
-            Status = "PENDING"
+            Status = "PENDING",
+            EmailVerifiedAt = DateTime.UtcNow
         };
         var application = new AffiliateApplication
         {
@@ -139,7 +141,8 @@ public class AdminApprovalServiceTests
             Email = "client@example.com",
             PasswordHash = "hash",
             DisplayName = "Client Rep",
-            Status = "PENDING"
+            Status = "PENDING",
+            EmailVerifiedAt = DateTime.UtcNow
         };
         var role = new Role
         {
@@ -200,7 +203,8 @@ public class AdminApprovalServiceTests
             Email = "client_rej@example.com",
             PasswordHash = "hash",
             DisplayName = "Client Rejected",
-            Status = "PENDING"
+            Status = "PENDING",
+            EmailVerifiedAt = DateTime.UtcNow
         };
         var company = new Company
         {
@@ -303,6 +307,75 @@ public class AdminApprovalServiceTests
         // Act & Assert
         await Assert.ThrowsAsync<ConflictException>(() =>
             _service.ApproveCompanyVerificationRequestAsync(request.CompanyVerificationRequestId, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task ApproveAffiliateApplicationAsync_ShouldRejectPendingApplicationBeforeOtpVerification()
+    {
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "affiliate_pending@example.com",
+            PasswordHash = "hash",
+            Status = "PENDING",
+            EmailVerifiedAt = null
+        };
+        var application = new AffiliateApplication
+        {
+            AffiliateApplicationId = Guid.NewGuid(),
+            UserId = user.UserId,
+            AffiliateType = "RECRUITER",
+            Status = "PENDING",
+            SubmittedData = "{}"
+        };
+
+        await _context.AddRangeAsync(user, application);
+        await _context.SaveChangesAsync();
+
+        var act = () => _service.ApproveAffiliateApplicationAsync(application.AffiliateApplicationId, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*chưa xác thực email*");
+        application.Status.Should().Be("PENDING");
+        user.Status.Should().Be("PENDING");
+    }
+
+    [Fact]
+    public async Task ApproveCompanyVerificationRequestAsync_ShouldRejectPendingRequestBeforeOtpVerification()
+    {
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "client_pending@example.com",
+            PasswordHash = "hash",
+            Status = "PENDING",
+            EmailVerifiedAt = null
+        };
+        var company = new Company
+        {
+            CompanyId = Guid.NewGuid(),
+            CompanyName = "Pending Company",
+            VerificationStatus = "PENDING"
+        };
+        var request = new CompanyVerificationRequest
+        {
+            CompanyVerificationRequestId = Guid.NewGuid(),
+            CompanyId = company.CompanyId,
+            SubmittedBy = user.UserId,
+            Status = "PENDING",
+            SubmittedPayload = "{}"
+        };
+
+        await _context.AddRangeAsync(user, company, request);
+        await _context.SaveChangesAsync();
+
+        var act = () => _service.ApproveCompanyVerificationRequestAsync(request.CompanyVerificationRequestId, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*chưa xác thực email*");
+        request.Status.Should().Be("PENDING");
+        company.VerificationStatus.Should().Be("PENDING");
+        user.Status.Should().Be("PENDING");
     }
 
     [Fact]
