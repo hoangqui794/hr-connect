@@ -216,6 +216,7 @@ app.MapCandidateEndpoints();
 app.MapAffiliateEndpoints();
 app.MapAdminApprovalEndpoints();
 app.MapAdminProfileEndpoints();
+app.MapAdminAuditLogEndpoints();
 app.MapServiceTypeEndpoints();
 app.MapCommissionMilestoneEndpoints();
 app.MapCommissionRuleEndpoints();

@@ -16,6 +16,7 @@ public class PermissionAuthorizationTests
     [InlineData("application.view_own")]
     [InlineData("submission.view_own")]
     [InlineData("attribution.view_own")]
+    [InlineData("audit.view")]
     public void HasPermission_AllowsExactClaimAndRejectsMissingClaim(string permission)
     {
         var allowed = new ClaimsPrincipal(new ClaimsIdentity(
