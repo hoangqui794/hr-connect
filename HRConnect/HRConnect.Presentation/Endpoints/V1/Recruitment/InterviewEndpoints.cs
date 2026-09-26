@@ -6,6 +6,7 @@ using HRConnect.Application.Features.Interviews.Queries.GetInterviewDetail;
 using HRConnect.Application.Features.Interviews.Commands.ScheduleInterview;
 using HRConnect.Application.Features.Interviews.Commands.UpdateInterview;
 using HRConnect.Application.Features.Interviews.Commands.RescheduleInterview;
+using HRConnect.Application.Features.Interviews.Commands.CancelInterview;
 using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -352,6 +353,70 @@ public static class InterviewEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
+        // I06: PUT /api/v1/interviews/{interviewId:guid}/cancel
+        group.MapPut("/{interviewId:guid}/cancel", async (
+            Guid interviewId,
+            [FromBody] CancelInterviewRequest request,
+            [FromServices] ISender sender = null!,
+            ClaimsPrincipal user = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var canUpdate = PermissionAuthorization.HasPermission(user, UpdatePermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!canUpdate && !isInternal && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(UpdatePermission);
+            }
+
+            try
+            {
+                var command = new CancelInterviewCommand(
+                    InterviewId: interviewId,
+                    Reason: request.Reason,
+                    ConcurrencyToken: request.ConcurrencyToken,
+                    CurrentUserId: userId.Value,
+                    IsClientCompanyUser: canUpdate && !isInternal && !isAdmin,
+                    IsInternalHrOrAdmin: isInternal || isAdmin
+                );
+
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("CancelInterview")
+        .WithSummary("Hủy lịch phỏng vấn")
+        .WithDescription("Dành cho Client Company (interview.update) hoặc Internal HR / Admin (interview.manage). Bắt buộc nhập lý do hủy. Chuyển trạng thái sang CANCELLED và ghi lịch sử trạng thái.")
+        .Produces<CancelInterviewResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -395,5 +460,10 @@ public record RescheduleInterviewRequest(
     int? DurationMinutes,
     string? Location,
     string? MeetingLink,
+    Guid? ConcurrencyToken
+);
+
+public record CancelInterviewRequest(
+    string Reason,
     Guid? ConcurrencyToken
 );
