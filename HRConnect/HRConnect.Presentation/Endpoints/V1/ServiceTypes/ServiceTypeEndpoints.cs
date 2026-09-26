@@ -7,6 +7,7 @@ using HRConnect.Application.Features.ServiceTypes.Commands.DeleteServiceType;
 using HRConnect.Application.Features.ServiceTypes.Commands.UpdateServiceType;
 using HRConnect.Application.Features.ServiceTypes.DTOs;
 using HRConnect.Application.Features.ServiceTypes.Queries.GetServiceTypeDetail;
+using HRConnect.Application.Features.ServiceTypes.Queries.GetServiceTypeAllowedRoles;
 using HRConnect.Application.Features.ServiceTypes.Queries.GetServiceTypes;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -107,6 +108,38 @@ public static class ServiceTypeEndpoints
         var adminGroup = app.MapGroup("/api/v1/admin/service-types")
                             .WithTags("Admin Service Types")
                             .RequireAuthorization();
+
+        adminGroup.MapGet("/{serviceTypeId:guid}/allowed-roles", async (
+            Guid serviceTypeId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            if (!HasAdminAccess(user))
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Bạn không có quyền thực hiện thao tác này. Yêu cầu quyền quản trị viên."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            try
+            {
+                return Results.Ok(await sender.Send(new GetServiceTypeAllowedRolesQuery(serviceTypeId), cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetServiceTypeAllowedRoles")
+        .WithSummary("Lấy cấu hình role được xem và submit theo Service Type")
+        .WithDescription("Platform Admin xem mapping can_view và can_submit theo Service Type. Job visibility và submission authorization đọc mapping này từ database, không hardcode theo Service Type.")
+        .Produces<GetServiceTypeAllowedRolesResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
 
         // 3. POST /api/v1/admin/service-types - Tạo mới loại dịch vụ (Platform Admin)
         adminGroup.MapPost("/", async (
