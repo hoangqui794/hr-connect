@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Recruitment.Queries.GetInterviews;
 using HRConnect.Application.Features.Interviews.Queries.GetInterviewDetail;
 using HRConnect.Application.Features.Interviews.Commands.ScheduleInterview;
+using HRConnect.Application.Features.Interviews.Commands.UpdateInterview;
 using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,7 @@ public static class InterviewEndpoints
     private const string ViewOwnPermission = "interview.view_own";
     private const string ManagePermission = "interview.manage";
     private const string CreatePermission = "interview.create";
+    private const string UpdatePermission = "interview.update";
 
     public static IEndpointRouteBuilder MapInterviewEndpoints(this IEndpointRouteBuilder app)
     {
@@ -213,6 +215,74 @@ public static class InterviewEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
 
+        // I04: PUT /api/v1/interviews/{interviewId:guid}
+        group.MapPut("/{interviewId:guid}", async (
+            Guid interviewId,
+            [FromBody] UpdateInterviewRequest request,
+            [FromServices] ISender sender = null!,
+            ClaimsPrincipal user = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var canUpdate = PermissionAuthorization.HasPermission(user, UpdatePermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!canUpdate && !isInternal && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(UpdatePermission);
+            }
+
+            try
+            {
+                var command = new UpdateInterviewCommand(
+                    InterviewId: interviewId,
+                    DurationMinutes: request.DurationMinutes,
+                    InterviewType: request.InterviewType,
+                    Location: request.Location,
+                    MeetingLink: request.MeetingLink,
+                    Participants: request.Participants,
+                    ConcurrencyToken: request.ConcurrencyToken,
+                    CurrentUserId: userId.Value,
+                    IsClientCompanyUser: canUpdate && !isInternal && !isAdmin,
+                    IsInternalHrOrAdmin: isInternal || isAdmin
+                );
+
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("UpdateInterview")
+        .WithSummary("Cập nhật thông tin lịch phỏng vấn")
+        .WithDescription("Dành cho Client Company (interview.update) hoặc Internal HR / Admin (interview.manage). Chỉ cập nhật khi lịch ở trạng thái SCHEDULED/RESCHEDULED. Hỗ trợ kiểm tra ConcurrencyToken chống ghi đè dữ liệu.")
+        .Produces<UpdateInterviewResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -239,4 +309,13 @@ public record ScheduleInterviewRequest(
     string? Location,
     string? MeetingLink,
     List<ScheduleInterviewParticipantDto>? Participants
+);
+
+public record UpdateInterviewRequest(
+    int? DurationMinutes,
+    string? InterviewType,
+    string? Location,
+    string? MeetingLink,
+    List<ScheduleInterviewParticipantDto>? Participants,
+    Guid? ConcurrencyToken
 );

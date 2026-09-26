@@ -26,6 +26,8 @@ public interface IInterviewRepository
 
     Task<Interview?> GetByIdWithDetailsAsync(Guid interviewId, CancellationToken cancellationToken = default);
 
+    Task<Interview?> GetByIdForUpdateAsync(Guid interviewId, CancellationToken cancellationToken = default);
+
     Task AddAsync(Interview interview, CancellationToken cancellationToken = default);
 
     void Update(Interview interview);

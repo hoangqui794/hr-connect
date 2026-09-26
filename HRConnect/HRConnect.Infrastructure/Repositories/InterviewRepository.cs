@@ -128,6 +128,16 @@ public class InterviewRepository : IInterviewRepository
             .FirstOrDefaultAsync(i => i.InterviewId == interviewId, cancellationToken);
     }
 
+    public async Task<Interview?> GetByIdForUpdateAsync(Guid interviewId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Interviews
+            .Include(i => i.Application)
+                .ThenInclude(a => a.Job)
+            .Include(i => i.InterviewParticipants)
+            .Include(i => i.InterviewStatusHistories)
+            .FirstOrDefaultAsync(i => i.InterviewId == interviewId, cancellationToken);
+    }
+
     public async Task AddAsync(Interview interview, CancellationToken cancellationToken = default)
     {
         await _context.Interviews.AddAsync(interview, cancellationToken);
