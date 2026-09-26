@@ -11,6 +11,13 @@ public sealed class CommissionMilestoneRepository : ICommissionMilestoneReposito
 
     public CommissionMilestoneRepository(ApplicationDbContext context) => _context = context;
 
+    public Task<CommissionMilestone?> GetByCodeAsync(
+        string milestoneCode,
+        CancellationToken cancellationToken = default) =>
+        _context.CommissionMilestones.FirstOrDefaultAsync(
+            milestone => milestone.MilestoneCode == milestoneCode,
+            cancellationToken);
+
     public async Task<IReadOnlyList<CommissionMilestone>> GetListAsync(
         bool? isActive,
         CancellationToken cancellationToken = default)
