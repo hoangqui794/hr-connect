@@ -232,6 +232,7 @@ app.MapInternalCvEndpoints();
 app.MapAiIntegrationEndpoints();
 app.MapUserEndpoints();
 app.MapRecruitmentEndpoints();
+app.MapInterviewEndpoints();
 
 // ==============================================================================
 // 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động
