@@ -21,6 +21,7 @@ using HRConnect.Presentation.Swagger;
 using HRConnect.Presentation.Endpoints.Internal;
 using HRConnect.Presentation.Endpoints.V1.Users;
 using Microsoft.EntityFrameworkCore;
+using HRConnect.Presentation.Middleware;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 
@@ -176,6 +177,10 @@ builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 var app = builder.Build();
+
+// Correlation scope wraps the remaining pipeline, including exception handling,
+// so framework and application logs from one request share the same identifier.
+app.UseMiddleware<RequestLoggingMiddleware>();
 
 // ==============================================================================
 // 3. Cấu hình HTTP Request Pipeline (Middleware)
