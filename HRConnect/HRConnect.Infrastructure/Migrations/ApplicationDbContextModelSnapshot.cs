@@ -3692,7 +3692,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.Navigation("Candidate");
 
-                    b.Navigation("CandidateCvs");
+                    b.Navigation("CandidateCv");
 
                     b.Navigation("Job");
 
