@@ -138,6 +138,12 @@ public class RegisterClientCommandHandlerTests
         _passwordHasherMock.Setup(x => x.Hash(command.Password)).Returns("hashed_password_client");
         _otpServiceMock.Setup(x => x.GenerateNumericOtp(6)).Returns("998877");
         _otpServiceMock.Setup(x => x.HashOtp("998877")).Returns("hashed_otp_client");
+        _emailServiceMock.Setup(x => x.SendEmailAsync(
+                command.Email,
+                It.IsAny<string>(),
+                It.Is<string>(body => body.Contains("998877")),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(EmailResult.Success("message-id"));
 
         AppUser? capturedUser = null;
         _userRepositoryMock.Setup(x => x.AddAsync(It.IsAny<AppUser>(), It.IsAny<CancellationToken>()))
@@ -157,6 +163,11 @@ public class RegisterClientCommandHandlerTests
         CompanyVerificationRequest? capturedReq = null;
         _companyVerificationRequestRepositoryMock.Setup(x => x.AddAsync(It.IsAny<CompanyVerificationRequest>(), It.IsAny<CancellationToken>()))
             .Callback<CompanyVerificationRequest, CancellationToken>((r, ct) => capturedReq = r)
+            .Returns(Task.CompletedTask);
+
+        EmailOutbox? capturedOutbox = null;
+        _emailOutboxRepositoryMock.Setup(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailOutbox, CancellationToken>((outbox, _) => capturedOutbox = outbox)
             .Returns(Task.CompletedTask);
 
         var response = await _handler.Handle(command, CancellationToken.None);
@@ -185,7 +196,43 @@ public class RegisterClientCommandHandlerTests
         capturedReq.SubmittedBy.Should().Be(capturedUser.UserId);
         capturedReq.Status.Should().Be("PENDING");
 
+        capturedOutbox.Should().NotBeNull();
+        capturedOutbox!.Status.Should().Be("SENT");
+        capturedOutbox.SentAt.Should().NotBeNull();
+        capturedOutbox.Payload.Should().NotContain("998877");
+
         _unitOfWorkMock.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _emailServiceMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldKeepRegistrationRecoverable_WhenEmailProviderFails()
+    {
+        var command = new RegisterClientCommand(
+            "client-mail-failure@example.com", "Password@123", "Client Mail Failure", null, "Mail Failure Co");
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns(command.Email);
+        _userRepositoryMock.Setup(x => x.ExistsByEmailAsync(command.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _passwordHasherMock.Setup(x => x.Hash(command.Password)).Returns("password-hash");
+        _otpServiceMock.Setup(x => x.GenerateNumericOtp(6)).Returns("123456");
+        _otpServiceMock.Setup(x => x.HashOtp("123456")).Returns("otp-hash");
+        _emailServiceMock.Setup(x => x.SendEmailAsync(
+                command.Email, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(EmailResult.Failure("provider unavailable"));
+
+        EmailOutbox? outbox = null;
+        _emailOutboxRepositoryMock.Setup(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailOutbox, CancellationToken>((value, _) => outbox = value);
+
+        var response = await _handler.Handle(command, CancellationToken.None);
+
+        response.Success.Should().BeTrue();
+        response.Data!.Status.Should().Be("PENDING_EMAIL_VERIFICATION");
+        outbox!.Status.Should().Be("FAILED");
+        outbox.RetryCount.Should().Be(1);
+        outbox.LastError.Should().Be("provider unavailable");
+        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
