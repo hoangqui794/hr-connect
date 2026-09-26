@@ -31,7 +31,8 @@ public static class DependencyInjection
         {
             client.BaseAddress = new Uri("https://api.resend.com/");
         });
-        services.AddHostedService<RegistrationOtpOutboxWorker>();
+        // Registration OTP is sent once by the registration request. Further delivery
+        // happens only through the explicit resend endpoint; never replay stale outbox rows.
 
         // 2. Cấu hình Authentication, OTP & JWT
         services.Configure<AuthenticationSettings>(

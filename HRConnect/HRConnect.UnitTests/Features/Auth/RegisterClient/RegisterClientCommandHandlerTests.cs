@@ -94,6 +94,29 @@ public class RegisterClientCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenEmailIsPendingVerification_ReturnsRecoverableConflictWithoutSending()
+    {
+        const string email = "pending-client@example.com";
+        var command = new RegisterClientCommand(
+            email, "Password@123", "Pending Client", "0912345678", "Pending Company");
+        _emailNormalizerMock.Setup(x => x.Normalize(email)).Returns(email);
+        _userRepositoryMock.Setup(x => x.ExistsByEmailAsync(email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _userRepositoryMock.Setup(x => x.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AppUser
+            {
+                UserId = Guid.NewGuid(), Email = email, PasswordHash = "hash", Status = "PENDING"
+            });
+
+        var action = () => _handler.Handle(command, CancellationToken.None);
+
+        var exception = await action.Should().ThrowAsync<ConflictException>();
+        exception.Which.ErrorCode.Should().Be("EMAIL_PENDING_VERIFICATION");
+        _emailServiceMock.Verify(service => service.SendEmailAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Handle_ShouldThrowConflictException_WhenTaxCodeAlreadyExists()
     {
         var command = new RegisterClientCommand(
