@@ -7,6 +7,7 @@ using HRConnect.Application.Features.Interviews.Commands.ScheduleInterview;
 using HRConnect.Application.Features.Interviews.Commands.UpdateInterview;
 using HRConnect.Application.Features.Interviews.Commands.RescheduleInterview;
 using HRConnect.Application.Features.Interviews.Commands.CancelInterview;
+using HRConnect.Application.Features.Interviews.Commands.RecordInterviewResult;
 using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +21,7 @@ public static class InterviewEndpoints
     private const string ManagePermission = "interview.manage";
     private const string CreatePermission = "interview.create";
     private const string UpdatePermission = "interview.update";
+    private const string RecordResultPermission = "interview.record_result";
 
     public static IEndpointRouteBuilder MapInterviewEndpoints(this IEndpointRouteBuilder app)
     {
@@ -417,6 +419,73 @@ public static class InterviewEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
+        // I07: POST /api/v1/interviews/{interviewId:guid}/result
+        group.MapPost("/{interviewId:guid}/result", async (
+            Guid interviewId,
+            [FromBody] RecordInterviewResultRequest request,
+            [FromServices] ISender sender = null!,
+            ClaimsPrincipal user = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var canRecord = PermissionAuthorization.HasPermission(user, RecordResultPermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!canRecord && !isInternal && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(RecordResultPermission);
+            }
+
+            try
+            {
+                var command = new RecordInterviewResultCommand(
+                    InterviewId: interviewId,
+                    Result: request.Result,
+                    Feedback: request.Feedback,
+                    IsFinalRound: request.IsFinalRound,
+                    NextAction: request.NextAction,
+                    ConcurrencyToken: request.ConcurrencyToken,
+                    CurrentUserId: userId.Value,
+                    IsClientCompanyUser: canRecord && !isInternal && !isAdmin,
+                    IsInternalHrOrAdmin: isInternal || isAdmin
+                );
+
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("RecordInterviewResult")
+        .WithSummary("Ghi nhận kết quả đánh giá phỏng vấn")
+        .WithDescription("Dành cho Client Company (interview.record_result) hoặc Internal HR / Admin (interview.manage). Kết quả: PASSED, FAILED, ON_HOLD kèm feedback nhận xét. Tự động chuyển trạng thái buổi phỏng vấn sang COMPLETED và cập nhật trạng thái hồ sơ ứng viên nếu cần.")
+        .Produces<RecordInterviewResultResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -466,4 +535,12 @@ public record RescheduleInterviewRequest(
 public record CancelInterviewRequest(
     string Reason,
     Guid? ConcurrencyToken
+);
+
+public record RecordInterviewResultRequest(
+    string Result,
+    string? Feedback,
+    bool IsFinalRound = false,
+    string? NextAction = null,
+    Guid? ConcurrencyToken = null
 );
