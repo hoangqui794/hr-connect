@@ -1,0 +1,22 @@
+@baseUrl = https://localhost:7289
+@adminToken = REPLACE_WITH_PLATFORM_ADMIN_BEARER_TOKEN
+@headHuntServiceTypeId = REPLACE_WITH_HEADHUNT_COD_SERVICE_TYPE_ID
+
+### MF-01: Platform Admin creates a probation-based 8 percent commission rule.
+POST {{baseUrl}}/api/v1/admin/commission-rules
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "serviceTypeId": "{{headHuntServiceTypeId}}",
+  "milestoneType": "PROBATION_PASSED",
+  "rateType": "PERCENT",
+  "rateValue": 8,
+  "warrantyRequired": false,
+  "effectiveFrom": "2026-09-26T00:00:00Z",
+  "isActive": true
+}
+
+### Expected: 201. Save response data.commissionRuleId for later MF commission-flow tests.
+### Expected errors: 400 for inactive/missing Service Type or Milestone and invalid rate;
+### 409 when an active rule exists for the same Service Type, Milestone and Effective From.
