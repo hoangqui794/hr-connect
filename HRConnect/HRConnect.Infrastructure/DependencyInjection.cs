@@ -8,6 +8,8 @@ using HRConnect.Infrastructure.Services.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Authentication;
+using HRConnect.Infrastructure.Authentication;
 
 namespace HRConnect.Infrastructure;
 
@@ -28,6 +30,7 @@ public static class DependencyInjection
         {
             client.BaseAddress = new Uri("https://api.resend.com/");
         });
+        services.AddHostedService<RegistrationOtpOutboxWorker>();
 
         // 2. Cấu hình Authentication, OTP & JWT
         services.Configure<AuthenticationSettings>(
@@ -44,6 +47,7 @@ public static class DependencyInjection
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IClaimsTransformation, ActiveAuthorizationClaimsTransformation>();
 
         // 4. Repositories & UnitOfWork
         services.AddScoped<IUserRepository, UserRepository>();
@@ -110,6 +114,9 @@ public static class DependencyInjection
 
         if (int.TryParse(configuration["MAX_CV_FILE_SIZE_MB"], out var maxMb) && maxMb > 0)
             r2Settings.MaxCvFileSizeMb = maxMb;
+
+        if (int.TryParse(configuration["MAX_PRESIGNED_URL_EXPIRY_MINUTES"], out var maxExpiryMinutes) && maxExpiryMinutes > 0)
+            r2Settings.MaxPresignedUrlExpiryMinutes = maxExpiryMinutes;
 
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(r2Settings));
 

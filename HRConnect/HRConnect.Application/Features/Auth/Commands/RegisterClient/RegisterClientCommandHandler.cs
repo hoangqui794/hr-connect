@@ -162,10 +162,6 @@ public class RegisterClientCommandHandler : IRequestHandler<RegisterClientComman
             var rawOtp = _otpService.GenerateNumericOtp(otpLength);
             var otpHash = _otpService.HashOtp(rawOtp);
 
-            _logger.LogInformation("===============================================================================");
-            _logger.LogInformation("===> [DEV OTP] MÃ XÁC THỰC OTP CHO CLIENT {Email} LÀ: {Otp} <===", normalizedEmail, rawOtp);
-            _logger.LogInformation("===============================================================================");
-
             // 10. Tạo bản ghi UserToken (loại EMAIL_OTP, lưu hash, không lưu raw OTP)
             var userToken = new UserToken
             {
@@ -211,32 +207,60 @@ public class RegisterClientCommandHandler : IRequestHandler<RegisterClientComman
             _logger.LogInformation("Đăng ký thành công tài khoản Client UserId {UserId}, Công ty {CompanyId}. Trạng thái: PENDING.",
                 newUser.UserId, newCompany.CompanyId);
 
-            // 13. Gửi email chứa raw OTP đến Client sau khi commit
-            _ = Task.Run(async () =>
+            // 13. Chờ nhà cung cấp email phản hồi để không làm mất tác vụ khi request kết thúc.
+            // Raw OTP chỉ tồn tại trong bộ nhớ và không được ghi vào log/outbox.
+            try
             {
+                var subject = "Mã xác thực đăng ký Doanh nghiệp - HR Connect";
+                var bodyHtml = $@"
+                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
+                        <h2 style='color: #4F46E5; margin-top: 0;'>Chào mừng Doanh nghiệp đến với HR Connect!</h2>
+                        <p>Xin chào <strong>{request.FullName.Trim()}</strong> (Đại diện <strong>{request.CompanyName.Trim()}</strong>),</p>
+                        <p>Cảm ơn bạn đã đăng ký tài khoản Doanh nghiệp tuyển dụng trên hệ thống HR Connect. Để hoàn tất quy trình xác thực email, vui lòng sử dụng mã xác thực (OTP) dưới đây:</p>
+                        <div style='background-color: #F3F4F6; padding: 16px; border-radius: 6px; text-align: center; margin: 24px 0;'>
+                            <span style='font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1F2937;'>{rawOtp}</span>
+                        </div>
+                        <p style='color: #4B5563; font-size: 14px;'>Mã xác thực này có hiệu lực trong vòng <strong>{expirationMinutes} phút</strong>. Sau khi xác thực email thành công, thông tin doanh nghiệp sẽ được chuyển đến Ban quản trị xem xét phê duyệt.</p>
+                        <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
+                        <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
+                    </div>";
+
+                var emailResult = await _emailService.SendEmailAsync(
+                    newUser.Email, subject, bodyHtml, CancellationToken.None);
+
+                if (emailResult.IsSuccess)
+                {
+                    emailOutbox.Status = "SENT";
+                    emailOutbox.SentAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    emailOutbox.Status = "FAILED";
+                    emailOutbox.RetryCount += 1;
+                    emailOutbox.LastError = emailResult.ErrorMessage;
+                    _logger.LogError("Lỗi gửi email xác thực OTP Client cho UserId {UserId}: {Error}",
+                        newUser.UserId, emailResult.ErrorMessage);
+                }
+
+                await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                emailOutbox.Status = "FAILED";
+                emailOutbox.RetryCount += 1;
+                emailOutbox.LastError = ex.Message;
                 try
                 {
-                    var subject = "Mã xác thực đăng ký Doanh nghiệp - HR Connect";
-                    var bodyHtml = $@"
-                        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                            <h2 style='color: #4F46E5; margin-top: 0;'>Chào mừng Doanh nghiệp đến với HR Connect!</h2>
-                            <p>Xin chào <strong>{request.FullName.Trim()}</strong> (Đại diện <strong>{request.CompanyName.Trim()}</strong>),</p>
-                            <p>Cảm ơn bạn đã đăng ký tài khoản Doanh nghiệp tuyển dụng trên hệ thống HR Connect. Để hoàn tất quy trình xác thực email, vui lòng sử dụng mã xác thực (OTP) dưới đây:</p>
-                            <div style='background-color: #F3F4F6; padding: 16px; border-radius: 6px; text-align: center; margin: 24px 0;'>
-                                <span style='font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1F2937;'>{rawOtp}</span>
-                            </div>
-                            <p style='color: #4B5563; font-size: 14px;'>Mã xác thực này có hiệu lực trong vòng <strong>{expirationMinutes} phút</strong>. Sau khi xác thực email thành công, thông tin doanh nghiệp sẽ được chuyển đến Ban quản trị xem xét phê duyệt.</p>
-                            <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                            <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
-                        </div>";
-
-                    await _emailService.SendEmailAsync(newUser.Email, subject, bodyHtml, CancellationToken.None);
+                    await _unitOfWork.SaveChangesAsync(CancellationToken.None);
                 }
-                catch (Exception ex)
+                catch (Exception saveException)
                 {
-                    _logger.LogError(ex, "Lỗi gửi email xác thực OTP tới Client {Email}", newUser.Email);
+                    _logger.LogError(saveException,
+                        "Không thể cập nhật trạng thái email_outbox {OutboxId}", emailOutbox.EmailOutboxId);
                 }
-            }, CancellationToken.None);
+
+                _logger.LogError(ex, "Lỗi gửi email xác thực OTP Client cho UserId {UserId}", newUser.UserId);
+            }
 
             // 14. Trả về kết quả HTTP 201 Created
             return new RegisterClientResponse

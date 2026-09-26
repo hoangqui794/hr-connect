@@ -21,6 +21,8 @@ using HRConnect.Presentation.Swagger;
 using HRConnect.Presentation.Endpoints.Internal;
 using HRConnect.Presentation.Endpoints.V1.Users;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 // ==============================================================================
 // 1. Nạp biến môi trường từ file .env
@@ -37,6 +39,52 @@ builder.Configuration.AddEnvironmentVariables();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddProblemDetails();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            success = false,
+            message = "Bạn thao tác quá nhanh. Vui lòng chờ rồi thử lại."
+        }, cancellationToken);
+    };
+
+    static string ClientKey(HttpContext context) =>
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    options.AddPolicy("auth-login", context => RateLimitPartition.GetFixedWindowLimiter(
+        ClientKey(context),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+
+    options.AddPolicy("auth-sensitive", context => RateLimitPartition.GetFixedWindowLimiter(
+        ClientKey(context),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(10),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+
+    options.AddPolicy("auth-registration", context => RateLimitPartition.GetFixedWindowLimiter(
+        ClientKey(context),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromHours(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
 
 // Cấu hình CORS (Cho phép Frontend kết nối API)
 builder.Services.AddCors(options =>
@@ -149,6 +197,7 @@ app.UseHttpsRedirection();
 
 // Kích hoạt CORS
 app.UseCors("AllowAll");
+app.UseRateLimiter();
 
 // Thứ tự bắt buộc: Xác thực (Authentication) -> Phân quyền (Authorization)
 app.UseAuthentication();

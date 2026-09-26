@@ -274,7 +274,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var cvId = Guid.NewGuid();
         var stream = new MemoryStream(new byte[] { 1, 2, 3 });
-        _cvStorageServiceMock.Setup(s => s.UploadCvPdfAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        _cvStorageServiceMock.Setup(s => s.UploadAffiliateCvPdfAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new UploadCvResult { CvId = cvId, CandidateId = Guid.NewGuid(), ObjectKey = "candidates/x/cvs/y.pdf", FileName = "cv.pdf", FileSizeBytes = 3, MimeType = "application/pdf" });
 
         _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(It.IsAny<Guid>(), jobId, It.IsAny<CancellationToken>()))
@@ -333,7 +333,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var cvId = Guid.NewGuid();
         var stream = new MemoryStream(new byte[] { 1, 2, 3 });
-        _cvStorageServiceMock.Setup(s => s.UploadCvPdfAsync(existingCandidate.CandidateId, It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        _cvStorageServiceMock.Setup(s => s.UploadAffiliateCvPdfAsync(existingCandidate.CandidateId, It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new UploadCvResult { CvId = cvId, CandidateId = existingCandidate.CandidateId, ObjectKey = "path", FileName = "cv.pdf", FileSizeBytes = 3, MimeType = "application/pdf" });
 
         _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(existingCandidate.CandidateId, jobId, It.IsAny<CancellationToken>()))
@@ -385,7 +385,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var cvId = Guid.NewGuid();
         var stream = new MemoryStream(new byte[] { 1, 2, 3 });
-        _cvStorageServiceMock.Setup(s => s.UploadCvPdfAsync(existingCandidate.CandidateId, It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        _cvStorageServiceMock.Setup(s => s.UploadAffiliateCvPdfAsync(existingCandidate.CandidateId, It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new UploadCvResult { CvId = cvId, CandidateId = existingCandidate.CandidateId, ObjectKey = "path", FileName = "cv.pdf", FileSizeBytes = 3, MimeType = "application/pdf" });
 
         _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(existingCandidate.CandidateId, jobId, It.IsAny<CancellationToken>()))
@@ -436,7 +436,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(existingCandidate);
 
         var cvId = Guid.NewGuid();
-        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf" };
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = userId };
         _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cv);
 
@@ -499,7 +499,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(existingCandidate);
 
         var cvId = Guid.NewGuid();
-        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf" };
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = userId };
         _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cv);
 
@@ -593,7 +593,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var cvId = Guid.NewGuid();
         var stream = new MemoryStream(new byte[] { 1, 2, 3 });
-        _cvStorageServiceMock.Setup(s => s.UploadCvPdfAsync(candidateId, stream, "cv.pdf", 3, null, false, It.IsAny<CancellationToken>()))
+        _cvStorageServiceMock.Setup(s => s.UploadAffiliateCvPdfAsync(candidateId, userId, stream, "cv.pdf", 3, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new UploadCvResult { CvId = cvId, CandidateId = candidateId, FileName = "cv.pdf" });
 
         // Database throws 23505 unique constraint violation on commit
@@ -649,7 +649,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(candidate);
 
         var cvId = Guid.NewGuid();
-        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf" };
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = userId };
         _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cv);
 
@@ -707,7 +707,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(candidate);
 
         var cvId = Guid.NewGuid();
-        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf" };
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = affiliateBUserId };
         _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cv);
 
@@ -782,7 +782,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(candidate);
 
         var cvId = Guid.NewGuid();
-        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf" };
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = userId };
         _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cv);
 
@@ -851,7 +851,7 @@ public class SubmitCandidateCommandHandlerTests
         ex.Which.ErrorCode.Should().Be("SERVICE_TYPE_SUBMISSION_NOT_ALLOWED");
 
         // Verify NO CV upload, NO DB persistence, NO MF-03
-        _cvStorageServiceMock.Verify(s => s.UploadCvPdfAsync(It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _cvStorageServiceMock.Verify(s => s.UploadAffiliateCvPdfAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
         _submissionRepositoryMock.Verify(s => s.AddAsync(It.IsAny<Submission>(), It.IsAny<CancellationToken>()), Times.Never);
         _applicationRepositoryMock.Verify(a => a.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
         _attributionRepositoryMock.Verify(a => a.AddAsync(It.IsAny<Attribution>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -916,7 +916,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(candidate);
 
         var cvId = Guid.NewGuid();
-        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf" };
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = userId };
         _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cv);
 
@@ -935,5 +935,69 @@ public class SubmitCandidateCommandHandlerTests
 
         // Assert
         response.Success.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("FILE_UPLOAD")]
+    [InlineData("AFFILIATE_UPLOAD")]
+    public async Task Handle_WhenCvIsPrivateOrOwnedByAnotherAffiliate_ThrowsForbidden(string creationMethod)
+    {
+        var userId = Guid.NewGuid();
+        _affiliateProfileRepositoryMock
+            .Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateProfile
+            {
+                AffiliateId = Guid.NewGuid(),
+                UserId = userId,
+                Status = "ACTIVE"
+            });
+
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        _jobRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId });
+        _jobRepositoryMock
+            .Setup(repository => repository.CanAnyRoleSubmitJobAsync(
+                serviceTypeId,
+                It.IsAny<IReadOnlyCollection<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var candidateId = Guid.NewGuid();
+        _candidateRepositoryMock
+            .Setup(repository => repository.GetByNormalizedEmailAsync("owner@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate { CandidateId = candidateId, Email = "owner@example.com" });
+
+        var cvId = Guid.NewGuid();
+        _candidateCvRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CandidateCv
+            {
+                CvId = cvId,
+                CandidateId = candidateId,
+                CreationMethod = creationMethod,
+                UploadedByUserId = creationMethod == "AFFILIATE_UPLOAD" ? Guid.NewGuid() : null,
+                Status = "ACTIVE",
+                SourceFileUrl = "private.pdf"
+            });
+
+        var command = new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            FullName = "CV Owner",
+            Email = "owner@example.com",
+            CvId = cvId,
+            RoleCodes = ["AFFILIATE_RECRUITER"]
+        };
+
+        var action = () => _handler.Handle(command, CancellationToken.None);
+
+        await action.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("*không được sử dụng CV riêng*");
+        _submissionRepositoryMock.Verify(
+            repository => repository.AddAsync(It.IsAny<Submission>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

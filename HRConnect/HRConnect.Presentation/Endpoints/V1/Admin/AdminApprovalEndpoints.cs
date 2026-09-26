@@ -49,7 +49,7 @@ public static class AdminApprovalEndpoints
         })
         .WithName("GetApprovalList")
         .WithSummary("Lấy danh sách yêu cầu phê duyệt hợp nhất (Affiliate & Client)")
-        .WithDescription("Hỗ trợ lọc theo type (AFFILIATE, CLIENT), status (PENDING, APPROVED, REJECTED), search không phân biệt hoa thường, phân trang và sắp xếp.")
+        .WithDescription("Hỗ trợ lọc theo type (AFFILIATE, CLIENT), status (PENDING, APPROVED, REJECTED), search không phân biệt hoa thường, phân trang và sắp xếp. PENDING chỉ trả về hồ sơ UNDER_REVIEW đã xác thực OTP và đang chờ Admin duyệt.")
         .Produces<GetApprovalListResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden);

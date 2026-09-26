@@ -11,6 +11,7 @@ using HRConnect.Application.Features.Auth.Commands.RegisterAffiliate;
 using HRConnect.Application.Features.Auth.Commands.RegisterCandidate;
 using HRConnect.Application.Features.Auth.Commands.RegisterClient;
 using HRConnect.Application.Features.Auth.Commands.ResendPasswordResetOtp;
+using HRConnect.Application.Features.Auth.Commands.ResendRegistrationOtp;
 using HRConnect.Application.Features.Auth.Commands.ResetPassword;
 using HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp;
 using HRConnect.Application.Features.Auth.Queries.GetCurrentUser;
@@ -70,6 +71,7 @@ public static class AuthEndpoints
                 });
             }
         })
+        .RequireRateLimiting("auth-registration")
         .WithName("RegisterCandidate")
         .WithSummary("Đăng ký tài khoản Ứng viên (Candidate Registration)")
         .WithDescription("Đăng ký tài khoản ứng viên ở trạng thái PENDING. Hồ sơ ứng viên hiện hữu chỉ được liên kết sau khi xác minh OTP của email khớp. Không nhận hồ sơ chỉ bằng số điện thoại; danh tính xung đột trả 409.")
@@ -122,6 +124,7 @@ public static class AuthEndpoints
                 });
             }
         })
+        .RequireRateLimiting("auth-registration")
         .WithName("RegisterAffiliate")
         .WithSummary("Đăng ký tài khoản Đối tác tuyển dụng (Affiliate Recruiter)")
         .WithDescription("Đăng ký tài khoản đối tác tuyển dụng mới. Trạng thái PENDING chờ xác thực email OTP. Chưa cấp quyền AFFILIATE_RECRUITER.")
@@ -174,6 +177,7 @@ public static class AuthEndpoints
                 });
             }
         })
+        .RequireRateLimiting("auth-registration")
         .WithName("RegisterClient")
         .WithSummary("Đăng ký tài khoản Doanh nghiệp tuyển dụng (Client Company User)")
         .WithDescription("Đăng ký tài khoản đại diện doanh nghiệp và công ty mới. Trạng thái PENDING chờ xác thực email OTP. Chưa cấp quyền CLIENT_COMPANY_USER.")
@@ -222,6 +226,7 @@ public static class AuthEndpoints
                 return Results.Conflict(new { success = false, message = ex.Message });
             }
         })
+        .RequireRateLimiting("auth-sensitive")
         .WithName("VerifyEmailOtp")
         .WithSummary("Xác thực mã OTP gửi về Email để kích hoạt tài khoản / xác nhận đăng ký")
         .WithDescription("Nhập email và mã OTP 6 số. Candidate chỉ nhận hồ sơ khớp sau xác minh email và chuyển sang ACTIVE; hồ sơ xung đột/đã được nhận trả 409. Affiliate và Client chuyển sang PENDING_ADMIN_APPROVAL.")
@@ -281,6 +286,7 @@ public static class AuthEndpoints
                 });
             }
         })
+        .RequireRateLimiting("auth-login")
         .WithName("Login")
         .WithSummary("Đăng nhập hệ thống (Email + Mật khẩu)")
         .WithDescription("Xác thực người dùng, trả về JWT Access Token kèm Roles & Permissions. Chặn tài khoản chưa xác thực email hoặc chưa được Admin phê duyệt.")
@@ -289,7 +295,43 @@ public static class AuthEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden);
 
-        // 6. Quên mật khẩu (Yêu cầu gửi OTP đặt lại mật khẩu)
+        // 6. Gửi lại mã OTP xác thực đăng ký
+        group.MapPost("/verify-email-otp/resend", async (
+            [FromBody] ResendRegistrationOtpCommand command,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<ResendRegistrationOtpCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            var validationResult = await validator.ValidateAsync(command, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu yêu cầu không hợp lệ.",
+                    errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                return Results.Ok(await sender.Send(command, cancellationToken));
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .RequireRateLimiting("auth-sensitive")
+        .WithName("ResendRegistrationOtp")
+        .WithSummary("Gửi lại mã OTP xác thực đăng ký")
+        .WithDescription("Cấp mã EMAIL_OTP mới cho tài khoản còn PENDING và chưa xác thực email. Mã cũ bị vô hiệu hóa; giới hạn một lần mỗi 60 giây.")
+        .Produces<ResendRegistrationOtpResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest);
+
+        // 7. Quên mật khẩu (Yêu cầu gửi OTP đặt lại mật khẩu)
         group.MapPost("/forgot-password", async (
             [FromBody] ForgotPasswordCommand command,
             [FromServices] ISender sender,
@@ -314,6 +356,7 @@ public static class AuthEndpoints
             var result = await sender.Send(command, cancellationToken);
             return Results.Ok(result);
         })
+        .RequireRateLimiting("auth-sensitive")
         .WithName("ForgotPassword")
         .WithSummary("Yêu cầu gửi mã OTP đặt lại mật khẩu")
         .WithDescription("Nhận email và gửi mã xác thực đặt lại mật khẩu nếu email tồn tại trong hệ thống. Luôn trả về thông báo chung để chống lộ thông tin tài khoản.")
@@ -345,6 +388,7 @@ public static class AuthEndpoints
             var result = await sender.Send(command, cancellationToken);
             return Results.Ok(result);
         })
+        .RequireRateLimiting("auth-sensitive")
         .WithName("ResendPasswordResetOtp")
         .WithSummary("Gửi lại mã OTP đặt lại mật khẩu mới")
         .WithDescription("Vô hiệu hóa mã OTP cũ và gửi mã OTP mới nếu tài khoản hợp lệ. Có cơ chế giới hạn tần suất (cooldown 60s).")
@@ -387,6 +431,7 @@ public static class AuthEndpoints
                 });
             }
         })
+        .RequireRateLimiting("auth-sensitive")
         .WithName("ResetPassword")
         .WithSummary("Đặt lại mật khẩu với mã OTP")
         .WithDescription("Xác thực mã OTP 6 chữ số, cập nhật mật khẩu mới và thu hồi toàn bộ Refresh Tokens hiện hành.")

@@ -45,6 +45,9 @@ public class ResendPasswordResetOtpCommandHandlerTests
         _emailNormalizerMock
             .Setup(x => x.Normalize(It.IsAny<string>()))
             .Returns<string>(e => e.Trim().ToLowerInvariant());
+        _emailServiceMock
+            .Setup(x => x.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(EmailResult.Success("message-id"));
 
         _handler = new ResendPasswordResetOtpCommandHandler(
             _userRepositoryMock.Object,

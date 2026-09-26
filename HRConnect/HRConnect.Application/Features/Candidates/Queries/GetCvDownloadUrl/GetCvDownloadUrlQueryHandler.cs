@@ -45,7 +45,12 @@ public class GetCvDownloadUrlQueryHandler : IRequestHandler<GetCvDownloadUrlQuer
             }
         }
 
-        TimeSpan? expiry = request.ExpiryMinutes.HasValue && request.ExpiryMinutes.Value > 0
+        if (request.ExpiryMinutes.HasValue && request.ExpiryMinutes.Value <= 0)
+        {
+            throw new BadRequestException("Thời hạn đường dẫn tải CV phải là số phút dương.");
+        }
+
+        TimeSpan? expiry = request.ExpiryMinutes.HasValue
             ? TimeSpan.FromMinutes(request.ExpiryMinutes.Value)
             : null;
 
