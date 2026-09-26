@@ -174,6 +174,27 @@ public class CvStorageServiceTests
         savedCv!.CreationMethod.Should().Be("AFFILIATE_UPLOAD");
         savedCv.UploadedByUserId.Should().Be(affiliateUserId);
         savedCv.IsPrimary.Should().BeFalse();
+        _unitOfWorkMock.Verify(
+            unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+        _auditLogServiceMock.Verify(audit => audit.AddAsync(
+            It.Is<AuditEntry>(entry =>
+                entry.Action == AuditActions.CvUploaded &&
+                entry.ActorUserId == affiliateUserId),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CompensateUploadAsync_DeletesOnlyTheR2Object()
+    {
+        const string objectKey = "candidates/candidate/cvs/cv.pdf";
+
+        await _service.CompensateUploadAsync(objectKey);
+
+        _fileStorageServiceMock.Verify(storage => storage.DeleteAsync(
+            objectKey, It.IsAny<CancellationToken>()), Times.Once);
+        _candidateCvRepositoryMock.Verify(repository => repository.Delete(It.IsAny<CandidateCv>()), Times.Never);
+        _unitOfWorkMock.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

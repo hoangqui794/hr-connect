@@ -53,6 +53,7 @@ public class CvStorageService : ICvStorageService
             fileSizeBytes,
             title,
             isPrimary,
+            persistChanges: true,
             cancellationToken);
     }
 
@@ -79,6 +80,7 @@ public class CvStorageService : ICvStorageService
             fileSizeBytes,
             title,
             isPrimary: false,
+            persistChanges: false,
             cancellationToken);
     }
 
@@ -91,6 +93,7 @@ public class CvStorageService : ICvStorageService
         long fileSizeBytes,
         string? title,
         bool isPrimary,
+        bool persistChanges,
         CancellationToken cancellationToken)
     {
         // Read and validate the exact bytes that will be uploaded. This prevents a
@@ -179,10 +182,17 @@ public class CvStorageService : ICvStorageService
                     status = candidateCv.Status
                 }
             }, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Lưu CV vào CSDL thành công cho CandidateId={CandidateId}, CvId={CvId}, Key={Key}",
-                candidateId, cvId, uploadedKey);
+            if (persistChanges)
+            {
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                _logger.LogInformation("Lưu CV vào CSDL thành công cho CandidateId={CandidateId}, CvId={CvId}, Key={Key}",
+                    candidateId, cvId, uploadedKey);
+            }
+            else
+            {
+                _logger.LogInformation("Đã stage CV vào unit of work cho CandidateId={CandidateId}, CvId={CvId}, Key={Key}",
+                    candidateId, cvId, uploadedKey);
+            }
 
             return new UploadCvResult
             {
@@ -200,7 +210,7 @@ public class CvStorageService : ICvStorageService
         }
         catch (Exception dbEx)
         {
-            _logger.LogError(dbEx, "Lỗi lưu CSDL sau khi upload R2 thành công. Tiến hành bồi hoàn (compensation delete): Key={Key}", objectKey);
+            _logger.LogError(dbEx, "Lỗi chuẩn bị metadata CV sau khi upload R2. Tiến hành bồi hoàn (compensation delete): Key={Key}", objectKey);
 
             // Bồi hoàn xóa object trên R2 để tránh rác mồ côi (orphan object)
             try
@@ -215,6 +225,19 @@ public class CvStorageService : ICvStorageService
 
             throw new InvalidOperationException("Không thể lưu thông tin hồ sơ CV vào cơ sở dữ liệu.", dbEx);
         }
+    }
+
+    public async Task CompensateUploadAsync(
+        string objectKey,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(objectKey))
+        {
+            throw new ArgumentException("Object key is required for upload compensation.", nameof(objectKey));
+        }
+
+        await _fileStorageService.DeleteAsync(objectKey, cancellationToken);
+        _logger.LogInformation("Đã bồi hoàn tệp CV chưa commit khỏi R2: Key={Key}", objectKey);
     }
 
     public async Task<CvDownloadUrlResult> GetCvDownloadUrlAsync(
