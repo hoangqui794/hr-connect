@@ -27,6 +27,7 @@ public class SwaggerTagOrderDocumentFilter : IDocumentFilter
 {
     private static readonly List<OpenApiTag> OrderedTags = new()
     {
+        new() { Name = "Admin Commission Rules", Description = "Cau hinh moc va rule commission boi Platform Admin" },
         new() { Name = "Auth", Description = "Xác thực và quản lý tài khoản người dùng" },
         new() { Name = "Jobs", Description = "Quản lý bài đăng tuyển dụng doanh nghiệp và tìm kiếm việc làm" },
         new() { Name = "Service Types", Description = "Danh mục loại dịch vụ tuyển dụng công khai" },
