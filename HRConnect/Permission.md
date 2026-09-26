@@ -209,6 +209,36 @@ VALUES
      'view_company',
      'View offers for own company jobs'),
 
+    ('interview.record_result',
+     'interview',
+     'record_result',
+     'Record interview result'),
+
+    ('application.decide_backup',
+     'application',
+     'decide_backup',
+     'Decide backup candidate selection'),
+
+    ('offer.send',
+     'offer',
+     'send',
+     'Send offer to candidate'),
+
+    ('offer.withdraw',
+     'offer',
+     'withdraw',
+     'Withdraw job offer'),
+
+    ('placement.confirm',
+     'placement',
+     'confirm',
+     'Confirm candidate placement and start work'),
+
+    ('application.mark_not_started',
+     'application',
+     'mark_not_started',
+     'Mark placed candidate as not started'),
+
     -- ========================================================
     -- INTERNAL HR
     -- ========================================================
@@ -476,7 +506,14 @@ JOIN public.permission p
 
         'offer.create',
         'offer.update',
-        'offer.view_company'
+        'offer.view_company',
+
+        'interview.record_result',
+        'application.decide_backup',
+        'offer.send',
+        'offer.withdraw',
+        'placement.confirm',
+        'application.mark_not_started'
     )
 WHERE r.code = 'CLIENT_COMPANY_USER'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
@@ -515,7 +552,14 @@ JOIN public.permission p
         'warranty.manage',
 
         'commission.view',
-        'payout.view'
+        'payout.view',
+
+        'interview.record_result',
+        'application.decide_backup',
+        'offer.send',
+        'offer.withdraw',
+        'placement.confirm',
+        'application.mark_not_started'
     )
 WHERE r.code = 'INTERNAL_HR'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
@@ -557,7 +601,14 @@ JOIN public.permission p
         'report.view',
         'audit.view',
 
-        'application.retry_ai_scoring'
+        'application.retry_ai_scoring',
+
+        'interview.record_result',
+        'application.decide_backup',
+        'offer.send',
+        'offer.withdraw',
+        'placement.confirm',
+        'application.mark_not_started'
     )
 WHERE r.code = 'PLATFORM_ADMIN'
 ON CONFLICT (role_id, permission_id) DO NOTHING;

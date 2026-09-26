@@ -31,6 +31,8 @@ public partial class Offer
 
     public string? DeclineReason { get; set; }
 
+    public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

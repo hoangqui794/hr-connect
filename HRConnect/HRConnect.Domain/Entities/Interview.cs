@@ -29,6 +29,12 @@ public partial class Interview
 
     public Guid? CreatedBy { get; set; }
 
+    public Guid? RecordedBy { get; set; }
+
+    public DateTime? RecordedAt { get; set; }
+
+    public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
@@ -37,6 +43,10 @@ public partial class Interview
 
     public virtual AppUser? CreatedByNavigation { get; set; }
 
+    public virtual AppUser? RecordedByNavigation { get; set; }
+
     public virtual ICollection<InterviewStatusHistory> InterviewStatusHistories { get; set; } = new List<InterviewStatusHistory>();
+
+    public virtual ICollection<InterviewParticipant> InterviewParticipants { get; set; } = new List<InterviewParticipant>();
 }
 
