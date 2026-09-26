@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace HRConnect.Domain.Entities;
@@ -25,6 +25,10 @@ public partial class Application
     public DateTime UpdatedAt { get; set; }
 
     public string? StatusReason { get; set; }
+
+    public DateOnly? PlannedStartDate { get; set; }
+
+    public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
 
     public virtual ICollection<AiMatchResult> AiMatchResults { get; set; } = new List<AiMatchResult>();
 

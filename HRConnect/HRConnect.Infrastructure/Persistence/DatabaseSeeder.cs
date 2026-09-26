@@ -150,6 +150,12 @@ public static class DatabaseSeeder
         ('offer.create', 'offer', 'create', 'Create job offers'),
         ('offer.update', 'offer', 'update', 'Update job offers'),
         ('offer.view_company', 'offer', 'view_company', 'View offers for own company jobs'),
+        ('interview.record_result', 'interview', 'record_result', 'Record interview result'),
+        ('application.decide_backup', 'application', 'decide_backup', 'Decide backup candidate selection'),
+        ('offer.send', 'offer', 'send', 'Send offer to candidate'),
+        ('offer.withdraw', 'offer', 'withdraw', 'Withdraw job offer'),
+        ('placement.confirm', 'placement', 'confirm', 'Confirm candidate placement and start work'),
+        ('application.mark_not_started', 'application', 'mark_not_started', 'Mark placed candidate as not started'),
         ('company.view', 'company', 'view', 'View companies'),
         ('job.review', 'job', 'review', 'Review job postings'),
         ('job.publish', 'job', 'publish', 'Publish approved job postings'),
@@ -213,7 +219,8 @@ public static class DatabaseSeeder
     JOIN public.permission p ON p.code IN (
         'notification.view_own', 'company.profile.view_own', 'company.profile.update_own',
         'job.create', 'job.view_own', 'job.update_own', 'application.view_company', 'candidate.review_company',
-        'interview.create', 'interview.update', 'interview.view_company', 'offer.create', 'offer.update', 'offer.view_company'
+        'interview.create', 'interview.update', 'interview.view_company', 'offer.create', 'offer.update', 'offer.view_company',
+        'interview.record_result', 'application.decide_backup', 'offer.send', 'offer.withdraw', 'placement.confirm', 'application.mark_not_started'
     )
     WHERE r.code = 'CLIENT_COMPANY_USER'
     ON CONFLICT (role_id, permission_id) DO NOTHING;
@@ -225,7 +232,8 @@ public static class DatabaseSeeder
         'job.view', 'notification.view_own', 'company.view', 'job.review', 'job.publish', 'candidate.view',
         'application.view', 'application.screen', 'application.retry_ai_scoring', 'submission.view', 'attribution.view',
         'interview.manage', 'offer.manage', 'placement.manage', 'probation.manage', 'warranty.manage',
-        'commission.view', 'payout.view'
+        'commission.view', 'payout.view',
+        'interview.record_result', 'application.decide_backup', 'offer.send', 'offer.withdraw', 'placement.confirm', 'application.mark_not_started'
     )
     WHERE r.code = 'INTERNAL_HR'
     ON CONFLICT (role_id, permission_id) DO NOTHING;
@@ -237,7 +245,8 @@ public static class DatabaseSeeder
         'job.view', 'notification.view_own', 'user.view', 'user.manage', 'role.view', 'role.manage',
         'permission.view', 'permission.manage', 'company.verify', 'affiliate.verify',
         'dispute.view', 'dispute.resolve', 'commission.manage', 'payout.manage',
-        'system_config.view', 'system_config.manage', 'report.view', 'audit.view', 'application.retry_ai_scoring'
+        'system_config.view', 'system_config.manage', 'report.view', 'audit.view', 'application.retry_ai_scoring',
+        'interview.record_result', 'application.decide_backup', 'offer.send', 'offer.withdraw', 'placement.confirm', 'application.mark_not_started'
     )
     WHERE r.code = 'PLATFORM_ADMIN'
     ON CONFLICT (role_id, permission_id) DO NOTHING;
