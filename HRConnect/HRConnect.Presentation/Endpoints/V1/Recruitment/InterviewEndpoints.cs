@@ -3,6 +3,7 @@ using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Recruitment.Queries.GetInterviews;
 using HRConnect.Application.Features.Interviews.Queries.GetInterviewDetail;
+using HRConnect.Application.Features.Interviews.Commands.ScheduleInterview;
 using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -14,6 +15,7 @@ public static class InterviewEndpoints
     private const string ViewCompanyPermission = "interview.view_company";
     private const string ViewOwnPermission = "interview.view_own";
     private const string ManagePermission = "interview.manage";
+    private const string CreatePermission = "interview.create";
 
     public static IEndpointRouteBuilder MapInterviewEndpoints(this IEndpointRouteBuilder app)
     {
@@ -148,6 +150,69 @@ public static class InterviewEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
 
+        // I03: POST /api/v1/interviews
+        group.MapPost("/", async (
+            [FromBody] ScheduleInterviewRequest request,
+            [FromServices] ISender sender = null!,
+            ClaimsPrincipal user = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var canCreate = PermissionAuthorization.HasPermission(user, CreatePermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!canCreate && !isInternal && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(CreatePermission);
+            }
+
+            try
+            {
+                var command = new ScheduleInterviewCommand(
+                    ApplicationId: request.ApplicationId,
+                    ScheduledAt: request.ScheduledAt,
+                    DurationMinutes: request.DurationMinutes,
+                    InterviewRound: request.InterviewRound,
+                    InterviewType: request.InterviewType,
+                    Location: request.Location,
+                    MeetingLink: request.MeetingLink,
+                    Participants: request.Participants,
+                    CurrentUserId: userId.Value,
+                    IsClientCompanyUser: canCreate && !isInternal && !isAdmin,
+                    IsInternalHrOrAdmin: isInternal || isAdmin
+                );
+
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Created($"/api/v1/interviews/{response.Data.InterviewId}", response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("ScheduleInterview")
+        .WithSummary("Lập lịch phỏng vấn mới")
+        .WithDescription("Dành cho Client Company (interview.create) hoặc Internal HR / Admin (interview.manage). Tạo lịch phỏng vấn, thêm danh sách người phỏng vấn và chuyển trạng thái hồ sơ sang INTERVIEWING.")
+        .Produces<ScheduleInterviewResponse>(StatusCodes.Status201Created)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
         return app;
     }
 
@@ -164,3 +229,14 @@ public static class InterviewEndpoints
         return null;
     }
 }
+
+public record ScheduleInterviewRequest(
+    Guid ApplicationId,
+    DateTime ScheduledAt,
+    int? DurationMinutes,
+    int? InterviewRound,
+    string? InterviewType,
+    string? Location,
+    string? MeetingLink,
+    List<ScheduleInterviewParticipantDto>? Participants
+);

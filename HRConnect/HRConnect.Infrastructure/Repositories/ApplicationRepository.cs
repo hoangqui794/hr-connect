@@ -25,6 +25,10 @@ public class ApplicationRepository : IApplicationRepository
     public async Task<JobApplication?> GetByIdAsync(Guid applicationId, CancellationToken cancellationToken = default)
     {
         return await _context.Applications
+            .Include(a => a.Job)
+                .ThenInclude(j => j.Company)
+            .Include(a => a.Candidate)
+            .Include(a => a.Interviews)
             .Include(a => a.Attribution)
             .Include(a => a.Submission)
             .FirstOrDefaultAsync(a => a.ApplicationId == applicationId, cancellationToken);
