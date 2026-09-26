@@ -2,6 +2,7 @@ using System;
 using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Offers.Queries.GetOffers;
+using HRConnect.Application.Features.Offers.Queries.GetOfferDetail;
 using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -82,6 +83,64 @@ public static class OfferEndpoints
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden);
+
+        // O02: GET /api/v1/offers/{offerId:guid}
+        group.MapGet("/{offerId:guid}", async (
+            Guid offerId,
+            [FromServices] ISender sender = null!,
+            ClaimsPrincipal user = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var isClient = PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isCandidate = PermissionAuthorization.HasPermission(user, ViewOwnPermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!isClient && !isInternal && !isCandidate && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(ManagePermission);
+            }
+
+            try
+            {
+                var query = new GetOfferDetailQuery(
+                    offerId,
+                    userId.Value,
+                    IsClientCompanyUser: isClient && !isInternal && !isAdmin,
+                    IsInternalHrOrAdmin: isInternal || isAdmin,
+                    IsCandidate: isCandidate && !isClient && !isInternal && !isAdmin
+                );
+
+                var response = await sender.Send(query, cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetOfferDetail")
+        .WithSummary("Lấy thông tin chi tiết một lời mời nhận việc (Offer)")
+        .WithDescription("Yêu cầu quyền offer.view_company (Client Company), offer.view_own (Candidate - chỉ xem được offer đã gửi), hoặc offer.manage (Internal HR/Admin). Trả về thông tin đầy đủ về mức đãi ngộ, phê duyệt, tài liệu đính kèm và hợp đồng nhận việc.")
+        .Produces<GetOfferDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
 
         return app;
     }
