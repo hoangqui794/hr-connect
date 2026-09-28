@@ -1,6 +1,7 @@
 using System;
 using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Offers.Commands.CreateOfferDraft;
 using HRConnect.Application.Features.Recruitment.Commands.DecideBackupApplication;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplications;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
@@ -16,6 +17,8 @@ public static class RecruitmentEndpoints
     private const string ViewCompanyPermission = "application.view_company";
     private const string ViewAllPermission = "application.view";
     private const string DecideBackupPermission = "application.decide_backup";
+    private const string CreateOfferPermission = "offer.create";
+    private const string ManageOfferPermission = "offer.manage";
 
     public static IEndpointRouteBuilder MapRecruitmentEndpoints(this IEndpointRouteBuilder app)
     {
@@ -268,6 +271,74 @@ public static class RecruitmentEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
+        // O03: POST /api/v1/recruitment/applications/{applicationId:guid}/offers
+        group.MapPost("/applications/{applicationId:guid}/offers", async (
+            Guid applicationId,
+            [FromBody] CreateOfferDraftRequest request,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var isClient = PermissionAuthorization.HasPermission(user, CreateOfferPermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, ManageOfferPermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!isClient && !isInternal && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(CreateOfferPermission);
+            }
+
+            try
+            {
+                var command = new CreateOfferDraftCommand(
+                    ApplicationId: applicationId,
+                    Salary: request.Salary,
+                    CurrencyCode: request.CurrencyCode,
+                    StartDate: request.StartDate,
+                    ExpiryDate: request.ExpiryDate,
+                    OfferDocumentUrl: request.OfferDocumentUrl,
+                    ConcurrencyToken: request.ConcurrencyToken,
+                    CurrentUserId: userId.Value,
+                    IsClientCompanyUser: isClient && !isInternal && !isAdmin,
+                    IsInternalHrOrAdmin: isInternal || isAdmin
+                );
+
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Created($"/api/v1/offers/{response.OfferId}", response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("CreateOfferDraft")
+        .WithSummary("Tạo thư mời nhận việc bản nháp (Create Offer Draft)")
+        .WithDescription("Dành cho Client Company HR / Admin (offer.create) hoặc Internal HR / Admin (offer.manage). Tạo bản nháp thư mời nhận việc cho ứng viên khi hồ sơ đang ở trạng thái OFFER_PENDING hoặc hoàn thành các vòng phỏng vấn.")
+        .Produces<CreateOfferDraftResponse>(StatusCodes.Status201Created)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -290,5 +361,15 @@ public class DecideBackupApplicationRequest
     public string Decision { get; set; } = string.Empty;
     public string? Reason { get; set; }
     public string? Note { get; set; }
+    public Guid? ConcurrencyToken { get; set; }
+}
+
+public class CreateOfferDraftRequest
+{
+    public decimal? Salary { get; set; }
+    public string? CurrencyCode { get; set; }
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? ExpiryDate { get; set; }
+    public string? OfferDocumentUrl { get; set; }
     public Guid? ConcurrencyToken { get; set; }
 }

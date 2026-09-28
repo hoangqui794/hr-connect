@@ -112,6 +112,26 @@ public class OfferRepository : IOfferRepository
             .FirstOrDefaultAsync(o => o.OfferId == offerId, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Offer>> GetByApplicationIdAsync(Guid applicationId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Offers
+            .Where(o => o.ApplicationId == applicationId)
+            .OrderByDescending(o => o.OfferVersion)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<Offer?> GetByIdWithApplicationAsync(Guid offerId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Offers
+            .Include(o => o.Application)
+                .ThenInclude(a => a.Job)
+                    .ThenInclude(j => j.Company)
+            .Include(o => o.Application)
+                .ThenInclude(a => a.Candidate)
+                    .ThenInclude(c => c.User)
+            .FirstOrDefaultAsync(o => o.OfferId == offerId, cancellationToken);
+    }
+
     public async Task AddAsync(Offer offer, CancellationToken cancellationToken = default)
     {
         await _context.Offers.AddAsync(offer, cancellationToken);
