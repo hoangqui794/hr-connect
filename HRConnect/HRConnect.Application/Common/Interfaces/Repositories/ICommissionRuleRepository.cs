@@ -4,6 +4,10 @@ namespace HRConnect.Application.Common.Interfaces.Repositories;
 
 public interface ICommissionRuleRepository
 {
+    Task<CommissionRule?> GetByIdAsync(
+        Guid commissionRuleId,
+        CancellationToken cancellationToken = default);
+
     Task<(IReadOnlyList<CommissionRule> Items, int Total)> GetListAsync(
         Guid? serviceTypeId,
         string? milestoneType,
