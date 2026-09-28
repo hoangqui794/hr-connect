@@ -13,6 +13,24 @@ GET {{baseUrl}}/api/v1/admin/commission-rules/{{commissionRuleId}}
 Authorization: Bearer {{adminToken}}
 Accept: application/json
 
+### MF-01: Platform Admin cập nhật cấu hình của rule; Service Type và milestone không đổi.
+PUT {{baseUrl}}/api/v1/admin/commission-rules/{{commissionRuleId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "rateType": "PERCENT",
+  "rateValue": 10,
+  "warrantyRequired": false,
+  "effectiveFrom": "2026-09-26T00:00:00Z",
+  "effectiveTo": null
+}
+
+### MF-01: Platform Admin ngừng hiệu lực rule mà không xóa dữ liệu lịch sử.
+PATCH {{baseUrl}}/api/v1/admin/commission-rules/{{commissionRuleId}}/deactivate
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
 ### Filter example: only active HEADHUNT_COD rules at the probation milestone.
 GET {{baseUrl}}/api/v1/admin/commission-rules?serviceTypeId={{headHuntServiceTypeId}}&milestoneType=PROBATION_PASSED&isActive=true
 Authorization: Bearer {{adminToken}}

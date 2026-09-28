@@ -20,6 +20,14 @@ public sealed class CommissionRuleRepository : ICommissionRuleRepository
             .Include(rule => rule.MilestoneTypeNavigation)
             .FirstOrDefaultAsync(rule => rule.CommissionRuleId == commissionRuleId, cancellationToken);
 
+    public Task<CommissionRule?> GetForUpdateAsync(
+        Guid commissionRuleId,
+        CancellationToken cancellationToken = default) =>
+        _context.CommissionRules
+            .Include(rule => rule.ServiceType)
+            .Include(rule => rule.MilestoneTypeNavigation)
+            .FirstOrDefaultAsync(rule => rule.CommissionRuleId == commissionRuleId, cancellationToken);
+
     public async Task<(IReadOnlyList<CommissionRule> Items, int Total)> GetListAsync(
         Guid? serviceTypeId,
         string? milestoneType,
@@ -69,6 +77,20 @@ public sealed class CommissionRuleRepository : ICommissionRuleRepository
             rule.ServiceTypeId == serviceTypeId &&
             rule.MilestoneType == milestoneType &&
             rule.EffectiveFrom == effectiveFrom &&
+            rule.IsActive,
+            cancellationToken);
+
+    public Task<bool> ExistsAnotherActiveAtEffectiveFromAsync(
+        Guid serviceTypeId,
+        string milestoneType,
+        DateTime effectiveFrom,
+        Guid commissionRuleId,
+        CancellationToken cancellationToken = default) =>
+        _context.CommissionRules.AsNoTracking().AnyAsync(rule =>
+            rule.ServiceTypeId == serviceTypeId &&
+            rule.MilestoneType == milestoneType &&
+            rule.EffectiveFrom == effectiveFrom &&
+            rule.CommissionRuleId != commissionRuleId &&
             rule.IsActive,
             cancellationToken);
 
