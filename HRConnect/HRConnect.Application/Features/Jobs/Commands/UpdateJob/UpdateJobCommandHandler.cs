@@ -16,6 +16,23 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
     {
         var job = await JobHandlerGuards.GetOwnedJobAsync(_jobs, _members, request.JobId, request.UserId, ct);
         JobHandlerGuards.RequireStatus(job, JobStatuses.Draft, JobStatuses.Rejected);
+
+        var isChangingServiceType = job.ServiceTypeId != request.ServiceTypeId;
+        if (isChangingServiceType)
+        {
+            if (!string.Equals(job.Status, JobStatuses.Draft, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ConflictException(
+                    "Chỉ được thay đổi loại dịch vụ khi Job đang ở trạng thái DRAFT.");
+            }
+
+            if (await _jobs.HasSubmissionsOrApplicationsAsync(job.JobId, ct))
+            {
+                throw new ConflictException(
+                    "Không thể thay đổi loại dịch vụ vì Job đã có hồ sơ ứng tuyển hoặc lượt giới thiệu.");
+            }
+        }
+
         if (!await _jobs.IsServiceTypeActiveAsync(request.ServiceTypeId, ct))
             throw new BadRequestException("Loại dịch vụ không tồn tại hoặc đã ngừng hoạt động.");
         var skillIds = request.Skills.Select(x => x.SkillId).Distinct().ToList();

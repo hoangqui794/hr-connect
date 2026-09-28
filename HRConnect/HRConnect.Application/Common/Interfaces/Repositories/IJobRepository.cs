@@ -14,6 +14,8 @@ public interface IJobRepository
 
     Task<Job?> GetByIdAsync(Guid jobId, CancellationToken cancellationToken = default);
 
+    Task<bool> HasSubmissionsOrApplicationsAsync(Guid jobId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Job>> GetByCompanyIdAsync(Guid companyId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Job>> GetPendingReviewAsync(CancellationToken cancellationToken = default);

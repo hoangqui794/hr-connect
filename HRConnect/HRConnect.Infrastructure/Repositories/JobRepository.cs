@@ -50,6 +50,20 @@ public class JobRepository : IJobRepository
             .Include(job => job.JobStatusHistories)
             .FirstOrDefaultAsync(job => job.JobId == jobId, cancellationToken);
 
+    public async Task<bool> HasSubmissionsOrApplicationsAsync(
+        Guid jobId,
+        CancellationToken cancellationToken = default)
+    {
+        if (await _context.Submissions.AsNoTracking()
+                .AnyAsync(submission => submission.JobId == jobId, cancellationToken))
+        {
+            return true;
+        }
+
+        return await _context.Applications.AsNoTracking()
+            .AnyAsync(application => application.JobId == jobId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Job>> GetByCompanyIdAsync(Guid companyId, CancellationToken cancellationToken = default) =>
         await _context.Jobs.AsNoTracking()
             .Include(job => job.ServiceType)
