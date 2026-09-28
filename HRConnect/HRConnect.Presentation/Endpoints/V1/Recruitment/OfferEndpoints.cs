@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Offers.Commands.RespondToOffer;
 using HRConnect.Application.Features.Offers.Commands.SendOffer;
 using HRConnect.Application.Features.Offers.Commands.UpdateOfferDraft;
+using HRConnect.Application.Features.Offers.Commands.WithdrawOffer;
 using HRConnect.Application.Features.Offers.Queries.GetOffers;
 using HRConnect.Application.Features.Offers.Queries.GetOfferDetail;
 using HRConnect.Presentation.Authorization;
@@ -339,6 +340,70 @@ public static class OfferEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
+        // O07: POST /api/v1/offers/{offerId:guid}/withdraw
+        group.MapPost("/{offerId:guid}/withdraw", async (
+            Guid offerId,
+            [FromBody] WithdrawOfferRequest request,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var isClient = PermissionAuthorization.HasPermission(user, WithdrawPermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!isClient && !isInternal && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(WithdrawPermission);
+            }
+
+            try
+            {
+                var command = new WithdrawOfferCommand(
+                    OfferId: offerId,
+                    Reason: request.Reason,
+                    ConcurrencyToken: request.ConcurrencyToken,
+                    CurrentUserId: userId.Value,
+                    IsClientCompanyUser: isClient && !isInternal && !isAdmin,
+                    IsInternalHrOrAdmin: isInternal || isAdmin
+                );
+
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("WithdrawOffer")
+        .WithSummary("Thu hồi thư mời nhận việc (Withdraw Offer)")
+        .WithDescription("Dành cho Client Company HR / Admin (offer.withdraw) hoặc Internal HR / Admin (offer.manage). Thu hồi một offer chưa được chấp nhận (DRAFT hoặc SENT), trạng thái hồ sơ ứng tuyển được giữ ở OFFER_PENDING để có thể phát hành offer thay thế.")
+        .Produces<WithdrawOfferResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -371,5 +436,11 @@ public class RespondToOfferRequest
 {
     public string Response { get; set; } = string.Empty;
     public string? DeclineReason { get; set; }
+    public Guid? ConcurrencyToken { get; set; }
+}
+
+public class WithdrawOfferRequest
+{
+    public string Reason { get; set; } = string.Empty;
     public Guid? ConcurrencyToken { get; set; }
 }
