@@ -53,6 +53,58 @@ public class JobManagementCommandHandlerTests
     }
 
     [Fact]
+    public async Task Update_ShouldAllowServiceTypeChangeForDraftWithoutCandidateActivity()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        var newServiceTypeId = Guid.NewGuid();
+        _jobs.Setup(x => x.HasSubmissionsOrApplicationsAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _jobs.Setup(x => x.IsServiceTypeActiveAsync(newServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var result = await new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
+        {
+            JobId = job.JobId, UserId = user, ServiceTypeId = newServiceTypeId,
+            Title = "Draft job", CurrencyCode = "VND", Quantity = 1, Visibility = "PUBLIC"
+        }, default);
+
+        result.Data.ServiceTypeId.Should().Be(newServiceTypeId);
+        _jobs.Verify(x => x.HasSubmissionsOrApplicationsAsync(job.JobId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Update_ShouldRejectServiceTypeChangeForRejectedJob()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Rejected);
+
+        var action = () => new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
+        {
+            JobId = job.JobId, UserId = user, ServiceTypeId = Guid.NewGuid(),
+            Title = "Rejected job", CurrencyCode = "VND", Quantity = 1, Visibility = "PUBLIC"
+        }, default);
+
+        await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*DRAFT*");
+        _jobs.Verify(x => x.HasSubmissionsOrApplicationsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Update_ShouldRejectServiceTypeChangeWhenDraftHasCandidateActivity()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        _jobs.Setup(x => x.HasSubmissionsOrApplicationsAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var action = () => new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
+        {
+            JobId = job.JobId, UserId = user, ServiceTypeId = Guid.NewGuid(),
+            Title = "Draft job", CurrencyCode = "VND", Quantity = 1, Visibility = "PUBLIC"
+        }, default);
+
+        await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*hồ sơ ứng tuyển* hoặc *lượt giới thiệu*");
+        _jobs.Verify(x => x.IsServiceTypeActiveAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Submit_ShouldMoveCompleteOwnedDraftToPendingReview()
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
