@@ -19,7 +19,7 @@ public class CreateCommissionRuleCommandValidatorTests
         });
 
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(error => error.ErrorMessage.Contains("cannot exceed 100"));
+        result.Errors.Should().Contain(error => error.ErrorMessage == "Giá trị hoa hồng theo phần trăm không được vượt quá 100.");
     }
 
     [Fact]
@@ -36,6 +36,6 @@ public class CreateCommissionRuleCommandValidatorTests
         });
 
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(error => error.ErrorMessage.Contains("later than effective from"));
+        result.Errors.Should().Contain(error => error.ErrorMessage == "Thời điểm kết thúc phải sau thời điểm áp dụng.");
     }
 }
