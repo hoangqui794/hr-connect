@@ -11,6 +11,15 @@ public sealed class CommissionRuleRepository : ICommissionRuleRepository
 
     public CommissionRuleRepository(ApplicationDbContext context) => _context = context;
 
+    public Task<CommissionRule?> GetByIdAsync(
+        Guid commissionRuleId,
+        CancellationToken cancellationToken = default) =>
+        _context.CommissionRules
+            .AsNoTracking()
+            .Include(rule => rule.ServiceType)
+            .Include(rule => rule.MilestoneTypeNavigation)
+            .FirstOrDefaultAsync(rule => rule.CommissionRuleId == commissionRuleId, cancellationToken);
+
     public async Task<(IReadOnlyList<CommissionRule> Items, int Total)> GetListAsync(
         Guid? serviceTypeId,
         string? milestoneType,

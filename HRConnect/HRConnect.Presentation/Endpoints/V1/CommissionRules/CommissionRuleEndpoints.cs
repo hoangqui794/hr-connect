@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.CommissionRules.Commands.CreateCommissionRule;
+using HRConnect.Application.Features.CommissionRules.Queries.GetCommissionRuleDetail;
 using HRConnect.Application.Features.CommissionRules.Queries.GetCommissionRules;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -44,6 +45,39 @@ public static class CommissionRuleEndpoints
         .Produces<GetCommissionRulesResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden);
+
+        group.MapGet("/{commissionRuleId:guid}", async (
+            Guid commissionRuleId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken = default) =>
+        {
+            if (!HasAdminAccess(user))
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Ban khong co quyen thuc hien thao tac nay. Yeu cau quyen quan tri vien."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            try
+            {
+                return Results.Ok(await sender.Send(
+                    new GetCommissionRuleDetailQuery(commissionRuleId), cancellationToken));
+            }
+            catch (NotFoundException exception)
+            {
+                return Results.NotFound(new { success = false, message = exception.Message });
+            }
+        })
+        .WithName("GetCommissionRuleDetail")
+        .WithSummary("Lấy chi tiết quy tắc hoa hồng")
+        .WithDescription("Admin xem đầy đủ cấu hình của một quy tắc hoa hồng theo ID.")
+        .Produces<GetCommissionRuleDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
 
         group.MapPost("", async (
             [FromBody] CreateCommissionRuleCommand command,
