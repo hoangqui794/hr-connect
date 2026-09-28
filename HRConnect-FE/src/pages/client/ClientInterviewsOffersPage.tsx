@@ -635,11 +635,11 @@ export const ClientInterviewsOffersPage: React.FC = () => {
     <div style={{ padding: '0 4px' }}>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-          <CalendarOutlined style={{ color: '#0284c7', marginRight: 10 }} />
+        <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800, letterSpacing: '-0.02em' }}>
+          <CalendarOutlined style={{ color: '#38bdf8', marginRight: 10 }} />
           Quản lý Phỏng vấn &amp; Thư mời làm việc
         </Title>
-        <Text type="secondary" style={{ fontSize: 13 }}>
+        <Text style={{ fontSize: 13, color: '#94a3b8' }}>
           Theo dõi lịch phỏng vấn, kết quả và trạng thái Offer Letter của ứng viên ứng tuyển tại {user?.company || 'doanh nghiệp'}.
         </Text>
       </div>
@@ -650,57 +650,55 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           {
             label: 'Lịch phỏng vấn sắp tới',
             value: interviewCount,
-            color: '#0284c7',
-            bg: '#f0f9ff',
+            color: '#38bdf8',
             icon: <CalendarOutlined />,
           },
           {
             label: 'Đã phát hành Offer',
             value: offerCount,
-            color: '#059669',
-            bg: '#f0fdf4',
+            color: '#34d399',
             icon: <FileDoneOutlined />,
           },
           {
             label: 'Ứng viên đã Onboard',
             value: DEMO_OFFERS.filter((o) => o.status === 'ONBOARDED').length,
-            color: '#065f46',
-            bg: '#ecfdf5',
+            color: '#60a5fa',
             icon: <CheckCircleOutlined />,
           },
           {
             label: 'Chờ phản hồi Offer',
             value: DEMO_OFFERS.filter((o) => o.status === 'PENDING' || o.status === 'NEGOTIATING').length,
-            color: '#f59e0b',
-            bg: '#fffbeb',
+            color: '#fbbf24',
             icon: <ClockCircleOutlined />,
           },
         ].map((s) => (
           <Col key={s.label} xs={12} sm={6}>
-            <Card
+            <div
               style={{
-                borderRadius: 12,
-                border: `1px solid ${s.color}25`,
-                background: s.bg,
+                borderRadius: 16,
+                border: '1px solid rgba(51, 65, 85, 0.65)',
+                background: 'rgba(15, 23, 42, 0.65)',
+                backdropFilter: 'blur(12px)',
+                padding: '16px 20px',
               }}
-              styles={{ body: { padding: '16px 20px' } }}
             >
-              <div style={{ fontSize: 22, color: s.color, marginBottom: 4 }}>{s.icon}</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
-              <div style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>{s.label}</div>
-            </Card>
+              <div style={{ fontSize: 22, color: s.color, marginBottom: 6 }}>{s.icon}</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#f8fafc', lineHeight: 1, fontFamily: 'monospace' }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
+            </div>
           </Col>
         ))}
       </Row>
 
       {/* Tabs */}
-      <Card
+      <div
         style={{
-          borderRadius: 14,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+          borderRadius: 16,
+          border: '1px solid rgba(51, 65, 85, 0.65)',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(12px)',
+          padding: '16px 20px',
         }}
-        styles={{ body: { padding: '16px 20px' } }}
       >
         <Tabs
           defaultActiveKey="interviews"
@@ -711,7 +709,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                 <Space>
                   <CalendarOutlined />
                   Lịch phỏng vấn
-                  <Badge count={interviewCount} style={{ backgroundColor: '#0284c7' }} />
+                  <Badge count={interviewCount} style={{ backgroundColor: '#2563eb' }} />
                 </Space>
               ),
               children: <InterviewsTab />,
@@ -729,7 +727,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             },
           ]}
         />
-      </Card>
+      </div>
     </div>
   );
 };

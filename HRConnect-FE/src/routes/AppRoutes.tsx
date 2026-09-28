@@ -52,6 +52,12 @@ const CandidateDashboardPage = React.lazy(() =>
 const JobBoard = React.lazy(() =>
   import('@/features/jobs/JobBoard').then((m: any) => ({ default: m.default || m.JobBoard }))
 );
+const JobSearchPage = React.lazy(() =>
+  import('@/pages/JobSearchPage').then((m: any) => ({ default: m.default || m.JobSearchPage }))
+);
+const JobDetailPage = React.lazy(() =>
+  import('@/pages/JobDetailPage').then((m: any) => ({ default: m.default || m.JobDetailPage }))
+);
 // CreateJobWizard is the production wizard for MF-01 | SCR-CLI-01
 const CreateJobWizard = React.lazy(() =>
   import('@/features/jobs/CreateJobWizard').then((m: any) => ({ default: m.default || m.CreateJobWizard }))
@@ -322,4 +328,6 @@ export const AppRoutes = {
   AffiliateLayout,
   AffiliateSubmissionsPage,
   AffiliateCommissionsPage,
+  JobDetailPage,
+  JobSearchPage,
 } as const;

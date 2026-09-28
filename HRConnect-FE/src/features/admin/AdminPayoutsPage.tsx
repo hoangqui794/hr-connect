@@ -433,11 +433,11 @@ export const AdminPayoutsPage: React.FC = () => {
     <div style={{ padding: '0 4px' }}>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-          <DollarOutlined style={{ color: '#059669', marginRight: 10 }} />
+        <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800, letterSpacing: '-0.02em' }}>
+          <DollarOutlined style={{ color: '#10b981', marginRight: 10 }} />
           Quản trị Tài chính Nền tảng & Duyệt Chi trả Hoa hồng
         </Title>
-        <Text type="secondary" style={{ fontSize: 13 }}>
+        <Text style={{ fontSize: 13, color: '#94a3b8' }}>
           Cổng giám sát doanh thu nền tảng, đối soát tỷ lệ chia sẻ hoa hồng và phê duyệt lệnh chi trả (Payout Execution) cho đối tác CTV sau khi hoàn thành bảo hành 60 ngày.
         </Text>
       </div>
@@ -445,48 +445,76 @@ export const AdminPayoutsPage: React.FC = () => {
       {/* Financial KPIs */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
         <Col xs={12} sm={6}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title="Tổng GMV Tuyển dụng"
-              value={1850000000}
-              formatter={(v) => `${Number(v).toLocaleString('vi-VN')} đ`}
-              valueStyle={{ color: '#0f172a', fontWeight: 800, fontSize: 18 }}
-              prefix={<DollarOutlined style={{ color: '#0284c7' }} />}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Tổng GMV Tuyển dụng
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#f8fafc', marginTop: 6, fontFamily: 'monospace' }}>
+              1.850.000.000 đ
+            </div>
+          </div>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title="Doanh thu Nền tảng (20%)"
-              value={370000000}
-              formatter={(v) => `${Number(v).toLocaleString('vi-VN')} đ`}
-              valueStyle={{ color: '#0284c7', fontWeight: 800, fontSize: 18 }}
-              prefix={<SafetyCertificateOutlined style={{ color: '#0284c7' }} />}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Doanh thu Nền tảng (20%)
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#38bdf8', marginTop: 6, fontFamily: 'monospace' }}>
+              370.000.000 đ
+            </div>
+          </div>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title="Hoa hồng đã chi trả CTV"
-              value={totalPaidAmount + 1105000000}
-              formatter={(v) => `${Number(v).toLocaleString('vi-VN')} đ`}
-              valueStyle={{ color: '#16a34a', fontWeight: 800, fontSize: 18 }}
-              prefix={<CheckCircleOutlined style={{ color: '#16a34a' }} />}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Hoa hồng đã chi trả CTV
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#34d399', marginTop: 6, fontFamily: 'monospace' }}>
+              {(totalPaidAmount + 1105000000).toLocaleString('vi-VN')} đ
+            </div>
+          </div>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: '#f0fdf4' }}>
-            <Statistic
-              title="Đến hạn Payout chờ duyệt"
-              value={totalPayableAmount}
-              formatter={(v) => `${Number(v).toLocaleString('vi-VN')} đ`}
-              valueStyle={{ color: '#059669', fontWeight: 800, fontSize: 18 }}
-              prefix={<Badge count={payablePayouts.length} style={{ backgroundColor: '#059669' }} />}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Đến hạn Payout chờ duyệt
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#fbbf24', marginTop: 6, fontFamily: 'monospace' }}>
+              {totalPayableAmount.toLocaleString('vi-VN')} đ
+            </div>
+          </div>
         </Col>
       </Row>
 
@@ -497,17 +525,19 @@ export const AdminPayoutsPage: React.FC = () => {
             key: 'payouts',
             label: (
               <Space>
-                <SendOutlined style={{ color: '#059669' }} />
+                <SendOutlined style={{ color: '#10b981' }} />
                 <span>Duyệt chi trả hoa hồng (Payout Execution)</span>
-                <Badge count={payablePayouts.length} style={{ backgroundColor: '#059669' }} />
+                <Badge count={payablePayouts.length} style={{ backgroundColor: '#10b981' }} />
               </Space>
             ),
             children: (
-              <Card
+              <div
                 style={{
-                  borderRadius: 12,
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                  borderRadius: 16,
+                  border: '1px solid rgba(51, 65, 85, 0.65)',
+                  background: 'rgba(15, 23, 42, 0.65)',
+                  backdropFilter: 'blur(12px)',
+                  padding: '20px',
                 }}
               >
                 <div
@@ -556,23 +586,25 @@ export const AdminPayoutsPage: React.FC = () => {
                   pagination={{ pageSize: 8 }}
                   size="middle"
                 />
-              </Card>
+              </div>
             ),
           },
           {
             key: 'revenue',
             label: (
               <Space>
-                <AuditOutlined style={{ color: '#0284c7' }} />
+                <AuditOutlined style={{ color: '#38bdf8' }} />
                 <span>Báo cáo Doanh thu & Dòng tiền Nền tảng (Revenue Margin)</span>
               </Space>
             ),
             children: (
-              <Card
+              <div
                 style={{
-                  borderRadius: 12,
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                  borderRadius: 16,
+                  border: '1px solid rgba(51, 65, 85, 0.65)',
+                  background: 'rgba(15, 23, 42, 0.65)',
+                  backdropFilter: 'blur(12px)',
+                  padding: '20px',
                 }}
               >
                 <Alert
@@ -580,7 +612,7 @@ export const AdminPayoutsPage: React.FC = () => {
                   showIcon
                   message="Mô hình Phân bổ Doanh thu Tuyển dụng (Revenue Split Model)"
                   description="Đối với gói COD tuyển dụng thành công: 80% hoa hồng được phân bổ cho CTV/Headhunter giới thiệu ứng viên đạt mốc 60 ngày; 20% phí nền tảng giữ lại cho vận hành, kiểm định chất lượng và bảo chứng rủi ro."
-                  style={{ marginBottom: 16, borderRadius: 8 }}
+                  style={{ marginBottom: 16, borderRadius: 12, background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#cbd5e1' }}
                 />
 
                 <Table
@@ -589,7 +621,7 @@ export const AdminPayoutsPage: React.FC = () => {
                   pagination={false}
                   size="middle"
                 />
-              </Card>
+              </div>
             ),
           },
         ]}

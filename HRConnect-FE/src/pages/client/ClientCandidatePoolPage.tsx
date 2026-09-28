@@ -38,6 +38,12 @@ import type {
   InterviewResult,
   AiScoreTier,
 } from '@/types/client';
+import { ScoreTierTag } from '@/components/common/ScoreTierTag';
+import { CandidateHighlightPills } from '@/components/common/CandidateHighlightPills';
+import { AntiDuplicationBadge } from '@/components/common/AntiDuplicationBadge';
+import { PageHeaderB2B } from '@/components/common/PageHeaderB2B';
+import { RoleBadge } from '@/components/common/RoleBadge';
+import { UserRole } from '@/types/roles';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -52,55 +58,28 @@ export const formatVND = (amount?: number): string => {
 const renderStatusTag = (status: CandidatePipelineStatus) => {
   switch (status) {
     case 'NEW_SUBMISSION':
-      return <Tag color="blue">Mới nộp hồ sơ</Tag>;
+      return <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/25">Mới nộp hồ sơ</span>;
     case 'AI_SCREENED':
-      return <Tag color="cyan">Đã lọc sơ bộ AI</Tag>;
+      return <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">Đã lọc sơ bộ AI</span>;
     case 'INTERVIEW_SCHEDULED':
-      return <Tag color="purple">Đã lên lịch PV</Tag>;
+      return <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/25">Đã lên lịch PV</span>;
     case 'OFFER_SENT':
-      return <Tag color="gold">Đã gửi Offer</Tag>;
+      return <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/25">Đã gửi Offer</span>;
     case 'HIRED':
-      return <Tag color="green">Đã trúng tuyển</Tag>;
+      return <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">Đã trúng tuyển</span>;
     case 'REJECTED':
-      return <Tag color="default">Đã từ chối</Tag>;
+      return <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Đã từ chối</span>;
     default:
-      return <Tag>{status}</Tag>;
+      return <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">{status}</span>;
   }
 };
 
-// ─── 3-Color AI Score Tier Tag Renderer ────────────────────────────────────────
-export const renderAiMatchTag = (score?: number, tier?: AiScoreTier) => {
+// ─── 4-Tier Match Score Badge ──────────────────────────────────────────────────
+export const renderAiMatchTag = (score?: number, _tier?: AiScoreTier) => {
   if (score === undefined || score === null) {
-    return <Tag color="default">Chưa có điểm</Tag>;
+    return <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Chưa có điểm</span>;
   }
-
-  let color = '#ea580c'; // Cam: < 70%
-  let label = 'Cần cân nhắc';
-
-  if (score >= 85 || tier === 'EXCELLENT') {
-    color = '#16a34a'; // Xanh lá: >= 85%
-    label = 'Phù hợp xuất sắc';
-  } else if (score >= 70 || tier === 'HIGH' || tier === 'MODERATE') {
-    color = '#0284c7'; // Xanh dương: 70% - 84%
-    label = 'Phù hợp cao';
-  }
-
-  return (
-    <Tag
-      style={{
-        color: '#ffffff',
-        backgroundColor: color,
-        borderColor: color,
-        fontWeight: 600,
-        fontSize: 12,
-        padding: '2px 8px',
-        borderRadius: 4,
-      }}
-    >
-      <RobotOutlined style={{ marginRight: 4 }} />
-      {score}% • {label}
-    </Tag>
-  );
+  return <ScoreTierTag score={score} showScore />;
 };
 
 export const ClientCandidatePoolPage: React.FC = () => {
@@ -351,63 +330,78 @@ export const ClientCandidatePoolPage: React.FC = () => {
   // Columns definition
   const columns: ColumnsType<CandidateApplicationDTO> = [
     {
-      title: 'Họ tên & Hồ sơ hiện tại',
+      title: 'ỨNG VIÊN & THÔNG SỐ HIGHLIGHT',
       key: 'candidateInfo',
-      minWidth: 260,
+      minWidth: 320,
       render: (_: any, record: CandidateApplicationDTO) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Avatar src={record.avatar} size={42} style={{ border: '2px solid #e2e8f0' }}>
-            {record.candidateName.charAt(0)}
-          </Avatar>
+        <div className="space-y-2 py-1">
+          <div className="flex items-center gap-3">
+            <Avatar src={record.avatar} size={40} className="border border-slate-700 bg-blue-600 font-bold shrink-0">
+              {record.candidateName.charAt(0)}
+            </Avatar>
+            <div className="min-w-0">
+              <div className="font-bold text-sm text-slate-100 hover:text-blue-400 cursor-pointer" onClick={() => handleOpenCvDrawer(record)}>
+                {record.candidateName}
+              </div>
+              <div className="text-xs text-slate-400">
+                {record.currentRole} • {record.currentCompany}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Highlight Data-Pills */}
+          <CandidateHighlightPills
+            yearsOfExperience={record.yoe}
+            expectedSalary={record.expectedSalary}
+            language="Tiếng Anh"
+            availabilityDate={record.submittedAt}
+          />
+
+          {/* Anti-Duplication First-Submission Badge */}
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a' }}>
-              {record.candidateName}
-            </div>
-            <div style={{ fontSize: 12, color: '#475569' }}>
-              {record.currentRole} • {record.currentCompany}
-            </div>
-            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-              Kinh nghiệm: <strong>{record.yoe} năm</strong>
-            </div>
+            <AntiDuplicationBadge
+              timestamp={record.submittedAt || '2025-02-14T08:30:00Z'}
+              affiliateName={record.currentCompany ? `Nộp qua hệ thống` : undefined}
+            />
           </div>
         </div>
       ),
     },
     {
-      title: 'Vị trí ứng tuyển',
+      title: 'VỊ TRÍ ỨNG TUYỂN',
       dataIndex: 'jobTitle',
       key: 'jobTitle',
-      minWidth: 240,
+      minWidth: 200,
       render: (title: string) => (
-        <span style={{ fontWeight: 500, color: '#2563eb' }}>{title}</span>
+        <span className="font-medium text-sm text-blue-400">{title}</span>
       ),
     },
     {
-      title: 'Lương mong muốn',
+      title: 'MỨC LƯƠNG KỲ VỌNG',
       dataIndex: 'expectedSalary',
       key: 'expectedSalary',
-      minWidth: 170,
+      minWidth: 160,
       render: (salary: number) => (
-        <span style={{ fontWeight: 600, color: '#0f172a' }}>{formatVND(salary)}</span>
+        <span className="font-mono font-bold text-emerald-400 text-sm">{formatVND(salary)}</span>
       ),
     },
     {
-      title: 'Đánh giá & Điểm AI',
+      title: 'ĐÁNH GIÁ & ĐIỂM AI MATCH',
       key: 'aiScore',
-      minWidth: 200,
+      minWidth: 180,
       sorter: (a, b) => a.aiMatchScore - b.aiMatchScore,
       render: (_: any, record: CandidateApplicationDTO) =>
         renderAiMatchTag(record.aiMatchScore, record.aiScoreTier),
     },
     {
-      title: 'Trạng thái',
+      title: 'TRẠNG THÁI',
       dataIndex: 'status',
       key: 'status',
-      minWidth: 160,
+      minWidth: 150,
       render: (status: CandidatePipelineStatus) => renderStatusTag(status),
     },
     {
-      title: 'Thao tác nhanh',
+      title: 'THAO TÁC',
       key: 'actions',
       minWidth: 190,
       render: (_: any, record: CandidateApplicationDTO) => (
@@ -419,6 +413,7 @@ export const ClientCandidatePoolPage: React.FC = () => {
               size="small"
               icon={<EyeOutlined />}
               onClick={() => handleOpenCvDrawer(record)}
+              className="rounded-lg text-xs"
             >
               Chi tiết CV
             </Button>
@@ -427,16 +422,18 @@ export const ClientCandidatePoolPage: React.FC = () => {
           <Tooltip title="Lên lịch phỏng vấn [📅]">
             <Button
               size="small"
-              icon={<CalendarOutlined style={{ color: '#2563eb' }} />}
+              icon={<CalendarOutlined className="text-blue-400" />}
               onClick={() => handleOpenScheduleModal(record)}
+              className="rounded-lg bg-slate-900 border-slate-700"
             />
           </Tooltip>
 
           <Tooltip title="Phát hành Offer [✉️]">
             <Button
               size="small"
-              icon={<MailOutlined style={{ color: '#16a34a' }} />}
+              icon={<MailOutlined className="text-emerald-400" />}
               onClick={() => handleOpenOfferModal(record)}
+              className="rounded-lg bg-slate-900 border-slate-700"
             />
           </Tooltip>
 
@@ -448,7 +445,7 @@ export const ClientCandidatePoolPage: React.FC = () => {
               okText="Từ chối"
               cancelText="Hủy"
             >
-              <Button size="small" danger icon={<CloseCircleOutlined />} />
+              <Button size="small" danger icon={<CloseCircleOutlined />} className="rounded-lg" />
             </Popconfirm>
           )}
         </Space>
@@ -457,59 +454,60 @@ export const ClientCandidatePoolPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+    <div className="space-y-6">
       {/* ─── PAGE HEADER ──────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 20 }}>
-        <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-          Phễu Quản lý Ứng viên (Candidate Pipeline)
-        </Title>
-        <Text style={{ color: '#64748b' }}>
-          Doanh nghiệp: <strong style={{ color: '#0f172a' }}>{user?.companyName || (user as any)?.company || user?.name || 'TechCorp Việt Nam'}</strong> • Đánh giá AI Matching, Lên lịch phỏng vấn & Phát hành Offer
-        </Text>
-      </div>
+      <PageHeaderB2B
+        title="Phễu Quản Lý Ứng Viên (Candidate Pipeline)"
+        badge={
+          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/25">
+            🏢 {user?.companyName || (user as any)?.company || user?.name || 'TechCorp Việt Nam'}
+          </span>
+        }
+        subtitle="Theo dõi phân loại ứng viên, điểm số AI Sentence-BERT, lịch phỏng vấn Google Meet và tiến độ phát hành Offer."
+      />
 
       {/* ─── OVERVIEW METRICS ─────────────────────────────────────────────────── */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+      <Row gutter={[16, 16]}>
         <Col xs={24} sm={6}>
-          <Card style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>Tổng số ứng viên</Text>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#0f172a', marginTop: 4 }}>
+          <div className="b2b-card p-4">
+            <div className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">Tổng số ứng viên</div>
+            <div className="text-2xl font-extrabold text-slate-900 mt-1 font-mono">
               {candidates.length}
             </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Trong toàn bộ pipeline</div>
-          </Card>
+            <div className="text-xs text-slate-400 mt-1 font-medium">Trong toàn bộ pipeline</div>
+          </div>
         </Col>
         <Col xs={24} sm={6}>
-          <Card style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>Phù hợp xuất sắc (≥85%)</Text>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#16a34a', marginTop: 4 }}>
-              {candidates.filter((c) => c.aiMatchScore >= 85).length}
+          <div className="b2b-card p-4">
+            <div className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">Top Match (≥80%)</div>
+            <div className="text-2xl font-extrabold text-rose-600 mt-1 font-mono">
+              {candidates.filter((c) => c.aiMatchScore >= 80).length}
             </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Khuyến nghị phỏng vấn ngay</div>
-          </Card>
+            <div className="text-xs text-slate-400 mt-1 font-medium">Khuyến nghị phỏng vấn ngay</div>
+          </div>
         </Col>
         <Col xs={24} sm={6}>
-          <Card style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>Đã lên lịch PV</Text>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#7c3aed', marginTop: 4 }}>
+          <div className="b2b-card p-4">
+            <div className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">Đã lên lịch PV</div>
+            <div className="text-2xl font-extrabold text-purple-600 mt-1 font-mono">
               {candidates.filter((c) => c.status === 'INTERVIEW_SCHEDULED').length}
             </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Đang chờ diễn ra</div>
-          </Card>
+            <div className="text-xs text-slate-400 mt-1 font-medium">Đang chờ diễn ra</div>
+          </div>
         </Col>
         <Col xs={24} sm={6}>
-          <Card style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>Đã gửi Offer</Text>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#d97706', marginTop: 4 }}>
+          <div className="b2b-card p-4">
+            <div className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">Đã gửi Offer</div>
+            <div className="text-2xl font-extrabold text-amber-600 mt-1 font-mono">
               {candidates.filter((c) => c.status === 'OFFER_SENT').length}
             </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Chờ ứng viên phản hồi</div>
-          </Card>
+            <div className="text-xs text-slate-400 mt-1 font-medium">Chờ ứng viên phản hồi</div>
+          </div>
         </Col>
       </Row>
 
       {/* ─── FILTER CONTROLS ─────────────────────────────────────────────────── */}
-      <Card style={{ marginBottom: 20, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+      <div className="b2b-card mb-5 p-4">
         <Row gutter={[16, 16]} align="middle">
           <Col xs={24} md={8}>
             <Input
@@ -518,13 +516,14 @@ export const ClientCandidatePoolPage: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               allowClear
+              style={{ borderRadius: 10, height: 38 }}
             />
           </Col>
           <Col xs={12} md={6}>
             <Select
               value={selectedJob}
               onChange={setSelectedJob}
-              style={{ width: '100%' }}
+              style={{ width: '100%', height: 38 }}
               options={jobOptions}
             />
           </Col>
@@ -532,7 +531,7 @@ export const ClientCandidatePoolPage: React.FC = () => {
             <Select
               value={selectedStatus}
               onChange={setSelectedStatus}
-              style={{ width: '100%' }}
+              style={{ width: '100%', height: 38 }}
               options={[
                 { value: 'ALL', label: 'Tất cả trạng thái' },
                 { value: 'NEW_SUBMISSION', label: 'Mới nộp' },
@@ -547,7 +546,7 @@ export const ClientCandidatePoolPage: React.FC = () => {
             <Select
               value={selectedTier}
               onChange={setSelectedTier}
-              style={{ width: '100%' }}
+              style={{ width: '100%', height: 38 }}
               options={[
                 { value: 'ALL', label: 'Tất cả điểm AI' },
                 { value: 'EXCELLENT', label: 'Xanh lá: Xuất sắc (≥85%)' },
@@ -557,13 +556,10 @@ export const ClientCandidatePoolPage: React.FC = () => {
             />
           </Col>
         </Row>
-      </Card>
+      </div>
 
       {/* ─── CANDIDATE TABLE ──────────────────────────────────────────────────── */}
-      <Card
-        style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}
-        styles={{ body: { padding: 0 } }}
-      >
+      <div className="b2b-card p-0 overflow-hidden">
         <Spin spinning={loading}>
           <Table<CandidateApplicationDTO>
             columns={columns}
@@ -574,7 +570,7 @@ export const ClientCandidatePoolPage: React.FC = () => {
             locale={{ emptyText: 'Không tìm thấy hồ sơ ứng viên phù hợp.' }}
           />
         </Spin>
-      </Card>
+      </div>
 
       {/* ─── DRAWER: CHI TIẾT CV & PHÂN TÍCH AI ────────────────────────────────── */}
       <Drawer
@@ -608,14 +604,14 @@ export const ClientCandidatePoolPage: React.FC = () => {
             <div
               style={{
                 padding: '16px',
-                borderRadius: 8,
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
+                borderRadius: 12,
+                background: 'rgba(11, 15, 23, 0.8)',
+                border: '1px solid rgba(51, 65, 85, 0.65)',
                 marginBottom: 20,
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 600, color: '#0f172a' }}>Điểm số AI Matching:</span>
+                <span style={{ fontWeight: 600, color: '#f8fafc' }}>Điểm số AI Matching:</span>
                 {renderAiMatchTag(drawerCandidate.aiMatchScore, drawerCandidate.aiScoreTier)}
               </div>
               <Progress
@@ -626,12 +622,12 @@ export const ClientCandidatePoolPage: React.FC = () => {
             </div>
 
             {/* AI Highlights & Analysis */}
-            <Title level={5} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <RobotOutlined style={{ color: '#2563eb' }} />
+            <Title level={5} style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#f8fafc' }}>
+              <RobotOutlined style={{ color: '#3b82f6' }} />
               Đánh giá chuyên sâu từ AI
             </Title>
-            <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: 8, border: '1px solid #bbf7d0', marginBottom: 20 }}>
-              <ul style={{ margin: 0, paddingLeft: 18, color: '#166534', fontSize: 13, lineHeight: 1.6 }}>
+            <div style={{ background: 'rgba(6, 78, 59, 0.2)', padding: '14px 18px', borderRadius: 12, border: '1px solid rgba(16, 185, 129, 0.3)', marginBottom: 20 }}>
+              <ul style={{ margin: 0, paddingLeft: 18, color: '#6ee7b7', fontSize: 13, lineHeight: 1.6 }}>
                 {drawerCandidate.aiHighlights.map((hl, index) => (
                   <li key={index} style={{ marginBottom: 4 }}>{hl}</li>
                 ))}
@@ -857,19 +853,19 @@ export const ClientCandidatePoolPage: React.FC = () => {
 
           <div
             style={{
-              padding: '10px 14px',
-              borderRadius: 6,
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
+              padding: '12px 16px',
+              borderRadius: 12,
+              background: 'rgba(11, 15, 23, 0.8)',
+              border: '1px solid rgba(51, 65, 85, 0.65)',
               marginBottom: 16,
               display: 'flex',
               alignItems: 'center',
               gap: 10,
             }}
           >
-            <SafetyCertificateOutlined style={{ color: '#7c3aed', fontSize: 18 }} />
-            <div style={{ fontSize: 12, color: '#475569' }}>
-              <strong>Chính sách Bảo hành 60 ngày:</strong> Tự động kích hoạt khi ứng viên chấp nhận Offer và hoàn thành thủ tục Onboarding.
+            <SafetyCertificateOutlined style={{ color: '#c084fc', fontSize: 18 }} />
+            <div style={{ fontSize: 12, color: '#cbd5e1' }}>
+              <strong style={{ color: '#f8fafc' }}>Chính sách Bảo hành 60 ngày:</strong> Tự động kích hoạt khi ứng viên chấp nhận Offer và hoàn thành thủ tục Onboarding.
             </div>
           </div>
 

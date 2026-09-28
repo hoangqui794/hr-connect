@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { Row, Col, Card, Typography, Button, Tag, Space, Table, Empty, Progress } from 'antd';
+import { Row, Col, Button, Table, Empty } from 'antd';
 import {
   DollarOutlined, TeamOutlined, TrophyOutlined, CheckCircleOutlined,
-  PlusCircleOutlined, RightOutlined, ArrowUpOutlined, FileTextOutlined,
+  PlusCircleOutlined, FileTextOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -10,10 +10,9 @@ import { UserRole } from '@/types/roles';
 import { RoleBadge } from '@/components/common/RoleBadge';
 import { useApplicationStore, APPLICATION_STATUS_LABELS, APPLICATION_STATUS_COLORS } from '@/stores/applicationStore';
 import { getAllJobs } from '@/services/localStorageService';
-import { MOCK_COMMISSIONS, MOCK_LEDGER_SUMMARY } from '@/services/mockData';
-import { PayoutStatusBadge } from '@/components/common/StatusBadge';
-
-const { Title, Text } = Typography;
+import { PageHeaderB2B } from '@/components/common/PageHeaderB2B';
+import { FintechMetricCard } from '@/components/common/FintechMetricCard';
+import { AntiDuplicationBadge } from '@/components/common/AntiDuplicationBadge';
 
 export const AffiliateDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -41,159 +40,127 @@ export const AffiliateDashboardPage: React.FC = () => {
   const pendingAmount = 90000000;
 
   return (
-    <div style={{ padding: '0 4px' }}>
-      {/* Header Banner */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #0f172a, #1e293b, #b45309)',
-          borderRadius: 16,
-          padding: '24px 28px',
-          marginBottom: 24,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-          boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.1)',
-        }}
-      >
-        <div>
-          <div style={{ color: '#fed7aa', fontSize: 13, marginBottom: 4 }}>
-            Chào mừng trở lại, {user?.name || 'Đối tác Tuyển dụng'}! 👋
-          </div>
-          <Title level={2} style={{ color: '#fff', margin: 0, fontWeight: 800 }}>
-            Trung Tâm Cộng Tác Viên &amp; Headhunter (OPR)
-          </Title>
-          <div style={{ marginTop: 8 }}>
-            <RoleBadge role={role || UserRole.AFFILIATE} />
-            <span style={{ color: '#fef3c7', fontSize: 13, marginLeft: 12, fontWeight: 600 }}>
-              ⭐ Điểm uy tín: 4.9/5.0 (Bảo chứng bởi HR Connect)
+    <div className="space-y-6">
+      {/* ─── Minimalist B2B Header ────────────────────────────────────────── */}
+      <PageHeaderB2B
+        title="Trung Tâm Cộng Tác Viên & Headhunter (OPR Hub)"
+        badge={
+          <div className="flex items-center gap-2">
+            <RoleBadge role={role || UserRole.AFFILIATE} size="small" />
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+              ⭐ Điểm tín nhiệm: 4.9/5.0
             </span>
           </div>
-        </div>
-        <Space wrap>
-          <Button
-            type="primary"
-            icon={<PlusCircleOutlined />}
-            size="large"
-            onClick={() => navigate('/affiliate/referral')}
-            style={{
-              borderRadius: 8,
-              fontWeight: 700,
-              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-              border: 'none',
-              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.35)',
-            }}
-          >
-            Giới thiệu ứng viên mới
-          </Button>
-          <Button
-            size="large"
-            icon={<FileTextOutlined />}
-            onClick={() => navigate('/affiliate/jobs')}
-            style={{ borderRadius: 8, fontWeight: 600 }}
-          >
-            Xem việc làm hoa hồng cao
-          </Button>
-        </Space>
-      </div>
-
-      {/* Financial KPIs */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        {[
-          {
-            label: 'Tổng hoa hồng tích lũy',
-            value: `${totalEarned.toLocaleString('vi-VN')} đ`,
-            sub: 'Đã hoàn thành bảo hành',
-            icon: <DollarOutlined />,
-            color: '#0284c7',
-            action: () => navigate('/affiliate/commissions'),
-          },
-          {
-            label: 'Đủ điều kiện rút ngay',
-            value: `${payableAmount.toLocaleString('vi-VN')} đ`,
-            sub: 'Admin đã duyệt thanh toán',
-            icon: <CheckCircleOutlined />,
-            color: '#10b981',
-            action: () => navigate('/affiliate/commissions'),
-          },
-          {
-            label: 'Đang bảo hành (60 ngày COD)',
-            value: `${pendingAmount.toLocaleString('vi-VN')} đ`,
-            sub: 'Ứng viên đang thử việc',
-            icon: <TrophyOutlined />,
-            color: '#f59e0b',
-            action: () => navigate('/affiliate/commissions'),
-          },
-          {
-            label: 'Hồ sơ đã giới thiệu',
-            value: mySubmissions.length > 0 ? mySubmissions.length : 12,
-            sub: 'Theo dõi tiến độ phỏng vấn',
-            icon: <TeamOutlined />,
-            color: '#8b5cf6',
-            action: () => navigate('/affiliate/submissions'),
-          },
-        ].map((stat) => (
-          <Col key={stat.label} xs={12} sm={6}>
-            <div
-              className="hrc-stat-card"
-              onClick={stat.action}
-              style={{
-                cursor: 'pointer',
-                background: '#fff',
-                borderRadius: 14,
-                padding: '20px',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                transition: 'all 0.2s ease',
-              }}
+        }
+        subtitle="Quản lý mạng lưới giới thiệu ứng viên, kiểm tra dấu thời gian chống trùng lặp (Anti-Duplication) và đối soát hoa hồng COD."
+        actions={
+          <>
+            <Button
+              type="primary"
+              icon={<PlusCircleOutlined />}
+              onClick={() => navigate('/affiliate/referral')}
+              className="h-10 px-4 rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                <div
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 10,
-                    background: `${stat.color}15`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: stat.color,
-                    fontSize: 20,
-                  }}
-                >
-                  {stat.icon}
-                </div>
-                <ArrowUpOutlined style={{ color: '#10b981', fontSize: 13 }} />
-              </div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{stat.value}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginTop: 8 }}>{stat.label}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{stat.sub}</div>
-            </div>
-          </Col>
-        ))}
+              Giới thiệu ứng viên mới
+            </Button>
+            <Button
+              icon={<FileTextOutlined />}
+              onClick={() => navigate('/affiliate/jobs')}
+              className="h-10 px-4 rounded-xl font-semibold bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm"
+            >
+              Khám phá việc làm hoa hồng cao
+            </Button>
+          </>
+        }
+      />
+
+      {/* ─── Fintech Banking Standard Metric Cards ────────────────────────── */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} lg={6}>
+          <FintechMetricCard
+            label="Tổng hoa hồng tích lũy"
+            value={`${totalEarned.toLocaleString('vi-VN')} đ`}
+            subLabel="Toàn bộ deal hoàn thành"
+            statusBadge="Lũy kế"
+            statusType="paid"
+            icon={<DollarOutlined />}
+            iconColor="#2563eb"
+            onClick={() => navigate('/affiliate/commissions')}
+          />
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <FintechMetricCard
+            label="Đủ điều kiện rút ngay"
+            value={`${payableAmount.toLocaleString('vi-VN')} đ`}
+            subLabel="Admin đã phê duyệt giải ngân"
+            statusBadge="Đủ điều kiện rút"
+            statusType="eligible"
+            icon={<CheckCircleOutlined />}
+            iconColor="#059669"
+            onClick={() => navigate('/affiliate/commissions')}
+          />
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <FintechMetricCard
+            label="Đang bảo hành thử việc"
+            value={`${pendingAmount.toLocaleString('vi-VN')} đ`}
+            subLabel="Ứng viên đang trong thử việc"
+            statusBadge="Bảo hành 60 ngày (COD)"
+            statusType="warranty"
+            icon={<TrophyOutlined />}
+            iconColor="#d97706"
+            onClick={() => navigate('/affiliate/commissions')}
+          />
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <FintechMetricCard
+            label="Hồ sơ đã giới thiệu"
+            value={mySubmissions.length > 0 ? mySubmissions.length : 12}
+            subLabel="Bảo chứng First-Submission"
+            statusBadge="Attribution Secured"
+            statusType="info"
+            icon={<TeamOutlined />}
+            iconColor="#4f46e5"
+            onClick={() => navigate('/affiliate/submissions')}
+          />
+        </Col>
       </Row>
 
-      {/* Main Content */}
+      {/* ─── Main Content: Submissions Table & High Commission Jobs ─────────── */}
       <Row gutter={[16, 16]}>
+        {/* Left: Recent Submissions with Anti-Duplication Badge */}
         <Col xs={24} lg={14}>
-          <Card
-            title={
-              <Space>
-                <TeamOutlined style={{ color: '#f59e0b' }} />
-                <span style={{ fontWeight: 700, fontSize: 15 }}>Hồ sơ ứng viên vừa giới thiệu</span>
-              </Space>
-            }
-            extra={
-              <Button type="link" size="small" onClick={() => navigate('/affiliate/submissions')} style={{ fontWeight: 600 }}>
-                Xem tất cả ({mySubmissions.length}) <RightOutlined />
+          <div className="b2b-card p-5">
+            <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <TeamOutlined className="text-amber-500" />
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight m-0">
+                  Hồ sơ ứng viên vừa giới thiệu
+                </h3>
+              </div>
+              <Button
+                type="link"
+                size="small"
+                onClick={() => navigate('/affiliate/submissions')}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 p-0"
+              >
+                Xem tất cả ({mySubmissions.length}) →
               </Button>
-            }
-            style={{ borderRadius: 14, border: '1px solid #e2e8f0' }}
-          >
+            </div>
+
             {mySubmissions.length === 0 ? (
-              <Empty description="Bạn chưa giới thiệu ứng viên nào" style={{ padding: '32px 0' }}>
-                <Button type="primary" onClick={() => navigate('/affiliate/referral')}>
+              <Empty
+                description={<span className="text-xs text-slate-400">Bạn chưa giới thiệu ứng viên nào trên hệ thống</span>}
+                className="py-8"
+              >
+                <Button
+                  type="primary"
+                  onClick={() => navigate('/affiliate/referral')}
+                  className="rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white border-none"
+                >
                   Giới thiệu ứng viên đầu tiên
                 </Button>
               </Empty>
@@ -203,103 +170,114 @@ export const AffiliateDashboardPage: React.FC = () => {
                 rowKey="id"
                 pagination={false}
                 size="middle"
+                className="bg-transparent"
                 columns={[
                   {
-                    title: 'Ứng viên',
+                    title: 'ỨNG VIÊN & ATTRIBUTION',
                     key: 'candidate',
                     render: (_, record) => (
-                      <div>
-                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{record.fullName}</div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>{record.email} · {record.phone}</div>
+                      <div className="space-y-1">
+                        <div className="font-semibold text-sm text-slate-800">
+                          {record.fullName}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {record.email} • {record.phone}
+                        </div>
+                        <AntiDuplicationBadge
+                          timestamp={record.applyDate}
+                          affiliateName={user?.name}
+                        />
                       </div>
                     ),
                   },
                   {
-                    title: 'Vị trí ứng tuyển',
+                    title: 'VỊ TRÍ ỨNG TUYỂN',
                     key: 'job',
                     render: (_, record) => (
                       <div>
-                        <div style={{ fontWeight: 600, color: '#334155' }}>{record.jobTitle}</div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>{record.company}</div>
+                        <div className="font-medium text-sm text-slate-800">
+                          {record.jobTitle}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          🏢 {record.company}
+                        </div>
                       </div>
                     ),
                   },
                   {
-                    title: 'Trạng thái',
+                    title: 'TRẠNG THÁI',
                     key: 'status',
-                    width: 140,
+                    width: 150,
                     render: (_, record) => (
-                      <Tag
+                      <span
+                        className="text-xs font-semibold px-2.5 py-0.5 rounded-full border inline-block"
                         style={{
-                          borderRadius: 6,
-                          fontWeight: 600,
-                          fontSize: 11,
                           color: APPLICATION_STATUS_COLORS[record.status] || '#64748b',
                           background: `${APPLICATION_STATUS_COLORS[record.status] || '#64748b'}15`,
-                          border: `1px solid ${APPLICATION_STATUS_COLORS[record.status] || '#64748b'}40`,
+                          borderColor: `${APPLICATION_STATUS_COLORS[record.status] || '#64748b'}35`,
                         }}
                       >
                         {APPLICATION_STATUS_LABELS[record.status] || record.status}
-                      </Tag>
+                      </span>
                     ),
                   },
                 ]}
               />
             )}
-          </Card>
+          </div>
         </Col>
 
+        {/* Right: High Commission Jobs */}
         <Col xs={24} lg={10}>
-          <Card
-            title={
-              <Space>
-                <DollarOutlined style={{ color: '#0284c7' }} />
-                <span style={{ fontWeight: 700, fontSize: 15 }}>Cơ hội việc làm hoa hồng cao</span>
-              </Space>
-            }
-            extra={
-              <Button type="link" size="small" onClick={() => navigate('/affiliate/jobs')} style={{ fontWeight: 600 }}>
-                Khám phá sàn việc làm <RightOutlined />
-              </Button>
-            }
-            style={{ borderRadius: 14, border: '1px solid #e2e8f0' }}
-          >
-            {activeJobs.slice(0, 4).map((j) => (
-              <div
-                key={j.id}
-                style={{
-                  padding: '12px 0',
-                  borderBottom: '1px solid #f1f5f9',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{j.title}</div>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>{j.company} · {j.location}</div>
-                  <div style={{ marginTop: 4, display: 'flex', gap: 6 }}>
-                    <Tag color="gold" style={{ borderRadius: 4, fontWeight: 700, fontSize: 10 }}>
-                      Hoa hồng {j.engagementTerms?.commissionRate || 15}%
-                    </Tag>
-                  </div>
-                </div>
-                <Button
-                  type="primary"
-                  size="small"
-                  onClick={() => navigate('/affiliate/referral')}
-                  style={{
-                    borderRadius: 6,
-                    fontWeight: 600,
-                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                    border: 'none',
-                  }}
-                >
-                  Giới thiệu
-                </Button>
+          <div className="b2b-card p-5">
+            <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <DollarOutlined className="text-blue-600" />
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight m-0">
+                  Việc làm hoa hồng hấp dẫn
+                </h3>
               </div>
-            ))}
-          </Card>
+              <Button
+                type="link"
+                size="small"
+                onClick={() => navigate('/affiliate/jobs')}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 p-0"
+              >
+                Khám phá sàn việc →
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {activeJobs.slice(0, 4).map((j) => (
+                <div
+                  key={j.id}
+                  className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:border-slate-300 transition-all duration-150 flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-sm text-slate-800 truncate">
+                      {j.title}
+                    </div>
+                    <div className="text-xs text-slate-500 truncate mt-0.5">
+                      🏢 {j.company} • {j.location}
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        Hoa hồng {j.engagementTerms?.commissionRate || 15}%
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    type="primary"
+                    size="small"
+                    onClick={() => navigate('/affiliate/referral')}
+                    className="rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 border-none shrink-0"
+                  >
+                    Giới thiệu
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
         </Col>
       </Row>
     </div>

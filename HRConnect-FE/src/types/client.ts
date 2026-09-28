@@ -77,6 +77,7 @@ export interface CandidateApplicationDTO {
   avatar?: string;
   email?: string;
   phone?: string;
+  submittedAt?: string;
   interviewDetails?: {
     scheduledAt: string;
     interviewType: 'ONLINE' | 'OFFLINE';

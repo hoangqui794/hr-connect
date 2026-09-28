@@ -143,23 +143,35 @@ export const CandidateApplicationsPage: React.FC = () => {
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 60 }}>
       {/* Header Banner */}
-      <Card
-        bordered={false}
+      <div
         style={{
-          borderRadius: 16,
-          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+          borderRadius: 20,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(51, 65, 85, 0.65)',
           color: '#fff',
           marginBottom: 24,
+          padding: '28px 32px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
         }}
-        styles={{ body: { padding: '28px 32px' } }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <Title level={3} style={{ color: '#fff', margin: 0, fontWeight: 800 }}>
+              <Title level={3} style={{ color: '#fff', margin: 0, fontWeight: 800, letterSpacing: '-0.02em' }}>
                 Lịch Sử Ứng Tuyển & Lịch Phỏng Vấn
               </Title>
-              <Tag color="#0284c7" style={{ borderRadius: 10, fontWeight: 700 }}>
+              <Tag
+                style={{
+                  borderRadius: 9999,
+                  fontWeight: 700,
+                  fontSize: 11,
+                  background: 'rgba(37, 99, 235, 0.15)',
+                  color: '#60a5fa',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  padding: '2px 10px',
+                }}
+              >
                 Thời Gian Thực
               </Tag>
             </div>
@@ -168,25 +180,34 @@ export const CandidateApplicationsPage: React.FC = () => {
             </Text>
           </div>
 
-          <div style={{ display: 'flex', gap: 20 }}>
-            <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.06)', padding: '8px 18px', borderRadius: 12 }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#38bdf8' }}>{applications.length}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Việc làm đã nộp</div>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <div style={{ textAlign: 'center', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(51, 65, 85, 0.65)', padding: '10px 18px', borderRadius: 14 }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#38bdf8', fontFamily: 'monospace' }}>{applications.length}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Việc làm đã nộp</div>
             </div>
-            <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.06)', padding: '8px 18px', borderRadius: 12 }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#a78bfa' }}>{userInterviews.length}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Lịch PV sắp tới</div>
+            <div style={{ textAlign: 'center', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(51, 65, 85, 0.65)', padding: '10px 18px', borderRadius: 14 }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#a78bfa', fontFamily: 'monospace' }}>{userInterviews.length}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lịch PV sắp tới</div>
             </div>
-            <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.06)', padding: '8px 18px', borderRadius: 12 }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#34d399' }}>{userRecruiterConnects.length}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Hồ sơ gửi Recruiter</div>
+            <div style={{ textAlign: 'center', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(51, 65, 85, 0.65)', padding: '10px 18px', borderRadius: 14 }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#34d399', fontFamily: 'monospace' }}>{userRecruiterConnects.length}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hồ sơ gửi Recruiter</div>
             </div>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Main Tabs */}
-      <Card bordered={false} style={{ borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
+      <div
+        style={{
+          borderRadius: 20,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(51, 65, 85, 0.65)',
+          padding: '24px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+        }}
+      >
         <Tabs
           activeKey={activeTabKey}
           onChange={(key) => setSearchParams({ subtab: key })}
@@ -208,7 +229,7 @@ export const CandidateApplicationsPage: React.FC = () => {
                       description="Bạn chưa nộp hồ sơ vào công việc nào."
                       style={{ padding: '40px 0' }}
                     >
-                      <Button type="primary" onClick={() => navigate('/')} style={{ borderRadius: 8 }}>
+                      <Button type="primary" onClick={() => navigate('/')} style={{ borderRadius: 12, height: 40, fontWeight: 600 }}>
                         Khám phá việc làm ngay
                       </Button>
                     </Empty>
@@ -219,39 +240,48 @@ export const CandidateApplicationsPage: React.FC = () => {
                         const isOffered = app.status === 'OFFER';
 
                         return (
-                          <Card
+                          <div
                             key={app.id}
                             style={{
-                              borderRadius: 14,
-                              border: isOffered ? '1.5px solid #10b981' : '1px solid #e2e8f0',
-                              background: isOffered ? '#f0fdf4' : '#ffffff',
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                              borderRadius: 16,
+                              border: isOffered ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(51, 65, 85, 0.65)',
+                              background: isOffered ? 'rgba(6, 78, 59, 0.2)' : 'rgba(15, 23, 42, 0.7)',
+                              padding: '22px 24px',
+                              transition: 'all 0.2s ease',
                             }}
-                            styles={{ body: { padding: '22px 24px' } }}
                           >
                             <Row gutter={[20, 20]} align="middle">
                               {/* Thông tin công việc */}
                               <Col xs={24} lg={10}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                  <Text strong style={{ fontSize: 16, color: '#0f172a' }}>
+                                  <Text strong style={{ fontSize: 16, color: '#f8fafc', letterSpacing: '-0.01em' }}>
                                     {app.jobTitle}
                                   </Text>
                                   {isOffered && (
-                                    <Tag color="success" style={{ borderRadius: 6, fontWeight: 700 }}>
+                                    <Tag
+                                      style={{
+                                        borderRadius: 9999,
+                                        fontWeight: 700,
+                                        fontSize: 11,
+                                        background: 'rgba(16, 185, 129, 0.2)',
+                                        color: '#34d399',
+                                        border: '1px solid rgba(16, 185, 129, 0.4)',
+                                      }}
+                                    >
                                       Offer đã sẵn sàng
                                     </Tag>
                                   )}
                                 </div>
-                                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8 }}>
+                                <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 8 }}>
                                   🏢 {app.company}
                                 </div>
-                                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12.5, color: '#475569' }}>
+                                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12.5, color: '#cbd5e1' }}>
                                   <span>💰 <strong>{app.salary}</strong></span>
                                   <span>📅 Nộp: {app.appliedDate}</span>
                                 </div>
-                                <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
-                                  <FileTextOutlined style={{ marginRight: 4, color: '#0284c7' }} />
-                                  CV sử dụng: <strong>{app.cvUsed}</strong>
+                                <div style={{ marginTop: 8, fontSize: 12, color: '#94a3b8' }}>
+                                  <FileTextOutlined style={{ marginRight: 4, color: '#38bdf8' }} />
+                                  CV sử dụng: <strong style={{ color: '#cbd5e1' }}>{app.cvUsed}</strong>
                                 </div>
                               </Col>
 
@@ -279,23 +309,24 @@ export const CandidateApplicationsPage: React.FC = () => {
                                     icon={<SafetyCertificateOutlined />}
                                     onClick={() => setSelectedOfferApp(app)}
                                     style={{
-                                      borderRadius: 8,
+                                      borderRadius: 12,
                                       fontWeight: 700,
                                       background: 'linear-gradient(135deg, #10b981, #059669)',
                                       border: 'none',
                                       boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                                      height: 38,
                                     }}
                                   >
-                                    Xem Thư Mời Nhận Việc
+                                    Xem Thư Mời
                                   </Button>
                                 ) : (
                                   <Tag
                                     style={{
-                                      padding: '6px 12px',
-                                      borderRadius: 8,
+                                      padding: '6px 14px',
+                                      borderRadius: 9999,
                                       fontWeight: 700,
                                       fontSize: 12,
-                                      background: `${app.statusColor}15`,
+                                      background: `${app.statusColor}18`,
                                       color: app.statusColor,
                                       border: `1px solid ${app.statusColor}40`,
                                     }}
@@ -305,7 +336,7 @@ export const CandidateApplicationsPage: React.FC = () => {
                                 )}
                               </Col>
                             </Row>
-                          </Card>
+                          </div>
                         );
                       })}
                     </div>
@@ -331,62 +362,69 @@ export const CandidateApplicationsPage: React.FC = () => {
                     <Row gutter={[20, 20]}>
                       {userInterviews.map((item) => (
                         <Col xs={24} md={12} key={item.id}>
-                          <Card
-                            hoverable
+                          <div
                             style={{
-                              borderRadius: 14,
-                              border: '1px solid #e2e8f0',
+                              borderRadius: 16,
+                              border: '1px solid rgba(51, 65, 85, 0.65)',
+                              background: 'rgba(15, 23, 42, 0.7)',
                               height: '100%',
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'space-between',
+                              padding: '24px',
+                              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
                             }}
-                            styles={{ body: { padding: '24px' } }}
                           >
                             <div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                                 <div>
-                                  <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a' }}>
+                                  <div style={{ fontWeight: 800, fontSize: 16, color: '#f8fafc' }}>
                                     {item.jobTitle}
                                   </div>
-                                  <div style={{ fontSize: 13, color: '#64748b' }}>
+                                  <div style={{ fontSize: 13, color: '#94a3b8' }}>
                                     🏢 {item.company}
                                   </div>
                                 </div>
                                 <Tag
-                                  color={item.mode === 'ONLINE' ? 'blue' : 'green'}
-                                  style={{ borderRadius: 6, fontWeight: 700, padding: '3px 8px' }}
+                                  style={{
+                                    borderRadius: 9999,
+                                    fontWeight: 700,
+                                    padding: '3px 10px',
+                                    background: item.mode === 'ONLINE' ? 'rgba(37, 99, 235, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                                    color: item.mode === 'ONLINE' ? '#60a5fa' : '#34d399',
+                                    border: item.mode === 'ONLINE' ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)',
+                                  }}
                                 >
                                   {item.mode === 'ONLINE' ? 'Phỏng vấn Online' : 'Phỏng vấn Trực tiếp'}
                                 </Tag>
                               </div>
 
-                              <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: 10, marginBottom: 16 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0284c7', fontWeight: 700, fontSize: 14 }}>
+                              <div style={{ background: 'rgba(11, 15, 23, 0.6)', border: '1px solid rgba(51, 65, 85, 0.5)', padding: '12px 16px', borderRadius: 12, marginBottom: 16 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#38bdf8', fontWeight: 700, fontSize: 14 }}>
                                   <ClockCircleOutlined />
                                   <span>{item.datetime}</span>
                                 </div>
                               </div>
 
                               <div style={{ marginBottom: 12, fontSize: 13 }}>
-                                <Text type="secondary" style={{ display: 'block', fontWeight: 600 }}>Người phỏng vấn:</Text>
-                                <Text strong style={{ color: '#334155' }}>{item.interviewers}</Text>
+                                <Text type="secondary" style={{ display: 'block', fontWeight: 600, color: '#94a3b8' }}>Người phỏng vấn:</Text>
+                                <Text strong style={{ color: '#cbd5e1' }}>{item.interviewers}</Text>
                               </div>
 
                               {item.address && (
                                 <div style={{ marginBottom: 12, fontSize: 13 }}>
-                                  <Text type="secondary" style={{ display: 'block', fontWeight: 600 }}>Địa chỉ văn phòng:</Text>
-                                  <Text style={{ color: '#334155' }}><EnvironmentOutlined /> {item.address}</Text>
+                                  <Text type="secondary" style={{ display: 'block', fontWeight: 600, color: '#94a3b8' }}>Địa chỉ văn phòng:</Text>
+                                  <Text style={{ color: '#cbd5e1' }}><EnvironmentOutlined /> {item.address}</Text>
                                 </div>
                               )}
 
                               <div style={{ fontSize: 13 }}>
-                                <Text type="secondary" style={{ display: 'block', fontWeight: 600 }}>Ghi chú chuẩn bị:</Text>
-                                <Text style={{ color: '#64748b' }}>{item.notes}</Text>
+                                <Text type="secondary" style={{ display: 'block', fontWeight: 600, color: '#94a3b8' }}>Ghi chú chuẩn bị:</Text>
+                                <Text style={{ color: '#94a3b8' }}>{item.notes}</Text>
                               </div>
                             </div>
 
-                            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
+                            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(51, 65, 85, 0.4)' }}>
                               {item.mode === 'ONLINE' && item.link ? (
                                 <Button
                                   type="primary"
@@ -395,9 +433,11 @@ export const CandidateApplicationsPage: React.FC = () => {
                                   href={item.link}
                                   target="_blank"
                                   style={{
-                                    borderRadius: 8,
+                                    borderRadius: 12,
                                     fontWeight: 700,
+                                    height: 40,
                                     background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                                    border: 'none',
                                   }}
                                 >
                                   Vào phòng Google Meet / Zoom
@@ -407,13 +447,20 @@ export const CandidateApplicationsPage: React.FC = () => {
                                   block
                                   icon={<EnvironmentOutlined />}
                                   onClick={() => message.info(`Địa điểm: ${item.address}`)}
-                                  style={{ borderRadius: 8, fontWeight: 700 }}
+                                  style={{
+                                    borderRadius: 12,
+                                    fontWeight: 700,
+                                    height: 40,
+                                    background: 'rgba(15, 23, 42, 0.8)',
+                                    border: '1px solid rgba(51, 65, 85, 0.65)',
+                                    color: '#f8fafc',
+                                  }}
                                 >
                                   Xem chỉ đường văn phòng
                                 </Button>
                               )}
                             </div>
-                          </Card>
+                          </div>
                         </Col>
                       ))}
                     </Row>
@@ -438,7 +485,7 @@ export const CandidateApplicationsPage: React.FC = () => {
                       description="Bạn chưa gửi gắm hồ sơ cho chuyên gia Recruiter nào."
                       style={{ padding: '40px 0' }}
                     >
-                      <Button type="primary" onClick={() => navigate('/?mode=recruiters')} style={{ borderRadius: 8 }}>
+                      <Button type="primary" onClick={() => navigate('/?mode=recruiters')} style={{ borderRadius: 12, height: 40, fontWeight: 600 }}>
                         Khám phá Mạng lưới Recruiter OPR Hub
                       </Button>
                     </Empty>
@@ -457,8 +504,8 @@ export const CandidateApplicationsPage: React.FC = () => {
                                 {record.recruiterAvatar}
                               </Avatar>
                               <div>
-                                <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{record.recruiterName}</div>
-                                <div style={{ fontSize: 12, color: '#64748b' }}>{record.recruiterTitle}</div>
+                                <div style={{ fontWeight: 700, fontSize: 14, color: '#f8fafc' }}>{record.recruiterName}</div>
+                                <div style={{ fontSize: 12, color: '#94a3b8' }}>{record.recruiterTitle}</div>
                               </div>
                             </div>
                           ),
@@ -467,7 +514,11 @@ export const CandidateApplicationsPage: React.FC = () => {
                           title: 'Bản CV đã gửi',
                           dataIndex: 'cvUsed',
                           key: 'cvUsed',
-                          render: (cv) => <Tag icon={<FileTextOutlined />} style={{ borderRadius: 4 }}>{cv}</Tag>,
+                          render: (cv) => (
+                            <Tag icon={<FileTextOutlined />} style={{ borderRadius: 9999, background: 'rgba(30, 41, 59, 0.8)', border: '1px solid rgba(51, 65, 85, 0.6)', color: '#cbd5e1', padding: '2px 10px' }}>
+                              {cv}
+                            </Tag>
+                          ),
                         },
                         {
                           title: 'Ngày gửi',
@@ -480,7 +531,7 @@ export const CandidateApplicationsPage: React.FC = () => {
                           dataIndex: 'note',
                           key: 'note',
                           render: (note) => (
-                            <Paragraph ellipsis={{ rows: 2, tooltip: note }} style={{ margin: 0, fontSize: 13, color: '#475569' }}>
+                            <Paragraph ellipsis={{ rows: 2, tooltip: note }} style={{ margin: 0, fontSize: 13, color: '#cbd5e1' }}>
                               {note}
                             </Paragraph>
                           ),
@@ -492,17 +543,18 @@ export const CandidateApplicationsPage: React.FC = () => {
                             <div>
                               <Tag
                                 style={{
-                                  borderRadius: 6,
+                                  borderRadius: 9999,
                                   fontWeight: 700,
-                                  background: `${record.statusColor}15`,
+                                  background: `${record.statusColor}18`,
                                   color: record.statusColor,
                                   border: `1px solid ${record.statusColor}40`,
+                                  padding: '3px 10px',
                                 }}
                               >
                                 {record.statusLabel}
                               </Tag>
                               {record.matchedJob && (
-                                <div style={{ fontSize: 11, color: '#059669', fontWeight: 600, marginTop: 4 }}>
+                                <div style={{ fontSize: 11, color: '#34d399', fontWeight: 600, marginTop: 4 }}>
                                   🎯 {record.matchedJob}
                                 </div>
                               )}
@@ -517,12 +569,12 @@ export const CandidateApplicationsPage: React.FC = () => {
             },
           ]}
         />
-      </Card>
+      </div>
 
       {/* Modal Xem Thư Mời Nhận Việc (Official Offer Letter) */}
       <Modal
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#10b981' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#34d399' }}>
             <SafetyCertificateOutlined style={{ fontSize: 20 }} />
             <span style={{ fontSize: 17, fontWeight: 800 }}>Thư Mời Nhận Việc Chính Thức (Job Offer Letter)</span>
           </div>
@@ -530,13 +582,19 @@ export const CandidateApplicationsPage: React.FC = () => {
         open={!!selectedOfferApp}
         onCancel={() => setSelectedOfferApp(null)}
         width={620}
+        styles={{
+          body: {
+            background: '#0f172a',
+            borderRadius: 16,
+          },
+        }}
         footer={[
           <Button
             key="reject"
             danger
             icon={<CloseOutlined />}
             onClick={() => selectedOfferApp && handleDecision(selectedOfferApp.id, 'REJECTED')}
-            style={{ borderRadius: 8, fontWeight: 600 }}
+            style={{ borderRadius: 12, fontWeight: 600, height: 38 }}
           >
             Từ chối Offer
           </Button>,
@@ -546,11 +604,12 @@ export const CandidateApplicationsPage: React.FC = () => {
             icon={<CheckOutlined />}
             onClick={() => selectedOfferApp && handleDecision(selectedOfferApp.id, 'ACCEPTED')}
             style={{
-              borderRadius: 8,
+              borderRadius: 12,
               fontWeight: 700,
               background: '#10b981',
               border: 'none',
               boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+              height: 38,
             }}
           >
             Chấp thuận Offer
@@ -559,40 +618,40 @@ export const CandidateApplicationsPage: React.FC = () => {
       >
         {selectedOfferApp && selectedOfferApp.offerDetails && (
           <div style={{ padding: '8px 0' }}>
-            <div style={{ background: '#f8fafc', padding: '16px 20px', borderRadius: 12, marginBottom: 18, border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>
+            <div style={{ background: 'rgba(11, 15, 23, 0.8)', padding: '16px 20px', borderRadius: 14, marginBottom: 18, border: '1px solid rgba(51, 65, 85, 0.65)' }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#f8fafc' }}>
                 {selectedOfferApp.offerDetails.position}
               </div>
-              <div style={{ color: '#64748b', fontSize: 13, marginTop: 2 }}>
-                Doanh nghiệp: <strong>{selectedOfferApp.company}</strong>
+              <div style={{ color: '#94a3b8', fontSize: 13, marginTop: 2 }}>
+                Doanh nghiệp: <strong style={{ color: '#cbd5e1' }}>{selectedOfferApp.company}</strong>
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
-              <div style={{ background: '#ecfdf5', padding: 14, borderRadius: 10, border: '1px solid #a7f3d0' }}>
-                <Text type="secondary" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
+              <div style={{ background: 'rgba(6, 78, 59, 0.2)', padding: 14, borderRadius: 12, border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                <Text style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6ee7b7' }}>
                   Mức lương chính thức (Gross)
                 </Text>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#059669', marginTop: 4 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#34d399', marginTop: 4, fontFamily: 'monospace' }}>
                   {selectedOfferApp.offerDetails.salary}
                 </div>
               </div>
 
-              <div style={{ background: '#eff6ff', padding: 14, borderRadius: 10, border: '1px solid #bfdbfe' }}>
-                <Text type="secondary" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
+              <div style={{ background: 'rgba(30, 58, 138, 0.2)', padding: 14, borderRadius: 12, border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                <Text style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#93c5fd' }}>
                   Ngày bắt đầu làm việc
                 </Text>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#0284c7', marginTop: 4 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#60a5fa', marginTop: 4, fontFamily: 'monospace' }}>
                   {selectedOfferApp.offerDetails.startDate}
                 </div>
               </div>
             </div>
 
-            <div style={{ background: '#f8fafc', padding: 16, borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 13, lineHeight: 1.7 }}>
-              <Text strong style={{ display: 'block', marginBottom: 4, color: '#0f172a' }}>
+            <div style={{ background: 'rgba(11, 15, 23, 0.8)', padding: 16, borderRadius: 14, border: '1px solid rgba(51, 65, 85, 0.65)', fontSize: 13, lineHeight: 1.7 }}>
+              <Text strong style={{ display: 'block', marginBottom: 4, color: '#f8fafc' }}>
                 Chính sách đãi ngộ & Thử việc:
               </Text>
-              <Paragraph style={{ margin: 0, color: '#475569' }}>
+              <Paragraph style={{ margin: 0, color: '#94a3b8' }}>
                 {selectedOfferApp.offerDetails.note}
               </Paragraph>
             </div>

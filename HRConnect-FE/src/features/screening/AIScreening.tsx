@@ -109,9 +109,9 @@ interface CVViewerProps {
 const CVViewer: React.FC<CVViewerProps> = ({ candidate: c }) => (
   <div
     style={{
-      background: '#fff',
-      border: '1px solid #e2e8f0',
-      borderRadius: 12,
+      background: 'rgba(15, 23, 42, 0.65)',
+      border: '1px solid rgba(51, 65, 85, 0.65)',
+      borderRadius: 16,
       overflow: 'hidden',
       fontFamily: '"Inter", "Segoe UI", sans-serif',
     }}
@@ -119,26 +119,28 @@ const CVViewer: React.FC<CVViewerProps> = ({ candidate: c }) => (
     {/* CV Header */}
     <div
       style={{
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+        background: 'linear-gradient(135deg, #070a11 0%, #0f172a 100%)',
         padding: '28px 28px 20px',
-        color: '#fff',
+        borderBottom: '1px solid rgba(51, 65, 85, 0.65)',
+        color: '#f8fafc',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18 }}>
         <Avatar
           size={64}
           style={{
-            background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
+            background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
             fontWeight: 800,
             fontSize: 22,
             flexShrink: 0,
+            border: '2px solid rgba(59, 130, 246, 0.4)',
           }}
         >
           {c.name.slice(0, 2).toUpperCase()}
         </Avatar>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: '#f8fafc', letterSpacing: '-0.3px' }}>{c.name}</div>
-          <div style={{ fontSize: 14, color: '#38bdf8', fontWeight: 600, marginTop: 2 }}>{c.currentTitle}</div>
+          <div style={{ fontSize: 14, color: '#60a5fa', fontWeight: 600, marginTop: 2 }}>{c.currentTitle}</div>
           <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>
             {c.email} · {c.phone} · {c.location}
           </div>
@@ -157,26 +159,26 @@ const CVViewer: React.FC<CVViewerProps> = ({ candidate: c }) => (
     <div style={{ padding: '20px 28px' }}>
       {/* Professional Summary */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#0284c7', marginBottom: 8 }}>
+        <div style={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60a5fa', marginBottom: 8 }}>
           Tóm tắt năng lực chuyên môn
         </div>
-        <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7, fontStyle: 'italic', borderLeft: '3px solid #0284c7', paddingLeft: 12 }}>
+        <div style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.7, fontStyle: 'italic', borderLeft: '3px solid #2563eb', paddingLeft: 12 }}>
           "{c.highlightCard.headline}"
         </div>
       </div>
 
-      <Divider style={{ margin: '12px 0' }} />
+      <Divider style={{ margin: '12px 0', borderColor: 'rgba(51, 65, 85, 0.4)' }} />
 
       {/* Current Experience */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#0284c7', marginBottom: 8 }}>
+        <div style={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60a5fa', marginBottom: 8 }}>
           Kinh nghiệm làm việc hiện tại
         </div>
-        <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{c.currentTitle}</div>
-        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, color: '#f8fafc' }}>{c.currentTitle}</div>
+        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
           {c.currentCompany} · Tổng số năm kinh nghiệm: {c.highlightCard.yearsOfExperience} năm
         </div>
-        <div style={{ fontSize: 13, color: '#475569', marginTop: 10, lineHeight: 1.7 }}>
+        <div style={{ fontSize: 13, color: '#cbd5e1', marginTop: 10, lineHeight: 1.7 }}>
           <div>• Chủ trì kiến trúc và phát triển các dịch vụ lõi của hệ thống với độ ổn định cao</div>
           <div>• Hướng dẫn các kỹ sư trẻ và chuẩn hóa quy trình phát triển phần mềm</div>
           <div>• Phối hợp liên phòng ban với bộ phận Sản phẩm và Thiết kế để hoàn thiện yêu cầu kỹ thuật</div>
@@ -184,61 +186,61 @@ const CVViewer: React.FC<CVViewerProps> = ({ candidate: c }) => (
         </div>
       </div>
 
-      <Divider style={{ margin: '12px 0' }} />
+      <Divider style={{ margin: '12px 0', borderColor: 'rgba(51, 65, 85, 0.4)' }} />
 
       {/* Technical Skills */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#0284c7', marginBottom: 10 }}>
+        <div style={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60a5fa', marginBottom: 10 }}>
           Kỹ năng chuyên môn
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {c.skills.map((skill) => (
-            <Tag key={skill} style={{ borderRadius: 6, fontSize: 12, padding: '2px 8px', margin: 0 }}>
+            <Tag key={skill} style={{ borderRadius: 8, fontSize: 12, padding: '3px 10px', margin: 0, background: 'rgba(30, 41, 59, 0.6)', border: '1px solid rgba(51, 65, 85, 0.7)', color: '#f8fafc' }}>
               {skill}
             </Tag>
           ))}
         </div>
       </div>
 
-      <Divider style={{ margin: '12px 0' }} />
+      <Divider style={{ margin: '12px 0', borderColor: 'rgba(51, 65, 85, 0.4)' }} />
 
       {/* Candidate Highlight Card */}
       <div>
-        <div style={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#0284c7', marginBottom: 10 }}>
+        <div style={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60a5fa', marginBottom: 10 }}>
           Tóm tắt ứng viên nổi bật
         </div>
         <Row gutter={[10, 10]}>
           {[
-            { label: 'Lương hiện tại', value: c.highlightCard.currentSalary >= 1000000 ? `${(c.highlightCard.currentSalary / 1000000).toLocaleString()} tr/tháng` : `${c.highlightCard.currentSalary.toLocaleString()} ${c.highlightCard.currency}/tháng`, color: '#0284c7', bg: '#f0f9ff' },
-            { label: 'Lương kỳ vọng', value: c.highlightCard.expectedSalary >= 1000000 ? `${(c.highlightCard.expectedSalary / 1000000).toLocaleString()} tr/tháng` : `${c.highlightCard.expectedSalary.toLocaleString()} ${c.highlightCard.currency}/tháng`, color: '#10b981', bg: '#f0fdf4' },
-            { label: 'Số năm kinh nghiệm', value: `${c.highlightCard.yearsOfExperience} năm`, color: '#8b5cf6', bg: '#faf5ff' },
-            { label: 'Thời gian thông báo', value: `${c.highlightCard.noticePeriod} ngày`, color: '#f59e0b', bg: '#fffbeb' },
+            { label: 'Lương hiện tại', value: c.highlightCard.currentSalary >= 1000000 ? `${(c.highlightCard.currentSalary / 1000000).toLocaleString()} tr/tháng` : `${c.highlightCard.currentSalary.toLocaleString()} ${c.highlightCard.currency}/tháng`, color: '#60a5fa', bg: 'rgba(37, 99, 235, 0.12)' },
+            { label: 'Lương kỳ vọng', value: c.highlightCard.expectedSalary >= 1000000 ? `${(c.highlightCard.expectedSalary / 1000000).toLocaleString()} tr/tháng` : `${c.highlightCard.expectedSalary.toLocaleString()} ${c.highlightCard.currency}/tháng`, color: '#34d399', bg: 'rgba(16, 185, 129, 0.12)' },
+            { label: 'Số năm kinh nghiệm', value: `${c.highlightCard.yearsOfExperience} năm`, color: '#a855f7', bg: 'rgba(168, 85, 247, 0.12)' },
+            { label: 'Thời gian thông báo', value: `${c.highlightCard.noticePeriod} ngày`, color: '#fbbf24', bg: 'rgba(245, 158, 11, 0.12)' },
           ].map(({ label, value, color, bg }) => (
             <Col span={12} key={label}>
-              <div style={{ background: bg, borderRadius: 8, padding: '10px 12px' }}>
-                <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
-                <div style={{ fontSize: 15, fontWeight: 800, color, marginTop: 2 }}>{value}</div>
+              <div style={{ background: bg, borderRadius: 10, padding: '10px 12px', border: '1px solid rgba(51, 65, 85, 0.5)' }}>
+                <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color, marginTop: 2, fontFamily: 'monospace' }}>{value}</div>
               </div>
             </Col>
           ))}
         </Row>
-        <div style={{ marginTop: 10, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <CalendarOutlined style={{ color: '#8b5cf6', fontSize: 13 }} />
-          <Text style={{ fontSize: 12, color: '#475569' }}>
+        <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(30, 41, 59, 0.45)', borderRadius: 10, border: '1px solid rgba(51, 65, 85, 0.5)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <CalendarOutlined style={{ color: '#a855f7', fontSize: 13 }} />
+          <Text style={{ fontSize: 12, color: '#cbd5e1' }}>
             Ngày có thể đi làm: <strong>{new Date(c.highlightCard.availabilityDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
           </Text>
         </div>
       </div>
 
-      <Divider style={{ margin: '12px 0' }} />
+      <Divider style={{ margin: '12px 0', borderColor: 'rgba(51, 65, 85, 0.4)' }} />
 
       {/* Education */}
       <div>
-        <div style={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#0284c7', marginBottom: 8 }}>
+        <div style={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60a5fa', marginBottom: 8 }}>
           Học vấn & Bằng cấp
         </div>
-        <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>Cử nhân Công nghệ Thông tin / Khoa học Máy tính</div>
-        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Đại học Bách Khoa TP.HCM · 2015–2019</div>
+        <div style={{ fontWeight: 700, fontSize: 13, color: '#f8fafc' }}>Cử nhân Công nghệ Thông tin / Khoa học Máy tính</div>
+        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Đại học Bách Khoa TP.HCM · 2015–2019</div>
       </div>
     </div>
   </div>
@@ -255,15 +257,15 @@ const JDPanel: React.FC<JDPanelProps> = ({ job, candidateSkills }) => {
   const matches = (tag: string) => skillSet.has(tag.toLowerCase());
 
   return (
-    <Card size="small" style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
+    <Card size="small" style={{ borderRadius: 16, border: '1px solid rgba(51, 65, 85, 0.65)', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(12px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <FileTextOutlined style={{ color: '#0284c7', fontSize: 15 }} />
-        <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>Yêu cầu tuyển dụng (JD)</span>
-        <Tag style={{ marginLeft: 'auto', fontSize: 11, borderRadius: 6 }}>{job.serviceType}</Tag>
+        <FileTextOutlined style={{ color: '#60a5fa', fontSize: 15 }} />
+        <span style={{ fontWeight: 700, fontSize: 14, color: '#f8fafc' }}>Yêu cầu tuyển dụng (JD)</span>
+        <Tag style={{ marginLeft: 'auto', fontSize: 11, borderRadius: 9999, background: 'rgba(37, 99, 235, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' }}>{job.serviceType}</Tag>
       </div>
 
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 12, color: '#0f172a', fontWeight: 700, marginBottom: 6 }}>
+        <div style={{ fontSize: 12, color: '#f8fafc', fontWeight: 700, marginBottom: 6 }}>
           🔴 Bắt buộc có
         </div>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
@@ -281,7 +283,7 @@ const JDPanel: React.FC<JDPanelProps> = ({ job, candidateSkills }) => {
       </div>
 
       <div>
-        <div style={{ fontSize: 12, color: '#0f172a', fontWeight: 700, marginBottom: 6 }}>
+        <div style={{ fontSize: 12, color: '#f8fafc', fontWeight: 700, marginBottom: 6 }}>
           🟡 Ưu tiên có
         </div>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
@@ -479,11 +481,11 @@ export const AIScreening: React.FC = () => {
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-              <RobotOutlined style={{ color: '#0284c7', marginRight: 10 }} />
+            <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800 }}>
+              <RobotOutlined style={{ color: '#60a5fa', marginRight: 10 }} />
               Sàng lọc CV-JD bằng AI
             </Title>
-            <Text type="secondary" style={{ fontSize: 13 }}>
+            <Text style={{ fontSize: 13, color: '#94a3b8' }}>
               Khớp hồ sơ bằng AI ngữ nghĩa với phân hạng 4 mức điểm. Đánh giá mức độ phù hợp và đưa ra quyết định tuyển dụng.
             </Text>
           </div>
@@ -568,13 +570,13 @@ export const AIScreening: React.FC = () => {
         {/* LEFT — CV Viewer */}
         <Col xs={24} lg={14}>
           <Card
-            style={{ borderRadius: 16, border: '1px solid #e2e8f0', padding: 0 }}
+            style={{ borderRadius: 16, border: '1px solid rgba(51, 65, 85, 0.65)', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(12px)', padding: 0 }}
             styles={{ body: { padding: 0 } }}
             title={
               <Space>
-                <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 14 }}>Hồ sơ ứng viên (CV)</span>
+                <span style={{ fontWeight: 700, color: '#f8fafc', fontSize: 14 }}>Hồ sơ ứng viên (CV)</span>
                 {selectedCandidate && (
-                  <Tag style={{ borderRadius: 6, fontSize: 11, margin: 0 }}>
+                  <Tag style={{ borderRadius: 9999, fontSize: 11, margin: 0, background: 'rgba(37, 99, 235, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
                     {selectedCandidate.cvMode.replace(/_/g, ' ')}
                   </Tag>
                 )}
@@ -604,8 +606,9 @@ export const AIScreening: React.FC = () => {
             <Card
               style={{
                 borderRadius: 16,
-                border: `2px solid ${colorTierConfig.hex}40`,
-                background: colorTierConfig.bg,
+                border: `1.5px solid ${colorTierConfig.hex}50`,
+                background: 'rgba(15, 23, 42, 0.75)',
+                backdropFilter: 'blur(12px)',
                 transition: 'all 0.4s ease',
               }}
             >
@@ -614,9 +617,9 @@ export const AIScreening: React.FC = () => {
               ) : (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                    <ThunderboltOutlined style={{ color: '#0284c7', fontSize: 16 }} />
-                    <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>Độ tương đồng ngữ nghĩa</span>
-                    <Tag style={{ marginLeft: 'auto', borderRadius: 100, background: 'rgba(2,132,199,0.1)', color: '#0284c7', border: 'none', fontSize: 10, fontWeight: 700 }}>
+                    <ThunderboltOutlined style={{ color: '#60a5fa', fontSize: 16 }} />
+                    <span style={{ fontWeight: 700, fontSize: 14, color: '#f8fafc' }}>Độ tương đồng ngữ nghĩa</span>
+                    <Tag style={{ marginLeft: 'auto', borderRadius: 100, background: 'rgba(37, 99, 235, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', fontSize: 10, fontWeight: 700 }}>
                       TÍNH TOÁN BỞI AI
                     </Tag>
                   </div>
@@ -636,7 +639,7 @@ export const AIScreening: React.FC = () => {
                     <div style={{ flex: 1 }}>
                       <TierBadge score={score} />
                       <ScoreTierTag score={score} showScore={false} />
-                      <div style={{ fontSize: 12, color: '#475569', marginTop: 8, lineHeight: 1.6 }}>
+                      <div style={{ fontSize: 12, color: '#cbd5e1', marginTop: 8, lineHeight: 1.6 }}>
                         {screeningResult?.aiSummary?.slice(0, 130) ?? scoreTierConfig.label + ' — Đã tải phân tích từ AI.'}
                         {screeningResult?.aiSummary && '…'}
                       </div>
@@ -646,10 +649,10 @@ export const AIScreening: React.FC = () => {
                   {/* Score bands legend */}
                   <div style={{ display: 'flex', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
                     {[
-                      { label: 'RED ≥80', color: '#ef4444', bg: '#fef2f2' },
-                      { label: 'TEAL ≥65', color: '#0d9488', bg: '#f0fdfa' },
-                      { label: 'GREEN ≥50', color: '#84cc16', bg: '#f7fee7' },
-                      { label: 'GRAY <50', color: '#94a3b8', bg: '#f8fafc' },
+                      { label: 'RED ≥80', color: '#f87171', bg: 'rgba(239, 68, 68, 0.15)' },
+                      { label: 'TEAL ≥65', color: '#2dd4bf', bg: 'rgba(20, 184, 166, 0.15)' },
+                      { label: 'GREEN ≥50', color: '#a3e635', bg: 'rgba(132, 204, 22, 0.15)' },
+                      { label: 'GRAY <50', color: '#94a3b8', bg: 'rgba(100, 116, 139, 0.15)' },
                     ].map(({ label, color, bg }) => (
                       <div
                         key={label}
@@ -679,15 +682,15 @@ export const AIScreening: React.FC = () => {
 
             {/* ── Match Analysis ── */}
             {screeningResult && (
-              <Card size="small" style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
-                <Title level={5} style={{ fontSize: 13, color: '#0f172a', marginBottom: 12 }}>
-                  <TrophyOutlined style={{ color: '#f59e0b', marginRight: 6 }} />
+              <Card size="small" style={{ borderRadius: 16, border: '1px solid rgba(51, 65, 85, 0.65)', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(12px)' }}>
+                <Title level={5} style={{ fontSize: 13, color: '#f8fafc', marginBottom: 12 }}>
+                  <TrophyOutlined style={{ color: '#fbbf24', marginRight: 6 }} />
                   Phân tích độ phù hợp
                 </Title>
 
                 {screeningResult.matchedSkills.length > 0 && (
                   <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                       ✓ Kỹ năng phù hợp ({screeningResult.matchedSkills.length})
                     </div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -700,7 +703,7 @@ export const AIScreening: React.FC = () => {
 
                 {screeningResult.missingSkills.length > 0 && (
                   <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                       ✗ Kỹ năng còn thiếu ({screeningResult.missingSkills.length})
                     </div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -713,12 +716,12 @@ export const AIScreening: React.FC = () => {
 
                 {screeningResult.strengths && screeningResult.strengths.length > 0 && (
                   <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                       💡 Điểm mạnh nổi bật
                     </div>
                     {screeningResult.strengths.map((s, i) => (
-                      <div key={i} style={{ fontSize: 12, color: '#475569', marginBottom: 4, display: 'flex', gap: 6 }}>
-                        <span style={{ color: '#10b981', flexShrink: 0 }}>✓</span>
+                      <div key={i} style={{ fontSize: 12, color: '#cbd5e1', marginBottom: 4, display: 'flex', gap: 6 }}>
+                        <span style={{ color: '#34d399', flexShrink: 0 }}>✓</span>
                         <span>{s}</span>
                       </div>
                     ))}
@@ -726,10 +729,10 @@ export const AIScreening: React.FC = () => {
                 )}
 
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                     🤖 Khuyến nghị tuyển dụng từ AI
                   </div>
-                  <div style={{ fontSize: 12, color: '#475569', background: '#f5f3ff', borderRadius: 8, padding: '10px 12px', lineHeight: 1.6, border: '1px solid #e0d7ff' }}>
+                  <div style={{ fontSize: 12, color: '#cbd5e1', background: 'rgba(30, 41, 59, 0.45)', borderRadius: 10, padding: '10px 12px', lineHeight: 1.6, border: '1px solid rgba(51, 65, 85, 0.6)' }}>
                     {screeningResult.recommendation}
                   </div>
                 </div>
@@ -742,10 +745,11 @@ export const AIScreening: React.FC = () => {
                 display: 'flex',
                 gap: 10,
                 padding: '14px',
-                background: '#fff',
-                borderRadius: 14,
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                background: 'rgba(15, 23, 42, 0.75)',
+                backdropFilter: 'blur(12px)',
+                borderRadius: 16,
+                border: '1px solid rgba(51, 65, 85, 0.65)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
               }}
             >
               <Button
@@ -756,10 +760,10 @@ export const AIScreening: React.FC = () => {
                 disabled={!!actionDone}
                 style={{
                   flex: 1,
-                  height: 46,
+                  height: 44,
                   borderRadius: 10,
-                  fontWeight: 700,
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  fontWeight: 600,
+                  background: '#16a34a',
                   border: 'none',
                 }}
               >
@@ -771,7 +775,7 @@ export const AIScreening: React.FC = () => {
                 icon={<CloseCircleOutlined />}
                 onClick={openRejectModal}
                 disabled={!!actionDone}
-                style={{ flex: 1, height: 46, borderRadius: 10, fontWeight: 700 }}
+                style={{ flex: 1, height: 44, borderRadius: 10, fontWeight: 600 }}
               >
                 Từ chối hồ sơ
               </Button>

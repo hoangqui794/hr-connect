@@ -328,11 +328,11 @@ export const AdminCompaniesPage: React.FC = () => {
     <div style={{ padding: '0 4px' }}>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-          <BankOutlined style={{ color: '#0284c7', marginRight: 10 }} />
+        <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800, letterSpacing: '-0.02em' }}>
+          <BankOutlined style={{ color: '#38bdf8', marginRight: 10 }} />
           Quản lý Doanh nghiệp Tuyển dụng (Clients)
         </Title>
-        <Text type="secondary" style={{ fontSize: 13 }}>
+        <Text style={{ fontSize: 13, color: '#94a3b8' }}>
           Xét duyệt hồ sơ pháp nhân, giấy phép kinh doanh, giám sát hạn mức đăng tin và thanh toán của các đối tác doanh nghiệp.
         </Text>
       </div>
@@ -340,52 +340,87 @@ export const AdminCompaniesPage: React.FC = () => {
       {/* KPI Stats */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
         <Col xs={12} sm={8} md={6}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title="Doanh nghiệp đã xác minh"
-              value={verifiedCount}
-              valueStyle={{ color: '#16a34a', fontWeight: 800 }}
-              prefix={<CheckCircleOutlined />}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Doanh nghiệp đã xác minh
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#34d399', marginTop: 6, fontFamily: 'monospace' }}>
+              {verifiedCount}
+            </div>
+          </div>
         </Col>
         <Col xs={12} sm={8} md={6}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title="Hồ sơ chờ phê duyệt"
-              value={pendingCount}
-              valueStyle={{ color: '#d97706', fontWeight: 800 }}
-              prefix={<Badge count={pendingCount} style={{ backgroundColor: '#d97706' }} />}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Hồ sơ chờ phê duyệt
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#fbbf24', marginTop: 6, fontFamily: 'monospace' }}>
+              {pendingCount}
+            </div>
+          </div>
         </Col>
         <Col xs={12} sm={8} md={6}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title="Tổng tin đang tuyển dụng"
-              value={totalJobs}
-              valueStyle={{ color: '#0284c7', fontWeight: 800 }}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Tổng tin đang tuyển
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#38bdf8', marginTop: 6, fontFamily: 'monospace' }}>
+              {totalJobs}
+            </div>
+          </div>
         </Col>
         <Col xs={12} sm={8} md={6}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title="Tỷ lệ kích hoạt COD"
-              value={80}
-              suffix="%"
-              valueStyle={{ color: '#7c3aed', fontWeight: 800 }}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Tỷ lệ kích hoạt COD
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#c084fc', marginTop: 6, fontFamily: 'monospace' }}>
+              80%
+            </div>
+          </div>
         </Col>
       </Row>
 
       {/* Companies Table */}
-      <Card
+      <div
         style={{
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          borderRadius: 16,
+          border: '1px solid rgba(51, 65, 85, 0.65)',
+          overflow: 'hidden',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(12px)',
         }}
       >
         <Table
@@ -395,7 +430,7 @@ export const AdminCompaniesPage: React.FC = () => {
           pagination={{ pageSize: 8 }}
           size="middle"
         />
-      </Card>
+      </div>
 
       {/* Detail & License Modal */}
       <Modal

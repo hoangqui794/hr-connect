@@ -294,11 +294,11 @@ export const AdminUsersPage: React.FC = () => {
     <div style={{ padding: '0 4px' }}>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-          <TeamOutlined style={{ color: '#0284c7', marginRight: 10 }} />
+        <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800, letterSpacing: '-0.02em' }}>
+          <TeamOutlined style={{ color: '#38bdf8', marginRight: 10 }} />
           Quản lý Người dùng &amp; Phân quyền
         </Title>
-        <Text type="secondary" style={{ fontSize: 13 }}>
+        <Text style={{ fontSize: 13, color: '#94a3b8' }}>
           Quản trị toàn bộ danh sách tài khoản người dùng, phân quyền vai trò (RBAC) và kiểm soát trạng thái hoạt động.
         </Text>
       </div>
@@ -307,28 +307,30 @@ export const AdminUsersPage: React.FC = () => {
       <Alert
         type="info"
         showIcon
-        style={{ marginBottom: 16, borderRadius: 10 }}
+        style={{ marginBottom: 16, borderRadius: 12, background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#cbd5e1' }}
         message={
-          <span style={{ fontSize: 13 }}>
-            Danh sách tự động đồng bộ từ <strong>localStorage</strong> — tài khoản mới đăng ký sẽ xuất hiện ngay sau khi bấm&nbsp;
-            <strong>Làm mới</strong>.
+          <span style={{ fontSize: 13, color: '#cbd5e1' }}>
+            Danh sách tự động đồng bộ từ <strong style={{ color: '#38bdf8' }}>localStorage</strong> — tài khoản mới đăng ký sẽ xuất hiện ngay sau khi bấm&nbsp;
+            <strong style={{ color: '#38bdf8' }}>Làm mới</strong>.
           </span>
         }
         action={
-          <Button size="small" icon={<ReloadOutlined />} onClick={handleRefresh} style={{ borderRadius: 6 }}>
+          <Button size="small" icon={<ReloadOutlined />} onClick={handleRefresh} style={{ borderRadius: 8, background: 'rgba(30, 41, 59, 0.8)', border: '1px solid rgba(51, 65, 85, 0.6)', color: '#f8fafc' }}>
             Làm mới
           </Button>
         }
       />
 
       {/* Filter Toolbar */}
-      <Card
+      <div
         style={{
-          borderRadius: 12,
+          borderRadius: 16,
           marginBottom: 16,
-          border: '1px solid #e2e8f0',
+          padding: '14px 18px',
+          border: '1px solid rgba(51, 65, 85, 0.65)',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(12px)',
         }}
-        styles={{ body: { padding: '14px 18px' } }}
       >
         <Row gutter={[12, 12]} align="middle">
           <Col xs={24} md={8}>
@@ -338,14 +340,14 @@ export const AdminUsersPage: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               allowClear
-              style={{ borderRadius: 8 }}
+              style={{ borderRadius: 10, height: 38 }}
             />
           </Col>
           <Col xs={12} sm={6} md={5}>
             <Select
               value={roleFilter}
               onChange={setRoleFilter}
-              style={{ width: '100%' }}
+              style={{ width: '100%', height: 38 }}
               options={[
                 { label: 'Tất cả vai trò', value: 'ALL' },
                 { label: 'Platform Admin', value: UserRole.ADMIN },
@@ -360,7 +362,7 @@ export const AdminUsersPage: React.FC = () => {
             <Select
               value={statusFilter}
               onChange={setStatusFilter}
-              style={{ width: '100%' }}
+              style={{ width: '100%', height: 38 }}
               options={[
                 { label: 'Tất cả trạng thái', value: 'ALL' },
                 { label: 'Đang hoạt động', value: 'ACTIVE' },
@@ -378,28 +380,30 @@ export const AdminUsersPage: React.FC = () => {
                   setStatusFilter('ALL');
                   handleRefresh();
                 }}
-                style={{ borderRadius: 8 }}
+                style={{ borderRadius: 10, height: 38, background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(51, 65, 85, 0.65)', color: '#f8fafc' }}
               >
                 Đặt lại bộ lọc
               </Button>
             </Space>
           </Col>
         </Row>
-      </Card>
+      </div>
 
       {/* Summary badge */}
-      <div style={{ marginBottom: 10, fontSize: 13, color: '#64748b' }}>
-        Hiển thị <strong style={{ color: '#0f172a' }}>{filteredUsers.length}</strong> /&nbsp;
-        <strong style={{ color: '#0f172a' }}>{allUsers.length}</strong> tài khoản
+      <div style={{ marginBottom: 12, fontSize: 13, color: '#94a3b8' }}>
+        Hiển thị <strong style={{ color: '#38bdf8' }}>{filteredUsers.length}</strong> /&nbsp;
+        <strong style={{ color: '#f8fafc' }}>{allUsers.length}</strong> tài khoản
         {allUsers.length !== filteredUsers.length && ' (đang lọc)'}
       </div>
 
       {/* Users Table */}
-      <Card
+      <div
         style={{
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          borderRadius: 16,
+          border: '1px solid rgba(51, 65, 85, 0.65)',
+          overflow: 'hidden',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(12px)',
         }}
       >
         <Table
@@ -409,7 +413,7 @@ export const AdminUsersPage: React.FC = () => {
           pagination={{ pageSize: 10, showTotal: (t) => `Tổng ${t} tài khoản` }}
           size="middle"
         />
-      </Card>
+      </div>
 
       {/* Assign Role Modal */}
       <Modal

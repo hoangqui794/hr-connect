@@ -367,11 +367,11 @@ export const ClientJobsPage: React.FC = () => {
       {/* Page Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
         <div>
-          <Title level={3} style={{ margin: 0, color: '#0f172a', fontWeight: 800 }}>
+          <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800, letterSpacing: '-0.02em' }}>
             Tin tuyển dụng của tôi
           </Title>
-          <Text type="secondary" style={{ fontSize: 13.5 }}>
-            Doanh nghiệp: <b style={{ color: '#0284c7' }}>{user?.company || 'Doanh nghiệp'}</b> · Quản lý bài đăng, gói dịch vụ áp dụng và phễu tuyển dụng
+          <Text style={{ fontSize: 13.5, color: '#94a3b8' }}>
+            Doanh nghiệp: <b style={{ color: '#38bdf8' }}>{user?.company || 'Doanh nghiệp'}</b> · Quản lý bài đăng, gói dịch vụ áp dụng và phễu tuyển dụng
           </Text>
         </div>
 
@@ -380,10 +380,12 @@ export const ClientJobsPage: React.FC = () => {
           icon={<PlusOutlined />}
           onClick={() => navigate('/client/jobs/create')}
           style={{
-            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-            borderRadius: 8,
+            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+            borderRadius: 12,
             fontWeight: 600,
-            height: 38,
+            height: 40,
+            border: 'none',
+            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
           }}
         >
           Đăng tin tuyển dụng mới
@@ -393,21 +395,30 @@ export const ClientJobsPage: React.FC = () => {
       {/* Metric Cards */}
       <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
         {[
-          { label: `Tổng số tin đăng`, value: metrics.total, color: '#0284c7', icon: <FileTextOutlined /> },
-          { label: 'Tin đang tuyển (ACTIVE)', value: metrics.active, color: '#10b981', icon: <PlayCircleOutlined /> },
-          { label: 'Tin tạm dừng (PAUSED)', value: metrics.paused, color: '#f59e0b', icon: <PauseCircleOutlined /> },
-          { label: 'Tổng ứng viên nộp hồ sơ', value: metrics.totalApplications, color: '#8b5cf6', icon: <TeamOutlined /> },
+          { label: `Tổng số tin đăng`, value: metrics.total, color: '#38bdf8', icon: <FileTextOutlined /> },
+          { label: 'Tin đang tuyển (ACTIVE)', value: metrics.active, color: '#34d399', icon: <PlayCircleOutlined /> },
+          { label: 'Tin tạm dừng (PAUSED)', value: metrics.paused, color: '#fbbf24', icon: <PauseCircleOutlined /> },
+          { label: 'Tổng ứng viên nộp hồ sơ', value: metrics.totalApplications, color: '#c084fc', icon: <TeamOutlined /> },
         ].map((item) => (
           <Col key={item.label} xs={12} sm={6}>
-            <Card size="small" style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
+            <div
+              style={{
+                borderRadius: 16,
+                border: '1px solid rgba(51, 65, 85, 0.65)',
+                background: 'rgba(15, 23, 42, 0.65)',
+                backdropFilter: 'blur(12px)',
+                padding: '16px 20px',
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div
                   style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 10,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 12,
                     background: `${item.color}15`,
                     color: item.color,
+                    border: `1px solid ${item.color}30`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -417,26 +428,26 @@ export const ClientJobsPage: React.FC = () => {
                   {item.icon}
                 </div>
                 <div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: '#f8fafc', lineHeight: 1.1, fontFamily: 'monospace' }}>
                     {item.value}
                   </div>
-                  <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     {item.label}
                   </div>
                 </div>
               </div>
-            </Card>
+            </div>
           </Col>
         ))}
       </Row>
 
       {jobs.length === 0 ? (
-        <Card style={{ borderRadius: 14, textAlign: 'center', padding: '60px 20px', border: '1px solid #e2e8f0' }}>
-          <FileTextOutlined style={{ fontSize: 48, color: '#cbd5e1', marginBottom: 16 }} />
-          <Title level={4} style={{ color: '#0f172a', marginBottom: 8 }}>
+        <div style={{ borderRadius: 16, textAlign: 'center', padding: '60px 20px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(16px)', border: '1px solid rgba(51, 65, 85, 0.65)' }}>
+          <FileTextOutlined style={{ fontSize: 48, color: '#475569', marginBottom: 16 }} />
+          <Title level={4} style={{ color: '#f8fafc', marginBottom: 8 }}>
             Doanh nghiệp của bạn chưa đăng tin tuyển dụng nào
           </Title>
-          <Text type="secondary" style={{ display: 'block', maxWidth: 480, margin: '0 auto 24px', fontSize: 13.5 }}>
+          <Text style={{ display: 'block', maxWidth: 480, margin: '0 auto 24px', fontSize: 13.5, color: '#94a3b8' }}>
             Bắt đầu tạo tin tuyển dụng mới với các gói dịch vụ linh hoạt (COD, CV Sourcing, CV Application) để kết nối ngay với các ứng viên tài năng.
           </Text>
           <Button
@@ -444,15 +455,15 @@ export const ClientJobsPage: React.FC = () => {
             icon={<PlusOutlined />}
             size="large"
             onClick={() => navigate('/client/jobs/create')}
-            style={{ borderRadius: 8, fontWeight: 700, background: '#0284c7' }}
+            style={{ borderRadius: 12, fontWeight: 700, background: '#2563eb', height: 42 }}
           >
             Đăng tin tuyển dụng đầu tiên
           </Button>
-        </Card>
+        </div>
       ) : (
         <>
           {/* Filter Bar */}
-          <Card size="small" style={{ borderRadius: 12, marginBottom: 16, border: '1px solid #e2e8f0' }}>
+          <div style={{ borderRadius: 16, marginBottom: 16, padding: '14px 18px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(51, 65, 85, 0.65)' }}>
             <Row gutter={[12, 12]} align="middle">
               <Col xs={24} md={10}>
                 <Input
@@ -461,6 +472,7 @@ export const ClientJobsPage: React.FC = () => {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   allowClear
+                  style={{ borderRadius: 10, height: 38 }}
                 />
               </Col>
               <Col xs={12} md={7}>
@@ -469,7 +481,7 @@ export const ClientJobsPage: React.FC = () => {
                   value={serviceTypeFilter || undefined}
                   onChange={(val) => setServiceTypeFilter(val || '')}
                   allowClear
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', height: 38 }}
                   options={[
                     { value: '', label: 'Tất cả gói dịch vụ' },
                     { value: ServiceType.HEADHUNT_COD, label: 'Trọn gói COD (Bảo hành 60 ngày)' },
@@ -484,7 +496,7 @@ export const ClientJobsPage: React.FC = () => {
                   value={statusFilter || undefined}
                   onChange={(val) => setStatusFilter(val || '')}
                   allowClear
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', height: 38 }}
                   options={[
                     { value: '', label: 'Tất cả trạng thái' },
                     { value: JobStatus.ACTIVE, label: 'Đang tuyển (ACTIVE)' },
@@ -494,10 +506,10 @@ export const ClientJobsPage: React.FC = () => {
                 />
               </Col>
             </Row>
-          </Card>
+          </div>
 
           {/* Table */}
-          <Card style={{ borderRadius: 14, border: '1px solid #e2e8f0', overflow: 'hidden' }} styles={{ body: { padding: 0 } }}>
+          <div style={{ borderRadius: 16, border: '1px solid rgba(51, 65, 85, 0.65)', overflow: 'hidden', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(12px)' }}>
             <Table
               columns={columns}
               dataSource={filteredJobs}
@@ -506,7 +518,7 @@ export const ClientJobsPage: React.FC = () => {
               pagination={{ pageSize: 10, showTotal: (total) => `Tổng số ${total} bài đăng` }}
               size="middle"
             />
-          </Card>
+          </div>
         </>
       )}
     </div>

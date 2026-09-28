@@ -422,13 +422,13 @@ export const ClientWarrantyPage: React.FC = () => {
       minWidth: 260,
       render: (_: any, record: ProbationWarrantyDTO) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Avatar src={record.avatar} size={42} style={{ border: '2px solid #e2e8f0' }}>
+          <Avatar src={record.avatar} size={42} style={{ border: '2px solid rgba(51, 65, 85, 0.7)' }}>
             {record.candidateName.charAt(0)}
           </Avatar>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a' }}>{record.candidateName}</div>
-            <div style={{ fontSize: 12, color: '#2563eb', fontWeight: 500 }}>{record.jobTitle}</div>
-            <div style={{ fontSize: 11, color: '#64748b' }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: '#f8fafc' }}>{record.candidateName}</div>
+            <div style={{ fontSize: 12, color: '#60a5fa', fontWeight: 500 }}>{record.jobTitle}</div>
+            <div style={{ fontSize: 11, color: '#94a3b8' }}>
               Bắt đầu làm: <strong>{dayjs(record.startDate).format('DD/MM/YYYY')}</strong>
             </div>
           </div>
@@ -440,7 +440,7 @@ export const ClientWarrantyPage: React.FC = () => {
       key: 'package',
       minWidth: 230,
       render: () => (
-        <Tag color="purple" icon={<SafetyCertificateOutlined />} style={{ padding: '4px 8px', fontSize: 12 }}>
+        <Tag color="purple" icon={<SafetyCertificateOutlined />} style={{ padding: '4px 10px', fontSize: 12, borderRadius: 9999 }}>
           Tuyển dụng trọn gói (COD) - Bảo hành 60 ngày
         </Tag>
       ),
@@ -457,17 +457,17 @@ export const ClientWarrantyPage: React.FC = () => {
         return (
           <div style={{ width: '100%', maxWidth: 240 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-              <span style={{ fontWeight: 600, color: isFailed ? '#dc2626' : isCompleted ? '#16a34a' : '#0284c7' }}>
+              <span style={{ fontWeight: 600, color: isFailed ? '#f87171' : isCompleted ? '#34d399' : '#60a5fa' }}>
                 {isFailed
                   ? 'Đã dừng bảo hành'
                   : `Đã thử việc ${record.passedDays}/${record.probationDaysTotal} ngày`}
               </span>
-              <span style={{ color: '#64748b', fontSize: 11 }}>Hạn: {dayjs(record.warrantyEndDate).format('DD/MM')}</span>
+              <span style={{ color: '#94a3b8', fontSize: 11 }}>Hạn: {dayjs(record.warrantyEndDate).format('DD/MM')}</span>
             </div>
             <Progress
               percent={percent}
               size="small"
-              strokeColor={isFailed ? '#ef4444' : isCompleted ? '#16a34a' : '#2563eb'}
+              strokeColor={isFailed ? '#ef4444' : isCompleted ? '#10b981' : '#2563eb'}
               status={isFailed ? 'exception' : isCompleted ? 'success' : 'active'}
               format={() => `${percent}%`}
             />
@@ -488,10 +488,10 @@ export const ClientWarrantyPage: React.FC = () => {
       minWidth: 250,
       render: (_: any, record: ProbationWarrantyDTO) => {
         if (record.status === 'PASSED') {
-          return <Tag color="green">Đã hoàn tất bảo hành</Tag>;
+          return <Tag color="green" style={{ borderRadius: 9999, padding: '2px 10px' }}>Đã hoàn tất bảo hành</Tag>;
         }
         if (record.status === 'FAILED_WARRANTY_TRIGGERED') {
-          return <Tag color="red">Đang tìm nhân sự thay thế</Tag>;
+          return <Tag color="red" style={{ borderRadius: 9999, padding: '2px 10px' }}>Đang tìm nhân sự thay thế</Tag>;
         }
 
         return (
@@ -507,7 +507,7 @@ export const ClientWarrantyPage: React.FC = () => {
                 type="primary"
                 size="small"
                 loading={actionLoading}
-                style={{ background: '#16a34a', borderColor: '#16a34a' }}
+                style={{ background: '#16a34a', borderColor: '#16a34a', borderRadius: 8 }}
               >
                 Xác nhận Đạt (PASS)
               </Button>
@@ -518,6 +518,7 @@ export const ClientWarrantyPage: React.FC = () => {
               size="small"
               icon={<AlertOutlined />}
               onClick={() => openFailModal(record)}
+              style={{ borderRadius: 8 }}
             >
               Báo Nghỉ việc / Kích hoạt BH
             </Button>
@@ -531,20 +532,27 @@ export const ClientWarrantyPage: React.FC = () => {
     <div style={{ maxWidth: 1240, margin: '0 auto' }}>
       {/* ─── PAGE HEADER ──────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 20 }}>
-        <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
+        <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800 }}>
           Theo dõi Bảo hành 60 ngày (Gói HEADHUNT_COD)
         </Title>
-        <Text style={{ color: '#64748b' }}>
-          Doanh nghiệp: <strong style={{ color: '#0f172a' }}>{user?.companyName || (user as any)?.company || user?.name || 'TechCorp Việt Nam'}</strong> • Giám sát ứng viên thử việc & cam kết bảo hành tìm nhân sự thay thế miễn phí
+        <Text style={{ color: '#94a3b8' }}>
+          Doanh nghiệp: <strong style={{ color: '#f8fafc' }}>{user?.companyName || (user as any)?.company || user?.name || 'TechCorp Việt Nam'}</strong> • Giám sát ứng viên thử việc & cam kết bảo hành tìm nhân sự thay thế miễn phí
         </Text>
       </div>
 
       {/* ─── OVERVIEW METRICS ─────────────────────────────────────────────────── */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
         <Col xs={24} sm={8}>
-          <Card style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>Đang trong thời hạn bảo hành</Text>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#2563eb', marginTop: 4 }}>
+          <Card
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
+            <Text style={{ fontSize: 13, color: '#94a3b8' }}>Đang trong thời hạn bảo hành</Text>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#60a5fa', marginTop: 4, fontFamily: 'monospace' }}>
               {records.filter((r) => r.status === 'IN_PROBATION').length} Ứng viên
             </div>
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
@@ -553,9 +561,16 @@ export const ClientWarrantyPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={8}>
-          <Card style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>Đã thử việc thành công (PASS)</Text>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#16a34a', marginTop: 4 }}>
+          <Card
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
+            <Text style={{ fontSize: 13, color: '#94a3b8' }}>Đã thử việc thành công (PASS)</Text>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#34d399', marginTop: 4, fontFamily: 'monospace' }}>
               {records.filter((r) => r.status === 'PASSED').length} Ứng viên
             </div>
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
@@ -564,9 +579,16 @@ export const ClientWarrantyPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={8}>
-          <Card style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>Kích hoạt bảo hành thay thế</Text>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#dc2626', marginTop: 4 }}>
+          <Card
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
+            <Text style={{ fontSize: 13, color: '#94a3b8' }}>Kích hoạt bảo hành thay thế</Text>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#f87171', marginTop: 4, fontFamily: 'monospace' }}>
               {records.filter((r) => r.status === 'FAILED_WARRANTY_TRIGGERED').length} Hồ sơ
             </div>
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
@@ -578,12 +600,17 @@ export const ClientWarrantyPage: React.FC = () => {
 
       {/* ─── POLICY NOTICE ────────────────────────────────────────────────────── */}
       <Alert
-        message="Chính sách Bảo hành 60 ngày theo Đặc tả Mục 6 - Probation"
-        description="Ứng viên tuyển qua gói Tuyển dụng trọn gói (COD) được bảo hành đổi người miễn phí 01 lần trong 60 ngày nếu ứng viên tự ý nghỉ việc hoặc không đáp ứng chuyên môn. Khi Doanh nghiệp bấm [Xác nhận Đạt], chu kỳ bảo hành chính thức hoàn thành."
+        message={<span style={{ color: '#93c5fd', fontWeight: 600 }}>Chính sách Bảo hành 60 ngày theo Đặc tả Mục 6 - Probation</span>}
+        description={<span style={{ color: '#cbd5e1' }}>Ứng viên tuyển qua gói Tuyển dụng trọn gói (COD) được bảo hành đổi người miễn phí 01 lần trong 60 ngày nếu ứng viên tự ý nghỉ việc hoặc không đáp ứng chuyên môn. Khi Doanh nghiệp bấm [Xác nhận Đạt], chu kỳ bảo hành chính thức hoàn thành.</span>}
         type="info"
         showIcon
-        icon={<SafetyCertificateOutlined style={{ color: '#2563eb' }} />}
-        style={{ marginBottom: 20, borderRadius: 8 }}
+        icon={<SafetyCertificateOutlined style={{ color: '#60a5fa' }} />}
+        style={{
+          marginBottom: 20,
+          borderRadius: 12,
+          background: 'rgba(37, 99, 235, 0.1)',
+          border: '1px solid rgba(59, 130, 246, 0.3)',
+        }}
       />
 
       {/* ─── FILTER CONTROL ───────────────────────────────────────────────────── */}
@@ -603,7 +630,12 @@ export const ClientWarrantyPage: React.FC = () => {
 
       {/* ─── WARRANTY TABLE ───────────────────────────────────────────────────── */}
       <Card
-        style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}
+        style={{
+          borderRadius: 16,
+          border: '1px solid rgba(51, 65, 85, 0.65)',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(12px)',
+        }}
         styles={{ body: { padding: 0 } }}
       >
         <Spin spinning={loading}>
@@ -613,7 +645,7 @@ export const ClientWarrantyPage: React.FC = () => {
             rowKey="id"
             pagination={{ pageSize: 10, showTotal: (total) => `Tổng cộng ${total} nhân sự bảo hành` }}
             scroll={{ x: 1100 }}
-            locale={{ emptyText: 'Chưa có dữ liệu ứng viên trúng tuyển gói COD.' }}
+            locale={{ emptyText: <span style={{ color: '#94a3b8' }}>Chưa có dữ liệu ứng viên trúng tuyển gói COD.</span> }}
           />
         </Spin>
       </Card>

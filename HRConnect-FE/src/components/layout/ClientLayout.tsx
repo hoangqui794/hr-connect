@@ -202,8 +202,8 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
         trigger={null}
         theme="dark"
         style={{
-          background: '#0f172a',
-          borderRight: '1px solid rgba(255,255,255,0.08)',
+          background: '#070a11',
+          borderRight: '1px solid rgba(51, 65, 85, 0.65)',
           position: 'fixed',
           left: 0,
           top: 0,
@@ -211,30 +211,30 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
           zIndex: 100,
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '2px 0 10px rgba(0,0,0,0.1)',
+          boxShadow: '2px 0 10px rgba(0,0,0,0.3)',
         }}
       >
         {/* Brand Header */}
         <div
           onClick={() => navigate('/client/dashboard')}
           style={{
-            height: 56,
+            height: 64,
             display: 'flex',
             alignItems: 'center',
             justifyContent: collapsed ? 'center' : 'flex-start',
             padding: collapsed ? 0 : '0 18px',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
-            gap: 10,
+            borderBottom: '1px solid rgba(51, 65, 85, 0.5)',
+            gap: 12,
             cursor: 'pointer',
-            background: '#0f172a',
+            background: '#070a11',
           }}
         >
           <div
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%)',
+              width: 34,
+              height: 34,
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -242,7 +242,7 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
               fontWeight: 800,
               color: '#fff',
               flexShrink: 0,
-              boxShadow: '0 2px 8px rgba(2,132,199,0.3)',
+              boxShadow: '0 2px 10px rgba(37,99,235,0.4)',
             }}
           >
             H
@@ -279,9 +279,10 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
                         margin: 0,
                         fontSize: 10,
                         fontWeight: 700,
-                        padding: '0 5px',
-                        borderRadius: 10,
+                        padding: '0 6px',
+                        borderRadius: 9999,
                         lineHeight: '16px',
+                        border: 'none',
                       }}
                     >
                       {item.badge}
@@ -297,9 +298,9 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
         {/* Bottom Sider Footer */}
         <div
           style={{
-            borderTop: '1px solid rgba(255,255,255,0.08)',
+            borderTop: '1px solid rgba(51, 65, 85, 0.5)',
             padding: collapsed ? '10px 0' : '12px 14px',
-            background: 'rgba(15, 23, 42, 0.95)',
+            background: 'rgba(15, 23, 42, 0.65)',
           }}
         >
           <div
@@ -341,20 +342,21 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
           marginLeft: collapsed ? 68 : 250,
           transition: 'margin-left 0.25s cubic-bezier(0.2, 0, 0, 1)',
           minHeight: '100vh',
-          background: '#f8fafc',
+          background: '#0B0F17',
         }}
       >
-        {/* Top Header - Compact, exactly 56px, NO overlay over title */}
+        {/* Top Header - Impeccable standard, 64px, blur & sleek border */}
         <Header
           style={{
-            background: '#ffffff',
-            borderBottom: '1px solid #e2e8f0',
+            background: 'rgba(11, 15, 23, 0.85)',
+            backdropFilter: 'blur(16px)',
+            borderBottom: '1px solid rgba(51, 65, 85, 0.65)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '0 24px',
-            height: 56,
-            lineHeight: '56px',
+            height: 64,
+            lineHeight: '64px',
             position: 'sticky',
             top: 0,
             zIndex: 40,
@@ -367,12 +369,11 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed(!collapsed)}
-              style={{ fontSize: 16, color: '#475569', width: 34, height: 34 }}
+              style={{ fontSize: 16, color: '#94a3b8', width: 34, height: 34 }}
             />
 
             {/*
-              CRITICAL FIX: Compact Search Input Trigger.
-              Strictly height: 34px, no popover defaultOpen, opens Modal only upon click or Ctrl+K.
+              Compact Search Input Trigger
             */}
             <div
               id="header-command-search"
@@ -381,37 +382,37 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                background: '#f1f5f9',
-                border: '1px solid #e2e8f0',
-                borderRadius: 6,
-                padding: '0 10px',
-                height: 34,
+                background: 'rgba(15, 23, 42, 0.6)',
+                border: '1px solid rgba(51, 65, 85, 0.65)',
+                borderRadius: 12,
+                padding: '0 12px',
+                height: 36,
                 cursor: 'pointer',
                 width: 270,
                 boxSizing: 'border-box',
-                transition: 'border-color 0.2s',
+                transition: 'all 0.2s',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#0284c7';
+                e.currentTarget.style.borderColor = '#3b82f6';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#e2e8f0';
+                e.currentTarget.style.borderColor = 'rgba(51, 65, 85, 0.65)';
               }}
             >
-              <SearchOutlined style={{ color: '#64748b', fontSize: 13 }} />
-              <span style={{ color: '#94a3b8', fontSize: 12, flex: 1, userSelect: 'none' }}>
+              <SearchOutlined style={{ color: '#94a3b8', fontSize: 13 }} />
+              <span style={{ color: '#64748b', fontSize: 12, flex: 1, userSelect: 'none' }}>
                 Tìm kiếm nhanh...
               </span>
               <Tag
                 style={{
                   margin: 0,
-                  background: '#e2e8f0',
-                  border: 'none',
-                  color: '#475569',
+                  background: 'rgba(30, 41, 59, 0.8)',
+                  border: '1px solid rgba(51, 65, 85, 0.6)',
+                  color: '#94a3b8',
                   fontSize: 11,
                   fontWeight: 600,
-                  padding: '0 4px',
-                  borderRadius: 4,
+                  padding: '0 5px',
+                  borderRadius: 6,
                   lineHeight: '18px',
                 }}
               >
@@ -433,7 +434,7 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
             </Tooltip>
 
             {/* Language Switcher */}
-            <LanguageSwitcher theme="light" size="small" />
+            <LanguageSwitcher size="small" />
 
             {/* Notification Dropdown */}
             <Dropdown
@@ -446,28 +447,29 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
               dropdownRender={() => (
                 <div
                   style={{
-                    background: '#ffffff',
-                    borderRadius: 12,
-                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                    background: 'rgba(15, 23, 42, 0.95)',
+                    backdropFilter: 'blur(16px)',
+                    borderRadius: 16,
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
                     width: 350,
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid rgba(51, 65, 85, 0.8)',
                     overflow: 'hidden',
                   }}
                 >
                   <div
                     style={{
-                      padding: '10px 14px',
-                      borderBottom: '1px solid #f1f5f9',
+                      padding: '12px 16px',
+                      borderBottom: '1px solid rgba(51, 65, 85, 0.65)',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
                     }}
                   >
-                    <span style={{ fontWeight: 700, fontSize: 13.5, color: '#0f172a' }}>
+                    <span style={{ fontWeight: 700, fontSize: 13.5, color: '#f8fafc' }}>
                       Thông báo tuyển dụng
                     </span>
                     <span
-                      style={{ color: '#0284c7', fontSize: 11.5, cursor: 'pointer', fontWeight: 500 }}
+                      style={{ color: '#38bdf8', fontSize: 11.5, cursor: 'pointer', fontWeight: 500 }}
                       onClick={() => useAlertStore.getState().clearAll()}
                     >
                       Xóa tất cả
@@ -475,7 +477,7 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
                   </div>
                   <div style={{ maxHeight: 320, overflowY: 'auto' }}>
                     {alerts.length === 0 ? (
-                      <div style={{ padding: '28px 16px', textAlign: 'center', color: '#94a3b8', fontSize: 12.5 }}>
+                      <div style={{ padding: '28px 16px', textAlign: 'center', color: '#64748b', fontSize: 12.5 }}>
                         <BellOutlined style={{ fontSize: 22, marginBottom: 6, display: 'block' }} />
                         Không có thông báo mới
                       </div>
@@ -486,15 +488,15 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
                           <List.Item
                             key={alert.id}
                             style={{
-                              padding: '9px 14px',
-                              background: alert.read ? 'transparent' : '#f0f9ff',
-                              borderBottom: '1px solid #f8fafc',
+                              padding: '10px 16px',
+                              background: alert.read ? 'transparent' : 'rgba(37, 99, 235, 0.08)',
+                              borderBottom: '1px solid rgba(51, 65, 85, 0.4)',
                               cursor: 'pointer',
                             }}
                             actions={[
                               <span
                                 key="del"
-                                style={{ fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}
+                                style={{ fontSize: 11, color: '#64748b', cursor: 'pointer' }}
                                 onClick={() => dismissAlert(alert.id)}
                               >
                                 ✕
@@ -502,8 +504,8 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
                             ]}
                           >
                             <List.Item.Meta
-                              title={<span style={{ fontSize: 12.5, fontWeight: 600, color: '#0f172a' }}>{alert.title}</span>}
-                              description={<span style={{ fontSize: 11.5, color: '#64748b' }}>{alert.message}</span>}
+                              title={<span style={{ fontSize: 12.5, fontWeight: 600, color: '#f1f5f9' }}>{alert.title}</span>}
+                              description={<span style={{ fontSize: 11.5, color: '#94a3b8' }}>{alert.message}</span>}
                             />
                           </List.Item>
                         )}
@@ -517,7 +519,7 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
                 <Button
                   type="text"
                   shape="circle"
-                  icon={<BellOutlined style={{ fontSize: 17, color: '#475569' }} />}
+                  icon={<BellOutlined style={{ fontSize: 17, color: '#94a3b8' }} />}
                   style={{ width: 34, height: 34 }}
                 />
               </Badge>
@@ -531,15 +533,17 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
                   alignItems: 'center',
                   gap: 8,
                   cursor: 'pointer',
-                  padding: '3px 6px',
-                  borderRadius: 6,
+                  padding: '4px 10px',
+                  borderRadius: 12,
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  border: '1px solid rgba(51, 65, 85, 0.65)',
                   transition: 'background 0.2s',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(30, 41, 59, 0.8)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(15, 23, 42, 0.6)')}
               >
                 <Avatar
-                  size={30}
+                  size={28}
                   style={{
                     background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
                     fontWeight: 700,
@@ -549,10 +553,10 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
                   {userAvatar}
                 </Avatar>
                 <div style={{ textAlign: 'left', lineHeight: 1.2 }}>
-                  <div style={{ fontWeight: 600, fontSize: 12.5, color: '#0f172a' }}>
+                  <div style={{ fontWeight: 600, fontSize: 12.5, color: '#f1f5f9' }}>
                     {companyName}
                   </div>
-                  <div style={{ fontSize: 10.5, color: '#0284c7', fontWeight: 600 }}>
+                  <div style={{ fontSize: 10.5, color: '#38bdf8', fontWeight: 600 }}>
                     {userName}
                   </div>
                 </div>
@@ -564,18 +568,18 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
         {/* Content Body with Breadcrumbs */}
         <Content
           style={{
-            padding: '20px 24px',
-            background: '#f8fafc',
-            minHeight: 'calc(100vh - 56px)',
+            padding: '24px',
+            background: '#0B0F17',
+            minHeight: 'calc(100vh - 64px)',
             overflowX: 'hidden',
           }}
         >
           {/* Breadcrumbs */}
-          <div style={{ marginBottom: 14 }}>
+          <div style={{ marginBottom: 16 }}>
             <Breadcrumb
               items={[
                 { title: <span style={{ cursor: 'pointer', color: '#64748b' }} onClick={() => navigate('/client/dashboard')}>Doanh nghiệp</span> },
-                { title: <span style={{ fontWeight: 600, color: '#0f172a' }}>{currentMenuItem?.label || 'Tổng quan'}</span> },
+                { title: <span style={{ fontWeight: 600, color: '#cbd5e1' }}>{currentMenuItem?.label || 'Tổng quan'}</span> },
               ]}
             />
           </div>
@@ -601,22 +605,30 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
         centered
         mask={true}
         maskClosable={true}
-        styles={{ body: { padding: 0 } }}
+        styles={{
+          body: {
+            padding: 0,
+            background: '#0f172a',
+            borderRadius: 16,
+            overflow: 'hidden',
+            border: '1px solid rgba(51, 65, 85, 0.8)',
+          },
+        }}
       >
-        <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(51, 65, 85, 0.65)' }}>
           <Input
             autoFocus
-            prefix={<SearchOutlined style={{ color: '#0284c7', fontSize: 16, marginRight: 8 }} />}
+            prefix={<SearchOutlined style={{ color: '#38bdf8', fontSize: 16, marginRight: 8 }} />}
             placeholder="Tìm nhanh trang, tính năng hoặc phễu ứng viên..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             bordered={false}
-            style={{ fontSize: 15, padding: 0 }}
+            style={{ fontSize: 15, padding: 0, color: '#f8fafc' }}
           />
         </div>
         <div style={{ maxHeight: 320, overflowY: 'auto' }}>
           {filteredSearch.length === 0 ? (
-            <div style={{ padding: '28px', textAlign: 'center', color: '#94a3b8', fontSize: 12.5 }}>
+            <div style={{ padding: '28px', textAlign: 'center', color: '#64748b', fontSize: 12.5 }}>
               Không tìm thấy mục nào khớp với "{searchQuery}"
             </div>
           ) : (
@@ -629,28 +641,28 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
                   setSearchQuery('');
                 }}
                 style={{
-                  padding: '11px 18px',
+                  padding: '12px 18px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
                   cursor: 'pointer',
-                  borderBottom: '1px solid #f8fafc',
+                  borderBottom: '1px solid rgba(51, 65, 85, 0.4)',
                   transition: 'background 0.15s ease',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f9ff')}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(30, 41, 59, 0.6)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
                 <span style={{ fontSize: 18 }}>{item.icon}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{item.label}</div>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>{item.category}</div>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: '#f1f5f9' }}>{item.label}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{item.category}</div>
                 </div>
-                <RightOutlined style={{ fontSize: 11, color: '#cbd5e1' }} />
+                <RightOutlined style={{ fontSize: 11, color: '#64748b' }} />
               </div>
             ))
           )}
         </div>
-        <div style={{ padding: '8px 16px', background: '#f8fafc', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8' }}>
+        <div style={{ padding: '10px 16px', background: 'rgba(15, 23, 42, 0.95)', borderTop: '1px solid rgba(51, 65, 85, 0.65)', display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748b' }}>
           <span>Nhấn ↵ để chọn</span>
           <span>ESC để đóng</span>
         </div>

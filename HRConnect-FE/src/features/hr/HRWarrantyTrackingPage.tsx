@@ -358,9 +358,9 @@ export const HRWarrantyTrackingPage: React.FC = () => {
       key: 'candidate',
       render: (_, record) => (
         <div>
-          <div style={{ fontWeight: 700, color: '#0f172a' }}>{record.candidateName}</div>
-          <div style={{ fontSize: 12, color: '#64748b' }}>{record.candidateEmail}</div>
-          <Tag color="blue" style={{ marginTop: 4, borderRadius: 4, fontSize: 11 }}>
+          <div style={{ fontWeight: 600, color: '#f8fafc' }}>{record.candidateName}</div>
+          <div style={{ fontSize: 12, color: '#94a3b8' }}>{record.candidateEmail}</div>
+          <Tag style={{ marginTop: 4, borderRadius: 9999, fontSize: 11, background: 'rgba(37, 99, 235, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
             {record.jobTitle}
           </Tag>
         </div>
@@ -371,11 +371,11 @@ export const HRWarrantyTrackingPage: React.FC = () => {
       key: 'company',
       render: (_, record) => (
         <div>
-          <div style={{ fontWeight: 600, color: '#1e293b' }}>
-            <BankOutlined style={{ marginRight: 4, color: '#0284c7' }} />
+          <div style={{ fontWeight: 600, color: '#cbd5e1' }}>
+            <BankOutlined style={{ marginRight: 4, color: '#60a5fa' }} />
             {record.companyName}
           </div>
-          <div style={{ fontSize: 12, color: '#059669', marginTop: 2, fontWeight: 500 }}>
+          <div style={{ fontSize: 12, color: '#34d399', marginTop: 2, fontWeight: 500 }}>
             CTV: {record.affiliateName}
           </div>
         </div>
@@ -390,16 +390,16 @@ export const HRWarrantyTrackingPage: React.FC = () => {
         return (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-              <span style={{ fontWeight: 600 }}>{record.daysPassed} / {record.totalDays} ngày</span>
-              <span style={{ color: '#64748b' }}>{percent}%</span>
+              <span style={{ fontWeight: 600, color: '#f8fafc' }}>{record.daysPassed} / {record.totalDays} ngày</span>
+              <span style={{ color: '#94a3b8' }}>{percent}%</span>
             </div>
             <Progress
               percent={percent}
               size="small"
               status={record.status === 'FAILED_PROBATION' ? 'exception' : percent === 100 ? 'success' : 'active'}
-              strokeColor={record.status === 'FAILED_PROBATION' ? '#ef4444' : percent === 100 ? '#10b981' : '#0284c7'}
+              strokeColor={record.status === 'FAILED_PROBATION' ? '#ef4444' : percent === 100 ? '#10b981' : '#2563eb'}
             />
-            <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
               Onboard: {record.onboardDate} → Hết hạn: {record.warrantyEndDate}
             </div>
           </div>
@@ -411,7 +411,7 @@ export const HRWarrantyTrackingPage: React.FC = () => {
       dataIndex: 'commissionAmount',
       key: 'commission',
       render: (v: number) => (
-        <span style={{ fontWeight: 700, color: '#059669' }}>
+        <span style={{ fontWeight: 700, color: '#34d399', fontFamily: 'monospace' }}>
           {v.toLocaleString('vi-VN')} đ
         </span>
       ),
@@ -424,7 +424,7 @@ export const HRWarrantyTrackingPage: React.FC = () => {
           <Space direction="vertical" size={4}>
             {record.clientDecision === 'PASSED' && (
               <div>
-                <Tag color="green" style={{ fontWeight: 600, borderRadius: 4, margin: 0 }}>
+                <Tag color="green" style={{ fontWeight: 600, borderRadius: 9999, margin: 0, padding: '2px 8px' }}>
                   <CheckCircleOutlined style={{ marginRight: 4 }} />
                   Doanh nghiệp đã xác nhận PASS (60 ngày)
                 </Tag>
@@ -432,18 +432,18 @@ export const HRWarrantyTrackingPage: React.FC = () => {
             )}
             {record.clientDecision === 'FAILED' && (
               <div>
-                <Tag color="red" style={{ fontWeight: 600, borderRadius: 4, margin: 0 }}>
+                <Tag color="red" style={{ fontWeight: 600, borderRadius: 9999, margin: 0, padding: '2px 8px' }}>
                   <CloseCircleOutlined style={{ marginRight: 4 }} />
                   Doanh nghiệp báo FAIL - Cần xử lý bảo hành
                 </Tag>
               </div>
             )}
             {record.status === 'PASSED_PROBATION' ? (
-              <Badge status="success" text={<span style={{ fontWeight: 700, color: '#16a34a' }}>Đạt thử việc (Mở khóa Payout)</span>} />
+              <Badge status="success" text={<span style={{ fontWeight: 700, color: '#34d399' }}>Đạt thử việc (Mở khóa Payout)</span>} />
             ) : record.status === 'IN_PROBATION' ? (
-              <Badge status="processing" text={<span style={{ fontWeight: 700, color: '#0284c7' }}>Đang thử việc</span>} />
+              <Badge status="processing" text={<span style={{ fontWeight: 700, color: '#60a5fa' }}>Đang thử việc</span>} />
             ) : (
-              <Badge status="error" text={<span style={{ fontWeight: 700, color: '#dc2626' }}>Thử việc không đạt</span>} />
+              <Badge status="error" text={<span style={{ fontWeight: 700, color: '#f87171' }}>Thử việc không đạt</span>} />
             )}
           </Space>
         );
@@ -468,9 +468,9 @@ export const HRWarrantyTrackingPage: React.FC = () => {
                 type="primary"
                 icon={<CheckCircleOutlined />}
                 style={{
-                  borderRadius: 6,
+                  borderRadius: 8,
                   fontSize: 12,
-                  background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                  background: '#16a34a',
                   borderColor: '#16a34a',
                   fontWeight: 600,
                 }}
@@ -484,13 +484,13 @@ export const HRWarrantyTrackingPage: React.FC = () => {
               danger
               icon={<CloseCircleOutlined />}
               onClick={() => handleOpenFailModal(record)}
-              style={{ borderRadius: 6, fontSize: 12 }}
+              style={{ borderRadius: 8, fontSize: 12 }}
             >
               Không đạt
             </Button>
           </Space>
         ) : (
-          <span style={{ fontSize: 12, color: '#64748b' }}>
+          <span style={{ fontSize: 12, color: '#94a3b8' }}>
             {record.status === 'PASSED_PROBATION' ? '✓ Đã kích hoạt Milestone' : '✗ Đã kích hoạt BH thay thế'}
           </span>
         )
@@ -503,15 +503,15 @@ export const HRWarrantyTrackingPage: React.FC = () => {
       {/* Header */}
       <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-            <SafetyCertificateOutlined style={{ color: '#059669', marginRight: 10 }} />
+          <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800 }}>
+            <SafetyCertificateOutlined style={{ color: '#34d399', marginRight: 10 }} />
             Theo dõi Bảo hành 60 ngày & Milestone Hoa hồng (Internal HR)
           </Title>
-          <Text type="secondary" style={{ fontSize: 13 }}>
+          <Text style={{ fontSize: 13, color: '#94a3b8' }}>
             Cổng cập nhật trạng thái thử việc của ứng viên để kích hoạt mốc hoa hồng (Milestone Payout) cho Platform & CTV, hoặc kích hoạt cam kết bảo hành tìm ứng viên thay thế cho Doanh nghiệp.
           </Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={refreshList} style={{ borderRadius: 8 }}>
+        <Button icon={<ReloadOutlined />} onClick={refreshList} style={{ borderRadius: 10, background: 'rgba(30, 41, 59, 0.6)', borderColor: 'rgba(51, 65, 85, 0.7)', color: '#f8fafc' }}>
           Làm mới dữ liệu
         </Button>
       </div>
@@ -520,41 +520,67 @@ export const HRWarrantyTrackingPage: React.FC = () => {
       <Alert
         type="info"
         showIcon
-        message={<strong>Quy tắc nghiệp vụ Internal HR (Lisa Pham)</strong>}
-        description="Internal HR chịu trách nhiệm thẩm định chất lượng nhân sự trong giai đoạn thử việc 60 ngày. HR không sở hữu ví hoa hồng cá nhân như Headhunter/CTV tự do. Khi HR xác nhận 'Đạt thử việc', khoản hoa hồng sẽ tự động chuyển sang trạng thái PAYABLE trên trang Quản trị Tài chính (/admin/payouts) để Platform Admin thực thi giải ngân."
-        style={{ marginBottom: 20, borderRadius: 10 }}
+        message={<strong style={{ color: '#93c5fd' }}>Quy tắc nghiệp vụ Internal HR (Lisa Pham)</strong>}
+        description={<span style={{ color: '#cbd5e1' }}>Internal HR chịu trách nhiệm thẩm định chất lượng nhân sự trong giai đoạn thử việc 60 ngày. HR không sở hữu ví hoa hồng cá nhân như Headhunter/CTV tự do. Khi HR xác nhận 'Đạt thử việc', khoản hoa hồng sẽ tự động chuyển sang trạng thái PAYABLE trên trang Quản trị Tài chính (/admin/payouts) để Platform Admin thực thi giải ngân.</span>}
+        style={{
+          marginBottom: 20,
+          borderRadius: 12,
+          background: 'rgba(37, 99, 235, 0.1)',
+          border: '1px solid rgba(59, 130, 246, 0.3)',
+        }}
       />
 
       {/* KPI Stats */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
         <Col xs={12} sm={8}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: '#eff6ff' }}>
+          <Card
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
             <Statistic
-              title="Ứng viên đang trong thử việc"
+              title={<span style={{ color: '#94a3b8' }}>Ứng viên đang trong thử việc</span>}
               value={inProbationCount}
-              valueStyle={{ color: '#0284c7', fontWeight: 800, fontSize: 28 }}
-              prefix={<ClockCircleOutlined style={{ color: '#0284c7' }} />}
+              valueStyle={{ color: '#60a5fa', fontWeight: 800, fontSize: 28, fontFamily: 'monospace' }}
+              prefix={<ClockCircleOutlined style={{ color: '#60a5fa' }} />}
             />
           </Card>
         </Col>
         <Col xs={12} sm={8}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: '#f0fdf4' }}>
+          <Card
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
             <Statistic
-              title="Đã đạt thử việc (Passed)"
+              title={<span style={{ color: '#94a3b8' }}>Đã đạt thử việc (Passed)</span>}
               value={passedCount}
-              valueStyle={{ color: '#16a34a', fontWeight: 800, fontSize: 28 }}
-              prefix={<CheckCircleOutlined style={{ color: '#16a34a' }} />}
+              valueStyle={{ color: '#34d399', fontWeight: 800, fontSize: 28, fontFamily: 'monospace' }}
+              prefix={<CheckCircleOutlined style={{ color: '#34d399' }} />}
             />
           </Card>
         </Col>
         <Col xs={24} sm={8}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
+          <Card
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
             <Statistic
-              title="Tổng hoa hồng đã kích hoạt giải ngân"
+              title={<span style={{ color: '#94a3b8' }}>Tổng hoa hồng đã kích hoạt giải ngân</span>}
               value={totalCommissionUnlocked}
               formatter={(v) => `${Number(v).toLocaleString('vi-VN')} đ`}
-              valueStyle={{ color: '#059669', fontWeight: 800, fontSize: 18 }}
-              prefix={<DollarOutlined />}
+              valueStyle={{ color: '#f8fafc', fontWeight: 800, fontSize: 20, fontFamily: 'monospace' }}
+              prefix={<DollarOutlined style={{ color: '#34d399' }} />}
             />
           </Card>
         </Col>
@@ -563,9 +589,10 @@ export const HRWarrantyTrackingPage: React.FC = () => {
       {/* Table */}
       <Card
         style={{
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          borderRadius: 16,
+          border: '1px solid rgba(51, 65, 85, 0.65)',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(12px)',
         }}
       >
         <Table

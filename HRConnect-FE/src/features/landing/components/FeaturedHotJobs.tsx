@@ -27,6 +27,9 @@ export interface FeaturedJobItem {
   estimatedCommission: string;
   tags: string[]; // Technical skills strictly in English
   isUrgent?: boolean;
+  companyLogo?: string;
+  deadline?: string;
+  aiMatchScore?: number;
 }
 
 export const FEATURED_HOT_JOBS: FeaturedJobItem[] = [
