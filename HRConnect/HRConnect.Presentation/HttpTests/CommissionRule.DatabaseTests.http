@@ -1,9 +1,15 @@
 @baseUrl = https://localhost:7289
 @adminToken = REPLACE_WITH_PLATFORM_ADMIN_BEARER_TOKEN
 @headHuntServiceTypeId = REPLACE_WITH_HEADHUNT_COD_SERVICE_TYPE_ID
+@commissionRuleId = REPLACE_WITH_COMMISSION_RULE_ID
 
 ### MF-01: Platform Admin lists commission rules for the admin screen.
 GET {{baseUrl}}/api/v1/admin/commission-rules?page=1&pageSize=20
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### MF-01: Platform Admin xem chi tiết một quy tắc hoa hồng.
+GET {{baseUrl}}/api/v1/admin/commission-rules/{{commissionRuleId}}
 Authorization: Bearer {{adminToken}}
 Accept: application/json
 
