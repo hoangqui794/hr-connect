@@ -13,7 +13,7 @@ public class InternalServiceAuthAttribute : Attribute
 
 /// <summary>
 /// OpenAPI/Swagger operation filter that applies the InternalServiceToken security requirement
-/// exclusively to internal service endpoints (e.g. /api/internal/cvs/* and /api/v1/internal/cvs/*).
+/// exclusively to versioned internal service endpoints (e.g. /api/v1/internal/cvs/*).
 /// Normal public/user endpoints remain protected by the standard JWT Bearer security scheme.
 /// </summary>
 public class InternalServiceAuthOperationFilter : IOperationFilter

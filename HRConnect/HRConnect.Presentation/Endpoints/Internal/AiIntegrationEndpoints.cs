@@ -12,11 +12,7 @@ public static class AiIntegrationEndpoints
 {
     public static IEndpointRouteBuilder MapAiIntegrationEndpoints(this IEndpointRouteBuilder app)
     {
-        var groups = new[]
-        {
-            CreateProtectedGroup(app, "/api/v1/internal"),
-            CreateProtectedGroup(app, "/api/internal") // Temporary compatibility alias.
-        };
+        var groups = new[] { CreateProtectedGroup(app, "/api/v1/internal") };
 
         foreach (var group in groups)
         {

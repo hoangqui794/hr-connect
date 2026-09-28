@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 from app.api.matching import get_semantic_matcher
+from app.core.dependencies import require_test_endpoint_access
 from app.main import app
 from tests.support import ApiTestClient
 
@@ -24,6 +25,7 @@ class StubSemanticMatcher:
 @pytest.fixture
 def client() -> ApiTestClient:
     app.dependency_overrides[get_semantic_matcher] = lambda: StubSemanticMatcher()
+    app.dependency_overrides[require_test_endpoint_access] = lambda: None
     try:
         yield ApiTestClient(app)
     finally:

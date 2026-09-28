@@ -7,7 +7,11 @@ from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import get_settings
-from app.core.dependencies import get_document_parser, get_semantic_matcher
+from app.core.dependencies import (
+    get_document_parser,
+    get_semantic_matcher,
+    require_test_endpoint_access,
+)
 from app.schemas.cv import (
     CvParseResponse,
     DocumentMetadata,
@@ -46,7 +50,11 @@ async def _parse_upload(
             data,
         )
         parsed = StructuredCvParser().parse_with_diagnostics(
-            extracted.text, job_skills, extracted.blocks
+            extracted.text,
+            job_skills,
+            extracted.blocks,
+            layout=extracted.layout,
+            ocr_applied=extracted.ocr_applied,
         )
         return CvParseResponse(
             document=DocumentMetadata(
@@ -78,7 +86,12 @@ def _raise_cv_error(exc: Exception) -> None:
     ) from exc
 
 
-@router.post("/cv/parse", response_model=CvParseResponse, response_model_by_alias=True)
+@router.post(
+    "/cv/parse",
+    response_model=CvParseResponse,
+    response_model_by_alias=True,
+    dependencies=[Depends(require_test_endpoint_access)],
+)
 async def parse_cv(
     file: Annotated[UploadFile, File(...)],
     parser: DocumentParser = Depends(get_document_parser),
@@ -92,7 +105,12 @@ async def parse_cv(
         raise AssertionError("unreachable")
 
 
-@router.post("/match-file", response_model=FileMatchingResponse, response_model_by_alias=True)
+@router.post(
+    "/match-file",
+    response_model=FileMatchingResponse,
+    response_model_by_alias=True,
+    dependencies=[Depends(require_test_endpoint_access)],
+)
 async def match_cv_file(
     file: Annotated[UploadFile, File(...)],
     metadata: Annotated[str, Form(...)],

@@ -13,7 +13,15 @@ from PIL import Image, UnidentifiedImageError
 from app.core.config import Settings
 from app.schemas.cv import ExtractionMethod
 from app.services.normalizer import normalize_text
-from app.services.ocr_service import OcrEngine
+from app.services.ocr_service import OcrEngine, OcrLine
+
+
+_DATE_RAIL_VALUE = re.compile(
+    r"(?:0?[1-9]|1[0-2])[/.-](?:19|20)\d{2}\s*(?:-|–|—|to|đến)\s*"
+    r"(?:(?:0?[1-9]|1[0-2])[/.-](?:19|20)\d{2}|present|current|now|nay|hiện tại|hiện nay)"
+    r"|(?:19|20)\d{2}\s*(?:-|–|—|to|đến)\s*(?:(?:19|20)\d{2}|present|current|now|nay|hiện tại|hiện nay)",
+    re.IGNORECASE,
+)
 
 
 class CvProcessingError(Exception):
@@ -149,9 +157,16 @@ class DocumentParser:
                     raise CvProcessingError(413, "CV PDF page exceeds the OCR pixel limit")
                 pixmap = page.get_pixmap(dpi=150, alpha=False)
                 image = Image.open(BytesIO(pixmap.tobytes("png"))).convert("RGB")
-                page_texts.append(self.ocr_engine.read_text(image))
+                ocr_blocks = self._extract_ocr_blocks(image, page_number)
+                if ocr_blocks:
+                    ordered, layout = self._order_pdf_blocks(ocr_blocks, image.width)
+                    page_texts.append("\n".join(block.text for block in ordered))
+                    all_blocks.extend(ordered)
+                    layouts.append(layout)
+                else:
+                    page_texts.append(self.ocr_engine.read_text(image))
+                    layouts.append("UNSTRUCTURED")
                 ocr_pages += 1
-                layouts.append("UNSTRUCTURED")
 
             if ocr_pages == 0:
                 method: ExtractionMethod = "PDF_TEXT"
@@ -173,6 +188,16 @@ class DocumentParser:
                 blocks=all_blocks,
                 layout=layout,
             )
+
+    def _extract_ocr_blocks(self, image: Image.Image, page_number: int) -> list[DocumentBlock]:
+        read_lines = getattr(self.ocr_engine, "read_lines", None)
+        if not callable(read_lines):
+            return []
+        return [
+            DocumentBlock(text=line.text, page=page_number, bbox=line.bbox)
+            for line in read_lines(image)
+            if isinstance(line, OcrLine) and line.text.strip()
+        ]
 
     @staticmethod
     def _extract_pdf_blocks(page, page_number: int) -> list[DocumentBlock]:
@@ -215,16 +240,32 @@ class DocumentParser:
         left = [block for block in blocks if (block.bbox[0] + block.bbox[2]) / 2 < divider]
         right = [block for block in blocks if (block.bbox[0] + block.bbox[2]) / 2 >= divider]
         vertical_overlap = bool(left and right) and (
-            min(max(item.bbox[1] for item in left), max(item.bbox[1] for item in right))
+            min(max(item.bbox[3] for item in left), max(item.bbox[3] for item in right))
             > max(min(item.bbox[1] for item in left), min(item.bbox[1] for item in right))
         )
         if not (
-            largest_gap >= page_width * 0.18
+            largest_gap >= page_width * 0.10
             and len(left) >= 2
             and len(right) >= 2
             and vertical_overlap
         ):
             return natural, "SINGLE_COLUMN"
+
+        # A narrow column made almost entirely of date ranges is metadata for
+        # the adjacent rows, not a reading column.  Keeping natural order
+        # preserves Company -> Date -> Role evidence for the structured parser.
+        if DocumentParser._is_date_rail(left) or DocumentParser._is_date_rail(right):
+            return [
+                DocumentBlock(
+                    text=item.text,
+                    page=item.page,
+                    bbox=item.bbox,
+                    font_size=item.font_size,
+                    is_bold=item.is_bold,
+                    column=1 if (item.bbox[0] + item.bbox[2]) / 2 < divider else 2,
+                )
+                for item in natural
+            ], "MULTI_COLUMN"
 
         ordered: list[DocumentBlock] = []
         for column, group in enumerate((left, right), start=1):
@@ -240,6 +281,15 @@ class DocumentParser:
                 for item in sorted(group, key=lambda item: (item.bbox[1], item.bbox[0]))
             )
         return ordered, "MULTI_COLUMN"
+
+    @staticmethod
+    def _is_date_rail(blocks: list[DocumentBlock]) -> bool:
+        """Recognize a compact date-only rail without confusing it with a sidebar."""
+        if len(blocks) < 2:
+            return False
+        date_blocks = sum(bool(_DATE_RAIL_VALUE.search(block.text)) for block in blocks)
+        average_length = sum(len(block.text.strip()) for block in blocks) / len(blocks)
+        return date_blocks >= 2 and average_length <= 20
 
     def _parse_docx(self, data: bytes) -> ExtractedDocument:
         try:

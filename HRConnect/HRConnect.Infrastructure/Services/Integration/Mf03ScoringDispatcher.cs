@@ -55,7 +55,10 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var timeoutAt = DateTime.UtcNow.AddMinutes(-Math.Max(1, _settings.ProcessingTimeoutMinutes));
+        var processingTimeout = _settings.ProcessingTimeoutSeconds > 0
+            ? TimeSpan.FromSeconds(Math.Max(30, _settings.ProcessingTimeoutSeconds))
+            : TimeSpan.FromMinutes(Math.Max(1, _settings.ProcessingTimeoutMinutes));
+        var timeoutAt = DateTime.UtcNow.Subtract(processingTimeout);
 
         var jobs = await db.AiMatchResults
             .Include(result => result.Application)
@@ -96,24 +99,40 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
                 attemptNo = job.AttemptNo
             };
 
+            var claimedDispatchCount = 0;
             try
             {
-                using var response = await client.PostAsJsonAsync("/api/v1/scoring-jobs", payload, cancellationToken);
-                response.EnsureSuccessStatusCode();
+                // Persist the claim before enqueueing. A fast MF-03 callback must
+                // never be overwritten by a later, tracked PROCESSING update.
                 job.Status = "PROCESSING";
                 job.ProcessingStartedAt ??= DateTime.UtcNow;
                 job.LastDispatchedAt = DateTime.UtcNow;
                 job.DispatchCount += 1;
                 job.FailureCode = null;
                 job.ErrorMessage = null;
+                await db.SaveChangesAsync(cancellationToken);
+                claimedDispatchCount = job.DispatchCount;
+
+                using var response = await client.PostAsJsonAsync("/api/v1/scoring-jobs", payload, cancellationToken);
+                response.EnsureSuccessStatusCode();
                 _logger.LogInformation(
                     "Dispatched MF-03 request {RequestId}: ApplicationId={ApplicationId}, CvId={CvId}, JobId={JobId}, AttemptNo={AttemptNo}, DispatchCount={DispatchCount}.",
                     requestId, application.ApplicationId, submission.CvId, application.JobId, job.AttemptNo, job.DispatchCount);
             }
             catch (Exception ex)
             {
+                // A timed-out earlier attempt can callback while this request is
+                // in flight. Reload first so a late failure cannot turn a valid
+                // COMPLETED result back into PENDING.
+                await db.Entry(job).ReloadAsync(cancellationToken);
+                if (job.Status != "PROCESSING" || job.DispatchCount != claimedDispatchCount)
+                {
+                    _logger.LogWarning(ex, "MF-03 dispatch {RequestId} failed after its state changed to {Status}; leaving the newer state intact.", requestId, job.Status);
+                    continue;
+                }
                 job.Status = "PENDING";
                 job.ErrorMessage = ex.Message.Length <= 2000 ? ex.Message : ex.Message[..2000];
+                await db.SaveChangesAsync(cancellationToken);
                 _logger.LogWarning(ex, "Could not dispatch MF-03 request {RequestId}; it remains pending.", requestId);
             }
         }

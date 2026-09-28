@@ -76,3 +76,8 @@ GITNEXUS_GUIDE.md
 AGENTS.md
 CLAUDE.md
 UI-UX-SKILLS-GUIDE.md
+
+## Temporary Files
+tmp/
+.dotnet/
+
