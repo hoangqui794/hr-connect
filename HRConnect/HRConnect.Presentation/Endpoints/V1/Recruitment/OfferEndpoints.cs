@@ -1,6 +1,7 @@
 using System;
 using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Offers.Commands.SendOffer;
 using HRConnect.Application.Features.Offers.Commands.UpdateOfferDraft;
 using HRConnect.Application.Features.Offers.Queries.GetOffers;
 using HRConnect.Application.Features.Offers.Queries.GetOfferDetail;
@@ -215,6 +216,69 @@ public static class OfferEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
+        // O05: POST /api/v1/offers/{offerId:guid}/send
+        group.MapPost("/{offerId:guid}/send", async (
+            Guid offerId,
+            [FromBody] SendOfferRequest? request,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var isClient = PermissionAuthorization.HasPermission(user, SendPermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!isClient && !isInternal && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(SendPermission);
+            }
+
+            try
+            {
+                var command = new SendOfferCommand(
+                    OfferId: offerId,
+                    ConcurrencyToken: request?.ConcurrencyToken,
+                    CurrentUserId: userId.Value,
+                    IsClientCompanyUser: isClient && !isInternal && !isAdmin,
+                    IsInternalHrOrAdmin: isInternal || isAdmin
+                );
+
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("SendOffer")
+        .WithSummary("Gửi thư mời nhận việc cho ứng viên (Send Offer)")
+        .WithDescription("Dành cho Client Company HR / Admin (offer.send) hoặc Internal HR / Admin (offer.manage). Chuyển trạng thái offer từ DRAFT sang SENT và gửi thông báo tới ứng viên.")
+        .Produces<SendOfferResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -235,5 +299,10 @@ public class UpdateOfferDraftRequest
     public DateOnly? StartDate { get; set; }
     public DateOnly? ExpiryDate { get; set; }
     public string? OfferDocumentUrl { get; set; }
+    public Guid? ConcurrencyToken { get; set; }
+}
+
+public class SendOfferRequest
+{
     public Guid? ConcurrencyToken { get; set; }
 }
