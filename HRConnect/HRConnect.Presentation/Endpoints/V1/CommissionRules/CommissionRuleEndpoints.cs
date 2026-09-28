@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.CommissionRules.Commands.ActivateCommissionRule;
 using HRConnect.Application.Features.CommissionRules.Commands.CreateCommissionRule;
 using HRConnect.Application.Features.CommissionRules.Commands.DeactivateCommissionRule;
 using HRConnect.Application.Features.CommissionRules.Commands.UpdateCommissionRule;
@@ -80,6 +81,40 @@ public static class CommissionRuleEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPatch("/{commissionRuleId:guid}/activate", async (
+            Guid commissionRuleId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            if (!HasAdminAccess(user))
+            {
+                return Forbidden();
+            }
+
+            try
+            {
+                return Results.Ok(await sender.Send(
+                    new ActivateCommissionRuleCommand(commissionRuleId), cancellationToken));
+            }
+            catch (NotFoundException exception)
+            {
+                return Results.NotFound(new { success = false, message = exception.Message });
+            }
+            catch (ConflictException exception)
+            {
+                return Results.Conflict(new { success = false, message = exception.Message });
+            }
+        })
+        .WithName("ActivateCommissionRule")
+        .WithSummary("Kích hoạt lại quy tắc hoa hồng")
+        .WithDescription("Admin bật lại rule đã ngừng hiệu lực. Hệ thống chặn nếu trùng rule đang hoạt động cùng loại dịch vụ, mốc và thời điểm hiệu lực.")
+        .Produces<ActivateCommissionRuleResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
 
         group.MapPut("/{commissionRuleId:guid}", async (
             Guid commissionRuleId,

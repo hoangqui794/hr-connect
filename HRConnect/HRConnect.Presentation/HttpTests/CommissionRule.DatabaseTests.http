@@ -31,6 +31,11 @@ PATCH {{baseUrl}}/api/v1/admin/commission-rules/{{commissionRuleId}}/deactivate
 Authorization: Bearer {{adminToken}}
 Accept: application/json
 
+### MF-01: Platform Admin kích hoạt lại rule đã tắt nếu không trùng một rule active khác.
+PATCH {{baseUrl}}/api/v1/admin/commission-rules/{{commissionRuleId}}/activate
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
 ### Filter example: only active HEADHUNT_COD rules at the probation milestone.
 GET {{baseUrl}}/api/v1/admin/commission-rules?serviceTypeId={{headHuntServiceTypeId}}&milestoneType=PROBATION_PASSED&isActive=true
 Authorization: Bearer {{adminToken}}
