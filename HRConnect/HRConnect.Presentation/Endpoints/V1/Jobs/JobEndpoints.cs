@@ -40,7 +40,16 @@ public static class JobEndpoints
             var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, "job.update_own")) return Forbidden();
             command.JobId = jobId; command.UserId = id.Value; var invalid = await Validate(command, validator, ct); if (invalid != null) return invalid;
             return await Run(async () => Results.Ok(await sender.Send(command, ct)));
-        }).WithName("UpdateJob").WithSummary("Cập nhật Job Draft hoặc Job bị từ chối");
+        })
+        .WithName("UpdateJob")
+        .WithSummary("Cập nhật Job nháp hoặc Job bị từ chối")
+        .WithDescription("Chỉ Client sở hữu Job được cập nhật khi trạng thái là DRAFT hoặc REJECTED. Có thể đổi serviceTypeId nếu Job chưa phát sinh ứng tuyển hoặc đề cử ứng viên; nếu đã phát sinh, API trả 409 và phải giữ nguyên serviceTypeId.")
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
 
         jobs.MapPost("/{jobId:guid}/submit", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
             await ClientAction(user, "job.update_own", id => sender.Send(new SubmitJobCommand { JobId = jobId, UserId = id }, ct))

@@ -46,19 +46,19 @@ public sealed class UpdateCommissionRuleCommandValidator : AbstractValidator<Upd
             .NotEmpty()
             .Must(rateType => new[] { "PERCENT", "FIXED" }
                 .Contains(rateType.Trim().ToUpperInvariant()))
-            .WithMessage("Rate type must be PERCENT or FIXED.");
+            .WithMessage("Loại hoa hồng phải là PERCENT hoặc FIXED.");
         RuleFor(command => command.RateValue)
-            .GreaterThan(0).WithMessage("Rate value must be greater than zero.");
+            .GreaterThan(0).WithMessage("Giá trị hoa hồng phải lớn hơn 0.");
         RuleFor(command => command.RateValue)
             .LessThanOrEqualTo(100)
             .When(command => string.Equals(command.RateType, "PERCENT", StringComparison.OrdinalIgnoreCase))
-            .WithMessage("Percent rate value cannot exceed 100.");
+            .WithMessage("Giá trị hoa hồng theo phần trăm không được vượt quá 100.");
         RuleFor(command => command.EffectiveFrom)
-            .NotEqual(default(DateTime)).WithMessage("Effective from is required.");
+            .NotEqual(default(DateTime)).WithMessage("Thời điểm áp dụng là bắt buộc.");
         RuleFor(command => command.EffectiveTo)
             .GreaterThan(command => command.EffectiveFrom)
             .When(command => command.EffectiveTo.HasValue)
-            .WithMessage("Effective to must be later than effective from.");
+            .WithMessage("Thời điểm kết thúc phải sau thời điểm áp dụng.");
     }
 }
 
