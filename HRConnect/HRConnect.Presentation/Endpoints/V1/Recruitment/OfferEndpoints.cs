@@ -1,6 +1,7 @@
 using System;
 using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Offers.Commands.RespondToOffer;
 using HRConnect.Application.Features.Offers.Commands.SendOffer;
 using HRConnect.Application.Features.Offers.Commands.UpdateOfferDraft;
 using HRConnect.Application.Features.Offers.Queries.GetOffers;
@@ -279,6 +280,65 @@ public static class OfferEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
+        // O06: POST /api/v1/offers/{offerId:guid}/response
+        group.MapPost("/{offerId:guid}/response", async (
+            Guid offerId,
+            [FromBody] RespondToOfferRequest request,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (!PermissionAuthorization.HasPermission(user, RespondPermission))
+            {
+                return PermissionAuthorization.Forbidden(RespondPermission);
+            }
+
+            try
+            {
+                var command = new RespondToOfferCommand(
+                    OfferId: offerId,
+                    Response: request.Response,
+                    DeclineReason: request.DeclineReason,
+                    ConcurrencyToken: request.ConcurrencyToken,
+                    CurrentUserId: userId.Value
+                );
+
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("RespondToOffer")
+        .WithSummary("Ứng viên phản hồi lời mời nhận việc (Accept/Decline Offer)")
+        .WithDescription("Dành cho ứng viên sở hữu offer (quyền offer.respond). Ứng viên có thể chấp nhận (ACCEPTED) hoặc từ chối (DECLINED kèm lý do).")
+        .Produces<RespondToOfferResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -304,5 +364,12 @@ public class UpdateOfferDraftRequest
 
 public class SendOfferRequest
 {
+    public Guid? ConcurrencyToken { get; set; }
+}
+
+public class RespondToOfferRequest
+{
+    public string Response { get; set; } = string.Empty;
+    public string? DeclineReason { get; set; }
     public Guid? ConcurrencyToken { get; set; }
 }
