@@ -1,6 +1,7 @@
 using System;
 using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.Placements.Queries.GetPlacementDetail;
 using HRConnect.Application.Features.Placements.Queries.GetPlacements;
 using HRConnect.Presentation.Authorization;
 using MediatR;
@@ -89,6 +90,65 @@ public static class PlacementEndpoints
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden);
+
+        // P05: GET /api/v1/placements/{placementId:guid}
+        group.MapGet("/{placementId:guid}", async (
+            Guid placementId,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var isClient = PermissionAuthorization.HasPermission(user, PlacementConfirmPermission) ||
+                           PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, PlacementManagePermission) ||
+                             PermissionAuthorization.HasPermission(user, "application.view");
+            var isCandidate = user.IsInRole("CANDIDATE");
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!isClient && !isInternal && !isCandidate && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(PlacementManagePermission);
+            }
+
+            var isInternalOrAdmin = user.IsInRole("INTERNAL_HR") || isAdmin || isInternal;
+            var isClientUser = !isInternalOrAdmin && isClient;
+            var isCandidateUser = !isInternalOrAdmin && !isClientUser && isCandidate;
+
+            try
+            {
+                var query = new GetPlacementDetailQuery(
+                    PlacementId: placementId,
+                    CurrentUserId: userId.Value,
+                    IsClientCompanyUser: isClientUser,
+                    IsInternalHrOrAdmin: isInternalOrAdmin,
+                    IsCandidate: isCandidateUser
+                );
+
+                var response = await sender.Send(query, cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+        })
+        .WithName("GetPlacementDetail")
+        .WithSummary("Lấy chi tiết tiếp nhận việc (Placement Detail)")
+        .WithDescription("Dành cho Client Company HR / Admin (xem placement thuộc công ty mình), Candidate (xem placement của chính mình), hoặc Internal HR / Admin (xem toàn hệ thống qua quyền placement.manage). Trả về thông tin chi tiết ứng viên, công việc, offer, thử việc (probation), bảo hành (warranty) và các hành động được phép.")
+        .Produces<GetPlacementDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
 
         return app;
     }
