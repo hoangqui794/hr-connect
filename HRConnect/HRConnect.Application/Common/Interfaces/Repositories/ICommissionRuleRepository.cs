@@ -4,6 +4,14 @@ namespace HRConnect.Application.Common.Interfaces.Repositories;
 
 public interface ICommissionRuleRepository
 {
+    Task<CommissionRule?> GetByIdAsync(
+        Guid commissionRuleId,
+        CancellationToken cancellationToken = default);
+
+    Task<CommissionRule?> GetForUpdateAsync(
+        Guid commissionRuleId,
+        CancellationToken cancellationToken = default);
+
     Task<(IReadOnlyList<CommissionRule> Items, int Total)> GetListAsync(
         Guid? serviceTypeId,
         string? milestoneType,
@@ -16,6 +24,13 @@ public interface ICommissionRuleRepository
         Guid serviceTypeId,
         string milestoneType,
         DateTime effectiveFrom,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ExistsAnotherActiveAtEffectiveFromAsync(
+        Guid serviceTypeId,
+        string milestoneType,
+        DateTime effectiveFrom,
+        Guid commissionRuleId,
         CancellationToken cancellationToken = default);
 
     Task AddAsync(CommissionRule commissionRule, CancellationToken cancellationToken = default);

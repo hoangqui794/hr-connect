@@ -286,3 +286,22 @@ Authorization: Bearer {{candidateToken}}
 
 # Before TC-24..26, fill candidateToken, affiliateToken and headhuntJobId.
 # Create and approve HEADHUNT_COD and CV_SOURCING Jobs using their Service Type IDs when testing visibility.
+
+### TC-27 - Negative: REJECTED Job cannot change Service Type; expect HTTP 409.
+# Run after TC-15. Keep cvApplicationServiceTypeId in TC-16 when revising this rejected Job.
+PUT {{baseUrl}}/api/v1/jobs/{{createRejectJob.response.body.$.data.jobId}}
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "serviceTypeId": "{{cvSourcingServiceTypeId}}",
+  "title": "{{testRunId}} - Service Type Lock Check",
+  "description": "Verifies the Service Type lock after Job submission.",
+  "location": "Da Nang",
+  "employmentType": "FULL_TIME",
+  "currencyCode": "VND",
+  "quantity": 1,
+  "visibility": "PUBLIC",
+  "requirements": [],
+  "skills": []
+}
