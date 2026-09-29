@@ -2,6 +2,7 @@ using System;
 using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Offers.Commands.CreateOfferDraft;
+using HRConnect.Application.Features.Recruitment.Commands.ConfirmPlannedStartDate;
 using HRConnect.Application.Features.Recruitment.Commands.DecideBackupApplication;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplications;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
@@ -19,6 +20,7 @@ public static class RecruitmentEndpoints
     private const string DecideBackupPermission = "application.decide_backup";
     private const string CreateOfferPermission = "offer.create";
     private const string ManageOfferPermission = "offer.manage";
+    private const string PlacementConfirmPermission = "placement.confirm";
 
     public static IEndpointRouteBuilder MapRecruitmentEndpoints(this IEndpointRouteBuilder app)
     {
@@ -339,6 +341,76 @@ public static class RecruitmentEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
+        // P01: PUT /api/v1/recruitment/applications/{applicationId:guid}/planned-start-date
+        group.MapPut("/applications/{applicationId:guid}/planned-start-date", async (
+            Guid applicationId,
+            [FromBody] ConfirmPlannedStartDateRequest request,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var isClient = PermissionAuthorization.HasPermission(user, PlacementConfirmPermission) ||
+                           PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, "placement.manage") ||
+                             PermissionAuthorization.HasPermission(user, ViewAllPermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!isClient && !isInternal && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(PlacementConfirmPermission);
+            }
+
+            var isInternalOrAdmin = user.IsInRole("INTERNAL_HR") || isAdmin || isInternal;
+            var isClientUser = !isInternalOrAdmin;
+
+            try
+            {
+                var command = new ConfirmPlannedStartDateCommand(
+                    ApplicationId: applicationId,
+                    PlannedStartDate: request.PlannedStartDate,
+                    Reason: request.Reason,
+                    ConcurrencyToken: request.ExpectedApplicationVersion ?? request.ConcurrencyToken,
+                    CurrentUserId: userId.Value,
+                    IsClientCompanyUser: isClientUser,
+                    IsInternalHrOrAdmin: isInternalOrAdmin
+                );
+
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("ConfirmPlannedStartDate")
+        .WithSummary("Cập nhật ngày dự kiến nhận việc (Confirm Planned Start Date)")
+        .WithDescription("Dành cho Client Company HR / Admin (placement.confirm hoặc application.view_company) hoặc Internal HR / Admin (placement.manage hoặc application.view). Cập nhật ngày dự kiến nhận việc cho ứng viên.")
+        .Produces<ConfirmPlannedStartDateResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -371,5 +443,13 @@ public class CreateOfferDraftRequest
     public DateOnly? StartDate { get; set; }
     public DateOnly? ExpiryDate { get; set; }
     public string? OfferDocumentUrl { get; set; }
+    public Guid? ConcurrencyToken { get; set; }
+}
+
+public class ConfirmPlannedStartDateRequest
+{
+    public DateOnly PlannedStartDate { get; set; }
+    public string? Reason { get; set; }
+    public Guid? ExpectedApplicationVersion { get; set; }
     public Guid? ConcurrencyToken { get; set; }
 }
