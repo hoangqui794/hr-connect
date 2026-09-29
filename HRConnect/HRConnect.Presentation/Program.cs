@@ -234,6 +234,7 @@ app.MapUserEndpoints();
 app.MapRecruitmentEndpoints();
 app.MapInterviewEndpoints();
 app.MapOfferEndpoints();
+app.MapPlacementEndpoints();
 
 // ==============================================================================
 // 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động
