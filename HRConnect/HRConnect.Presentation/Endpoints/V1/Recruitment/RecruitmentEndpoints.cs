@@ -3,6 +3,7 @@ using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Offers.Commands.CreateOfferDraft;
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmPlannedStartDate;
+using HRConnect.Application.Features.Recruitment.Commands.ConfirmStartWork;
 using HRConnect.Application.Features.Recruitment.Commands.DecideBackupApplication;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplications;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
@@ -411,6 +412,82 @@ public static class RecruitmentEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
+        // P02: POST /api/v1/recruitment/applications/{applicationId:guid}/start-work
+        group.MapPost("/applications/{applicationId:guid}/start-work", async (
+            Guid applicationId,
+            [FromBody] ConfirmStartWorkRequest request,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var hasConfirm = PermissionAuthorization.HasPermission(user, PlacementConfirmPermission);
+            var hasManage = PermissionAuthorization.HasPermission(user, "placement.manage");
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!hasConfirm && !hasManage && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(PlacementConfirmPermission);
+            }
+
+            var isInternalOrAdmin = user.IsInRole("INTERNAL_HR") || isAdmin || hasManage;
+            var isClientUser = !isInternalOrAdmin;
+
+            try
+            {
+                var command = new ConfirmStartWorkCommand(
+                    ApplicationId: applicationId,
+                    OfferId: request.OfferId,
+                    ActualStartDate: request.ActualStartDate,
+                    ConfirmationNote: request.ConfirmationNote ?? request.Note,
+                    Position: request.Position,
+                    Department: request.Department,
+                    ConcurrencyToken: request.ExpectedApplicationVersion ?? request.ConcurrencyToken,
+                    CurrentUserId: userId.Value,
+                    IsClientCompanyUser: isClientUser,
+                    IsInternalHrOrAdmin: isInternalOrAdmin
+                );
+
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Ok(new
+                {
+                    success = true,
+                    message = "Đã xác nhận bắt đầu làm việc.",
+                    data = response
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("ConfirmStartWork")
+        .WithSummary("Xác nhận ứng viên thực tế đi làm (Confirm Start Work & Create Placement)")
+        .WithDescription("Dành cho Client Company HR / Admin (placement.confirm) hoặc Internal HR / Admin (placement.manage). Thực hiện một transaction: xác nhận đi làm, tạo bản ghi Placement, chuyển trạng thái hồ sơ sang PLACED và ghi nhận lịch sử trạng thái.")
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -450,6 +527,18 @@ public class ConfirmPlannedStartDateRequest
 {
     public DateOnly PlannedStartDate { get; set; }
     public string? Reason { get; set; }
+    public Guid? ExpectedApplicationVersion { get; set; }
+    public Guid? ConcurrencyToken { get; set; }
+}
+
+public class ConfirmStartWorkRequest
+{
+    public Guid OfferId { get; set; }
+    public DateOnly ActualStartDate { get; set; }
+    public string? ConfirmationNote { get; set; }
+    public string? Note { get; set; }
+    public string? Position { get; set; }
+    public string? Department { get; set; }
     public Guid? ExpectedApplicationVersion { get; set; }
     public Guid? ConcurrencyToken { get; set; }
 }
