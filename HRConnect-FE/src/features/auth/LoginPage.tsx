@@ -84,7 +84,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     roleTag: 'Candidate',
     email: 'ungvien5@gmail.com',
     workspaceName: 'Talent Profile',
-    targetRoute: '/candidate/dashboard',
+    targetRoute: '/',
     icon: <UserOutlined />,
     accentColor: '#a78bfa', // purple-400
     badgeBg: 'rgba(167, 139, 250, 0.12)',
@@ -105,7 +105,7 @@ export const LoginPage: React.FC = () => {
     await new Promise((r) => setTimeout(r, 200));
     setSubmitting(false);
 
-    const destination = targetRoute || getDashboardRouteForRole(normalizedRole);
+    const destination = normalizedRole === UserRole.CANDIDATE ? '/' : (targetRoute || getDashboardRouteForRole(normalizedRole));
     void message.success({
       content: `Đăng nhập thành công với vai trò: ${ROLE_LABELS[normalizedRole] || normalizedRole}`,
       icon: <CheckCircleFilled style={{ color: '#10b981' }} />,

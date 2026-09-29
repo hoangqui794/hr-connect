@@ -888,14 +888,42 @@ export const ReferralForm: React.FC<ReferralFormProps> = ({
                 />
               )}
 
-              {/* CLEAR banner */}
+              {/* CHECKING IN PROGRESS BANNER (500ms real-time check) */}
+              {isChecking && (
+                <Alert
+                  type="info"
+                  showIcon={false}
+                  message={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Spin indicator={<LoadingOutlined style={{ fontSize: 18, color: '#00b14f' }} spin />} />
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                        Đang kiểm tra trùng lặp thời gian thực qua OPR Anti-Duplicate Engine (500ms)…
+                      </span>
+                    </div>
+                  }
+                  description="Hệ thống đang quét sổ cái First-Submission đối chiếu email và số điện thoại trên toàn bộ nền tảng."
+                  style={{ marginBottom: 16, borderRadius: 10, border: '1px solid #99f6e4', background: '#f0fdfa' }}
+                />
+              )}
+
+              {/* CLEAR banner with green badge: "Bảo chứng First-Submission: Hợp lệ" */}
               {!isDuplicate && !isChecking && email && phone && selectedJobId && (
                 <Alert
                   type="success"
                   showIcon
-                  icon={<CheckCircleOutlined />}
-                  message={<span style={{ fontWeight: 600 }}>✓ Không phát hiện trùng lặp — Hồ sơ hợp lệ, sẵn sàng gửi giới thiệu</span>}
-                  style={{ marginBottom: 16, borderRadius: 10, border: '1px solid #bbf7d0' }}
+                  icon={<CheckCircleFilled style={{ color: '#00b14f', fontSize: 18 }} />}
+                  message={
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                      <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                        ✓ Không phát hiện trùng lặp — Hồ sơ hợp lệ
+                      </span>
+                      <Tag style={{ fontWeight: 800, fontSize: 11, borderRadius: 9999, border: '1px solid #6ee7b7', background: '#ecfdf5', color: '#009643', padding: '2px 10px' }}>
+                        Bảo chứng First-Submission: Hợp lệ
+                      </Tag>
+                    </div>
+                  }
+                  description="Email và số điện thoại chưa từng được giới thiệu cho vị trí này. CTV sẽ được ghi nhận quyền thụ hưởng 100% hoa hồng khi ứng viên trúng tuyển."
+                  style={{ marginBottom: 16, borderRadius: 10, border: '1px solid #bbf7d0', background: '#f0fdf4' }}
                 />
               )}
 
@@ -911,7 +939,7 @@ export const ReferralForm: React.FC<ReferralFormProps> = ({
                     style={{ borderRadius: 10 }}
                   >
                     <p className="ant-upload-drag-icon">
-                      <UploadOutlined style={{ color: '#0284c7', fontSize: 32 }} />
+                      <UploadOutlined style={{ color: '#00b14f', fontSize: 32 }} />
                     </p>
                     <p style={{ fontWeight: 600, color: '#0f172a', marginBottom: 4 }}>Kéo thả CV vào đây hoặc bấm để chọn tệp tải lên</p>
                     <p style={{ color: '#94a3b8', fontSize: 12 }}>Hỗ trợ PDF, DOC, DOCX · Tối đa 10 MB</p>
@@ -945,7 +973,7 @@ export const ReferralForm: React.FC<ReferralFormProps> = ({
                     borderRadius: 10,
                     fontWeight: 700,
                     fontSize: 15,
-                    background: submitDisabled ? '#94a3b8' : 'linear-gradient(135deg, #0284c7, #0369a1)',
+                    background: submitDisabled ? '#cbd5e1' : 'linear-gradient(135deg, #00b14f, #009643)',
                     border: 'none',
                     transition: 'all 0.3s',
                   }}

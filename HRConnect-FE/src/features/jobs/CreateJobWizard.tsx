@@ -7,17 +7,17 @@
  *   - Single Ant Design <Form> instance owns all 4 steps' field state.
  *   - Each step validates only its own fields before allowing advancement.
  *   - Draft is persisted to Zustand store (useJobStore) with 1s auto-save debounce.
- *   - Service type selection in Step 1 is reflected live in Step 4 (commission logic).
- *   - On final submission, a 300ms simulated API call is made (mock-first contract).
+ *   - Service type selection in Step 0 is reflected live in Step 3 (commission logic).
+ *   - On final submission, a simulated API call is made (mock-first contract).
  *   - On success, a Result screen is shown with navigation options.
  *
- * Step definitions (MF-01):
- *   Step 1 → Details      (Service Type + Job Metadata)
- *   Step 2 → Instructions (Must-Have + Should-Have Tag Filters + Description)
- *   Step 3 → Objectives   (Recruitment Goals, KPIs, Success Criteria)
- *   Step 4 → Engagement   (Commission Rate, Retainer, Timeline, Notes)
+ * Step definitions:
+ *   Bước 0 (currentStep === 0) → Thông tin vị trí & Dịch vụ tuyển dụng (Chức danh, Service type: COD / Sourcing / Application)
+ *   Bước 1 (currentStep === 1) → Tiêu chuẩn sàng lọc (Must-have & Should-have keywords, Mô tả công việc)
+ *   Bước 2 (currentStep === 2) → Mục tiêu thử việc (KPIs & Tiêu chí đánh giá)
+ *   Bước 3 (currentStep === 3) → Chế độ đãi ngộ & Hoa hồng (Mức lương, % Hoa hồng CTV 20.5%, Đặt cọc, Bảo hành 60 ngày)
  */
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Steps, Button, Card, Space, Typography, Tag, message,
   Result, Spin, Form, theme,
@@ -88,7 +88,7 @@ const STEPS: StepMeta[] = [
   },
 ];
 
-// ─── Mock API layer (src/services/mock contract, 300ms latency) ───────────────
+// ─── Mock API layer (300ms latency) ──────────────────────────────────────────
 
 interface PublishJobPayload {
   draft: JobWizardDraft;
@@ -107,7 +107,7 @@ async function mockPublishJob(_payload: PublishJobPayload): Promise<PublishJobRe
   };
 }
 
-// ─── CreateJobWizard ──────────────────────────────────────────────────────────
+// ─── CreateJobWizard Component ────────────────────────────────────────────────
 
 export const CreateJobWizard: React.FC = () => {
   const navigate = useNavigate();
@@ -127,47 +127,51 @@ export const CreateJobWizard: React.FC = () => {
     isDirty,
   } = useJobStore();
 
-  const currentStep = draft.step;
-  const [submitting, setSubmitting] = React.useState(false);
-  const [submitted, setSubmitted] = React.useState(false);
-  const [publishedJobId, setPublishedJobId] = React.useState<string | null>(null);
+  // 1. currentStep luôn khởi tạo bằng 0: đảm bảo vào trang luôn ở Bước 1 (Thông tin vị trí & Dịch vụ)
+  const [currentStep, setCurrentStep] = useState<number>(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [publishedJobId, setPublishedJobId] = useState<string | null>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync form initial values from Zustand draft on mount
+  // Sync form initial values from Zustand draft on mount & force start at Step 0
   useEffect(() => {
+    setCurrentStep(0);
+    setStep(0);
+
     const defaultCompanyName = draft.step1.company || user?.companyName || (user as any)?.company || '';
     if (!draft.step1.company && defaultCompanyName) {
       updateStep1({ company: defaultCompanyName });
     }
 
     form.setFieldsValue({
-      // Step 1
-      serviceType: draft.step1.serviceType,
+      // Bước 0: Thông tin vị trí & Dịch vụ tuyển dụng
+      serviceType: draft.step1.serviceType || ServiceType.HEADHUNT_COD,
       title: draft.step1.title,
       company: defaultCompanyName,
-      industryCode: draft.step1.industryCode,
-      location: draft.step1.location,
-      remote: draft.step1.remote,
-      headcount: draft.step1.headcount,
-      experienceMin: draft.step1.experienceMin,
-      experienceMax: draft.step1.experienceMax,
-      salaryMin: draft.step1.salaryMin,
-      salaryMax: draft.step1.salaryMax,
-      currency: draft.step1.currency,
-      negotiable: draft.step1.negotiable,
-      // Step 2
-      mustHaveTags: draft.step2.mustHaveTags,
-      shouldHaveTags: draft.step2.shouldHaveTags,
-      description: draft.step2.description,
-      // Step 3
-      objectives: draft.step3.objectives,
-      successCriteria: draft.step3.successCriteria,
-      // Step 4
-      commissionRate: draft.step4.commissionRate,
-      retainerFee: draft.step4.retainerFee,
-      timeline: draft.step4.timeline,
-      budget: draft.step4.budget,
-      notes: draft.step4.notes,
+      industryCode: draft.step1.industryCode || 'IT',
+      location: draft.step1.location || 'Hồ Chí Minh, Việt Nam',
+      remote: draft.step1.remote ?? false,
+      headcount: draft.step1.headcount || 1,
+      experienceMin: draft.step1.experienceMin ?? 3,
+      experienceMax: draft.step1.experienceMax ?? 5,
+      salaryMin: draft.step1.salaryMin ?? 25000000,
+      salaryMax: draft.step1.salaryMax ?? 40000000,
+      currency: draft.step1.currency || 'VND',
+      negotiable: draft.step1.negotiable ?? true,
+      // Bước 1: Tiêu chuẩn sàng lọc
+      mustHaveTags: draft.step2.mustHaveTags || [],
+      shouldHaveTags: draft.step2.shouldHaveTags || [],
+      description: draft.step2.description || '',
+      // Bước 2: Mục tiêu thử việc
+      objectives: draft.step3.objectives || '',
+      successCriteria: draft.step3.successCriteria || '',
+      // Bước 3: Chế độ đãi ngộ & Hoa hồng
+      commissionRate: draft.step4.commissionRate || 20.5,
+      retainerFee: draft.step4.retainerFee || 0,
+      timeline: draft.step4.timeline || 30,
+      budget: draft.step4.budget || 0,
+      notes: draft.step4.notes || '',
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only on mount
@@ -175,7 +179,6 @@ export const CreateJobWizard: React.FC = () => {
   // Auto-save: debounce 1s after any form change
   const handleFormValuesChange = useCallback(
     (changed: Record<string, unknown>) => {
-      // Route changed values to the appropriate step store slice
       const s1Keys: Array<keyof JobWizardDraft['step1']> = [
         'title', 'company', 'industryCode', 'location', 'remote',
         'headcount', 'experienceMin', 'experienceMax',
@@ -232,20 +235,25 @@ export const CreateJobWizard: React.FC = () => {
     [updateStep1, form]
   );
 
-  const handleNext = async () => {
+  // 4. Hai hàm điều hướng: handleNextStep (validate fields trước khi chuyển) và handlePrevStep
+  const handleNextStep = async () => {
     try {
-      await form.validateFields(STEPS[currentStep].validateFields);
-      setStep(currentStep + 1);
-      // Scroll to top of wizard card
+      const fieldsToValidate = STEPS[currentStep]?.validateFields || [];
+      await form.validateFields(fieldsToValidate);
+      const nextStep = Math.min(currentStep + 1, STEPS.length - 1);
+      setCurrentStep(nextStep);
+      setStep(nextStep);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch {
-      // Validation errors displayed inline by Ant Design
+      // Validation errors are displayed inline by Ant Design
     }
   };
 
-  const handleBack = () => {
+  const handlePrevStep = () => {
     if (currentStep > 0) {
-      setStep(currentStep - 1);
+      const prevStep = currentStep - 1;
+      setCurrentStep(prevStep);
+      setStep(prevStep);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -291,8 +299,8 @@ export const CreateJobWizard: React.FC = () => {
         location: draft.step1.location || 'Hồ Chí Minh, Việt Nam',
         remote: draft.step1.remote || false,
         salaryRange: {
-          min: (draft.step1.salaryMin || 0) * (draft.step1.currency === 'USD' ? 1 : 1),
-          max: (draft.step1.salaryMax || 0) * (draft.step1.currency === 'USD' ? 1 : 1),
+          min: (draft.step1.salaryMin || 25000000),
+          max: (draft.step1.salaryMax || 40000000),
           currency: draft.step1.currency || 'VND',
           negotiable: draft.step1.negotiable ?? true,
         },
@@ -307,7 +315,7 @@ export const CreateJobWizard: React.FC = () => {
         },
         engagementTerms: {
           timeline: draft.step4.timeline || 30,
-          commissionRate: draft.step4.commissionRate || 15,
+          commissionRate: draft.step4.commissionRate || 20.5,
           retainerFee: draft.step4.retainerFee || 0,
           budget: draft.step4.budget || 0,
         },
@@ -335,7 +343,6 @@ export const CreateJobWizard: React.FC = () => {
         clientId: user?.id,
         clientEmail: user?.email,
       });
-      // ─────────────────────────────────────────────────────────────────────
 
       setSubmitted(true);
       message.success({
@@ -352,6 +359,8 @@ export const CreateJobWizard: React.FC = () => {
   const handleReset = () => {
     resetDraft();
     form.resetFields();
+    setCurrentStep(0);
+    setStep(0);
     setSubmitted(false);
     setPublishedJobId(null);
   };
@@ -422,7 +431,7 @@ export const CreateJobWizard: React.FC = () => {
     );
   }
 
-  // ── Wizard ────────────────────────────────────────────────────────────────
+  // ── Wizard Form ────────────────────────────────────────────────────────────
 
   return (
     <Form
@@ -482,7 +491,7 @@ export const CreateJobWizard: React.FC = () => {
         }}
         styles={{ body: { padding: 0 } }}
       >
-        {/* Steps header */}
+        {/* Steps header: Hiển thị 4 bước rõ ràng */}
         <div
           style={{
             padding: '24px 32px',
@@ -502,9 +511,10 @@ export const CreateJobWizard: React.FC = () => {
           />
         </div>
 
-        {/* Step content */}
+        {/* Step content: Render tuần tự đúng bước 0, 1, 2, 3 */}
         <div style={{ padding: '32px 32px 24px' }}>
           <Spin spinning={submitting} tip="Đang xuất bản tin tuyển dụng…">
+            {/* Bước 0: Thông tin vị trí & Dịch vụ tuyển dụng */}
             {currentStep === 0 && (
               <WizardStep1ServiceType
                 form={form}
@@ -512,8 +522,14 @@ export const CreateJobWizard: React.FC = () => {
                 onServiceTypeChange={handleServiceTypeChange}
               />
             )}
+
+            {/* Bước 1: Tiêu chuẩn sàng lọc */}
             {currentStep === 1 && <WizardStep2TagFilters form={form} />}
+
+            {/* Bước 2: Mục tiêu thử việc */}
             {currentStep === 2 && <WizardStep3Objectives form={form} />}
+
+            {/* Bước 3: Chế độ đãi ngộ & Hoa hồng (Thẻ Card hoa hồng CHỈ render ở đây khi currentStep === 3) */}
             {currentStep === 3 && <WizardStep4Engagement form={form} />}
           </Spin>
         </div>
@@ -532,7 +548,7 @@ export const CreateJobWizard: React.FC = () => {
         >
           <Button
             icon={<ArrowLeftOutlined />}
-            onClick={handleBack}
+            onClick={handlePrevStep}
             disabled={currentStep === 0}
             style={{ borderRadius: 8 }}
           >
@@ -548,8 +564,8 @@ export const CreateJobWizard: React.FC = () => {
                 type="primary"
                 icon={<ArrowRightOutlined />}
                 iconPosition="end"
-                onClick={handleNext}
-                style={{ borderRadius: 8 }}
+                onClick={handleNextStep}
+                style={{ borderRadius: 8, background: '#00b14f', borderColor: '#00b14f' }}
               >
                 Tiếp tục
               </Button>
@@ -561,8 +577,8 @@ export const CreateJobWizard: React.FC = () => {
                 loading={submitting}
                 style={{
                   borderRadius: 8,
-                  background: '#10b981',
-                  borderColor: '#10b981',
+                  background: '#00b14f',
+                  borderColor: '#00b14f',
                   fontWeight: 600,
                   paddingInline: 24,
                 }}
@@ -578,4 +594,3 @@ export const CreateJobWizard: React.FC = () => {
 };
 
 export default CreateJobWizard;
-

@@ -626,7 +626,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
   };
 
   // Status tag mapper
-  const renderStatusTag = (status: CommissionPayoutStatus) => {
+  const renderStatusTag = (status: CommissionPayoutStatus, record?: AffiliateCommissionDTO) => {
     switch (status) {
       case 'PENDING':
         return (
@@ -660,9 +660,32 @@ export const AffiliateCommissionsPage: React.FC = () => {
         );
       case 'PAID':
         return (
-          <Tag color="success" icon={<CheckCircleFilled />}>
-            ĐÃ THANH TOÁN (PAID)
-          </Tag>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Tag color="success" style={{ fontWeight: 800, padding: '3px 10px', borderRadius: 9999, border: '1px solid #86efac', background: '#f0fdf4', color: '#166534', fontSize: 11.5 }}>
+              ✓ ĐÃ THANH TOÁN (PAID)
+            </Tag>
+            <Tooltip title="Xem Ủy nhiệm chi Ngân hàng (Payment Proof)">
+              <Button
+                type="primary"
+                size="small"
+                icon={<AuditOutlined />}
+                onClick={() => record && handleOpenUnc(record)}
+                style={{
+                  background: '#00b14f',
+                  borderColor: '#00b14f',
+                  borderRadius: 6,
+                  height: 24,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                UNC
+              </Button>
+            </Tooltip>
+          </div>
         );
       default:
         return <Tag>{status}</Tag>;
@@ -677,14 +700,14 @@ export const AffiliateCommissionsPage: React.FC = () => {
       minWidth: 260,
       render: (_: any, record: AffiliateCommissionDTO) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Avatar src={record.avatar} size={42} style={{ border: '2px solid #e2e8f0' }}>
+          <Avatar src={record.avatar} size={42} style={{ border: '2px solid #e2e8f0', background: '#00b14f', fontWeight: 700 }}>
             {record.candidateName.charAt(0)}
           </Avatar>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a' }}>{record.candidateName}</div>
-            <div style={{ fontSize: 12, color: '#2563eb', fontWeight: 500 }}>{record.jobTitle}</div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{record.candidateName}</div>
+            <div style={{ fontSize: 12, color: '#009643', fontWeight: 600 }}>{record.jobTitle}</div>
             <div style={{ fontSize: 11, color: '#64748b' }}>
-              {record.companyName} • Onboarding: <strong>{dayjs(record.hiredDate).format('DD/MM/YYYY')}</strong>
+              {record.companyName} • Ngày nhận việc: <strong>{dayjs(record.hiredDate).format('DD/MM/YYYY')}</strong>
             </div>
           </div>
         </div>
@@ -697,10 +720,10 @@ export const AffiliateCommissionsPage: React.FC = () => {
       sorter: (a, b) => a.amount - b.amount,
       render: (_: any, record: AffiliateCommissionDTO) => (
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#16a34a' }}>
+          <div className="tabular-nums currency-kpi" style={{ fontSize: 16, fontWeight: 800, color: '#00b14f', whiteSpace: 'nowrap' }}>
             {formatCurrencyVND(record.amount)}
           </div>
-          <Tag color="purple" style={{ marginTop: 4, fontSize: 11 }}>
+          <Tag color="purple" style={{ marginTop: 4, fontSize: 11, borderRadius: 4, fontWeight: 600 }}>
             {record.commissionRate}% Hoa hồng COD
           </Tag>
         </div>
@@ -709,27 +732,28 @@ export const AffiliateCommissionsPage: React.FC = () => {
     {
       title: 'Tiến độ bảo hành 60 ngày',
       key: 'probationProgress',
-      minWidth: 260,
+      minWidth: 270,
       render: (_: any, record: AffiliateCommissionDTO) => {
         const percent = Math.min(100, Math.round((record.probationDaysPassed / record.totalDays) * 100));
         const isPassed = record.probationDaysPassed >= record.totalDays;
+        const daysLeft = Math.max(0, record.totalDays - record.probationDaysPassed);
 
         return (
-          <div style={{ width: '100%', maxWidth: 240 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-              <span style={{ fontWeight: 600, color: isPassed ? '#16a34a' : '#0284c7' }}>
-                {isPassed ? 'Hoàn tất thử việc (60/60)' : `Đã thử việc ${record.probationDaysPassed}/${record.totalDays} ngày`}
+          <div style={{ width: '100%', maxWidth: 260 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, marginBottom: 4 }}>
+              <span style={{ fontWeight: 700, color: isPassed ? '#00b14f' : '#0284c7' }}>
+                {isPassed ? '✓ Hoàn tất bảo hành 60/60 ngày' : `Đếm ngược: Còn ${daysLeft} ngày (${record.probationDaysPassed}/${record.totalDays})`}
               </span>
               <span style={{ color: '#64748b', fontSize: 11 }}>
                 Hạn BH: {dayjs(record.warrantyEndDate).format('DD/MM')}
               </span>
             </div>
             <Progress
-              percent={percent}
+              percent={isPassed ? 100 : percent}
               size="small"
-              strokeColor={isPassed ? '#16a34a' : '#2563eb'}
+              strokeColor={isPassed ? '#00b14f' : '#0284c7'}
               status={isPassed ? 'success' : 'active'}
-              format={() => `${percent}%`}
+              format={() => (isPassed ? '100% PASS' : `${percent}%`)}
             />
           </div>
         );
@@ -738,32 +762,25 @@ export const AffiliateCommissionsPage: React.FC = () => {
     {
       title: 'TRẠNG THÁI',
       key: 'status',
-      minWidth: 190,
-      render: (_: any, record: AffiliateCommissionDTO) => renderStatusTag(record.status),
+      minWidth: 230,
+      render: (_: any, record: AffiliateCommissionDTO) => renderStatusTag(record.status, record),
     },
     {
       title: 'THAO TÁC',
       key: 'actions',
-      minWidth: 260,
+      minWidth: 240,
       render: (_: any, record: AffiliateCommissionDTO) => {
         if (record.status === 'PAID') {
           return (
             <Space size={8} wrap>
-              <Tag
-                color="success"
-                icon={<CheckCircleFilled />}
-                style={{ fontWeight: 600, padding: '4px 10px', borderRadius: 6, fontSize: 12, margin: 0 }}
-              >
-                Đã nhận tiền
-              </Tag>
               <Button
-                type="primary"
+                type="default"
                 size="small"
-                icon={<AuditOutlined />}
-                style={{ background: '#0284c7', borderColor: '#0284c7', borderRadius: 6, fontSize: 12, fontWeight: 500 }}
+                icon={<AuditOutlined style={{ color: '#00b14f' }} />}
+                style={{ borderRadius: 6, fontSize: 12, fontWeight: 600, borderColor: '#a7f3d0', color: '#065f46' }}
                 onClick={() => handleOpenUnc(record)}
               >
-                Xem lệnh UNC / Biên lai
+                Xem Ủy nhiệm chi (Payment Proof)
               </Button>
             </Space>
           );

@@ -30,6 +30,7 @@ import { FEATURED_HOT_JOBS, FeaturedJobItem } from '@/features/landing/component
 import { ApplyJobModal } from '@/features/candidates/ApplyJobModal';
 import { useAuthStore } from '@/stores/authStore';
 import { useCandidateStore } from '@/stores/candidateStore';
+import { useSavedJobs, JobItem } from '@/hooks/useSavedJobs';
 import { ServiceType } from '@/types/job';
 
 // Generate comprehensive fallback JD data
@@ -90,7 +91,7 @@ export const JobDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
-  const { toggleSaveJob, isJobSaved } = useCandidateStore();
+  const { toggleSaveJob, isSaved: isJobSaved } = useSavedJobs();
 
   const [jobData, setJobData] = useState<JobCardData | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -323,7 +324,7 @@ export const JobDetailPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => toggleSaveJob(richJob.id)}
+                onClick={() => toggleSaveJob(richJob as unknown as JobItem)}
                 title={isSaved ? 'Bỏ lưu tin' : 'Lưu tin'}
                 className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-colors shadow-2xs ${
                   isSaved
@@ -572,12 +573,7 @@ export const JobDetailPage: React.FC = () => {
                 block
                 icon={isSaved ? <HeartFilled className="text-rose-500" /> : <HeartOutlined />}
                 onClick={() => {
-                  const saved = toggleSaveJob(richJob.id);
-                  if (saved) {
-                    message.success(`Đã lưu "${richJob.title}" vào danh sách!`);
-                  } else {
-                    message.info(`Đã gỡ lưu "${richJob.title}".`);
-                  }
+                  toggleSaveJob(richJob as unknown as JobItem);
                 }}
                 className={`rounded-xl font-semibold text-xs h-10 transition-colors ${
                   isSaved

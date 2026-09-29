@@ -168,7 +168,7 @@ export const getDashboardRouteForRole = (role?: string | UserRole | null): strin
   const normalized = String(role).toUpperCase().trim();
   switch (normalized) {
     case 'CANDIDATE':
-      return '/candidate/dashboard';
+      return '/';
     case 'AFFILIATE':
       return '/affiliate/dashboard';
     case 'CLIENT':
@@ -188,7 +188,7 @@ export const ROLE_DASHBOARD_ROUTES: Record<UserRole, string> = {
   [UserRole.AFFILIATE]: '/affiliate/dashboard',
   [UserRole.INTERNAL_HR]: '/hr/dashboard',
   [UserRole.ADMIN]: '/admin/dashboard',
-  [UserRole.CANDIDATE]: '/candidate/dashboard',
+  [UserRole.CANDIDATE]: '/',
   [UserRole.GUEST]: '/login',
 };
 

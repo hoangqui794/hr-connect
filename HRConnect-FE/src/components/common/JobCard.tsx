@@ -1,8 +1,6 @@
 import React, { useMemo } from 'react';
 import {
   DollarOutlined,
-  HeartOutlined,
-  HeartFilled,
   ClockCircleOutlined,
   ThunderboltOutlined,
   ArrowRightOutlined,
@@ -12,6 +10,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { ServiceType } from '@/types/job';
 import { CompanyLogo } from './CompanyLogo';
+import { BookmarkButton } from './BookmarkButton';
+import { useSavedJobs } from '@/hooks/useSavedJobs';
 
 export interface JobCardData {
   id: string;
@@ -33,7 +33,7 @@ export interface JobCardData {
   aiMatchScore?: number;
 }
 
-interface JobCardProps {
+export interface JobCardProps {
   job: JobCardData;
   isSaved?: boolean;
   onToggleSave?: (jobId: string, e: React.MouseEvent) => void;
@@ -55,7 +55,6 @@ export const formatSalaryVND = (min: number, max: number): string => {
  * Standard tag dictionary for fixing typos, normalizing acronyms, and tech stack names
  */
 export const TAG_CORRECTION_MAP: Record<string, string> = {
-  // TypeScript & JavaScript typos & variations
   typescipt: 'TypeScript',
   typescrit: 'TypeScript',
   typescript: 'TypeScript',
@@ -63,8 +62,6 @@ export const TAG_CORRECTION_MAP: Record<string, string> = {
   javascript: 'JavaScript',
   javascipt: 'JavaScript',
   js: 'JavaScript',
-
-  // AI & ML variations & typos (e.g. "USEAI" -> "AI Tools" or "AI/ML")
   useai: 'AI Tools',
   'use ai': 'AI Tools',
   use_ai: 'AI Tools',
@@ -79,8 +76,6 @@ export const TAG_CORRECTION_MAP: Record<string, string> = {
   genai: 'Generative AI',
   'gen ai': 'Generative AI',
   'generative ai': 'Generative AI',
-
-  // Frontend frameworks & libs
   react: 'ReactJS',
   reactjs: 'ReactJS',
   'react.js': 'ReactJS',
@@ -99,8 +94,6 @@ export const TAG_CORRECTION_MAP: Record<string, string> = {
   tailwind: 'TailwindCSS',
   tailwindcss: 'TailwindCSS',
   'tailwind css': 'TailwindCSS',
-
-  // Backend & Runtime
   nodejs: 'Node.js',
   'node.js': 'Node.js',
   node: 'Node.js',
@@ -130,8 +123,6 @@ export const TAG_CORRECTION_MAP: Record<string, string> = {
   ruby: 'Ruby',
   rails: 'Ruby on Rails',
   'ruby on rails': 'Ruby on Rails',
-
-  // Database & Cache
   postgresql: 'PostgreSQL',
   postgres: 'PostgreSQL',
   mysql: 'MySQL',
@@ -144,8 +135,6 @@ export const TAG_CORRECTION_MAP: Record<string, string> = {
   spark: 'Apache Spark',
   airflow: 'Apache Airflow',
   kafka: 'Apache Kafka',
-
-  // Cloud & DevOps
   aws: 'AWS',
   gcp: 'GCP',
   azure: 'Azure',
@@ -164,8 +153,6 @@ export const TAG_CORRECTION_MAP: Record<string, string> = {
   'rest api': 'REST API',
   restful: 'RESTful API',
   microservices: 'Microservices',
-
-  // Design & Product
   'ui/ux': 'UI/UX',
   uiux: 'UI/UX',
   figma: 'Figma',
@@ -173,8 +160,6 @@ export const TAG_CORRECTION_MAP: Record<string, string> = {
   scrum: 'Agile/Scrum',
   'agile/scrum': 'Agile/Scrum',
   okr: 'OKR',
-
-  // General & Vietnamese common tags
   fulltime: 'Fulltime',
   'full-time': 'Fulltime',
   parttime: 'Parttime',
@@ -187,11 +172,6 @@ export const TAG_CORRECTION_MAP: Record<string, string> = {
   'full time': 'Fulltime',
 };
 
-/**
- * Normalizes a single tag:
- * 1. Checks dictionary for known corrections (e.g. typeScipt -> TypeScript, USEAI -> AI Tools).
- * 2. If not found, ensures the first letter is capitalized.
- */
 export const normalizeJobTag = (rawTag: string): string => {
   if (!rawTag) return '';
   const trimmed = rawTag.trim();
@@ -202,11 +182,9 @@ export const normalizeJobTag = (rawTag: string): string => {
     return TAG_CORRECTION_MAP[lower];
   }
 
-  // Capitalize first letter of tag if not in dictionary
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 };
 
-// Deduplicate tags case-insensitively and normalize text
 export const deduplicateTags = (tags: string[] = []): string[] => {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -224,23 +202,24 @@ export const deduplicateTags = (tags: string[] = []): string[] => {
 
 export const JobCard: React.FC<JobCardProps> = ({
   job,
-  isSaved = false,
+  isSaved: controlledIsSaved,
   onToggleSave,
   onViewDetail,
   onQuickApply,
   className = '',
 }) => {
   const navigate = useNavigate();
+  const { isSaved: checkIsSaved, toggleSave } = useSavedJobs();
+
+  // If controlled isSaved is passed, respect it; otherwise use custom hook's real-time state
+  const isSaved = controlledIsSaved !== undefined ? controlledIsSaved : checkIsSaved(job.id);
 
   const isCOD =
     job.serviceType === ServiceType.HEADHUNT_COD ||
     String(job.serviceType).toUpperCase() === 'HEADHUNT_COD' ||
     Boolean(job.estimatedCommission);
 
-  // Generate a mock deadline or time if not present
   const deadlineText = job.deadline || (job.isUrgent ? 'Còn 3 ngày' : 'Còn 12 ngày');
-
-  // Deduplicated unique tags
   const uniqueTags = useMemo(() => deduplicateTags(job.tags), [job.tags]);
 
   const handleClickCard = () => {
@@ -248,6 +227,15 @@ export const JobCard: React.FC<JobCardProps> = ({
       onViewDetail(job);
     } else {
       navigate(`/jobs/${job.id}`);
+    }
+  };
+
+  const handleBookmark = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleSave) {
+      onToggleSave(job.id, e);
+    } else {
+      toggleSave(job.id, job.title);
     }
   };
 
@@ -271,33 +259,43 @@ export const JobCard: React.FC<JobCardProps> = ({
               <div className="text-xs font-semibold text-slate-500 truncate hover:text-slate-800 transition-colors">
                 {job.company}
               </div>
-              {/* Job Title: line-clamp-2 min-h-[44px] flex items-center */}
               <h3 className="line-clamp-2 min-h-[44px] flex items-center font-bold text-slate-900 text-sm sm:text-base leading-snug tracking-tight group-hover:text-blue-600 transition-colors mt-0.5">
                 {job.title}
               </h3>
             </div>
           </div>
 
-          {/* Bookmark Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSave?.(job.id, e);
-            }}
-            title={isSaved ? 'Bỏ lưu tin' : 'Lưu việc làm'}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0 border ${
-              isSaved
-                ? 'bg-rose-50 text-rose-500 border-rose-200 shadow-xs'
-                : 'bg-slate-50 text-slate-400 border-slate-200/70 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-200'
-            }`}
-          >
-            {isSaved ? (
-              <HeartFilled className="text-rose-500 text-sm" />
-            ) : (
-              <HeartOutlined className="text-sm" />
-            )}
-          </button>
+          {/* Bookmark Button: Tích hợp toggleSave với real-time update & Antd Toast */}
+          {onToggleSave ? (
+            <button
+              type="button"
+              onClick={handleBookmark}
+              title={isSaved ? 'Bỏ lưu tin' : 'Lưu việc làm'}
+              aria-label={isSaved ? 'Bỏ lưu tin' : 'Lưu việc làm'}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0 border cursor-pointer ${
+                isSaved
+                  ? 'bg-rose-50 text-rose-500 border-rose-200 shadow-2xs'
+                  : 'bg-slate-50 text-slate-400 border-slate-200/70 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-200'
+              }`}
+            >
+              <svg
+                className={`w-4 h-4 transition-transform duration-150 ${
+                  isSaved ? 'text-rose-500 fill-rose-500 scale-110' : 'text-slate-400 fill-none'
+                }`}
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={isSaved ? 0 : 1.8}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                />
+              </svg>
+            </button>
+          ) : (
+            <BookmarkButton jobId={job.id} jobTitle={job.title} />
+          )}
         </div>
 
         {/* ── Salary Badge (Emerald Green TopCV standard) ── */}
@@ -376,7 +374,7 @@ export const JobCard: React.FC<JobCardProps> = ({
                 e.stopPropagation();
                 onQuickApply(job, e);
               }}
-              className="px-2.5 py-1 text-xs font-medium text-blue-600 bg-blue-50/80 hover:bg-blue-100 border border-blue-200/60 rounded-lg transition-colors"
+              className="px-2.5 py-1 text-xs font-medium text-blue-600 bg-blue-50/80 hover:bg-blue-100 border border-blue-200/60 rounded-lg transition-colors cursor-pointer"
             >
               Nộp nhanh
             </button>
@@ -392,4 +390,5 @@ export const JobCard: React.FC<JobCardProps> = ({
   );
 };
 
+export { BookmarkButton };
 export default JobCard;

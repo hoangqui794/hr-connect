@@ -56,6 +56,7 @@ import { CompanyLogo } from '@/components/common/CompanyLogo';
 import { INDUSTRY_TAXONOMY } from '@/constants/industryTaxonomy';
 import { useAuthStore } from '@/stores/authStore';
 import { useCandidateStore } from '@/stores/candidateStore';
+import { useSavedJobs, JobItem } from '@/hooks/useSavedJobs';
 import { ApplyJobModal } from '@/features/candidates/ApplyJobModal';
 import { useI18nStore } from '@/i18n';
 import { ServiceType } from '@/types/job';
@@ -302,7 +303,8 @@ export const HomePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useI18nStore();
   const { isAuthenticated } = useAuthStore();
-  const { cvs, toggleSaveJob, isJobSaved, applyJob, addRecruiterConnect } = useCandidateStore();
+  const { cvs, applyJob, addRecruiterConnect } = useCandidateStore();
+  const { isSaved: isJobSaved, toggleSaveJob } = useSavedJobs();
 
   const jobsSectionRef = useRef<HTMLDivElement>(null);
 
@@ -853,13 +855,8 @@ export const HomePage: React.FC = () => {
                       deadline: job.deadline,
                     }}
                     isSaved={isSaved}
-                    onToggleSave={(jobId) => {
-                      const saved = toggleSaveJob(jobId);
-                      if (saved) {
-                        message.success(`Đã lưu "${job.title}" vào danh sách!`);
-                      } else {
-                        message.info(`Đã gỡ lưu "${job.title}".`);
-                      }
+                    onToggleSave={() => {
+                      toggleSaveJob(job as unknown as JobItem);
                     }}
                     onViewDetail={(j) => navigate(`/jobs/${j.id}`)}
                     onQuickApply={(j) => handleApplyClick(j)}
@@ -1044,7 +1041,7 @@ export const HomePage: React.FC = () => {
         }}
         isSaved={detailModalJob ? isJobSaved(detailModalJob.id) : false}
         onToggleSave={(jobId) => {
-          toggleSaveJob(jobId);
+          toggleSaveJob((detailModalJob as unknown as JobItem) || jobId);
         }}
       />
 

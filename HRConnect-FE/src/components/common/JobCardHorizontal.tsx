@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { ServiceType } from '@/types/job';
 import { CompanyLogo } from './CompanyLogo';
 import { JobCardData, formatSalaryVND, deduplicateTags } from './JobCard';
+import { BookmarkButton } from './BookmarkButton';
 
 interface JobCardHorizontalProps {
   job: JobCardData;
@@ -168,25 +169,29 @@ export const JobCardHorizontal: React.FC<JobCardHorizontalProps> = ({
           )}
 
           {/* Bookmark Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSave?.(job.id, e);
-            }}
-            title={isSaved ? 'Bỏ lưu tin' : 'Lưu việc làm'}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0 border ${
-              isSaved
-                ? 'bg-rose-50 text-rose-500 border-rose-200 shadow-2xs'
-                : 'bg-slate-50 text-slate-400 border-slate-200/70 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-200'
-            }`}
-          >
-            {isSaved ? (
-              <HeartFilled className="text-rose-500 text-xs" />
-            ) : (
-              <HeartOutlined className="text-xs" />
-            )}
-          </button>
+          {onToggleSave ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSave?.(job.id, e);
+              }}
+              title={isSaved ? 'Bỏ lưu tin' : 'Lưu việc làm'}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0 border cursor-pointer ${
+                isSaved
+                  ? 'bg-rose-50 text-rose-500 border-rose-200 shadow-2xs'
+                  : 'bg-slate-50 text-slate-400 border-slate-200/70 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-200'
+              }`}
+            >
+              {isSaved ? (
+                <HeartFilled className="text-rose-500 fill-rose-500 text-xs" style={{ color: '#f43f5e' }} />
+              ) : (
+                <HeartOutlined className="text-xs" />
+              )}
+            </button>
+          ) : (
+            <BookmarkButton jobId={job.id} jobTitle={job.title} size="sm" />
+          )}
         </div>
       </div>
     </div>

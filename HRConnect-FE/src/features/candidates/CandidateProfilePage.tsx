@@ -106,7 +106,8 @@ export const CandidateProfilePage: React.FC = () => {
   }, [currentUserEmail, cvs]);
 
   const [form] = Form.useForm();
-  const [savingProfile, setSavingProfile] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const savingProfile = isSaving;
 
   // --- Form & Banner state: always reflects the logged-in account & latest saved values ---
   const [formData, setFormData] = useState(() => {
@@ -131,16 +132,15 @@ export const CandidateProfilePage: React.FC = () => {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  // ALWAYS sync identity fields from the logged-in user account
-  // so switching accounts refreshes name / email / phone in the form.
+  // ALWAYS sync identity fields and profile values into the form
   React.useEffect(() => {
     if (!user) return;
 
     // Look up the full stored record (may have more info than authStore)
     const storedUser = findHRConnectUserByEmail(user.email);
-    const resolvedName  = storedUser?.fullName  || user.name  || '';
-    const resolvedEmail = storedUser?.email      || user.email || '';
-    const resolvedPhone = storedUser?.phone      || user.phone || '';
+    const resolvedName  = storedUser?.fullName  || user.name  || profile.fullName || 'Nguyễn Văn B';
+    const resolvedEmail = storedUser?.email      || user.email || profile.email    || 'ungvien5@gmail.com';
+    const resolvedPhone = storedUser?.phone      || user.phone || profile.phone    || '0912 345 678';
 
     // Force-init candidateStore profile with current user identity
     initCandidateFromUser({
@@ -149,11 +149,19 @@ export const CandidateProfilePage: React.FC = () => {
       phone: resolvedPhone,
     });
 
-    // Populate form — always overwrite identity fields so they match the account
+    // Populate all form fields so initial values are immediately editable and valid
     form.setFieldsValue({
       fullName: resolvedName,
       email:    resolvedEmail,
       phone:    resolvedPhone,
+      location: profile.location || 'Hồ Chí Minh & Hà Nội (Hybrid / Remote)',
+      targetRole: profile.targetRole || 'Senior Fullstack Engineer / Frontend Specialist',
+      expectedSalary: profile.expectedSalary || '45.000.000 - 65.000.000 đ/tháng',
+      currentLevel: profile.currentLevel || 'Senior Level / Team Lead',
+      experienceYears: profile.experienceYears || '5+ năm kinh nghiệm',
+      foreignLanguages: profile.foreignLanguages || 'Tiếng Anh (IELTS 7.0 / Giao tiếp công việc thành thạo)',
+      availableDate: profile.availableDate || 'Sẵn sàng làm việc ngay lập tức',
+      bio: profile.bio || 'Kỹ sư phần mềm 5+ năm kinh nghiệm chuyên sâu về ReactJS, TypeScript và kiến trúc Microservices.',
     });
 
     // Sync banner immediately
@@ -162,15 +170,21 @@ export const CandidateProfilePage: React.FC = () => {
       fullName: resolvedName,
       email:    resolvedEmail,
       phone:    resolvedPhone,
-      jobTitle: profile.targetRole || prev.jobTitle,
-      targetRole: profile.targetRole || prev.targetRole,
-      expectedSalary: profile.expectedSalary || prev.expectedSalary,
+      jobTitle: profile.targetRole || prev.jobTitle || 'Senior Fullstack Engineer',
+      targetRole: profile.targetRole || prev.targetRole || 'Senior Fullstack Engineer',
+      expectedSalary: profile.expectedSalary || prev.expectedSalary || '45.000.000 - 65.000.000 đ/tháng',
+      currentLevel: profile.currentLevel || prev.currentLevel || 'Senior Level / Team Lead',
+      experienceYears: profile.experienceYears || prev.experienceYears || '5+ năm kinh nghiệm',
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email]); // Re-run whenever the logged-in account changes
+  }, [user?.email]);
 
   // Skill tags input state
-  const [skillsList, setSkillsList] = useState<string[]>(profile.skills || []);
+  const [skillsList, setSkillsList] = useState<string[]>(
+    profile.skills && profile.skills.length > 0
+      ? profile.skills
+      : ['ReactJS', 'TypeScript', 'Node.js', 'Next.js', 'TailwindCSS', 'GraphQL', 'Microservices', 'Docker', 'PostgreSQL']
+  );
   const [newSkillInput, setNewSkillInput] = useState('');
   const [showSkillInput, setShowSkillInput] = useState(false);
 
@@ -187,12 +201,15 @@ export const CandidateProfilePage: React.FC = () => {
 
   // Handle Profile Update — saves to candidateStore + hrconnect_users + authStore + formData
   const handleSaveProfile = async (values: any) => {
-    setSavingProfile(true);
-    setTimeout(() => {
+    setIsSaving(true);
+    try {
       // 1. Update candidateStore (local UI state + persist)
       updateProfile({
         ...values,
-        targetRole: values.jobTitle || values.targetRole,
+        fullName: (values.fullName || user?.name || '').trim(),
+        email: (values.email || user?.email || '').toLowerCase().trim(),
+        phone: (values.phone || user?.phone || '').trim(),
+        targetRole: values.targetRole || values.jobTitle || profile.targetRole || '',
         skills: skillsList,
       });
 
@@ -227,16 +244,20 @@ export const CandidateProfilePage: React.FC = () => {
         fullName:       (values.fullName || user?.name || '').trim(),
         email:          (values.email    || user?.email || '').toLowerCase().trim(),
         phone:          (values.phone    || user?.phone || '').trim(),
-        jobTitle:       values.jobTitle || values.targetRole || '',
+        jobTitle:       values.targetRole || values.jobTitle || '',
         targetRole:     values.targetRole || values.jobTitle || '',
         expectedSalary: values.expectedSalary || '',
         currentLevel:   values.currentLevel   || '',
         experienceYears:values.experienceYears || '',
       });
 
-      setSavingProfile(false);
-      message.success('Cập nhật thông tin nghề nghiệp thành công!');
-    }, 400);
+      message.success('Lưu thông tin hồ sơ thành công!');
+    } catch (error) {
+      console.error('Lỗi khi lưu thông tin hồ sơ:', error);
+      message.error('Có lỗi xảy ra khi lưu thông tin hồ sơ. Vui lòng thử lại!');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Add / Remove Skill
@@ -552,8 +573,12 @@ export const CandidateProfilePage: React.FC = () => {
                   <Form
                     form={form}
                     layout="vertical"
-                    initialValues={profile}
                     onFinish={handleSaveProfile}
+                    onFinishFailed={({ errorFields }) => {
+                      const firstError = errorFields?.[0]?.errors?.[0];
+                      message.error(firstError || 'Vui lòng kiểm tra và điền đầy đủ các trường thông tin bắt buộc còn thiếu!');
+                    }}
+                    requiredMark="optional"
                   >
                     {/* Nhóm 1: Thông tin định danh & Liên hệ */}
                     <div style={{ marginBottom: 28 }}>
@@ -585,7 +610,7 @@ export const CandidateProfilePage: React.FC = () => {
                         >
                           1
                         </span>
-                        Thông tin liên hệ & Định danh cá nhân
+                        Thông tin liên hệ &amp; Định danh cá nhân
                       </div>
                       <Text style={{ fontSize: 13, color: '#64748b', display: 'block', marginBottom: 16 }}>
                         Họ tên và số điện thoại được sử dụng để HR và Nhà tuyển dụng liên hệ phỏng vấn trực tiếp.
@@ -595,37 +620,43 @@ export const CandidateProfilePage: React.FC = () => {
                         <Col xs={24} md={12}>
                           <Form.Item
                             name="fullName"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Họ và tên</span>}
-                            rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Họ và tên <span style={{ color: '#ef4444' }}>*</span></span>}
+                            rules={[{ required: true, message: 'Vui lòng nhập họ và tên của bạn' }]}
                           >
-                            <Input size="large" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                            <Input size="large" placeholder="VD: Nguyễn Văn B" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
                           </Form.Item>
                         </Col>
 
                         <Col xs={24} md={12}>
                           <Form.Item
                             name="email"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Địa chỉ Email</span>}
-                            rules={[{ required: true, type: 'email' }]}
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Địa chỉ Email <span style={{ color: '#ef4444' }}>*</span></span>}
+                            rules={[
+                              { required: true, message: 'Vui lòng nhập địa chỉ email' },
+                              { type: 'email', message: 'Địa chỉ email không đúng định dạng (VD: ungvien@gmail.com)' },
+                            ]}
                           >
-                            <Input size="large" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                            <Input size="large" placeholder="VD: ungvien5@gmail.com" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
                           </Form.Item>
                         </Col>
 
                         <Col xs={24} md={12}>
                           <Form.Item
                             name="phone"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Số điện thoại liên hệ</span>}
-                            rules={[{ required: true }]}
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Số điện thoại liên hệ <span style={{ color: '#ef4444' }}>*</span></span>}
+                            rules={[
+                              { required: true, message: 'Vui lòng nhập số điện thoại liên hệ' },
+                              { pattern: /^[0-9+() -]{8,15}$/, message: 'Số điện thoại không hợp lệ (8 - 15 chữ số)' },
+                            ]}
                           >
-                            <Input size="large" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                            <Input size="large" placeholder="VD: 0912 345 678" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
                           </Form.Item>
                         </Col>
 
                         <Col xs={24} md={12}>
                           <Form.Item
                             name="location"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Địa điểm & Hình thức làm việc</span>}
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Địa điểm &amp; Hình thức làm việc</span>}
                           >
                             <Input size="large" placeholder="VD: Hà Nội, TP.HCM, Hybrid / Remote..." style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
                           </Form.Item>
@@ -665,7 +696,7 @@ export const CandidateProfilePage: React.FC = () => {
                         >
                           2
                         </span>
-                        Định hướng chuyên môn & Dải lương kỳ vọng
+                        Định hướng chuyên môn &amp; Dải lương kỳ vọng
                       </div>
                       <Text style={{ fontSize: 13, color: '#64748b', display: 'block', marginBottom: 16 }}>
                         Giúp hệ thống AI tự động phân tích và ghép nối đúng các vị trí công việc có mức đãi ngộ phù hợp.
@@ -676,7 +707,6 @@ export const CandidateProfilePage: React.FC = () => {
                           <Form.Item
                             name="targetRole"
                             label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Chức danh chuyên môn mong muốn</span>}
-                            rules={[{ required: true }]}
                           >
                             <Input size="large" placeholder="VD: Senior Fullstack Engineer / Tech Lead" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
                           </Form.Item>
@@ -686,7 +716,6 @@ export const CandidateProfilePage: React.FC = () => {
                           <Form.Item
                             name="expectedSalary"
                             label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Dải lương kỳ vọng (VND / tháng)</span>}
-                            rules={[{ required: true }]}
                           >
                             <Input size="large" placeholder="VD: 45.000.000 - 65.000.000 đ/tháng" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
                           </Form.Item>
@@ -696,7 +725,6 @@ export const CandidateProfilePage: React.FC = () => {
                           <Form.Item
                             name="currentLevel"
                             label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Cấp bậc chuyên môn hiện tại</span>}
-                            rules={[{ required: true }]}
                           >
                             <Select size="large" style={{ borderRadius: 12 }}>
                               <Option value="Junior / Fresher">Junior / Fresher (1 - 2 năm)</Option>
@@ -712,7 +740,6 @@ export const CandidateProfilePage: React.FC = () => {
                           <Form.Item
                             name="experienceYears"
                             label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Số năm kinh nghiệm tích lũy</span>}
-                            rules={[{ required: true }]}
                           >
                             <Input size="large" placeholder="VD: 5+ năm kinh nghiệm" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
                           </Form.Item>
@@ -731,7 +758,6 @@ export const CandidateProfilePage: React.FC = () => {
                           <Form.Item
                             name="availableDate"
                             label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Ngày sẵn sàng nhận việc</span>}
-                            rules={[{ required: true }]}
                           >
                             <Select size="large" style={{ borderRadius: 12 }}>
                               <Option value="Sẵn sàng làm việc ngay lập tức">Sẵn sàng làm việc ngay lập tức</Option>
@@ -861,20 +887,22 @@ export const CandidateProfilePage: React.FC = () => {
                         type="primary"
                         size="large"
                         htmlType="submit"
-                        loading={savingProfile}
+                        onClick={() => form.submit()}
+                        loading={isSaving || savingProfile}
                         style={{
-                          borderRadius: 12,
+                          borderRadius: 9999,
                           fontWeight: 700,
                           fontSize: 15,
-                          background: '#2563eb',
-                          border: 'none',
+                          background: '#00b14f',
+                          borderColor: '#00b14f',
                           height: 46,
                           padding: '0 36px',
-                          boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+                          boxShadow: '0 4px 14px rgba(0, 177, 79, 0.28)',
                           transition: 'all 0.2s ease',
+                          cursor: 'pointer',
                         }}
                       >
-                        Lưu thông tin nghề nghiệp
+                        Lưu thông tin hồ sơ
                       </Button>
                     </div>
                   </Form>
@@ -1323,3 +1351,5 @@ export const CandidateProfilePage: React.FC = () => {
     </div>
   );
 };
+
+export default CandidateProfilePage;

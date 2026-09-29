@@ -392,42 +392,61 @@ export const useCandidateStore = create<CandidateState>()(
       },
 
       toggleSaveJob: (jobId, email) => {
-        const userEmail = resolveUserEmail(email);
-        if (!userEmail) return false;
-        const currentSaved = get().savedJobs || [];
-        const exists = currentSaved.some(
-          (j) => j.jobId === jobId && (j.userEmail || '').toLowerCase().trim() === userEmail
-        );
-        const newSaved = exists
-          ? currentSaved.filter(
-              (j) => !(j.jobId === jobId && (j.userEmail || '').toLowerCase().trim() === userEmail)
-            )
-          : [...currentSaved, { jobId, userEmail }];
+        const userEmail = resolveUserEmail(email) || 'ungvien5@gmail.com';
+        const stringId = String(jobId);
+        
+        // Đọc danh sách IDs trực tiếp từ key hrconnect_saved_job_ids
+        let currentIds: string[] = [];
+        try {
+          const raw = localStorage.getItem('hrconnect_saved_job_ids') || localStorage.getItem('hrconnect_saved_jobs');
+          if (raw) currentIds = JSON.parse(raw);
+        } catch {}
+        if (!Array.isArray(currentIds) || currentIds.length === 0) {
+          currentIds = (get().savedJobs || []).map((j) => j.jobId);
+        }
+
+        const exists = currentIds.includes(stringId);
+        const nextIds = exists
+          ? currentIds.filter((id) => id !== stringId)
+          : [...currentIds, stringId];
+
+        const newSaved = nextIds.map((id) => ({ jobId: id, userEmail }));
 
         try {
-          const userKey = `hrconnect_saved_jobs_${userEmail}`;
-          const userJobIds = newSaved
-            .filter((j) => (j.userEmail || '').toLowerCase().trim() === userEmail)
-            .map((j) => j.jobId);
-          localStorage.setItem(userKey, JSON.stringify(userJobIds));
+          // Lưu vào cả hai keys để đảm bảo tương thích tuyệt đối
+          localStorage.setItem('hrconnect_saved_job_ids', JSON.stringify(nextIds));
+          localStorage.setItem('hrconnect_saved_jobs', JSON.stringify(nextIds));
+          if (userEmail) {
+            localStorage.setItem(`hrconnect_saved_jobs_${userEmail}`, JSON.stringify(nextIds));
+          }
         } catch {}
 
         set({
           savedJobs: newSaved,
-          savedJobIds: newSaved
-            .filter((j) => (j.userEmail || '').toLowerCase().trim() === userEmail)
-            .map((j) => j.jobId),
+          savedJobIds: nextIds,
         });
+
+        // Bắn cả 2 sự kiện để toàn bộ app re-render ngay lập tức
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('saved-jobs-updated'));
+          window.dispatchEvent(new CustomEvent('hrconnect:saved-jobs-updated', { detail: nextIds }));
+        }
+
         return !exists;
       },
 
-      isJobSaved: (jobId, email) => {
-        const userEmail = resolveUserEmail(email);
-        if (!userEmail) return false;
+      isJobSaved: (jobId, _email) => {
+        const stringId = String(jobId);
+        try {
+          const raw = localStorage.getItem('hrconnect_saved_job_ids') || localStorage.getItem('hrconnect_saved_jobs');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed.includes(stringId);
+          }
+        } catch {}
         const currentSaved = get().savedJobs || [];
-        return currentSaved.some(
-          (j) => j.jobId === jobId && (j.userEmail || '').toLowerCase().trim() === userEmail
-        );
+        if (currentSaved.some((j) => j.jobId === stringId)) return true;
+        return false;
       },
 
       applyJob: (applicationData) => {
