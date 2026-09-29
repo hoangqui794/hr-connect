@@ -10,7 +10,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useAlertStore } from '@/stores/alertStore';
-import { DEMO_USERS } from '@/types/roles';
 import { RoleBadge } from '@/components/common/RoleBadge';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { MockWebSocketService } from '@/services/mockWebSocket';
@@ -128,7 +127,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
           <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>
             {userEmail}
           </div>
-          <Text type="secondary" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <Text type="secondary" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8' }}>
             Vai trò hiện tại
           </Text>
           <div style={{ marginTop: 4 }}>
@@ -164,8 +163,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
     <>
       <Header
         style={{
-          background: '#fff',
-          borderBottom: '1px solid #e2e8f0',
+          background: 'rgba(255, 255, 255, 0.82)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderBottom: '1px solid rgba(226, 232, 240, 0.85)',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.03)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -186,33 +188,34 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
-            borderRadius: 6,
+            background: 'rgba(241, 245, 249, 0.8)',
+            border: '1px solid rgba(226, 232, 240, 0.9)',
+            borderRadius: 10,
             padding: '0 12px',
-            height: 34,
+            height: 36,
             cursor: 'pointer',
             width: 270,
             boxSizing: 'border-box',
-            transition: 'border-color 0.2s',
+            transition: 'border-color 0.2s, background 0.2s',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = '#0284c7';
+            e.currentTarget.style.borderColor = '#3b82f6';
+            e.currentTarget.style.background = '#ffffff';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = '#e2e8f0';
+            e.currentTarget.style.borderColor = 'rgba(226, 232, 240, 0.9)';
+            e.currentTarget.style.background = 'rgba(241, 245, 249, 0.8)';
           }}
         >
-          <SearchOutlined style={{ color: '#94a3b8', fontSize: 13 }} />
-          <span style={{ color: '#94a3b8', fontSize: 12.5, flex: 1, userSelect: 'none' }}>Tìm kiếm nhanh...</span>
-          <Tag style={{ margin: 0, background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#64748b', fontSize: 11, padding: '0 4px', borderRadius: 4, lineHeight: '18px' }}>
+          <SearchOutlined style={{ color: '#64748b', fontSize: 13 }} />
+          <span style={{ color: '#64748b', fontSize: 12.5, flex: 1, userSelect: 'none' }}>Tìm kiếm nhanh...</span>
+          <Tag style={{ margin: 0, background: '#ffffff', border: '1px solid rgba(226, 232, 240, 0.9)', color: '#64748b', fontSize: 11, padding: '0 6px', borderRadius: 6, lineHeight: '18px' }}>
             Ctrl+K
           </Tag>
         </div>
 
         {/* Right Section */}
         <Space size={16}>
-
           {/* Live Demo Alert Trigger */}
           <Tooltip title="Kích hoạt thông báo mẫu">
             <Button
@@ -237,19 +240,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
             dropdownRender={() => (
               <div
                 style={{
-                  background: '#fff',
-                  borderRadius: 12,
-                  boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.15)',
+                  background: '#ffffff',
+                  borderRadius: 14,
+                  boxShadow: '0 16px 36px -4px rgba(0, 0, 0, 0.08)',
                   width: 360,
                   maxHeight: 480,
                   overflow: 'hidden',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid rgba(226, 232, 240, 0.9)',
                 }}
               >
                 <div
                   style={{
                     padding: '14px 16px',
-                    borderBottom: '1px solid #f1f5f9',
+                    borderBottom: '1px solid rgba(241, 245, 249, 0.9)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
@@ -258,7 +261,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
                   <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
                     Thông báo trực tiếp
                   </span>
-                  <span style={{ color: '#0284c7', fontSize: 12, cursor: 'pointer' }} onClick={handleClearAllNotifications}>
+                  <span style={{ color: '#2563eb', fontSize: 12, cursor: 'pointer', fontWeight: 600 }} onClick={handleClearAllNotifications}>
                     Xóa tất cả
                   </span>
                 </div>
@@ -285,8 +288,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
                           key={alert.id}
                           style={{
                             padding: '12px 16px',
-                            background: alert.read ? 'transparent' : '#f0f9ff',
-                            borderBottom: '1px solid #f8fafc',
+                            background: alert.read ? 'transparent' : 'rgba(239, 246, 255, 0.9)',
+                            borderBottom: '1px solid rgba(241, 245, 249, 0.9)',
                             cursor: 'pointer',
                           }}
                           actions={[
@@ -333,7 +336,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
               </div>
             )}
           >
-            <Badge count={unreadNotifsCount !== 0 ? unreadNotifsCount : unreadCount} size="small" offset={[-2, 2]}>
+            <Badge count={unreadNotifsCount + unreadCount} offset={[-2, 6]} size="small">
               <Button
                 type="text"
                 shape="circle"
@@ -348,10 +351,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
             <Avatar
               size={34}
               style={{
-                background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
+                background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
                 cursor: 'pointer',
                 fontWeight: 700,
                 fontSize: 13,
+                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
               }}
             >
               {userAvatar}
@@ -374,16 +378,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
         <div style={{ padding: '16px 16px 0' }}>
           <Input
             autoFocus
-            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+            prefix={<SearchOutlined style={{ color: '#64748b' }} />}
             placeholder="Tìm kiếm trang, chức năng, ứng viên..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             bordered={false}
-            style={{ fontSize: 16, fontWeight: 400 }}
+            style={{ fontSize: 15, fontWeight: 400, color: '#0f172a' }}
             size="large"
           />
         </div>
-        <div style={{ borderTop: '1px solid #f1f5f9', maxHeight: 360, overflowY: 'auto' }}>
+        <div style={{ borderTop: '1px solid rgba(226, 232, 240, 0.9)', maxHeight: 360, overflowY: 'auto' }}>
           {filteredSearch.map((item) => (
             <div
               key={item.key}
@@ -400,20 +404,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
                 cursor: 'pointer',
                 transition: 'background 0.15s',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f9ff')}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(241, 245, 249, 0.8)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
               <span style={{ fontSize: 18 }}>{item.icon}</span>
               <div>
-                <div style={{ fontWeight: 500, fontSize: 14, color: '#0f172a' }}>{item.label}</div>
-                <div style={{ fontSize: 11, color: '#94a3b8' }}>{item.category}</div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a' }}>{item.label}</div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>{item.category}</div>
               </div>
             </div>
           ))}
         </div>
-        <div style={{ padding: '10px 16px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: 12 }}>
-          <Text type="secondary" style={{ fontSize: 11 }}>↵ Điều hướng</Text>
-          <Text type="secondary" style={{ fontSize: 11 }}>ESC Đóng</Text>
+        <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(226, 232, 240, 0.9)', display: 'flex', gap: 12 }}>
+          <Text type="secondary" style={{ fontSize: 11, color: '#94a3b8' }}>↵ Điều hướng</Text>
+          <Text type="secondary" style={{ fontSize: 11, color: '#94a3b8' }}>ESC Đóng</Text>
         </div>
       </Modal>
     </>

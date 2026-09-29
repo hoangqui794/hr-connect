@@ -83,28 +83,28 @@ export const COLOR_TIER_CONFIG: Record<
   }
 > = {
   [ColorTier.RED]: {
-    label: 'Phù hợp xuất sắc',
-    hex: '#ef4444',
-    bg: '#fef2f2',
-    border: '#fecaca',
+    label: 'Red Heart Tier (Xuất sắc)',
+    hex: '#e11d48',
+    bg: '#fff1f2',
+    border: '#fecdd3',
     antdColor: 'red',
   },
   [ColorTier.TEAL]: {
-    label: 'Phù hợp cao',
+    label: 'Teal Tier (Phù hợp cao)',
     hex: '#0d9488',
     bg: '#f0fdfa',
     border: '#99f6e4',
     antdColor: 'cyan',
   },
   [ColorTier.GREEN]: {
-    label: 'Phù hợp trung bình',
-    hex: '#65a30d',
-    bg: '#f7fee7',
-    border: '#d9f99d',
+    label: 'Green Tier (Đạt chuẩn)',
+    hex: '#16a34a',
+    bg: '#f0fdf4',
+    border: '#bbf7d0',
     antdColor: 'green',
   },
   [ColorTier.GRAY]: {
-    label: 'Chưa phù hợp',
+    label: 'Gray Tier (Chưa đạt)',
     hex: '#64748b',
     bg: '#f8fafc',
     border: '#e2e8f0',

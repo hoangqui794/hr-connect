@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { Row, Col, Card, Typography, Button, Tag, Space, Table, Empty } from 'antd';
+import { Row, Col, Typography, Button, Table, Empty } from 'antd';
 import {
   FileTextOutlined, TeamOutlined, TrophyOutlined, ClockCircleOutlined,
-  PlusCircleOutlined, RightOutlined, ArrowUpOutlined,
+  PlusCircleOutlined, RightOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -12,8 +12,9 @@ import { getJobsForClient } from '@/services/localStorageService';
 import { useApplicationStore } from '@/stores/applicationStore';
 import { MOCK_CANDIDATES } from '@/services/mockData';
 import { ScoreTierTag } from '@/components/common/ScoreTierTag';
-
-const { Title, Text } = Typography;
+import { CandidateHighlightPills } from '@/components/common/CandidateHighlightPills';
+import { PageHeaderB2B } from '@/components/common/PageHeaderB2B';
+import { FintechMetricCard } from '@/components/common/FintechMetricCard';
 
 export const ClientDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -35,173 +36,136 @@ export const ClientDashboardPage: React.FC = () => {
   const totalApplicants = clientJobs.reduce((acc, j) => acc + (j.applicationCount || 0), clientApps.length);
   const totalShortlisted = clientJobs.reduce((acc, j) => acc + (j.shortlistedCount || 0), 0);
 
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Chào buổi sáng';
-    if (hour < 18) return 'Chào buổi chiều';
-    return 'Chào buổi tối';
-  }, []);
-
   return (
-    <div style={{ padding: '0 4px' }}>
-      {/* Header Banner */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #0f172a, #1e293b, #0369a1)',
-          borderRadius: 16,
-          padding: '24px 28px',
-          marginBottom: 24,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-          boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.1)',
-        }}
-      >
-        <div>
-          <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 4 }}>
-            {greeting}, {user?.name || 'Quý Doanh Nghiệp'}! 👋
-          </div>
-          <Title level={2} style={{ color: '#fff', margin: 0, fontWeight: 800 }}>
-            Bảng điều khiển Tuyển dụng Doanh nghiệp
-          </Title>
-          <div style={{ marginTop: 8 }}>
-            <RoleBadge role={role || UserRole.CLIENT} />
+    <div className="space-y-6">
+      {/* ─── Minimalist B2B Header ────────────────────────────────────────── */}
+      <PageHeaderB2B
+        title="Bảng điều khiển Tuyển dụng Doanh nghiệp"
+        badge={
+          <div className="flex items-center gap-2">
+            <RoleBadge role={role || UserRole.CLIENT} size="small" />
             {user?.company && (
-              <span style={{ color: '#cbd5e1', fontSize: 13, marginLeft: 12, fontWeight: 600 }}>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                 🏢 {user.company}
               </span>
             )}
           </div>
-        </div>
-        <Space wrap>
-          <Button
-            type="primary"
-            icon={<PlusCircleOutlined />}
-            size="large"
-            onClick={() => navigate('/client/post-job')}
-            style={{
-              borderRadius: 8,
-              fontWeight: 700,
-              background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-              border: 'none',
-              boxShadow: '0 2px 8px rgba(2, 132, 199, 0.35)',
-            }}
-          >
-            Đăng tin tuyển dụng mới
-          </Button>
-          <Button
-            size="large"
-            icon={<FileTextOutlined />}
-            onClick={() => navigate('/client/jobs')}
-            style={{ borderRadius: 8, fontWeight: 600 }}
-          >
-            Quản lý việc làm ({clientJobs.length})
-          </Button>
-        </Space>
-      </div>
-
-      {/* KPI Stats Grid */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        {[
-          {
-            label: 'Vị trí đang tuyển (Active)',
-            value: activeJobs.length,
-            sub: pendingJobs.length > 0 ? `+${pendingJobs.length} tin chờ HR duyệt` : 'Tất cả đã kích hoạt',
-            icon: <FileTextOutlined />,
-            color: '#0284c7',
-            action: () => navigate('/client/jobs'),
-          },
-          {
-            label: 'Tổng hồ sơ ứng viên nộp',
-            value: totalApplicants,
-            sub: 'Từ CTV & Ứng viên nộp trực tiếp',
-            icon: <TeamOutlined />,
-            color: '#8b5cf6',
-            action: () => navigate('/client/candidates'),
-          },
-          {
-            label: 'Đã qua phỏng vấn / Sơ loại',
-            value: totalShortlisted,
-            sub: 'Đạt yêu cầu vòng 1',
-            icon: <TrophyOutlined />,
-            color: '#10b981',
-            action: () => navigate('/client/interviews-offers'),
-          },
-          {
-            label: 'Theo dõi bảo hành tuyển dụng',
-            value: 3,
-            sub: 'Cam kết bảo hành 60 ngày',
-            icon: <ClockCircleOutlined />,
-            color: '#f59e0b',
-            action: () => navigate('/client/warranty'),
-          },
-        ].map((stat) => (
-          <Col key={stat.label} xs={12} sm={6}>
-            <div
-              className="hrc-stat-card"
-              onClick={stat.action}
-              style={{
-                cursor: 'pointer',
-                background: '#fff',
-                borderRadius: 14,
-                padding: '20px',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                transition: 'all 0.2s ease',
-              }}
+        }
+        subtitle={
+          <span>
+            Quản trị vị trí tuyển dụng, đối soát phễu ứng viên AI và giám sát tiến độ phỏng vấn & bảo hành thử việc (COD).
+          </span>
+        }
+        actions={
+          <>
+            <Button
+              type="primary"
+              icon={<PlusCircleOutlined />}
+              onClick={() => navigate('/client/post-job')}
+              className="h-10 px-4 rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 border-none shadow-sm"
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                <div
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 10,
-                    background: `${stat.color}15`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: stat.color,
-                    fontSize: 20,
-                  }}
-                >
-                  {stat.icon}
-                </div>
-                <ArrowUpOutlined style={{ color: '#10b981', fontSize: 13 }} />
-              </div>
-              <div style={{ fontSize: 30, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{stat.value}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginTop: 8 }}>{stat.label}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{stat.sub}</div>
-            </div>
-          </Col>
-        ))}
+              Đăng tin tuyển dụng mới
+            </Button>
+            <Button
+              icon={<FileTextOutlined />}
+              onClick={() => navigate('/client/jobs')}
+              className="h-10 px-4 rounded-xl font-semibold bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm"
+            >
+              Quản lý việc làm ({clientJobs.length})
+            </Button>
+          </>
+        }
+      />
+
+      {/* ─── Fintech / SaaS Metric Cards Grid ─────────────────────────────── */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} lg={6}>
+          <FintechMetricCard
+            label="Vị trí đang tuyển"
+            value={activeJobs.length}
+            subLabel={pendingJobs.length > 0 ? `+${pendingJobs.length} tin chờ duyệt` : 'Tất cả đã kích hoạt'}
+            statusBadge="Active"
+            statusType="eligible"
+            icon={<FileTextOutlined />}
+            iconColor="#2563eb"
+            onClick={() => navigate('/client/jobs')}
+          />
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <FintechMetricCard
+            label="Tổng ứng viên tiếp nhận"
+            value={totalApplicants}
+            subLabel="Từ CTV & Ứng viên trực tiếp"
+            statusBadge="AI Scored"
+            statusType="info"
+            icon={<TeamOutlined />}
+            iconColor="#4f46e5"
+            onClick={() => navigate('/client/candidates')}
+          />
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <FintechMetricCard
+            label="Đã sơ loại & Phỏng vấn"
+            value={totalShortlisted}
+            subLabel="Đạt tiêu chí vòng 1"
+            statusBadge="Pipeline"
+            statusType="eligible"
+            icon={<TrophyOutlined />}
+            iconColor="#059669"
+            onClick={() => navigate('/client/interviews-offers')}
+          />
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <FintechMetricCard
+            label="Bảo hành tuyển dụng"
+            value="3 Deals"
+            subLabel="Bảo hành 60 ngày (COD)"
+            statusBadge="60D Warranty"
+            statusType="warranty"
+            icon={<ClockCircleOutlined />}
+            iconColor="#d97706"
+            onClick={() => navigate('/client/warranty')}
+          />
+        </Col>
       </Row>
 
-      {/* Main Content: Jobs Table & Candidates */}
+      {/* ─── Main Content Panels: Active Jobs & High-Match Candidates ───────── */}
       <Row gutter={[16, 16]}>
+        {/* Left: Client Jobs List */}
         <Col xs={24} lg={14}>
-          <Card
-            title={
-              <Space>
-                <FileTextOutlined style={{ color: '#0284c7' }} />
-                <span style={{ fontWeight: 700, fontSize: 15 }}>Tin tuyển dụng gần đây</span>
-              </Space>
-            }
-            extra={
-              <Button type="link" size="small" onClick={() => navigate('/client/jobs')} style={{ fontWeight: 600 }}>
-                Xem tất cả ({clientJobs.length}) <RightOutlined />
+          <div className="b2b-card p-5">
+            <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <FileTextOutlined className="text-blue-600" />
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight m-0">
+                  Tin tuyển dụng gần đây
+                </h3>
+              </div>
+              <Button
+                type="link"
+                size="small"
+                onClick={() => navigate('/client/jobs')}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 p-0"
+              >
+                Xem tất cả ({clientJobs.length}) →
               </Button>
-            }
-            style={{ borderRadius: 14, border: '1px solid #e2e8f0' }}
-          >
+            </div>
+
             {clientJobs.length === 0 ? (
               <Empty
-                description="Doanh nghiệp chưa đăng tin tuyển dụng nào"
-                style={{ padding: '32px 0' }}
+                description={<span className="text-xs text-slate-400">Doanh nghiệp chưa có bài đăng tuyển dụng nào</span>}
+                className="py-8"
               >
-                <Button type="primary" icon={<PlusCircleOutlined />} onClick={() => navigate('/client/post-job')}>
-                  Đăng tin tuyển dụng đầu tiên
+                <Button
+                  type="primary"
+                  icon={<PlusCircleOutlined />}
+                  onClick={() => navigate('/client/post-job')}
+                  className="rounded-xl font-semibold bg-blue-600"
+                >
+                  Tạo tin tuyển dụng đầu tiên
                 </Button>
               </Empty>
             ) : (
@@ -210,53 +174,56 @@ export const ClientDashboardPage: React.FC = () => {
                 rowKey="id"
                 pagination={false}
                 size="middle"
+                className="bg-transparent"
                 columns={[
                   {
-                    title: 'Vị trí',
+                    title: 'VỊ TRÍ TUYỂN DỤNG',
                     key: 'title',
                     render: (_, record) => (
                       <div>
-                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{record.title}</div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>
-                          {record.servicePackage || 'Tuyển dụng trọn gói'} · {record.location}
+                        <div className="font-semibold text-sm text-slate-800 hover:text-blue-600 cursor-pointer transition-colors" onClick={() => navigate('/client/jobs')}>
+                          {record.title}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          {record.servicePackage || 'Tuyển dụng trọn gói COD'} • {record.location}
                         </div>
                       </div>
                     ),
                   },
                   {
-                    title: 'Trạng thái',
+                    title: 'TRẠNG THÁI',
                     dataIndex: 'status',
                     key: 'status',
-                    width: 120,
+                    width: 130,
                     render: (status: string) => {
                       if (status === 'PENDING') {
-                        return <Tag color="warning" style={{ borderRadius: 6, fontWeight: 600 }}>⏳ Chờ duyệt</Tag>;
+                        return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">⏳ Chờ duyệt</span>;
                       }
                       if (status === 'ACTIVE') {
-                        return <Tag color="success" style={{ borderRadius: 6, fontWeight: 600 }}>Đang tuyển</Tag>;
+                        return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Đang mở</span>;
                       }
-                      return <Tag style={{ borderRadius: 6 }}>{status}</Tag>;
+                      return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">{status}</span>;
                     },
                   },
                   {
-                    title: 'Ứng viên',
+                    title: 'HỒ SƠ NỘP',
                     key: 'apps',
-                    width: 100,
+                    width: 110,
                     render: (_, record) => (
-                      <span style={{ fontWeight: 700, color: '#0284c7' }}>
-                        {record.applicationCount || 0} hồ sơ
+                      <span className="font-mono font-bold text-blue-600 text-xs">
+                        {record.applicationCount || 0} ứng viên
                       </span>
                     ),
                   },
                   {
-                    title: 'Thao tác',
+                    title: '',
                     key: 'act',
-                    width: 80,
-                    render: (_, record) => (
+                    width: 50,
+                    render: () => (
                       <Button
                         type="text"
                         size="small"
-                        icon={<RightOutlined />}
+                        icon={<RightOutlined className="text-slate-400" />}
                         onClick={() => navigate('/client/jobs')}
                       />
                     ),
@@ -264,54 +231,63 @@ export const ClientDashboardPage: React.FC = () => {
                 ]}
               />
             )}
-          </Card>
+          </div>
         </Col>
 
+        {/* Right: AI High-Match Candidate Highlights */}
         <Col xs={24} lg={10}>
-          <Card
-            title={
-              <Space>
-                <TeamOutlined style={{ color: '#8b5cf6' }} />
-                <span style={{ fontWeight: 700, fontSize: 15 }}>Ứng viên nổi bật cho vị trí</span>
-              </Space>
-            }
-            extra={
-              <Button type="link" size="small" onClick={() => navigate('/client/candidates')} style={{ fontWeight: 600 }}>
-                Xem kho ứng viên <RightOutlined />
-              </Button>
-            }
-            style={{ borderRadius: 14, border: '1px solid #e2e8f0' }}
-          >
-            {MOCK_CANDIDATES.slice(0, 4).map((c) => (
-              <div
-                key={c.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 0',
-                  borderBottom: '1px solid #f1f5f9',
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{c.name}</div>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>
-                    {c.currentTitle} · {c.highlightCard.yearsOfExperience} năm kinh nghiệm
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {c.aiScore !== undefined && <ScoreTierTag score={c.aiScore} showScore />}
-                  <Button
-                    size="small"
-                    onClick={() => navigate('/client/candidates')}
-                    style={{ borderRadius: 6, fontSize: 11 }}
-                  >
-                    Xem
-                  </Button>
-                </div>
+          <div className="b2b-card p-5">
+            <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <TeamOutlined className="text-indigo-600" />
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight m-0">
+                  Ứng viên AI Match cao nhất
+                </h3>
               </div>
-            ))}
-          </Card>
+              <Button
+                type="link"
+                size="small"
+                onClick={() => navigate('/client/candidates')}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 p-0"
+              >
+                Kho ứng viên →
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {MOCK_CANDIDATES.slice(0, 4).map((c) => (
+                <div
+                  key={c.id}
+                  className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:border-slate-300 transition-all duration-150"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <div className="font-bold text-sm text-slate-800">
+                        {c.name}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {c.currentTitle}
+                      </div>
+                    </div>
+                    {c.aiScore !== undefined && (
+                      <ScoreTierTag score={c.aiScore} size="small" showScore />
+                    )}
+                  </div>
+
+                  {/* Candidate Highlight Data Pills */}
+                  <CandidateHighlightPills
+                    yearsOfExperience={c.highlightCard.yearsOfExperience}
+                    currentSalary={c.highlightCard.currentSalary}
+                    expectedSalary={c.highlightCard.expectedSalary}
+                    language={c.highlightCard.primaryLanguage}
+                    languageLevel={c.highlightCard.languageLevel}
+                    availabilityDate={c.highlightCard.availabilityDate}
+                    noticePeriodDays={c.highlightCard.noticePeriod}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
         </Col>
       </Row>
     </div>

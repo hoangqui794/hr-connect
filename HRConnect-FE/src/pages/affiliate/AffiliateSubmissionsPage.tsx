@@ -34,6 +34,9 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import type { AffiliateSubmissionDTO, SubmissionStatus } from '@/types/affiliate';
+import { PageHeaderB2B } from '@/components/common/PageHeaderB2B';
+import { FintechMetricCard } from '@/components/common/FintechMetricCard';
+import { AntiDuplicationBadge } from '@/components/common/AntiDuplicationBadge';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -393,38 +396,35 @@ export const AffiliateSubmissionsPage: React.FC = () => {
       minWidth: 280,
       render: (_: any, record: AffiliateSubmissionDTO) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Avatar src={record.avatar} size={42} style={{ border: '2px solid #e2e8f0' }}>
+          <Avatar src={record.avatar} size={42} style={{ border: '1px solid rgba(51, 65, 85, 0.7)', background: '#d97706' }}>
             {record.candidateName.charAt(0)}
           </Avatar>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a' }}>{record.candidateName}</div>
-            <div style={{ fontSize: 12, color: '#2563eb', fontWeight: 500 }}>{record.jobTitle}</div>
-            <div style={{ fontSize: 11, color: '#64748b' }}>
-              {record.companyName} • Lương kỳ vọng: <strong>{record.salaryExpectation?.toLocaleString('vi-VN')} đ</strong>
+            <div style={{ fontWeight: 600, fontSize: 14, color: '#f8fafc' }}>{record.candidateName}</div>
+            <div style={{ fontSize: 12, color: '#38bdf8', fontWeight: 500 }}>{record.jobTitle}</div>
+            <div style={{ fontSize: 11, color: '#94a3b8' }}>
+              {record.companyName} • Lương kỳ vọng: <strong style={{ color: '#34d399' }}>{record.salaryExpectation?.toLocaleString('vi-VN')} đ</strong>
             </div>
-            <div style={{ fontSize: 11, color: '#94a3b8' }}>{record.email} • {record.phone}</div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>{record.email} • {record.phone}</div>
           </div>
         </div>
       ),
     },
     {
-      title: 'Thời gian nộp (Timestamp lưu vết)',
+      title: 'First-Submission Timestamp (Bảo chứng an toàn)',
       dataIndex: 'submittedAt',
       key: 'submittedAt',
-      minWidth: 220,
+      minWidth: 250,
       sorter: (a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime(),
       defaultSortOrder: 'descend',
       render: (dateStr: string, record: AffiliateSubmissionDTO) => (
-        <div>
-          <div style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a', fontSize: 13 }}>
-            {dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss')}
-          </div>
-          <div style={{ fontSize: 11, color: '#059669', marginTop: 2 }}>
-            <ClockCircleOutlined style={{ marginRight: 4 }} />
-            Khóa Attribution ưu tiên
-          </div>
+        <div className="space-y-1">
+          <AntiDuplicationBadge
+            timestamp={dateStr}
+            isDuplicate={record.isDuplicate}
+          />
           {record.duplicateSubmittedAt && (
-            <div style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: '#f87171', marginTop: 2 }}>
               Đối thủ submit: {dayjs(record.duplicateSubmittedAt).format('HH:mm:ss DD/MM')}
             </div>
           )}
@@ -438,14 +438,14 @@ export const AffiliateSubmissionsPage: React.FC = () => {
       render: (_: any, record: AffiliateSubmissionDTO) => (
         <div>
           {renderStatusBadge(record.status, record.isDuplicate, record.hasDispute)}
-          <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, maxWidth: 240, lineHeight: 1.4 }}>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, maxWidth: 240, lineHeight: 1.4 }}>
             {record.currentStageNote}
           </div>
         </div>
       ),
     },
     {
-      title: 'Thao tác & Hồ sơ',
+      title: 'Thao tác',
       key: 'actions',
       minWidth: 200,
       render: (_: any, record: AffiliateSubmissionDTO) => (
@@ -455,6 +455,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               size="small"
               icon={<DownloadOutlined />}
               onClick={() => message.success(`Đang mở xem file CV: ${record.cvUrl}`)}
+              className="rounded-lg bg-slate-900 border-slate-700 text-slate-200"
             >
               Xem CV
             </Button>
@@ -467,6 +468,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               danger
               icon={<WarningOutlined />}
               onClick={() => handleOpenDispute(record)}
+              className="rounded-lg"
             >
               Khiếu nại Attribution
             </Button>
@@ -474,7 +476,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
 
           {record.hasDispute && (
             <Tooltip title={record.disputeReason}>
-              <Tag color="orange" style={{ cursor: 'pointer' }}>
+              <Tag color="orange" style={{ cursor: 'pointer', borderRadius: 9999 }}>
                 Đang thụ lý tranh chấp
               </Tag>
             </Tooltip>
@@ -485,106 +487,104 @@ export const AffiliateSubmissionsPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+    <div className="space-y-6">
       {/* ─── PAGE HEADER ──────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-            Hồ sơ đã giới thiệu & Tiến độ tuyển dụng
-          </Title>
-          <Text style={{ color: '#64748b' }}>
-            Headhunter / CTV: <strong style={{ color: '#0f172a' }}>{user?.name || user?.email || 'Chuyên viên Tuyển dụng'}</strong> ({user?.company || 'Cộng tác viên Độc lập'}) • Dữ liệu đồng bộ trực tiếp từ kho hồ sơ hệ thống
-          </Text>
-        </div>
-        <Button
-          type="primary"
-          icon={<UserAddOutlined />}
-          size="large"
-          onClick={() => navigate('/affiliate/referral')}
-          style={{
-            borderRadius: 8,
-            fontWeight: 700,
-            background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-            border: 'none',
-          }}
-        >
-          Giới thiệu thêm ứng viên
-        </Button>
-      </div>
+      <PageHeaderB2B
+        title="Hồ Sơ Đã Giới Thiệu & Tiến Độ Tuyển Dụng"
+        badge={
+          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+            Headhunter / CTV: {user?.name || user?.email || 'Chuyên viên Tuyển dụng'}
+          </span>
+        }
+        subtitle="Quản lý phễu ứng viên được giới thiệu, bảo chứng First-Submission Timestamp chống trùng lặp và khiếu nại Attribution thời gian thực."
+        actions={
+          <Button
+            type="primary"
+            icon={<UserAddOutlined />}
+            onClick={() => navigate('/affiliate/referral')}
+            className="h-10 px-4 rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
+          >
+            Giới thiệu thêm ứng viên
+          </Button>
+        }
+      />
 
       {/* ─── OVERVIEW STATS ───────────────────────────────────────────────────── */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+      <Row gutter={[16, 16]}>
         <Col xs={24} sm={6}>
-          <Card style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>Tổng hồ sơ đã nộp</Text>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#0f172a', marginTop: 4 }}>
-              {submissions.length}
-            </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Trong toàn bộ chiến dịch</div>
-          </Card>
+          <FintechMetricCard
+            label="Tổng hồ sơ đã nộp"
+            value={submissions.length}
+            subLabel="Toàn bộ chiến dịch"
+            statusBadge="Submissions"
+            statusType="info"
+          />
         </Col>
         <Col xs={24} sm={6}>
-          <Card style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>Đang phỏng vấn</Text>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#2563eb', marginTop: 4 }}>
-              {submissions.filter((s) => s.status === 'INTERVIEW').length}
-            </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Cơ hội chốt thưởng cao</div>
-          </Card>
+          <FintechMetricCard
+            label="Đang phỏng vấn"
+            value={submissions.filter((s) => s.status === 'INTERVIEW').length}
+            subLabel="Cơ hội chốt thưởng cao"
+            statusBadge="Vòng PV"
+            statusType="eligible"
+          />
         </Col>
         <Col xs={24} sm={6}>
-          <Card style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>Đã nhận việc / Thử việc</Text>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#16a34a', marginTop: 4 }}>
-              {submissions.filter((s) => s.status === 'HIRED' || s.status === 'PROBATION').length}
-            </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Đang tích lũy hoa hồng</div>
-          </Card>
+          <FintechMetricCard
+            label="Nhận việc / Thử việc"
+            value={submissions.filter((s) => s.status === 'HIRED' || s.status === 'PROBATION').length}
+            subLabel="Đang tích lũy hoa hồng"
+            statusBadge="Bảo hành 60D"
+            statusType="warranty"
+          />
         </Col>
         <Col xs={24} sm={6}>
-          <Card style={{ borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>Hồ sơ trùng lặp (Cần xử lý)</Text>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#dc2626', marginTop: 4 }}>
-              {submissions.filter((s) => s.isDuplicate).length}
-            </div>
-            <div style={{ fontSize: 12, color: '#dc2626', marginTop: 2 }}>Có thể khiếu nại Timestamp</div>
-          </Card>
+          <FintechMetricCard
+            label="Hồ sơ trùng lặp"
+            value={submissions.filter((s) => s.isDuplicate).length}
+            subLabel="Có thể khiếu nại Timestamp"
+            statusBadge="Cần xử lý"
+            statusType="neutral"
+          />
         </Col>
       </Row>
 
       {/* ─── POLICY EXPLANATION ───────────────────────────────────────────────── */}
-      <Alert
-        message="Chính sách Bảo vệ Bản quyền Giới thiệu (First-Submission Policy - Mục 4)"
-        description="Khi hồ sơ bị báo trùng lặp với Headhunter khác, quyền sở hữu Attribution được ưu tiên tuyệt đối cho người có Timestamp nộp hồ sơ sớm hơn kèm xác nhận của ứng viên. Mọi hồ sơ bạn nộp đều được lưu vết thời gian bất biến trên hệ thống."
-        type="info"
-        showIcon
-        icon={<CheckCircleOutlined style={{ color: '#2563eb' }} />}
-        style={{ marginBottom: 20, borderRadius: 8 }}
-      />
+      <div className="b2b-card p-4 border border-blue-200/80 bg-blue-50/50">
+        <div className="flex items-center gap-2">
+          <CheckCircleOutlined className="text-blue-600 text-lg" />
+          <span className="font-bold text-sm text-slate-900">
+            Chính sách Bảo vệ Bản quyền Giới thiệu (First-Submission Policy)
+          </span>
+        </div>
+        <div className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+          Khi hồ sơ bị báo trùng lặp với Headhunter khác, quyền sở hữu Attribution được ưu tiên tuyệt đối cho người có Timestamp nộp hồ sơ sớm hơn kèm xác nhận của ứng viên. Mọi hồ sơ bạn nộp đều được lưu vết thời gian bất biến trên hệ thống.
+        </div>
+      </div>
 
       {submissions.length === 0 ? (
-        <Card style={{ borderRadius: 14, textAlign: 'center', padding: '60px 20px', border: '1px solid #e2e8f0' }}>
-          <TeamOutlined style={{ fontSize: 48, color: '#cbd5e1', marginBottom: 16 }} />
-          <Title level={4} style={{ color: '#0f172a', marginBottom: 8 }}>
+        <div className="b2b-card text-center py-16 px-6">
+          <TeamOutlined className="text-5xl text-slate-400 mb-4" />
+          <h3 className="text-lg font-bold text-slate-900 mb-2">
             Bạn chưa giới thiệu ứng viên nào
-          </Title>
-          <Text type="secondary" style={{ display: 'block', maxWidth: 480, margin: '0 auto 24px', fontSize: 13.5 }}>
+          </h3>
+          <p className="text-sm text-slate-600 max-w-md mx-auto mb-6">
             Khám phá các việc làm hấp dẫn trên Sàn tuyển dụng và chọn ứng viên từ Kho Talent Pool hoặc tải lên CV để nhận hoa hồng lên tới 45.000.000 đ/deal.
-          </Text>
+          </p>
           <Button
             type="primary"
             icon={<UserAddOutlined />}
             size="large"
             onClick={() => navigate('/affiliate/referral')}
-            style={{ borderRadius: 8, fontWeight: 700, background: '#0284c7', borderColor: '#0284c7' }}
+            className="rounded-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white"
           >
             Giới thiệu ứng viên đầu tiên
           </Button>
-        </Card>
+        </div>
       ) : (
         <>
           {/* ─── FILTER CONTROLS ─────────────────────────────────────────────────── */}
-          <Card style={{ marginBottom: 20, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+          <div className="b2b-card mb-5 p-4">
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} md={12}>
                 <Input
@@ -612,10 +612,10 @@ export const AffiliateSubmissionsPage: React.FC = () => {
                 />
               </Col>
             </Row>
-          </Card>
+          </div>
 
           {/* ─── TABLE ───────────────────────────────────────────────────────────── */}
-          <Card style={{ borderRadius: 8, border: '1px solid #e2e8f0' }} styles={{ body: { padding: 0 } }}>
+          <div className="b2b-card p-0 overflow-hidden">
             <Table<AffiliateSubmissionDTO>
               columns={columns}
               dataSource={filteredSubmissions}
@@ -623,7 +623,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               pagination={{ pageSize: 8, showTotal: (total) => `Tổng cộng ${total} hồ sơ đã giới thiệu` }}
               scroll={{ x: 920 }}
             />
-          </Card>
+          </div>
         </>
       )}
 

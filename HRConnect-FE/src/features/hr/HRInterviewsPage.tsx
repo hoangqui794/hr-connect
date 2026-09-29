@@ -332,11 +332,11 @@ export const HRInterviewsPage: React.FC = () => {
     <div style={{ padding: '0 4px' }}>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
+        <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800, letterSpacing: '-0.02em' }}>
           <CalendarOutlined style={{ color: '#10b981', marginRight: 10 }} />
           Lịch Phỏng vấn Ứng viên (Recruitment Pipeline)
         </Title>
-        <Text type="secondary" style={{ fontSize: 13 }}>
+        <Text style={{ fontSize: 13, color: '#94a3b8' }}>
           Điều phối lịch phỏng vấn giữa Doanh nghiệp và Ứng viên, cập nhật kết quả PASS/FAIL và xếp lịch lại các vòng phỏng vấn.
         </Text>
       </div>
@@ -344,53 +344,82 @@ export const HRInterviewsPage: React.FC = () => {
       {/* KPI Stats */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
         <Col xs={12} sm={8}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: '#f0fdf4' }}>
-            <Statistic
-              title="Phỏng vấn trong tuần"
-              value={scheduledThisWeek.length}
-              valueStyle={{ color: '#10b981', fontWeight: 800, fontSize: 28 }}
-              prefix={<Badge count={scheduledThisWeek.length} style={{ backgroundColor: '#10b981' }} />}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Phỏng vấn trong tuần
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#34d399', marginTop: 6, fontFamily: 'monospace' }}>
+              {scheduledThisWeek.length}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Đang xếp lịch hoạt động</div>
+          </div>
         </Col>
         <Col xs={12} sm={8}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title="Ứng viên Đạt (Chờ Offer)"
-              value={passedCount}
-              valueStyle={{ color: '#0284c7', fontWeight: 800, fontSize: 28 }}
-              prefix={<CheckCircleOutlined style={{ color: '#0284c7' }} />}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Ứng viên Đạt (Chờ Offer)
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#38bdf8', marginTop: 6, fontFamily: 'monospace' }}>
+              {passedCount}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Sẵn sàng gửi thư mời</div>
+          </div>
         </Col>
         <Col xs={24} sm={8}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title="Tỷ lệ tham gia đúng giờ"
-              value={100}
-              suffix="%"
-              valueStyle={{ color: '#7c3aed', fontWeight: 800, fontSize: 28 }}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Tỷ lệ tham gia đúng giờ
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#c084fc', marginTop: 6, fontFamily: 'monospace' }}>
+              100%
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Không có ứng viên vắng mặt</div>
+          </div>
         </Col>
       </Row>
 
       {/* Filter Card */}
-      <Card
+      <div
         style={{
-          borderRadius: 12,
+          borderRadius: 16,
           marginBottom: 16,
-          border: '1px solid #e2e8f0',
+          padding: '14px 20px',
+          border: '1px solid rgba(51, 65, 85, 0.65)',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(12px)',
         }}
-        styles={{ body: { padding: '12px 18px' } }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <Space>
-            <span style={{ fontWeight: 600 }}>Lọc theo trạng thái:</span>
+            <span style={{ fontWeight: 600, color: '#cbd5e1', fontSize: 13 }}>Lọc theo trạng thái:</span>
             <Select
               value={statusFilter}
               onChange={setStatusFilter}
-              style={{ width: 180 }}
+              style={{ width: 200, height: 38 }}
               options={[
                 { label: 'Tất cả trạng thái', value: 'ALL' },
                 { label: 'Sắp diễn ra (Scheduled)', value: 'SCHEDULED' },
@@ -402,19 +431,21 @@ export const HRInterviewsPage: React.FC = () => {
           <Button
             icon={<ReloadOutlined />}
             onClick={() => { setStatusFilter('ALL'); handleReload(); }}
-            style={{ borderRadius: 8 }}
+            style={{ borderRadius: 10, height: 38, background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(51, 65, 85, 0.65)', color: '#f8fafc' }}
           >
             Làm mới dữ liệu
           </Button>
         </div>
-      </Card>
+      </div>
 
       {/* Table */}
-      <Card
+      <div
         style={{
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          borderRadius: 16,
+          border: '1px solid rgba(51, 65, 85, 0.65)',
+          overflow: 'hidden',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(12px)',
         }}
       >
         <Table
@@ -424,7 +455,7 @@ export const HRInterviewsPage: React.FC = () => {
           pagination={{ pageSize: 8 }}
           size="middle"
         />
-      </Card>
+      </div>
 
       {/* Reschedule Modal */}
       <Modal

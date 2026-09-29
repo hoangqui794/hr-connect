@@ -28,10 +28,13 @@ export const WizardStep4Engagement: React.FC<WizardStep4Props> = ({ form: _form 
   const isCV = draft.step1.serviceType === ServiceType.CV_SOURCING;
   const showCommission = isHeadhunt || isCV;
 
-  const estimatedCommission =
-    draft.step4.commissionRate > 0 && draft.step1.salaryMax > 0
-      ? Math.round((draft.step1.salaryMax * draft.step4.commissionRate) / 100)
-      : 0;
+  const currentRate = draft.step4.commissionRate > 0 ? draft.step4.commissionRate : 20.5;
+  const currencyUnit = draft.step1.currency || 'VND';
+  const maxSalary = draft.step1.salaryMax && draft.step1.salaryMax > 0 
+    ? draft.step1.salaryMax 
+    : (currencyUnit === 'USD' ? 2000 : 40000000);
+
+  const estimatedCommission = Math.round((maxSalary * currentRate) / 100);
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -48,14 +51,14 @@ export const WizardStep4Engagement: React.FC<WizardStep4Props> = ({ form: _form 
           {[
             {
               label: 'Tỷ lệ hoa hồng',
-              value: showCommission ? `${draft.step4.commissionRate}%` : '—',
+              value: showCommission ? `${currentRate}%` : '—',
               color: '#38bdf8',
               show: true,
             },
             {
               label: 'Hoa hồng ước tính',
               value: showCommission && estimatedCommission > 0
-                ? `${estimatedCommission.toLocaleString()} ${draft.step1.currency}`
+                ? `${estimatedCommission.toLocaleString()} ${currencyUnit}`
                 : '—',
               color: '#10b981',
               show: showCommission,

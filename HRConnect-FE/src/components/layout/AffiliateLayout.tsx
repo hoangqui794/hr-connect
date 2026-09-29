@@ -232,8 +232,9 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
         trigger={null}
         width={250}
         style={{
-          background: '#0f172a',
-          boxShadow: '2px 0 12px rgba(0,0,0,0.12)',
+          background: '#070a11',
+          borderRight: '1px solid rgba(51, 65, 85, 0.65)',
+          boxShadow: '2px 0 12px rgba(0,0,0,0.3)',
           zIndex: 100,
           position: 'sticky',
           top: 0,
@@ -247,8 +248,8 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
             display: 'flex',
             alignItems: 'center',
             padding: collapsed ? '0 18px' : '0 20px',
-            background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            background: '#070a11',
+            borderBottom: '1px solid rgba(51, 65, 85, 0.5)',
             cursor: 'pointer',
           }}
           onClick={() => navigate('/affiliate/dashboard')}
@@ -329,21 +330,21 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
       </Sider>
 
       {/* ─── MAIN CONTENT AREA ─────────────────────────────────────────────────── */}
-      <Layout>
+      <Layout style={{ background: '#0B0F17' }}>
         {/* Top Header Bar */}
         <Header
           style={{
-            background: '#ffffff',
+            background: 'rgba(11, 15, 23, 0.85)',
+            backdropFilter: 'blur(16px)',
             padding: '0 24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: '1px solid #e2e8f0',
+            borderBottom: '1px solid rgba(51, 65, 85, 0.65)',
             position: 'sticky',
             top: 0,
             zIndex: 90,
             height: 64,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
           }}
         >
           {/* Left: Collapse Button + Breadcrumbs */}
@@ -352,7 +353,7 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed(!collapsed)}
-              style={{ fontSize: 16, width: 36, height: 36 }}
+              style={{ fontSize: 16, width: 36, height: 36, color: '#94a3b8' }}
             />
             <Breadcrumb items={breadcrumbItems} />
           </div>
@@ -365,34 +366,34 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
               alignItems: 'center',
               justifyContent: 'space-between',
               width: 320,
-              height: 34,
+              height: 36,
               padding: '0 12px',
-              borderRadius: 6,
-              background: '#f1f5f9',
-              border: '1px solid #cbd5e1',
+              borderRadius: 12,
+              background: 'rgba(15, 23, 42, 0.6)',
+              border: '1px solid rgba(51, 65, 85, 0.65)',
               cursor: 'pointer',
-              color: '#64748b',
+              color: '#94a3b8',
               fontSize: 13,
               transition: 'all 0.2s ease',
               boxSizing: 'border-box',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#f59e0b')}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#cbd5e1')}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(51, 65, 85, 0.65)')}
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <SearchOutlined style={{ color: '#94a3b8' }} />
-              <span>Tìm job, hồ sơ, hoa hồng...</span>
+              <span style={{ color: '#64748b' }}>Tìm job, hồ sơ, hoa hồng...</span>
             </span>
             <Tag
               style={{
                 margin: 0,
-                padding: '0 4px',
+                padding: '0 5px',
                 fontSize: 11,
                 lineHeight: '18px',
-                background: '#e2e8f0',
-                border: '1px solid #cbd5e1',
-                color: '#475569',
-                borderRadius: 4,
+                background: 'rgba(30, 41, 59, 0.8)',
+                border: '1px solid rgba(51, 65, 85, 0.6)',
+                color: '#94a3b8',
+                borderRadius: 6,
               }}
             >
               Ctrl+K
@@ -408,13 +409,13 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
                 alignItems: 'center',
                 gap: 6,
                 padding: '4px 10px',
-                borderRadius: 16,
-                background: '#fef3c7',
-                border: '1px solid #fde68a',
+                borderRadius: 9999,
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
               }}
             >
-              <CheckCircleOutlined style={{ color: '#d97706', fontSize: 13 }} />
-              <span style={{ color: '#92400e', fontSize: 12, fontWeight: 600 }}>Top Recruiter Tier</span>
+              <CheckCircleOutlined style={{ color: '#f59e0b', fontSize: 13 }} />
+              <span style={{ color: '#fbbf24', fontSize: 12, fontWeight: 600 }}>Top Recruiter Tier</span>
             </div>
 
             <LanguageSwitcher />
@@ -424,7 +425,7 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
                 <Button
                   type="text"
                   shape="circle"
-                  icon={<BellOutlined style={{ fontSize: 17, color: '#475569' }} />}
+                  icon={<BellOutlined style={{ fontSize: 17, color: '#94a3b8' }} />}
                   style={{ width: 38, height: 38 }}
                 />
               </Badge>
@@ -437,17 +438,21 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
                   alignItems: 'center',
                   gap: 10,
                   cursor: 'pointer',
-                  padding: '4px 8px',
-                  borderRadius: 6,
+                  padding: '4px 10px',
+                  borderRadius: 12,
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  border: '1px solid rgba(51, 65, 85, 0.65)',
                   transition: 'background 0.2s',
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(30, 41, 59, 0.8)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(15, 23, 42, 0.6)')}
               >
-                <Avatar src={affiliateUser.avatar} size={34} style={{ border: '2px solid #f59e0b' }}>
+                <Avatar src={affiliateUser.avatar} size={32} style={{ border: '2px solid #f59e0b' }}>
                   {affiliateUser.name.charAt(0)}
                 </Avatar>
                 <div style={{ textAlign: 'left', lineHeight: 1.2 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{affiliateUser.name}</div>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>RecruitPro Network</div>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: '#f1f5f9' }}>{affiliateUser.name}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>RecruitPro Network</div>
                 </div>
               </div>
             </Dropdown>
@@ -455,7 +460,7 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
         </Header>
 
         {/* Page Content Body */}
-        <Content style={{ padding: '24px', minHeight: 'calc(100vh - 64px)' }}>
+        <Content style={{ padding: '24px', background: '#0B0F17', minHeight: 'calc(100vh - 64px)' }}>
           {children || <Outlet />}
         </Content>
       </Layout>
@@ -470,7 +475,12 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
         centered
         width={560}
         styles={{
-          body: { padding: '16px' },
+          body: {
+            padding: '16px',
+            background: '#0f172a',
+            borderRadius: 16,
+            border: '1px solid rgba(51, 65, 85, 0.8)',
+          },
         }}
       >
         <Input
@@ -482,13 +492,15 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
           style={{
             height: 44,
             fontSize: 14,
-            borderRadius: 8,
+            borderRadius: 10,
             marginBottom: 12,
-            border: '1px solid #f59e0b',
+            border: '1px solid rgba(245, 158, 11, 0.5)',
+            background: 'rgba(15, 23, 42, 0.8)',
+            color: '#f8fafc',
           }}
         />
 
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 8, paddingLeft: 4 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: 8, paddingLeft: 4, textTransform: 'uppercase' }}>
           ĐIỀU HƯỚNG NHANH
         </div>
 
@@ -499,20 +511,21 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
               onClick={() => handleSearchSelect(item.key)}
               style={{
                 padding: '10px 12px',
-                borderRadius: 6,
+                borderRadius: 8,
                 cursor: 'pointer',
                 transition: 'background 0.15s',
+                borderBottom: '1px solid rgba(51, 65, 85, 0.4)',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#fef3c7')}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
                 <span style={{ fontSize: 18, color: '#f59e0b' }}>{item.icon}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{item.label}</div>
-                  <div style={{ color: '#64748b', fontSize: 12 }}>{item.description}</div>
+                  <div style={{ fontWeight: 600, color: '#f1f5f9', fontSize: 13 }}>{item.label}</div>
+                  <div style={{ color: '#94a3b8', fontSize: 12 }}>{item.description}</div>
                 </div>
-                <Tag style={{ margin: 0, fontSize: 11 }}>Đi tới</Tag>
+                <Tag style={{ margin: 0, fontSize: 11, background: 'rgba(30, 41, 59, 0.8)', border: '1px solid rgba(51, 65, 85, 0.6)', color: '#cbd5e1' }}>Đi tới</Tag>
               </div>
             </List.Item>
           )}

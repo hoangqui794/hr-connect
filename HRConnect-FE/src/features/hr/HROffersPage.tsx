@@ -501,15 +501,19 @@ export const HROffersPage: React.FC = () => {
       {/* Header */}
       <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-            <SolutionOutlined style={{ color: '#0284c7', marginRight: 10 }} />
+          <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800, letterSpacing: '-0.02em' }}>
+            <SolutionOutlined style={{ color: '#38bdf8', marginRight: 10 }} />
             Quản lý Offer & Onboarding (Placement Pipeline)
           </Title>
-          <Text type="secondary" style={{ fontSize: 13 }}>
+          <Text style={{ fontSize: 13, color: '#94a3b8' }}>
             Theo dõi tiến trình đàm phán Offer, ghi nhận phản hồi chấp nhận/từ chối và xác nhận Onboarding để kích hoạt chu kỳ bảo hành 60 ngày.
           </Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={handleReload} style={{ borderRadius: 8 }}>
+        <Button
+          icon={<ReloadOutlined />}
+          onClick={handleReload}
+          style={{ borderRadius: 10, height: 38, background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(51, 65, 85, 0.65)', color: '#f8fafc' }}
+        >
           Làm mới dữ liệu
         </Button>
       </div>
@@ -517,49 +521,93 @@ export const HROffersPage: React.FC = () => {
       {/* KPI Stats */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
         <Col xs={12} sm={6}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: '#fffbeb' }}>
-            <Statistic
-              title="Chờ gửi Offer (mới đạt PV)"
-              value={pendingOfferCount}
-              valueStyle={{ color: '#d97706', fontWeight: 800, fontSize: 26 }}
-              prefix={<Badge count={pendingOfferCount} style={{ backgroundColor: '#d97706' }} />}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Chờ gửi Offer (mới đạt PV)
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#fbbf24', marginTop: 6, fontFamily: 'monospace' }}>
+              {pendingOfferCount}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Cần xuất Offer letter</div>
+          </div>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: '#fffbeb' }}>
-            <Statistic
-              title="Offer đang xử lý"
-              value={acceptedOffers.length}
-              valueStyle={{ color: '#d97706', fontWeight: 800, fontSize: 26 }}
-              prefix={<Badge count={acceptedOffers.length} style={{ backgroundColor: '#d97706' }} />}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Offer đang xử lý
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#38bdf8', marginTop: 6, fontFamily: 'monospace' }}>
+              {acceptedOffers.length}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Đã gửi & chờ xác nhận</div>
+          </div>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: '#f0fdf4' }}>
-            <Statistic
-              title="Ứng viên đã Onboarding"
-              value={onboardedCount}
-              valueStyle={{ color: '#16a34a', fontWeight: 800, fontSize: 26 }}
-              prefix={<FileDoneOutlined style={{ color: '#16a34a' }} />}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Ứng viên đã Onboarding
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#34d399', marginTop: 6, fontFamily: 'monospace' }}>
+              {onboardedCount}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Đang trong kỳ bảo hành</div>
+          </div>
         </Col>
         <Col xs={12} sm={6}>
-          <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title="Tỷ lệ chấp thuận Offer"
-              value={75}
-              suffix="%"
-              valueStyle={{ color: '#0284c7', fontWeight: 800, fontSize: 26 }}
-            />
-          </Card>
+          <div
+            style={{
+              borderRadius: 16,
+              border: '1px solid rgba(51, 65, 85, 0.65)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Tỷ lệ chấp thuận Offer
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#c084fc', marginTop: 6, fontFamily: 'monospace' }}>
+              75%
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Hiệu quả tuyển dụng cao</div>
+          </div>
         </Col>
       </Row>
 
       {/* Table */}
-      <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+      <div
+        style={{
+          borderRadius: 16,
+          border: '1px solid rgba(51, 65, 85, 0.65)',
+          overflow: 'hidden',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
         <Table
           dataSource={offers}
           columns={columns}
@@ -570,7 +618,7 @@ export const HROffersPage: React.FC = () => {
             record.status === 'PENDING_OFFER' ? 'ant-table-row-gold' : ''
           }
         />
-      </Card>
+      </div>
 
       {/* Offer Letter Details Modal */}
       <Modal

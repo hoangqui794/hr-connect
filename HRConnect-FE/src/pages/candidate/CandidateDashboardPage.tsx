@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
-import { Row, Col, Card, Typography, Button, Tag, Space, Table, Empty } from 'antd';
+import React, { useMemo, useState } from 'react';
+import { Row, Col, Typography, Button, Table, Empty, Switch, Progress, message, Tag } from 'antd';
 import {
   FileTextOutlined, TrophyOutlined, TeamOutlined, ClockCircleOutlined,
-  SearchOutlined, ArrowUpOutlined, RightOutlined,
+  SearchOutlined, RightOutlined, CheckCircleFilled, ThunderboltFilled,
+  SafetyCertificateOutlined, EyeOutlined, CheckOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -10,15 +11,41 @@ import { useCandidateStore } from '@/stores/candidateStore';
 import { useApplicationStore, APPLICATION_STATUS_LABELS, APPLICATION_STATUS_COLORS } from '@/stores/applicationStore';
 import { UserRole } from '@/types/roles';
 import { RoleBadge } from '@/components/common/RoleBadge';
-import { getAllJobs } from '@/services/localStorageService';
+import { PageHeaderB2B } from '@/components/common/PageHeaderB2B';
+import { FintechMetricCard } from '@/components/common/FintechMetricCard';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export const CandidateDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, role } = useAuthStore();
   const { cvs, applications: storeApps, savedJobs, interviews } = useCandidateStore();
   const sharedApps = useApplicationStore((s) => s.applications);
+
+  // Job seeking toggle status persisted in localStorage
+  const [isJobSeeking, setIsJobSeeking] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem('hrconnect_candidate_job_seeking');
+      return raw !== null ? JSON.parse(raw) : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const handleToggleJobSeeking = (checked: boolean) => {
+    setIsJobSeeking(checked);
+    try {
+      localStorage.setItem('hrconnect_candidate_job_seeking', JSON.stringify(checked));
+    } catch {}
+    if (checked) {
+      message.success({
+        content: 'Đã bật trạng thái tìm việc! Hồ sơ của bạn đã hiển thị cho các nhà tuyển dụng và Headhunter.',
+        icon: <CheckCircleFilled style={{ color: '#10b981' }} />,
+      });
+    } else {
+      message.info('Đã tắt tìm việc. Hồ sơ của bạn hiện đang ở chế độ riêng tư.');
+    }
+  };
 
   const currentUserEmail = (user?.email || '').toLowerCase().trim();
 
@@ -75,7 +102,7 @@ export const CandidateDashboardPage: React.FC = () => {
   // Stat 1: Applications & referrals count (0 for new user)
   const myApplicationsCount = dedupedApps.length;
 
-  // Stat 2: Scheduled interviews for this candidate (0 for new user)
+  // Stat 2: Scheduled interviews for this candidate
   const interviewCount = useMemo(() => {
     const fromShared = mySharedApps.filter(
       (a) => a.status === 'INTERVIEW_SCHEDULED'
@@ -88,7 +115,7 @@ export const CandidateDashboardPage: React.FC = () => {
     return fromShared + fromCandidateStore;
   }, [mySharedApps, interviews, currentUserEmail]);
 
-  // Stat 3: Saved jobs for this candidate (0 for new user)
+  // Stat 3: Saved jobs for this candidate
   const userSavedJobsCount = useMemo(() => {
     if (!currentUserEmail) return 0;
     try {
@@ -103,183 +130,263 @@ export const CandidateDashboardPage: React.FC = () => {
     return list.filter((j) => (j.userEmail || '').toLowerCase().trim() === currentUserEmail).length;
   }, [currentUserEmail, savedJobs]);
 
-  // Stat 4: CVs created/uploaded by this candidate (0 for new user, no fallback)
+  // Stat 4: CVs created/uploaded by this candidate
   const userCVsCount = useMemo(() => {
     if (!currentUserEmail) return 0;
     return (cvs || []).filter((c) => (c.userEmail || '').toLowerCase().trim() === currentUserEmail).length;
   }, [currentUserEmail, cvs]);
 
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Chào buổi sáng';
-    if (hour < 18) return 'Chào buổi chiều';
-    return 'Chào buổi tối';
-  }, []);
-
   return (
-    <div style={{ padding: '0 4px' }}>
-      {/* Header Banner */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #0f172a, #1e293b, #6b21a8)',
-          borderRadius: 16,
-          padding: '24px 28px',
-          marginBottom: 24,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-          boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.1)',
-        }}
-      >
-        <div>
-          <div style={{ color: '#e9d5ff', fontSize: 13, marginBottom: 4 }}>
-            {greeting}, {user?.name || 'Bạn'}! 👋
-          </div>
-          <Title level={2} style={{ color: '#fff', margin: 0, fontWeight: 800 }}>
-            Không Gian Ứng Viên &amp; Phát Triển Sự Nghiệp
-          </Title>
-          <div style={{ marginTop: 8 }}>
-            <RoleBadge role={role || UserRole.CANDIDATE} />
-            <span style={{ color: '#f3e8ff', fontSize: 13, marginLeft: 12, fontWeight: 600 }}>
-              🎯 Hồ sơ chuẩn ATS giúp tăng 80% tỷ lệ vượt qua vòng sơ loại
+    <div className="space-y-6">
+      {/* ─── Minimalist B2B Header ────────────────────────────────────────── */}
+      <PageHeaderB2B
+        title="Không Gian Ứng Viên & Phát Triển Sự Nghiệp"
+        badge={
+          <div className="flex items-center gap-2">
+            <RoleBadge role={role || UserRole.CANDIDATE} size="small" />
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+              🎯 Chuẩn ATS Tối Ưu Hóa
             </span>
           </div>
-        </div>
-        <Space wrap>
-          <Button
-            type="primary"
-            icon={<SearchOutlined />}
-            size="large"
-            onClick={() => navigate('/jobs')}
-            style={{
-              borderRadius: 8,
-              fontWeight: 700,
-              background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-              border: 'none',
-              boxShadow: '0 2px 8px rgba(139, 92, 246, 0.35)',
-            }}
-          >
-            Tìm kiếm việc làm ngay
-          </Button>
-          <Button
-            size="large"
-            icon={<FileTextOutlined />}
-            onClick={() => navigate('/cv-builder')}
-            style={{ borderRadius: 8, fontWeight: 600 }}
-          >
-            Tạo CV chuyên nghiệp
-          </Button>
-        </Space>
-      </div>
-
-      {/* Stats Grid */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        {[
-          {
-            label: 'Đơn ứng tuyển & Giới thiệu',
-            value: myApplicationsCount,
-            sub: 'Đang trong quy trình phỏng vấn',
-            icon: <TeamOutlined />,
-            color: '#10b981',
-            action: () => navigate('/candidate/applications'),
-          },
-          {
-            label: 'Lịch phỏng vấn sắp tới',
-            value: interviewCount,
-            sub: 'Được thông báo từ HR/Client',
-            icon: <ClockCircleOutlined />,
-            color: '#f59e0b',
-            action: () => navigate('/candidate/applications'),
-          },
-          {
-            label: 'Việc làm đã lưu',
-            value: userSavedJobsCount,
-            sub: 'Đang theo dõi cập nhật',
-            icon: <TrophyOutlined />,
-            color: '#0284c7',
-            action: () => navigate('/candidate/saved-jobs'),
-          },
-          {
-            label: 'CV chuyên nghiệp chuẩn ATS',
-            value: userCVsCount,
-            sub: 'Đã sẵn sàng ứng tuyển',
-            icon: <FileTextOutlined />,
-            color: '#8b5cf6',
-            action: () => navigate('/candidate/profile'),
-          },
-        ].map((stat) => (
-          <Col key={stat.label} xs={12} sm={6}>
-            <div
-              className="hrc-stat-card"
-              onClick={stat.action}
-              style={{
-                cursor: 'pointer',
-                background: '#fff',
-                borderRadius: 14,
-                padding: '20px',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                transition: 'all 0.2s ease',
-              }}
+        }
+        subtitle="Tìm kiếm vị trí tuyển dụng phù hợp, theo dõi hồ sơ ứng tuyển từ Headhunter và đồng bộ lịch phỏng vấn doanh nghiệp."
+        actions={
+          <>
+            <Button
+              type="primary"
+              icon={<SearchOutlined />}
+              onClick={() => navigate('/jobs')}
+              className="h-10 px-4 rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                <div
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 10,
-                    background: `${stat.color}15`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: stat.color,
-                    fontSize: 20,
-                  }}
-                >
-                  {stat.icon}
+              Tìm việc làm ngay
+            </Button>
+            <Button
+              icon={<FileTextOutlined />}
+              onClick={() => navigate('/cv-builder')}
+              className="h-10 px-4 rounded-xl font-semibold bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm"
+            >
+              Tạo CV chuyên nghiệp
+            </Button>
+          </>
+        }
+      />
+
+      {/* ─── TopCV Candidate Status & Profile Completion Header Bar ──── */}
+      <Row gutter={[16, 16]}>
+        {/* Card 1: Toggle Trạng thái tìm việc */}
+        <Col xs={24} lg={11}>
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs h-full flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="relative flex h-3 w-3">
+                    {isJobSeeking ? (
+                      <>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                      </>
+                    ) : (
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-slate-300" />
+                    )}
+                  </span>
+                  <span className="font-extrabold text-sm sm:text-base text-slate-900">
+                    {isJobSeeking ? 'Đang bật tìm việc' : 'Đang tắt tìm việc'}
+                  </span>
                 </div>
-                <ArrowUpOutlined style={{ color: '#10b981', fontSize: 13 }} />
+                <Switch
+                  checked={isJobSeeking}
+                  onChange={handleToggleJobSeeking}
+                  className={isJobSeeking ? 'bg-emerald-500' : 'bg-slate-300'}
+                />
               </div>
-              <div style={{ fontSize: 30, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{stat.value}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginTop: 8 }}>{stat.label}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{stat.sub}</div>
+
+              <p className="text-xs text-slate-600 leading-relaxed m-0">
+                {isJobSeeking
+                  ? 'Cho phép 1.200+ Nhà tuyển dụng & Mạng lưới Headhunter OPR Hub tìm kiếm hồ sơ của bạn và chủ động gửi lời mời phỏng vấn.'
+                  : 'Hồ sơ của bạn đang ở chế độ riêng tư. Nhà tuyển dụng sẽ không tìm thấy hoặc gửi lời mời ứng tuyển đến bạn.'}
+              </p>
             </div>
-          </Col>
-        ))}
+
+            <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-2xs">
+              <span
+                className={`font-semibold inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full ${
+                  isJobSeeking
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                    : 'bg-slate-100 text-slate-500 border border-slate-200'
+                }`}
+              >
+                {isJobSeeking ? (
+                  <>
+                    <ThunderboltFilled className="text-emerald-500" />
+                    Sẵn sàng nhận lời mời phỏng vấn
+                  </>
+                ) : (
+                  'Chế độ riêng tư'
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => navigate('/candidate/profile')}
+                className="text-blue-600 hover:text-blue-700 font-semibold"
+              >
+                Cài đặt hiển thị →
+              </button>
+            </div>
+          </div>
+        </Col>
+
+        {/* Card 2: Thanh tiến độ hoàn thiện CV 75% chuẩn ATS */}
+        <Col xs={24} lg={13}>
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs h-full flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-2">
+                  <SafetyCertificateOutlined className="text-blue-600 text-base" />
+                  <span className="font-extrabold text-sm sm:text-base text-slate-900">
+                    Hồ sơ của bạn đạt 75% chuẩn ATS
+                  </span>
+                </div>
+                <span className="text-xs font-extrabold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
+                  75% ATS
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="my-2">
+                <Progress
+                  percent={75}
+                  strokeColor={{ '0%': '#2563eb', '100%': '#38bdf8' }}
+                  showInfo={false}
+                  size="small"
+                />
+              </div>
+
+              <p className="text-xs text-slate-500 m-0">
+                Gợi ý bổ sung thêm kỹ năng để đạt 90%+ ATS và tăng 2.5x cơ hội được tuyển chọn:
+              </p>
+
+              {/* Skill Suggestions Chips */}
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {[
+                  '+ Docker / K8s',
+                  '+ Ngoại ngữ (IELTS/B2)',
+                  '+ Link GitHub/Portfolio',
+                  '+ Định lượng KPI/Metrics',
+                ].map((skill) => (
+                  <button
+                    key={skill}
+                    type="button"
+                    onClick={() => navigate('/candidate/profile')}
+                    className="text-2xs font-semibold px-2 py-1 rounded-lg bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/80 hover:border-blue-200 transition-colors cursor-pointer"
+                  >
+                    {skill}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-2xs">
+              <span className="text-slate-500 font-medium">
+                Cập nhật lần cuối: Hôm nay
+              </span>
+              <Button
+                type="link"
+                size="small"
+                onClick={() => navigate('/candidate/profile')}
+                className="font-bold text-xs text-blue-600 hover:text-blue-700 p-0"
+              >
+                Hoàn thiện hồ sơ ngay →
+              </Button>
+            </div>
+          </div>
+        </Col>
       </Row>
 
-      {/* Main Content: Applications & Next actions */}
+      {/* ─── Stats Grid ───────────────────────────────────────────────────── */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} lg={6}>
+          <FintechMetricCard
+            label="Đơn ứng tuyển & Giới thiệu"
+            value={myApplicationsCount}
+            subLabel="Tiến trình tuyển dụng trực tiếp"
+            statusBadge="Pipeline"
+            statusType="eligible"
+            icon={<TeamOutlined />}
+            iconColor="#10b981"
+            onClick={() => navigate('/candidate/applications')}
+          />
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <FintechMetricCard
+            label="Lịch phỏng vấn sắp tới"
+            value={interviewCount}
+            subLabel="Thông báo từ HR & Doanh nghiệp"
+            statusBadge="Lịch PV"
+            statusType="warranty"
+            icon={<ClockCircleOutlined />}
+            iconColor="#f59e0b"
+            onClick={() => navigate('/candidate/applications')}
+          />
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <FintechMetricCard
+            label="Việc làm đã lưu"
+            value={userSavedJobsCount}
+            subLabel="Theo dõi cập nhật tuyển dụng"
+            statusBadge="Saved"
+            statusType="paid"
+            icon={<TrophyOutlined />}
+            iconColor="#2563eb"
+            onClick={() => navigate('/candidate/saved-jobs')}
+          />
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <FintechMetricCard
+            label="Hồ sơ CV chuẩn ATS"
+            value={userCVsCount}
+            subLabel="Sẵn sàng gửi ứng tuyển"
+            statusBadge="ATS Ready"
+            statusType="info"
+            icon={<FileTextOutlined />}
+            iconColor="#6366f1"
+            onClick={() => navigate('/candidate/profile')}
+          />
+        </Col>
+      </Row>
+
+      {/* ─── Main Content Panels ─────────────────────────────────────────── */}
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={15}>
-          <Card
-            title={
-              <Space>
-                <TeamOutlined style={{ color: '#10b981' }} />
-                <span style={{ fontWeight: 700, fontSize: 15 }}>Hồ sơ ứng tuyển &amp; được giới thiệu của tôi</span>
-              </Space>
-            }
-            extra={
-              <Button type="link" size="small" onClick={() => navigate('/candidate/applications')} style={{ fontWeight: 600 }}>
-                Xem tất cả ({dedupedApps.length}) <RightOutlined />
+          <div className="b2b-card p-5">
+            <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-200/80">
+              <div className="flex items-center gap-2">
+                <TeamOutlined className="text-emerald-600" />
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight m-0">
+                  Hồ sơ ứng tuyển &amp; được giới thiệu của tôi
+                </h3>
+              </div>
+              <Button
+                type="link"
+                size="small"
+                onClick={() => navigate('/candidate/applications')}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 p-0"
+              >
+                Xem tất cả ({dedupedApps.length}) →
               </Button>
-            }
-            style={{ borderRadius: 14, border: '1px solid #e2e8f0' }}
-          >
+            </div>
+
             {dedupedApps.length === 0 ? (
               <Empty
-                description="Bạn chưa có hồ sơ ứng tuyển hoặc được giới thiệu nào."
-                style={{ padding: '32px 0' }}
+                description={<span className="text-xs text-slate-500">Bạn chưa có hồ sơ ứng tuyển hoặc được giới thiệu nào.</span>}
+                className="py-8"
               >
                 <Button
                   type="primary"
                   onClick={() => navigate('/jobs')}
-                  style={{
-                    borderRadius: 8,
-                    fontWeight: 700,
-                    background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-                  }}
+                  className="rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
                 >
                   Tìm việc làm ngay
                 </Button>
@@ -290,109 +397,97 @@ export const CandidateDashboardPage: React.FC = () => {
                 rowKey="id"
                 pagination={false}
                 size="middle"
+                className="bg-transparent"
                 columns={[
                   {
-                    title: 'Vị trí công việc',
+                    title: 'VỊ TRÍ CÔNG VIỆC',
                     key: 'job',
                     render: (_, record) => (
                       <div>
-                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{record.jobTitle}</div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>{record.company}</div>
+                        <div className="font-semibold text-sm text-slate-900">
+                          {record.jobTitle}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          🏢 {record.company}
+                        </div>
                       </div>
                     ),
                   },
                   {
-                    title: 'Ngày nộp',
+                    title: 'NGÀY NỘP',
                     dataIndex: 'appliedDate',
                     key: 'appliedDate',
-                    width: 120,
-                    render: (v: string) => <span style={{ fontSize: 12, color: '#64748b' }}>{v}</span>,
+                    width: 130,
+                    render: (v: string) => <span className="text-xs font-mono text-slate-500">{v}</span>,
                   },
                   {
-                    title: 'Trạng thái',
+                    title: 'TRẠNG THÁI',
                     key: 'status',
-                    width: 180,
+                    width: 170,
                     render: (_, record) => (
-                      <Tag
+                      <span
+                        className="text-xs font-semibold px-2.5 py-0.5 rounded-full border inline-block"
                         style={{
-                          borderRadius: 6,
-                          fontWeight: 600,
-                          fontSize: 11,
                           color: record.statusColor,
                           background: `${record.statusColor}15`,
-                          border: `1px solid ${record.statusColor}40`,
+                          borderColor: `${record.statusColor}35`,
                         }}
                       >
                         {record.statusLabel}
-                      </Tag>
+                      </span>
                     ),
                   },
                 ]}
               />
             )}
-          </Card>
+          </div>
         </Col>
 
         <Col xs={24} lg={9}>
-          <Card
-            title={
-              <Space>
-                <TrophyOutlined style={{ color: '#0284c7' }} />
-                <span style={{ fontWeight: 700, fontSize: 15 }}>Gợi ý tiếp theo cho bạn</span>
-              </Space>
-            }
-            style={{ borderRadius: 14, border: '1px solid #e2e8f0' }}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: 10,
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                }}
-              >
-                <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>
+          <div className="b2b-card p-5">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200/80">
+              <TrophyOutlined className="text-blue-600" />
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight m-0">
+                Gợi ý nâng cấp hồ sơ
+              </h3>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80">
+                <div className="font-bold text-sm text-slate-900">
                   📄 Hoàn thiện hồ sơ cá nhân
                 </div>
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                  Cập nhật kỹ năng, học vấn và kinh nghiệm làm việc để thu hút nhà tuyển dụng.
+                <div className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Cập nhật kỹ năng, ngoại ngữ và kinh nghiệm để thuật toán Sentence-BERT khớp nối với JD nhanh hơn.
                 </div>
                 <Button
                   size="small"
                   type="link"
                   onClick={() => navigate('/candidate/profile')}
-                  style={{ padding: 0, marginTop: 6, fontWeight: 600 }}
+                  className="p-0 mt-2 font-semibold text-xs text-blue-600 hover:text-blue-700"
                 >
                   Cập nhật hồ sơ →
                 </Button>
               </div>
 
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: 10,
-                  background: '#f0fdf4',
-                  border: '1px solid #bbf7d0',
-                }}
-              >
-                <div style={{ fontWeight: 700, fontSize: 13, color: '#166534' }}>
-                  🎯 Tạo CV chuẩn ATS
+              <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+                <div className="font-bold text-sm text-emerald-800">
+                  🎯 Xuất CV chuẩn ATS (PDF)
                 </div>
-                <div style={{ fontSize: 12, color: '#15803d', marginTop: 4 }}>
-                  Xuất file PDF chuẩn định dạng quốc tế, tương thích với hệ thống quét tự động.
+                <div className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Xuất file PDF tương thích với các hệ thống ATS hàng đầu, định dạng chuẩn quốc tế.
                 </div>
                 <Button
                   size="small"
                   type="link"
                   onClick={() => navigate('/cv-builder')}
-                  style={{ padding: 0, marginTop: 6, fontWeight: 600, color: '#16a34a' }}
+                  className="p-0 mt-2 font-semibold text-xs text-emerald-700 hover:text-emerald-800"
                 >
                   Tạo CV ngay →
                 </Button>
               </div>
             </div>
-          </Card>
+          </div>
         </Col>
       </Row>
     </div>

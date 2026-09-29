@@ -52,6 +52,12 @@ const CandidateDashboardPage = React.lazy(() =>
 const JobBoard = React.lazy(() =>
   import('@/features/jobs/JobBoard').then((m: any) => ({ default: m.default || m.JobBoard }))
 );
+const JobSearchPage = React.lazy(() =>
+  import('@/pages/JobSearchPage').then((m: any) => ({ default: m.default || m.JobSearchPage }))
+);
+const JobDetailPage = React.lazy(() =>
+  import('@/pages/JobDetailPage').then((m: any) => ({ default: m.default || m.JobDetailPage }))
+);
 // CreateJobWizard is the production wizard for MF-01 | SCR-CLI-01
 const CreateJobWizard = React.lazy(() =>
   import('@/features/jobs/CreateJobWizard').then((m: any) => ({ default: m.default || m.CreateJobWizard }))
@@ -162,7 +168,7 @@ export const getDashboardRouteForRole = (role?: string | UserRole | null): strin
   const normalized = String(role).toUpperCase().trim();
   switch (normalized) {
     case 'CANDIDATE':
-      return '/candidate/dashboard';
+      return '/';
     case 'AFFILIATE':
       return '/affiliate/dashboard';
     case 'CLIENT':
@@ -182,7 +188,7 @@ export const ROLE_DASHBOARD_ROUTES: Record<UserRole, string> = {
   [UserRole.AFFILIATE]: '/affiliate/dashboard',
   [UserRole.INTERNAL_HR]: '/hr/dashboard',
   [UserRole.ADMIN]: '/admin/dashboard',
-  [UserRole.CANDIDATE]: '/candidate/dashboard',
+  [UserRole.CANDIDATE]: '/',
   [UserRole.GUEST]: '/login',
 };
 
@@ -322,4 +328,6 @@ export const AppRoutes = {
   AffiliateLayout,
   AffiliateSubmissionsPage,
   AffiliateCommissionsPage,
+  JobDetailPage,
+  JobSearchPage,
 } as const;

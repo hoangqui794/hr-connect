@@ -86,6 +86,14 @@ export const router = createBrowserRouter([
     path: '/services',
     element: <ServicesPage />,
   },
+  {
+    path: '/jobs',
+    element: withSuspense(<AppRoutes.JobSearchPage />),
+  },
+  {
+    path: '/jobs/:id',
+    element: withSuspense(<AppRoutes.JobDetailPage />),
+  },
 
   // ── Protected routes (inside AppShell) ────────────────────────────────────
   {

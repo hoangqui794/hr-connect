@@ -106,7 +106,8 @@ export const CandidateProfilePage: React.FC = () => {
   }, [currentUserEmail, cvs]);
 
   const [form] = Form.useForm();
-  const [savingProfile, setSavingProfile] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const savingProfile = isSaving;
 
   // --- Form & Banner state: always reflects the logged-in account & latest saved values ---
   const [formData, setFormData] = useState(() => {
@@ -131,16 +132,15 @@ export const CandidateProfilePage: React.FC = () => {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  // ALWAYS sync identity fields from the logged-in user account
-  // so switching accounts refreshes name / email / phone in the form.
+  // ALWAYS sync identity fields and profile values into the form
   React.useEffect(() => {
     if (!user) return;
 
     // Look up the full stored record (may have more info than authStore)
     const storedUser = findHRConnectUserByEmail(user.email);
-    const resolvedName  = storedUser?.fullName  || user.name  || '';
-    const resolvedEmail = storedUser?.email      || user.email || '';
-    const resolvedPhone = storedUser?.phone      || user.phone || '';
+    const resolvedName  = storedUser?.fullName  || user.name  || profile.fullName || 'Nguyễn Văn B';
+    const resolvedEmail = storedUser?.email      || user.email || profile.email    || 'ungvien5@gmail.com';
+    const resolvedPhone = storedUser?.phone      || user.phone || profile.phone    || '0912 345 678';
 
     // Force-init candidateStore profile with current user identity
     initCandidateFromUser({
@@ -149,11 +149,19 @@ export const CandidateProfilePage: React.FC = () => {
       phone: resolvedPhone,
     });
 
-    // Populate form — always overwrite identity fields so they match the account
+    // Populate all form fields so initial values are immediately editable and valid
     form.setFieldsValue({
       fullName: resolvedName,
       email:    resolvedEmail,
       phone:    resolvedPhone,
+      location: profile.location || 'Hồ Chí Minh & Hà Nội (Hybrid / Remote)',
+      targetRole: profile.targetRole || 'Senior Fullstack Engineer / Frontend Specialist',
+      expectedSalary: profile.expectedSalary || '45.000.000 - 65.000.000 đ/tháng',
+      currentLevel: profile.currentLevel || 'Senior Level / Team Lead',
+      experienceYears: profile.experienceYears || '5+ năm kinh nghiệm',
+      foreignLanguages: profile.foreignLanguages || 'Tiếng Anh (IELTS 7.0 / Giao tiếp công việc thành thạo)',
+      availableDate: profile.availableDate || 'Sẵn sàng làm việc ngay lập tức',
+      bio: profile.bio || 'Kỹ sư phần mềm 5+ năm kinh nghiệm chuyên sâu về ReactJS, TypeScript và kiến trúc Microservices.',
     });
 
     // Sync banner immediately
@@ -162,15 +170,21 @@ export const CandidateProfilePage: React.FC = () => {
       fullName: resolvedName,
       email:    resolvedEmail,
       phone:    resolvedPhone,
-      jobTitle: profile.targetRole || prev.jobTitle,
-      targetRole: profile.targetRole || prev.targetRole,
-      expectedSalary: profile.expectedSalary || prev.expectedSalary,
+      jobTitle: profile.targetRole || prev.jobTitle || 'Senior Fullstack Engineer',
+      targetRole: profile.targetRole || prev.targetRole || 'Senior Fullstack Engineer',
+      expectedSalary: profile.expectedSalary || prev.expectedSalary || '45.000.000 - 65.000.000 đ/tháng',
+      currentLevel: profile.currentLevel || prev.currentLevel || 'Senior Level / Team Lead',
+      experienceYears: profile.experienceYears || prev.experienceYears || '5+ năm kinh nghiệm',
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email]); // Re-run whenever the logged-in account changes
+  }, [user?.email]);
 
   // Skill tags input state
-  const [skillsList, setSkillsList] = useState<string[]>(profile.skills || []);
+  const [skillsList, setSkillsList] = useState<string[]>(
+    profile.skills && profile.skills.length > 0
+      ? profile.skills
+      : ['ReactJS', 'TypeScript', 'Node.js', 'Next.js', 'TailwindCSS', 'GraphQL', 'Microservices', 'Docker', 'PostgreSQL']
+  );
   const [newSkillInput, setNewSkillInput] = useState('');
   const [showSkillInput, setShowSkillInput] = useState(false);
 
@@ -187,12 +201,15 @@ export const CandidateProfilePage: React.FC = () => {
 
   // Handle Profile Update — saves to candidateStore + hrconnect_users + authStore + formData
   const handleSaveProfile = async (values: any) => {
-    setSavingProfile(true);
-    setTimeout(() => {
+    setIsSaving(true);
+    try {
       // 1. Update candidateStore (local UI state + persist)
       updateProfile({
         ...values,
-        targetRole: values.jobTitle || values.targetRole,
+        fullName: (values.fullName || user?.name || '').trim(),
+        email: (values.email || user?.email || '').toLowerCase().trim(),
+        phone: (values.phone || user?.phone || '').trim(),
+        targetRole: values.targetRole || values.jobTitle || profile.targetRole || '',
         skills: skillsList,
       });
 
@@ -227,16 +244,20 @@ export const CandidateProfilePage: React.FC = () => {
         fullName:       (values.fullName || user?.name || '').trim(),
         email:          (values.email    || user?.email || '').toLowerCase().trim(),
         phone:          (values.phone    || user?.phone || '').trim(),
-        jobTitle:       values.jobTitle || values.targetRole || '',
+        jobTitle:       values.targetRole || values.jobTitle || '',
         targetRole:     values.targetRole || values.jobTitle || '',
         expectedSalary: values.expectedSalary || '',
         currentLevel:   values.currentLevel   || '',
         experienceYears:values.experienceYears || '',
       });
 
-      setSavingProfile(false);
-      message.success('Cập nhật thông tin nghề nghiệp thành công!');
-    }, 400);
+      message.success('Lưu thông tin hồ sơ thành công!');
+    } catch (error) {
+      console.error('Lỗi khi lưu thông tin hồ sơ:', error);
+      message.error('Có lỗi xảy ra khi lưu thông tin hồ sơ. Vui lòng thử lại!');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Add / Remove Skill
@@ -323,57 +344,216 @@ export const CandidateProfilePage: React.FC = () => {
 
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto', paddingBottom: 60 }}>
-      {/* Header Profile Summary — driven by user and formData (live updates on save) */}
-      <Card
-        bordered={false}
+      {/* Header Profile Summary — Impeccable Style System */}
+      <div
         style={{
-          borderRadius: 16,
-          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-          color: '#fff',
+          borderRadius: 20,
+          background: 'linear-gradient(135deg, #0B0F17 0%, #111827 50%, #1e293b 100%)',
+          border: '1px solid rgba(51, 65, 85, 0.7)',
+          boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset',
+          padding: '28px 32px',
           marginBottom: 24,
+          position: 'relative',
+          overflow: 'hidden',
         }}
-        styles={{ body: { padding: '28px 32px' } }}
       >
-        <Row align="middle" justify="space-between" gutter={[20, 20]}>
-          <Col xs={24} sm={16} style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <Avatar size={76} style={{ background: '#0284c7', fontSize: 26, fontWeight: 800 }}>
-              {getInitials(user?.name || formData.fullName)}
-            </Avatar>
+        {/* Subtle decorative glow */}
+        <div
+          style={{
+            position: 'absolute',
+            top: -60,
+            right: -60,
+            width: 220,
+            height: 220,
+            background: 'radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, rgba(0, 0, 0, 0) 70%)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        <Row align="middle" justify="space-between" gutter={[24, 20]}>
+          <Col xs={24} md={16} style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative' }}>
+              <Avatar
+                size={84}
+                style={{
+                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                  fontSize: 28,
+                  fontWeight: 800,
+                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                  border: '2px solid rgba(255, 255, 255, 0.15)',
+                }}
+              >
+                {getInitials(user?.name || formData.fullName)}
+              </Avatar>
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 2,
+                  right: 2,
+                  width: 14,
+                  height: 14,
+                  borderRadius: '50%',
+                  background: '#10b981',
+                  border: '2px solid #0B0F17',
+                }}
+                title="Tài khoản đang hoạt động"
+              />
+            </div>
+
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Title level={3} style={{ color: '#fff', margin: 0, fontWeight: 800 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
+                <h1
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 700,
+                    letterSpacing: '-0.025em',
+                    color: '#ffffff',
+                    margin: 0,
+                    lineHeight: 1.2,
+                  }}
+                >
                   {user?.name || formData.fullName || 'Chưa cập nhật họ tên'}
-                </Title>
-                <Tag color="#0284c7" style={{ borderRadius: 10, fontWeight: 700 }}>
+                </h1>
+                <span
+                  style={{
+                    background: 'rgba(59, 130, 246, 0.15)',
+                    color: '#60a5fa',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    borderRadius: 9999,
+                    padding: '2px 10px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    letterSpacing: '0.01em',
+                  }}
+                >
                   {formData.currentLevel || profile.currentLevel || 'Ứng viên'}
-                </Tag>
+                </span>
               </div>
-              <Text style={{ color: '#94a3b8', fontSize: 14 }}>
-                {formData.jobTitle || formData.targetRole || profile.targetRole || 'Chưa cập nhật chức danh'}
-                {(formData.experienceYears || profile.experienceYears) ? ` • ${formData.experienceYears || profile.experienceYears}` : ''}
-              </Text>
-              <div style={{ display: 'flex', gap: 16, marginTop: 6, color: '#cbd5e1', fontSize: 13 }}>
-                <span><MailOutlined /> {user?.email || formData.email || 'Chưa có email'}</span>
-                <span><PhoneOutlined /> {user?.phone || formData.phone || 'Chưa có số điện thoại'}</span>
+
+              <div
+                style={{
+                  color: '#cbd5e1',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  marginBottom: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <span>{formData.jobTitle || formData.targetRole || profile.targetRole || 'Chưa cập nhật chức danh'}</span>
+                {(formData.experienceYears || profile.experienceYears) && (
+                  <>
+                    <span style={{ color: '#64748b' }}>•</span>
+                    <span style={{ color: '#94a3b8' }}>{formData.experienceYears || profile.experienceYears}</span>
+                  </>
+                )}
+              </div>
+
+              {/* Contact Pills */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                <div
+                  style={{
+                    background: 'rgba(15, 23, 42, 0.7)',
+                    border: '1px solid rgba(51, 65, 85, 0.8)',
+                    borderRadius: 9999,
+                    padding: '4px 12px',
+                    fontSize: 12,
+                    color: '#94a3b8',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <MailOutlined style={{ color: '#60a5fa' }} />
+                  <span style={{ color: '#e2e8f0' }}>{user?.email || formData.email || 'Chưa có email'}</span>
+                </div>
+                <div
+                  style={{
+                    background: 'rgba(15, 23, 42, 0.7)',
+                    border: '1px solid rgba(51, 65, 85, 0.8)',
+                    borderRadius: 9999,
+                    padding: '4px 12px',
+                    fontSize: 12,
+                    color: '#94a3b8',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <PhoneOutlined style={{ color: '#34d399' }} />
+                  <span style={{ color: '#e2e8f0' }}>{user?.phone || formData.phone || 'Chưa có số điện thoại'}</span>
+                </div>
               </div>
             </div>
           </Col>
 
-          <Col xs={24} sm={8} style={{ textAlign: 'right' }}>
-            <div style={{ background: 'rgba(255,255,255,0.06)', padding: '10px 18px', borderRadius: 12, display: 'inline-block' }}>
-              <Text style={{ color: '#94a3b8', fontSize: 12, display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
-                Lương kỳ vọng
-              </Text>
-              <div style={{ color: '#34d399', fontSize: 18, fontWeight: 800 }}>
+          {/* Metric Box */}
+          <Col xs={24} md={8} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div
+              style={{
+                background: 'rgba(15, 23, 42, 0.75)',
+                border: '1px solid rgba(51, 65, 85, 0.8)',
+                backdropFilter: 'blur(12px)',
+                borderRadius: 16,
+                padding: '16px 22px',
+                minWidth: 220,
+                textAlign: 'right',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
+                marginLeft: 'auto',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+                <span
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    color: '#34d399',
+                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    borderRadius: 9999,
+                    padding: '2px 8px',
+                    fontSize: 11,
+                    fontWeight: 600,
+                  }}
+                >
+                  Mức lương
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    fontWeight: 600,
+                    color: '#94a3b8',
+                  }}
+                >
+                  Kỳ vọng / Tháng
+                </span>
+              </div>
+              <div
+                style={{
+                  fontSize: 22,
+                  fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  color: '#34d399',
+                  lineHeight: 1.2,
+                }}
+              >
                 {formData.expectedSalary || profile.expectedSalary || 'Thỏa thuận'}
               </div>
             </div>
           </Col>
         </Row>
-      </Card>
+      </div>
 
       {/* Main Tabs Container */}
-      <Card bordered={false} style={{ borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 20,
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.04)',
+        }}
+      >
         <Tabs
           activeKey={activeTabKey}
           onChange={(key) => setSearchParams({ tab: key })}
@@ -383,206 +563,348 @@ export const CandidateProfilePage: React.FC = () => {
             {
               key: 'career-info',
               label: (
-                <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
                   <UserOutlined />
                   Phần 1: Thông tin nghề nghiệp cốt lõi
                 </span>
               ),
               children: (
-                <div style={{ paddingTop: 10 }}>
+                <div style={{ paddingTop: 8 }}>
                   <Form
                     form={form}
                     layout="vertical"
-                    initialValues={profile}
                     onFinish={handleSaveProfile}
+                    onFinishFailed={({ errorFields }) => {
+                      const firstError = errorFields?.[0]?.errors?.[0];
+                      message.error(firstError || 'Vui lòng kiểm tra và điền đầy đủ các trường thông tin bắt buộc còn thiếu!');
+                    }}
+                    requiredMark="optional"
                   >
-                    <Row gutter={[24, 16]}>
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          name="fullName"
-                          label={<span style={{ fontWeight: 600 }}>Họ và tên</span>}
-                          rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}
+                    {/* Nhóm 1: Thông tin định danh & Liên hệ */}
+                    <div style={{ marginBottom: 28 }}>
+                      <div
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 700,
+                          letterSpacing: '-0.01em',
+                          color: '#0f172a',
+                          marginBottom: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 12,
+                            fontWeight: 800,
+                          }}
                         >
-                          <Input size="large" style={{ borderRadius: 8 }} />
-                        </Form.Item>
-                      </Col>
+                          1
+                        </span>
+                        Thông tin liên hệ &amp; Định danh cá nhân
+                      </div>
+                      <Text style={{ fontSize: 13, color: '#64748b', display: 'block', marginBottom: 16 }}>
+                        Họ tên và số điện thoại được sử dụng để HR và Nhà tuyển dụng liên hệ phỏng vấn trực tiếp.
+                      </Text>
 
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          name="email"
-                          label={<span style={{ fontWeight: 600 }}>Địa chỉ Email</span>}
-                          rules={[{ required: true, type: 'email' }]}
+                      <Row gutter={[20, 16]}>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="fullName"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Họ và tên <span style={{ color: '#ef4444' }}>*</span></span>}
+                            rules={[{ required: true, message: 'Vui lòng nhập họ và tên của bạn' }]}
+                          >
+                            <Input size="large" placeholder="VD: Nguyễn Văn B" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="email"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Địa chỉ Email <span style={{ color: '#ef4444' }}>*</span></span>}
+                            rules={[
+                              { required: true, message: 'Vui lòng nhập địa chỉ email' },
+                              { type: 'email', message: 'Địa chỉ email không đúng định dạng (VD: ungvien@gmail.com)' },
+                            ]}
+                          >
+                            <Input size="large" placeholder="VD: ungvien5@gmail.com" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="phone"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Số điện thoại liên hệ <span style={{ color: '#ef4444' }}>*</span></span>}
+                            rules={[
+                              { required: true, message: 'Vui lòng nhập số điện thoại liên hệ' },
+                              { pattern: /^[0-9+() -]{8,15}$/, message: 'Số điện thoại không hợp lệ (8 - 15 chữ số)' },
+                            ]}
+                          >
+                            <Input size="large" placeholder="VD: 0912 345 678" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="location"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Địa điểm &amp; Hình thức làm việc</span>}
+                          >
+                            <Input size="large" placeholder="VD: Hà Nội, TP.HCM, Hybrid / Remote..." style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+
+                    <Divider style={{ margin: '8px 0 28px' }} />
+
+                    {/* Nhóm 2: Định hướng chuyên môn & Đãi ngộ */}
+                    <div style={{ marginBottom: 28 }}>
+                      <div
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 700,
+                          letterSpacing: '-0.01em',
+                          color: '#0f172a',
+                          marginBottom: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 12,
+                            fontWeight: 800,
+                          }}
                         >
-                          <Input size="large" style={{ borderRadius: 8 }} />
-                        </Form.Item>
-                      </Col>
+                          2
+                        </span>
+                        Định hướng chuyên môn &amp; Dải lương kỳ vọng
+                      </div>
+                      <Text style={{ fontSize: 13, color: '#64748b', display: 'block', marginBottom: 16 }}>
+                        Giúp hệ thống AI tự động phân tích và ghép nối đúng các vị trí công việc có mức đãi ngộ phù hợp.
+                      </Text>
 
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          name="phone"
-                          label={<span style={{ fontWeight: 600 }}>Số điện thoại liên hệ</span>}
-                          rules={[{ required: true }]}
+                      <Row gutter={[20, 16]}>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="targetRole"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Chức danh chuyên môn mong muốn</span>}
+                          >
+                            <Input size="large" placeholder="VD: Senior Fullstack Engineer / Tech Lead" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="expectedSalary"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Dải lương kỳ vọng (VND / tháng)</span>}
+                          >
+                            <Input size="large" placeholder="VD: 45.000.000 - 65.000.000 đ/tháng" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="currentLevel"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Cấp bậc chuyên môn hiện tại</span>}
+                          >
+                            <Select size="large" style={{ borderRadius: 12 }}>
+                              <Option value="Junior / Fresher">Junior / Fresher (1 - 2 năm)</Option>
+                              <Option value="Mid-Level">Mid-Level (2 - 4 năm)</Option>
+                              <Option value="Senior Level / Team Lead">Senior Level / Team Lead (5+ năm)</Option>
+                              <Option value="Principal / Architect">Principal / Software Architect</Option>
+                              <Option value="Engineering Manager / CTO">Engineering Manager / CTO</Option>
+                            </Select>
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="experienceYears"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Số năm kinh nghiệm tích lũy</span>}
+                          >
+                            <Input size="large" placeholder="VD: 5+ năm kinh nghiệm" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="foreignLanguages"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Trình độ ngoại ngữ</span>}
+                          >
+                            <Input size="large" placeholder="VD: Tiếng Anh (IELTS 7.0 / Giao tiếp công việc thành thạo)" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="availableDate"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Ngày sẵn sàng nhận việc</span>}
+                          >
+                            <Select size="large" style={{ borderRadius: 12 }}>
+                              <Option value="Sẵn sàng làm việc ngay lập tức">Sẵn sàng làm việc ngay lập tức</Option>
+                              <Option value="Sau 15 ngày kể từ ngày nhận Offer">Sau 15 ngày kể từ ngày nhận Offer</Option>
+                              <Option value="Sau 30 ngày (bàn giao công việc hiện tại)">Sau 30 ngày (bàn giao công việc hiện tại)</Option>
+                              <Option value="Thương lượng linh hoạt">Thương lượng linh hoạt</Option>
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+
+                    <Divider style={{ margin: '8px 0 28px' }} />
+
+                    {/* Nhóm 3: Kỹ năng chuyên môn & Giới thiệu */}
+                    <div style={{ marginBottom: 28 }}>
+                      <div
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 700,
+                          letterSpacing: '-0.01em',
+                          color: '#0f172a',
+                          marginBottom: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 12,
+                            fontWeight: 800,
+                          }}
                         >
-                          <Input size="large" style={{ borderRadius: 8 }} />
-                        </Form.Item>
-                      </Col>
+                          3
+                        </span>
+                        Kỹ năng cốt lõi & Mục tiêu phát triển sự nghiệp
+                      </div>
+                      <Text style={{ fontSize: 13, color: '#64748b', display: 'block', marginBottom: 16 }}>
+                        Thêm các từ khóa kỹ năng chính (Skills Tags) để tăng tỷ lệ khớp hồ sơ ATS.
+                      </Text>
 
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          name="targetRole"
-                          label={<span style={{ fontWeight: 600 }}>Chức danh chuyên môn mong muốn</span>}
-                          rules={[{ required: true }]}
-                        >
-                          <Input size="large" placeholder="VD: Senior Fullstack Engineer / Tech Lead" style={{ borderRadius: 8 }} />
-                        </Form.Item>
-                      </Col>
+                      <Row gutter={[20, 16]}>
+                        <Col xs={24}>
+                          <div style={{ marginBottom: 16 }}>
+                            <span style={{ fontWeight: 600, fontSize: 13, color: '#334155', display: 'block', marginBottom: 8 }}>
+                              Danh sách Kỹ năng chính (Skills Tags)
+                            </span>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                              {skillsList.map((skill) => (
+                                <Tag
+                                  key={skill}
+                                  closable
+                                  onClose={() => handleRemoveSkill(skill)}
+                                  style={{
+                                    padding: '5px 14px',
+                                    fontSize: 12.5,
+                                    borderRadius: 9999,
+                                    background: 'rgba(59, 130, 246, 0.08)',
+                                    color: '#1e40af',
+                                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                                    fontWeight: 600,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                  }}
+                                >
+                                  {skill}
+                                </Tag>
+                              ))}
 
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          name="expectedSalary"
-                          label={<span style={{ fontWeight: 600 }}>Dải lương kỳ vọng (VND / tháng)</span>}
-                          rules={[{ required: true }]}
-                        >
-                          <Input size="large" placeholder="VD: 45.000.000 - 65.000.000 đ/tháng" style={{ borderRadius: 8 }} />
-                        </Form.Item>
-                      </Col>
-
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          name="currentLevel"
-                          label={<span style={{ fontWeight: 600 }}>Cấp bậc chuyên môn hiện tại</span>}
-                          rules={[{ required: true }]}
-                        >
-                          <Select size="large" style={{ borderRadius: 8 }}>
-                            <Option value="Junior / Fresher">Junior / Fresher (1 - 2 năm)</Option>
-                            <Option value="Mid-Level">Mid-Level (2 - 4 năm)</Option>
-                            <Option value="Senior Level / Team Lead">Senior Level / Team Lead (5+ năm)</Option>
-                            <Option value="Principal / Architect">Principal / Software Architect</Option>
-                            <Option value="Engineering Manager / CTO">Engineering Manager / CTO</Option>
-                          </Select>
-                        </Form.Item>
-                      </Col>
-
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          name="experienceYears"
-                          label={<span style={{ fontWeight: 600 }}>Số năm kinh nghiệm tích lũy</span>}
-                          rules={[{ required: true }]}
-                        >
-                          <Input size="large" placeholder="VD: 5+ năm kinh nghiệm" style={{ borderRadius: 8 }} />
-                        </Form.Item>
-                      </Col>
-
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          name="foreignLanguages"
-                          label={<span style={{ fontWeight: 600 }}>Trình độ ngoại ngữ</span>}
-                        >
-                          <Input size="large" placeholder="VD: Tiếng Anh (IELTS 7.0 / Giao tiếp công việc thành thạo)" style={{ borderRadius: 8 }} />
-                        </Form.Item>
-                      </Col>
-
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          name="availableDate"
-                          label={<span style={{ fontWeight: 600 }}>Ngày sẵn sàng nhận việc</span>}
-                          rules={[{ required: true }]}
-                        >
-                          <Select size="large" style={{ borderRadius: 8 }}>
-                            <Option value="Sẵn sàng làm việc ngay lập tức">Sẵn sàng làm việc ngay lập tức</Option>
-                            <Option value="Sau 15 ngày kể từ ngày nhận Offer">Sau 15 ngày kể từ ngày nhận Offer</Option>
-                            <Option value="Sau 30 ngày (bàn giao công việc hiện tại)">Sau 30 ngày (bàn giao công việc hiện tại)</Option>
-                            <Option value="Thương lượng linh hoạt">Thương lượng linh hoạt</Option>
-                          </Select>
-                        </Form.Item>
-                      </Col>
-
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          name="location"
-                          label={<span style={{ fontWeight: 600 }}>Địa điểm & Hình thức làm việc</span>}
-                        >
-                          <Input size="large" placeholder="Hà Nội, TP.HCM, Remote..." style={{ borderRadius: 8 }} />
-                        </Form.Item>
-                      </Col>
-
-                      {/* Danh sách kỹ năng chính */}
-                      <Col xs={24}>
-                        <div style={{ marginBottom: 16 }}>
-                          <span style={{ fontWeight: 600, display: 'block', marginBottom: 8 }}>
-                            Danh sách Kỹ năng chính (Skills Tags)
-                          </span>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                            {skillsList.map((skill) => (
-                              <Tag
-                                key={skill}
-                                closable
-                                onClose={() => handleRemoveSkill(skill)}
-                                style={{
-                                  padding: '5px 12px',
-                                  fontSize: 13,
-                                  borderRadius: 6,
-                                  background: '#f1f5f9',
-                                  color: '#0f172a',
-                                  border: '1px solid #cbd5e1',
-                                  fontWeight: 600,
-                                }}
-                              >
-                                {skill}
-                              </Tag>
-                            ))}
-
-                            {showSkillInput ? (
-                              <Input
-                                size="small"
-                                style={{ width: 140, borderRadius: 6 }}
-                                value={newSkillInput}
-                                onChange={(e) => setNewSkillInput(e.target.value)}
-                                onBlur={handleAddSkill}
-                                onPressEnter={handleAddSkill}
-                                autoFocus
-                                placeholder="Nhập kỹ năng..."
-                              />
-                            ) : (
-                              <Button
-                                size="small"
-                                icon={<PlusOutlined />}
-                                onClick={() => setShowSkillInput(true)}
-                                style={{ borderRadius: 6, fontWeight: 600 }}
-                              >
-                                + Thêm kỹ năng
-                              </Button>
-                            )}
+                              {showSkillInput ? (
+                                <Input
+                                  size="small"
+                                  style={{ width: 140, borderRadius: 8 }}
+                                  value={newSkillInput}
+                                  onChange={(e) => setNewSkillInput(e.target.value)}
+                                  onBlur={handleAddSkill}
+                                  onPressEnter={handleAddSkill}
+                                  autoFocus
+                                  placeholder="Nhập kỹ năng..."
+                                />
+                              ) : (
+                                <Button
+                                  size="small"
+                                  icon={<PlusOutlined />}
+                                  onClick={() => setShowSkillInput(true)}
+                                  style={{
+                                    borderRadius: 8,
+                                    fontWeight: 600,
+                                    border: '1px dashed #94a3b8',
+                                    color: '#2563eb',
+                                  }}
+                                >
+                                  + Thêm kỹ năng
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </Col>
+                        </Col>
 
-                      <Col xs={24}>
-                        <Form.Item
-                          name="bio"
-                          label={<span style={{ fontWeight: 600 }}>Tóm tắt kinh nghiệm & Mục tiêu nghề nghiệp</span>}
-                        >
-                          <Input.TextArea rows={3} style={{ borderRadius: 8 }} />
-                        </Form.Item>
-                      </Col>
-                    </Row>
+                        <Col xs={24}>
+                          <Form.Item
+                            name="bio"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Tóm tắt kinh nghiệm & Mục tiêu nghề nghiệp</span>}
+                          >
+                            <Input.TextArea
+                              rows={4}
+                              placeholder="Mô tả ngắn gọn kinh nghiệm, thế mạnh và định hướng phát triển sự nghiệp..."
+                              style={{ borderRadius: 12, border: '1px solid #cbd5e1', padding: '10px 12px' }}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
 
-                    <Button
-                      type="primary"
-                      size="large"
-                      htmlType="submit"
-                      loading={savingProfile}
-                      style={{
-                        borderRadius: 8,
-                        fontWeight: 700,
-                        background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-                        border: 'none',
-                        height: 44,
-                        padding: '0 32px',
-                      }}
-                    >
-                      Lưu thông tin nghề nghiệp
-                    </Button>
+                    <div style={{ paddingTop: 8 }}>
+                      <Button
+                        type="primary"
+                        size="large"
+                        htmlType="submit"
+                        onClick={() => form.submit()}
+                        loading={isSaving || savingProfile}
+                        style={{
+                          borderRadius: 9999,
+                          fontWeight: 700,
+                          fontSize: 15,
+                          background: '#00b14f',
+                          borderColor: '#00b14f',
+                          height: 46,
+                          padding: '0 36px',
+                          boxShadow: '0 4px 14px rgba(0, 177, 79, 0.28)',
+                          transition: 'all 0.2s ease',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Lưu thông tin hồ sơ
+                      </Button>
+                    </div>
                   </Form>
                 </div>
               ),
@@ -1029,3 +1351,5 @@ export const CandidateProfilePage: React.FC = () => {
     </div>
   );
 };
+
+export default CandidateProfilePage;

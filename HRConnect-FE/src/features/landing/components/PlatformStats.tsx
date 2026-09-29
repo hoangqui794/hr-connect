@@ -12,9 +12,10 @@ export const PlatformStats: React.FC = () => {
   return (
     <div
       style={{
-        background: 'rgba(255, 255, 255, 0.02)',
-        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+        background: 'rgba(255, 255, 255, 0.75)',
+        backdropFilter: 'blur(12px)',
+        borderTop: '1px solid rgba(226, 232, 240, 0.85)',
+        borderBottom: '1px solid rgba(226, 232, 240, 0.85)',
         padding: '36px 24px',
       }}
     >
@@ -28,14 +29,14 @@ export const PlatformStats: React.FC = () => {
               style={{
                 textAlign: 'center',
                 padding: '8px 24px',
-                borderRight: i < 3 ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
+                borderRight: i < 3 ? '1px solid rgba(226, 232, 240, 0.85)' : 'none',
               }}
             >
               <div
                 style={{
                   fontSize: 'clamp(28px, 4vw, 36px)',
                   fontWeight: 800,
-                  color: '#38bdf8',
+                  color: '#2563eb',
                   lineHeight: 1.1,
                   letterSpacing: '-0.5px',
                   marginBottom: 6,
@@ -43,7 +44,7 @@ export const PlatformStats: React.FC = () => {
               >
                 {stat.value}
               </div>
-              <div style={{ fontSize: 14, color: '#94a3b8', fontWeight: 500 }}>
+              <div style={{ fontSize: 14, color: '#64748b', fontWeight: 500 }}>
                 {stat.label}
               </div>
             </Col>

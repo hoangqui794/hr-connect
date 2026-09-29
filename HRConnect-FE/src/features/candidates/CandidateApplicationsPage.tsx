@@ -5,7 +5,6 @@ import {
   Table,
   Tag,
   Button,
-  Space,
   Modal,
   Row,
   Col,
@@ -13,7 +12,6 @@ import {
   Steps,
   Empty,
   Typography,
-  Divider,
   message,
 } from 'antd';
 import {
@@ -22,14 +20,13 @@ import {
   TeamOutlined,
   VideoCameraOutlined,
   EnvironmentOutlined,
-  EyeOutlined,
   FileTextOutlined,
   SafetyCertificateOutlined,
   ClockCircleOutlined,
   CheckOutlined,
   CloseOutlined,
-  UserOutlined,
-  CompassOutlined,
+  DollarCircleOutlined,
+  FireOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCandidateStore, CandidateApplication } from '@/stores/candidateStore';
@@ -71,7 +68,7 @@ export const CandidateApplicationsPage: React.FC = () => {
       jobId: a.jobId,
       jobTitle: a.jobTitle,
       company: a.company,
-      salary: 'Thỏa thuận theo năng lực',
+      salary: '35.000.000 - 55.000.000 đ',
       appliedDate: new Date(a.applyDate).toLocaleDateString('vi-VN'),
       status:
         a.status === 'OFFERED' || a.status === 'ONBOARDED'
@@ -82,8 +79,8 @@ export const CandidateApplicationsPage: React.FC = () => {
           ? 'SCREENED'
           : 'SUBMITTED',
       statusLabel: APPLICATION_STATUS_LABELS[a.status] || a.status,
-      statusColor: APPLICATION_STATUS_COLORS[a.status] || '#0284c7',
-      cvUsed: 'CV Chuyên viên Phát triển Phần mềm (ATS Standard)',
+      statusColor: APPLICATION_STATUS_COLORS[a.status] || '#00b14f',
+      cvUsed: 'CV Kỹ sư Frontend Web / ReactJS Developer (ATS Standard)',
       applicantName: a.fullName,
       applicantEmail: a.email,
       candidateEmail: a.email,
@@ -118,13 +115,12 @@ export const CandidateApplicationsPage: React.FC = () => {
     respondToOffer(appId, decision);
     setSelectedOfferApp(null);
     if (decision === 'ACCEPTED') {
-      message.success('Chúc mừng bạn đã chấp thuận Thư mời nhận việc! HR sẽ liên hệ để hướng dẫn onboard.');
+      message.success('Chúc mừng bạn đã chấp thuận Thư mời nhận việc! Bộ phận HR sẽ liên hệ onboarding.');
     } else {
-      message.info('Bạn đã từ chối thư mời nhận việc.');
+      message.info('Bạn đã từ chối Offer nhận việc này.');
     }
   };
 
-  // Helper for Steps in Job Application
   const getStepCurrent = (status: CandidateApplication['status']) => {
     switch (status) {
       case 'SUBMITTED':
@@ -141,163 +137,194 @@ export const CandidateApplicationsPage: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 60 }}>
-      {/* Header Banner */}
+    <div className="max-w-6xl mx-auto pt-8 pb-16 px-4 font-sans">
+      {/* ─── Top Header Card ────────────────────────────────────────── */}
       <Card
-        bordered={false}
-        style={{
-          borderRadius: 16,
-          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-          color: '#fff',
-          marginBottom: 24,
-        }}
-        styles={{ body: { padding: '28px 32px' } }}
+        className="mb-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl bg-white"
+        bodyStyle={{ padding: '28px 32px' }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <Title level={3} style={{ color: '#fff', margin: 0, fontWeight: 800 }}>
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
+              <Title level={2} style={{ margin: 0, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
                 Lịch Sử Ứng Tuyển & Lịch Phỏng Vấn
               </Title>
-              <Tag color="#0284c7" style={{ borderRadius: 10, fontWeight: 700 }}>
-                Thời Gian Thực
+              <Tag color="success" className="font-bold text-xs px-2.5 py-0.5 rounded-full border-emerald-300 bg-emerald-50 text-emerald-700">
+                ● Cập nhật Thời Gian Thực
               </Tag>
             </div>
-            <Text style={{ color: '#94a3b8', fontSize: 14 }}>
-              Theo dõi xuyên suốt tiến độ hồ sơ tuyển dụng từ lúc nộp, sơ tuyển AI, lịch phỏng vấn đến khi nhận Offer.
+            <Text className="text-slate-600 text-sm">
+              Theo dõi trực tiếp trạng thái tiến độ tuyển dụng từ lúc nộp, sơ tuyển AI, lịch phỏng vấn đến khi nhận Offer chính thức.
             </Text>
           </div>
 
-          <div style={{ display: 'flex', gap: 20 }}>
-            <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.06)', padding: '8px 18px', borderRadius: 12 }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#38bdf8' }}>{applications.length}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Việc làm đã nộp</div>
+          <div className="flex items-center gap-3">
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-5 py-3 text-center min-w-[105px]">
+              <div className="text-2xl font-extrabold text-emerald-600 tabular-nums">
+                {applications.length}
+              </div>
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Đã nộp hồ sơ
+              </div>
             </div>
-            <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.06)', padding: '8px 18px', borderRadius: 12 }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#a78bfa' }}>{userInterviews.length}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Lịch PV sắp tới</div>
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-5 py-3 text-center min-w-[105px]">
+              <div className="text-2xl font-extrabold text-blue-600 tabular-nums">
+                {userInterviews.length}
+              </div>
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Lịch PV sắp tới
+              </div>
             </div>
-            <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.06)', padding: '8px 18px', borderRadius: 12 }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#34d399' }}>{userRecruiterConnects.length}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Hồ sơ gửi Recruiter</div>
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-5 py-3 text-center min-w-[105px]">
+              <div className="text-2xl font-extrabold text-purple-600 tabular-nums">
+                {userRecruiterConnects.length}
+              </div>
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Gửi Recruiter
+              </div>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* Main Tabs */}
-      <Card bordered={false} style={{ borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
+      {/* ─── Main Tabs Container ────────────────────────────────────── */}
+      <Card
+        className="border border-slate-200/90 shadow-sm rounded-2xl bg-white"
+        bodyStyle={{ padding: '24px' }}
+      >
         <Tabs
           activeKey={activeTabKey}
           onChange={(key) => setSearchParams({ subtab: key })}
           size="large"
           items={[
-            // ==================== TAB 1 ====================
+            // ==================== TAB 1: APPLICATIONS ====================
             {
               key: 'applied',
               label: (
-                <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="font-semibold text-sm flex items-center gap-2">
                   <CheckCircleOutlined />
                   Việc làm đã nộp ({applications.length})
                 </span>
               ),
               children: (
-                <div style={{ paddingTop: 10 }}>
+                <div className="pt-2">
                   {applications.length === 0 ? (
                     <Empty
                       description="Bạn chưa nộp hồ sơ vào công việc nào."
-                      style={{ padding: '40px 0' }}
+                      className="py-12"
                     >
-                      <Button type="primary" onClick={() => navigate('/')} style={{ borderRadius: 8 }}>
+                      <Button
+                        type="primary"
+                        onClick={() => navigate('/')}
+                        className="rounded-lg h-10 font-semibold bg-emerald-600 hover:bg-emerald-700 border-none"
+                      >
                         Khám phá việc làm ngay
                       </Button>
                     </Empty>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                    <div className="flex flex-col gap-4">
                       {applications.map((app) => {
                         const currentStep = getStepCurrent(app.status);
                         const isOffered = app.status === 'OFFER';
 
                         return (
-                          <Card
+                          <div
                             key={app.id}
-                            style={{
-                              borderRadius: 14,
-                              border: isOffered ? '1.5px solid #10b981' : '1px solid #e2e8f0',
-                              background: isOffered ? '#f0fdf4' : '#ffffff',
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                            }}
-                            styles={{ body: { padding: '22px 24px' } }}
+                            className={`rounded-xl border p-5 transition-all duration-300 ${
+                              isOffered
+                                ? 'border-emerald-300 bg-emerald-50/20 hover:border-emerald-400 shadow-sm'
+                                : 'border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-md'
+                            }`}
                           >
-                            <Row gutter={[20, 20]} align="middle">
-                              {/* Thông tin công việc */}
-                              <Col xs={24} lg={10}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                  <Text strong style={{ fontSize: 16, color: '#0f172a' }}>
+                            <Row gutter={[20, 16]} align="middle">
+                              {/* Thông tin công việc & Lương */}
+                              <Col xs={24} lg={9}>
+                                <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                                  <Text strong className="text-base text-slate-900 font-bold tracking-tight">
                                     {app.jobTitle}
                                   </Text>
                                   {isOffered && (
-                                    <Tag color="success" style={{ borderRadius: 6, fontWeight: 700 }}>
+                                    <Tag color="success" className="font-bold text-[11px] rounded-full border-emerald-300">
+                                      <FireOutlined className="mr-1" />
                                       Offer đã sẵn sàng
                                     </Tag>
                                   )}
                                 </div>
-                                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8 }}>
-                                  🏢 {app.company}
+                                <div className="text-xs text-slate-500 font-medium mb-2.5 flex items-center gap-1.5">
+                                  <span>🏢</span>
+                                  <span className="font-semibold text-slate-700">{app.company}</span>
                                 </div>
-                                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12.5, color: '#475569' }}>
-                                  <span>💰 <strong>{app.salary}</strong></span>
-                                  <span>📅 Nộp: {app.appliedDate}</span>
+                                
+                                {/* Thẻ Mức lương kỳ vọng nổi bật */}
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold mb-2">
+                                  <DollarCircleOutlined className="text-emerald-600 text-sm" />
+                                  <span>Lương kỳ vọng:</span>
+                                  <span className="tabular-nums currency-kpi font-extrabold text-emerald-700">
+                                    {app.salary || '35.000.000 - 55.000.000 đ'}
+                                  </span>
                                 </div>
-                                <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
-                                  <FileTextOutlined style={{ marginRight: 4, color: '#0284c7' }} />
-                                  CV sử dụng: <strong>{app.cvUsed}</strong>
+
+                                <div className="flex items-center gap-3 text-xs text-slate-500">
+                                  <span>📅 Nộp: <strong className="text-slate-700">{app.appliedDate}</strong></span>
+                                  <span>•</span>
+                                  <span className="truncate max-w-[220px]">
+                                    <FileTextOutlined className="mr-1 text-slate-400" />
+                                    {app.cvUsed}
+                                  </span>
                                 </div>
                               </Col>
 
-                              {/* Tiến độ quy trình (Antd Steps thu nhỏ) */}
-                              <Col xs={24} lg={10}>
-                                <div style={{ padding: '8px 0' }}>
+                              {/* Tiến độ Stepper 4 bước chuẩn Antd v5 (Không bao giờ vỡ text) */}
+                              <Col xs={24} lg={11}>
+                                <div className="py-2 px-3 bg-slate-50/80 rounded-xl border border-slate-100">
                                   <Steps
                                     size="small"
                                     current={currentStep}
+                                    responsive={false}
                                     items={[
-                                      { title: 'Đã nộp hồ sơ' },
-                                      { title: 'Sơ tuyển AI' },
-                                      { title: 'Phỏng vấn' },
-                                      { title: 'Nhận Offer' },
+                                      {
+                                        title: 'Bước 1',
+                                        description: 'Đã nộp hồ sơ',
+                                      },
+                                      {
+                                        title: 'Bước 2',
+                                        description: (
+                                          <span className="font-semibold text-emerald-700">
+                                            Sơ tuyển AI (89% Match)
+                                          </span>
+                                        ),
+                                      },
+                                      {
+                                        title: 'Bước 3',
+                                        description: 'Lịch phỏng vấn',
+                                      },
+                                      {
+                                        title: 'Bước 4',
+                                        description: 'Nhận Offer',
+                                      },
                                     ]}
                                   />
                                 </div>
                               </Col>
 
-                              {/* Hành động */}
-                              <Col xs={24} lg={4} style={{ textAlign: 'right' }}>
+                              {/* Hành động & Nút Xem Thư Mời hiệu ứng Pulsing */}
+                              <Col xs={24} lg={4} className="text-right">
                                 {isOffered ? (
                                   <Button
                                     type="primary"
                                     icon={<SafetyCertificateOutlined />}
                                     onClick={() => setSelectedOfferApp(app)}
-                                    style={{
-                                      borderRadius: 8,
-                                      fontWeight: 700,
-                                      background: 'linear-gradient(135deg, #10b981, #059669)',
-                                      border: 'none',
-                                      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-                                    }}
+                                    className="offer-pulse-btn rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white border-none h-10 px-5 shadow-sm inline-flex items-center gap-2"
                                   >
-                                    Xem Thư Mời Nhận Việc
+                                    Xem Thư Mời
                                   </Button>
                                 ) : (
                                   <Tag
+                                    className="py-1 px-3.5 rounded-full font-bold text-xs"
                                     style={{
-                                      padding: '6px 12px',
-                                      borderRadius: 8,
-                                      fontWeight: 700,
-                                      fontSize: 12,
-                                      background: `${app.statusColor}15`,
+                                      background: `${app.statusColor}14`,
                                       color: app.statusColor,
-                                      border: `1px solid ${app.statusColor}40`,
+                                      border: `1px solid ${app.statusColor}35`,
                                     }}
                                   >
                                     {app.statusLabel}
@@ -305,7 +332,7 @@ export const CandidateApplicationsPage: React.FC = () => {
                                 )}
                               </Col>
                             </Row>
-                          </Card>
+                          </div>
                         );
                       })}
                     </div>
@@ -314,79 +341,68 @@ export const CandidateApplicationsPage: React.FC = () => {
               ),
             },
 
-            // ==================== TAB 2 ====================
+            // ==================== TAB 2: INTERVIEWS ====================
             {
               key: 'interviews',
               label: (
-                <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="font-semibold text-sm flex items-center gap-2">
                   <CalendarOutlined />
                   Lịch phỏng vấn sắp tới ({userInterviews.length})
                 </span>
               ),
               children: (
-                <div style={{ paddingTop: 10 }}>
+                <div className="pt-2">
                   {userInterviews.length === 0 ? (
-                    <Empty description="Hiện chưa có lịch phỏng vấn nào được xếp." style={{ padding: '40px 0' }} />
+                    <Empty description="Hiện chưa có lịch phỏng vấn nào được xếp." className="py-12" />
                   ) : (
                     <Row gutter={[20, 20]}>
                       {userInterviews.map((item) => (
                         <Col xs={24} md={12} key={item.id}>
-                          <Card
-                            hoverable
-                            style={{
-                              borderRadius: 14,
-                              border: '1px solid #e2e8f0',
-                              height: '100%',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              justifyContent: 'space-between',
-                            }}
-                            styles={{ body: { padding: '24px' } }}
-                          >
+                          <div className="rounded-xl border border-slate-200/90 bg-white p-5 flex flex-col justify-between h-full hover:shadow-md transition-all duration-300">
                             <div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                              <div className="flex justify-between items-start mb-3 gap-2">
                                 <div>
-                                  <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a' }}>
+                                  <div className="font-bold text-base text-slate-900">
                                     {item.jobTitle}
                                   </div>
-                                  <div style={{ fontSize: 13, color: '#64748b' }}>
+                                  <div className="text-xs text-slate-500 font-medium">
                                     🏢 {item.company}
                                   </div>
                                 </div>
                                 <Tag
-                                  color={item.mode === 'ONLINE' ? 'blue' : 'green'}
-                                  style={{ borderRadius: 6, fontWeight: 700, padding: '3px 8px' }}
+                                  className="rounded-full font-bold text-xs px-2.5 py-0.5"
+                                  color={item.mode === 'ONLINE' ? 'blue' : 'success'}
                                 >
                                   {item.mode === 'ONLINE' ? 'Phỏng vấn Online' : 'Phỏng vấn Trực tiếp'}
                                 </Tag>
                               </div>
 
-                              <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: 10, marginBottom: 16 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0284c7', fontWeight: 700, fontSize: 14 }}>
+                              <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-lg mb-3">
+                                <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm">
                                   <ClockCircleOutlined />
                                   <span>{item.datetime}</span>
                                 </div>
                               </div>
 
-                              <div style={{ marginBottom: 12, fontSize: 13 }}>
-                                <Text type="secondary" style={{ display: 'block', fontWeight: 600 }}>Người phỏng vấn:</Text>
-                                <Text strong style={{ color: '#334155' }}>{item.interviewers}</Text>
+                              <div className="mb-2 text-xs">
+                                <Text type="secondary" className="block font-semibold text-slate-500">Người phỏng vấn:</Text>
+                                <Text strong className="text-slate-800">{item.interviewers}</Text>
                               </div>
 
                               {item.address && (
-                                <div style={{ marginBottom: 12, fontSize: 13 }}>
-                                  <Text type="secondary" style={{ display: 'block', fontWeight: 600 }}>Địa chỉ văn phòng:</Text>
-                                  <Text style={{ color: '#334155' }}><EnvironmentOutlined /> {item.address}</Text>
+                                <div className="mb-2 text-xs">
+                                  <Text type="secondary" className="block font-semibold text-slate-500">Địa chỉ văn phòng:</Text>
+                                  <Text className="text-slate-700"><EnvironmentOutlined /> {item.address}</Text>
                                 </div>
                               )}
 
-                              <div style={{ fontSize: 13 }}>
-                                <Text type="secondary" style={{ display: 'block', fontWeight: 600 }}>Ghi chú chuẩn bị:</Text>
-                                <Text style={{ color: '#64748b' }}>{item.notes}</Text>
+                              <div className="text-xs">
+                                <Text type="secondary" className="block font-semibold text-slate-500">Ghi chú chuẩn bị:</Text>
+                                <Text className="text-slate-600">{item.notes}</Text>
                               </div>
                             </div>
 
-                            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
+                            <div className="mt-4 pt-3 border-t border-slate-100">
                               {item.mode === 'ONLINE' && item.link ? (
                                 <Button
                                   type="primary"
@@ -394,11 +410,7 @@ export const CandidateApplicationsPage: React.FC = () => {
                                   icon={<VideoCameraOutlined />}
                                   href={item.link}
                                   target="_blank"
-                                  style={{
-                                    borderRadius: 8,
-                                    fontWeight: 700,
-                                    background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-                                  }}
+                                  className="rounded-lg font-bold h-9 bg-emerald-600 hover:bg-emerald-700 text-white border-none"
                                 >
                                   Vào phòng Google Meet / Zoom
                                 </Button>
@@ -407,13 +419,13 @@ export const CandidateApplicationsPage: React.FC = () => {
                                   block
                                   icon={<EnvironmentOutlined />}
                                   onClick={() => message.info(`Địa điểm: ${item.address}`)}
-                                  style={{ borderRadius: 8, fontWeight: 700 }}
+                                  className="rounded-lg font-bold h-9 border-slate-200 text-slate-700"
                                 >
                                   Xem chỉ đường văn phòng
                                 </Button>
                               )}
                             </div>
-                          </Card>
+                          </div>
                         </Col>
                       ))}
                     </Row>
@@ -422,95 +434,105 @@ export const CandidateApplicationsPage: React.FC = () => {
               ),
             },
 
-            // ==================== TAB 3 ====================
+            // ==================== TAB 3: RECRUITERS ====================
             {
               key: 'recruiters',
               label: (
-                <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="font-semibold text-sm flex items-center gap-2">
                   <TeamOutlined />
                   Hồ sơ gửi Recruiter ({userRecruiterConnects.length})
                 </span>
               ),
               children: (
-                <div style={{ paddingTop: 10 }}>
+                <div className="pt-2">
                   {userRecruiterConnects.length === 0 ? (
                     <Empty
                       description="Bạn chưa gửi gắm hồ sơ cho chuyên gia Recruiter nào."
-                      style={{ padding: '40px 0' }}
+                      className="py-12"
                     >
-                      <Button type="primary" onClick={() => navigate('/?mode=recruiters')} style={{ borderRadius: 8 }}>
+                      <Button
+                        type="primary"
+                        onClick={() => navigate('/?mode=recruiters')}
+                        className="rounded-lg h-10 font-semibold bg-emerald-600 hover:bg-emerald-700 border-none"
+                      >
                         Khám phá Mạng lưới Recruiter OPR Hub
                       </Button>
                     </Empty>
                   ) : (
-                    <Table
-                      dataSource={userRecruiterConnects}
-                      rowKey="id"
-                      pagination={false}
-                      columns={[
-                        {
-                          title: 'Chuyên gia Headhunter',
-                          key: 'recruiter',
-                          render: (_, record) => (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                              <Avatar size={42} style={{ background: '#0284c7', fontWeight: 800 }}>
-                                {record.recruiterAvatar}
-                              </Avatar>
-                              <div>
-                                <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{record.recruiterName}</div>
-                                <div style={{ fontSize: 12, color: '#64748b' }}>{record.recruiterTitle}</div>
-                              </div>
-                            </div>
-                          ),
-                        },
-                        {
-                          title: 'Bản CV đã gửi',
-                          dataIndex: 'cvUsed',
-                          key: 'cvUsed',
-                          render: (cv) => <Tag icon={<FileTextOutlined />} style={{ borderRadius: 4 }}>{cv}</Tag>,
-                        },
-                        {
-                          title: 'Ngày gửi',
-                          dataIndex: 'sentDate',
-                          key: 'sentDate',
-                          width: 120,
-                        },
-                        {
-                          title: 'Lời nhắn gửi kèm',
-                          dataIndex: 'note',
-                          key: 'note',
-                          render: (note) => (
-                            <Paragraph ellipsis={{ rows: 2, tooltip: note }} style={{ margin: 0, fontSize: 13, color: '#475569' }}>
-                              {note}
-                            </Paragraph>
-                          ),
-                        },
-                        {
-                          title: 'Trạng thái kết nối',
-                          key: 'status',
-                          render: (_, record) => (
-                            <div>
-                              <Tag
-                                style={{
-                                  borderRadius: 6,
-                                  fontWeight: 700,
-                                  background: `${record.statusColor}15`,
-                                  color: record.statusColor,
-                                  border: `1px solid ${record.statusColor}40`,
-                                }}
-                              >
-                                {record.statusLabel}
-                              </Tag>
-                              {record.matchedJob && (
-                                <div style={{ fontSize: 11, color: '#059669', fontWeight: 600, marginTop: 4 }}>
-                                  🎯 {record.matchedJob}
+                    <div className="border border-slate-200 rounded-xl overflow-hidden">
+                      <Table
+                        dataSource={userRecruiterConnects}
+                        rowKey="id"
+                        pagination={false}
+                        columns={[
+                          {
+                            title: 'Chuyên gia Headhunter',
+                            key: 'recruiter',
+                            render: (_, record) => (
+                              <div className="flex items-center gap-3">
+                                <Avatar size={40} className="bg-emerald-600 font-extrabold text-white">
+                                  {record.recruiterAvatar}
+                                </Avatar>
+                                <div>
+                                  <div className="font-bold text-sm text-slate-900">{record.recruiterName}</div>
+                                  <div className="text-xs text-slate-500">{record.recruiterTitle}</div>
                                 </div>
-                              )}
-                            </div>
-                          ),
-                        },
-                      ]}
-                    />
+                              </div>
+                            ),
+                          },
+                          {
+                            title: 'Bản CV đã gửi',
+                            dataIndex: 'cvUsed',
+                            key: 'cvUsed',
+                            render: (cv) => (
+                              <Tag icon={<FileTextOutlined />} className="rounded-full bg-slate-100 border-slate-200 text-slate-700 px-2.5 py-0.5 text-xs font-medium">
+                                {cv}
+                              </Tag>
+                            ),
+                          },
+                          {
+                            title: 'Ngày gửi',
+                            dataIndex: 'sentDate',
+                            key: 'sentDate',
+                            width: 120,
+                            render: (date) => <span className="text-xs text-slate-600 font-medium tabular-nums">{date}</span>,
+                          },
+                          {
+                            title: 'Lời nhắn gửi kèm',
+                            dataIndex: 'note',
+                            key: 'note',
+                            render: (note) => (
+                              <Paragraph ellipsis={{ rows: 2, tooltip: note }} className="mb-0 text-xs text-slate-600">
+                                {note}
+                              </Paragraph>
+                            ),
+                          },
+                          {
+                            title: 'Trạng thái kết nối',
+                            key: 'status',
+                            render: (_, record) => (
+                              <div>
+                                <Tag
+                                  className="rounded-full font-bold text-xs px-2.5 py-0.5"
+                                  style={{
+                                    background: `${record.statusColor}14`,
+                                    color: record.statusColor,
+                                    border: `1px solid ${record.statusColor}40`,
+                                  }}
+                                >
+                                  {record.statusLabel}
+                                </Tag>
+                                {record.matchedJob && (
+                                  <div className="text-[11px] text-emerald-600 font-semibold mt-1">
+                                    🎯 {record.matchedJob}
+                                  </div>
+                                )}
+                              </div>
+                            ),
+                          },
+                        ]}
+                      />
+                    </div>
                   )}
                 </div>
               ),
@@ -519,24 +541,24 @@ export const CandidateApplicationsPage: React.FC = () => {
         />
       </Card>
 
-      {/* Modal Xem Thư Mời Nhận Việc (Official Offer Letter) */}
+      {/* ─── Modal Xem Thư Mời Nhận Việc (Official Offer Letter) ─────── */}
       <Modal
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#10b981' }}>
-            <SafetyCertificateOutlined style={{ fontSize: 20 }} />
-            <span style={{ fontSize: 17, fontWeight: 800 }}>Thư Mời Nhận Việc Chính Thức (Job Offer Letter)</span>
+          <div className="flex items-center gap-2.5 text-emerald-700">
+            <SafetyCertificateOutlined className="text-xl" />
+            <span className="text-base font-extrabold">Thư Mời Nhận Việc Chính Thức (Job Offer Letter)</span>
           </div>
         }
         open={!!selectedOfferApp}
         onCancel={() => setSelectedOfferApp(null)}
-        width={620}
+        width={600}
         footer={[
           <Button
             key="reject"
             danger
             icon={<CloseOutlined />}
             onClick={() => selectedOfferApp && handleDecision(selectedOfferApp.id, 'REJECTED')}
-            style={{ borderRadius: 8, fontWeight: 600 }}
+            className="rounded-lg font-semibold h-9"
           >
             Từ chối Offer
           </Button>,
@@ -545,54 +567,48 @@ export const CandidateApplicationsPage: React.FC = () => {
             type="primary"
             icon={<CheckOutlined />}
             onClick={() => selectedOfferApp && handleDecision(selectedOfferApp.id, 'ACCEPTED')}
-            style={{
-              borderRadius: 8,
-              fontWeight: 700,
-              background: '#10b981',
-              border: 'none',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-            }}
+            className="rounded-lg font-bold bg-emerald-600 hover:bg-emerald-700 text-white border-none h-9 px-5 shadow-sm"
           >
             Chấp thuận Offer
           </Button>,
         ]}
       >
         {selectedOfferApp && selectedOfferApp.offerDetails && (
-          <div style={{ padding: '8px 0' }}>
-            <div style={{ background: '#f8fafc', padding: '16px 20px', borderRadius: 12, marginBottom: 18, border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>
+          <div className="py-2">
+            <div className="bg-slate-50 p-4 rounded-xl mb-4 border border-slate-200/80">
+              <div className="text-base font-bold text-slate-900">
                 {selectedOfferApp.offerDetails.position}
               </div>
-              <div style={{ color: '#64748b', fontSize: 13, marginTop: 2 }}>
-                Doanh nghiệp: <strong>{selectedOfferApp.company}</strong>
+              <div className="text-xs text-slate-500 mt-1">
+                Doanh nghiệp tuyển dụng: <strong className="text-slate-800">{selectedOfferApp.company}</strong>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
-              <div style={{ background: '#ecfdf5', padding: 14, borderRadius: 10, border: '1px solid #a7f3d0' }}>
-                <Text type="secondary" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
+                <Text className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 block">
                   Mức lương chính thức (Gross)
                 </Text>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#059669', marginTop: 4 }}>
+                <div className="text-base font-extrabold text-emerald-700 mt-1 tabular-nums currency-kpi">
                   {selectedOfferApp.offerDetails.salary}
                 </div>
               </div>
 
-              <div style={{ background: '#eff6ff', padding: 14, borderRadius: 10, border: '1px solid #bfdbfe' }}>
-                <Text type="secondary" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
+              <div className="bg-blue-50 p-3.5 rounded-xl border border-blue-200">
+                <Text className="text-[11px] font-bold uppercase tracking-wider text-blue-700 block">
                   Ngày bắt đầu làm việc
                 </Text>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#0284c7', marginTop: 4 }}>
+                <div className="text-base font-extrabold text-blue-700 mt-1 tabular-nums">
                   {selectedOfferApp.offerDetails.startDate}
                 </div>
               </div>
             </div>
 
-            <div style={{ background: '#f8fafc', padding: 16, borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 13, lineHeight: 1.7 }}>
-              <Text strong style={{ display: 'block', marginBottom: 4, color: '#0f172a' }}>
-                Chính sách đãi ngộ & Thử việc:
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 text-xs leading-relaxed">
+              <Text strong className="block mb-1 text-slate-800">
+                Chính sách đãi ngộ & Thời hạn thử việc:
               </Text>
-              <Paragraph style={{ margin: 0, color: '#475569' }}>
+              <Paragraph className="mb-0 text-slate-600">
                 {selectedOfferApp.offerDetails.note}
               </Paragraph>
             </div>
@@ -604,4 +620,3 @@ export const CandidateApplicationsPage: React.FC = () => {
 };
 
 export default CandidateApplicationsPage;
-

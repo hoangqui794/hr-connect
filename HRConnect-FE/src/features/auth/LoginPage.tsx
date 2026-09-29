@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
+import { Form, Input, Button, Typography, message } from 'antd';
 import {
-  Card, Form, Input, Button, Typography, message, Tag,
-} from 'antd';
-import {
-  LockOutlined, MailOutlined, ArrowRightOutlined,
-  ThunderboltOutlined, CheckCircleFilled,
+  LockOutlined,
+  MailOutlined,
+  ArrowRightOutlined,
+  ThunderboltOutlined,
+  CheckCircleFilled,
+  BankOutlined,
+  ShareAltOutlined,
+  SafetyCertificateOutlined,
+  CrownOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, type UserProfile } from '@/stores/authStore';
@@ -13,57 +19,75 @@ import { UserRole, ROLE_LABELS } from '@/types/roles';
 import { getDashboardRouteForRole } from '@/routes/AppRoutes';
 import { findRegisteredAccountByEmail } from '@/services/accountService';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface DemoAccount {
   role: UserRole;
   title: string;
+  roleTag: string;
   email: string;
   workspaceName: string;
   targetRoute: string;
-  color: string;
+  icon: React.ReactNode;
+  accentColor: string;
+  badgeBg: string;
 }
 
 const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: UserRole.CLIENT,
-    title: 'Doanh nghiệp (Client)',
+    title: 'Doanh nghiệp',
+    roleTag: 'Client',
     email: 'tuyendung5@gmail.com',
-    workspaceName: 'Client Workspace',
+    workspaceName: 'TechCorp Portal',
     targetRoute: '/client/dashboard',
-    color: '#0284c7',
+    icon: <BankOutlined />,
+    accentColor: '#38bdf8', // sky-400
+    badgeBg: 'rgba(56, 189, 248, 0.12)',
   },
   {
     role: UserRole.AFFILIATE,
-    title: 'Cộng tác viên (Affiliate)',
+    title: 'Cộng tác viên',
+    roleTag: 'Headhunter',
     email: 'cvt5@gmail.com',
     workspaceName: 'OPR Hub',
     targetRoute: '/affiliate/dashboard',
-    color: '#f59e0b',
+    icon: <ShareAltOutlined />,
+    accentColor: '#f59e0b', // amber-500
+    badgeBg: 'rgba(245, 158, 11, 0.12)',
   },
   {
     role: UserRole.INTERNAL_HR,
-    title: 'HR Nội bộ (Internal HR)',
+    title: 'HR Vận hành',
+    roleTag: 'Internal HR',
     email: 'myhr@hrconnect.io',
-    workspaceName: 'HR Workspace',
+    workspaceName: 'ATS Screening',
     targetRoute: '/hr/dashboard',
-    color: '#10b981',
-  },
-  {
-    role: UserRole.CANDIDATE,
-    title: 'Ứng viên (Candidate)',
-    email: 'ungvien5@gmail.com',
-    workspaceName: 'Candidate Portal',
-    targetRoute: '/candidate/dashboard',
-    color: '#8b5cf6',
+    icon: <SafetyCertificateOutlined />,
+    accentColor: '#34d399', // emerald-400
+    badgeBg: 'rgba(52, 211, 153, 0.12)',
   },
   {
     role: UserRole.ADMIN,
-    title: 'Platform Admin',
+    title: 'Quản trị viên',
+    roleTag: 'Platform Admin',
     email: 'myadmin@hrconnect.io',
     workspaceName: 'Admin Control',
     targetRoute: '/admin/dashboard',
-    color: '#ef4444',
+    icon: <CrownOutlined />,
+    accentColor: '#f43f5e', // rose-500
+    badgeBg: 'rgba(244, 63, 94, 0.12)',
+  },
+  {
+    role: UserRole.CANDIDATE,
+    title: 'Ứng viên',
+    roleTag: 'Candidate',
+    email: 'ungvien5@gmail.com',
+    workspaceName: 'Talent Profile',
+    targetRoute: '/',
+    icon: <UserOutlined />,
+    accentColor: '#a78bfa', // purple-400
+    badgeBg: 'rgba(167, 139, 250, 0.12)',
   },
 ];
 
@@ -78,10 +102,10 @@ export const LoginPage: React.FC = () => {
     setSubmitting(true);
     const normalizedRole = ((customUser?.role || role || UserRole.CANDIDATE) as string).toUpperCase() as UserRole;
     login(normalizedRole, customUser);
-    await new Promise((r) => setTimeout(r, 250));
+    await new Promise((r) => setTimeout(r, 200));
     setSubmitting(false);
 
-    const destination = targetRoute || getDashboardRouteForRole(normalizedRole);
+    const destination = normalizedRole === UserRole.CANDIDATE ? '/' : (targetRoute || getDashboardRouteForRole(normalizedRole));
     void message.success({
       content: `Đăng nhập thành công với vai trò: ${ROLE_LABELS[normalizedRole] || normalizedRole}`,
       icon: <CheckCircleFilled style={{ color: '#10b981' }} />,
@@ -121,7 +145,6 @@ export const LoginPage: React.FC = () => {
       email: account.email,
       role: resolvedRole,
       phone: account.phone,
-      // STRICT: Only assign company if role is CLIENT!
       company: resolvedRole === UserRole.CLIENT ? (account.companyName || `${account.fullName} Co.`) : undefined,
       companySize: resolvedRole === UserRole.CLIENT ? account.companySize : undefined,
     };
@@ -137,7 +160,6 @@ export const LoginPage: React.FC = () => {
       password: '123456',
     });
     const account = findRegisteredAccountByEmail(demo.email.toLowerCase());
-    // For demo account click, only initialize demo candidate data for minh.nguyen demo account
     if (demo.role === UserRole.CANDIDATE) {
       if (demo.email === 'minh.nguyen@gmail.com') {
         useCandidateStore.getState().loadDemoData();
@@ -161,69 +183,42 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: 'radial-gradient(ellipse at top, #1e293b 0%, #0f172a 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '32px 16px',
-      }}
-    >
-      <div style={{ width: '100%', maxWidth: 460 }}>
-        {/* Brand Logo & Back to Home */}
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background ambient mesh (Modern Light SaaS) */}
+      <div className="absolute top-0 left-0 right-0 h-96 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100/60 via-indigo-50/40 to-transparent pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-blue-400/15 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-10 left-10 w-[300px] h-[300px] bg-indigo-300/15 rounded-full blur-[90px] pointer-events-none" />
+
+      <div className="w-full max-w-lg relative z-10">
+        {/* Brand Header */}
         <div
           onClick={() => navigate('/')}
-          title="Quay về trang chủ"
-          style={{ textAlign: 'center', marginBottom: 28, cursor: 'pointer' }}
+          className="text-center mb-6 cursor-pointer select-none group"
+          title="Quay về trang chủ HR Connect"
         >
-          <div
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 14,
-              background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              color: '#fff',
-              fontSize: 24,
-              margin: '0 auto 14px',
-              boxShadow: '0 8px 24px rgba(2,132,199,0.35)',
-            }}
-          >
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-extrabold text-xl mx-auto mb-3 shadow-md shadow-blue-500/25 group-hover:scale-105 transition-transform duration-200">
             H
           </div>
-          <Title level={2} style={{ color: '#fff', margin: 0, fontWeight: 800, letterSpacing: '-0.02em' }}>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-1">
             HR Connect
-          </Title>
-          <Text style={{ color: '#94a3b8', fontSize: 13 }}>
-            Hệ thống Tuyển dụng & Quản trị Nhân sự Thông minh
-          </Text>
+          </h2>
+          <p className="text-xs text-slate-500 tracking-wide font-medium">
+            AI-Powered Recruitment & Affiliate Headhunting Platform
+          </p>
         </div>
 
-        {/* Login Form Card */}
-        <Card
-          style={{
-            borderRadius: 20,
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            background: '#ffffff',
-          }}
-          styles={{ body: { padding: '32px 28px' } }}
-        >
-          <div style={{ marginBottom: 20 }}>
-            <Title level={4} style={{ margin: '0 0 4px', color: '#0f172a', fontWeight: 800 }}>
+        {/* Login Panel */}
+        <div className="bg-white/85 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-[0_4px_25px_-5px_rgba(0,0,0,0.06)]">
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-1">
               Đăng nhập hệ thống
-            </Title>
-            <Text type="secondary" style={{ fontSize: 13 }}>
-              Nhập thông tin tài khoản hoặc sử dụng nhanh các tài khoản demo bên dưới.
-            </Text>
+            </h3>
+            <p className="text-xs text-slate-500">
+              Nhập thông tin tài khoản hoặc kích hoạt 1-chạm vào các tài khoản thử nghiệm bên dưới.
+            </p>
           </div>
 
-          {/* Standard Login Form */}
+          {/* Form */}
           <Form
             form={form}
             layout="vertical"
@@ -231,165 +226,111 @@ export const LoginPage: React.FC = () => {
             onFinish={handleFormSubmit}
           >
             <Form.Item
-              label={<span style={{ fontWeight: 600, fontSize: 13 }}>Địa chỉ Email</span>}
+              label={<span className="text-xs font-semibold text-slate-700">Địa chỉ Email</span>}
               name="email"
               rules={[
                 { required: true, message: 'Vui lòng nhập địa chỉ email!' },
                 { type: 'email', message: 'Địa chỉ email không đúng định dạng!' },
               ]}
+              style={{ marginBottom: 16 }}
             >
               <Input
-                prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
-                placeholder="ten@email.com"
-                size="large"
-                style={{ borderRadius: 10, height: 44 }}
+                prefix={<MailOutlined className="text-slate-400 mr-1" />}
+                placeholder="ten@doanhnghiep.com"
+                className="bg-slate-50/70 border-slate-200 text-slate-900 rounded-xl h-11 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500"
               />
             </Form.Item>
 
             <Form.Item
-              label={<span style={{ fontWeight: 600, fontSize: 13 }}>Mật khẩu</span>}
+              label={<span className="text-xs font-semibold text-slate-700">Mật khẩu</span>}
               name="password"
               rules={[{ required: true, message: 'Vui lòng nhập mật khẩu!' }]}
               style={{ marginBottom: 20 }}
             >
               <Input.Password
-                prefix={<LockOutlined style={{ color: '#94a3b8' }} />}
-                placeholder="Nhập mật khẩu..."
-                size="large"
-                style={{ borderRadius: 10, height: 44 }}
+                prefix={<LockOutlined className="text-slate-400 mr-1" />}
+                placeholder="••••••••"
+                className="bg-slate-50/70 border-slate-200 text-slate-900 rounded-xl h-11 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500"
               />
             </Form.Item>
 
             <Button
               type="primary"
               htmlType="submit"
-              size="large"
               block
               loading={submitting}
               icon={<ArrowRightOutlined />}
               iconPosition="end"
-              style={{
-                borderRadius: 10,
-                fontWeight: 700,
-                height: 46,
-                fontSize: 15,
-                background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-                border: 'none',
-                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35)',
-              }}
+              className="h-11 rounded-xl font-semibold text-sm bg-blue-600 hover:bg-blue-700 border-none shadow-sm transition-all duration-200"
             >
-              Đăng nhập
+              Đăng nhập tài khoản
             </Button>
           </Form>
 
-          {/* ─── Dotted Quick-fill Demo Box ─── */}
-          <div
-            style={{
-              marginTop: 24,
-              padding: '16px',
-              borderRadius: 14,
-              border: '1.5px dashed #0284c7',
-              background: '#f0f9ff',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <ThunderboltOutlined style={{ color: '#0284c7', fontSize: 15 }} />
-              <span style={{ fontWeight: 700, fontSize: 13, color: '#0369a1' }}>
-                Tài khoản chạy thử nghiệm (Demo)
-              </span>
+          {/* Role Switcher Demo Cards */}
+          <div className="mt-6 pt-5 border-t border-slate-100">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                <ThunderboltOutlined className="text-amber-500" />
+                <span>Tài khoản Demo (1-Chạm vào Dashboard)</span>
+              </div>
+              <span className="text-[10px] text-slate-400 font-mono">Password: 123456</span>
             </div>
-            <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 12px', lineHeight: 1.4 }}>
-              Nhấp vào vai trò bên dưới để tự động điền tài khoản và đăng nhập vào Dashboard tương ứng:
-            </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
               {DEMO_ACCOUNTS.map((demo) => (
                 <button
                   key={demo.role}
                   type="button"
                   onClick={() => void handleQuickFill(demo)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #e2e8f0',
-                    background: '#ffffff',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    textAlign: 'left',
-                    width: '100%',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = demo.color;
-                    e.currentTarget.style.boxShadow = `0 2px 8px ${demo.color}25`;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#e2e8f0';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
+                  className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-blue-50/50 hover:border-blue-300 transition-all duration-150 text-left group cursor-pointer"
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        background: demo.color,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 12, color: '#0f172a' }}>
-                        {demo.title}
-                      </div>
-                      <div style={{ fontSize: 11, color: '#64748b' }}>
-                        {demo.email} → <span style={{ color: demo.color, fontWeight: 600 }}>{demo.workspaceName}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Tag
-                    color={demo.color}
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition-transform group-hover:scale-105"
                     style={{
-                      borderRadius: 4,
-                      fontSize: 10,
-                      fontWeight: 700,
-                      padding: '1px 6px',
-                      margin: 0,
-                      border: 'none',
+                      background: demo.badgeBg,
+                      color: demo.accentColor,
+                      border: `1px solid ${demo.accentColor}30`,
                     }}
                   >
-                    Đăng nhập
-                  </Tag>
+                    {demo.icon}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-blue-700 truncate">
+                      {demo.title}
+                    </div>
+                    <div className="text-[10px] text-slate-500 truncate">
+                      {demo.roleTag}
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Footer Note */}
-          <div style={{ marginTop: 20, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>
+          {/* Footer note */}
+          <div className="mt-6 pt-4 border-t border-slate-100 text-center space-y-1.5">
+            <div className="text-xs text-slate-500">
               Chưa có tài khoản?{' '}
-              <span
+              <button
+                type="button"
                 onClick={() => navigate('/register')}
-                style={{ color: '#0284c7', cursor: 'pointer', fontWeight: 700, textDecoration: 'underline' }}
+                className="text-blue-600 hover:text-blue-700 font-semibold underline bg-transparent border-none p-0 cursor-pointer"
               >
                 Đăng ký ngay
-              </span>
-            </Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Cần hỗ trợ truy cập hệ thống?{' '}
-              <span
+              </button>
+            </div>
+            <div>
+              <button
+                type="button"
                 onClick={() => navigate('/')}
-                style={{ color: '#0284c7', cursor: 'pointer', fontWeight: 600 }}
+                className="text-xs text-slate-400 hover:text-slate-600 font-medium bg-transparent border-none p-0 cursor-pointer"
               >
-                Về trang chủ
-              </span>
-            </Text>
+                ← Quay lại trang chủ
+              </button>
+            </div>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

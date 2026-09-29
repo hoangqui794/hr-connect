@@ -34,6 +34,8 @@ import dayjs from 'dayjs';
 import { useAuthStore } from '@/stores/authStore';
 import { useApplicationStore } from '@/stores/applicationStore';
 import type { AffiliateCommissionDTO, CommissionPayoutStatus } from '@/types/affiliate';
+import { FintechMetricCard } from '@/components/common/FintechMetricCard';
+import { PageHeaderB2B } from '@/components/common/PageHeaderB2B';
 
 const { Title, Text } = Typography;
 
@@ -624,7 +626,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
   };
 
   // Status tag mapper
-  const renderStatusTag = (status: CommissionPayoutStatus) => {
+  const renderStatusTag = (status: CommissionPayoutStatus, record?: AffiliateCommissionDTO) => {
     switch (status) {
       case 'PENDING':
         return (
@@ -658,9 +660,32 @@ export const AffiliateCommissionsPage: React.FC = () => {
         );
       case 'PAID':
         return (
-          <Tag color="success" icon={<CheckCircleFilled />}>
-            ĐÃ THANH TOÁN (PAID)
-          </Tag>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Tag color="success" style={{ fontWeight: 800, padding: '3px 10px', borderRadius: 9999, border: '1px solid #86efac', background: '#f0fdf4', color: '#166534', fontSize: 11.5 }}>
+              ✓ ĐÃ THANH TOÁN (PAID)
+            </Tag>
+            <Tooltip title="Xem Ủy nhiệm chi Ngân hàng (Payment Proof)">
+              <Button
+                type="primary"
+                size="small"
+                icon={<AuditOutlined />}
+                onClick={() => record && handleOpenUnc(record)}
+                style={{
+                  background: '#00b14f',
+                  borderColor: '#00b14f',
+                  borderRadius: 6,
+                  height: 24,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                UNC
+              </Button>
+            </Tooltip>
+          </div>
         );
       default:
         return <Tag>{status}</Tag>;
@@ -675,14 +700,14 @@ export const AffiliateCommissionsPage: React.FC = () => {
       minWidth: 260,
       render: (_: any, record: AffiliateCommissionDTO) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Avatar src={record.avatar} size={42} style={{ border: '2px solid #e2e8f0' }}>
+          <Avatar src={record.avatar} size={42} style={{ border: '2px solid #e2e8f0', background: '#00b14f', fontWeight: 700 }}>
             {record.candidateName.charAt(0)}
           </Avatar>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a' }}>{record.candidateName}</div>
-            <div style={{ fontSize: 12, color: '#2563eb', fontWeight: 500 }}>{record.jobTitle}</div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{record.candidateName}</div>
+            <div style={{ fontSize: 12, color: '#009643', fontWeight: 600 }}>{record.jobTitle}</div>
             <div style={{ fontSize: 11, color: '#64748b' }}>
-              {record.companyName} • Onboarding: <strong>{dayjs(record.hiredDate).format('DD/MM/YYYY')}</strong>
+              {record.companyName} • Ngày nhận việc: <strong>{dayjs(record.hiredDate).format('DD/MM/YYYY')}</strong>
             </div>
           </div>
         </div>
@@ -695,10 +720,10 @@ export const AffiliateCommissionsPage: React.FC = () => {
       sorter: (a, b) => a.amount - b.amount,
       render: (_: any, record: AffiliateCommissionDTO) => (
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#16a34a' }}>
+          <div className="tabular-nums currency-kpi" style={{ fontSize: 16, fontWeight: 800, color: '#00b14f', whiteSpace: 'nowrap' }}>
             {formatCurrencyVND(record.amount)}
           </div>
-          <Tag color="purple" style={{ marginTop: 4, fontSize: 11 }}>
+          <Tag color="purple" style={{ marginTop: 4, fontSize: 11, borderRadius: 4, fontWeight: 600 }}>
             {record.commissionRate}% Hoa hồng COD
           </Tag>
         </div>
@@ -707,27 +732,28 @@ export const AffiliateCommissionsPage: React.FC = () => {
     {
       title: 'Tiến độ bảo hành 60 ngày',
       key: 'probationProgress',
-      minWidth: 260,
+      minWidth: 270,
       render: (_: any, record: AffiliateCommissionDTO) => {
         const percent = Math.min(100, Math.round((record.probationDaysPassed / record.totalDays) * 100));
         const isPassed = record.probationDaysPassed >= record.totalDays;
+        const daysLeft = Math.max(0, record.totalDays - record.probationDaysPassed);
 
         return (
-          <div style={{ width: '100%', maxWidth: 240 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-              <span style={{ fontWeight: 600, color: isPassed ? '#16a34a' : '#0284c7' }}>
-                {isPassed ? 'Hoàn tất thử việc (60/60)' : `Đã thử việc ${record.probationDaysPassed}/${record.totalDays} ngày`}
+          <div style={{ width: '100%', maxWidth: 260 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, marginBottom: 4 }}>
+              <span style={{ fontWeight: 700, color: isPassed ? '#00b14f' : '#0284c7' }}>
+                {isPassed ? '✓ Hoàn tất bảo hành 60/60 ngày' : `Đếm ngược: Còn ${daysLeft} ngày (${record.probationDaysPassed}/${record.totalDays})`}
               </span>
               <span style={{ color: '#64748b', fontSize: 11 }}>
                 Hạn BH: {dayjs(record.warrantyEndDate).format('DD/MM')}
               </span>
             </div>
             <Progress
-              percent={percent}
+              percent={isPassed ? 100 : percent}
               size="small"
-              strokeColor={isPassed ? '#16a34a' : '#2563eb'}
+              strokeColor={isPassed ? '#00b14f' : '#0284c7'}
               status={isPassed ? 'success' : 'active'}
-              format={() => `${percent}%`}
+              format={() => (isPassed ? '100% PASS' : `${percent}%`)}
             />
           </div>
         );
@@ -736,32 +762,25 @@ export const AffiliateCommissionsPage: React.FC = () => {
     {
       title: 'TRẠNG THÁI',
       key: 'status',
-      minWidth: 190,
-      render: (_: any, record: AffiliateCommissionDTO) => renderStatusTag(record.status),
+      minWidth: 230,
+      render: (_: any, record: AffiliateCommissionDTO) => renderStatusTag(record.status, record),
     },
     {
       title: 'THAO TÁC',
       key: 'actions',
-      minWidth: 260,
+      minWidth: 240,
       render: (_: any, record: AffiliateCommissionDTO) => {
         if (record.status === 'PAID') {
           return (
             <Space size={8} wrap>
-              <Tag
-                color="success"
-                icon={<CheckCircleFilled />}
-                style={{ fontWeight: 600, padding: '4px 10px', borderRadius: 6, fontSize: 12, margin: 0 }}
-              >
-                Đã nhận tiền
-              </Tag>
               <Button
-                type="primary"
+                type="default"
                 size="small"
-                icon={<AuditOutlined />}
-                style={{ background: '#0284c7', borderColor: '#0284c7', borderRadius: 6, fontSize: 12, fontWeight: 500 }}
+                icon={<AuditOutlined style={{ color: '#00b14f' }} />}
+                style={{ borderRadius: 6, fontSize: 12, fontWeight: 600, borderColor: '#a7f3d0', color: '#065f46' }}
                 onClick={() => handleOpenUnc(record)}
               >
-                Xem lệnh UNC / Biên lai
+                Xem Ủy nhiệm chi (Payment Proof)
               </Button>
             </Space>
           );
@@ -821,230 +840,104 @@ export const AffiliateCommissionsPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+    <div className="space-y-6">
       {/* ─── PAGE HEADER ──────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 20 }}>
-        <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
-          Sổ cái Hoa hồng & Quản lý Payout
-        </Title>
-        <Text style={{ color: '#64748b' }}>
-          Headhunter: <strong style={{ color: '#0f172a' }}>{user?.name || user?.email || 'Chuyên viên Tuyển dụng'}</strong> ({user?.company || 'Cộng tác viên Độc lập'}) • Giám sát dòng tiền hoa hồng theo các mốc 60 ngày bảo hành
-        </Text>
-      </div>
-
-      {/* ─── FINANCIAL LOGIC SEPARATION & GUIDANCE ALERT (REQUIREMENT 2) ─────── */}
-      <Alert
-        message={
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ flex: 1, minWidth: 280 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#0369a1' }}>
-                Nguyên tắc hạch toán Sổ cái Hoa hồng & Quản lý Payout
-              </div>
-              <div style={{ fontSize: 13, color: '#334155', marginTop: 4, lineHeight: 1.5 }}>
-                Sổ cái hoa hồng chỉ ghi nhận các deal khi ứng viên đã <strong>Nhận việc (Onboard — đang trong 60 ngày bảo hành thử việc)</strong> hoặc đã <strong>Đạt thử việc (Đủ điều kiện nhận / Đã thanh toán)</strong>.
-                {affiliateEarlyStageApps.length > 0 ? (
-                  <span style={{ display: 'block', marginTop: 4, color: '#0284c7', fontWeight: 600 }}>
-                    ⚡ Bạn hiện có <u>{affiliateEarlyStageApps.length} hồ sơ</u> đang ở giai đoạn Nộp hồ sơ, Sàng lọc AI & Phỏng vấn. Hãy sang mục "Hồ sơ đã giới thiệu" để theo dõi chi tiết.
-                  </span>
-                ) : (
-                  <span style={{ display: 'block', marginTop: 4, color: '#64748b' }}>
-                    Các hồ sơ mới giới thiệu sẽ tự động xuất hiện tại Sổ cái ngay khi ứng viên chính thức nhận việc.
-                  </span>
-                )}
-              </div>
-            </div>
-            <Button
-              type="primary"
-              icon={<TeamOutlined />}
-              onClick={() => navigate('/affiliate/submissions')}
-              style={{
-                borderRadius: 8,
-                fontWeight: 600,
-                background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-                border: 'none',
-              }}
-            >
-              Hồ sơ đã giới thiệu ({affiliateEarlyStageApps.length})
-            </Button>
-          </div>
+      <PageHeaderB2B
+        title="Sổ Cái Hoa Hồng & Quản Lý Payout"
+        badge={
+          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+            Headhunter: {user?.name || user?.email || 'Chuyên viên Tuyển dụng'}
+          </span>
         }
-        type="info"
-        showIcon
-        icon={<SafetyCertificateOutlined style={{ color: '#0284c7', fontSize: 22 }} />}
-        style={{ marginBottom: 20, borderRadius: 10, border: '1px solid #bae6fd', background: '#f0f9ff' }}
+        subtitle="Giám sát dòng tiền hoa hồng theo các mốc 60 ngày bảo hành thử việc (COD), đối soát lệnh chi trả và xuất chứng từ UNC ngân hàng."
       />
 
-      {/* ─── 4 EVENLY DISTRIBUTED KPI CARDS (FIXED OVERLAPPING BUG) ─────────── */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+      {/* ─── FINANCIAL LOGIC SEPARATION & GUIDANCE ALERT (REQUIREMENT 2) ─────── */}
+      <div className="b2b-card p-4 border border-blue-200/80 bg-blue-50/50">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex-1 min-w-[280px]">
+            <div className="flex items-center gap-2">
+              <SafetyCertificateOutlined className="text-blue-600 text-lg" />
+              <span className="font-bold text-sm text-slate-900">
+                Nguyên tắc hạch toán Sổ cái Hoa hồng & Quản lý Payout
+              </span>
+            </div>
+            <div className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+              Sổ cái hoa hồng ghi nhận chính thức khi ứng viên đã <strong>Nhận việc (Onboard — đang trong 60 ngày bảo hành thử việc)</strong> hoặc đã <strong>Đạt thử việc (Đủ điều kiện nhận / Đã thanh toán)</strong>.
+              {affiliateEarlyStageApps.length > 0 ? (
+                <span className="block mt-1 text-blue-700 font-semibold">
+                  ⚡ Bạn hiện có <u>{affiliateEarlyStageApps.length} hồ sơ</u> đang ở giai đoạn Nộp hồ sơ, Sàng lọc AI & Phỏng vấn. Hãy sang mục "Hồ sơ đã giới thiệu" để theo dõi chi tiết.
+                </span>
+              ) : (
+                <span className="block mt-1 text-slate-500">
+                  Các hồ sơ mới giới thiệu sẽ tự động xuất hiện tại Sổ cái ngay khi ứng viên chính thức nhận việc.
+                </span>
+              )}
+            </div>
+          </div>
+          <Button
+            type="primary"
+            icon={<TeamOutlined />}
+            onClick={() => navigate('/affiliate/submissions')}
+            className="rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white border-none shrink-0"
+          >
+            Hồ sơ đã giới thiệu ({affiliateEarlyStageApps.length})
+          </Button>
+        </div>
+      </div>
+
+      {/* ─── 4 EVENLY DISTRIBUTED FINTECH CARDS (BANKING STANDARD) ─────────── */}
+      <Row gutter={[16, 16]}>
         {/* Card 1: Tổng hoa hồng tích lũy */}
         <Col xs={24} sm={12} lg={6}>
-          <Card
-            style={{
-              borderRadius: 8,
-              border: '1px solid #e2e8f0',
-              height: '100%',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-            }}
-            styles={{ body: { padding: '18px 20px' } }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
-                  1. Tổng hoa hồng tích lũy
-                </Text>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', marginTop: 6, whiteSpace: 'nowrap' }}>
-                  {formatCurrencyVND(metrics.totalAccumulated)}
-                </div>
-              </div>
-              <div
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 8,
-                  background: '#f1f5f9',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#475569',
-                  fontSize: 18,
-                }}
-              >
-                <DollarOutlined />
-              </div>
-            </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 8 }}>
-              Toàn bộ các deal thành công
-            </div>
-          </Card>
+          <FintechMetricCard
+            label="1. Tổng hoa hồng tích lũy"
+            value={formatCurrencyVND(metrics.totalAccumulated)}
+            subLabel="Toàn bộ các deal thành công"
+            statusBadge="Lũy kế"
+            statusType="paid"
+            icon={<DollarOutlined />}
+            iconColor="#38bdf8"
+          />
         </Col>
 
         {/* Card 2: Đang chờ duyệt (Trong 60 ngày BH) */}
         <Col xs={24} sm={12} lg={6}>
-          <Card
-            style={{
-              borderRadius: 8,
-              border: '1px solid #fed7aa',
-              background: '#fffaf5',
-              height: '100%',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-            }}
-            styles={{ body: { padding: '18px 20px' } }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <Text type="secondary" style={{ fontSize: 13, fontWeight: 500, color: '#9a3412' }}>
-                  2. Đang chờ duyệt (60 ngày BH)
-                </Text>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#c2410c', marginTop: 6, whiteSpace: 'nowrap' }}>
-                  {formatCurrencyVND(metrics.inProbationPending)}
-                </div>
-              </div>
-              <div
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 8,
-                  background: '#ffedd5',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#ea580c',
-                  fontSize: 18,
-                }}
-              >
-                <ClockCircleOutlined />
-              </div>
-            </div>
-            <div style={{ fontSize: 12, color: '#9a3412', marginTop: 8 }}>
-              Ứng viên đang trong thời gian thử việc
-            </div>
-          </Card>
+          <FintechMetricCard
+            label="2. Đang chờ duyệt (60 ngày BH)"
+            value={formatCurrencyVND(metrics.inProbationPending)}
+            subLabel="Ứng viên đang trong thời gian thử việc"
+            statusBadge="Bảo hành 60 ngày (COD)"
+            statusType="warranty"
+            icon={<ClockCircleOutlined />}
+            iconColor="#f59e0b"
+          />
         </Col>
 
         {/* Card 3: Đủ điều kiện nhận (Đã hoàn tất thử việc) */}
         <Col xs={24} sm={12} lg={6}>
-          <Card
-            style={{
-              borderRadius: 8,
-              border: '1px solid #bbf7d0',
-              background: '#f7fee7',
-              height: '100%',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-            }}
-            styles={{ body: { padding: '18px 20px' } }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <Text type="secondary" style={{ fontSize: 13, fontWeight: 500, color: '#166534' }}>
-                  3. Đủ điều kiện nhận (PASS)
-                </Text>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#15803d', marginTop: 6, whiteSpace: 'nowrap' }}>
-                  {formatCurrencyVND(metrics.eligibleAmount)}
-                </div>
-              </div>
-              <div
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 8,
-                  background: '#dcfce7',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#16a34a',
-                  fontSize: 18,
-                }}
-              >
-                <CheckCircleOutlined />
-              </div>
-            </div>
-            <div style={{ fontSize: 12, color: '#166534', marginTop: 8 }}>
-              Đã xong 60 ngày, sẵn sàng rút tiền
-            </div>
-          </Card>
+          <FintechMetricCard
+            label="3. Đủ điều kiện nhận (PASS)"
+            value={formatCurrencyVND(metrics.eligibleAmount)}
+            subLabel="Đã xong 60 ngày, sẵn sàng rút"
+            statusBadge="Đủ điều kiện rút"
+            statusType="eligible"
+            icon={<CheckCircleOutlined />}
+            iconColor="#34d399"
+          />
         </Col>
 
         {/* Card 4: Đã thanh toán (Kèm số lệnh UNC) */}
         <Col xs={24} sm={12} lg={6}>
-          <Card
-            style={{
-              borderRadius: 8,
-              border: '1px solid #bae6fd',
-              background: '#f0f9ff',
-              height: '100%',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-            }}
-            styles={{ body: { padding: '18px 20px' } }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <Text type="secondary" style={{ fontSize: 13, fontWeight: 500, color: '#0369a1' }}>
-                  4. Đã thanh toán (PAID)
-                </Text>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#0284c7', marginTop: 6, whiteSpace: 'nowrap' }}>
-                  {formatCurrencyVND(metrics.paidAmount)}
-                </div>
-              </div>
-              <div
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 8,
-                  background: '#e0f2fe',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#0284c7',
-                  fontSize: 18,
-                }}
-              >
-                <BankOutlined />
-              </div>
-            </div>
-            <div style={{ fontSize: 12, color: '#0369a1', marginTop: 8 }}>
-              Kèm <strong>{metrics.paidUncCount}</strong> lệnh UNC chuyển khoản
-            </div>
-          </Card>
+          <FintechMetricCard
+            label="4. Đã thanh toán (PAID)"
+            value={formatCurrencyVND(metrics.paidAmount)}
+            subLabel={`Kèm ${metrics.paidUncCount} lệnh UNC ngân hàng`}
+            statusBadge="Đã quyết toán"
+            statusType="info"
+            icon={<BankOutlined />}
+            iconColor="#a78bfa"
+          />
         </Col>
       </Row>
 

@@ -10,7 +10,6 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { DEMO_USERS } from '@/types/roles';
 import { SIDEBAR_MENU_ITEMS, SidebarMenuItem } from '@/constants/rbac';
 
 const { Sider } = Layout;
@@ -92,10 +91,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
       width={240}
       collapsedWidth={64}
       trigger={null}
-      theme="dark"
+      theme="light"
       style={{
-        background: '#0f172a',
-        borderRight: '1px solid rgba(255,255,255,0.06)',
+        background: '#ffffff',
+        borderRight: '1px solid rgba(226, 232, 240, 0.85)',
       }}
     >
       {/* Logo */}
@@ -108,7 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'flex-start',
           padding: collapsed ? 0 : '0 20px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          borderBottom: '1px solid rgba(226, 232, 240, 0.85)',
           gap: 10,
           transition: 'all 0.3s',
           cursor: 'pointer',
@@ -120,7 +119,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
             width: 32,
             height: 32,
             borderRadius: 8,
-            background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
+            background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -128,7 +127,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
             fontWeight: 800,
             color: '#fff',
             flexShrink: 0,
-            boxShadow: '0 2px 8px rgba(2,132,199,0.4)',
+            boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)',
             transition: 'transform 0.2s',
           }}
         >
@@ -137,7 +136,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
         {!collapsed && (
           <span
             style={{
-              color: '#fff',
+              color: '#0f172a',
               fontWeight: 700,
               fontSize: 16,
               letterSpacing: '-0.3px',
@@ -152,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
       {/* Navigation Menu */}
       <div style={{ padding: '8px 0', flex: 1 }}>
         <Menu
-          theme="dark"
+          theme="light"
           mode="inline"
           selectedKeys={[location.pathname]}
           items={antdMenuItems}
@@ -163,7 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
       {/* User Profile Footer */}
       <div
         style={{
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          borderTop: '1px solid rgba(226, 232, 240, 0.85)',
           padding: collapsed ? '12px 0' : '12px 16px',
           display: 'flex',
           alignItems: 'center',
@@ -175,7 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
           <Avatar
             size={32}
             style={{
-              background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
+              background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
               fontSize: 12,
               fontWeight: 700,
               cursor: 'pointer',
@@ -189,7 +188,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
           <div style={{ overflow: 'hidden' }}>
             <div
               style={{
-                color: '#f1f5f9',
+                color: '#0f172a',
                 fontWeight: 600,
                 fontSize: 13,
                 whiteSpace: 'nowrap',
@@ -222,12 +221,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
           display: 'flex',
           justifyContent: collapsed ? 'center' : 'flex-end',
           cursor: 'pointer',
-          color: '#64748b',
-          borderTop: '1px solid rgba(255,255,255,0.04)',
+          color: '#94a3b8',
+          borderTop: '1px solid rgba(226, 232, 240, 0.85)',
           transition: 'color 0.2s',
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = '#94a3b8')}
-        onMouseLeave={(e) => (e.currentTarget.style.color = '#64748b')}
+        onMouseEnter={(e) => (e.currentTarget.style.color = '#0f172a')}
+        onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
       >
         {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
       </div>

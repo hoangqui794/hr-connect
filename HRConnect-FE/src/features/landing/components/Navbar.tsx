@@ -17,6 +17,7 @@ import { useAuthStore, getInitials } from '@/stores/authStore';
 import { useAlertStore } from '@/stores/alertStore';
 import { useI18nStore } from '@/i18n';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
+import { CandidateUserDropdown } from '@/components/common/CandidateUserDropdown';
 import { DEMO_USERS, UserRole } from '@/types/roles';
 import { ROLE_DASHBOARD_ROUTES } from '@/routes/AppRoutes';
 
@@ -135,9 +136,10 @@ export const Navbar: React.FC = () => {
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: '14px 40px',
-        background: 'rgba(15, 23, 42, 0.92)',
+        background: 'rgba(255, 255, 255, 0.82)',
         backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        borderBottom: '1px solid rgba(226, 232, 240, 0.85)',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.03)',
       }}
     >
       {/* Brand Logo */}
@@ -151,26 +153,26 @@ export const Navbar: React.FC = () => {
             width: 38,
             height: 38,
             borderRadius: 10,
-            background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
+            background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: 800,
             color: '#fff',
             fontSize: 19,
-            boxShadow: '0 4px 14px rgba(2, 132, 199, 0.45)',
+            boxShadow: '0 3px 12px rgba(37, 99, 235, 0.3)',
           }}
         >
           H
         </div>
-        <span style={{ color: '#fff', fontWeight: 800, fontSize: 19, letterSpacing: '-0.3px' }}>
+        <span style={{ color: '#0f172a', fontWeight: 800, fontSize: 19, letterSpacing: '-0.3px' }}>
           HR Connect
         </span>
         <Tag
           style={{
-            background: 'rgba(2, 132, 199, 0.18)',
-            color: '#38bdf8',
-            border: '1px solid rgba(2, 132, 199, 0.35)',
+            background: '#eff6ff',
+            color: '#1d4ed8',
+            border: '1px solid #bfdbfe',
             borderRadius: 100,
             fontSize: 10,
             fontWeight: 700,
@@ -189,10 +191,11 @@ export const Navbar: React.FC = () => {
           icon={<CompassOutlined />}
           onClick={() => navigate('/')}
           style={{
-            color: isHomeActive ? '#38bdf8' : '#cbd5e1',
+            color: isHomeActive ? '#1d4ed8' : '#475569',
             fontWeight: isHomeActive ? 700 : 500,
             fontSize: 14,
-            background: isHomeActive ? 'rgba(56, 189, 248, 0.1)' : 'transparent',
+            background: isHomeActive ? '#eff6ff' : 'transparent',
+            borderRadius: 8,
           }}
         >
           Trang chủ / Tìm việc
@@ -203,10 +206,11 @@ export const Navbar: React.FC = () => {
           icon={<TeamOutlined />}
           onClick={() => navigate('/?mode=recruiters')}
           style={{
-            color: isRecruiterActive ? '#38bdf8' : '#cbd5e1',
+            color: isRecruiterActive ? '#1d4ed8' : '#475569',
             fontWeight: isRecruiterActive ? 700 : 500,
             fontSize: 14,
-            background: isRecruiterActive ? 'rgba(56, 189, 248, 0.1)' : 'transparent',
+            background: isRecruiterActive ? '#eff6ff' : 'transparent',
+            borderRadius: 8,
           }}
         >
           Mạng lưới Recruiter
@@ -218,9 +222,10 @@ export const Navbar: React.FC = () => {
             icon={<DollarCircleOutlined />}
             onClick={() => navigate('/services')}
             style={{
-              color: location.pathname === '/services' ? '#38bdf8' : '#cbd5e1',
+              color: location.pathname === '/services' ? '#1d4ed8' : '#475569',
               fontWeight: location.pathname === '/services' ? 700 : 500,
               fontSize: 14,
+              borderRadius: 8,
             }}
           >
             Bảng giá dịch vụ
@@ -231,7 +236,7 @@ export const Navbar: React.FC = () => {
       {/* Right Controls: Language, Notification, Avatar / Auth */}
       <Space size={14} align="center">
         {/* Nút chuyển ngôn ngữ [VN / EN] */}
-        <LanguageSwitcher theme="dark" size="middle" />
+        <LanguageSwitcher theme="light" size="middle" />
 
         {isAuthenticated && (
           <Dropdown
@@ -244,18 +249,18 @@ export const Navbar: React.FC = () => {
             dropdownRender={() => (
               <div
                 style={{
-                  background: '#fff',
-                  borderRadius: 12,
-                  boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.15)',
+                  background: '#ffffff',
+                  borderRadius: 14,
+                  boxShadow: '0 16px 36px -4px rgba(0, 0, 0, 0.08)',
                   width: 340,
                   maxHeight: 400,
                   overflow: 'hidden',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid rgba(226, 232, 240, 0.9)',
                 }}
               >
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(241, 245, 249, 0.9)', display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>Thông báo</span>
-                  <span style={{ color: '#0284c7', fontSize: 11, cursor: 'pointer' }} onClick={() => useAlertStore.getState().clearAll()}>
+                  <span style={{ color: '#2563eb', fontSize: 11, cursor: 'pointer', fontWeight: 600 }} onClick={() => useAlertStore.getState().clearAll()}>
                     Xóa tất cả
                   </span>
                 </div>
@@ -270,13 +275,17 @@ export const Navbar: React.FC = () => {
                       renderItem={(alert) => (
                         <List.Item
                           key={alert.id}
-                          style={{ padding: '10px 14px', background: alert.read ? 'transparent' : '#f0f9ff' }}
+                          style={{
+                            padding: '10px 14px',
+                            background: alert.read ? 'transparent' : 'rgba(239, 246, 255, 0.9)',
+                            borderBottom: '1px solid rgba(241, 245, 249, 0.9)',
+                          }}
                           actions={[
                             <span key="del" style={{ fontSize: 10, color: '#94a3b8', cursor: 'pointer' }} onClick={() => dismissAlert(alert.id)}>✕</span>,
                           ]}
                         >
                           <List.Item.Meta
-                            title={<span style={{ fontSize: 12, fontWeight: 600 }}>{alert.title}</span>}
+                            title={<span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{alert.title}</span>}
                             description={<span style={{ fontSize: 11, color: '#64748b' }}>{alert.message}</span>}
                           />
                         </List.Item>
@@ -288,54 +297,55 @@ export const Navbar: React.FC = () => {
             )}
           >
             <Badge count={unreadCount} size="small" offset={[-2, 2]}>
-              <Button type="text" shape="circle" icon={<BellOutlined style={{ fontSize: 17, color: '#cbd5e1' }} />} />
+              <Button type="text" shape="circle" icon={<BellOutlined style={{ fontSize: 17, color: '#475569' }} />} />
             </Badge>
           </Dropdown>
         )}
 
         {isAuthenticated ? (
-          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                cursor: 'pointer',
-                background: 'rgba(255, 255, 255, 0.08)',
-                padding: '4px 10px',
-                borderRadius: 20,
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-              }}
-            >
-              <Avatar
-                size={28}
+          role === UserRole.CANDIDATE ? (
+            <CandidateUserDropdown />
+          ) : (
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
+              <div
                 style={{
-                  background:
-                    role === UserRole.CANDIDATE
-                      ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
-                      : 'linear-gradient(135deg, #0284c7, #0ea5e9)',
-                  fontWeight: 700,
-                  fontSize: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  cursor: 'pointer',
+                  background: 'rgba(241, 245, 249, 0.8)',
+                  padding: '4px 10px',
+                  borderRadius: 20,
+                  border: '1px solid rgba(226, 232, 240, 0.9)',
                 }}
               >
-                {userAvatar}
-              </Avatar>
-              <span style={{ color: '#f8fafc', fontSize: 13, fontWeight: 600 }}>
-                {userName.split(' ').slice(-1)[0]}
-              </span>
-            </div>
-          </Dropdown>
+                <Avatar
+                  size={28}
+                  style={{
+                    background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                    fontWeight: 700,
+                    fontSize: 12,
+                  }}
+                >
+                  {userAvatar}
+                </Avatar>
+                <span style={{ color: '#0f172a', fontSize: 13, fontWeight: 600 }}>
+                  {userName.split(' ').slice(-1)[0]}
+                </span>
+              </div>
+            </Dropdown>
+          )
         ) : (
           <Space size={8}>
             <Button
               type="text"
               onClick={() => navigate('/login')}
               style={{
-                color: '#e2e8f0',
+                color: '#334155',
                 fontWeight: 600,
                 fontSize: 13,
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(226, 232, 240, 0.9)',
+                background: '#ffffff',
                 borderRadius: 8,
               }}
             >
@@ -348,9 +358,9 @@ export const Navbar: React.FC = () => {
                 fontWeight: 600,
                 fontSize: 13,
                 borderRadius: 8,
-                background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
+                background: '#2563eb',
                 border: 'none',
-                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35)',
+                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
               }}
             >
               {t.nav.register}
