@@ -5,6 +5,7 @@ using HRConnect.Application.Features.Offers.Commands.CreateOfferDraft;
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmPlannedStartDate;
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmStartWork;
 using HRConnect.Application.Features.Recruitment.Commands.DecideBackupApplication;
+using HRConnect.Application.Features.Recruitment.Commands.MarkNotStarted;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplications;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationTimeline;
@@ -22,6 +23,7 @@ public static class RecruitmentEndpoints
     private const string CreateOfferPermission = "offer.create";
     private const string ManageOfferPermission = "offer.manage";
     private const string PlacementConfirmPermission = "placement.confirm";
+    private const string MarkNotStartedPermission = "application.mark_not_started";
 
     public static IEndpointRouteBuilder MapRecruitmentEndpoints(this IEndpointRouteBuilder app)
     {
@@ -488,6 +490,77 @@ public static class RecruitmentEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
+        // P03: POST /api/v1/recruitment/applications/{applicationId:guid}/not-started
+        group.MapPost("/applications/{applicationId:guid}/not-started", async (
+            Guid applicationId,
+            [FromBody] MarkNotStartedRequest request,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var hasMarkPermission = PermissionAuthorization.HasPermission(user, MarkNotStartedPermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!hasMarkPermission && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(MarkNotStartedPermission);
+            }
+
+            var isInternalOrAdmin = user.IsInRole("INTERNAL_HR") || isAdmin || PermissionAuthorization.HasPermission(user, "placement.manage");
+            var isClientUser = !isInternalOrAdmin;
+
+            try
+            {
+                var command = new MarkNotStartedCommand(
+                    ApplicationId: applicationId,
+                    Reason: request.Reason,
+                    ConcurrencyToken: request.ExpectedApplicationVersion ?? request.ConcurrencyToken,
+                    CurrentUserId: userId.Value,
+                    IsClientCompanyUser: isClientUser,
+                    IsInternalHrOrAdmin: isInternalOrAdmin
+                );
+
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Ok(new
+                {
+                    success = true,
+                    message = "Đã đánh dấu ứng viên không nhận việc.",
+                    data = response
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("MarkNotStarted")
+        .WithSummary("Đánh dấu ứng viên không nhận việc (Mark Candidate As Not Started)")
+        .WithDescription("Dành cho Client Company HR / Admin hoặc Internal HR / Admin (application.mark_not_started). Cập nhật trạng thái hồ sơ sang NOT_STARTED khi ứng viên không đến nhận việc hoặc hủy nhận việc sau khi đã trúng tuyển/chấp thuận offer.")
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -539,6 +612,13 @@ public class ConfirmStartWorkRequest
     public string? Note { get; set; }
     public string? Position { get; set; }
     public string? Department { get; set; }
+    public Guid? ExpectedApplicationVersion { get; set; }
+    public Guid? ConcurrencyToken { get; set; }
+}
+
+public class MarkNotStartedRequest
+{
+    public string Reason { get; set; } = string.Empty;
     public Guid? ExpectedApplicationVersion { get; set; }
     public Guid? ConcurrencyToken { get; set; }
 }
