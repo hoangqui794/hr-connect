@@ -1,3 +1,4 @@
+from app.services.document_parser import DocumentBlock
 from app.services.structured_cv_parser import StructuredCvParser
 
 
@@ -221,7 +222,7 @@ Tech Stack: ASP.NET Core, C#, EF Core, Redis, Docker
 
 def test_parser_handles_enterprise_cv_sections_and_project_lines() -> None:
     result = StructuredCvParser().parse_with_diagnostics(
-        """DUONG THIEN KHOI
+        """ANON CANDIDATE
 PROFESSIONAL SUMMARY
 Software Engineer with enterprise experience.
 CORE TECHNICAL SKILLS
@@ -327,6 +328,31 @@ People First Ltd
     assert result.warnings == []
 
 
+def test_parser_resolves_summary_timeline_with_detailed_company_date_evidence() -> None:
+    result = StructuredCvParser().parse_with_diagnostics(
+        """ANON CANDIDATE
+WORKING HISTORY
+2022 - now — Northwind Systems — Senior Full Stack Engineer
+2021 - 2022 — Harbor Labs — Full Stack Engineer
+WORKING EXPERIENCE
+Northwind Systems (2022 - now)
+Senior Full Stack Engineer
+Harbor Labs (2021 - 2022)
+Full Stack Engineer
+"""
+    )
+
+    experience = {(item.company, item.position): item for item in result.candidate.work_experience}
+    assert set(experience) == {
+        ("Northwind Systems", "Senior Full Stack Engineer"),
+        ("Harbor Labs", "Full Stack Engineer"),
+    }
+    assert result.warnings == []
+    # Experience evidence is sufficient, but this synthetic CV deliberately
+    # lacks contact/skills and therefore remains low-confidence overall.
+    assert result.requires_manual_review is True
+
+
 def test_parser_flags_unresolved_experience_evidence_for_human_review() -> None:
     result = StructuredCvParser().parse_with_diagnostics(
         """NGUYEN VAN A
@@ -340,3 +366,285 @@ Managed enterprise customers and contracts.
     assert result.candidate.work_experience == []
     assert result.requires_manual_review is True
     assert "EXPERIENCE_EVIDENCE_UNRESOLVED" in result.warnings
+
+
+def test_parser_recovers_profile_education_detail_and_numbered_work_projects() -> None:
+    result = StructuredCvParser().parse_with_diagnostics(
+        """ANON CANDIDATE
+Software Engineer
+An engineer focused on building reliable products for users and improving development workflows across teams.
+email@example.com
+TECHNICAL SKILLS
+Python, Docker
+EDUCATION
+2014-2018 — Northwind University Engineer's Degree in Software Engineering Awarded a scholarship.
+WORK EXPERIENCE
+    Northwind Labs (2022 - now)
+    Software Engineer
+    1. Product Atlas
+    Built services for enterprise users.
+    Responsibilities:
+2. Project Beacon
+"""
+    )
+
+    education = result.candidate.education[0]
+    assert result.candidate.summary is not None
+    assert "reliable products" in result.candidate.summary
+    assert education.school == "Northwind University"
+    assert education.degree == "Engineer's Degree"
+    assert education.major == "Software Engineering"
+    assert [project.name for project in result.candidate.work_experience[0].projects] == [
+        "Product Atlas",
+        "Project Beacon",
+    ]
+    assert result.candidate.work_experience[0].projects[0].description == "Built services for enterprise users."
+
+
+def test_parser_normalizes_modern_web_and_devops_skills() -> None:
+    result = StructuredCvParser().parse_with_diagnostics(
+        """ANON CANDIDATE
+SKILLS
+Express, Fastify, GraphQL, tRPC, Drizzle ORM, Sentry, Elasticsearch, OpenSearch,
+Redux Toolkit, React Query, React Hook Form, Tailwind, shadcn, styled-components,
+i18next, Vite, Remix, Astro, Vercel, Fly.io, GitHub Workflows, NX, Linux, Rust.
+"""
+    )
+
+    skills = {item.name.casefold() for item in result.candidate.skills}
+    assert {
+        "express", "fastify", "graphql", "trpc", "drizzle", "sentry", "elasticsearch", "opensearch",
+        "redux toolkit", "react query", "react hook form", "tailwind css", "shadcn", "styled-components",
+        "i18next", "vite", "remix", "astro", "vercel", "fly.io", "github actions", "nx", "linux", "rust",
+    } <= skills
+
+
+def test_parser_handles_indented_unity_cv_sections_without_summary_leakage() -> None:
+    raw_text = """ANON CANDIDATE
+PROFESSIONAL SUMMARY
+2+ years Unity Developer building AR and mobile games.
+EDUCATION
+Bachelor of Engineering (Robotics and Mechatronics Engineering) (Honors) Northshore University Vietnam
+Bachelor of Science in Aerospace Engineering (Transfer) Orchard University, USA
+Associate in Engineering Riverside Community College, USA
+TECHNICAL SKILLS
+Game Engines: Unity Editor (Expert), Unreal Engine.
+Programming: C# (Expert), Python, JavaScript, MATLAB, Arduino.
+Specialized Frameworks: AR Foundation, Cesium (Geospatial), Unity Assets.
+Software & Tools: Visual Studio, GitHub, RobotStudio, SolidWorks, OpenCV.
+PROFESSIONAL EXPERIENCE
+Northwind Interactive | City, VN Unity Developer | June 2023 - Present
+Harbor Automation | City, VN Volunteer Intern | October 2022 - May 2023
+PROJECT PORTFOLIO
+Puzzle Atlas: Implemented a mobile puzzle game.
+Ocean Quest: Developed AR mechanics using AR Foundation.
+Personal Project | Fullstack Web Project: MapWorks (3D Digital Twin) - Map Link
+"""
+
+    result = StructuredCvParser().parse_with_diagnostics(raw_text, layout="SINGLE_COLUMN")
+    candidate = result.candidate
+
+    assert candidate.summary == "2+ years Unity Developer building AR and mobile games."
+    assert [item.school for item in candidate.education] == [
+        "Northshore University Vietnam", "Orchard University, USA", "Riverside Community College, USA"
+    ]
+    assert {skill.name for skill in candidate.skills} >= {
+        "unity editor", "unreal engine", "c#", "python", "javascript", "matlab", "arduino",
+        "ar foundation", "cesium", "visual studio", "github", "robotstudio", "solidworks", "opencv",
+    }
+    assert "communication" not in {skill.name for skill in candidate.skills}
+    assert {(item.company, item.position) for item in candidate.work_experience} == {
+        ("Northwind Interactive", "Unity Developer"), ("Harbor Automation", "Volunteer Intern")
+    }
+    projects = {item.name: item for item in candidate.side_projects}
+    assert projects["Ocean Quest"].technologies == ["ar foundation"]
+    assert "MapWorks (3D Digital Twin)" in projects
+    assert "communication" not in projects["MapWorks (3D Digital Twin)"].technologies
+
+
+def test_parser_recovers_header_summary_from_visual_blocks() -> None:
+    raw_text = """ANON CANDIDATE
+Driven marketer seeking for opportunities in Brand and
+Product Marketing
+email@example.com
+EDUCATION
+Northwind University
+2016 - 2020
+Bachelor of International Business
+"""
+    blocks = [
+        DocumentBlock(text="ANON CANDIDATE", page=1, bbox=(60, 30, 260, 45)),
+        DocumentBlock(
+            text="Driven marketer seeking for opportunities in Brand and",
+            page=1,
+            bbox=(320, 30, 600, 45),
+        ),
+        DocumentBlock(text="Product Marketing", page=1, bbox=(320, 48, 470, 62)),
+        DocumentBlock(text="EDUCATION", page=1, bbox=(320, 120, 410, 135)),
+    ]
+
+    result = StructuredCvParser().parse_with_diagnostics(raw_text, blocks=blocks)
+
+    assert result.candidate.summary == "Driven marketer seeking for opportunities in Brand and Product Marketing"
+
+
+def test_parser_structures_compound_headings_and_nested_skill_lists() -> None:
+    result = StructuredCvParser().parse_with_diagnostics(
+        """ANON CANDIDATE
+EDUCATION
+Northwind University
+2016 - 2020
+Bachelor of International Business
+HONORS AND AWARDS
+Excellent employee of the year — Northwind Group
+2024
+Promising employee — Northwind Group
+2023
+CERTIFICATES & SHORT COURSES
+Brand Leadership Foundation, Hands Collective
+Marketing Thinking, Northwind Institute
+Brandcamp, Northwind Lab
+TOEIC (2017), ETS
+SKILLS
+Core Competencies: Market Research Design, Brand Management, Adaptability.
+Tools & Softwares: Office tools, CRM, AI Tools (ChatGPT, Gemini, Google Studio,
+NotebookLM ...).
+Languages: English, Vietnamese.
+"""
+    )
+
+    education = result.candidate.education
+    skills = {item.name.casefold() for item in result.candidate.skills}
+
+    assert len(education) == 1
+    assert education[0].school == "Northwind University"
+    assert education[0].degree == "Bachelor of International Business"
+    assert [item.name for item in result.candidate.certifications] == [
+        "Brand Leadership Foundation, Hands Collective",
+        "Marketing Thinking, Northwind Institute",
+        "Brandcamp, Northwind Lab",
+        "TOEIC (2017), ETS",
+    ]
+    assert result.candidate.awards == [
+        "2024 — Excellent employee of the year — Northwind Group",
+        "2023 — Promising employee — Northwind Group",
+    ]
+    assert {"market research design", "brand management", "adaptability", "office tools", "crm", "chatgpt", "gemini", "google studio", "notebooklm"} <= skills
+    assert "english" not in skills
+    assert "vietnamese" not in skills
+    assert all("AI Tools (ChatGPT" not in item.name for item in result.candidate.skills)
+
+
+def test_parser_preserves_project_led_experience_without_inventing_an_employer() -> None:
+    result = StructuredCvParser().parse_with_diagnostics(
+        """ANON CANDIDATE
+WORK EXPERIENCE
+[04/2025 - 06/2025]
+Project: Harbor Booking Platform
+Role: Frontend Developer
+Built reusable interfaces using React and TypeScript.
+[07/2025 - 09/2025]
+Project: Atlas Labeling System
+Role: Frontend Developer
+Implemented responsive workflows.
+EDUCATION
+University of Transport and Communication
+"""
+    )
+
+    experience = result.candidate.work_experience
+
+    assert [(item.company, item.position, item.start_date, item.end_date) for item in experience] == [
+        (None, "Frontend Developer", "04/2025", "06/2025"),
+        (None, "Frontend Developer", "07/2025", "09/2025"),
+    ]
+    assert [item.projects[0].name for item in experience] == [
+        "Harbor Booking Platform", "Atlas Labeling System",
+    ]
+    assert result.candidate.total_years_of_experience == 0.5
+    assert result.candidate.education[0].school == "University of Transport and Communication"
+    assert "EMPLOYER_NOT_STATED" in result.warnings
+    assert result.requires_manual_review is True
+
+
+def test_parser_prefers_name_value_beside_a_name_label() -> None:
+    blocks = [
+        DocumentBlock(text="PERSONAL DETAILS", page=1, bbox=(40, 40, 250, 62), font_size=18, is_bold=True),
+        DocumentBlock(text="Name:", page=1, bbox=(40, 80, 100, 95), font_size=11),
+        DocumentBlock(text="Alex Morgan", page=1, bbox=(145, 80, 260, 95), font_size=11, is_bold=True),
+    ]
+
+    result = StructuredCvParser().parse_with_diagnostics(
+        "PERSONAL DETAILS\nName:\nAlex Morgan\n",
+        blocks=blocks,
+    )
+
+    assert result.candidate.full_name == "Alex Morgan"
+
+
+def test_parser_keeps_project_headers_and_attaches_bullet_descriptions() -> None:
+    result = StructuredCvParser().parse_with_diagnostics(
+        """ANON CANDIDATE
+PERSONAL PROJECTS
+Northwind Marketplace - E-commerce platform
+Built responsive React interfaces.
+Link product: https://example.test/northwind
+Harbor Analytics - Reporting platform
+Implemented a dashboard using TypeScript.
+Other Projects (Atlas, Beacon)
+React.js and Next.js
+"""
+    )
+
+    assert [(item.name, item.description) for item in result.candidate.side_projects] == [
+        (
+            "Northwind Marketplace",
+            "E-commerce platform Built responsive React interfaces. Link product: https://example.test/northwind",
+        ),
+        ("Harbor Analytics", "Reporting platform Implemented a dashboard using TypeScript."),
+    ]
+
+
+def test_parser_stops_summary_at_an_unrouted_achievements_heading() -> None:
+    result = StructuredCvParser().parse_with_diagnostics(
+        """ANON CANDIDATE
+SUMMARY
+Backend engineer who builds dependable services.
+KEY ACHIEVEMENTS
+Delivered six production integrations and reduced latency.
+SKILLS
+Python
+"""
+    )
+
+    assert result.candidate.summary == "Backend engineer who builds dependable services."
+    assert "Delivered six" not in result.candidate.summary
+
+
+def test_parser_normalizes_bullets_and_skill_spelling_without_collapsing_redux_tools() -> None:
+    result = StructuredCvParser().parse_with_diagnostics(
+        """ANON CANDIDATE
+SKILLS
+ React.js, react, Redux Toolkit, Redux Saga
+"""
+    )
+
+    skills = {item.name for item in result.candidate.skills}
+    assert "" not in skills
+    assert skills == {"react", "redux toolkit", "redux saga"}
+
+
+def test_parser_attaches_a_standalone_date_to_the_immediately_following_project() -> None:
+    result = StructuredCvParser().parse_with_diagnostics(
+        """ANON CANDIDATE
+PERSONAL PROJECTS
+03/2026 – Now
+Project: Booking System Backend
+Built idempotent booking workflows using NestJS.
+"""
+    )
+
+    project = result.candidate.side_projects[0]
+    assert (project.name, project.start_date, project.end_date) == (
+        "Booking System Backend", "03/2026", "Now"
+    )

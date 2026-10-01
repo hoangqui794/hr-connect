@@ -13,6 +13,8 @@ _SKILL_ALIASES = {
     "csharp": "c#",
     "postgres": "postgresql",
     "postgre sql": "postgresql",
+    "react js": "react",
+    "reactjs": "react",
 }
 
 # Long JD sentences are sometimes classified as SKILL requirements. Keep the
@@ -69,14 +71,28 @@ def normalize_request(request: MatchingRequest) -> MatchingRequest:
                 else None
             ),
             "skills": list(seen.values()),
-            "cv_text": normalize_text(request.candidate.cv_text),
+            "cv_text": request.candidate.cv_text,
         }
     )
     requirements = [
-        JobRequirement(
-            type=item.type,
-            category=item.category,
-            content=(normalize_skill_name(item.content) if item.category.value == "SKILL" else normalize_text(item.content)),
+        item.model_copy(
+            update={
+                "content": (
+                    normalize_skill_name(item.content)
+                    if item.category.value == "SKILL"
+                    else normalize_text(item.content)
+                ),
+                "alternatives": [
+                    normalize_skill_name(value)
+                    if item.category.value == "SKILL"
+                    else normalize_text(value)
+                    for value in item.alternatives
+                ],
+                "evidence_groups": [
+                    [normalize_text(value, lowercase=True) for value in group]
+                    for group in item.evidence_groups
+                ],
+            }
         )
         for item in request.job.requirements
     ]

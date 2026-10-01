@@ -19,7 +19,12 @@ from app.services.ocr_service import OcrEngine, OcrLine
 _DATE_RAIL_VALUE = re.compile(
     r"(?:0?[1-9]|1[0-2])[/.-](?:19|20)\d{2}\s*(?:-|–|—|to|đến)\s*"
     r"(?:(?:0?[1-9]|1[0-2])[/.-](?:19|20)\d{2}|present|current|now|nay|hiện tại|hiện nay)"
-    r"|(?:19|20)\d{2}\s*(?:-|–|—|to|đến)\s*(?:(?:19|20)\d{2}|present|current|now|nay|hiện tại|hiện nay)",
+    r"|(?:19|20)\d{2}\s*(?:-|–|—|to|đến)\s*(?:(?:19|20)\d{2}|present|current|now|nay|hiện tại|hiện nay)"
+    r"|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|"
+    r"aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(?:19|20)\d{2}"
+    r"\s*(?:-|–|—|to|đến)\s*(?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|"
+    r"jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|"
+    r"dec(?:ember)?)\.?\s+(?:19|20)\d{2}|present|current|now|nay|hiện tại|hiện nay)",
     re.IGNORECASE,
 )
 
@@ -174,8 +179,14 @@ class DocumentParser:
                 method = "PDF_OCR"
             else:
                 method = "PDF_TEXT_WITH_OCR"
-            layout = "MULTI_COLUMN" if "MULTI_COLUMN" in layouts else (
-                "SINGLE_COLUMN" if all_blocks else "UNSTRUCTURED"
+            layout = (
+                "MULTI_COLUMN"
+                if "MULTI_COLUMN" in layouts
+                else "TIMELINE"
+                if "TIMELINE" in layouts
+                else "SINGLE_COLUMN"
+                if all_blocks
+                else "UNSTRUCTURED"
             )
             warnings = ["MULTI_COLUMN_LAYOUT_DETECTED"] if layout == "MULTI_COLUMN" else []
             return ExtractedDocument(
@@ -239,6 +250,32 @@ class DocumentParser:
         largest_gap, divider = max(gaps, default=(0, page_width / 2))
         left = [block for block in blocks if (block.bbox[0] + block.bbox[2]) / 2 < divider]
         right = [block for block in blocks if (block.bbox[0] + block.bbox[2]) / 2 >= divider]
+        left_characters = sum(len(block.text.strip()) for block in left)
+        right_characters = sum(len(block.text.strip()) for block in right)
+        total_characters = left_characters + right_characters
+        # A right-aligned date rail can contain only one date on a page (for
+        # example, a single current role), so requiring two date blocks here
+        # would fall through to the generic two-column sorter. Detect the
+        # rail before that sorter when date text is sparse and positioned at
+        # the far right edge of the page.
+        right_date_blocks = [
+            block
+            for block in blocks
+            if block.bbox[0] >= page_width * 0.65 and _DATE_RAIL_VALUE.search(block.text)
+        ]
+        right_date_chars = sum(len(block.text.strip()) for block in right_date_blocks)
+        if right_date_blocks and right_date_chars / max(total_characters, 1) < 0.08:
+            return [
+                DocumentBlock(
+                    text=item.text,
+                    page=item.page,
+                    bbox=item.bbox,
+                    font_size=item.font_size,
+                    is_bold=item.is_bold,
+                    column=2 if item in right_date_blocks else 1,
+                )
+                for item in natural
+            ], "TIMELINE"
         vertical_overlap = bool(left and right) and (
             min(max(item.bbox[3] for item in left), max(item.bbox[3] for item in right))
             > max(min(item.bbox[1] for item in left), min(item.bbox[1] for item in right))
@@ -248,6 +285,10 @@ class DocumentParser:
             and len(left) >= 2
             and len(right) >= 2
             and vertical_overlap
+            # A few short headings in a left gutter are indentation, not a
+            # reading column. A real two-column CV has meaningful content on
+            # both sides, even when one side is a compact sidebar.
+            and min(left_characters, right_characters) / max(total_characters, 1) >= 0.12
         ):
             return natural, "SINGLE_COLUMN"
 
@@ -265,8 +306,11 @@ class DocumentParser:
                     column=1 if (item.bbox[0] + item.bbox[2]) / 2 < divider else 2,
                 )
                 for item in natural
-            ], "MULTI_COLUMN"
+                ], "TIMELINE"
 
+        # Many single-column CVs place dates on a right-aligned rail while
+        # descriptions span the page. Detect that rail before column grouping
+        # turns long lines into a false second column.
         ordered: list[DocumentBlock] = []
         for column, group in enumerate((left, right), start=1):
             ordered.extend(

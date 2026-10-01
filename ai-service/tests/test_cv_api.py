@@ -67,6 +67,7 @@ def test_parse_cv_returns_raw_and_structured_data(client: ApiTestClient) -> None
     assert body["candidate"]["fullName"] == "NGUYEN VAN AN"
     assert 0 <= body["parseConfidence"] <= 1
     assert isinstance(body["requiresManualReview"], bool)
+    assert {item["category"] for item in body["diagnostics"]} >= {"TEXT_LAYER", "LAYOUT"}
     assert {skill["name"] for skill in body["candidate"]["skills"]} >= {
         "asp.net core", "postgresql", "docker"
     }
@@ -88,6 +89,29 @@ def test_match_file_parses_then_scores_without_recruitment_decision(client: ApiT
     serialized = json.dumps(body).casefold()
     assert "decision" not in serialized
     assert "matchtier" not in serialized
+
+
+def test_match_file_accepts_any_of_skill_requirement_metadata(client: ApiTestClient) -> None:
+    app.dependency_overrides[get_document_parser] = lambda: StubDocumentParser()
+    metadata = _metadata()
+    metadata["job"]["requirements"] = [{
+        "type": "MUST_HAVE",
+        "category": "SKILL",
+        "content": "Angular, React, or Vue",
+        "operator": "ANY_OF",
+        "alternatives": ["Angular", "React", "Vue"],
+    }]
+
+    response = client.post(
+        "/api/v1/match-file",
+        files=_upload(),
+        data={"metadata": json.dumps(metadata)},
+    )
+
+    assert response.status_code == 200
+    requirement = response.json()["matchingResult"]["mustHaveResult"][0]
+    assert requirement["matched"] is False
+    assert requirement["matchedTerms"] == []
 
 
 def test_match_file_rejects_invalid_metadata(client: ApiTestClient) -> None:

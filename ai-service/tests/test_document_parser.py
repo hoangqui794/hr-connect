@@ -59,6 +59,26 @@ def _two_column_pdf_bytes() -> bytes:
     return data
 
 
+def _indented_single_column_pdf_bytes() -> bytes:
+    """A heading gutter is not a second reading column."""
+    document = pymupdf.open()
+    page = document.new_page(width=612, height=800)
+    page.insert_text((150, 70), "SAMPLE CANDIDATE", fontsize=20)
+    page.insert_text((216, 130), "PROFESSIONAL SUMMARY", fontsize=15)
+    page.insert_text((216, 160), "Engineer building interactive systems", fontsize=11)
+    page.insert_text((216, 175), "for operational teams and customer platforms", fontsize=11)
+    page.insert_text((216, 190), "with reliable visual workflows and tools", fontsize=11)
+    page.insert_text((72, 230), "EDUCATION", fontsize=15)
+    page.insert_text((90, 260), "Bachelor of Engineering Northshore University Vietnam with robotics and software systems coursework", fontsize=11)
+    page.insert_text((90, 275), "Honors program with software design coursework and interactive production engineering practices", fontsize=11)
+    page.insert_text((72, 320), "TECHNICAL SKILLS", fontsize=15)
+    page.insert_text((90, 350), "Unity Editor, C#, Cesium, and an extended workflow for interactive geospatial systems", fontsize=11)
+    page.insert_text((90, 365), "Visual Studio, GitHub, AR Foundation, and maintained development tooling for teams", fontsize=11)
+    data = document.tobytes()
+    document.close()
+    return data
+
+
 def _experience_date_rail_pdf_bytes() -> bytes:
     """A timeline layout: employer and role on the left, dates on a narrow rail."""
     document = pymupdf.open()
@@ -142,13 +162,27 @@ def test_ocr_positioned_lines_are_reconstructed_into_blocks() -> None:
     assert result.text.splitlines().index("RESUME") < result.text.splitlines().index("ACADEMIC")
 
 
+def test_pdf_does_not_treat_an_indented_single_column_cv_as_two_columns() -> None:
+    parser = DocumentParser(_settings(pdf_text_min_chars_per_page=5), FakeOcrEngine())
+
+    result = parser.parse("indented.pdf", "application/pdf", _indented_single_column_pdf_bytes())
+
+    assert result.layout == "SINGLE_COLUMN"
+    assert "MULTI_COLUMN_LAYOUT_DETECTED" not in result.warnings
+    lines = result.text.splitlines()
+    assert lines.index("EDUCATION") < next(
+        index for index, line in enumerate(lines) if line.startswith("Bachelor of Engineering Northshore University Vietnam")
+    )
+
+
 def test_pdf_keeps_date_rail_entries_in_their_visual_rows() -> None:
     parser = DocumentParser(_settings(pdf_text_min_chars_per_page=5), FakeOcrEngine())
 
     result = parser.parse("experience-date-rail.pdf", "application/pdf", _experience_date_rail_pdf_bytes())
 
     lines = result.text.splitlines()
-    assert result.layout == "MULTI_COLUMN"
+    assert result.layout == "TIMELINE"
+    assert "MULTI_COLUMN_LAYOUT_DETECTED" not in result.warnings
     assert lines.index("Trade Intelligence Global Co Ltd") < lines.index("02/2022 - 08/2023")
     assert lines.index("02/2022 - 08/2023") < lines.index("Sales Executive")
     assert lines.index("CityCare Hospital") < lines.index("09/2023 - Present")

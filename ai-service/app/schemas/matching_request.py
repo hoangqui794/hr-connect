@@ -15,6 +15,14 @@ class RequirementCategory(str, Enum):
     OTHER = "OTHER"
 
 
+class RequirementOperator(str, Enum):
+    """How multiple evidence terms inside one requirement are evaluated."""
+
+    ANY_OF = "ANY_OF"
+    ALL_OF = "ALL_OF"
+    AT_LEAST = "AT_LEAST"
+
+
 class StrictTextModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
 
@@ -43,6 +51,24 @@ class JobRequirement(StrictTextModel):
     type: RequirementType
     category: RequirementCategory
     content: str = Field(min_length=1, max_length=2000)
+    operator: RequirementOperator = RequirementOperator.ALL_OF
+    alternatives: list[str] = Field(default_factory=list, max_length=20)
+    min_years: float | None = Field(default=None, alias="minYears", ge=0, le=80)
+    evidence_groups: list[list[str]] = Field(default_factory=list, alias="evidenceGroups", max_length=10)
+
+    @field_validator("alternatives")
+    @classmethod
+    def reject_blank_alternatives(cls, values: list[str]) -> list[str]:
+        if any(not value.strip() for value in values):
+            raise ValueError("Requirement alternatives must not be empty")
+        return values
+
+    @field_validator("evidence_groups")
+    @classmethod
+    def reject_empty_evidence_groups(cls, groups: list[list[str]]) -> list[list[str]]:
+        if any(not group or any(not value.strip() for value in group) for group in groups):
+            raise ValueError("Evidence groups must contain non-empty terms")
+        return groups
 
 
 class Job(StrictTextModel):
