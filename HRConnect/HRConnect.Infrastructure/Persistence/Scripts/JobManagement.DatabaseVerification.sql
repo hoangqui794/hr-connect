@@ -12,6 +12,7 @@ WHERE r.code = 'INTERNAL_HR';
 SELECT
     j.job_id,
     j.title,
+    j.benefits,
     j.status,
     j.status_reason,
     j.visibility,

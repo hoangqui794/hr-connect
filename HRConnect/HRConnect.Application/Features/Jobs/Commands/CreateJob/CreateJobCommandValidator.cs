@@ -28,6 +28,12 @@ public class CreateJobCommandValidator : AbstractValidator<CreateJobCommand>
                 .MaximumLength(50).WithMessage("Loại hình làm việc không được vượt quá 50 ký tự.");
         });
 
+        When(x => !string.IsNullOrWhiteSpace(x.Benefits), () =>
+        {
+            RuleFor(x => x.Benefits)
+                .MaximumLength(10000).WithMessage("Quyền lợi công việc không được vượt quá 10000 ký tự.");
+        });
+
         RuleFor(x => x.CurrencyCode)
             .NotEmpty().WithMessage("Mã tiền tệ không được để trống.")
             .Matches("^[A-Za-z]{3}$").WithMessage("Mã tiền tệ phải gồm đúng 3 chữ cái theo chuẩn ISO 4217.");

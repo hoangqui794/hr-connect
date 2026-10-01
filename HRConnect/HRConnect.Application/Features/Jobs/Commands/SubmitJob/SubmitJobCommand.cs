@@ -18,6 +18,7 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
         JobHandlerGuards.RequireStatus(job, JobStatuses.Draft, JobStatuses.Rejected);
         if (string.IsNullOrWhiteSpace(job.Title)) throw new BadRequestException("Tiêu đề công việc là bắt buộc trước khi gửi duyệt.");
         if (string.IsNullOrWhiteSpace(job.Description)) throw new BadRequestException("Mô tả công việc là bắt buộc trước khi gửi duyệt.");
+        if (string.IsNullOrWhiteSpace(job.Benefits)) throw new BadRequestException("Quyền lợi công việc là bắt buộc trước khi gửi duyệt.");
         if (string.IsNullOrWhiteSpace(job.Location)) throw new BadRequestException("Địa điểm làm việc là bắt buộc trước khi gửi duyệt.");
         if (string.IsNullOrWhiteSpace(job.EmploymentType)) throw new BadRequestException("Loại hình làm việc là bắt buộc trước khi gửi duyệt.");
         if (job.Quantity < 1) throw new BadRequestException("Số lượng tuyển dụng phải lớn hơn hoặc bằng 1.");
