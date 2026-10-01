@@ -7,12 +7,17 @@ from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import get_settings
-from app.core.dependencies import get_document_parser, get_semantic_matcher
+from app.core.dependencies import (
+    get_document_parser,
+    get_semantic_matcher,
+    require_test_endpoint_access,
+)
 from app.schemas.cv import (
     CvParseResponse,
     DocumentMetadata,
     FileMatchingMetadata,
     FileMatchingResponse,
+    ParseDiagnostic,
 )
 from app.schemas.matching_request import Candidate, CandidateSkill, MatchingRequest, RequirementCategory
 from app.services.document_parser import CvProcessingError, DocumentParser
@@ -22,6 +27,27 @@ from app.services.structured_cv_parser import StructuredCvParser
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["cv"])
+
+
+def _parse_diagnostics(extracted, warnings: list[str]) -> list[ParseDiagnostic]:
+    """Expose parser safeguards without returning CV text or geometry."""
+    diagnostics: list[ParseDiagnostic] = []
+    if extracted.ocr_applied:
+        diagnostics.append(ParseDiagnostic(code="OCR_APPLIED", category="OCR"))
+    else:
+        diagnostics.append(ParseDiagnostic(code="TEXT_LAYER_USED", category="TEXT_LAYER"))
+    diagnostics.append(ParseDiagnostic(code=f"LAYOUT_{extracted.layout}", category="LAYOUT"))
+    for warning in warnings:
+        if "EVIDENCE" in warning or warning.endswith("NOT_DETECTED"):
+            category, field = "MISSING_EVIDENCE", warning.split("_", maxsplit=1)[0].lower()
+        elif warning.startswith("OCR"):
+            category, field = "OCR", None
+        elif warning.startswith(("LAYOUT", "MULTI_COLUMN", "SECTION_ROUTING")):
+            category, field = "LAYOUT", None
+        else:
+            category, field = "PARSER", None
+        diagnostics.append(ParseDiagnostic(code=warning, category=category, field=field))
+    return diagnostics
 
 
 async def _read_upload(file: UploadFile) -> bytes:
@@ -46,8 +72,13 @@ async def _parse_upload(
             data,
         )
         parsed = StructuredCvParser().parse_with_diagnostics(
-            extracted.text, job_skills, extracted.blocks
+            extracted.text,
+            job_skills,
+            extracted.blocks,
+            layout=extracted.layout,
+            ocr_applied=extracted.ocr_applied,
         )
+        warnings = list(dict.fromkeys([*extracted.warnings, *parsed.warnings]))
         return CvParseResponse(
             document=DocumentMetadata(
                 fileName=file.filename or "cv",
@@ -62,7 +93,8 @@ async def _parse_upload(
             candidate=parsed.candidate,
             parseConfidence=parsed.confidence,
             requiresManualReview=parsed.requires_manual_review,
-            warnings=list(dict.fromkeys([*extracted.warnings, *parsed.warnings])),
+            warnings=warnings,
+            diagnostics=_parse_diagnostics(extracted, warnings),
         )
     finally:
         await file.close()
@@ -78,7 +110,12 @@ def _raise_cv_error(exc: Exception) -> None:
     ) from exc
 
 
-@router.post("/cv/parse", response_model=CvParseResponse, response_model_by_alias=True)
+@router.post(
+    "/cv/parse",
+    response_model=CvParseResponse,
+    response_model_by_alias=True,
+    dependencies=[Depends(require_test_endpoint_access)],
+)
 async def parse_cv(
     file: Annotated[UploadFile, File(...)],
     parser: DocumentParser = Depends(get_document_parser),
@@ -92,7 +129,12 @@ async def parse_cv(
         raise AssertionError("unreachable")
 
 
-@router.post("/match-file", response_model=FileMatchingResponse, response_model_by_alias=True)
+@router.post(
+    "/match-file",
+    response_model=FileMatchingResponse,
+    response_model_by_alias=True,
+    dependencies=[Depends(require_test_endpoint_access)],
+)
 async def match_cv_file(
     file: Annotated[UploadFile, File(...)],
     metadata: Annotated[str, Form(...)],
@@ -107,9 +149,10 @@ async def match_cv_file(
 
     try:
         job_skills = [
-            requirement.content
+            skill
             for requirement in parsed_metadata.job.requirements
             if requirement.category == RequirementCategory.SKILL
+            for skill in (requirement.content, *requirement.alternatives)
         ]
         parse_result = await _parse_upload(file, parser, job_skills)
         structured = parse_result.candidate

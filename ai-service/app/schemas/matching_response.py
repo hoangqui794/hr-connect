@@ -11,9 +11,19 @@ class RequirementMatch(BaseModel):
     requirement: str
     type: RequirementType
     matched: bool
+    match_status: Literal["MATCHED", "PARTIAL", "NOT_FOUND"] = Field(
+        default="NOT_FOUND", alias="matchStatus"
+    )
+    evidence_coverage: float = Field(default=0.0, alias="evidenceCoverage", ge=0, le=1)
     similarity: float = Field(ge=0, le=1)
     evidence: str | None = None
-    match_method: Literal["DETERMINISTIC", "NOT_FOUND"] = Field(alias="matchMethod")
+    matched_terms: list[str] = Field(default_factory=list, alias="matchedTerms")
+    missing_evidence: list[str] = Field(default_factory=list, alias="missingEvidence")
+    criteria: list[dict] = Field(default_factory=list)
+    requires_manual_review: bool = Field(default=False, alias="requiresManualReview")
+    warnings: list[str] = Field(default_factory=list)
+    suggested_evidence: list[dict] = Field(default_factory=list, alias="suggestedEvidence")
+    match_method: Literal["DETERMINISTIC", "DETERMINISTIC_PARTIAL", "NOT_FOUND"] = Field(alias="matchMethod")
 
 
 class MatchingResponse(BaseModel):

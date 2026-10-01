@@ -5,6 +5,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from app.core.model_loader import get_embedding_model
 from app.schemas.matching_request import MatchingRequest
+from app.services.requirement_evidence import evidence_spans
 
 
 class EmbeddingModel(Protocol):
@@ -12,6 +13,23 @@ class EmbeddingModel(Protocol):
 
 
 class SemanticMatcher:
+    def retrieve_evidence(self, queries: list[str], cv_text: str) -> list[list[dict]]:
+        """Bounded, batched retrieval for human review; never changes a verdict."""
+        spans = evidence_spans(cv_text)
+        if not queries or not spans:
+            return [[] for _ in queries]
+        # Keep the most relevant lexical spans plus uniformly sampled coverage
+        # when a document exceeds the bounded inference budget.
+        if len(spans) > 256:
+            indices = np.linspace(0, len(spans) - 1, 256, dtype=int)
+            spans = [spans[index] for index in indices]
+        vectors = np.asarray(self.model.encode(queries + [s["text"] for s in spans], normalize_embeddings=True), dtype=float)
+        if vectors.ndim != 2 or vectors.shape[0] != len(queries) + len(spans) or not np.isfinite(vectors).all():
+            raise ValueError("Invalid evidence embedding batch")
+        scores = cosine_similarity(vectors[:len(queries)], vectors[len(queries):])
+        return [[{**spans[int(i)], "similarity": round(float(row[i]), 4), "verified": False}
+                 for i in np.argsort(-row, kind="stable")[:3]] for row in scores]
+
     def __init__(self, model: EmbeddingModel | None = None) -> None:
         self._model = model
 

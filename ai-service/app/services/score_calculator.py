@@ -5,7 +5,7 @@ from app.schemas.matching_response import RequirementMatch
 def _ratio(results: list[RequirementMatch]) -> float:
     if not results:
         return 1.0
-    return sum(item.matched for item in results) / len(results)
+    return sum(item.evidence_coverage for item in results) / len(results)
 
 
 class ScoreCalculator:
