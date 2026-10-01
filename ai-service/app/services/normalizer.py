@@ -13,6 +13,23 @@ _SKILL_ALIASES = {
     "csharp": "c#",
     "postgres": "postgresql",
     "postgre sql": "postgresql",
+    "react js": "react",
+    "reactjs": "react",
+}
+
+# Long JD sentences are sometimes classified as SKILL requirements. Keep the
+# canonical vocabulary in one place so matching can extract a skill from that
+# sentence without treating the whole sentence as a new skill.
+_SKILL_PHRASES = {
+    "asp.net core": ("asp.net core", "asp net core", "aspnet core"),
+    "c#": ("c#", "c sharp", "csharp"),
+    "postgresql": ("postgresql", "postgres", "postgre sql"),
+    "docker": ("docker",),
+    "react": ("react", "react.js", "reactjs"),
+    "angular": ("angular",),
+    "vue": ("vue",),
+    "rest api": ("rest api", "restful api", "restful apis"),
+    "git": ("git",),
 }
 
 
@@ -26,6 +43,15 @@ def normalize_skill_name(value: str) -> str:
     normalized = normalize_text(value, lowercase=True)
     lookup_key = re.sub(r"[^\w#+]+", " ", normalized, flags=re.UNICODE).strip()
     return _SKILL_ALIASES.get(lookup_key, normalized)
+
+
+def extract_skill_alias(value: str) -> str | None:
+    """Return one canonical skill embedded in a longer requirement sentence."""
+    text = normalize_text(value, lowercase=True)
+    for canonical, phrases in sorted(_SKILL_PHRASES.items(), key=lambda item: -max(map(len, item[1]))):
+        if any(re.search(rf"(?<!\w){re.escape(phrase)}(?!\w)", text) for phrase in phrases):
+            return canonical
+    return None
 
 
 def normalize_request(request: MatchingRequest) -> MatchingRequest:
@@ -45,14 +71,28 @@ def normalize_request(request: MatchingRequest) -> MatchingRequest:
                 else None
             ),
             "skills": list(seen.values()),
-            "cv_text": normalize_text(request.candidate.cv_text),
+            "cv_text": request.candidate.cv_text,
         }
     )
     requirements = [
-        JobRequirement(
-            type=item.type,
-            category=item.category,
-            content=(normalize_skill_name(item.content) if item.category.value == "SKILL" else normalize_text(item.content)),
+        item.model_copy(
+            update={
+                "content": (
+                    normalize_skill_name(item.content)
+                    if item.category.value == "SKILL"
+                    else normalize_text(item.content)
+                ),
+                "alternatives": [
+                    normalize_skill_name(value)
+                    if item.category.value == "SKILL"
+                    else normalize_text(value)
+                    for value in item.alternatives
+                ],
+                "evidence_groups": [
+                    [normalize_text(value, lowercase=True) for value in group]
+                    for group in item.evidence_groups
+                ],
+            }
         )
         for item in request.job.requirements
     ]

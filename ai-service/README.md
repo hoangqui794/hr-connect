@@ -64,7 +64,7 @@ The internal endpoints are:
 - `POST /api/v1/internal/ai-results`
 - `GET /api/v1/internal/ai-results/{applicationId}`
 
-All require `X-Service-Token`. The unversioned `/api/internal` Job/JD and AI-result routes remain temporary compatibility aliases. A timed-out `PROCESSING` job is returned to the dispatch path so a stopped AI process does not permanently lose the scoring request. The presigned storage download is made without this header so the service token is never sent to Cloudflare R2.
+All require `X-Service-Token`. A timed-out `PROCESSING` job is returned to the dispatch path so a stopped AI process does not permanently lose the scoring request. The presigned storage download is made without this header so the service token is never sent to Cloudflare R2.
 
 The first real matching request may download and load `BAAI/bge-m3`. The first OCR request may download EasyOCR's Vietnamese/English models. Both model families are lazily loaded and cached. Model files and Hugging Face caches are excluded from Git.
 

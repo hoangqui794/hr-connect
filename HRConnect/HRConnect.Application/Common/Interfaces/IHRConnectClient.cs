@@ -9,7 +9,7 @@ namespace HRConnect.Application.Common.Interfaces;
 public interface IHRConnectClient
 {
     /// <summary>
-    /// Calls HRConnect internal API (GET /api/internal/cvs/{cvId}/download-url) using service-to-service authentication
+    /// Calls HRConnect internal API (GET /api/v1/internal/cvs/{cvId}/download-url) using service-to-service authentication
     /// to obtain a temporary presigned download URL and metadata for the Candidate CV.
     /// </summary>
     Task<CvDownloadUrlResult> GetCvDownloadUrlAsync(

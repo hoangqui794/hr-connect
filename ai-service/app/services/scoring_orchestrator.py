@@ -55,6 +55,8 @@ class ScoringOrchestrator:
             extracted.text,
             job_skills,
             extracted.blocks,
+            layout=extracted.layout,
+            ocr_applied=extracted.ocr_applied,
         )
         parse_result = CvParseResponse(
             document=DocumentMetadata(

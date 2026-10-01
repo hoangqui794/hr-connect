@@ -7,6 +7,7 @@ from PIL import Image
 
 from app.core.config import Settings
 from app.services.document_parser import CvProcessingError, DocumentParser
+from app.services.ocr_service import OcrLine
 
 
 class FakeOcrEngine:
@@ -17,6 +18,16 @@ class FakeOcrEngine:
     def read_text(self, image: Image.Image) -> str:
         self.calls += 1
         return self.text
+
+
+class PositionedFakeOcrEngine(FakeOcrEngine):
+    def read_lines(self, image: Image.Image) -> list[OcrLine]:
+        return [
+            OcrLine("RESUME", (20, 20, 120, 40)),
+            OcrLine("TRUONG VAN AN", (20, 80, 180, 105)),
+            OcrLine("ACADEMIC", (340, 80, 460, 105)),
+            OcrLine("Example University", (340, 120, 500, 145)),
+        ]
 
 
 def _settings(**overrides) -> Settings:
@@ -43,6 +54,42 @@ def _two_column_pdf_bytes() -> bytes:
     page.insert_text((340, 95), "Backend engineer building APIs")
     page.insert_text((340, 145), "TECHNICAL SKILLS", fontsize=16)
     page.insert_text((340, 180), "C#, ASP.NET Core, PostgreSQL")
+    data = document.tobytes()
+    document.close()
+    return data
+
+
+def _indented_single_column_pdf_bytes() -> bytes:
+    """A heading gutter is not a second reading column."""
+    document = pymupdf.open()
+    page = document.new_page(width=612, height=800)
+    page.insert_text((150, 70), "SAMPLE CANDIDATE", fontsize=20)
+    page.insert_text((216, 130), "PROFESSIONAL SUMMARY", fontsize=15)
+    page.insert_text((216, 160), "Engineer building interactive systems", fontsize=11)
+    page.insert_text((216, 175), "for operational teams and customer platforms", fontsize=11)
+    page.insert_text((216, 190), "with reliable visual workflows and tools", fontsize=11)
+    page.insert_text((72, 230), "EDUCATION", fontsize=15)
+    page.insert_text((90, 260), "Bachelor of Engineering Northshore University Vietnam with robotics and software systems coursework", fontsize=11)
+    page.insert_text((90, 275), "Honors program with software design coursework and interactive production engineering practices", fontsize=11)
+    page.insert_text((72, 320), "TECHNICAL SKILLS", fontsize=15)
+    page.insert_text((90, 350), "Unity Editor, C#, Cesium, and an extended workflow for interactive geospatial systems", fontsize=11)
+    page.insert_text((90, 365), "Visual Studio, GitHub, AR Foundation, and maintained development tooling for teams", fontsize=11)
+    data = document.tobytes()
+    document.close()
+    return data
+
+
+def _experience_date_rail_pdf_bytes() -> bytes:
+    """A timeline layout: employer and role on the left, dates on a narrow rail."""
+    document = pymupdf.open()
+    page = document.new_page(width=600, height=800)
+    page.insert_text((40, 80), "WORK EXPERIENCE", fontsize=15)
+    page.insert_text((40, 125), "Trade Intelligence Global Co Ltd", fontsize=11)
+    page.insert_text((40, 148), "Sales Executive", fontsize=11)
+    page.insert_text((430, 125), "02/2022 - 08/2023", fontsize=11)
+    page.insert_text((40, 205), "CityCare Hospital", fontsize=11)
+    page.insert_text((40, 228), "HR Officer", fontsize=11)
+    page.insert_text((430, 205), "09/2023 - Present", fontsize=11)
     data = document.tobytes()
     document.close()
     return data
@@ -103,6 +150,42 @@ def test_blank_pdf_falls_back_to_ocr() -> None:
     assert result.ocr_applied is True
     assert ocr.calls == 1
     assert "Kỹ năng" in result.text
+
+
+def test_ocr_positioned_lines_are_reconstructed_into_blocks() -> None:
+    parser = DocumentParser(_settings(), PositionedFakeOcrEngine())
+    result = parser.parse("scan.pdf", "application/pdf", _pdf_bytes())
+
+    assert result.extraction_method == "PDF_OCR"
+    assert result.layout == "MULTI_COLUMN"
+    assert result.blocks
+    assert result.text.splitlines().index("RESUME") < result.text.splitlines().index("ACADEMIC")
+
+
+def test_pdf_does_not_treat_an_indented_single_column_cv_as_two_columns() -> None:
+    parser = DocumentParser(_settings(pdf_text_min_chars_per_page=5), FakeOcrEngine())
+
+    result = parser.parse("indented.pdf", "application/pdf", _indented_single_column_pdf_bytes())
+
+    assert result.layout == "SINGLE_COLUMN"
+    assert "MULTI_COLUMN_LAYOUT_DETECTED" not in result.warnings
+    lines = result.text.splitlines()
+    assert lines.index("EDUCATION") < next(
+        index for index, line in enumerate(lines) if line.startswith("Bachelor of Engineering Northshore University Vietnam")
+    )
+
+
+def test_pdf_keeps_date_rail_entries_in_their_visual_rows() -> None:
+    parser = DocumentParser(_settings(pdf_text_min_chars_per_page=5), FakeOcrEngine())
+
+    result = parser.parse("experience-date-rail.pdf", "application/pdf", _experience_date_rail_pdf_bytes())
+
+    lines = result.text.splitlines()
+    assert result.layout == "TIMELINE"
+    assert "MULTI_COLUMN_LAYOUT_DETECTED" not in result.warnings
+    assert lines.index("Trade Intelligence Global Co Ltd") < lines.index("02/2022 - 08/2023")
+    assert lines.index("02/2022 - 08/2023") < lines.index("Sales Executive")
+    assert lines.index("CityCare Hospital") < lines.index("09/2023 - Present")
 
 
 def test_docx_extracts_paragraphs_and_tables() -> None:

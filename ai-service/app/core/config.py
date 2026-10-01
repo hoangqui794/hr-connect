@@ -29,7 +29,13 @@ class Settings(BaseSettings):
     ocr_max_concurrency: int = Field(default=1, ge=1, le=8)
     hrconnect_base_url: str = "https://localhost:7289"
     hrconnect_service_token: str = ""
-    hrconnect_verify_ssl: bool = False
+    # Production must verify the HR Connect TLS certificate. Local development
+    # can explicitly opt out in .env when using the ASP.NET dev certificate.
+    hrconnect_verify_ssl: bool = True
+    # Standalone parse/match endpoints expose CV-derived data and consume model
+    # capacity. They are protected by default; only local development may opt in
+    # to unauthenticated access.
+    allow_unauthenticated_test_endpoints: bool = False
     scoring_worker_count: int = Field(default=1, ge=1, le=8)
     scoring_queue_size: int = Field(default=2000, ge=1, le=10000)
     internal_request_timeout_seconds: int = Field(default=30, ge=5, le=300)

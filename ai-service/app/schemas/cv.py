@@ -17,6 +17,17 @@ class EvidenceModel(BaseModel):
 class ParsedSkill(EvidenceModel):
     name: str
     years_of_experience: float | None = Field(default=None, alias="yearsOfExperience")
+    self_reported_score: float | None = Field(default=None, alias="selfReportedScore", ge=0, le=100)
+
+
+class Project(EvidenceModel):
+    """A project record, kept separate from an employer-level experience."""
+
+    name: str
+    start_date: str | None = Field(default=None, alias="startDate")
+    end_date: str | None = Field(default=None, alias="endDate")
+    description: str | None = None
+    technologies: list[str] = Field(default_factory=list)
 
 
 class WorkExperience(EvidenceModel):
@@ -25,6 +36,8 @@ class WorkExperience(EvidenceModel):
     start_date: str | None = Field(default=None, alias="startDate")
     end_date: str | None = Field(default=None, alias="endDate")
     description: str | None = None
+    technologies: list[str] = Field(default_factory=list)
+    projects: list[Project] = Field(default_factory=list)
 
 
 class Education(EvidenceModel):
@@ -61,6 +74,12 @@ class StructuredCandidate(BaseModel):
     certifications: list[Certification] = Field(default_factory=list)
     work_experience: list[WorkExperience] = Field(default_factory=list, alias="workExperience")
     languages: list[LanguageSkill] = Field(default_factory=list)
+    activities: list[str] = Field(default_factory=list)
+    awards: list[str] = Field(default_factory=list)
+    interests: list[str] = Field(default_factory=list)
+    references: list[str] = Field(default_factory=list)
+    side_projects: list[Project] = Field(default_factory=list, alias="sideProjects")
+    projects: list[str] = Field(default_factory=list)
 
 
 ExtractionMethod = Literal[
@@ -81,7 +100,15 @@ class DocumentMetadata(BaseModel):
     page_count: int | None = Field(default=None, alias="pageCount")
     extraction_method: ExtractionMethod = Field(alias="extractionMethod")
     ocr_applied: bool = Field(alias="ocrApplied")
-    layout: Literal["SINGLE_COLUMN", "MULTI_COLUMN", "FLOW", "UNSTRUCTURED"] = "UNSTRUCTURED"
+    layout: Literal["SINGLE_COLUMN", "MULTI_COLUMN", "TIMELINE", "FLOW", "UNSTRUCTURED"] = "UNSTRUCTURED"
+
+
+class ParseDiagnostic(BaseModel):
+    """A non-PII explanation of how safely the parser reached a result."""
+
+    code: str
+    category: Literal["TEXT_LAYER", "OCR", "LAYOUT", "MISSING_EVIDENCE", "PARSER"]
+    field: str | None = None
 
 
 class CvParseResponse(BaseModel):
@@ -94,6 +121,7 @@ class CvParseResponse(BaseModel):
     parse_confidence: float = Field(alias="parseConfidence", ge=0, le=1)
     requires_manual_review: bool = Field(alias="requiresManualReview")
     warnings: list[str] = Field(default_factory=list)
+    diagnostics: list[ParseDiagnostic] = Field(default_factory=list)
 
 
 class FileMatchingMetadata(StrictTextModel):

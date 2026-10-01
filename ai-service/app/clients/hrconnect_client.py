@@ -39,10 +39,21 @@ class HRConnectClient:
 
     async def download_cv(self, download_url: str) -> bytes:
         # Never forward the HR Connect service token to presigned storage URLs.
+        max_bytes = self._settings.max_upload_size_mb * 1024 * 1024
         async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.get(download_url)
-            response.raise_for_status()
-            return response.content
+            async with client.stream("GET", download_url) as response:
+                response.raise_for_status()
+                content_length = response.headers.get("Content-Length")
+                if content_length and int(content_length) > max_bytes:
+                    raise ValueError("CV download exceeds the configured size limit")
+                chunks: list[bytes] = []
+                downloaded = 0
+                async for chunk in response.aiter_bytes():
+                    downloaded += len(chunk)
+                    if downloaded > max_bytes:
+                        raise ValueError("CV download exceeds the configured size limit")
+                    chunks.append(chunk)
+                return b"".join(chunks)
 
     async def post_ai_result(self, payload: dict[str, Any]) -> None:
         async with self._service_client() as client:

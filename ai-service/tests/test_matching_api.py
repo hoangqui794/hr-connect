@@ -1,5 +1,8 @@
 from typing import Any
 
+from app.api import matching
+from app.core.dependencies import require_test_endpoint_access
+from app.main import app
 from tests.support import ApiTestClient
 
 
@@ -95,3 +98,17 @@ def test_invalid_request_is_rejected(client: ApiTestClient) -> None:
     response = client.post("/api/v1/match", json={"requestId": "X"})
 
     assert response.status_code == 422
+
+
+def test_match_requires_service_token_outside_local_mode(monkeypatch) -> None:
+    app.dependency_overrides.clear()
+    monkeypatch.setattr(
+        matching,
+        "get_semantic_matcher",
+        lambda: None,
+    )
+    try:
+        response = ApiTestClient(app).post("/api/v1/match", json={"requestId": "x"})
+        assert response.status_code == 401
+    finally:
+        app.dependency_overrides.clear()
