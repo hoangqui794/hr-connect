@@ -95,6 +95,54 @@ WHERE st.code IN ('HEADHUNT_COD', 'CV_APPLICATION', 'CV_SOURCING')
   AND r.code IN ('CANDIDATE', 'AFFILIATE_RECRUITER')
 ORDER BY st.code, r.code;
 
+-- 7. Kiểm tra dữ liệu Job chỉ còn ba visibility hợp lệ sau migration.
+SELECT visibility, COUNT(*) AS job_count
+FROM public.job
+GROUP BY visibility
+ORDER BY visibility;
+
+-- Kết quả mong đợi: chỉ PUBLIC, PARTNER_ONLY, INTERNAL_ONLY; PRIVATE phải bằng 0.
+SELECT COUNT(*) AS legacy_private_job_count
+FROM public.job
+WHERE visibility = 'PRIVATE';
+
+-- 8. Persistent visibility test data created through the real API on 2026-10-01.
+SELECT job_id, title, status, visibility, company_id, service_type_id, benefits, created_at, posted_at
+FROM public.job
+WHERE job_id IN (
+    'a3e88ec0-deb0-4f4f-a258-28a3c5135c53',
+    'a36f8ff6-fee1-411c-8b1a-feb16575da7b'
+)
+ORDER BY visibility;
+
+SELECT j.job_id, j.visibility, r.requirement_type, r.category, r.content, r.weight
+FROM public.job j
+JOIN public.job_requirement r ON r.job_id = j.job_id
+WHERE j.job_id IN (
+    'a3e88ec0-deb0-4f4f-a258-28a3c5135c53',
+    'a36f8ff6-fee1-411c-8b1a-feb16575da7b'
+)
+ORDER BY j.visibility, r.created_at;
+
+SELECT j.job_id, j.visibility, s.skill_name, js.is_mandatory, js.weight
+FROM public.job j
+JOIN public.job_skill js ON js.job_id = j.job_id
+JOIN public.skill s ON s.skill_id = js.skill_id
+WHERE j.job_id IN (
+    'a3e88ec0-deb0-4f4f-a258-28a3c5135c53',
+    'a36f8ff6-fee1-411c-8b1a-feb16575da7b'
+)
+ORDER BY j.visibility, s.skill_name;
+
+SELECT j.job_id, j.visibility, h.old_status, h.new_status, h.reason, h.changed_at
+FROM public.job j
+JOIN public.job_status_history h ON h.job_id = j.job_id
+WHERE j.job_id IN (
+    'a3e88ec0-deb0-4f4f-a258-28a3c5135c53',
+    'a36f8ff6-fee1-411c-8b1a-feb16575da7b'
+)
+ORDER BY j.visibility, h.changed_at;
+
 -- Cleanup có chủ đích (KHÔNG tự động chạy).
 -- Chỉ bỏ comment sau khi đã kiểm tra đúng job_id cần xóa.
 -- BEGIN;

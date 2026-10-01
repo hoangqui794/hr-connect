@@ -27,7 +27,8 @@ public sealed class GetJobDetailQueryHandler : IRequestHandler<GetJobDetailQuery
             return JobDto.From(job, includeStatusHistories: true);
         }
 
-        var canView = job.Status == JobStatuses.Active && job.Visibility == JobVisibilities.Public &&
+        var canView = job.Status == JobStatuses.Active &&
+                      JobVisibilities.CanExternalRoleAccess(job.Visibility, request.RoleCodes) &&
                       await _jobs.CanAnyRoleViewJobAsync(job.ServiceTypeId, request.RoleCodes, ct);
         if (!canView) throw new ForbiddenException("Bạn không có quyền xem công việc này.");
 

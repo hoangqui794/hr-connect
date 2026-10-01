@@ -6,6 +6,7 @@ namespace HRConnect.Application.Features.Jobs.Queries.GetPublicJobs;
 
 public sealed record GetPublicJobsQuery(
     IReadOnlyCollection<string> RoleCodes,
+    bool HasInternalAccess,
     string? Search,
     string? Location,
     string? EmploymentType,
@@ -31,6 +32,7 @@ public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQue
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
         var (items, totalCount) = await _jobs.GetVisibleJobsAsync(
             request.RoleCodes.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            request.HasInternalAccess,
             request.Search,
             request.Location,
             request.EmploymentType,

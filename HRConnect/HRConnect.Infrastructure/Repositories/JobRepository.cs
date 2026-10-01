@@ -1,4 +1,5 @@
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -85,6 +86,7 @@ public class JobRepository : IJobRepository
 
     public async Task<(IReadOnlyList<Job> Items, int TotalCount)> GetVisibleJobsAsync(
         IReadOnlyCollection<string> roleCodes,
+        bool hasInternalAccess,
         string? search,
         string? location,
         string? employmentType,
@@ -96,9 +98,15 @@ public class JobRepository : IJobRepository
             .Where(mapping => mapping.CanView && mapping.Role.IsActive && roleCodes.Contains(mapping.Role.Code))
             .Select(mapping => mapping.ServiceTypeId);
 
+        var hasPartnerRole = roleCodes.Contains("AFFILIATE_RECRUITER", StringComparer.OrdinalIgnoreCase) ||
+                             roleCodes.Contains("HEADHUNTER", StringComparer.OrdinalIgnoreCase);
+
         var query = _context.Jobs.AsNoTracking()
-            .Where(job => job.Status == "ACTIVE" && job.Visibility == "PUBLIC" &&
-                          allowedServiceTypeIds.Contains(job.ServiceTypeId));
+            .Where(job => job.Status == JobStatuses.Active &&
+                          (hasInternalAccess ||
+                           (allowedServiceTypeIds.Contains(job.ServiceTypeId) &&
+                            (job.Visibility == JobVisibilities.Public ||
+                             (hasPartnerRole && job.Visibility == JobVisibilities.PartnerOnly)))));
 
         if (!string.IsNullOrWhiteSpace(search))
         {
