@@ -40,7 +40,7 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
             throw new BadRequestException("Một hoặc nhiều kỹ năng không tồn tại hoặc đã ngừng hoạt động.");
         var now = DateTime.UtcNow;
         job.ServiceTypeId = request.ServiceTypeId; job.Title = request.Title?.Trim() ?? string.Empty;
-        job.Description = Normalize(request.Description); job.Location = Normalize(request.Location);
+        job.Description = Normalize(request.Description); job.Benefits = Normalize(request.Benefits); job.Location = Normalize(request.Location);
         job.EmploymentType = Normalize(request.EmploymentType)?.ToUpperInvariant();
         job.SalaryMin = request.SalaryMin; job.SalaryMax = request.SalaryMax;
         job.CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(); job.Quantity = request.Quantity;

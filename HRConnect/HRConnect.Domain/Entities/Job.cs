@@ -17,6 +17,8 @@ public partial class Job
 
     public string? Description { get; set; }
 
+    public string? Benefits { get; set; }
+
     public string? Location { get; set; }
 
     public string? EmploymentType { get; set; }

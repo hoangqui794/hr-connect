@@ -51,6 +51,7 @@ public class JobManagementQueryHandlerTests
             .Handle(new GetJobDetailQuery(job.JobId, user, false, ["CANDIDATE"]), default);
 
         result.JobId.Should().Be(job.JobId);
+        result.Benefits.Should().Be(job.Benefits);
         result.StatusHistories.Should().BeEmpty();
     }
 
@@ -96,5 +97,5 @@ public class JobManagementQueryHandlerTests
     }
 
     private static CompanyUser Member(Guid user, Guid company) => new() { CompanyUserId = Guid.NewGuid(), UserId = user, CompanyId = company, Status = "ACTIVE" };
-    private static Job Job(Guid company, string status) => new() { JobId = Guid.NewGuid(), CompanyId = company, ServiceTypeId = Guid.NewGuid(), CreatedBy = Guid.NewGuid(), Title = "Job", CurrencyCode = "VND", Quantity = 1, Status = status, Visibility = "PUBLIC", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+    private static Job Job(Guid company, string status) => new() { JobId = Guid.NewGuid(), CompanyId = company, ServiceTypeId = Guid.NewGuid(), CreatedBy = Guid.NewGuid(), Title = "Job", Benefits = "Insurance and training", CurrencyCode = "VND", Quantity = 1, Status = status, Visibility = "PUBLIC", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
 }

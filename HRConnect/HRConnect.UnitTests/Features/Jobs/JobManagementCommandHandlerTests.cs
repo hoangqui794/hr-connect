@@ -38,6 +38,7 @@ public class JobManagementCommandHandlerTests
             ServiceTypeId = serviceType,
             Title = " Senior Dev ",
             Description = " API development ",
+            Benefits = " Health insurance and annual bonus ",
             CurrencyCode = "usd",
             Visibility = "private",
             Quantity = 2,
@@ -45,6 +46,7 @@ public class JobManagementCommandHandlerTests
             Skills = [new JobSkillRequest { SkillId = existingSkill.SkillId, IsMandatory = true, Weight = 0.8m }]
         }, default);
         result.Data.Title.Should().Be("Senior Dev"); result.Data.ServiceTypeId.Should().Be(serviceType);
+        result.Data.Benefits.Should().Be("Health insurance and annual bonus");
         job.CurrencyCode.Should().Be("USD"); job.JobRequirements.Should().ContainSingle(x => x.RequirementType == JobRequirementTypes.MustHave);
         job.JobSkills.Should().ContainSingle().Which.Should().BeSameAs(existingSkill);
         existingSkill.IsMandatory.Should().BeTrue();
@@ -108,7 +110,7 @@ public class JobManagementCommandHandlerTests
     public async Task Submit_ShouldMoveCompleteOwnedDraftToPendingReview()
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
-        job.Title = "Backend Developer"; job.Description = "Build APIs";
+        job.Title = "Backend Developer"; job.Description = "Build APIs"; job.Benefits = "Insurance and training";
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
         job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
         job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid(), IsMandatory = true });
@@ -133,6 +135,7 @@ public class JobManagementCommandHandlerTests
     [Theory]
     [InlineData("title")]
     [InlineData("description")]
+    [InlineData("benefits")]
     [InlineData("location")]
     [InlineData("employmentType")]
     [InlineData("mustHave")]
@@ -142,6 +145,7 @@ public class JobManagementCommandHandlerTests
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
         job.Title = missingPart == "title" ? "" : "Backend Developer";
         job.Description = missingPart == "description" ? null : "Build APIs";
+        job.Benefits = missingPart == "benefits" ? null : "Insurance and training";
         job.Location = missingPart == "location" ? null : "HCM";
         job.EmploymentType = missingPart == "employmentType" ? null : "FULL_TIME";
         if (missingPart != "mustHave") job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
@@ -160,7 +164,7 @@ public class JobManagementCommandHandlerTests
     public async Task RejectUpdateResubmitApprove_ShouldPreserveCompleteStatusHistory()
     {
         var (job, owner) = SetupOwnedJob(JobStatuses.Draft);
-        job.Title = "Backend Developer"; job.Description = "Build APIs"; job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
+        job.Title = "Backend Developer"; job.Description = "Build APIs"; job.Benefits = "Insurance and training"; job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
         job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid() });
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -177,6 +181,7 @@ public class JobManagementCommandHandlerTests
             ServiceTypeId = job.ServiceTypeId,
             Title = "Backend Developer Updated",
             Description = "Build APIs",
+            Benefits = "Insurance, annual bonus and training",
             Location = "HCM",
             EmploymentType = "FULL_TIME",
             CurrencyCode = "VND",

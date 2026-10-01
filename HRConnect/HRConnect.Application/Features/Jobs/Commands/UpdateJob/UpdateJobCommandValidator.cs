@@ -21,6 +21,7 @@ public sealed class UpdateJobCommandValidator : AbstractValidator<UpdateJobComma
                     ServiceTypeId = x.ServiceTypeId,
                     Title = x.Title,
                     Description = x.Description,
+                    Benefits = x.Benefits,
                     Location = x.Location,
                     EmploymentType = x.EmploymentType,
                     SalaryMin = x.SalaryMin,
