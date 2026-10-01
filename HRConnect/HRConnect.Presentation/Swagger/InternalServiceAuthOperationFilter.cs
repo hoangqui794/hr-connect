@@ -13,8 +13,8 @@ public class InternalServiceAuthAttribute : Attribute
 
 /// <summary>
 /// OpenAPI/Swagger operation filter that applies the InternalServiceToken security requirement
-/// exclusively to versioned internal service endpoints (e.g. /api/v1/internal/cvs/*).
-/// Normal public/user endpoints remain protected by the standard JWT Bearer security scheme.
+/// only to endpoints explicitly marked with <see cref="InternalServiceAuthAttribute"/>.
+/// Other endpoints, including internal HR routes, inherit the standard JWT Bearer security scheme.
 /// </summary>
 public class InternalServiceAuthOperationFilter : IOperationFilter
 {
@@ -26,10 +26,7 @@ public class InternalServiceAuthOperationFilter : IOperationFilter
             .OfType<InternalServiceAuthAttribute>()
             .Any();
 
-        var isInternalPath = (context.ApiDescription.RelativePath?.Contains("api/internal", StringComparison.OrdinalIgnoreCase) == true)
-            || (context.ApiDescription.RelativePath?.Contains("api/v1/internal", StringComparison.OrdinalIgnoreCase) == true);
-
-        if (hasInternalMetadata || isInternalPath)
+        if (hasInternalMetadata)
         {
             operation.Security = new List<OpenApiSecurityRequirement>
             {
