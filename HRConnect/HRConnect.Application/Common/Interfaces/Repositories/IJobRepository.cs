@@ -22,6 +22,7 @@ public interface IJobRepository
 
     Task<(IReadOnlyList<Job> Items, int TotalCount)> GetVisibleJobsAsync(
         IReadOnlyCollection<string> roleCodes,
+        bool hasInternalAccess,
         string? search,
         string? location,
         string? employmentType,

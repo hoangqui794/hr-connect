@@ -1514,7 +1514,10 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.JobId).HasName("job_pkey");
 
-            entity.ToTable("job", "public");
+            entity.ToTable("job", "public", table =>
+                table.HasCheckConstraint(
+                    "ck_job_visibility",
+                    "visibility IN ('PUBLIC','PARTNER_ONLY','INTERNAL_ONLY')"));
 
             entity.HasIndex(e => new { e.CompanyId, e.ServiceTypeId, e.PostedAt }, "idx_job_active")
                 .IsDescending(false, false, true)

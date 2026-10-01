@@ -72,6 +72,11 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         }
 
         // 3. Phân quyền can_submit dựa trên Service Type và Roles
+        if (!string.Equals(job.Visibility, JobVisibilities.Public, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ForbiddenException("Candidates can only apply to public jobs.", "JOB_VISIBILITY_NOT_ALLOWED");
+        }
+
         var canSubmit = await _jobRepository.CanAnyRoleSubmitJobAsync(job.ServiceTypeId, request.RoleCodes, cancellationToken);
         if (!canSubmit)
         {

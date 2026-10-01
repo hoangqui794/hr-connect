@@ -75,16 +75,43 @@ public class JobManagementQueryHandlerTests
     {
         var visibleJob = Job(Guid.NewGuid(), JobStatuses.Active);
         _jobs.Setup(x => x.GetVisibleJobsAsync(
-                It.Is<IReadOnlyCollection<string>>(roles => roles.Count == 2), "dotnet", null, null, 1, 20,
+                It.Is<IReadOnlyCollection<string>>(roles => roles.Count == 2), false, "dotnet", null, null, 1, 20,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(([visibleJob], 1));
 
         var result = await new GetPublicJobsQueryHandler(_jobs.Object).Handle(
-            new GetPublicJobsQuery(["CANDIDATE", "AFFILIATE_RECRUITER"], "dotnet", null, null), default);
+            new GetPublicJobsQuery(["CANDIDATE", "AFFILIATE_RECRUITER"], false, "dotnet", null, null), default);
 
         result.Items.Should().ContainSingle();
         result.TotalCount.Should().Be(1);
         result.TotalPages.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(JobVisibilities.Public, "CANDIDATE", true)]
+    [InlineData(JobVisibilities.Public, "AFFILIATE_RECRUITER", true)]
+    [InlineData(JobVisibilities.PartnerOnly, "AFFILIATE_RECRUITER", true)]
+    [InlineData(JobVisibilities.PartnerOnly, "HEADHUNTER", true)]
+    [InlineData(JobVisibilities.PartnerOnly, "CANDIDATE", false)]
+    [InlineData(JobVisibilities.InternalOnly, "AFFILIATE_RECRUITER", false)]
+    public async Task GetDetail_ShouldEnforceVisibilityAndServiceType(
+        string visibility, string role, bool expectedAllowed)
+    {
+        var job = Job(Guid.NewGuid(), JobStatuses.Active);
+        job.Visibility = visibility;
+        var user = Guid.NewGuid();
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _members.Setup(x => x.GetByUserIdAsync(user, It.IsAny<CancellationToken>())).ReturnsAsync((CompanyUser?)null);
+        _jobs.Setup(x => x.CanAnyRoleViewJobAsync(job.ServiceTypeId,
+            It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var action = () => new GetJobDetailQueryHandler(_jobs.Object, _members.Object)
+            .Handle(new GetJobDetailQuery(job.JobId, user, false, [role]), default);
+
+        if (expectedAllowed)
+            (await action()).JobId.Should().Be(job.JobId);
+        else
+            await action.Should().ThrowAsync<ForbiddenException>();
     }
 
     [Fact]

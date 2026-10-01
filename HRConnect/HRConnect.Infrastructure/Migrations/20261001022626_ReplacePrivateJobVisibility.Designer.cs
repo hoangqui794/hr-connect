@@ -4,6 +4,7 @@ using System.Net;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HRConnect.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261001022626_ReplacePrivateJobVisibility")]
+    partial class ReplacePrivateJobVisibility
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2277,10 +2280,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "Visibility", "Status", "PostedAt" }, "idx_job_visibility_status")
                         .IsDescending(false, false, true);
 
-                    b.ToTable("job", "public", t =>
-                        {
-                            t.HasCheckConstraint("ck_job_visibility", "visibility IN ('PUBLIC','PARTNER_ONLY','INTERNAL_ONLY')");
-                        });
+                    b.ToTable("job", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.JobRequirement", b =>
