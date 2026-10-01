@@ -63,7 +63,7 @@ public class ApplyJobCommandHandlerTests
         var serviceTypeId = Guid.NewGuid();
 
         var candidate = new Candidate { CandidateId = candidateId, UserId = userId, FullName = "Candidate One" };
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
         var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "candidates/1/cvs/1.pdf" };
 
         _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
@@ -214,7 +214,7 @@ public class ApplyJobCommandHandlerTests
         // Arrange
         var userId = Guid.NewGuid();
         var candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = userId };
-        var job = new Job { JobId = Guid.NewGuid(), Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid() };
+        var job = new Job { JobId = Guid.NewGuid(), Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid(), Visibility = JobVisibilities.Public };
 
         _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(candidate);
@@ -241,6 +241,32 @@ public class ApplyJobCommandHandlerTests
         _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Theory]
+    [InlineData(JobVisibilities.PartnerOnly)]
+    [InlineData(JobVisibilities.InternalOnly)]
+    public async Task Handle_WhenJobIsNotPublic_RejectsCandidateBeforeServiceTypeCheck(string visibility)
+    {
+        var userId = Guid.NewGuid();
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(), Status = JobStatuses.Active,
+            ServiceTypeId = Guid.NewGuid(), Visibility = visibility
+        };
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate { CandidateId = Guid.NewGuid(), UserId = userId });
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+
+        var action = () => _handler.Handle(new ApplyJobCommand
+        {
+            JobId = job.JobId, UserId = userId, RoleCodes = ["CANDIDATE"]
+        }, default);
+
+        var exception = await action.Should().ThrowAsync<ForbiddenException>();
+        exception.Which.ErrorCode.Should().Be("JOB_VISIBILITY_NOT_ALLOWED");
+        _jobRepositoryMock.Verify(r => r.CanAnyRoleSubmitJobAsync(
+            It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
     public async Task Handle_WhenDuplicateSubmissionExists_CreatesBlockedDuplicateSubmission_ThrowsConflict_WithoutSecondApp()
     {
@@ -251,7 +277,7 @@ public class ApplyJobCommandHandlerTests
         var cvId = Guid.NewGuid();
 
         var candidate = new Candidate { CandidateId = candidateId, UserId = userId };
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid() };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid(), Visibility = JobVisibilities.Public };
         var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "key" };
         var existingAcceptedSubmission = new Submission { SubmissionId = Guid.NewGuid(), CandidateId = candidateId, JobId = jobId, Status = "ACCEPTED" };
 
@@ -305,7 +331,7 @@ public class ApplyJobCommandHandlerTests
         var cvId = Guid.NewGuid();
 
         var candidate = new Candidate { CandidateId = candidateId, UserId = userId };
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid() };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid(), Visibility = JobVisibilities.Public };
 
         _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(candidate);
@@ -359,7 +385,7 @@ public class ApplyJobCommandHandlerTests
         var cvId = Guid.NewGuid();
 
         var candidate = new Candidate { CandidateId = candidateId, UserId = userId };
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid() };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid(), Visibility = JobVisibilities.Public };
         var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf" };
 
         _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))

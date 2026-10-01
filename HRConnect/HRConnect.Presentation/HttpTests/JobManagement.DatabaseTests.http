@@ -10,6 +10,8 @@
 @candidateToken = PASTE_CANDIDATE_ACCESS_TOKEN
 @affiliateToken = PASTE_AFFILIATE_ACCESS_TOKEN
 @headhuntJobId = PASTE_ACTIVE_HEADHUNT_JOB_ID
+@partnerOnlyJobId = PASTE_ACTIVE_PARTNER_ONLY_JOB_ID
+@internalOnlyJobId = PASTE_ACTIVE_INTERNAL_ONLY_JOB_ID
 @testRunId = MF01-VS-20260921-01
 
 # Visual Studio 2022 17.12+ supports named-request response variables.
@@ -208,6 +210,33 @@ Content-Type: application/json
   "skills": [
     { "skillId": "{{skillId}}", "isMandatory": true, "weight": 0.7 }
   ]
+}
+
+### TC-28 - Affiliate can view PARTNER_ONLY Job when Service Type allows the role; expect HTTP 200
+GET {{baseUrl}}/api/v1/jobs/{{partnerOnlyJobId}}
+Authorization: Bearer {{affiliateToken}}
+
+### TC-29 - Candidate cannot view PARTNER_ONLY Job; expect HTTP 403
+GET {{baseUrl}}/api/v1/jobs/{{partnerOnlyJobId}}
+Authorization: Bearer {{candidateToken}}
+
+### TC-30 - Affiliate cannot view INTERNAL_ONLY Job; expect HTTP 403
+GET {{baseUrl}}/api/v1/jobs/{{internalOnlyJobId}}
+Authorization: Bearer {{affiliateToken}}
+
+### TC-31 - Legacy PRIVATE is no longer accepted; expect HTTP 400
+POST {{baseUrl}}/api/v1/jobs
+Authorization: Bearer {{clientLogin.response.body.$.data.accessToken}}
+Content-Type: application/json
+
+{
+  "serviceTypeId": "{{cvApplicationServiceTypeId}}",
+  "title": "{{testRunId}} - INVALID LEGACY PRIVATE",
+  "currencyCode": "VND",
+  "quantity": 1,
+  "visibility": "PRIVATE",
+  "requirements": [],
+  "skills": []
 }
 
 ### TC-17 - Client resubmits the revised Job; expect PENDING_REVIEW

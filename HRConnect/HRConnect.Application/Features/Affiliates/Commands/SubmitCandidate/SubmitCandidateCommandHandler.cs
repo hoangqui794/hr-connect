@@ -92,6 +92,11 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         }
 
         // 3. Phân quyền can_submit dựa trên Service Type và Roles
+        if (!JobVisibilities.CanExternalRoleAccess(job.Visibility, request.RoleCodes))
+        {
+            throw new ForbiddenException("This job is not visible to affiliate recruiters.", "JOB_VISIBILITY_NOT_ALLOWED");
+        }
+
         var canSubmit = await _jobRepository.CanAnyRoleSubmitJobAsync(job.ServiceTypeId, request.RoleCodes, cancellationToken);
         if (!canSubmit)
         {

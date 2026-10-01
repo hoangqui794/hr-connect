@@ -77,8 +77,10 @@ public static class JobEndpoints
             int page, int pageSize, ISender sender, CancellationToken ct) =>
         {
             if (!user.HasClaim("permission", "job.view")) return Forbidden();
+            var internalAccess = ReviewerCan(user, "job.review") ||
+                                 (user.IsInRole("PLATFORM_ADMIN") && user.HasClaim("permission", "job.view"));
             return await Run(async () => Results.Ok(await sender.Send(new GetPublicJobsQuery(
-                RoleCodes(user), search, location, employmentType,
+                RoleCodes(user), internalAccess, search, location, employmentType,
                 page <= 0 ? 1 : page, pageSize <= 0 ? 20 : pageSize), ct)));
         }).WithName("GetPublicJobs").WithSummary("Tìm Job đang hoạt động theo quyền xem của Service Type");
         jobs.MapGet("/{jobId:guid}", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>

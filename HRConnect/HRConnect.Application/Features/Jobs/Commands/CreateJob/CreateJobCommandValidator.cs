@@ -64,7 +64,7 @@ public class CreateJobCommandValidator : AbstractValidator<CreateJobCommand>
             .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage("Chế độ hiển thị không được để trống.")
             .Must(value => JobVisibilities.All.Contains(value.Trim().ToUpperInvariant()))
-            .WithMessage("Chế độ hiển thị phải là PUBLIC hoặc PRIVATE.");
+            .WithMessage("Chế độ hiển thị phải là PUBLIC, PARTNER_ONLY hoặc INTERNAL_ONLY.");
 
         RuleForEach(x => x.Requirements)
             .NotNull().WithMessage("Yêu cầu công việc không được là null.")

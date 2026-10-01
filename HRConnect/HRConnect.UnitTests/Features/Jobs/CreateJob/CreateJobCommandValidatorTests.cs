@@ -60,6 +60,31 @@ public class CreateJobCommandValidatorTests
         result.ShouldHaveValidationErrorFor(x => x.Benefits);
     }
 
+    [Theory]
+    [InlineData("PUBLIC")]
+    [InlineData("partner_only")]
+    [InlineData(" INTERNAL_ONLY ")]
+    public async Task Validate_ShouldAcceptSupportedVisibility(string visibility)
+    {
+        var command = new CreateJobCommand { ServiceTypeId = Guid.NewGuid(), Visibility = visibility };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldNotHaveValidationErrorFor(x => x.Visibility);
+    }
+
+    [Theory]
+    [InlineData("PRIVATE")]
+    [InlineData("PARTNERS")]
+    public async Task Validate_ShouldRejectLegacyOrUnknownVisibility(string visibility)
+    {
+        var command = new CreateJobCommand { ServiceTypeId = Guid.NewGuid(), Visibility = visibility };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.Visibility);
+    }
+
     [Fact]
     public async Task Validate_ShouldRejectUnsupportedRequirementType()
     {
