@@ -14,6 +14,8 @@ public class CreateJobCommand : IRequest<CreateJobResponse>
 
     public string? Description { get; set; }
 
+    public string? Benefits { get; set; }
+
     public string? Location { get; set; }
 
     public string? EmploymentType { get; set; }
@@ -71,6 +73,8 @@ public class CreateJobData
     public Guid ServiceTypeId { get; set; }
 
     public string Title { get; set; } = string.Empty;
+
+    public string? Benefits { get; set; }
 
     public string Status { get; set; } = string.Empty;
 

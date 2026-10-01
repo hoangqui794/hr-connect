@@ -1540,6 +1540,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("'VND'::bpchar")
                 .IsFixedLength()
                 .HasColumnName("currency_code");
+            entity.Property(e => e.Benefits).HasColumnName("benefits");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.EmploymentType)
                 .HasMaxLength(50)

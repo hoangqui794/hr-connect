@@ -47,6 +47,20 @@ public class CreateJobCommandValidatorTests
     }
 
     [Fact]
+    public async Task Validate_ShouldRejectBenefitsLongerThanMaximumLength()
+    {
+        var command = new CreateJobCommand
+        {
+            ServiceTypeId = Guid.NewGuid(),
+            Benefits = new string('x', 10001)
+        };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.Benefits);
+    }
+
+    [Fact]
     public async Task Validate_ShouldRejectUnsupportedRequirementType()
     {
         var command = new CreateJobCommand

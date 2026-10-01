@@ -36,6 +36,7 @@ public class CreateJobCommandHandlerTests
             UserId = userId,
             ServiceTypeId = serviceTypeId,
             Title = "  Senior .NET Developer  ",
+            Benefits = "  KPI bonus, insurance and training  ",
             EmploymentType = " full_time ",
             CurrencyCode = "vnd",
             Visibility = "public",
@@ -75,6 +76,7 @@ public class CreateJobCommandHandlerTests
         createdJob.CreatedBy.Should().Be(userId);
         createdJob.ServiceTypeId.Should().Be(serviceTypeId);
         createdJob.Title.Should().Be("Senior .NET Developer");
+        createdJob.Benefits.Should().Be("KPI bonus, insurance and training");
         createdJob.EmploymentType.Should().Be("FULL_TIME");
         createdJob.CurrencyCode.Should().Be("VND");
         createdJob.Status.Should().Be("DRAFT");
@@ -91,6 +93,7 @@ public class CreateJobCommandHandlerTests
 
         result.Success.Should().BeTrue();
         result.Data.JobId.Should().Be(createdJob.JobId);
+        result.Data.Benefits.Should().Be("KPI bonus, insurance and training");
         result.Data.Status.Should().Be("DRAFT");
         result.Data.RequirementCount.Should().Be(1);
         result.Data.SkillCount.Should().Be(1);
@@ -126,6 +129,7 @@ public class CreateJobCommandHandlerTests
 
         createdJob.Should().NotBeNull();
         createdJob!.Title.Should().BeEmpty();
+        createdJob.Benefits.Should().BeNull();
         createdJob.JobRequirements.Should().BeEmpty();
         createdJob.Status.Should().Be("DRAFT");
     }
