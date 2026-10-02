@@ -53,6 +53,7 @@ public class CvStorageService : ICvStorageService
             fileSizeBytes,
             title,
             isPrimary,
+            initialStatus: "ACTIVE",
             persistChanges: true,
             cancellationToken);
     }
@@ -80,6 +81,7 @@ public class CvStorageService : ICvStorageService
             fileSizeBytes,
             title,
             isPrimary: false,
+            initialStatus: "PENDING_CONSENT",
             persistChanges: false,
             cancellationToken);
     }
@@ -93,6 +95,7 @@ public class CvStorageService : ICvStorageService
         long fileSizeBytes,
         string? title,
         bool isPrimary,
+        string initialStatus,
         bool persistChanges,
         CancellationToken cancellationToken)
     {
@@ -161,7 +164,7 @@ public class CvStorageService : ICvStorageService
                 MimeType = "application/pdf",
                 FileSizeBytes = fileSizeBytes,
                 IsPrimary = isPrimary,
-                Status = "ACTIVE",
+                Status = initialStatus,
                 CreatedAt = now,
                 UpdatedAt = now
             };

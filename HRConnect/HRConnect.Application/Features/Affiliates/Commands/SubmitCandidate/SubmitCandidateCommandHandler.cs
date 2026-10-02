@@ -288,14 +288,6 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                     cancellationToken: cancellationToken);
                 cvId = uploadResult.CvId;
                 uploadedObjectKey = uploadResult.ObjectKey;
-
-                var uploadedCv = await _candidateCvRepository.GetByIdAsync(cvId, cancellationToken);
-                if (uploadedCv != null)
-                {
-                    uploadedCv.Status = "PENDING_CONSENT";
-                    uploadedCv.UpdatedAt = now;
-                    _candidateCvRepository.Update(uploadedCv);
-                }
             }
             else
             {

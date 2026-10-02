@@ -319,6 +319,8 @@ public class SubmitCandidateCommandHandlerTests
         var stream = new MemoryStream(new byte[] { 1, 2, 3 });
         _cvStorageServiceMock.Setup(s => s.UploadAffiliateCvPdfAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new UploadCvResult { CvId = cvId, CandidateId = Guid.NewGuid(), ObjectKey = "candidates/x/cvs/y.pdf", FileName = "cv.pdf", FileSizeBytes = 3, MimeType = "application/pdf" });
+        _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CandidateCv { CvId = cvId, Status = "ACTIVE" });
 
         _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(It.IsAny<Guid>(), jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Submission?)null);
@@ -351,6 +353,7 @@ public class SubmitCandidateCommandHandlerTests
         result.Data.ApplicationId.Should().BeNull();
         result.Data.Status.Should().Be("PENDING_CONSENT");
         result.Data.AffiliateId.Should().Be(affiliateId);
+        _candidateCvRepositoryMock.Verify(r => r.Update(It.IsAny<CandidateCv>()), Times.Never);
     }
 
     [Fact]

@@ -174,6 +174,7 @@ public class CvStorageServiceTests
         savedCv!.CreationMethod.Should().Be("AFFILIATE_UPLOAD");
         savedCv.UploadedByUserId.Should().Be(affiliateUserId);
         savedCv.IsPrimary.Should().BeFalse();
+        savedCv.Status.Should().Be("PENDING_CONSENT");
         _unitOfWorkMock.Verify(
             unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()),
             Times.Never);
