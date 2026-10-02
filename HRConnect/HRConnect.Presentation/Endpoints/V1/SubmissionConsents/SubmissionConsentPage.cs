@@ -19,7 +19,7 @@ internal static class SubmissionConsentPage
     .details { display: grid; grid-template-columns: 150px 1fr; gap: 12px; margin: 20px 0; }
     .details dt { color: #607066; }
     .details dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
-    label { display: block; margin: 18px 0 6px; font-weight: 600; }
+    label { display: block; margin: 14px 0 6px; font-weight: 600; }
     input { box-sizing: border-box; width: 100%; padding: 11px 12px; border: 1px solid #b9c9bd; border-radius: 9px; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
     button, .button { border: 0; border-radius: 9px; padding: 11px 18px; font-weight: 700; cursor: pointer; text-decoration: none; }
@@ -39,11 +39,14 @@ internal static class SubmissionConsentPage
     <h1>Xác nhận hồ sơ ứng tuyển</h1>
     <p class="muted">Kiểm tra thông tin trước khi cho phép HR Connect gửi hồ sơ đến doanh nghiệp và chuyển CV sang MF03 chấm điểm.</p>
 
-    <div id="authBox" hidden>
-      <label for="accessToken">Access token của Candidate</label>
-      <input id="accessToken" type="password" autocomplete="off" placeholder="Chỉ cần nhập khi Candidate đã có tài khoản">
-      <div class="actions"><button id="reload" class="secondary" type="button">Tải lại yêu cầu</button></div>
-    </div>
+    <form id="loginBox" hidden>
+      <p>Hồ sơ này đã liên kết với một tài khoản Candidate. Vui lòng đăng nhập để tiếp tục.</p>
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="username" required>
+      <label for="password">Mật khẩu</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <div class="actions"><button id="login" class="primary" type="submit">Đăng nhập và tiếp tục</button></div>
+    </form>
 
     <dl id="details" class="details" hidden>
       <dt>Candidate</dt><dd id="candidateName"></dd>
@@ -66,14 +69,13 @@ internal static class SubmissionConsentPage
   'use strict';
   const token = new URLSearchParams(location.hash.slice(1)).get('token') || '';
   const message = document.getElementById('message');
-  const authBox = document.getElementById('authBox');
+  const loginBox = document.getElementById('loginBox');
   const details = document.getElementById('details');
   const actions = document.getElementById('actions');
-  const accessToken = document.getElementById('accessToken');
+  let accessToken = '';
 
   function headers() {
-    const value = accessToken.value.trim().replace(/^Bearer\s+/i, '');
-    return { 'Content-Type': 'application/json', ...(value ? { Authorization: `Bearer ${value}` } : {}) };
+    return { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) };
   }
   function show(text, error = false) {
     message.textContent = text;
@@ -101,11 +103,38 @@ internal static class SubmissionConsentPage
       const viewCv = document.getElementById('viewCv');
       viewCv.href = data.cvDownloadUrl || '#';
       viewCv.hidden = !data.cvDownloadUrl;
-      authBox.hidden = true; details.hidden = false; actions.hidden = false;
+      loginBox.hidden = true; details.hidden = false; actions.hidden = false;
       show('Vui lòng xem CV và chọn quyết định.');
     } catch (error) {
-      if (error.status === 403) authBox.hidden = false;
-      show(error.status === 403 ? `${error.message}\nHãy nhập access token của đúng tài khoản Candidate.` : error.message, true);
+      if (error.status === 403) {
+        loginBox.hidden = false;
+        show('Vui lòng đăng nhập đúng tài khoản Candidate để xem và xác nhận hồ sơ.', true);
+      } else {
+        show(error.message, true);
+      }
+    }
+  }
+  async function login(event) {
+    event.preventDefault();
+    const button = document.getElementById('login');
+    button.disabled = true;
+    show('Đang đăng nhập…');
+    try {
+      const body = await json(await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: document.getElementById('email').value.trim(),
+          password: document.getElementById('password').value
+        })
+      }));
+      accessToken = body.data.accessToken;
+      document.getElementById('password').value = '';
+      await review();
+    } catch (error) {
+      show(error.message, true);
+    } finally {
+      button.disabled = false;
     }
   }
   async function respond(decision) {
@@ -115,15 +144,16 @@ internal static class SubmissionConsentPage
       const body = await json(await fetch('/api/v1/submission-consents/respond', {
         method: 'POST', headers: headers(), body: JSON.stringify({ token, decision })
       }));
-      actions.hidden = true; authBox.hidden = true;
+      actions.hidden = true;
       show(`${body.message}\nTrạng thái hồ sơ: ${body.submissionStatus}`);
     } catch (error) {
       show(error.message, true);
       document.querySelectorAll('button').forEach(button => button.disabled = false);
+      if (error.status === 401 || error.status === 403) loginBox.hidden = false;
     }
   }
 
-  document.getElementById('reload').addEventListener('click', review);
+  loginBox.addEventListener('submit', login);
   document.getElementById('confirm').addEventListener('click', () => respond('CONFIRM'));
   document.getElementById('decline').addEventListener('click', () => respond('DECLINE'));
   review();
