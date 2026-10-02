@@ -251,6 +251,29 @@ public class CvStorageServiceTests
     }
 
     [Fact]
+    public async Task UploadCvPdfAsync_WhenFontNameStartsWithForbiddenToken_DoesNotRejectValidPdf()
+    {
+        var validPdf = CreateMinimalPdf("/BaseFont /AAAAAA+Poppins-Bold");
+        using var stream = new MemoryStream(validPdf);
+
+        _fileStorageServiceMock
+            .Setup(service => service.UploadAsync(
+                It.IsAny<Stream>(), It.IsAny<string>(), "application/pdf", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Stream _, string key, string _, CancellationToken _) => key);
+        _candidateCvRepositoryMock
+            .Setup(repository => repository.AddAsync(It.IsAny<CandidateCv>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _unitOfWorkMock
+            .Setup(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var action = () => _service.UploadCvPdfAsync(
+            Guid.NewGuid(), stream, "cv.pdf", validPdf.Length);
+
+        await action.Should().NotThrowAsync();
+    }
+
+    [Fact]
     public async Task UploadCvPdfAsync_WhenStreamEmptyOrNull_ThrowsBadRequestException()
     {
         // Act
