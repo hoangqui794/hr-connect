@@ -1564,6 +1564,16 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.SalaryMin)
                 .HasPrecision(18, 2)
                 .HasColumnName("salary_min");
+            entity.Property(e => e.SalaryNegotiable)
+                .HasDefaultValue(false)
+                .HasColumnName("salary_negotiable");
+            entity.Property(e => e.SalaryNote)
+                .HasMaxLength(1000)
+                .HasColumnName("salary_note");
+            entity.Property(e => e.MinExperienceYears)
+                .HasColumnName("min_experience_years");
+            entity.Property(e => e.MaxExperienceYears)
+                .HasColumnName("max_experience_years");
             entity.Property(e => e.ServiceTypeId).HasColumnName("service_type_id");
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
