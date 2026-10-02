@@ -2203,6 +2203,11 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("location");
 
+                    b.Property<string>("WorkingTime")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("working_time");
+
                     b.Property<DateTime?>("PostedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("posted_at");

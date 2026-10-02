@@ -21,6 +21,8 @@ public class CreateJobCommandValidator : AbstractValidator<CreateJobCommand>
             RuleFor(x => x.Location)
                 .MaximumLength(255).WithMessage("Địa điểm không được vượt quá 255 ký tự.");
         });
+        When(x => !string.IsNullOrWhiteSpace(x.WorkingTime), () => RuleFor(x => x.WorkingTime)
+            .MaximumLength(2000).WithMessage("Thời gian làm việc không được vượt quá 2000 ký tự."));
 
         When(x => !string.IsNullOrWhiteSpace(x.EmploymentType), () =>
         {
