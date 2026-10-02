@@ -45,6 +45,8 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
         job.Description = Normalize(request.Description); job.Benefits = Normalize(request.Benefits); job.Location = Normalize(request.Location); job.WorkingTime = Normalize(request.WorkingTime);
         job.EmploymentType = Normalize(request.EmploymentType)?.ToUpperInvariant();
         job.SalaryMin = request.SalaryMin; job.SalaryMax = request.SalaryMax;
+        job.SalaryNegotiable = request.SalaryNegotiable; job.SalaryNote = Normalize(request.SalaryNote);
+        job.MinExperienceYears = request.MinExperienceYears; job.MaxExperienceYears = request.MaxExperienceYears;
         job.CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(); job.Quantity = request.Quantity;
         job.Visibility = request.Visibility.Trim().ToUpperInvariant(); job.UpdatedAt = now; job.StatusReason = null;
         var existingRequirements = job.JobRequirements.OrderBy(item => item.CreatedAt).ToList();

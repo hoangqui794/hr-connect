@@ -39,6 +39,12 @@ public class JobManagementCommandHandlerTests
             Title = " Senior Dev ",
             Description = " API development ",
             Benefits = " Health insurance and annual bonus ",
+            MinExperienceYears = 2,
+            MaxExperienceYears = 4,
+            SalaryMin = 20_000_000,
+            SalaryMax = 30_000_000,
+            SalaryNegotiable = false,
+            SalaryNote = " Có thể thương lượng thêm thưởng dự án ",
             CurrencyCode = "usd",
             Visibility = JobVisibilities.Public,
             Quantity = 2,
@@ -47,7 +53,16 @@ public class JobManagementCommandHandlerTests
         }, default);
         result.Data.Title.Should().Be("Senior Dev"); result.Data.ServiceTypeId.Should().Be(serviceType);
         result.Data.Benefits.Should().Be("Health insurance and annual bonus");
-        job.CurrencyCode.Should().Be("USD"); job.JobRequirements.Should().ContainSingle(x => x.RequirementType == JobRequirementTypes.MustHave);
+        result.Data.MinExperienceYears.Should().Be(2);
+        result.Data.MaxExperienceYears.Should().Be(4);
+        result.Data.SalaryNegotiable.Should().BeFalse();
+        result.Data.SalaryNote.Should().Be("Có thể thương lượng thêm thưởng dự án");
+        job.CurrencyCode.Should().Be("USD");
+        job.MinExperienceYears.Should().Be(2);
+        job.MaxExperienceYears.Should().Be(4);
+        job.SalaryNegotiable.Should().BeFalse();
+        job.SalaryNote.Should().Be("Có thể thương lượng thêm thưởng dự án");
+        job.JobRequirements.Should().ContainSingle(x => x.RequirementType == JobRequirementTypes.MustHave);
         job.JobSkills.Should().ContainSingle().Which.Should().BeSameAs(existingSkill);
         existingSkill.IsMandatory.Should().BeTrue();
         existingSkill.Weight.Should().Be(0.8m);

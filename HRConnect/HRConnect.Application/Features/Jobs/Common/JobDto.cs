@@ -13,7 +13,9 @@ public sealed record JobStatusHistoryDto(
 public sealed record JobDto(
     Guid JobId, Guid CompanyId, string? CompanyName, Guid ServiceTypeId, string? ServiceTypeCode,
     string Title, string? Description, string? Benefits, string? Location, string? WorkingTime, string? EmploymentType,
-    decimal? SalaryMin, decimal? SalaryMax, string CurrencyCode, int Quantity,
+    decimal? SalaryMin, decimal? SalaryMax, bool SalaryNegotiable, string? SalaryNote,
+    int? MinExperienceYears, int? MaxExperienceYears,
+    string CurrencyCode, int Quantity,
     string Status, string Visibility, string? StatusReason, DateTime? PostedAt,
     DateTime? ClosedAt, DateTime CreatedAt, DateTime UpdatedAt,
     IReadOnlyList<JobRequirementDto> Requirements,
@@ -22,7 +24,9 @@ public sealed record JobDto(
 {
     public static JobDto From(Job job, bool includeStatusHistories = false) => new(
         job.JobId, job.CompanyId, job.Company?.CompanyName, job.ServiceTypeId, job.ServiceType?.Code,
-        job.Title, job.Description, job.Benefits, job.Location, job.WorkingTime, job.EmploymentType, job.SalaryMin, job.SalaryMax,
+        job.Title, job.Description, job.Benefits, job.Location, job.WorkingTime, job.EmploymentType,
+        job.SalaryMin, job.SalaryMax, job.SalaryNegotiable, job.SalaryNote,
+        job.MinExperienceYears, job.MaxExperienceYears,
         job.CurrencyCode.Trim(), job.Quantity, job.Status, job.Visibility, job.StatusReason,
         job.PostedAt, job.ClosedAt, job.CreatedAt, job.UpdatedAt,
         job.JobRequirements.OrderBy(x => x.CreatedAt).Select(x => new JobRequirementDto(
