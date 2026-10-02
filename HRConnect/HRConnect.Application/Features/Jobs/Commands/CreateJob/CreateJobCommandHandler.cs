@@ -47,10 +47,14 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             throw new ForbiddenException("Doanh nghiệp phải được xác thực trước khi tạo công việc.");
         }
 
-        if (!await _jobRepository.IsServiceTypeActiveAsync(request.ServiceTypeId, cancellationToken))
+        var serviceTypeCode = await _jobRepository.GetActiveServiceTypeCodeAsync(
+            request.ServiceTypeId, cancellationToken);
+        if (serviceTypeCode == null)
         {
             throw new BadRequestException("Loại dịch vụ không tồn tại hoặc đã ngừng hoạt động.");
         }
+
+        JobHandlerGuards.RequireVisibilityAllowed(serviceTypeCode, request.Visibility);
 
         var skillIds = request.Skills.Select(x => x.SkillId).Distinct().ToList();
         if (skillIds.Count > 0 && !await _jobRepository.AreSkillsActiveAsync(skillIds, cancellationToken))

@@ -6,6 +6,8 @@ public interface IJobRepository
 {
     Task<bool> IsServiceTypeActiveAsync(Guid serviceTypeId, CancellationToken cancellationToken = default);
 
+    Task<string?> GetActiveServiceTypeCodeAsync(Guid serviceTypeId, CancellationToken cancellationToken = default);
+
     Task<bool> AreSkillsActiveAsync(IReadOnlyCollection<Guid> skillIds, CancellationToken cancellationToken = default);
 
     Task AddAsync(Job job, CancellationToken cancellationToken = default);
@@ -22,7 +24,8 @@ public interface IJobRepository
 
     Task<(IReadOnlyList<Job> Items, int TotalCount)> GetVisibleJobsAsync(
         IReadOnlyCollection<string> roleCodes,
-        bool hasInternalAccess,
+        IReadOnlyCollection<string> allowedVisibilities,
+        bool bypassServiceTypeRoleCheck,
         string? search,
         string? location,
         string? employmentType,

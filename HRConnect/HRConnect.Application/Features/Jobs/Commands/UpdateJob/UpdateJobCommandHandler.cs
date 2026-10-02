@@ -33,8 +33,10 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
             }
         }
 
-        if (!await _jobs.IsServiceTypeActiveAsync(request.ServiceTypeId, ct))
+        var serviceTypeCode = await _jobs.GetActiveServiceTypeCodeAsync(request.ServiceTypeId, ct);
+        if (serviceTypeCode == null)
             throw new BadRequestException("Loại dịch vụ không tồn tại hoặc đã ngừng hoạt động.");
+        JobHandlerGuards.RequireVisibilityAllowed(serviceTypeCode, request.Visibility);
         var skillIds = request.Skills.Select(x => x.SkillId).Distinct().ToList();
         if (skillIds.Count > 0 && !await _jobs.AreSkillsActiveAsync(skillIds, ct))
             throw new BadRequestException("Một hoặc nhiều kỹ năng không tồn tại hoặc đã ngừng hoạt động.");

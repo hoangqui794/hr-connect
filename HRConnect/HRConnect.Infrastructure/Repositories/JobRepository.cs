@@ -24,6 +24,14 @@ public class JobRepository : IJobRepository
                 cancellationToken);
     }
 
+    public Task<string?> GetActiveServiceTypeCodeAsync(
+        Guid serviceTypeId,
+        CancellationToken cancellationToken = default) =>
+        _context.ServiceTypes.AsNoTracking()
+            .Where(serviceType => serviceType.ServiceTypeId == serviceTypeId && serviceType.IsActive)
+            .Select(serviceType => serviceType.Code)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task<bool> AreSkillsActiveAsync(IReadOnlyCollection<Guid> skillIds, CancellationToken cancellationToken = default)
     {
         if (skillIds.Count == 0) return true;
@@ -86,7 +94,8 @@ public class JobRepository : IJobRepository
 
     public async Task<(IReadOnlyList<Job> Items, int TotalCount)> GetVisibleJobsAsync(
         IReadOnlyCollection<string> roleCodes,
-        bool hasInternalAccess,
+        IReadOnlyCollection<string> allowedVisibilities,
+        bool bypassServiceTypeRoleCheck,
         string? search,
         string? location,
         string? employmentType,
@@ -98,15 +107,10 @@ public class JobRepository : IJobRepository
             .Where(mapping => mapping.CanView && mapping.Role.IsActive && roleCodes.Contains(mapping.Role.Code))
             .Select(mapping => mapping.ServiceTypeId);
 
-        var hasPartnerRole = roleCodes.Contains("AFFILIATE_RECRUITER", StringComparer.OrdinalIgnoreCase) ||
-                             roleCodes.Contains("HEADHUNTER", StringComparer.OrdinalIgnoreCase);
-
         var query = _context.Jobs.AsNoTracking()
             .Where(job => job.Status == JobStatuses.Active &&
-                          (hasInternalAccess ||
-                           (allowedServiceTypeIds.Contains(job.ServiceTypeId) &&
-                            (job.Visibility == JobVisibilities.Public ||
-                             (hasPartnerRole && job.Visibility == JobVisibilities.PartnerOnly)))));
+                          allowedVisibilities.Contains(job.Visibility) &&
+                          (bypassServiceTypeRoleCheck || allowedServiceTypeIds.Contains(job.ServiceTypeId)));
 
         if (!string.IsNullOrWhiteSpace(search))
         {

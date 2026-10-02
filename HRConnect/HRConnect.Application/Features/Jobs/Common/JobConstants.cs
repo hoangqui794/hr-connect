@@ -25,14 +25,4 @@ public static class JobVisibilities
     public const string InternalOnly = "INTERNAL_ONLY";
 
     public static readonly string[] All = [Public, PartnerOnly, InternalOnly];
-
-    public static bool CanExternalRoleAccess(string visibility, IReadOnlyCollection<string> roleCodes)
-    {
-        if (string.Equals(visibility, Public, StringComparison.OrdinalIgnoreCase)) return true;
-        if (!string.Equals(visibility, PartnerOnly, StringComparison.OrdinalIgnoreCase)) return false;
-
-        return roleCodes.Any(role =>
-            string.Equals(role, "AFFILIATE_RECRUITER", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(role, "HEADHUNTER", StringComparison.OrdinalIgnoreCase));
-    }
 }

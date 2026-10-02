@@ -72,12 +72,15 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         }
 
         // 3. Phân quyền can_submit dựa trên Service Type và Roles
-        if (!string.Equals(job.Visibility, JobVisibilities.Public, StringComparison.OrdinalIgnoreCase))
+        if (!JobAccessPolicy.CanCandidateApply(job, request.RoleCodes))
         {
             throw new ForbiddenException("Candidates can only apply to public jobs.", "JOB_VISIBILITY_NOT_ALLOWED");
         }
 
-        var canSubmit = await _jobRepository.CanAnyRoleSubmitJobAsync(job.ServiceTypeId, request.RoleCodes, cancellationToken);
+        // Check the permission of the actor used by this operation only. A multi-role
+        // account must not borrow another role's service-type permission.
+        var canSubmit = await _jobRepository.CanAnyRoleSubmitJobAsync(
+            job.ServiceTypeId, [JobAccessPolicy.CandidateRole], cancellationToken);
         if (!canSubmit)
         {
             _logger.LogWarning("Vai trò của người dùng {UserId} ({Roles}) không được phép nộp hồ sơ vào ServiceTypeId {ServiceTypeId}",
