@@ -44,6 +44,8 @@ public partial class Submission
 
     public virtual ICollection<Submission> InverseDuplicateOfSubmission { get; set; } = new List<Submission>();
 
+    public virtual SubmissionConsent? Consent { get; set; }
+
     public virtual Job Job { get; set; } = null!;
 
     public virtual AppUser SubmittedByNavigation { get; set; } = null!;

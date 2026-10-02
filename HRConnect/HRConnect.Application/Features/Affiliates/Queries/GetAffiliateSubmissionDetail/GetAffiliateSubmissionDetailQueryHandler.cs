@@ -48,6 +48,11 @@ public class GetAffiliateSubmissionDetailQueryHandler : IRequestHandler<GetAffil
         {
             SubmissionId = submission.SubmissionId,
             Status = submission.Status,
+            ConsentStatus = submission.Consent?.Status,
+            ConsentRequestedAt = submission.Consent?.RequestedAt,
+            ConsentExpiresAt = submission.Consent?.ExpiresAt,
+            ConsentRespondedAt = submission.Consent?.RespondedAt,
+            ConsentEmailSentAt = submission.Consent?.EmailSentAt,
             CandidateId = submission.CandidateId,
             CandidateName = submission.Candidate?.FullName ?? string.Empty,
             CandidateEmail = submission.Candidate?.Email,

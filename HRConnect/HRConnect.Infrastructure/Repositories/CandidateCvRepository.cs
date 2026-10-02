@@ -16,6 +16,9 @@ public class CandidateCvRepository : ICandidateCvRepository
 
     public async Task<CandidateCv?> GetByIdAsync(Guid cvId, CancellationToken cancellationToken = default)
     {
+        var tracked = _context.CandidateCvs.Local.FirstOrDefault(cv => cv.CvId == cvId);
+        if (tracked != null) return tracked;
+
         return await _context.CandidateCvs
             .FirstOrDefaultAsync(c => c.CvId == cvId, cancellationToken);
     }

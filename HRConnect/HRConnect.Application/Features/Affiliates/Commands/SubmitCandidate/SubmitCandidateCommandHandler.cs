@@ -6,6 +6,11 @@ using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using JobApplication = HRConnect.Domain.Entities.Application;
 
 namespace HRConnect.Application.Features.Affiliates.Commands.SubmitCandidate;
@@ -19,12 +24,15 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
     private readonly ICvStorageService _cvStorageService;
     private readonly ISubmissionRepository _submissionRepository;
     private readonly IApplicationRepository _applicationRepository;
-    private readonly IAttributionRepository _attributionRepository;
+    private readonly ISubmissionConsentRepository _consentRepository;
+    private readonly INotificationRepository _notificationRepository;
+    private readonly IEmailOutboxRepository _emailOutboxRepository;
+    private readonly IEmailService _emailService;
     private readonly IEmailNormalizer _emailNormalizer;
     private readonly IPhoneNormalizer _phoneNormalizer;
-    private readonly IMf03ScoringTrigger _scoringTrigger;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
+    private readonly SubmissionConsentSettings _consentSettings;
     private readonly ILogger<SubmitCandidateCommandHandler> _logger;
 
     public SubmitCandidateCommandHandler(
@@ -35,12 +43,15 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         ICvStorageService cvStorageService,
         ISubmissionRepository submissionRepository,
         IApplicationRepository applicationRepository,
-        IAttributionRepository attributionRepository,
+        ISubmissionConsentRepository consentRepository,
+        INotificationRepository notificationRepository,
+        IEmailOutboxRepository emailOutboxRepository,
+        IEmailService emailService,
         IEmailNormalizer emailNormalizer,
         IPhoneNormalizer phoneNormalizer,
-        IMf03ScoringTrigger scoringTrigger,
         IUnitOfWork unitOfWork,
         IAuditLogService auditLogService,
+        IOptions<SubmissionConsentSettings> consentSettings,
         ILogger<SubmitCandidateCommandHandler> logger)
     {
         _affiliateProfileRepository = affiliateProfileRepository;
@@ -50,12 +61,15 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         _cvStorageService = cvStorageService;
         _submissionRepository = submissionRepository;
         _applicationRepository = applicationRepository;
-        _attributionRepository = attributionRepository;
+        _consentRepository = consentRepository;
+        _notificationRepository = notificationRepository;
+        _emailOutboxRepository = emailOutboxRepository;
+        _emailService = emailService;
         _emailNormalizer = emailNormalizer;
         _phoneNormalizer = phoneNormalizer;
-        _scoringTrigger = scoringTrigger;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
+        _consentSettings = consentSettings.Value;
         _logger = logger;
     }
 
@@ -139,6 +153,13 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
 
         var candidate = candidateByEmail ?? candidateByPhone;
         var now = DateTime.UtcNow;
+        var recipientEmail = !string.IsNullOrWhiteSpace(request.Email)
+            ? request.Email.Trim()
+            : candidate?.Email?.Trim();
+        if (string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            throw new BadRequestException("Candidate phải có email để nhận và xác nhận yêu cầu nộp hồ sơ.");
+        }
 
         // Chặn trùng trước khi upload để không tạo tệp R2 rồi mới xóa bồi hoàn.
         if (candidate != null)
@@ -161,6 +182,31 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                     cancellationToken);
 
                 throw new ConflictException("Ứng viên này đã được nộp vào công việc này trước đó.");
+            }
+
+            var pendingSubmission = await _submissionRepository.GetPendingConsentSubmissionAsync(
+                candidate.CandidateId, job.JobId, cancellationToken);
+            if (pendingSubmission?.Consent is { } pendingConsent)
+            {
+                if (pendingConsent.Status == "PENDING" && pendingConsent.ExpiresAt > now)
+                {
+                    throw new ConflictException(
+                        $"Hồ sơ này đang chờ Candidate xác nhận đến {pendingConsent.ExpiresAt:O}.");
+                }
+
+                pendingSubmission.Status = "CONSENT_EXPIRED";
+                pendingSubmission.UpdatedAt = now;
+                pendingConsent.Status = "EXPIRED";
+                pendingConsent.UpdatedAt = now;
+                if (pendingSubmission.CandidateCv.CreationMethod == "AFFILIATE_UPLOAD" &&
+                    pendingSubmission.CandidateCv.Status == "PENDING_CONSENT")
+                {
+                    pendingSubmission.CandidateCv.Status = "ARCHIVED";
+                    pendingSubmission.CandidateCv.UpdatedAt = now;
+                }
+                _submissionRepository.Update(pendingSubmission);
+                _consentRepository.Update(pendingConsent);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
         }
 
@@ -198,12 +244,17 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             throw new BadRequestException("Vui lòng đính kèm tệp CV định dạng PDF cho ứng viên.");
         }
 
-        // 5. Stage Candidate/CV, sau đó commit toàn bộ dữ liệu quan hệ trong một transaction.
-        JobApplication application;
+        // Stage Candidate/CV and consent atomically. Application, attribution and
+        // MF03 work are created only after candidate confirmation.
         Submission submission;
-        Attribution attribution;
+        SubmissionConsent consent;
+        EmailOutbox emailOutbox;
         string? uploadedObjectKey = null;
         Guid cvId = Guid.Empty;
+        var rawToken = CreateOpaqueToken();
+        var tokenHash = HashToken(rawToken);
+        var expirationHours = Math.Clamp(_consentSettings.ExpirationHours, 1, 168);
+        var expiresAt = now.AddHours(expirationHours);
 
         try
         {
@@ -253,43 +304,65 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 JobId = job.JobId,
                 SubmittedBy = request.UserId,
                 Source = "AFFILIATE",
-                Status = "ACCEPTED",
+                Status = "PENDING_CONSENT",
                 Note = request.Note?.Trim(),
                 SubmittedAt = now,
                 UpdatedAt = now
             };
             await _submissionRepository.AddAsync(submission, cancellationToken);
 
-            application = new JobApplication
+            consent = new SubmissionConsent
             {
-                ApplicationId = Guid.NewGuid(),
-                JobId = job.JobId,
-                CandidateId = candidate.CandidateId,
-                AcceptedSubmissionId = submission.SubmissionId,
-                Status = "SUBMITTED",
-                CurrentStage = "SUBMITTED",
-                AppliedAt = now,
+                ConsentId = Guid.NewGuid(),
+                SubmissionId = submission.SubmissionId,
+                RecipientEmail = recipientEmail,
+                TokenHash = tokenHash,
+                Status = "PENDING",
+                RequestedAt = now,
+                ExpiresAt = expiresAt,
+                EmailSendCount = 0,
+                CreatedAt = now,
                 UpdatedAt = now
             };
-            await _applicationRepository.AddAsync(application, cancellationToken);
+            await _consentRepository.AddAsync(consent, cancellationToken);
 
-            attribution = new Attribution
+            emailOutbox = new EmailOutbox
             {
-                AttributionId = Guid.NewGuid(),
-                ApplicationId = application.ApplicationId,
-                AffiliateId = affiliate.AffiliateId,
-                WinningSubmissionId = submission.SubmissionId,
-                AttributionRule = "FIRST_SUBMISSION_TIMESTAMP_PRECEDENCE",
-                Status = "ACTIVE",
-                EstablishedAt = now,
-                UpdatedAt = now
+                EmailOutboxId = Guid.NewGuid(),
+                UserId = candidate.UserId,
+                RecipientEmail = consent.RecipientEmail,
+                TemplateCode = "AFFILIATE_SUBMISSION_CONSENT",
+                Subject = $"Xác nhận hồ sơ ứng tuyển: {job.Title}",
+                Payload = JsonSerializer.Serialize(new
+                {
+                    consent.ConsentId,
+                    submission.SubmissionId,
+                    candidate.CandidateId,
+                    job.JobId,
+                    expiresAt
+                }),
+                Status = "PENDING",
+                RetryCount = 0,
+                CreatedAt = now
             };
-            await _attributionRepository.AddAsync(attribution, cancellationToken);
+            await _emailOutboxRepository.AddAsync(emailOutbox, cancellationToken);
 
-            // Persist the AI request atomically with the accepted submission/application.
-            await _scoringTrigger.TriggerScoringAsync(
-                new Mf03TriggerPayload(application.ApplicationId, cvId, job.JobId, request.UserId),
-                cancellationToken);
+            if (candidate.UserId.HasValue)
+            {
+                await _notificationRepository.AddAsync(new Notification
+                {
+                    NotificationId = Guid.NewGuid(),
+                    UserId = candidate.UserId.Value,
+                    NotificationType = "SUBMISSION",
+                    Title = "Yêu cầu xác nhận hồ sơ ứng tuyển",
+                    Message = $"Một Affiliate Recruiter đã giới thiệu bạn vào vị trí {job.Title}. Vui lòng kiểm tra và xác nhận.",
+                    RelatedEntityType = "SUBMISSION",
+                    RelatedEntityId = submission.SubmissionId,
+                    Metadata = JsonSerializer.Serialize(new { job.JobId, consent.ConsentId, expiresAt }),
+                    IsRead = false,
+                    CreatedAt = now
+                }, cancellationToken);
+            }
 
             await _auditLogService.AddAsync(new AuditEntry
             {
@@ -299,15 +372,15 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 ActorUserId = request.UserId,
                 NewValues = new
                 {
-                    application.ApplicationId,
                     submission.SubmissionId,
                     candidate.CandidateId,
                     affiliate.AffiliateId,
-                    attribution.AttributionId,
                     job.JobId,
                     cvId,
                     source = "AFFILIATE",
-                    aiStatus = "PENDING"
+                    status = "PENDING_CONSENT",
+                    consentExpiresAt = expiresAt,
+                    aiStatus = "NOT_QUEUED"
                 }
             }, cancellationToken);
 
@@ -358,28 +431,113 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             throw;
         }
 
-        _logger.LogInformation("Affiliate {AffiliateId} nộp ứng viên thành công: ApplicationId={AppId}, AttributionId={AttrId}, CandidateId={CandId}, JobId={JobId}",
-            affiliate.AffiliateId, application.ApplicationId, attribution.AttributionId, candidate.CandidateId, job.JobId);
+        var deliveryStatus = "SENT";
+        try
+        {
+            var confirmationUrl = candidate.UserId.HasValue
+                ? $"{_consentSettings.ConfirmationUrlBase.TrimEnd('/')}#submissionId={submission.SubmissionId}"
+                : $"{_consentSettings.ConfirmationUrlBase.TrimEnd('/')}#token={Uri.EscapeDataString(rawToken)}";
+            var result = await _emailService.SendEmailAsync(
+                consent.RecipientEmail,
+                emailOutbox.Subject!,
+                BuildConsentEmailHtml(candidate.FullName, job.Title, job.Company?.CompanyName ?? "doanh nghiệp tuyển dụng",
+                    confirmationUrl, expiresAt, candidate.UserId.HasValue),
+                CancellationToken.None);
+
+            consent.EmailSendCount = 1;
+            consent.UpdatedAt = DateTime.UtcNow;
+            if (result.IsSuccess)
+            {
+                consent.EmailSentAt = DateTime.UtcNow;
+                emailOutbox.Status = "SENT";
+                emailOutbox.SentAt = consent.EmailSentAt;
+            }
+            else
+            {
+                deliveryStatus = "FAILED";
+                consent.LastEmailError = result.ErrorMessage;
+                emailOutbox.Status = "FAILED";
+                emailOutbox.RetryCount = 1;
+                emailOutbox.LastError = result.ErrorMessage;
+            }
+            await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+        }
+        catch (Exception emailException)
+        {
+            deliveryStatus = "FAILED";
+            consent.EmailSendCount = 1;
+            consent.LastEmailError = emailException.Message;
+            consent.UpdatedAt = DateTime.UtcNow;
+            emailOutbox.Status = "FAILED";
+            emailOutbox.RetryCount = 1;
+            emailOutbox.LastError = emailException.Message;
+            try { await _unitOfWork.SaveChangesAsync(CancellationToken.None); }
+            catch (Exception saveException) { _logger.LogError(saveException, "Không thể lưu trạng thái gửi consent email."); }
+            _logger.LogError(emailException, "Không thể gửi yêu cầu consent cho SubmissionId={SubmissionId}", submission.SubmissionId);
+        }
+
+        _logger.LogInformation("Affiliate {AffiliateId} tạo Submission {SubmissionId} chờ Candidate xác nhận cho JobId={JobId}",
+            affiliate.AffiliateId, submission.SubmissionId, job.JobId);
 
         // 8. Kích hoạt MF-03 bất đồng bộ (không chờ AI scoring hoàn tất)
         return new SubmitCandidateResponse
         {
             Success = true,
-            Message = "Nộp ứng viên thành công.",
+            Message = deliveryStatus == "SENT"
+                ? "Đã tiếp nhận hồ sơ và gửi yêu cầu xác nhận đến Candidate."
+                : "Đã lưu hồ sơ chờ xác nhận nhưng chưa gửi được email. Affiliate có thể yêu cầu gửi lại.",
             Data = new SubmitCandidateData
             {
-                ApplicationId = application.ApplicationId,
                 SubmissionId = submission.SubmissionId,
-                AttributionId = attribution.AttributionId,
                 AffiliateId = affiliate.AffiliateId,
                 CandidateId = candidate.CandidateId,
                 JobId = job.JobId,
                 CvId = cvId,
-                Status = "ACCEPTED",
-                AiStatus = "PENDING",
+                Status = "PENDING_CONSENT",
+                AiStatus = "NOT_QUEUED",
+                ConsentExpiresAt = expiresAt,
+                EmailDeliveryStatus = deliveryStatus,
                 SubmittedAt = submission.SubmittedAt
             }
         };
+    }
+
+    private static string CreateOpaqueToken()
+    {
+        return Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+    }
+
+    private static string HashToken(string token) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token))).ToLowerInvariant();
+
+    private static string BuildConsentEmailHtml(
+        string candidateName,
+        string jobTitle,
+        string companyName,
+        string confirmationUrl,
+        DateTime expiresAt,
+        bool requiresLogin)
+    {
+        var safeName = WebUtility.HtmlEncode(candidateName);
+        var safeJob = WebUtility.HtmlEncode(jobTitle);
+        var safeCompany = WebUtility.HtmlEncode(companyName);
+        var safeUrl = WebUtility.HtmlEncode(confirmationUrl);
+        var instruction = requiresLogin
+            ? "Hãy mở HR Connect và đăng nhập đúng tài khoản Candidate để xem thông tin, kiểm tra CV và chọn Đồng ý hoặc Từ chối."
+            : "Hãy mở liên kết bảo mật dưới đây để xem thông tin, kiểm tra CV và chọn Đồng ý hoặc Từ chối.";
+        return $"""
+            <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#1f2937">
+              <h2 style="color:#315c2b">Xác nhận hồ sơ ứng tuyển</h2>
+              <p>Xin chào <strong>{safeName}</strong>,</p>
+              <p>Một Affiliate Recruiter đã giới thiệu hồ sơ của bạn cho vị trí <strong>{safeJob}</strong> tại <strong>{safeCompany}</strong>.</p>
+              <p>HR Connect không đính kèm CV trong email để bảo vệ dữ liệu cá nhân. {instruction}</p>
+              <p style="margin:28px 0"><a href="{safeUrl}" style="background:#315c2b;color:white;padding:12px 20px;border-radius:6px;text-decoration:none">Xem và xác nhận hồ sơ</a></p>
+              <p style="font-size:13px;color:#6b7280">Liên kết hết hạn lúc {expiresAt:dd/MM/yyyy HH:mm} UTC. Nếu bạn không thực hiện yêu cầu này, hãy chọn Từ chối.</p>
+            </div>
+            """;
     }
 
     private static bool IsDuplicateConstraintViolation(Exception ex)

@@ -174,6 +174,7 @@ public class CvStorageServiceTests
         savedCv!.CreationMethod.Should().Be("AFFILIATE_UPLOAD");
         savedCv.UploadedByUserId.Should().Be(affiliateUserId);
         savedCv.IsPrimary.Should().BeFalse();
+        savedCv.Status.Should().Be("PENDING_CONSENT");
         _unitOfWorkMock.Verify(
             unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()),
             Times.Never);
@@ -248,6 +249,29 @@ public class CvStorageServiceTests
 
         await action.Should().ThrowAsync<BadRequestException>()
             .WithMessage("*không được phép*");
+    }
+
+    [Fact]
+    public async Task UploadCvPdfAsync_WhenFontNameStartsWithForbiddenToken_DoesNotRejectValidPdf()
+    {
+        var validPdf = CreateMinimalPdf("/BaseFont /AAAAAA+Poppins-Bold");
+        using var stream = new MemoryStream(validPdf);
+
+        _fileStorageServiceMock
+            .Setup(service => service.UploadAsync(
+                It.IsAny<Stream>(), It.IsAny<string>(), "application/pdf", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Stream _, string key, string _, CancellationToken _) => key);
+        _candidateCvRepositoryMock
+            .Setup(repository => repository.AddAsync(It.IsAny<CandidateCv>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _unitOfWorkMock
+            .Setup(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var action = () => _service.UploadCvPdfAsync(
+            Guid.NewGuid(), stream, "cv.pdf", validPdf.Length);
+
+        await action.Should().NotThrowAsync();
     }
 
     [Fact]
