@@ -285,7 +285,18 @@ try
 }
 catch (Exception ex)
 {
-    app.Logger.LogError(ex, ">>> Có lỗi xảy ra khi tự động migrate Database! <<<");
+    // Never serve traffic against a partially migrated schema. A logging provider
+    // can also fail during startup, so keep the migration exception intact.
+    try
+    {
+        app.Logger.LogCritical(ex, ">>> Database migration failed; application startup aborted. <<<");
+    }
+    catch
+    {
+        Console.Error.WriteLine(ex);
+    }
+
+    throw new InvalidOperationException("Database migration failed. Application startup was aborted.", ex);
 }
 
 app.Run();
