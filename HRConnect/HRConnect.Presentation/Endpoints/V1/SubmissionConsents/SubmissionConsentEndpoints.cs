@@ -11,6 +11,18 @@ public static class SubmissionConsentEndpoints
 {
     public static IEndpointRouteBuilder MapSubmissionConsentEndpoints(this IEndpointRouteBuilder app)
     {
+        app.MapGet("/submission-consent", (HttpContext context) =>
+        {
+            context.Response.Headers["Cache-Control"] = "no-store";
+            context.Response.Headers["Referrer-Policy"] = "no-referrer";
+            context.Response.Headers["Content-Security-Policy"] =
+                "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; " +
+                "connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
+            return Results.Content(SubmissionConsentPage.Html, "text/html; charset=utf-8");
+        })
+        .AllowAnonymous()
+        .ExcludeFromDescription();
+
         var group = app.MapGroup("/api/v1/submission-consents")
             .WithTags("Submission Consents")
             .AllowAnonymous()
