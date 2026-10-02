@@ -1,4 +1,5 @@
 using System.Text;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -17,6 +18,7 @@ using HRConnect.Presentation.Endpoints.V1.Jobs;
 using HRConnect.Presentation.Endpoints.V1.Companies;
 using HRConnect.Presentation.Endpoints.V1.InternalHr;
 using HRConnect.Presentation.Endpoints.V1.Internal;
+using HRConnect.Presentation.Endpoints.V1.SubmissionConsents;
 using HRConnect.Presentation.Swagger;
 using HRConnect.Presentation.Endpoints.Internal;
 using HRConnect.Presentation.Endpoints.V1.Recruitment;
@@ -86,6 +88,26 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0,
             AutoReplenishment = true
         }));
+
+    options.AddPolicy("submission-consent", context => RateLimitPartition.GetFixedWindowLimiter(
+        $"{ClientKey(context)}:{context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous"}",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromHours(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+
+    options.AddPolicy("submission-consent-public", context => RateLimitPartition.GetFixedWindowLimiter(
+        ClientKey(context),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromMinutes(15),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
 });
 
 // Cấu hình CORS (Cho phép Frontend kết nối API)
@@ -144,6 +166,7 @@ builder.Services.AddSwaggerGen(options =>
 
     options.OperationFilter<InternalServiceAuthOperationFilter>();
     options.OperationFilter<SwaggerEndpointTagFilter>();
+    options.OperationFilter<AnonymousEndpointSecurityOperationFilter>();
     options.DocumentFilter<SwaggerTagOrderDocumentFilter>();
 });
 
@@ -235,6 +258,7 @@ app.MapRecruitmentEndpoints();
 app.MapInterviewEndpoints();
 app.MapOfferEndpoints();
 app.MapPlacementEndpoints();
+app.MapSubmissionConsentEndpoints();
 
 // ==============================================================================
 // 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động
@@ -266,7 +290,18 @@ try
 }
 catch (Exception ex)
 {
-    app.Logger.LogError(ex, ">>> Có lỗi xảy ra khi tự động migrate Database! <<<");
+    // Never serve traffic against a partially migrated schema. A logging provider
+    // can also fail during startup, so keep the migration exception intact.
+    try
+    {
+        app.Logger.LogCritical(ex, ">>> Database migration failed; application startup aborted. <<<");
+    }
+    catch
+    {
+        Console.Error.WriteLine(ex);
+    }
+
+    throw new InvalidOperationException("Database migration failed. Application startup was aborted.", ex);
 }
 
 app.Run();

@@ -230,13 +230,56 @@ public static class AffiliateEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
-        // ==============================================================================
-        // Affiliate Submissions Endpoints
-        // ==============================================================================
         var submissionsGroup = app.MapGroup("/api/v1/affiliates/submissions")
                                   .WithTags("Affiliate Submissions")
                                   .RequireAuthorization();
 
+        // POST /api/v1/affiliates/submissions/{submissionId}/consent/resend
+        submissionsGroup.MapPost("/{submissionId:guid}/consent/resend", async (
+            Guid submissionId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null) return Results.Unauthorized();
+            if (!PermissionAuthorization.HasPermission(user, "submission.view_own"))
+                return PermissionAuthorization.Forbidden("submission.view_own");
+
+            try
+            {
+                var result = await sender.Send(
+                    new HRConnect.Application.Features.Affiliates.Commands.ResendSubmissionConsent.ResendSubmissionConsentCommand(
+                        submissionId, userId.Value), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("ResendSubmissionConsent")
+        .WithSummary("Gửi lại yêu cầu Candidate xác nhận hồ sơ")
+        .WithDescription("Yêu cầu permission submission.view_own và chỉ áp dụng cho Submission của chính Affiliate đang ở PENDING_CONSENT. API có cooldown, giới hạn số lần gửi và vô hiệu hóa liên kết cũ.")
+        .RequireRateLimiting("submission-consent")
+        .Produces<HRConnect.Application.Features.Affiliates.Commands.ResendSubmissionConsent.ResendSubmissionConsentResponse>()
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict)
+        .Produces(StatusCodes.Status429TooManyRequests);
+
+        // ==============================================================================
+        // Affiliate Submissions Endpoints
+        // ==============================================================================
         // GET /api/v1/affiliates/submissions - Lấy lịch sử nộp ứng viên của Affiliate
         submissionsGroup.MapGet("/", async (
             ClaimsPrincipal user,
@@ -291,7 +334,7 @@ public static class AffiliateEndpoints
         })
         .WithName("GetAffiliateSubmissions")
         .WithSummary("Lấy lịch sử nộp ứng viên của Affiliate")
-        .WithDescription("Yêu cầu permission submission.view_own. Lấy danh sách toàn bộ lịch sử các lần nộp ứng viên của Affiliate Recruiter đang đăng nhập, bao gồm cả trạng thái ACCEPTED và BLOCKED_DUPLICATE kèm lý do trùng lặp.")
+        .WithDescription("Yêu cầu permission submission.view_own. Lấy lịch sử các lượt nộp và thông tin consent, gồm PENDING_CONSENT, ACCEPTED, CONSENT_REJECTED, CONSENT_EXPIRED, BLOCKED_DUPLICATE và JOB_UNAVAILABLE.")
         .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateSubmissions.AffiliateSubmissionsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
@@ -340,7 +383,7 @@ public static class AffiliateEndpoints
         })
         .WithName("GetAffiliateSubmissionDetail")
         .WithSummary("Lấy chi tiết lượt nộp ứng viên của Affiliate")
-        .WithDescription("Yêu cầu permission submission.view_own. Xem thông tin chi tiết một lượt nộp ứng viên của Affiliate Recruiter đang đăng nhập, bao gồm trạng thái (ACCEPTED hoặc BLOCKED_DUPLICATE), lý do nếu bị trùng lặp, thông tin ứng viên, công việc và CV.")
+        .WithDescription("Yêu cầu permission submission.view_own. Xem Candidate, Job, CV, Application/Attribution nếu đã được tạo, trạng thái consent, thời điểm gửi, hạn phản hồi và thời điểm Candidate phản hồi.")
         .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateSubmissionDetail.AffiliateSubmissionDetailResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)

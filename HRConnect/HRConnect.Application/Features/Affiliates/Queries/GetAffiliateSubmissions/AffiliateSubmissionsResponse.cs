@@ -21,6 +21,9 @@ public sealed record AffiliateSubmissionItemDto
     public string JobTitle { get; init; } = string.Empty;
     public Guid CvId { get; init; }
     public string Status { get; init; } = string.Empty;
+    public string? ConsentStatus { get; init; }
+    public DateTime? ConsentExpiresAt { get; init; }
+    public DateTime? ConsentRespondedAt { get; init; }
     public Guid? ApplicationId { get; init; }
     public Guid? AttributionId { get; init; }
     public Guid? DuplicateOfSubmissionId { get; init; }

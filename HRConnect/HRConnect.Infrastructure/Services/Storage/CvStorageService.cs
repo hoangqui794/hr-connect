@@ -53,6 +53,7 @@ public class CvStorageService : ICvStorageService
             fileSizeBytes,
             title,
             isPrimary,
+            initialStatus: "ACTIVE",
             persistChanges: true,
             cancellationToken);
     }
@@ -80,6 +81,7 @@ public class CvStorageService : ICvStorageService
             fileSizeBytes,
             title,
             isPrimary: false,
+            initialStatus: "PENDING_CONSENT",
             persistChanges: false,
             cancellationToken);
     }
@@ -93,6 +95,7 @@ public class CvStorageService : ICvStorageService
         long fileSizeBytes,
         string? title,
         bool isPrimary,
+        string initialStatus,
         bool persistChanges,
         CancellationToken cancellationToken)
     {
@@ -161,7 +164,7 @@ public class CvStorageService : ICvStorageService
                 MimeType = "application/pdf",
                 FileSizeBytes = fileSizeBytes,
                 IsPrimary = isPrimary,
-                Status = "ACTIVE",
+                Status = initialStatus,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -448,9 +451,36 @@ public class CvStorageService : ICvStorageService
             "/RichMedia", "/OpenAction", "/AA"
         ];
 
-        if (forbiddenFeatures.Any(feature => documentText.Contains(feature, StringComparison.Ordinal)))
+        if (forbiddenFeatures.Any(feature => ContainsPdfName(documentText, feature)))
         {
             throw new BadRequestException("Tài liệu PDF chứa tính năng chủ động hoặc nội dung nhúng không được phép.");
         }
     }
+
+    private static bool ContainsPdfName(string documentText, string pdfName)
+    {
+        var searchFrom = 0;
+        while (searchFrom < documentText.Length)
+        {
+            var index = documentText.IndexOf(pdfName, searchFrom, StringComparison.Ordinal);
+            if (index < 0)
+            {
+                return false;
+            }
+
+            var endIndex = index + pdfName.Length;
+            if (endIndex == documentText.Length || IsPdfTokenDelimiter(documentText[endIndex]))
+            {
+                return true;
+            }
+
+            searchFrom = endIndex;
+        }
+
+        return false;
+    }
+
+    private static bool IsPdfTokenDelimiter(char value) =>
+        char.IsWhiteSpace(value) || value is '\0' or '(' or ')' or '<' or '>' or
+        '[' or ']' or '{' or '}' or '/' or '%';
 }

@@ -26,6 +26,13 @@ public static class DependencyInjection
 
         // 1. Dịch vụ Email (Resend)
         services.Configure<ResendSettings>(configuration.GetSection(ResendSettings.SectionName));
+        services.Configure<SubmissionConsentSettings>(configuration.GetSection(SubmissionConsentSettings.SectionName));
+        services.PostConfigure<SubmissionConsentSettings>(settings =>
+        {
+            settings.ConfirmationUrlBase = configuration["SUBMISSION_CONSENT_URL_BASE"] ?? settings.ConfirmationUrlBase;
+            if (int.TryParse(configuration["SUBMISSION_CONSENT_EXPIRATION_HOURS"], out var hours) && hours > 0)
+                settings.ExpirationHours = hours;
+        });
 
         services.AddHttpClient<IEmailService, ResendEmailService>(client =>
         {
@@ -76,6 +83,8 @@ public static class DependencyInjection
         services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<ISubmissionRepository, SubmissionRepository>();
+        services.AddScoped<ISubmissionConsentRepository, SubmissionConsentRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IApplicationRepository, ApplicationRepository>();
         services.AddScoped<IInterviewRepository, InterviewRepository>();
         services.AddScoped<IOfferRepository, OfferRepository>();
@@ -100,6 +109,7 @@ public static class DependencyInjection
                 client.DefaultRequestHeaders.Add("X-Service-Token", settings.ServiceToken);
         });
         services.AddHostedService<HRConnect.Infrastructure.Services.Integration.Mf03ScoringDispatcher>();
+        services.AddHostedService<HRConnect.Infrastructure.Services.SubmissionConsents.SubmissionConsentExpiryWorker>();
 
         // 5. Cloudflare R2 Object Storage & CV Storage
         var r2Settings = new R2Settings();

@@ -110,6 +110,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Submission> Submissions { get; set; }
 
+    public virtual DbSet<SubmissionConsent> SubmissionConsents { get; set; }
+
     public virtual DbSet<UserRole> UserRoles { get; set; }
 
     public virtual DbSet<UserToken> UserTokens { get; set; }
@@ -715,7 +717,21 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CvId).HasName("candidate_cv_pkey");
 
-            entity.ToTable("candidate_cv", "public", tb => tb.HasComment("Supports PLATFORM_BUILDER, TEMPLATE_FORM and FILE_UPLOAD CV creation methods."));
+            entity.ToTable("candidate_cv", "public", table =>
+            {
+                table.HasComment("Supports CVs created by candidates and submission-scoped CVs uploaded by Affiliates.");
+                table.HasCheckConstraint(
+                    "candidate_cv_creation_method_check",
+                    "creation_method IN ('PLATFORM_BUILDER','TEMPLATE_FORM','FILE_UPLOAD','AFFILIATE_UPLOAD')");
+                table.HasCheckConstraint(
+                    "candidate_cv_status_check",
+                    "status IN ('DRAFT','PENDING_CONSENT','ACTIVE','ARCHIVED','DELETED')");
+                table.HasCheckConstraint(
+                    "ck_candidate_cv_creation_method",
+                    "((creation_method = 'PLATFORM_BUILDER' AND structured_content IS NOT NULL) OR " +
+                    "(creation_method = 'TEMPLATE_FORM' AND structured_content IS NOT NULL AND cv_template_id IS NOT NULL) OR " +
+                    "(creation_method IN ('FILE_UPLOAD','AFFILIATE_UPLOAD') AND source_file_url IS NOT NULL))");
+            });
 
             entity.HasIndex(e => new { e.CandidateId, e.CreatedAt }, "idx_candidate_cv_candidate").IsDescending(false, true);
 
@@ -2235,7 +2251,13 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.SubmissionId).HasName("submission_pkey");
 
-            entity.ToTable("submission", "public", tb => tb.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed."));
+            entity.ToTable("submission", "public", table =>
+            {
+                table.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed.");
+                table.HasCheckConstraint(
+                    "submission_status_check",
+                    "status IN ('RECEIVED','PENDING_CONSENT','ACCEPTED','BLOCKED_DUPLICATE','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
+            });
 
             entity.HasIndex(e => new { e.JobId, e.CandidateId, e.SubmittedAt }, "idx_submission_job_candidate");
 
@@ -2246,6 +2268,10 @@ public partial class ApplicationDbContext : DbContext
             entity.HasIndex(e => new { e.JobId, e.CandidateId }, "uq_submission_one_accepted")
                 .IsUnique()
                 .HasFilter("((status)::text = 'ACCEPTED'::text)");
+
+            entity.HasIndex(e => new { e.JobId, e.CandidateId }, "uq_submission_one_pending_consent")
+                .IsUnique()
+                .HasFilter("((status)::text = 'PENDING_CONSENT'::text)");
 
             entity.Property(e => e.SubmissionId)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -2295,6 +2321,42 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => new { d.CandidateId, d.CvId })
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_submission_cv_owner");
+        });
+
+        modelBuilder.Entity<SubmissionConsent>(entity =>
+        {
+            entity.HasKey(e => e.ConsentId).HasName("submission_consent_pkey");
+            entity.ToTable("submission_consent", "public", table =>
+            {
+                table.HasCheckConstraint("ck_submission_consent_status", "status IN ('PENDING','CONFIRMED','DECLINED','EXPIRED','CANCELLED')");
+                table.HasCheckConstraint("ck_submission_consent_expiry", "expires_at > requested_at");
+            });
+
+            entity.HasIndex(e => e.SubmissionId, "uq_submission_consent_submission").IsUnique();
+            entity.HasIndex(e => e.TokenHash, "uq_submission_consent_token_hash").IsUnique();
+            entity.HasIndex(e => new { e.Status, e.ExpiresAt }, "idx_submission_consent_pending_expiry")
+                .HasFilter("status = 'PENDING'");
+
+            entity.Property(e => e.ConsentId).HasDefaultValueSql("gen_random_uuid()").HasColumnName("consent_id");
+            entity.Property(e => e.SubmissionId).HasColumnName("submission_id");
+            entity.Property(e => e.RecipientEmail).HasMaxLength(255).HasColumnName("recipient_email");
+            entity.Property(e => e.TokenHash).HasMaxLength(64).HasColumnName("token_hash");
+            entity.Property(e => e.Status).HasMaxLength(20).HasColumnName("status");
+            entity.Property(e => e.RequestedAt).HasColumnName("requested_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.RespondedAt).HasColumnName("responded_at");
+            entity.Property(e => e.ResponseIp).HasMaxLength(64).HasColumnName("response_ip");
+            entity.Property(e => e.ResponseUserAgent).HasMaxLength(512).HasColumnName("response_user_agent");
+            entity.Property(e => e.EmailSendCount).HasDefaultValue(0).HasColumnName("email_send_count");
+            entity.Property(e => e.EmailSentAt).HasColumnName("email_sent_at");
+            entity.Property(e => e.LastEmailError).HasMaxLength(1000).HasColumnName("last_email_error");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+
+            entity.HasOne(e => e.Submission).WithOne(s => s.Consent)
+                .HasForeignKey<SubmissionConsent>(e => e.SubmissionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("submission_consent_submission_id_fkey");
         });
 
         modelBuilder.Entity<UserRole>(entity =>

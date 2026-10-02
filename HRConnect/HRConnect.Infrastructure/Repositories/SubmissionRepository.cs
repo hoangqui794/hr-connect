@@ -20,6 +20,16 @@ public class SubmissionRepository : ISubmissionRepository
             .FirstOrDefaultAsync(s => s.CandidateId == candidateId && s.JobId == jobId && s.Status == "ACCEPTED", cancellationToken);
     }
 
+    public Task<Submission?> GetPendingConsentSubmissionAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default)
+    {
+        return _context.Submissions
+            .Include(s => s.Consent)
+            .Include(s => s.CandidateCv)
+            .FirstOrDefaultAsync(s => s.CandidateId == candidateId && s.JobId == jobId &&
+                                      s.Status == "PENDING_CONSENT",
+                cancellationToken);
+    }
+
     public async Task<Submission?> GetByIdAsync(Guid submissionId, CancellationToken cancellationToken = default)
     {
         return await _context.Submissions
@@ -86,6 +96,7 @@ public class SubmissionRepository : ISubmissionRepository
             .Include(s => s.Candidate)
             .Include(s => s.Applications)
             .Include(s => s.Attribution)
+            .Include(s => s.Consent)
             .OrderByDescending(s => s.SubmittedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -104,6 +115,7 @@ public class SubmissionRepository : ISubmissionRepository
             .Include(s => s.CandidateCv)
             .Include(s => s.Applications)
             .Include(s => s.Attribution)
+            .Include(s => s.Consent)
             .FirstOrDefaultAsync(s => s.SubmissionId == submissionId, cancellationToken);
     }
 }

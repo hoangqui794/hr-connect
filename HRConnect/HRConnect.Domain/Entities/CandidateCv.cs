@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace HRConnect.Domain.Entities;
 
 /// <summary>
-/// Supports PLATFORM_BUILDER, TEMPLATE_FORM and FILE_UPLOAD CV creation methods.
+/// Stores Candidate CVs and submission-scoped CV documents uploaded by Affiliates.
 /// </summary>
 public partial class CandidateCv
 {

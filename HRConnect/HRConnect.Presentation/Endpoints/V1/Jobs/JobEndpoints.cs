@@ -97,7 +97,7 @@ public static class JobEndpoints
         jobs.MapPost("/{jobId:guid}/apply", async (
             Guid jobId,
             ClaimsPrincipal user,
-            [FromForm] Guid? cvId,
+            [FromForm] string? cvId,
             IFormFile? file,
             ISender sender,
             CancellationToken ct) =>
@@ -107,12 +107,25 @@ public static class JobEndpoints
             if (!PermissionAuthorization.HasPermission(user, "application.create"))
                 return PermissionAuthorization.Forbidden("application.create");
 
+            Guid? parsedCandidateCvId = null;
+            if (!string.IsNullOrWhiteSpace(cvId))
+            {
+                if (!Guid.TryParse(cvId, out var validCvId))
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["cvId"] = ["cvId phải là UUID hợp lệ hoặc để trống khi tải lên tệp CV mới."]
+                    });
+                }
+                parsedCandidateCvId = validCvId;
+            }
+
             var command = new ApplyJobCommand
             {
                 JobId = jobId,
                 UserId = id.Value,
                 RoleCodes = RoleCodes(user),
-                CvId = cvId,
+                CvId = parsedCandidateCvId,
                 FileStream = file?.OpenReadStream(),
                 FileName = file?.FileName,
                 ContentType = file?.ContentType,
@@ -140,7 +153,7 @@ public static class JobEndpoints
             [FromForm] string fullName,
             [FromForm] string? email,
             [FromForm] string? phone,
-            [FromForm] Guid? cvId,
+            [FromForm] string? cvId,
             [FromForm] string? note,
             IFormFile? file,
             ISender sender,
@@ -152,6 +165,19 @@ public static class JobEndpoints
             if (!PermissionAuthorization.HasPermission(user, "submission.create"))
                 return PermissionAuthorization.Forbidden("submission.create");
 
+            Guid? parsedCvId = null;
+            if (!string.IsNullOrWhiteSpace(cvId))
+            {
+                if (!Guid.TryParse(cvId, out var validCvId))
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["cvId"] = ["cvId phải là UUID hợp lệ hoặc để trống khi tải lên tệp CV mới."]
+                    });
+                }
+                parsedCvId = validCvId;
+            }
+
             var command = new SubmitCandidateCommand
             {
                 JobId = jobId,
@@ -160,7 +186,7 @@ public static class JobEndpoints
                 FullName = fullName ?? string.Empty,
                 Email = email,
                 Phone = phone,
-                CvId = cvId,
+                CvId = parsedCvId,
                 Note = note,
                 FileStream = file?.OpenReadStream(),
                 FileName = file?.FileName,
@@ -176,7 +202,8 @@ public static class JobEndpoints
         .WithTags("Affiliate Submissions")
         .WithName("AffiliateSubmitCandidate")
         .WithSummary("Affiliate Recruiter nộp hồ sơ ứng viên vào Job")
-        .WithDescription("Yêu cầu permission submission.create. Affiliate phải tải PDF mới hoặc dùng lại đúng CV do chính mình đã tải trước đó; không thể dùng CV riêng của Candidate hay của Affiliate khác. Hệ thống kiểm tra quyền Service Type, trùng lặp và ghi nhận Attribution.")
+        .WithDescription("Yêu cầu permission submission.create. Hệ thống kiểm tra quyền Service Type và trùng lặp, lưu Submission ở trạng thái PENDING_CONSENT rồi gửi Candidate yêu cầu xác nhận. Application, Attribution và MF03 chỉ được tạo sau khi Candidate đồng ý.")
+        .RequireRateLimiting("submission-consent")
         .DisableAntiforgery()
         .Produces<SubmitCandidateResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)

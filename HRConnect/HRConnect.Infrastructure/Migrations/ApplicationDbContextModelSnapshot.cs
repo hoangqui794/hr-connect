@@ -1056,7 +1056,13 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.ToTable("candidate_cv", "public", t =>
                         {
-                            t.HasComment("Supports PLATFORM_BUILDER, TEMPLATE_FORM and FILE_UPLOAD CV creation methods.");
+                            t.HasComment("Supports CVs created by candidates and submission-scoped CVs uploaded by Affiliates.");
+
+                            t.HasCheckConstraint("candidate_cv_creation_method_check", "creation_method IN ('PLATFORM_BUILDER','TEMPLATE_FORM','FILE_UPLOAD','AFFILIATE_UPLOAD')");
+
+                            t.HasCheckConstraint("candidate_cv_status_check", "status IN ('DRAFT','PENDING_CONSENT','ACTIVE','ARCHIVED','DELETED')");
+
+                            t.HasCheckConstraint("ck_candidate_cv_creation_method", "((creation_method = 'PLATFORM_BUILDER' AND structured_content IS NOT NULL) OR (creation_method = 'TEMPLATE_FORM' AND structured_content IS NOT NULL AND cv_template_id IS NOT NULL) OR (creation_method IN ('FILE_UPLOAD','AFFILIATE_UPLOAD') AND source_file_url IS NOT NULL))");
                         });
                 });
 
@@ -3369,9 +3375,114 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("((status)::text = 'ACCEPTED'::text)");
 
+                    b.HasIndex(new[] { "JobId", "CandidateId" }, "uq_submission_one_pending_consent")
+                        .IsUnique()
+                        .HasFilter("((status)::text = 'PENDING_CONSENT'::text)");
+
                     b.ToTable("submission", "public", t =>
                         {
                             t.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed.");
+
+                            t.HasCheckConstraint("submission_status_check", "status IN ('RECEIVED','PENDING_CONSENT','ACCEPTED','BLOCKED_DUPLICATE','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
+                        });
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.SubmissionConsent", b =>
+                {
+                    b.Property<Guid>("ConsentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("consent_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int>("EmailSendCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("email_send_count");
+
+                    b.Property<DateTime?>("EmailSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("email_sent_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("LastEmailError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_email_error");
+
+                    b.Property<string>("RecipientEmail")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("recipient_email");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("responded_at");
+
+                    b.Property<string>("ResponseIp")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("response_ip");
+
+                    b.Property<string>("ResponseUserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("response_user_agent");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.HasKey("ConsentId")
+                        .HasName("submission_consent_pkey");
+
+                    b.HasIndex(new[] { "Status", "ExpiresAt" }, "idx_submission_consent_pending_expiry")
+                        .HasFilter("status = 'PENDING'");
+
+                    b.HasIndex(new[] { "SubmissionId" }, "uq_submission_consent_submission")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "TokenHash" }, "uq_submission_consent_token_hash")
+                        .IsUnique();
+
+                    b.ToTable("submission_consent", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_submission_consent_expiry", "expires_at > requested_at");
+
+                            t.HasCheckConstraint("ck_submission_consent_status", "status IN ('PENDING','CONFIRMED','DECLINED','EXPIRED','CANCELLED')");
                         });
                 });
 
@@ -4418,6 +4529,18 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("SubmittedByNavigation");
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.SubmissionConsent", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.Submission", "Submission")
+                        .WithOne("Consent")
+                        .HasForeignKey("HRConnect.Domain.Entities.SubmissionConsent", "SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("submission_consent_submission_id_fkey");
+
+                    b.Navigation("Submission");
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.UserRole", b =>
                 {
                     b.HasOne("HRConnect.Domain.Entities.AppUser", "AssignedByNavigation")
@@ -4731,6 +4854,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Applications");
 
                     b.Navigation("Attribution");
+
+                    b.Navigation("Consent");
 
                     b.Navigation("Disputes");
 

@@ -42,14 +42,16 @@ public class SubmitCandidateResponse
 
 public class SubmitCandidateData
 {
-    public Guid ApplicationId { get; set; }
+    public Guid? ApplicationId { get; set; }
     public Guid SubmissionId { get; set; }
-    public Guid AttributionId { get; set; }
+    public Guid? AttributionId { get; set; }
     public Guid AffiliateId { get; set; }
     public Guid CandidateId { get; set; }
     public Guid JobId { get; set; }
     public Guid CvId { get; set; }
-    public string Status { get; set; } = "ACCEPTED";
-    public string AiStatus { get; set; } = "PENDING";
+    public string Status { get; set; } = "PENDING_CONSENT";
+    public string AiStatus { get; set; } = "NOT_QUEUED";
+    public DateTime? ConsentExpiresAt { get; set; }
+    public string EmailDeliveryStatus { get; set; } = "PENDING";
     public DateTime SubmittedAt { get; set; }
 }
