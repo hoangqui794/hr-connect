@@ -302,7 +302,7 @@ public class ApplyJobCommandHandlerTests
             .Callback<Submission, CancellationToken>((s, ct) => blockedSubmission = s)
             .Returns(Task.CompletedTask);
 
-        var command = new ApplyJobCommand { JobId = jobId, UserId = userId, CvId = cvId };
+        var command = new ApplyJobCommand { JobId = jobId, UserId = userId, CvId = cvId, RoleCodes = [JobAccessPolicy.CandidateRole] };
 
         // Act
         Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
@@ -360,7 +360,8 @@ public class ApplyJobCommandHandlerTests
             UserId = userId,
             FileStream = stream,
             FileName = "cv.pdf",
-            FileSizeBytes = 3
+            FileSizeBytes = 3,
+            RoleCodes = [JobAccessPolicy.CandidateRole]
         };
 
         // Act
@@ -406,7 +407,7 @@ public class ApplyJobCommandHandlerTests
         _scoringTriggerMock.Setup(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("MF-03 scoring pipeline error"));
 
-        var command = new ApplyJobCommand { JobId = jobId, UserId = userId, CvId = cvId };
+        var command = new ApplyJobCommand { JobId = jobId, UserId = userId, CvId = cvId, RoleCodes = [JobAccessPolicy.CandidateRole] };
 
         // Act
         Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);

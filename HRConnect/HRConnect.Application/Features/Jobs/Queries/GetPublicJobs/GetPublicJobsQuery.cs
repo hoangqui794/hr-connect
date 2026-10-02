@@ -30,8 +30,12 @@ public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQue
     {
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
+        var roleCodes = request.RoleCodes.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var allowedVisibilities = JobAccessPolicy.GetDiscoverableVisibilities(
+            roleCodes, request.HasInternalAccess);
         var (items, totalCount) = await _jobs.GetVisibleJobsAsync(
-            request.RoleCodes.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            roleCodes,
+            allowedVisibilities,
             request.HasInternalAccess,
             request.Search,
             request.Location,

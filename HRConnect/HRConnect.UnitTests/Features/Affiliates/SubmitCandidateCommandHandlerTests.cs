@@ -1022,7 +1022,7 @@ public class SubmitCandidateCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenMultiRoleUserHasAnyAllowedRole_Succeeds()
+    public async Task Handle_WhenMultiRoleUserOnlyHasCandidateServicePermission_RejectsAffiliateSubmission()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -1038,19 +1038,11 @@ public class SubmitCandidateCommandHandlerTests
 
         var multiRoles = new[] { "CANDIDATE", "AFFILIATE_RECRUITER", "INTERNAL_HR" };
 
-        // CanAnyRoleSubmitJobAsync returns true if ANY role is allowed
-        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, multiRoles, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
-
-        var candidateId = Guid.NewGuid();
-        var candidate = new Candidate { CandidateId = candidateId, FullName = "Candidate", Email = "c@example.com" };
-        _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("c@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(candidate);
-
-        var cvId = Guid.NewGuid();
-        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = userId };
-        _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(cv);
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(
+                serviceTypeId,
+                It.Is<IReadOnlyCollection<string>>(roles => roles.Count == 1 && roles.Contains(JobAccessPolicy.AffiliateRole)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
 
         var command = new SubmitCandidateCommand
         {
@@ -1058,15 +1050,17 @@ public class SubmitCandidateCommandHandlerTests
             JobId = jobId,
             FullName = "Candidate",
             Email = "c@example.com",
-            CvId = cvId,
             RoleCodes = multiRoles
         };
 
         // Act
-        var response = await _handler.Handle(command, CancellationToken.None);
+        var action = () => _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        response.Success.Should().BeTrue();
+        var exception = await action.Should().ThrowAsync<ForbiddenException>();
+        exception.Which.ErrorCode.Should().Be("SERVICE_TYPE_SUBMISSION_NOT_ALLOWED");
+        _candidateRepositoryMock.Verify(r => r.GetByNormalizedEmailAsync(
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]

@@ -143,6 +143,34 @@ WHERE j.job_id IN (
 )
 ORDER BY j.visibility, h.changed_at;
 
+-- 9. Persistent Job access policy + Service Type/Visibility matrix rows (2026-10-02).
+SELECT j.job_id, j.title, j.status, j.visibility, st.code AS service_type_code,
+       j.company_id, j.created_by, j.created_at
+FROM public.job j
+JOIN public.service_type st ON st.service_type_id = j.service_type_id
+WHERE j.job_id IN (
+    'eeb9ef37-d05f-4553-ac62-6146d4a68a10',
+    '59bbb1ff-b959-4490-a52d-b6eba702356b'
+)
+ORDER BY j.visibility;
+
+-- Expected:
+-- eeb9ef37... = CV_SOURCING + PARTNER_ONLY
+-- 59bbb1ff... = CV_APPLICATION + INTERNAL_ONLY
+-- The rejected CV_APPLICATION + PARTNER_ONLY request returned HTTP 400 and created no row.
+
+-- Cleanup for these two rows (DO NOT run automatically).
+-- BEGIN;
+-- DELETE FROM public.job_status_history WHERE job_id IN (
+--     'eeb9ef37-d05f-4553-ac62-6146d4a68a10',
+--     '59bbb1ff-b959-4490-a52d-b6eba702356b'
+-- );
+-- DELETE FROM public.job WHERE job_id IN (
+--     'eeb9ef37-d05f-4553-ac62-6146d4a68a10',
+--     '59bbb1ff-b959-4490-a52d-b6eba702356b'
+-- );
+-- COMMIT;
+
 -- Cleanup có chủ đích (KHÔNG tự động chạy).
 -- Chỉ bỏ comment sau khi đã kiểm tra đúng job_id cần xóa.
 -- BEGIN;
