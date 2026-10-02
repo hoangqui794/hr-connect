@@ -165,6 +165,7 @@ builder.Services.AddSwaggerGen(options =>
 
     options.OperationFilter<InternalServiceAuthOperationFilter>();
     options.OperationFilter<SwaggerEndpointTagFilter>();
+    options.OperationFilter<AnonymousEndpointSecurityOperationFilter>();
     options.DocumentFilter<SwaggerTagOrderDocumentFilter>();
 });
 
