@@ -21,6 +21,12 @@ public class SubmissionConsentRepository : ISubmissionConsentRepository
             .Include(c => c.Submission).ThenInclude(s => s.Job).ThenInclude(j => j.Company)
             .FirstOrDefaultAsync(c => c.TokenHash == tokenHash, cancellationToken);
 
+    public Task<SubmissionConsent?> GetBySubmissionIdAsync(Guid submissionId, CancellationToken cancellationToken = default) =>
+        _context.SubmissionConsents
+            .Include(c => c.Submission).ThenInclude(s => s.Candidate)
+            .Include(c => c.Submission).ThenInclude(s => s.Job).ThenInclude(j => j.Company)
+            .FirstOrDefaultAsync(c => c.SubmissionId == submissionId, cancellationToken);
+
     public Task<SubmissionConsent?> GetActiveByCandidateAndJobAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default) =>
         _context.SubmissionConsents
             .Include(c => c.Submission)
