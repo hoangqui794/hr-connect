@@ -18,6 +18,8 @@ public class CreateJobCommand : IRequest<CreateJobResponse>
 
     public string? Location { get; set; }
 
+    public string? WorkingTime { get; set; }
+
     public string? EmploymentType { get; set; }
 
     public decimal? SalaryMin { get; set; }
@@ -75,6 +77,8 @@ public class CreateJobData
     public string Title { get; set; } = string.Empty;
 
     public string? Benefits { get; set; }
+
+    public string? WorkingTime { get; set; }
 
     public string Status { get; set; } = string.Empty;
 
