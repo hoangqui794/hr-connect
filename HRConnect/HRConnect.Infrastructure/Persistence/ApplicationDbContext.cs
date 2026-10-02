@@ -2224,7 +2224,13 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.SubmissionId).HasName("submission_pkey");
 
-            entity.ToTable("submission", "public", tb => tb.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed."));
+            entity.ToTable("submission", "public", table =>
+            {
+                table.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed.");
+                table.HasCheckConstraint(
+                    "submission_status_check",
+                    "status IN ('RECEIVED','PENDING_CONSENT','ACCEPTED','BLOCKED_DUPLICATE','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
+            });
 
             entity.HasIndex(e => new { e.JobId, e.CandidateId, e.SubmittedAt }, "idx_submission_job_candidate");
 
