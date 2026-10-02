@@ -14,20 +14,14 @@ public class SubmitCandidateCommandValidator : AbstractValidator<SubmitCandidate
             .NotEmpty().WithMessage("Họ và tên ứng viên không được để trống.")
             .MaximumLength(255).WithMessage("Họ và tên không được vượt quá 255 ký tự.");
 
-        RuleFor(x => x)
-            .Must(x => !string.IsNullOrWhiteSpace(x.Email) || !string.IsNullOrWhiteSpace(x.Phone))
-            .WithMessage("Phải cung cấp ít nhất Email hoặc Số điện thoại của ứng viên.");
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email ứng viên là bắt buộc để gửi yêu cầu xác nhận.")
+            .EmailAddress().WithMessage("Email không đúng định dạng.")
+            .MaximumLength(255).WithMessage("Email không được vượt quá 255 ký tự.");
 
         RuleFor(x => x)
             .Must(x => HasUploadedFile(x) ^ (x.CvId.HasValue && x.CvId.Value != Guid.Empty))
             .WithMessage("Phải cung cấp đúng một nguồn CV: tệp PDF mới hoặc cvId do chính Affiliate đã tải trước đó.");
-
-        When(x => !string.IsNullOrWhiteSpace(x.Email), () =>
-        {
-            RuleFor(x => x.Email!)
-                .EmailAddress().WithMessage("Email không đúng định dạng.")
-                .MaximumLength(255).WithMessage("Email không được vượt quá 255 ký tự.");
-        });
 
         When(x => !string.IsNullOrWhiteSpace(x.Phone), () =>
         {

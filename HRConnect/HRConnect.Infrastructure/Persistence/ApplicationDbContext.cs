@@ -110,6 +110,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Submission> Submissions { get; set; }
 
+    public virtual DbSet<SubmissionConsent> SubmissionConsents { get; set; }
+
     public virtual DbSet<UserRole> UserRoles { get; set; }
 
     public virtual DbSet<UserToken> UserTokens { get; set; }
@@ -2234,6 +2236,10 @@ public partial class ApplicationDbContext : DbContext
                 .IsUnique()
                 .HasFilter("((status)::text = 'ACCEPTED'::text)");
 
+            entity.HasIndex(e => new { e.JobId, e.CandidateId }, "uq_submission_one_pending_consent")
+                .IsUnique()
+                .HasFilter("((status)::text = 'PENDING_CONSENT'::text)");
+
             entity.Property(e => e.SubmissionId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("submission_id");
@@ -2282,6 +2288,42 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => new { d.CandidateId, d.CvId })
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_submission_cv_owner");
+        });
+
+        modelBuilder.Entity<SubmissionConsent>(entity =>
+        {
+            entity.HasKey(e => e.ConsentId).HasName("submission_consent_pkey");
+            entity.ToTable("submission_consent", "public", table =>
+            {
+                table.HasCheckConstraint("ck_submission_consent_status", "status IN ('PENDING','CONFIRMED','DECLINED','EXPIRED')");
+                table.HasCheckConstraint("ck_submission_consent_expiry", "expires_at > requested_at");
+            });
+
+            entity.HasIndex(e => e.SubmissionId, "uq_submission_consent_submission").IsUnique();
+            entity.HasIndex(e => e.TokenHash, "uq_submission_consent_token_hash").IsUnique();
+            entity.HasIndex(e => new { e.Status, e.ExpiresAt }, "idx_submission_consent_pending_expiry")
+                .HasFilter("status = 'PENDING'");
+
+            entity.Property(e => e.ConsentId).HasDefaultValueSql("gen_random_uuid()").HasColumnName("consent_id");
+            entity.Property(e => e.SubmissionId).HasColumnName("submission_id");
+            entity.Property(e => e.RecipientEmail).HasMaxLength(255).HasColumnName("recipient_email");
+            entity.Property(e => e.TokenHash).HasMaxLength(64).HasColumnName("token_hash");
+            entity.Property(e => e.Status).HasMaxLength(20).HasColumnName("status");
+            entity.Property(e => e.RequestedAt).HasColumnName("requested_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.RespondedAt).HasColumnName("responded_at");
+            entity.Property(e => e.ResponseIp).HasMaxLength(64).HasColumnName("response_ip");
+            entity.Property(e => e.ResponseUserAgent).HasMaxLength(512).HasColumnName("response_user_agent");
+            entity.Property(e => e.EmailSendCount).HasDefaultValue(0).HasColumnName("email_send_count");
+            entity.Property(e => e.EmailSentAt).HasColumnName("email_sent_at");
+            entity.Property(e => e.LastEmailError).HasMaxLength(1000).HasColumnName("last_email_error");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+
+            entity.HasOne(e => e.Submission).WithOne(s => s.Consent)
+                .HasForeignKey<SubmissionConsent>(e => e.SubmissionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("submission_consent_submission_id_fkey");
         });
 
         modelBuilder.Entity<UserRole>(entity =>

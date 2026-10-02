@@ -7,6 +7,7 @@ using HRConnect.Application.Features.Affiliates.Commands.SubmitCandidate;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 using JobApplication = HRConnect.Domain.Entities.Application;
@@ -23,6 +24,10 @@ public class SubmitCandidateCommandHandlerTests
     private readonly Mock<ISubmissionRepository> _submissionRepositoryMock;
     private readonly Mock<IApplicationRepository> _applicationRepositoryMock;
     private readonly Mock<IAttributionRepository> _attributionRepositoryMock;
+    private readonly Mock<ISubmissionConsentRepository> _consentRepositoryMock;
+    private readonly Mock<INotificationRepository> _notificationRepositoryMock;
+    private readonly Mock<IEmailOutboxRepository> _emailOutboxRepositoryMock;
+    private readonly Mock<IEmailService> _emailServiceMock;
     private readonly Mock<IEmailNormalizer> _emailNormalizerMock;
     private readonly Mock<IPhoneNormalizer> _phoneNormalizerMock;
     private readonly Mock<IMf03ScoringTrigger> _scoringTriggerMock;
@@ -41,6 +46,10 @@ public class SubmitCandidateCommandHandlerTests
         _submissionRepositoryMock = new Mock<ISubmissionRepository>();
         _applicationRepositoryMock = new Mock<IApplicationRepository>();
         _attributionRepositoryMock = new Mock<IAttributionRepository>();
+        _consentRepositoryMock = new Mock<ISubmissionConsentRepository>();
+        _notificationRepositoryMock = new Mock<INotificationRepository>();
+        _emailOutboxRepositoryMock = new Mock<IEmailOutboxRepository>();
+        _emailServiceMock = new Mock<IEmailService>();
         _emailNormalizerMock = new Mock<IEmailNormalizer>();
         _phoneNormalizerMock = new Mock<IPhoneNormalizer>();
         _scoringTriggerMock = new Mock<IMf03ScoringTrigger>();
@@ -52,6 +61,9 @@ public class SubmitCandidateCommandHandlerTests
             .Returns<string>(s => s?.Trim().ToLowerInvariant() ?? string.Empty);
         _phoneNormalizerMock.Setup(n => n.Normalize(It.IsAny<string?>()))
             .Returns<string?>(s => s?.Trim().Replace(" ", "").Replace("-", ""));
+        _emailServiceMock.Setup(s => s.SendEmailAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(EmailResult.Success("test-message"));
 
         _handler = new SubmitCandidateCommandHandler(
             _affiliateProfileRepositoryMock.Object,
@@ -61,12 +73,15 @@ public class SubmitCandidateCommandHandlerTests
             _cvStorageServiceMock.Object,
             _submissionRepositoryMock.Object,
             _applicationRepositoryMock.Object,
-            _attributionRepositoryMock.Object,
+            _consentRepositoryMock.Object,
+            _notificationRepositoryMock.Object,
+            _emailOutboxRepositoryMock.Object,
+            _emailServiceMock.Object,
             _emailNormalizerMock.Object,
             _phoneNormalizerMock.Object,
-            _scoringTriggerMock.Object,
             _unitOfWorkMock.Object,
             _auditLogServiceMock.Object,
+            Options.Create(new SubmissionConsentSettings()),
             _loggerMock.Object);
     }
 
@@ -332,7 +347,9 @@ public class SubmitCandidateCommandHandlerTests
         createdCandidate!.UserId.Should().BeNull(); // Candidate record created without app_user login account
         createdCandidate.FullName.Should().Be("New Candidate");
         result.Data!.CandidateId.Should().Be(createdCandidate.CandidateId);
-        result.Data.AttributionId.Should().NotBeEmpty();
+        result.Data.AttributionId.Should().BeNull();
+        result.Data.ApplicationId.Should().BeNull();
+        result.Data.Status.Should().Be("PENDING_CONSENT");
         result.Data.AffiliateId.Should().Be(affiliateId);
     }
 
@@ -459,7 +476,7 @@ public class SubmitCandidateCommandHandlerTests
         _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var existingCandidate = new Candidate { CandidateId = Guid.NewGuid(), FullName = "ByPhone", Phone = "0912345678" };
+        var existingCandidate = new Candidate { CandidateId = Guid.NewGuid(), FullName = "ByPhone", Email = "byphone@example.com", Phone = "0912345678" };
         _candidateRepositoryMock.Setup(r => r.GetByNormalizedPhoneAsync("0912345678", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingCandidate);
 
@@ -661,26 +678,20 @@ public class SubmitCandidateCommandHandlerTests
         // Assert
         response.Success.Should().BeTrue();
         response.Data.Should().NotBeNull();
-        response.Data!.Status.Should().Be("ACCEPTED");
-        response.Data.AiStatus.Should().Be("PENDING");
+        response.Data!.Status.Should().Be("PENDING_CONSENT");
+        response.Data.AiStatus.Should().Be("NOT_QUEUED");
 
         createdSubmission.Should().NotBeNull();
-        createdSubmission!.Status.Should().Be("ACCEPTED");
+        createdSubmission!.Status.Should().Be("PENDING_CONSENT");
         createdSubmission.Source.Should().Be("AFFILIATE");
         createdSubmission.SubmittedBy.Should().Be(userId);
 
-        createdApplication.Should().NotBeNull();
-        createdApplication!.AcceptedSubmissionId.Should().Be(createdSubmission.SubmissionId);
-
-        createdAttribution.Should().NotBeNull();
-        createdAttribution!.ApplicationId.Should().Be(createdApplication.ApplicationId);
-        createdAttribution.AffiliateId.Should().Be(affiliateId);
-        createdAttribution.WinningSubmissionId.Should().Be(createdSubmission.SubmissionId);
+        createdApplication.Should().BeNull();
+        createdAttribution.Should().BeNull();
 
         _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(
-            It.Is<Mf03TriggerPayload>(p => p.ApplicationId == createdApplication.ApplicationId && p.CvId == cvId && p.JobId == jobId),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
         _auditLogServiceMock.Verify(a => a.AddAsync(
             It.Is<AuditEntry>(entry => entry.Action == AuditActions.AffiliateSubmissionCreated && entry.EntityId == createdSubmission.SubmissionId),
             It.IsAny<CancellationToken>()), Times.Once);
@@ -753,11 +764,11 @@ public class SubmitCandidateCommandHandlerTests
         _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _cvStorageServiceMock.Verify(s => s.CompensateUploadAsync(
             "candidates/race/cvs/cv.pdf", It.IsAny<CancellationToken>()), Times.Once);
-        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Once);
+        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task Handle_WhenPersistentScoringEnqueueThrows_RollsBackSubmission()
+    public async Task Handle_WhenSubmissionAwaitsConsent_DoesNotInvokeScoring()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -807,9 +818,10 @@ public class SubmitCandidateCommandHandlerTests
         // Act
         Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await act.Should().ThrowAsync<HttpRequestException>();
-        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
-        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        await act.Should().NotThrowAsync();
+        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -940,8 +952,9 @@ public class SubmitCandidateCommandHandlerTests
         // Assert - Allowed for different Job!
         response.Success.Should().BeTrue();
         response.Data!.JobId.Should().Be(job2Id);
-        _applicationRepositoryMock.Verify(a => a.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Once);
-        _attributionRepositoryMock.Verify(a => a.AddAsync(It.IsAny<Attribution>(), It.IsAny<CancellationToken>()), Times.Once);
+        response.Data.Status.Should().Be("PENDING_CONSENT");
+        _applicationRepositoryMock.Verify(a => a.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
+        _attributionRepositoryMock.Verify(a => a.AddAsync(It.IsAny<Attribution>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
