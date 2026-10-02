@@ -26,6 +26,14 @@ public class CreateJobCommand : IRequest<CreateJobResponse>
 
     public decimal? SalaryMax { get; set; }
 
+    public bool SalaryNegotiable { get; set; }
+
+    public string? SalaryNote { get; set; }
+
+    public int? MinExperienceYears { get; set; }
+
+    public int? MaxExperienceYears { get; set; }
+
     public string CurrencyCode { get; set; } = "VND";
 
     public int Quantity { get; set; } = 1;
@@ -79,6 +87,14 @@ public class CreateJobData
     public string? Benefits { get; set; }
 
     public string? WorkingTime { get; set; }
+
+    public bool SalaryNegotiable { get; set; }
+
+    public string? SalaryNote { get; set; }
+
+    public int? MinExperienceYears { get; set; }
+
+    public int? MaxExperienceYears { get; set; }
 
     public string Status { get; set; } = string.Empty;
 

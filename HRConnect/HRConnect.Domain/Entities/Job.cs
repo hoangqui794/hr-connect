@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace HRConnect.Domain.Entities;
@@ -28,6 +28,14 @@ public partial class Job
     public decimal? SalaryMin { get; set; }
 
     public decimal? SalaryMax { get; set; }
+
+    public bool SalaryNegotiable { get; set; }
+
+    public string? SalaryNote { get; set; }
+
+    public int? MinExperienceYears { get; set; }
+
+    public int? MaxExperienceYears { get; set; }
 
     public string CurrencyCode { get; set; } = null!;
 

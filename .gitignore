@@ -79,5 +79,6 @@ UI-UX-SKILLS-GUIDE.md
 
 ## Temporary Files
 tmp/
+.tmp/
 .dotnet/
 

@@ -39,6 +39,12 @@ public class CreateJobCommandHandlerTests
             Title = "  Senior .NET Developer  ",
             Benefits = "  KPI bonus, insurance and training  ",
             EmploymentType = " full_time ",
+            MinExperienceYears = 3,
+            MaxExperienceYears = 5,
+            SalaryMin = 15_000_000,
+            SalaryMax = null,
+            SalaryNegotiable = true,
+            SalaryNote = "  Thỏa thuận theo năng lực khi phỏng vấn.  ",
             CurrencyCode = "vnd",
             Visibility = "public",
             Requirements =
@@ -79,6 +85,12 @@ public class CreateJobCommandHandlerTests
         createdJob.Title.Should().Be("Senior .NET Developer");
         createdJob.Benefits.Should().Be("KPI bonus, insurance and training");
         createdJob.EmploymentType.Should().Be("FULL_TIME");
+        createdJob.MinExperienceYears.Should().Be(3);
+        createdJob.MaxExperienceYears.Should().Be(5);
+        createdJob.SalaryMin.Should().Be(15_000_000);
+        createdJob.SalaryMax.Should().BeNull();
+        createdJob.SalaryNegotiable.Should().BeTrue();
+        createdJob.SalaryNote.Should().Be("Thỏa thuận theo năng lực khi phỏng vấn.");
         createdJob.CurrencyCode.Should().Be("VND");
         createdJob.Status.Should().Be("DRAFT");
         createdJob.PostedAt.Should().BeNull();
@@ -95,6 +107,10 @@ public class CreateJobCommandHandlerTests
         result.Success.Should().BeTrue();
         result.Data.JobId.Should().Be(createdJob.JobId);
         result.Data.Benefits.Should().Be("KPI bonus, insurance and training");
+        result.Data.MinExperienceYears.Should().Be(3);
+        result.Data.MaxExperienceYears.Should().Be(5);
+        result.Data.SalaryNegotiable.Should().BeTrue();
+        result.Data.SalaryNote.Should().Be("Thỏa thuận theo năng lực khi phỏng vấn.");
         result.Data.Status.Should().Be("DRAFT");
         result.Data.RequirementCount.Should().Be(1);
         result.Data.SkillCount.Should().Be(1);

@@ -126,4 +126,84 @@ public class CreateJobCommandValidatorTests
         result.ShouldHaveValidationErrorFor(x => x.Skills);
         result.Errors.Should().Contain(error => error.PropertyName == "Skills[0].Weight");
     }
+
+    [Theory]
+    [InlineData(0, null)]
+    [InlineData(1, null)]
+    [InlineData(3, 5)]
+    public async Task Validate_ShouldAcceptValidExperienceRanges(int minExperience, int? maxExperience)
+    {
+        var command = new CreateJobCommand
+        {
+            ServiceTypeId = Guid.NewGuid(),
+            MinExperienceYears = minExperience,
+            MaxExperienceYears = maxExperience
+        };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Validate_ShouldRejectNegativeMinOrMaxExperienceYears()
+    {
+        var command = new CreateJobCommand
+        {
+            ServiceTypeId = Guid.NewGuid(),
+            MinExperienceYears = -1,
+            MaxExperienceYears = -2
+        };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.MinExperienceYears);
+        result.ShouldHaveValidationErrorFor(x => x.MaxExperienceYears);
+    }
+
+    [Fact]
+    public async Task Validate_ShouldRejectMaxExperienceYearsLessThanMin()
+    {
+        var command = new CreateJobCommand
+        {
+            ServiceTypeId = Guid.NewGuid(),
+            MinExperienceYears = 5,
+            MaxExperienceYears = 3
+        };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.MaxExperienceYears);
+    }
+
+    [Fact]
+    public async Task Validate_ShouldAcceptNegotiableSalaryWithNote()
+    {
+        var command = new CreateJobCommand
+        {
+            ServiceTypeId = Guid.NewGuid(),
+            SalaryMin = 15_000_000,
+            SalaryMax = null,
+            SalaryNegotiable = true,
+            SalaryNote = "Thỏa thuận theo năng lực khi phỏng vấn."
+        };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Validate_ShouldRejectSalaryNoteExceedingMaxLength()
+    {
+        var command = new CreateJobCommand
+        {
+            ServiceTypeId = Guid.NewGuid(),
+            SalaryNote = new string('x', 1001)
+        };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.SalaryNote);
+    }
 }
