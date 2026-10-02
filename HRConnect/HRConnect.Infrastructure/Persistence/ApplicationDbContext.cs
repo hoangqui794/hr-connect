@@ -1551,6 +1551,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Location)
                 .HasMaxLength(255)
                 .HasColumnName("location");
+            entity.Property(e => e.WorkingTime)
+                .HasMaxLength(2000)
+                .HasColumnName("working_time");
             entity.Property(e => e.PostedAt).HasColumnName("posted_at");
             entity.Property(e => e.Quantity)
                 .HasDefaultValue(1)

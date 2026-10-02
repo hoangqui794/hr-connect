@@ -21,6 +21,8 @@ public partial class Job
 
     public string? Location { get; set; }
 
+    public string? WorkingTime { get; set; }
+
     public string? EmploymentType { get; set; }
 
     public decimal? SalaryMin { get; set; }

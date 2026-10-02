@@ -23,6 +23,7 @@ public sealed class UpdateJobCommandValidator : AbstractValidator<UpdateJobComma
                     Description = x.Description,
                     Benefits = x.Benefits,
                     Location = x.Location,
+                    WorkingTime = x.WorkingTime,
                     EmploymentType = x.EmploymentType,
                     SalaryMin = x.SalaryMin,
                     SalaryMax = x.SalaryMax,
