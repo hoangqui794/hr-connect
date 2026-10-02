@@ -717,7 +717,21 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CvId).HasName("candidate_cv_pkey");
 
-            entity.ToTable("candidate_cv", "public", tb => tb.HasComment("Supports PLATFORM_BUILDER, TEMPLATE_FORM and FILE_UPLOAD CV creation methods."));
+            entity.ToTable("candidate_cv", "public", table =>
+            {
+                table.HasComment("Supports CVs created by candidates and submission-scoped CVs uploaded by Affiliates.");
+                table.HasCheckConstraint(
+                    "candidate_cv_creation_method_check",
+                    "creation_method IN ('PLATFORM_BUILDER','TEMPLATE_FORM','FILE_UPLOAD','AFFILIATE_UPLOAD')");
+                table.HasCheckConstraint(
+                    "candidate_cv_status_check",
+                    "status IN ('DRAFT','PENDING_CONSENT','ACTIVE','ARCHIVED','DELETED')");
+                table.HasCheckConstraint(
+                    "ck_candidate_cv_creation_method",
+                    "((creation_method = 'PLATFORM_BUILDER' AND structured_content IS NOT NULL) OR " +
+                    "(creation_method = 'TEMPLATE_FORM' AND structured_content IS NOT NULL AND cv_template_id IS NOT NULL) OR " +
+                    "(creation_method IN ('FILE_UPLOAD','AFFILIATE_UPLOAD') AND source_file_url IS NOT NULL))");
+            });
 
             entity.HasIndex(e => new { e.CandidateId, e.CreatedAt }, "idx_candidate_cv_candidate").IsDescending(false, true);
 

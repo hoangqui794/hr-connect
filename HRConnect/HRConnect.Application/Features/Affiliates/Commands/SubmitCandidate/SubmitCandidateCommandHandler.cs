@@ -201,7 +201,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 if (pendingSubmission.CandidateCv.CreationMethod == "AFFILIATE_UPLOAD" &&
                     pendingSubmission.CandidateCv.Status == "PENDING_CONSENT")
                 {
-                    pendingSubmission.CandidateCv.Status = "CONSENT_EXPIRED";
+                    pendingSubmission.CandidateCv.Status = "ARCHIVED";
                     pendingSubmission.CandidateCv.UpdatedAt = now;
                 }
                 _submissionRepository.Update(pendingSubmission);
@@ -353,7 +353,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 {
                     NotificationId = Guid.NewGuid(),
                     UserId = candidate.UserId.Value,
-                    NotificationType = "SUBMISSION_CONSENT_REQUIRED",
+                    NotificationType = "SUBMISSION",
                     Title = "Yêu cầu xác nhận hồ sơ ứng tuyển",
                     Message = $"Một Affiliate Recruiter đã giới thiệu bạn vào vị trí {job.Title}. Vui lòng kiểm tra và xác nhận.",
                     RelatedEntityType = "SUBMISSION",

@@ -69,7 +69,7 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
 
         response.SubmissionStatus.Should().Be("CONSENT_REJECTED");
         fixture.Consent.Status.Should().Be("DECLINED");
-        fixture.Cv.Status.Should().Be("CONSENT_REJECTED");
+        fixture.Cv.Status.Should().Be("ARCHIVED");
         _applications.Verify(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
         _scoring.Verify(x => x.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
     }

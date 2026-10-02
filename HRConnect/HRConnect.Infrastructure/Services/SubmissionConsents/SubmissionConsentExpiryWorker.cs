@@ -62,7 +62,7 @@ public sealed class SubmissionConsentExpiryWorker : BackgroundService
             consent.Submission.UpdatedAt = now;
             if (consent.Submission.CandidateCv.Status == "PENDING_CONSENT")
             {
-                consent.Submission.CandidateCv.Status = "CONSENT_EXPIRED";
+                consent.Submission.CandidateCv.Status = "ARCHIVED";
                 consent.Submission.CandidateCv.UpdatedAt = now;
             }
         }

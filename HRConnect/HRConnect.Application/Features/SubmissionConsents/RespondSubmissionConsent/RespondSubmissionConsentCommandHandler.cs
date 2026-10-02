@@ -87,7 +87,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
 
         if (consent.Submission.Job.Status != JobStatuses.Active)
         {
-            await SetTerminalWithoutApplicationAsync(consent, "CANCELLED", "JOB_UNAVAILABLE", request, now, cancellationToken);
+            await SetTerminalWithoutApplicationAsync(consent, "CANCELLED", "CANCELLED", request, now, cancellationToken);
             throw new ConflictException("Công việc hiện không còn nhận hồ sơ.");
         }
 
@@ -223,7 +223,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         consent.Submission.UpdatedAt = now;
         if (consent.Submission.CandidateCv.Status == "PENDING_CONSENT")
         {
-            consent.Submission.CandidateCv.Status = submissionStatus;
+            consent.Submission.CandidateCv.Status = "ARCHIVED";
             consent.Submission.CandidateCv.UpdatedAt = now;
         }
         await _audit.AddAsync(new AuditEntry

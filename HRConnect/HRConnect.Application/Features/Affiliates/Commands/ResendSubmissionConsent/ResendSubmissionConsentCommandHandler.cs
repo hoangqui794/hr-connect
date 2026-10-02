@@ -56,6 +56,11 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
             consent.Submission.Status = "CONSENT_EXPIRED";
             consent.UpdatedAt = now;
             consent.Submission.UpdatedAt = now;
+            if (consent.Submission.CandidateCv is { Status: "PENDING_CONSENT" } candidateCv)
+            {
+                candidateCv.Status = "ARCHIVED";
+                candidateCv.UpdatedAt = now;
+            }
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             throw new ConflictException("Yêu cầu đã hết hạn. Vui lòng tạo lượt nộp mới.");
         }
