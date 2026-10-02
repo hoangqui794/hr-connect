@@ -18,6 +18,7 @@ using HRConnect.Presentation.Endpoints.V1.Jobs;
 using HRConnect.Presentation.Endpoints.V1.Companies;
 using HRConnect.Presentation.Endpoints.V1.InternalHr;
 using HRConnect.Presentation.Endpoints.V1.Internal;
+using HRConnect.Presentation.Endpoints.V1.SubmissionConsents;
 using HRConnect.Presentation.Swagger;
 using HRConnect.Presentation.Endpoints.Internal;
 using HRConnect.Presentation.Endpoints.V1.Users;
@@ -93,6 +94,16 @@ builder.Services.AddRateLimiter(options =>
         {
             PermitLimit = 10,
             Window = TimeSpan.FromHours(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+
+    options.AddPolicy("submission-consent-public", context => RateLimitPartition.GetFixedWindowLimiter(
+        ClientKey(context),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromMinutes(15),
             QueueLimit = 0,
             AutoReplenishment = true
         }));
@@ -241,6 +252,7 @@ app.MapInternalHrEndpoints();
 app.MapInternalCvEndpoints();
 app.MapAiIntegrationEndpoints();
 app.MapUserEndpoints();
+app.MapSubmissionConsentEndpoints();
 
 // ==============================================================================
 // 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động

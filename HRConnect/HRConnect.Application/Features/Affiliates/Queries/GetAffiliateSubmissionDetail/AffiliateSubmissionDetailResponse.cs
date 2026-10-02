@@ -6,6 +6,11 @@ public sealed record AffiliateSubmissionDetailResponse
 {
     public Guid SubmissionId { get; init; }
     public string Status { get; init; } = string.Empty;
+    public string? ConsentStatus { get; init; }
+    public DateTime? ConsentRequestedAt { get; init; }
+    public DateTime? ConsentExpiresAt { get; init; }
+    public DateTime? ConsentRespondedAt { get; init; }
+    public DateTime? ConsentEmailSentAt { get; init; }
     public Guid CandidateId { get; init; }
     public string CandidateName { get; init; } = string.Empty;
     public string? CandidateEmail { get; init; }

@@ -2295,7 +2295,7 @@ public partial class ApplicationDbContext : DbContext
             entity.HasKey(e => e.ConsentId).HasName("submission_consent_pkey");
             entity.ToTable("submission_consent", "public", table =>
             {
-                table.HasCheckConstraint("ck_submission_consent_status", "status IN ('PENDING','CONFIRMED','DECLINED','EXPIRED')");
+                table.HasCheckConstraint("ck_submission_consent_status", "status IN ('PENDING','CONFIRMED','DECLINED','EXPIRED','CANCELLED')");
                 table.HasCheckConstraint("ck_submission_consent_expiry", "expires_at > requested_at");
             });
 

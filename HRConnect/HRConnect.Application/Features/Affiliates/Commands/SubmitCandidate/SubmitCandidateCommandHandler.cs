@@ -442,7 +442,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         var deliveryStatus = "SENT";
         try
         {
-            var confirmationUrl = $"{_consentSettings.ConfirmationUrlBase.TrimEnd('/')}/{Uri.EscapeDataString(rawToken)}";
+            var confirmationUrl = $"{_consentSettings.ConfirmationUrlBase.TrimEnd('/')}#token={Uri.EscapeDataString(rawToken)}";
             var result = await _emailService.SendEmailAsync(
                 consent.RecipientEmail,
                 emailOutbox.Subject!,

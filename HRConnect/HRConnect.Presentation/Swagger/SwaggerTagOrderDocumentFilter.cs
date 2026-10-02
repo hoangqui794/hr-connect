@@ -23,6 +23,7 @@ public sealed class SwaggerTagOrderDocumentFilter : IDocumentFilter
 
         new() { Name = "Affiliate Profile", Description = "Quản lý hồ sơ, hiệu suất và tài khoản nhận hoa hồng của Affiliate Recruiter." },
         new() { Name = "Affiliate Submissions", Description = "Nộp ứng viên, xem lịch sử và chi tiết lượt nộp của Affiliate Recruiter." },
+        new() { Name = "Submission Consents", Description = "Candidate xem và phản hồi yêu cầu sử dụng CV do Affiliate Recruiter gửi." },
         new() { Name = "Affiliate Attributions", Description = "Theo dõi lịch sử ghi nhận nguồn giới thiệu của Affiliate Recruiter." },
 
         new() { Name = "Company Profile", Description = "Xem và cập nhật hồ sơ doanh nghiệp tuyển dụng." },
