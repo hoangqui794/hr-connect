@@ -28,6 +28,7 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
     public async Task Confirm_CreatesApplicationAttributionAndMf03Work()
     {
         var fixture = CreateConsent();
+        var persistenceOrder = new List<string>();
         _consents.Setup(x => x.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(fixture.Consent);
         _submissions.Setup(x => x.GetAcceptedSubmissionAsync(fixture.Candidate.CandidateId, fixture.Job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync((Submission?)null);
         _applications.Setup(x => x.GetByCandidateAndJobAsync(fixture.Candidate.CandidateId, fixture.Job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync((JobApplication?)null);
@@ -35,8 +36,15 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
             .ReturnsAsync(new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = fixture.Submission.SubmittedBy, Status = "ACTIVE" });
 
         JobApplication? created = null;
+        _unitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => persistenceOrder.Add("submission"))
+            .ReturnsAsync(1);
         _applications.Setup(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()))
-            .Callback<JobApplication, CancellationToken>((value, _) => created = value)
+            .Callback<JobApplication, CancellationToken>((value, _) =>
+            {
+                persistenceOrder.Add("application");
+                created = value;
+            })
             .Returns(Task.CompletedTask);
 
         var response = await Handler().Handle(new RespondSubmissionConsentCommand
@@ -52,7 +60,9 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         fixture.Cv.Status.Should().Be("ACTIVE");
         _attributions.Verify(x => x.AddAsync(It.Is<Attribution>(a => a.WinningSubmissionId == fixture.Submission.SubmissionId), It.IsAny<CancellationToken>()), Times.Once);
         _scoring.Verify(x => x.TriggerScoringAsync(It.Is<Mf03TriggerPayload>(p => p.ApplicationId == created.ApplicationId), It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        persistenceOrder.Should().Equal("submission", "application");
     }
 
     [Fact]

@@ -124,6 +124,11 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
                 _cvRepository.Update(consent.Submission.CandidateCv);
             }
 
+            // Persist the accepted submission first inside the same transaction.
+            // PostgreSQL validates accepted_submission_id when the application row is
+            // inserted, so it must be able to observe the ACCEPTED status at that point.
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
             application = new JobApplication
             {
                 ApplicationId = Guid.NewGuid(),
@@ -171,7 +176,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
                 {
                     NotificationId = Guid.NewGuid(),
                     UserId = consent.Submission.Candidate.UserId.Value,
-                    NotificationType = "SUBMISSION_CONSENT_CONFIRMED",
+                    NotificationType = "SUBMISSION",
                     Title = "Hồ sơ ứng tuyển đã được xác nhận",
                     Message = $"Hồ sơ của bạn cho vị trí {consent.Submission.Job.Title} đã được tiếp nhận.",
                     RelatedEntityType = "APPLICATION",
