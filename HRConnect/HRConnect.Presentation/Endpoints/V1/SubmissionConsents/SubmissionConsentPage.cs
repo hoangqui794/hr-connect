@@ -67,7 +67,9 @@ internal static class SubmissionConsentPage
 <script>
 (() => {
   'use strict';
-  const token = new URLSearchParams(location.hash.slice(1)).get('token') || '';
+  const route = new URLSearchParams(location.hash.slice(1));
+  const token = route.get('token') || '';
+  const submissionId = route.get('submissionId') || '';
   const message = document.getElementById('message');
   const loginBox = document.getElementById('loginBox');
   const details = document.getElementById('details');
@@ -87,13 +89,23 @@ internal static class SubmissionConsentPage
     return body;
   }
   async function review() {
-    if (!token) { show('Liên kết thiếu token xác nhận.', true); return; }
+    if (!token && !submissionId) { show('Liên kết xác nhận không hợp lệ.', true); return; }
+    if (submissionId && !accessToken) {
+      loginBox.hidden = false;
+      show('Vui lòng đăng nhập đúng tài khoản Candidate để xem và xác nhận hồ sơ.');
+      return;
+    }
     show('Đang tải yêu cầu xác nhận…');
     details.hidden = true; actions.hidden = true;
     try {
-      const body = await json(await fetch('/api/v1/submission-consents/review', {
-        method: 'POST', headers: headers(), body: JSON.stringify({ token })
-      }));
+      const response = submissionId
+        ? await fetch(`/api/v1/candidates/me/submission-consents/${encodeURIComponent(submissionId)}`, {
+            method: 'GET', headers: headers()
+          })
+        : await fetch('/api/v1/submission-consents/review', {
+            method: 'POST', headers: headers(), body: JSON.stringify({ token })
+          });
+      const body = await json(response);
       const data = body.data;
       document.getElementById('candidateName').textContent = data.candidateName;
       document.getElementById('jobTitle').textContent = data.jobTitle;
@@ -141,10 +153,16 @@ internal static class SubmissionConsentPage
     document.querySelectorAll('button').forEach(button => button.disabled = true);
     show('Đang ghi nhận quyết định…');
     try {
-      const body = await json(await fetch('/api/v1/submission-consents/respond', {
-        method: 'POST', headers: headers(), body: JSON.stringify({ token, decision })
-      }));
+      const response = submissionId
+        ? await fetch(`/api/v1/candidates/me/submission-consents/${encodeURIComponent(submissionId)}/respond`, {
+            method: 'POST', headers: headers(), body: JSON.stringify({ decision })
+          })
+        : await fetch('/api/v1/submission-consents/respond', {
+            method: 'POST', headers: headers(), body: JSON.stringify({ token, decision })
+          });
+      const body = await json(response);
       actions.hidden = true;
+      history.replaceState(null, '', location.pathname);
       show(`${body.message}\nTrạng thái hồ sơ: ${body.submissionStatus}`);
     } catch (error) {
       show(error.message, true);

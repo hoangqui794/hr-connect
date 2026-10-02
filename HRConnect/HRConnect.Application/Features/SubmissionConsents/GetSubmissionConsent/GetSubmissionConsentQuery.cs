@@ -2,7 +2,10 @@ using MediatR;
 
 namespace HRConnect.Application.Features.SubmissionConsents.GetSubmissionConsent;
 
-public sealed record GetSubmissionConsentQuery(string Token, Guid? RequesterUserId) : IRequest<SubmissionConsentReviewResponse>;
+public sealed record GetSubmissionConsentQuery(
+    string? Token,
+    Guid? SubmissionId,
+    Guid? RequesterUserId) : IRequest<SubmissionConsentReviewResponse>;
 
 public sealed class SubmissionConsentReviewResponse
 {

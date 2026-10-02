@@ -5,19 +5,21 @@
 1. Affiliate submits a Candidate and CV to an eligible Job.
 2. MF02 resolves Candidate identity and performs a preliminary duplicate check.
 3. MF02 stores the Submission as `PENDING_CONSENT`, sends an in-app notification when the Candidate has an account, and sends an email confirmation link.
-4. The Candidate reviews the Job, Company, and CV through a five-minute signed URL, then confirms or declines.
+4. A Candidate with an account logs in and opens the Submission by `submissionId`. A Candidate without an account uses the one-time email token. Both can review the Job, Company, and CV through a five-minute signed URL, then confirm or decline.
 5. On confirmation, MF02 checks duplicates again inside the acceptance flow, changes the Submission to `ACCEPTED`, creates the Application and Attribution, and queues MF03 scoring.
 6. On decline or expiry, no Application, Attribution, or MF03 request is created.
 
-The default consent lifetime is 48 hours. A background worker marks unanswered requests as `CONSENT_EXPIRED`. Email never contains a CV attachment or a raw token stored in the database.
+The default consent lifetime is 48 hours. A background worker marks unanswered requests as `CONSENT_EXPIRED`. Email never contains a CV attachment. One-time tokens for unregistered Candidates are stored as hashes in the database.
 
 ## APIs
 
 | Method | Route | Authorization | Purpose |
 |---|---|---|---|
 | `POST` | `/api/v1/jobs/{jobId}/candidate-submissions` | Affiliate + `submission.create` | Create a `PENDING_CONSENT` submission and send the first request. |
-| `POST` | `/api/v1/submission-consents/review` | Token; matching Candidate login is also required when the Candidate has an account | View consent details and receive a short-lived CV URL. |
-| `POST` | `/api/v1/submission-consents/respond` | Token; matching Candidate login is also required when the Candidate has an account | Submit `CONFIRM` or `DECLINE`. |
+| `POST` | `/api/v1/submission-consents/review` | One-time email token; unregistered Candidate only | View consent details and receive a short-lived CV URL. |
+| `POST` | `/api/v1/submission-consents/respond` | One-time email token; unregistered Candidate only | Submit `CONFIRM` or `DECLINE`. |
+| `GET` | `/api/v1/candidates/me/submission-consents/{submissionId}` | Matching Candidate Bearer token | View consent details without an email token. |
+| `POST` | `/api/v1/candidates/me/submission-consents/{submissionId}/respond` | Matching Candidate Bearer token | Submit `CONFIRM` or `DECLINE` without an email token. |
 | `POST` | `/api/v1/affiliates/submissions/{submissionId}/consent/resend` | Owning Affiliate + `submission.view_own` | Rotate the token and explicitly resend the email. |
 | `GET` | `/api/v1/affiliates/submissions` | Affiliate + `submission.view_own` | View Submission and consent statuses and expiry. |
 | `GET` | `/api/v1/affiliates/submissions/{submissionId}` | Owning Affiliate + `submission.view_own` | View Submission and consent details. |

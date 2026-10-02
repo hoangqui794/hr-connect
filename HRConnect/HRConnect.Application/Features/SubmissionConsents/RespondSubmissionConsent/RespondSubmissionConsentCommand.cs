@@ -7,6 +7,7 @@ public sealed class RespondSubmissionConsentCommand : IRequest<RespondSubmission
 {
     public string Token { get; set; } = string.Empty;
     public string Decision { get; set; } = string.Empty;
+    [JsonIgnore] public Guid? SubmissionId { get; set; }
     [JsonIgnore] public Guid? RequesterUserId { get; set; }
     [JsonIgnore] public string? IpAddress { get; set; }
     [JsonIgnore] public string? UserAgent { get; set; }

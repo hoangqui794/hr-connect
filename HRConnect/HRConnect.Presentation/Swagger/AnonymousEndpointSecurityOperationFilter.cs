@@ -5,9 +5,9 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 namespace HRConnect.Presentation.Swagger;
 
 /// <summary>
-/// Removes the global Bearer requirement from anonymous endpoints. Submission
-/// consent endpoints advertise Bearer as optional because linked candidates must
-/// authenticate while unregistered candidates are authorized by the email token.
+/// Removes the global Bearer requirement from anonymous endpoints. Public
+/// submission-consent endpoints are reserved for unregistered candidates and
+/// authenticate solely with the one-time email token.
 /// </summary>
 public sealed class AnonymousEndpointSecurityOperationFilter : IOperationFilter
 {
@@ -18,23 +18,8 @@ public sealed class AnonymousEndpointSecurityOperationFilter : IOperationFilter
             .Any();
         if (!isAnonymous) return;
 
-        var path = context.ApiDescription.RelativePath ?? string.Empty;
-        if (path.StartsWith("api/v1/submission-consents/", StringComparison.OrdinalIgnoreCase))
-        {
-            operation.Security =
-            [
-                new OpenApiSecurityRequirement(),
-                new OpenApiSecurityRequirement
-                {
-                    [new OpenApiSecurityScheme
-                    {
-                        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-                    }] = Array.Empty<string>()
-                }
-            ];
-            return;
-        }
-
-        operation.Security = new List<OpenApiSecurityRequirement>();
+        // An empty requirement object explicitly overrides the document-level
+        // Bearer requirement while keeping the operation available anonymously.
+        operation.Security = [new OpenApiSecurityRequirement()];
     }
 }

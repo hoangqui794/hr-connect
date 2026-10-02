@@ -52,11 +52,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
     public async Task<RespondSubmissionConsentResponse> Handle(RespondSubmissionConsentCommand request, CancellationToken cancellationToken)
     {
         var decision = request.Decision.Trim().ToUpperInvariant();
-        var tokenHash = SubmissionConsentToken.Hash(request.Token);
-        var consent = await _consentRepository.GetByTokenHashAsync(tokenHash, cancellationToken)
-            ?? throw new NotFoundException("Không tìm thấy yêu cầu xác nhận hoặc liên kết không hợp lệ.");
-
-        EnsureIdentity(consent.Submission.Candidate.UserId, request.RequesterUserId);
+        var consent = await ResolveConsentAsync(request, cancellationToken);
 
         if (consent.Status != "PENDING")
         {
@@ -192,7 +188,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         catch (Exception ex) when (IsUniqueViolation(ex))
         {
             await _unitOfWork.RollbackTransactionAsync(cancellationToken);
-            await MarkRaceAsDuplicateAsync(tokenHash, request, cancellationToken);
+            await MarkRaceAsDuplicateAsync(consent.SubmissionId, request, cancellationToken);
             throw new ConflictException("Candidate đã có hồ sơ được tiếp nhận cho công việc này.");
         }
         catch
@@ -242,9 +238,35 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task MarkRaceAsDuplicateAsync(string tokenHash, RespondSubmissionConsentCommand request, CancellationToken cancellationToken)
+    private async Task<HRConnect.Domain.Entities.SubmissionConsent> ResolveConsentAsync(
+        RespondSubmissionConsentCommand request,
+        CancellationToken cancellationToken)
     {
-        var current = await _consentRepository.GetByTokenHashAsync(tokenHash, cancellationToken);
+        if (request.SubmissionId.HasValue)
+        {
+            if (!request.RequesterUserId.HasValue)
+                throw new ForbiddenException("Vui lòng đăng nhập tài khoản Candidate để xác nhận hồ sơ.");
+
+            var consent = await _consentRepository.GetBySubmissionIdAsync(request.SubmissionId.Value, cancellationToken)
+                ?? throw new NotFoundException("Không tìm thấy yêu cầu xác nhận hồ sơ.");
+            if (consent.Submission.Candidate.UserId != request.RequesterUserId)
+                throw new ForbiddenException("Bạn không có quyền xác nhận hồ sơ của Candidate khác.");
+            return consent;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Token))
+            throw new BadRequestException("Liên kết xác nhận không hợp lệ.");
+
+        var tokenConsent = await _consentRepository.GetByTokenHashAsync(
+            SubmissionConsentToken.Hash(request.Token), cancellationToken)
+            ?? throw new NotFoundException("Không tìm thấy yêu cầu xác nhận hoặc liên kết không hợp lệ.");
+        EnsureIdentity(tokenConsent.Submission.Candidate.UserId, request.RequesterUserId);
+        return tokenConsent;
+    }
+
+    private async Task MarkRaceAsDuplicateAsync(Guid submissionId, RespondSubmissionConsentCommand request, CancellationToken cancellationToken)
+    {
+        var current = await _consentRepository.GetBySubmissionIdAsync(submissionId, cancellationToken);
         if (current == null || current.Status != "PENDING") return;
         var winner = await _submissionRepository.GetAcceptedSubmissionAsync(
             current.Submission.CandidateId, current.Submission.JobId, cancellationToken);

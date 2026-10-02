@@ -23,13 +23,7 @@ public sealed class GetSubmissionConsentQueryHandler : IRequestHandler<GetSubmis
 
     public async Task<SubmissionConsentReviewResponse> Handle(GetSubmissionConsentQuery request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Token))
-            throw new BadRequestException("Liên kết xác nhận không hợp lệ.");
-
-        var consent = await _repository.GetByTokenHashAsync(SubmissionConsentToken.Hash(request.Token), cancellationToken)
-            ?? throw new NotFoundException("Không tìm thấy yêu cầu xác nhận hoặc liên kết không hợp lệ.");
-
-        EnsureIdentity(consent.Submission.Candidate.UserId, request.RequesterUserId);
+        var consent = await ResolveConsentAsync(request, cancellationToken);
         await ExpireIfNeededAsync(consent, cancellationToken);
 
         string? url = null;
@@ -57,6 +51,32 @@ public sealed class GetSubmissionConsentQueryHandler : IRequestHandler<GetSubmis
                 CvUrlExpiresAt = urlExpiresAt
             }
         };
+    }
+
+    private async Task<HRConnect.Domain.Entities.SubmissionConsent> ResolveConsentAsync(
+        GetSubmissionConsentQuery request,
+        CancellationToken cancellationToken)
+    {
+        if (request.SubmissionId.HasValue)
+        {
+            if (!request.RequesterUserId.HasValue)
+                throw new ForbiddenException("Vui lòng đăng nhập tài khoản Candidate để xem yêu cầu xác nhận.");
+
+            var consent = await _repository.GetBySubmissionIdAsync(request.SubmissionId.Value, cancellationToken)
+                ?? throw new NotFoundException("Không tìm thấy yêu cầu xác nhận hồ sơ.");
+            if (consent.Submission.Candidate.UserId != request.RequesterUserId)
+                throw new ForbiddenException("Bạn không có quyền xem yêu cầu xác nhận của Candidate khác.");
+            return consent;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Token))
+            throw new BadRequestException("Liên kết xác nhận không hợp lệ.");
+
+        var tokenConsent = await _repository.GetByTokenHashAsync(
+            SubmissionConsentToken.Hash(request.Token), cancellationToken)
+            ?? throw new NotFoundException("Không tìm thấy yêu cầu xác nhận hoặc liên kết không hợp lệ.");
+        EnsureIdentity(tokenConsent.Submission.Candidate.UserId, request.RequesterUserId);
+        return tokenConsent;
     }
 
     private static void EnsureIdentity(Guid? candidateUserId, Guid? requesterUserId)

@@ -17,13 +17,12 @@ Thời hạn xác nhận mặc định là 48 giờ. Cấu hình backend có th�
 
 ### 2.1 Candidate đã có tài khoản
 
-- Link trong email mở trang xác nhận.
-- FE gọi API review bằng token một lần trong link.
-- Backend trả `403` nếu chưa đăng nhập.
-- FE hiển thị form đăng nhập bằng email và mật khẩu, gọi API login có sẵn.
-- FE giữ access token trong bộ nhớ của trang và gọi lại API review với header Bearer.
-- Backend chỉ chấp nhận đúng tài khoản đang liên kết với Candidate.
-- Người dùng không nhập, xem hoặc sao chép access token.
+- Candidate nhận notification trong hệ thống và email yêu cầu vào web xác nhận.
+- Notification dùng `relatedEntityId` và link email dùng `submissionId`; không gửi consent token cho trường hợp này.
+- Nếu chưa đăng nhập, FE đưa Candidate đến màn hình đăng nhập rồi quay lại đúng trang xác nhận.
+- FE gọi API Candidate có ổ khóa bằng Bearer token và `submissionId`.
+- Backend chỉ chấp nhận tài khoản đang liên kết với Candidate của Submission.
+- Người dùng không nhập, xem hoặc sao chép access token hay consent token.
 
 ### 2.2 Candidate chưa có tài khoản
 
@@ -35,13 +34,19 @@ Thời hạn xác nhận mặc định là 48 giờ. Cấu hình backend có th�
 
 ## 3. Token trong link xác nhận
 
-Link có dạng:
+Candidate chưa có tài khoản nhận link token:
 
 ```text
 https://<frontend-host>/submission-consent#token=<one-time-token>
 ```
 
-FE đọc token từ `window.location.hash`, sau đó gửi token trong JSON request body.
+Candidate đã có tài khoản nhận link không chứa secret:
+
+```text
+https://<frontend-host>/submission-consent#submissionId=<submission-id>
+```
+
+FE đọc `token` hoặc `submissionId` từ `window.location.hash`. Token chỉ được gửi trong JSON request body của API public; `submissionId` được dùng với API Candidate có Bearer.
 
 Yêu cầu bảo mật:
 
@@ -145,7 +150,7 @@ Response `200`:
 }
 ```
 
-Sau login, FE không điều hướng mất consent token. FE gọi lại API review với:
+Sau login, FE giữ nguyên `submissionId` và gọi API Candidate có ổ khóa với:
 
 ```http
 Authorization: Bearer <data.accessToken>
@@ -153,13 +158,13 @@ Authorization: Bearer <data.accessToken>
 
 Nếu đăng nhập bằng tài khoản không thuộc Candidate trong yêu cầu, API review/respond vẫn trả `403`.
 
-## 6. API xem yêu cầu xác nhận
+## 6. API public cho Candidate chưa có tài khoản
 
-### `POST /api/v1/submission-consents/review`
+Hai API trong phần này chỉ dùng cho Candidate chưa có tài khoản. Candidate đã có tài khoản dùng API ở phần 8.
 
-Candidate chưa có tài khoản: không gửi Authorization.
+### Xem yêu cầu: `POST /api/v1/submission-consents/review`
 
-Candidate đã có tài khoản: gửi Bearer token sau khi đăng nhập.
+Không gửi Authorization.
 
 Request:
 
@@ -192,11 +197,9 @@ Response `200`:
 
 Nếu `status` khác `PENDING`, FE chuyển sang màn hình kết quả và không hiển thị nút quyết định.
 
-## 7. API đồng ý hoặc từ chối
+### Đồng ý hoặc từ chối: `POST /api/v1/submission-consents/respond`
 
-### `POST /api/v1/submission-consents/respond`
-
-Header Authentication áp dụng giống API review.
+Không gửi Authorization.
 
 Đồng ý:
 
@@ -243,6 +246,45 @@ Response `200`:
 ```
 
 FE phải disable cả hai nút trong lúc gửi request để tránh bấm lặp. Sau thành công, ẩn nút quyết định và hiển thị màn hình kết quả.
+
+## 7. API Candidate đã đăng nhập — không cần consent token
+
+Hai API này có biểu tượng ổ khóa trong Swagger. FE gửi:
+
+```http
+Authorization: Bearer <candidate-access-token>
+```
+
+### Xem yêu cầu
+
+```http
+GET /api/v1/candidates/me/submission-consents/{submissionId}
+```
+
+Không có request body. Response `200` giống response review tại phần 6.
+
+### Đồng ý hoặc từ chối
+
+```http
+POST /api/v1/candidates/me/submission-consents/{submissionId}/respond
+Content-Type: application/json
+```
+
+```json
+{
+  "decision": "CONFIRM"
+}
+```
+
+`decision` nhận `CONFIRM` hoặc `DECLINE`. Response giống API respond public nhưng không cần trường `token`.
+
+Nguồn `submissionId`:
+
+- `relatedEntityId` của notification `SUBMISSION`.
+- Fragment `#submissionId=...` trong link email.
+- Dữ liệu lịch sử/chi tiết Submission nếu FE đã có màn hình tương ứng.
+
+Backend kiểm tra `Candidate.UserId` phải bằng user ID trong JWT. Đăng nhập bằng Candidate khác trả `403`.
 
 ## 8. Trạng thái FE cần hỗ trợ
 
@@ -300,7 +342,7 @@ Không suy luận trạng thái MF03 từ Submission. Chỉ hiển thị MF03 đ
 | `200` | Thành công | Render theo response |
 | `400` | Token/decision không hợp lệ hoặc đã hết hạn | Hiển thị `message`; nếu có `errors`, gắn lỗi vào field tương ứng |
 | `401` | Đăng nhập thất bại hoặc Bearer hết hạn | Hiển thị form đăng nhập lại |
-| `403` | Candidate có tài khoản nhưng chưa đăng nhập, hoặc đăng nhập sai tài khoản | Hiển thị form đăng nhập; nếu đã đăng nhập thì báo sai tài khoản |
+| `403` | Bearer thuộc Candidate khác hoặc không có quyền truy cập | Báo sai tài khoản/không có quyền và cho phép đổi tài khoản |
 | `404` | Token không tồn tại/không hợp lệ | Hiển thị trang link không hợp lệ, không retry tự động |
 | `409` | Đã xử lý, Job đóng hoặc phát hiện trùng | Hiển thị `message`, khóa các nút quyết định rồi gọi review lại một lần |
 | `429` | Gọi quá nhanh | Disable nút tạm thời và thông báo thử lại sau |
@@ -361,9 +403,9 @@ Response `200` gồm `submissionId`, `status`, `expiresAt`, `emailSendCount` và
 
 ## 12. Checklist bàn giao FE
 
-- [ ] Route `/submission-consent` đọc token từ URL fragment.
+- [ ] Route `/submission-consent` đọc `token` hoặc `submissionId` từ URL fragment.
 - [ ] Không log hoặc lưu consent token.
-- [ ] Candidate có tài khoản đăng nhập bằng email/mật khẩu; không nhập access token.
+- [ ] Candidate có tài khoản dùng Bearer + `submissionId`; không dùng consent token.
 - [ ] Candidate chưa có tài khoản xác nhận trực tiếp từ link email.
 - [ ] Review thành công mới hiển thị CV và hai nút quyết định.
 - [ ] Disable nút khi request đang chạy.

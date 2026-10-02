@@ -434,11 +434,14 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         var deliveryStatus = "SENT";
         try
         {
-            var confirmationUrl = $"{_consentSettings.ConfirmationUrlBase.TrimEnd('/')}#token={Uri.EscapeDataString(rawToken)}";
+            var confirmationUrl = candidate.UserId.HasValue
+                ? $"{_consentSettings.ConfirmationUrlBase.TrimEnd('/')}#submissionId={submission.SubmissionId}"
+                : $"{_consentSettings.ConfirmationUrlBase.TrimEnd('/')}#token={Uri.EscapeDataString(rawToken)}";
             var result = await _emailService.SendEmailAsync(
                 consent.RecipientEmail,
                 emailOutbox.Subject!,
-                BuildConsentEmailHtml(candidate.FullName, job.Title, job.Company?.CompanyName ?? "doanh nghiệp tuyển dụng", confirmationUrl, expiresAt),
+                BuildConsentEmailHtml(candidate.FullName, job.Title, job.Company?.CompanyName ?? "doanh nghiệp tuyển dụng",
+                    confirmationUrl, expiresAt, candidate.UserId.HasValue),
                 CancellationToken.None);
 
             consent.EmailSendCount = 1;
@@ -515,18 +518,22 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         string jobTitle,
         string companyName,
         string confirmationUrl,
-        DateTime expiresAt)
+        DateTime expiresAt,
+        bool requiresLogin)
     {
         var safeName = WebUtility.HtmlEncode(candidateName);
         var safeJob = WebUtility.HtmlEncode(jobTitle);
         var safeCompany = WebUtility.HtmlEncode(companyName);
         var safeUrl = WebUtility.HtmlEncode(confirmationUrl);
+        var instruction = requiresLogin
+            ? "Hãy mở HR Connect và đăng nhập đúng tài khoản Candidate để xem thông tin, kiểm tra CV và chọn Đồng ý hoặc Từ chối."
+            : "Hãy mở liên kết bảo mật dưới đây để xem thông tin, kiểm tra CV và chọn Đồng ý hoặc Từ chối.";
         return $"""
             <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#1f2937">
               <h2 style="color:#315c2b">Xác nhận hồ sơ ứng tuyển</h2>
               <p>Xin chào <strong>{safeName}</strong>,</p>
               <p>Một Affiliate Recruiter đã giới thiệu hồ sơ của bạn cho vị trí <strong>{safeJob}</strong> tại <strong>{safeCompany}</strong>.</p>
-              <p>HR Connect không đính kèm CV trong email để bảo vệ dữ liệu cá nhân. Hãy mở liên kết bảo mật dưới đây để xem thông tin, kiểm tra CV và chọn Đồng ý hoặc Từ chối.</p>
+              <p>HR Connect không đính kèm CV trong email để bảo vệ dữ liệu cá nhân. {instruction}</p>
               <p style="margin:28px 0"><a href="{safeUrl}" style="background:#315c2b;color:white;padding:12px 20px;border-radius:6px;text-decoration:none">Xem và xác nhận hồ sơ</a></p>
               <p style="font-size:13px;color:#6b7280">Liên kết hết hạn lúc {expiresAt:dd/MM/yyyy HH:mm} UTC. Nếu bạn không thực hiện yêu cầu này, hãy chọn Từ chối.</p>
             </div>

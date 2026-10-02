@@ -101,6 +101,38 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         _applications.Verify(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task AuthenticatedCandidate_UsesSubmissionIdWithoutEmailToken()
+    {
+        var fixture = CreateConsent();
+        _consents.Setup(x => x.GetBySubmissionIdAsync(fixture.Submission.SubmissionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fixture.Consent);
+        _submissions.Setup(x => x.GetAcceptedSubmissionAsync(fixture.Candidate.CandidateId, fixture.Job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Submission?)null);
+        _applications.Setup(x => x.GetByCandidateAndJobAsync(fixture.Candidate.CandidateId, fixture.Job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((JobApplication?)null);
+        _affiliates.Setup(x => x.GetByUserIdAsync(fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateProfile
+            {
+                AffiliateId = Guid.NewGuid(),
+                UserId = fixture.Submission.SubmittedBy,
+                Status = "ACTIVE"
+            });
+        _applications.Setup(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await Handler().Handle(new RespondSubmissionConsentCommand
+        {
+            SubmissionId = fixture.Submission.SubmissionId,
+            Decision = "CONFIRM",
+            RequesterUserId = fixture.Candidate.UserId
+        }, CancellationToken.None);
+
+        response.SubmissionStatus.Should().Be("ACCEPTED");
+        _consents.Verify(x => x.GetBySubmissionIdAsync(fixture.Submission.SubmissionId, It.IsAny<CancellationToken>()), Times.Once);
+        _consents.Verify(x => x.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private RespondSubmissionConsentCommandHandler Handler() => new(
         _consents.Object,
         _submissions.Object,

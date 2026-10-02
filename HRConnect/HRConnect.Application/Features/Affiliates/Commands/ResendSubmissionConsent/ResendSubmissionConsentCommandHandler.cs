@@ -106,12 +106,15 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var confirmationUrl = $"{_settings.ConfirmationUrlBase.TrimEnd('/')}#token={Uri.EscapeDataString(rawToken)}";
+        var confirmationUrl = consent.Submission.Candidate.UserId.HasValue
+            ? $"{_settings.ConfirmationUrlBase.TrimEnd('/')}#submissionId={consent.SubmissionId}"
+            : $"{_settings.ConfirmationUrlBase.TrimEnd('/')}#token={Uri.EscapeDataString(rawToken)}";
         var result = await _email.SendEmailAsync(
             consent.RecipientEmail,
             outbox.Subject!,
             BuildEmail(consent.Submission.Candidate.FullName, consent.Submission.Job.Title,
-                consent.Submission.Job.Company.CompanyName, confirmationUrl, consent.ExpiresAt),
+                consent.Submission.Job.Company.CompanyName, confirmationUrl, consent.ExpiresAt,
+                consent.Submission.Candidate.UserId.HasValue),
             CancellationToken.None);
 
         var deliveryStatus = result.IsSuccess ? "SENT" : "FAILED";
@@ -144,12 +147,12 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         };
     }
 
-    private static string BuildEmail(string name, string job, string company, string url, DateTime expiresAt) => $"""
+    private static string BuildEmail(string name, string job, string company, string url, DateTime expiresAt, bool requiresLogin) => $"""
         <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#1f2937">
           <h2 style="color:#315c2b">Nhắc lại yêu cầu xác nhận hồ sơ</h2>
           <p>Xin chào <strong>{WebUtility.HtmlEncode(name)}</strong>,</p>
           <p>Affiliate Recruiter đang chờ bạn xác nhận hồ sơ cho vị trí <strong>{WebUtility.HtmlEncode(job)}</strong> tại <strong>{WebUtility.HtmlEncode(company)}</strong>.</p>
-          <p>CV không được đính kèm trong email. Bạn có thể xem CV qua liên kết bảo mật bên dưới.</p>
+          <p>CV không được đính kèm trong email. {(requiresLogin ? "Hãy đăng nhập đúng tài khoản Candidate trên HR Connect để xem và xác nhận." : "Bạn có thể xem và xác nhận qua liên kết bảo mật bên dưới.")}</p>
           <p style="margin:28px 0"><a href="{WebUtility.HtmlEncode(url)}" style="background:#315c2b;color:white;padding:12px 20px;border-radius:6px;text-decoration:none">Xem và xác nhận</a></p>
           <p style="font-size:13px;color:#6b7280">Liên kết hết hạn lúc {expiresAt:dd/MM/yyyy HH:mm} UTC.</p>
         </div>
