@@ -29,7 +29,7 @@ public class JobManagementCommandHandlerTests
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.ShouldHave));
         var existingSkill = new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid(), IsMandatory = false, Weight = 0.2m };
         job.JobSkills.Add(existingSkill);
-        _jobs.Setup(x => x.IsServiceTypeActiveAsync(serviceType, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(serviceType, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var result = await new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
         {
@@ -40,7 +40,7 @@ public class JobManagementCommandHandlerTests
             Description = " API development ",
             Benefits = " Health insurance and annual bonus ",
             CurrencyCode = "usd",
-            Visibility = "private",
+            Visibility = JobVisibilities.Public,
             Quantity = 2,
             Requirements = [new CreateJobRequirementRequest { RequirementType = "must_have", Content = "C#" }],
             Skills = [new JobSkillRequest { SkillId = existingSkill.SkillId, IsMandatory = true, Weight = 0.8m }]
@@ -60,7 +60,7 @@ public class JobManagementCommandHandlerTests
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
         var newServiceTypeId = Guid.NewGuid();
         _jobs.Setup(x => x.HasSubmissionsOrApplicationsAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        _jobs.Setup(x => x.IsServiceTypeActiveAsync(newServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(newServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var result = await new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
@@ -103,7 +103,7 @@ public class JobManagementCommandHandlerTests
 
         await action.Should().ThrowAsync<ConflictException>()
             .WithMessage("*hồ sơ ứng tuyển* hoặc *lượt giới thiệu*");
-        _jobs.Verify(x => x.IsServiceTypeActiveAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _jobs.Verify(x => x.GetActiveServiceTypeCodeAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public class JobManagementCommandHandlerTests
         job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
         job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid(), IsMandatory = true });
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        _jobs.Setup(x => x.IsServiceTypeActiveAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
         var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
             .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
         result.Data.Status.Should().Be(JobStatuses.PendingReview);
@@ -129,6 +129,27 @@ public class JobManagementCommandHandlerTests
         var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
             .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
         await action.Should().ThrowAsync<BadRequestException>(); job.Status.Should().Be(JobStatuses.Draft);
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Submit_ShouldKeepDraft_WhenVisibilityDoesNotMatchServiceType()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "Backend Developer"; job.Description = "Build APIs"; job.Benefits = "Insurance";
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+        job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid() });
+        job.Visibility = JobVisibilities.Public;
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvSourcing);
+
+        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        await action.Should().ThrowAsync<BadRequestException>();
+        job.Status.Should().Be(JobStatuses.Draft);
+        job.JobStatusHistories.Should().BeEmpty();
         _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -151,7 +172,7 @@ public class JobManagementCommandHandlerTests
         if (missingPart != "mustHave") job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
         if (missingPart != "skill") job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid() });
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        _jobs.Setup(x => x.IsServiceTypeActiveAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
 
         var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
             .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
@@ -168,7 +189,7 @@ public class JobManagementCommandHandlerTests
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
         job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid() });
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        _jobs.Setup(x => x.IsServiceTypeActiveAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
         var submit = new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object);
 
         await submit.Handle(new SubmitJobCommand { JobId = job.JobId, UserId = owner }, default);

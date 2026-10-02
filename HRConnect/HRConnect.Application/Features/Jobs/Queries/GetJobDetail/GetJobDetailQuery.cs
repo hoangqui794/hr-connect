@@ -16,22 +16,15 @@ public sealed class GetJobDetailQueryHandler : IRequestHandler<GetJobDetailQuery
     public async Task<JobDto> Handle(GetJobDetailQuery request, CancellationToken ct)
     {
         var job = await JobHandlerGuards.GetJobAsync(_jobs, request.JobId, ct);
-        if (request.HasInternalAccess)
-        {
-            return JobDto.From(job, includeStatusHistories: true);
-        }
-
         var member = await _members.GetByUserIdAsync(request.UserId, ct);
-        if (member?.CompanyId == job.CompanyId)
-        {
-            return JobDto.From(job, includeStatusHistories: true);
-        }
-
-        var canView = job.Status == JobStatuses.Active &&
-                      JobVisibilities.CanExternalRoleAccess(job.Visibility, request.RoleCodes) &&
-                      await _jobs.CanAnyRoleViewJobAsync(job.ServiceTypeId, request.RoleCodes, ct);
+        var isOwner = member?.CompanyId == job.CompanyId;
+        var canViewByPolicy = JobAccessPolicy.CanViewDetail(
+            job, isOwner, request.HasInternalAccess, request.RoleCodes);
+        var canView = canViewByPolicy &&
+                      (isOwner || request.HasInternalAccess ||
+                       await _jobs.CanAnyRoleViewJobAsync(job.ServiceTypeId, request.RoleCodes, ct));
         if (!canView) throw new ForbiddenException("Bạn không có quyền xem công việc này.");
 
-        return JobDto.From(job);
+        return JobDto.From(job, includeStatusHistories: isOwner || request.HasInternalAccess);
     }
 }

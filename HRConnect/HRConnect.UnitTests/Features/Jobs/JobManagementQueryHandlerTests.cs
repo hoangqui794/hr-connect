@@ -75,7 +75,11 @@ public class JobManagementQueryHandlerTests
     {
         var visibleJob = Job(Guid.NewGuid(), JobStatuses.Active);
         _jobs.Setup(x => x.GetVisibleJobsAsync(
-                It.Is<IReadOnlyCollection<string>>(roles => roles.Count == 2), false, "dotnet", null, null, 1, 20,
+                It.Is<IReadOnlyCollection<string>>(roles => roles.Count == 2),
+                It.Is<IReadOnlyCollection<string>>(visibilities =>
+                    visibilities.Contains(JobVisibilities.Public) &&
+                    visibilities.Contains(JobVisibilities.PartnerOnly)),
+                false, "dotnet", null, null, 1, 20,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(([visibleJob], 1));
 
@@ -91,7 +95,7 @@ public class JobManagementQueryHandlerTests
     [InlineData(JobVisibilities.Public, "CANDIDATE", true)]
     [InlineData(JobVisibilities.Public, "AFFILIATE_RECRUITER", true)]
     [InlineData(JobVisibilities.PartnerOnly, "AFFILIATE_RECRUITER", true)]
-    [InlineData(JobVisibilities.PartnerOnly, "HEADHUNTER", true)]
+    [InlineData(JobVisibilities.PartnerOnly, "HEADHUNTER", false)]
     [InlineData(JobVisibilities.PartnerOnly, "CANDIDATE", false)]
     [InlineData(JobVisibilities.InternalOnly, "AFFILIATE_RECRUITER", false)]
     public async Task GetDetail_ShouldEnforceVisibilityAndServiceType(

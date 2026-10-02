@@ -29,8 +29,10 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
         if (job.JobSkills.Count == 0) throw new BadRequestException("Job phải có ít nhất một kỹ năng trước khi gửi duyệt.");
         if (!await _jobs.AreSkillsActiveAsync(job.JobSkills.Select(x => x.SkillId).Distinct().ToList(), ct))
             throw new BadRequestException("Một hoặc nhiều kỹ năng không tồn tại hoặc đã ngừng hoạt động.");
-        if (!await _jobs.IsServiceTypeActiveAsync(job.ServiceTypeId, ct))
+        var serviceTypeCode = await _jobs.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, ct);
+        if (serviceTypeCode == null)
             throw new BadRequestException("Loại dịch vụ đã ngừng hoạt động nên Job không thể gửi duyệt.");
+        JobHandlerGuards.RequireVisibilityAllowed(serviceTypeCode, job.Visibility);
         JobTransitions.ChangeStatus(job, JobStatuses.PendingReview, request.UserId, "Submitted for review");
         await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
         await _uow.SaveChangesAsync(ct);
