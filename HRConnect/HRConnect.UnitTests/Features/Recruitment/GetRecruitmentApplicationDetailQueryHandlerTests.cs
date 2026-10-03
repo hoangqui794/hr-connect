@@ -163,6 +163,51 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ProjectsSafeAiDiagnosticsAndSurvivesMalformedLegacyJson()
+    {
+        var appId = Guid.NewGuid();
+        var app = CreateSampleApplication(appId, Guid.NewGuid(), "SUBMITTED");
+        app.AiMatchResults.Add(new AiMatchResult
+        {
+            MatchResultId = Guid.NewGuid(),
+            ApplicationId = appId,
+            AttemptNo = 1,
+            Status = "COMPLETED",
+            RawResponse = """
+                {
+                  "parseConfidence": 0.55,
+                  "requiresManualReview": true,
+                  "semanticScore": 0.42,
+                  "warnings": ["EXPERIENCE_EVIDENCE_UNRESOLVED"],
+                  "diagnostics": [{"code":"EXPERIENCE_EVIDENCE_UNRESOLVED","category":"MISSING_EVIDENCE","field":"experience"}],
+                  "missingRequirements": ["Experience could not be verified"],
+                  "matchingReasons": ["Manual review is required"],
+                  "inputFingerprints": {"cvSha256":"abc","jdSha256":"def"}
+                }
+                """
+        });
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        var result = await CreateHandler().Handle(new GetRecruitmentApplicationDetailQuery(
+            appId, Guid.NewGuid(), false, true), CancellationToken.None);
+
+        result.Data.AiMatch.Should().NotBeNull();
+        result.Data.AiMatch!.ParseConfidence.Should().Be(0.55m);
+        result.Data.AiMatch.RequiresManualReview.Should().BeTrue();
+        result.Data.AiMatch.Diagnostics.Should().ContainSingle()
+            .Which.Field.Should().Be("experience");
+        result.Data.AiMatch.InputFingerprints!.JdSha256.Should().Be("def");
+
+        app.AiMatchResults.Single().RawResponse = "{ malformed";
+        var malformed = await CreateHandler().Handle(new GetRecruitmentApplicationDetailQuery(
+            appId, Guid.NewGuid(), false, true), CancellationToken.None);
+        malformed.Data.AiMatch!.Diagnostics.Should().BeEmpty();
+        malformed.Data.AiMatch.RequiresManualReview.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_WhenUserHasNeitherRole_ShouldThrowForbiddenException()
     {
         // Arrange
