@@ -249,7 +249,7 @@ public static class DatabaseSeeder
     SELECT r.role_id, p.permission_id
     FROM public.role r
     JOIN public.permission p ON p.code IN (
-        'job.view', 'notification.view_own', 'user.view', 'user.manage', 'role.view', 'role.manage',
+        'job.view', 'job.review', 'job.publish', 'notification.view_own', 'user.view', 'user.manage', 'role.view', 'role.manage',
         'permission.view', 'permission.manage', 'company.verify', 'affiliate.verify',
         'dispute.view', 'dispute.resolve', 'commission.manage', 'payout.manage',
         'system_config.view', 'system_config.manage', 'report.view', 'audit.view', 'application.retry_ai_scoring',
