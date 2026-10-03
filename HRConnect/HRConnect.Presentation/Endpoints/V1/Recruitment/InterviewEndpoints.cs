@@ -8,6 +8,7 @@ using HRConnect.Application.Features.Interviews.Commands.UpdateInterview;
 using HRConnect.Application.Features.Interviews.Commands.RescheduleInterview;
 using HRConnect.Application.Features.Interviews.Commands.CancelInterview;
 using HRConnect.Application.Features.Interviews.Commands.RecordInterviewResult;
+using HRConnect.Application.Features.Interviews.Commands.RecordInterviewNoShow;
 using HRConnect.Application.Features.Interviews.Queries.GetInterviewHistory;
 using HRConnect.Presentation.Authorization;
 using MediatR;
@@ -29,6 +30,9 @@ public static class InterviewEndpoints
         var group = app.MapGroup("/api/v1/interviews")
                        .WithTags("Interviews")
                        .RequireAuthorization();
+        var schedulingGroup = app.MapGroup("/api/v1/recruitment/applications")
+                                 .WithTags("Interviews")
+                                 .RequireAuthorization();
 
         // I01: GET /api/v1/interviews
         group.MapGet("/", async (
@@ -157,8 +161,9 @@ public static class InterviewEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
 
-        // I03: POST /api/v1/interviews
-        group.MapPost("/", async (
+        // I03: POST /api/v1/recruitment/applications/{applicationId}/interviews
+        schedulingGroup.MapPost("/{applicationId:guid}/interviews", async (
+            Guid applicationId,
             [FromBody] ScheduleInterviewRequest request,
             [FromServices] ISender sender = null!,
             ClaimsPrincipal user = null!,
@@ -182,7 +187,7 @@ public static class InterviewEndpoints
             try
             {
                 var command = new ScheduleInterviewCommand(
-                    ApplicationId: request.ApplicationId,
+                    ApplicationId: applicationId,
                     ScheduledAt: request.ScheduledAt,
                     DurationMinutes: request.DurationMinutes,
                     InterviewRound: request.InterviewRound,
@@ -192,7 +197,8 @@ public static class InterviewEndpoints
                     Participants: request.Participants,
                     CurrentUserId: userId.Value,
                     IsClientCompanyUser: canCreate && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin
+                    IsInternalHrOrAdmin: isInternal || isAdmin,
+                    ApplicationConcurrencyToken: request.ApplicationConcurrencyToken
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -201,6 +207,10 @@ public static class InterviewEndpoints
             catch (NotFoundException ex)
             {
                 return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
             }
             catch (ForbiddenException ex)
             {
@@ -213,12 +223,13 @@ public static class InterviewEndpoints
         })
         .WithName("ScheduleInterview")
         .WithSummary("Lập lịch phỏng vấn mới")
-        .WithDescription("Dành cho Client Company (interview.create) hoặc Internal HR / Admin (interview.manage). Tạo lịch phỏng vấn, thêm danh sách người phỏng vấn và chuyển trạng thái hồ sơ sang INTERVIEWING.")
+        .WithDescription("Dành cho Client Company (interview.create) hoặc Internal HR / Admin (interview.manage). Chỉ lập lịch vòng đầu khi hồ sơ SHORTLISTED; các vòng tiếp theo dùng hồ sơ INTERVIEW. Lập lịch đầu tiên chuyển hồ sơ sang INTERVIEW.")
         .Produces<ScheduleInterviewResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
-        .Produces(StatusCodes.Status404NotFound);
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
 
         // I04: PUT /api/v1/interviews/{interviewId:guid}
         group.MapPut("/{interviewId:guid}", async (
@@ -280,7 +291,7 @@ public static class InterviewEndpoints
         })
         .WithName("UpdateInterview")
         .WithSummary("Cập nhật thông tin lịch phỏng vấn")
-        .WithDescription("Dành cho Client Company (interview.update) hoặc Internal HR / Admin (interview.manage). Chỉ cập nhật khi lịch ở trạng thái SCHEDULED/RESCHEDULED. Hỗ trợ kiểm tra ConcurrencyToken chống ghi đè dữ liệu.")
+        .WithDescription("Dành cho Client Company (interview.update) hoặc Internal HR / Admin (interview.manage). Chỉ cập nhật khi lịch ở trạng thái SCHEDULED. Hỗ trợ kiểm tra ConcurrencyToken chống ghi đè dữ liệu.")
         .Produces<UpdateInterviewResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -288,8 +299,8 @@ public static class InterviewEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
-        // I05: PUT /api/v1/interviews/{interviewId:guid}/reschedule
-        group.MapPut("/{interviewId:guid}/reschedule", async (
+        // I05: POST /api/v1/interviews/{interviewId:guid}/reschedule
+        group.MapPost("/{interviewId:guid}/reschedule", async (
             Guid interviewId,
             [FromBody] RescheduleInterviewRequest request,
             [FromServices] ISender sender = null!,
@@ -348,7 +359,7 @@ public static class InterviewEndpoints
         })
         .WithName("RescheduleInterview")
         .WithSummary("Dời lịch phỏng vấn sang thời gian mới")
-        .WithDescription("Dành cho Client Company (interview.update) hoặc Internal HR / Admin (interview.manage). Bắt buộc nhập thời gian mới và lý do dời lịch. Tự động ghi lại lịch sử trạng thái RESCHEDULED.")
+        .WithDescription("Dành cho Client Company (interview.update) hoặc Internal HR / Admin (interview.manage). Bắt buộc nhập thời gian mới và lý do dời lịch. Lịch vẫn giữ trạng thái SCHEDULED; history lưu giờ cũ và giờ mới.")
         .Produces<RescheduleInterviewResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -356,8 +367,8 @@ public static class InterviewEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
-        // I06: PUT /api/v1/interviews/{interviewId:guid}/cancel
-        group.MapPut("/{interviewId:guid}/cancel", async (
+        // I06: POST /api/v1/interviews/{interviewId:guid}/cancel
+        group.MapPost("/{interviewId:guid}/cancel", async (
             Guid interviewId,
             [FromBody] CancelInterviewRequest request,
             [FromServices] ISender sender = null!,
@@ -420,7 +431,66 @@ public static class InterviewEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
-        // I07: POST /api/v1/interviews/{interviewId:guid}/result
+        // I07: POST /api/v1/interviews/{interviewId:guid}/no-show
+        group.MapPost("/{interviewId:guid}/no-show", async (
+            Guid interviewId,
+            [FromBody] RecordInterviewNoShowRequest request,
+            [FromServices] ISender sender = null!,
+            ClaimsPrincipal user = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var canRecord = PermissionAuthorization.HasPermission(user, RecordResultPermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+            if (!canRecord && !isInternal && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(RecordResultPermission);
+            }
+
+            try
+            {
+                var response = await sender.Send(new RecordInterviewNoShowCommand(
+                    interviewId,
+                    request.Reason,
+                    request.ConcurrencyToken,
+                    userId.Value,
+                    canRecord && !isInternal && !isAdmin,
+                    isInternal || isAdmin), cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("RecordInterviewNoShow")
+        .WithSummary("Ghi nhận ứng viên vắng mặt phỏng vấn")
+        .Produces<RecordInterviewNoShowResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
+        // I08: POST /api/v1/interviews/{interviewId:guid}/result
         group.MapPost("/{interviewId:guid}/result", async (
             Guid interviewId,
             [FromBody] RecordInterviewResultRequest request,
@@ -479,7 +549,7 @@ public static class InterviewEndpoints
         })
         .WithName("RecordInterviewResult")
         .WithSummary("Ghi nhận kết quả đánh giá phỏng vấn")
-        .WithDescription("Dành cho Client Company (interview.record_result) hoặc Internal HR / Admin (interview.manage). Kết quả: PASSED, FAILED, ON_HOLD kèm feedback nhận xét. Tự động chuyển trạng thái buổi phỏng vấn sang COMPLETED và cập nhật trạng thái hồ sơ ứng viên nếu cần.")
+        .WithDescription("Dành cho Client Company (interview.record_result) hoặc Internal HR / Admin (interview.manage). Kết quả: PASS, FAIL hoặc BACKUP. Kết quả cuối chuyển hồ sơ lần lượt sang OFFER_PENDING, INTERVIEW_FAILED hoặc BACKUP.")
         .Produces<RecordInterviewResultResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -487,7 +557,7 @@ public static class InterviewEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
-        // I08: GET /api/v1/interviews/{interviewId:guid}/history
+        // I09: GET /api/v1/interviews/{interviewId:guid}/history
         group.MapGet("/{interviewId:guid}/history", async (
             Guid interviewId,
             [FromServices] ISender sender = null!,
@@ -563,14 +633,14 @@ public static class InterviewEndpoints
 }
 
 public record ScheduleInterviewRequest(
-    Guid ApplicationId,
     DateTime ScheduledAt,
     int? DurationMinutes,
     int? InterviewRound,
     string? InterviewType,
     string? Location,
     string? MeetingLink,
-    List<ScheduleInterviewParticipantDto>? Participants
+    List<ScheduleInterviewParticipantDto>? Participants,
+    Guid? ApplicationConcurrencyToken = null
 );
 
 public record UpdateInterviewRequest(
@@ -603,3 +673,5 @@ public record RecordInterviewResultRequest(
     string? NextAction = null,
     Guid? ConcurrencyToken = null
 );
+
+public record RecordInterviewNoShowRequest(string Reason, Guid? ConcurrencyToken = null);
