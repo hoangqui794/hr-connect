@@ -15,6 +15,7 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
     public async Task<JobActionResponse> Handle(UpdateJobCommand request, CancellationToken ct)
     {
         var job = await JobHandlerGuards.GetOwnedJobAsync(_jobs, _members, request.JobId, request.UserId, ct);
+        JobTransitions.RequireCurrentToken(job, request.ConcurrencyToken);
         JobHandlerGuards.RequireStatus(job, JobStatuses.Draft, JobStatuses.Rejected);
 
         var isChangingServiceType = job.ServiceTypeId != request.ServiceTypeId;
@@ -48,7 +49,7 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
         job.SalaryNegotiable = request.SalaryNegotiable; job.SalaryNote = Normalize(request.SalaryNote);
         job.MinExperienceYears = request.MinExperienceYears; job.MaxExperienceYears = request.MaxExperienceYears;
         job.CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(); job.Quantity = request.Quantity;
-        job.Visibility = request.Visibility.Trim().ToUpperInvariant(); job.UpdatedAt = now; job.StatusReason = null;
+        job.Visibility = request.Visibility.Trim().ToUpperInvariant(); job.UpdatedAt = now; job.ConcurrencyToken = Guid.NewGuid(); job.StatusReason = null;
         var existingRequirements = job.JobRequirements.OrderBy(item => item.CreatedAt).ToList();
         for (var index = 0; index < request.Requirements.Count; index++)
         {

@@ -2194,6 +2194,13 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()")
+                        .HasColumnName("concurrency_token");
+
                     b.Property<string>("CurrencyCode")
                         .IsRequired()
                         .ValueGeneratedOnAdd()

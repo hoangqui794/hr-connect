@@ -17,6 +17,7 @@ using HRConnect.Application.Features.Jobs.Queries.GetMyJobs;
 using HRConnect.Application.Features.Jobs.Queries.GetPublicJobs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using HRConnect.Presentation.Authorization;
 
 namespace HRConnect.Presentation.Endpoints.V1.Jobs;
@@ -51,18 +52,18 @@ public static class JobEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
-        jobs.MapPost("/{jobId:guid}/submit", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
-            await ClientAction(user, "job.update_own", id => sender.Send(new SubmitJobCommand { JobId = jobId, UserId = id }, ct))
+        jobs.MapPost("/{jobId:guid}/submit", async (Guid jobId, Guid concurrencyToken, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+            await ClientAction(user, "job.update_own", id => sender.Send(new SubmitJobCommand { JobId = jobId, UserId = id, ConcurrencyToken = concurrencyToken }, ct))
         ).WithName("SubmitJob").WithSummary("Gửi Job để Internal HR xét duyệt")
-        .WithDescription("Chỉ Client sở hữu Job ở trạng thái DRAFT hoặc REJECTED được gửi duyệt. Job phải có tối thiểu một JobRequirement loại MUST_HAVE; JobSkill là không bắt buộc. Chuyển trạng thái sang PENDING_REVIEW.");
+        .WithDescription("Chỉ Client sở hữu Job ở trạng thái DRAFT hoặc REJECTED được gửi duyệt. Phải gửi concurrencyToken mới nhất lấy từ Job detail. Job phải có tối thiểu một JobRequirement loại MUST_HAVE; JobSkill là không bắt buộc. Chuyển trạng thái sang PENDING_REVIEW.");
         jobs.MapPost("/{jobId:guid}/pause", async (Guid jobId, ClaimsPrincipal user, [FromBody] PauseJobCommand command, ISender sender, CancellationToken ct) =>
         { command.JobId = jobId; return await ClientAction(user, "job.update_own", id => { command.UserId = id; return sender.Send(command, ct); }); }
         ).WithName("PauseJob").WithSummary("Tạm dừng Job đang hoạt động")
         .WithDescription("Chỉ Client sở hữu Job. Chuyển ACTIVE sang PAUSED với ReasonCode tự động PAUSED_BY_CLIENT; có thể gửi ReasonText.");
-        jobs.MapPost("/{jobId:guid}/resume", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
-            await ClientAction(user, "job.update_own", id => sender.Send(new ResumeJobCommand { JobId = jobId, UserId = id }, ct))
+        jobs.MapPost("/{jobId:guid}/resume", async (Guid jobId, Guid concurrencyToken, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+            await ClientAction(user, "job.update_own", id => sender.Send(new ResumeJobCommand { JobId = jobId, UserId = id, ConcurrencyToken = concurrencyToken }, ct))
         ).WithName("ResumeJob").WithSummary("Tiếp tục Job đang tạm dừng")
-        .WithDescription("Chỉ Client sở hữu Job. Chuyển PAUSED sang ACTIVE.");
+        .WithDescription("Chỉ Client sở hữu Job. Phải gửi concurrencyToken mới nhất lấy từ Job detail. Chuyển PAUSED sang ACTIVE.");
         jobs.MapPost("/{jobId:guid}/close", async (Guid jobId, ClaimsPrincipal user, [FromBody] CloseJobCommand command, ISender sender, IValidator<CloseJobCommand> validator, CancellationToken ct) =>
         {
             command.JobId = jobId; var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, "job.update_own")) return Forbidden(); command.UserId = id.Value;
@@ -234,10 +235,10 @@ public static class JobEndpoints
         review.MapGet("/review", async (ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         { if (!ReviewerCan(user, "job.review")) return Forbidden(); return await Run(async () => Results.Ok(await sender.Send(new GetJobsForReviewQuery(), ct))); }
         ).WithName("GetJobsForReview").WithSummary("Lấy hàng đợi Job chờ xét duyệt");
-        review.MapPost("/{jobId:guid}/approve", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+        review.MapPost("/{jobId:guid}/approve", async (Guid jobId, Guid concurrencyToken, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.publish")) return Forbidden();
-            return await Run(async () => Results.Ok(await sender.Send(new ApproveJobCommand { JobId = jobId, UserId = id.Value }, ct)));
+            return await Run(async () => Results.Ok(await sender.Send(new ApproveJobCommand { JobId = jobId, UserId = id.Value, ConcurrencyToken = concurrencyToken }, ct)));
         }
         ).WithName("ApproveJob").WithSummary("Duyệt và công bố Job")
         .WithDescription("Yêu cầu permission job.publish. Chỉ duyệt Job PENDING_REVIEW và chuyển sang ACTIVE.");
@@ -261,6 +262,7 @@ public static class JobEndpoints
         catch (NotFoundException ex) { return Results.NotFound(new { success = false, message = ex.Message }); }
         catch (ForbiddenException ex) { return Results.Json(new { success = false, errorCode = ex.ErrorCode, message = ex.Message }, statusCode: 403); }
         catch (ConflictException ex) { return Results.Conflict(new { success = false, message = ex.Message }); }
+        catch (DbUpdateConcurrencyException) { return Results.Conflict(new { success = false, message = "Job đã được thay đổi bởi người dùng khác. Hãy tải lại dữ liệu và thử lại." }); }
         catch (BadRequestException ex) { return Results.BadRequest(new { success = false, message = ex.Message }); }
     }
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
