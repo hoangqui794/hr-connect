@@ -127,7 +127,8 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             OldStatus = null,
             NewStatus = JobStatuses.Draft,
             ChangedBy = request.UserId,
-            Reason = "Job draft created",
+            ReasonCode = JobReasonCodes.DraftCreated,
+            ReasonText = null,
             ChangedAt = now
         });
 

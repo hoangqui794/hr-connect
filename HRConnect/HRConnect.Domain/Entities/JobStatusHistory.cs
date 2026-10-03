@@ -15,7 +15,9 @@ public partial class JobStatusHistory
 
     public Guid? ChangedBy { get; set; }
 
-    public string? Reason { get; set; }
+    public string? ReasonCode { get; set; }
+
+    public string? ReasonText { get; set; }
 
     public DateTime ChangedAt { get; set; }
 

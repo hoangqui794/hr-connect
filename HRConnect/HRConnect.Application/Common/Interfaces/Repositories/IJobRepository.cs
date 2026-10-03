@@ -29,6 +29,9 @@ public interface IJobRepository
         string? search,
         string? location,
         string? employmentType,
+        Guid? serviceTypeId,
+        decimal? salaryMin,
+        decimal? salaryMax,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
