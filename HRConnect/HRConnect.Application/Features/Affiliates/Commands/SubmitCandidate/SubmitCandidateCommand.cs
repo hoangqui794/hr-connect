@@ -13,6 +13,8 @@ public class SubmitCandidateCommand : IRequest<SubmitCandidateResponse>
     [JsonIgnore]
     public IReadOnlyCollection<string> RoleCodes { get; set; } = Array.Empty<string>();
 
+    public Guid? CandidateId { get; set; }
+
     public string FullName { get; set; } = string.Empty;
 
     public string? Email { get; set; }

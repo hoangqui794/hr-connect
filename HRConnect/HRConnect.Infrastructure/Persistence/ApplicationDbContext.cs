@@ -731,6 +731,9 @@ public partial class ApplicationDbContext : DbContext
                     "((creation_method = 'PLATFORM_BUILDER' AND structured_content IS NOT NULL) OR " +
                     "(creation_method = 'TEMPLATE_FORM' AND structured_content IS NOT NULL AND cv_template_id IS NOT NULL) OR " +
                     "(creation_method IN ('FILE_UPLOAD','AFFILIATE_UPLOAD') AND source_file_url IS NOT NULL))");
+                table.HasCheckConstraint(
+                    "ck_candidate_cv_affiliate_uploader",
+                    "creation_method <> 'AFFILIATE_UPLOAD' OR uploaded_by_user_id IS NOT NULL");
             });
 
             entity.HasIndex(e => new { e.CandidateId, e.CreatedAt }, "idx_candidate_cv_candidate").IsDescending(false, true);
@@ -795,6 +798,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.CvTemplateId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("candidate_cv_cv_template_id_fkey");
+
+            entity.HasOne<AppUser>().WithMany()
+                .HasForeignKey(d => d.UploadedByUserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("candidate_cv_uploaded_by_user_id_fkey");
         });
 
         modelBuilder.Entity<CandidateJobMatch>(entity =>
