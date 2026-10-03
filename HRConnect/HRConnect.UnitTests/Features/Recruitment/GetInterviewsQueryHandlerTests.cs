@@ -259,7 +259,7 @@ public class GetInterviewsQueryHandlerTests
             Job = job,
             CandidateId = candidate.CandidateId,
             Candidate = candidate,
-            Status = "INTERVIEWING"
+            Status = "INTERVIEW"
         };
 
         return new Interview

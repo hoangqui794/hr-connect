@@ -23,7 +23,7 @@ public class RescheduleInterviewData
 
     public DateTime NewScheduledAt { get; set; }
 
-    public string Status { get; set; } = "RESCHEDULED";
+    public string Status { get; set; } = "SCHEDULED";
 
     public string Reason { get; set; } = string.Empty;
 

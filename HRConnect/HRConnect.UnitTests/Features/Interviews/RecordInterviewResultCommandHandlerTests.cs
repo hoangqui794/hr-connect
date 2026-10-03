@@ -66,7 +66,7 @@ public class RecordInterviewResultCommandHandlerTests
 
         var command = new RecordInterviewResultCommand(
             InterviewId: interviewId,
-            Result: "PASSED",
+            Result: "PASS",
             Feedback: "Great candidate",
             IsFinalRound: true,
             NextAction: "MAKE_OFFER",
@@ -100,7 +100,7 @@ public class RecordInterviewResultCommandHandlerTests
 
         var command = new RecordInterviewResultCommand(
             InterviewId: interviewId,
-            Result: "PASSED",
+            Result: "PASS",
             Feedback: null,
             IsFinalRound: false,
             NextAction: null,
@@ -134,7 +134,7 @@ public class RecordInterviewResultCommandHandlerTests
 
         var command = new RecordInterviewResultCommand(
             InterviewId: interviewId,
-            Result: "PASSED",
+            Result: "PASS",
             Feedback: null,
             IsFinalRound: false,
             NextAction: null,
@@ -172,7 +172,7 @@ public class RecordInterviewResultCommandHandlerTests
 
         var command = new RecordInterviewResultCommand(
             InterviewId: interviewId,
-            Result: "PASSED",
+            Result: "PASS",
             Feedback: null,
             IsFinalRound: false,
             NextAction: null,
@@ -218,7 +218,7 @@ public class RecordInterviewResultCommandHandlerTests
 
         var command = new RecordInterviewResultCommand(
             InterviewId: interviewId,
-            Result: "PASSED",
+            Result: "PASS",
             Feedback: null,
             IsFinalRound: false,
             NextAction: null,
@@ -247,7 +247,7 @@ public class RecordInterviewResultCommandHandlerTests
         var application = new HRConnect.Domain.Entities.Application
         {
             ApplicationId = Guid.NewGuid(),
-            Status = "INTERVIEWING",
+            Status = "INTERVIEW",
             Job = new Job { CompanyId = companyId }
         };
 
@@ -275,7 +275,7 @@ public class RecordInterviewResultCommandHandlerTests
 
         var command = new RecordInterviewResultCommand(
             InterviewId: interviewId,
-            Result: "PASSED",
+            Result: "PASS",
             Feedback: "Xuất sắc, tư duy tốt.",
             IsFinalRound: true,
             NextAction: "MAKE_OFFER",
@@ -291,12 +291,12 @@ public class RecordInterviewResultCommandHandlerTests
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
         result.Data.Status.Should().Be("COMPLETED");
-        result.Data.Result.Should().Be("PASSED");
+        result.Data.Result.Should().Be("PASS");
         result.Data.Feedback.Should().Be("Xuất sắc, tư duy tốt.");
         result.Data.ApplicationStatus.Should().Be("OFFER_PENDING");
 
         interview.Status.Should().Be("COMPLETED");
-        interview.Result.Should().Be("PASSED");
+        interview.Result.Should().Be("PASS");
         interview.RecordedBy.Should().Be(userId);
         interview.RecordedAt.Should().NotBeNull();
         interview.InterviewStatusHistories.Should().HaveCount(1);
@@ -311,7 +311,7 @@ public class RecordInterviewResultCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenUserIsInternalHrOrAdmin_FailedFinalRound_ShouldCompleteAndSetRejected()
+    public async Task Handle_WhenUserIsInternalHrOrAdmin_FailedFinalRound_ShouldCompleteAndSetInterviewFailed()
     {
         // Arrange
         var interviewId = Guid.NewGuid();
@@ -320,7 +320,7 @@ public class RecordInterviewResultCommandHandlerTests
         var application = new HRConnect.Domain.Entities.Application
         {
             ApplicationId = Guid.NewGuid(),
-            Status = "INTERVIEWING",
+            Status = "INTERVIEW",
             Job = new Job { CompanyId = Guid.NewGuid() }
         };
 
@@ -343,7 +343,7 @@ public class RecordInterviewResultCommandHandlerTests
 
         var command = new RecordInterviewResultCommand(
             InterviewId: interviewId,
-            Result: "FAILED",
+            Result: "FAIL",
             Feedback: "Không đạt yêu cầu chuyên môn",
             IsFinalRound: true,
             NextAction: "REJECT",
@@ -359,10 +359,10 @@ public class RecordInterviewResultCommandHandlerTests
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
         result.Data.Status.Should().Be("COMPLETED");
-        result.Data.Result.Should().Be("FAILED");
-        result.Data.ApplicationStatus.Should().Be("REJECTED");
+        result.Data.Result.Should().Be("FAIL");
+        result.Data.ApplicationStatus.Should().Be("INTERVIEW_FAILED");
 
-        application.Status.Should().Be("REJECTED");
+        application.Status.Should().Be("INTERVIEW_FAILED");
         _applicationRepositoryMock.Verify(r => r.Update(application), Times.Once);
     }
 }

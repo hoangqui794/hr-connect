@@ -8,6 +8,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Interviews.Commands.ScheduleInterview;
 using HRConnect.Domain.Entities;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -41,7 +42,7 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
             throw new NotFoundException("Không tìm thấy lịch phỏng vấn.");
         }
 
-        if (interview.Status is not ("SCHEDULED" or "RESCHEDULED"))
+        if (interview.Status != InterviewStates.Scheduled)
         {
             _logger.LogWarning("Buổi phỏng vấn {InterviewId} đang ở trạng thái {Status}, không thể cập nhật.",
                 interview.InterviewId, interview.Status);

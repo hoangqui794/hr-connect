@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Domain.Entities;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -55,7 +56,7 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
             throw new NotFoundException("Không tìm thấy lịch phỏng vấn.");
         }
 
-        if (interview.Status is not ("SCHEDULED" or "RESCHEDULED"))
+        if (interview.Status != InterviewStates.Scheduled)
         {
             _logger.LogWarning("Buổi phỏng vấn {InterviewId} đang ở trạng thái {Status}, không thể dời lịch.",
                 interview.InterviewId, interview.Status);
@@ -95,7 +96,7 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
         var oldScheduledAt = interview.ScheduledAt;
 
         interview.ScheduledAt = request.NewScheduledAt;
-        interview.Status = "RESCHEDULED";
+        interview.Status = InterviewStates.Scheduled;
 
         if (request.DurationMinutes.HasValue)
         {
@@ -121,7 +122,7 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
             InterviewStatusHistoryId = Guid.NewGuid(),
             InterviewId = interview.InterviewId,
             OldStatus = oldStatus,
-            NewStatus = "RESCHEDULED",
+            NewStatus = InterviewStates.Scheduled,
             OldScheduledAt = oldScheduledAt,
             NewScheduledAt = request.NewScheduledAt,
             ChangedBy = request.CurrentUserId,
@@ -143,7 +144,7 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
                 InterviewRound = interview.InterviewRound,
                 OldScheduledAt = oldScheduledAt,
                 NewScheduledAt = request.NewScheduledAt,
-                Status = "RESCHEDULED",
+                Status = InterviewStates.Scheduled,
                 Reason = request.Reason.Trim(),
                 ConcurrencyToken = newConcurrencyToken,
                 RescheduledAt = now
