@@ -43,5 +43,6 @@ class MatchingService:
             candidateHighlights=highlights,
             missingRequirements=missing,
             matchingReasons=reasons,
+            requiresManualReview=bool(unresolved) or normalized.candidate.requires_manual_review,
             modelName=settings.embedding_model,
         )

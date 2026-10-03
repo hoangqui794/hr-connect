@@ -77,6 +77,8 @@ class RequirementMatcher:
             content = normalize_text(requirement.content)
             clauses = evaluate_clauses(requirement, request.candidate.cv_text)
             if clauses is not None:
+                if clauses["status"] == "NOT_FOUND" and _evidence_is_unreadable(requirement, request):
+                    clauses = {**clauses, "status": "UNKNOWN", "coverage": 0.0}
                 supported = [item for item in clauses["criteria"] if item["status"] == "MATCHED"]
                 result = RequirementMatch(
                     requirement=content, type=requirement.type,
@@ -86,13 +88,17 @@ class RequirementMatcher:
                     matchedTerms=[item["criterion"] for item in supported],
                     missingEvidence=[item["criterion"] for item in clauses["criteria"] if item["status"] != "MATCHED"],
                     criteria=clauses["criteria"], warnings=clauses["warnings"], requiresManualReview=True,
-                    matchMethod="DETERMINISTIC" if clauses["status"] == "MATCHED" else "DETERMINISTIC_PARTIAL" if clauses["status"] == "PARTIAL" else "NOT_FOUND",
+                    matchMethod="DETERMINISTIC" if clauses["status"] == "MATCHED" else "DETERMINISTIC_PARTIAL" if clauses["status"] == "PARTIAL" else "UNKNOWN" if clauses["status"] == "UNKNOWN" else "NOT_FOUND",
                 )
                 (must_have if requirement.type == RequirementType.MUST_HAVE else should_have).append(result)
                 continue
             evaluation = self._match_requirement(
                 requirement, content, skill_map, evidence_text, candidate_facts, request
             )
+            if evaluation.status == "NOT_FOUND" and _evidence_is_unreadable(requirement, request):
+                evaluation = _RequirementEvaluation(
+                    False, "UNKNOWN", 0.0, None, [], evaluation.missing_evidence
+                )
 
             result = RequirementMatch(
                 requirement=content,
@@ -109,10 +115,21 @@ class RequirementMatcher:
                     if evaluation.status == "MATCHED"
                     else "DETERMINISTIC_PARTIAL"
                     if evaluation.status == "PARTIAL"
+                    else "UNKNOWN"
+                    if evaluation.status == "UNKNOWN"
                     else "NOT_FOUND"
                 ),
-                requiresManualReview=(requirement.category == RequirementCategory.OTHER and not evaluation.matched),
-                warnings=(["UNRESOLVED_REQUIREMENT_EVIDENCE"] if requirement.category == RequirementCategory.OTHER and not evaluation.matched else []),
+                requiresManualReview=(
+                    evaluation.status == "UNKNOWN"
+                    or (requirement.category == RequirementCategory.OTHER and not evaluation.matched)
+                ),
+                warnings=(
+                    ["SOURCE_EVIDENCE_UNREADABLE"]
+                    if evaluation.status == "UNKNOWN"
+                    else ["UNRESOLVED_REQUIREMENT_EVIDENCE"]
+                    if requirement.category == RequirementCategory.OTHER and not evaluation.matched
+                    else []
+                ),
             )
             target = must_have if requirement.type == RequirementType.MUST_HAVE else should_have
             target.append(result)
@@ -192,3 +209,18 @@ class RequirementMatcher:
         if category == RequirementCategory.EDUCATION and _education_matches(candidate_facts, required):
             return term
         return term if _contains_phrase(candidate_facts, required) else None
+
+
+def _evidence_is_unreadable(
+    requirement: JobRequirement, request: MatchingRequest
+) -> bool:
+    fields = set(request.candidate.unreliable_evidence_fields)
+    if "all" in fields:
+        return True
+    field_by_category = {
+        RequirementCategory.SKILL: "skills",
+        RequirementCategory.EXPERIENCE: "experience",
+        RequirementCategory.EDUCATION: "education",
+        RequirementCategory.OTHER: "other",
+    }
+    return field_by_category[requirement.category] in fields

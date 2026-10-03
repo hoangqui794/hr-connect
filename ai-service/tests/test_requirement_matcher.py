@@ -198,3 +198,82 @@ def test_requirement_matcher_reports_partial_evidence_and_missing_groups() -> No
     assert result.evidence_coverage == 0.5
     assert result.matched_terms == ["optimized queries"]
     assert result.missing_evidence == ["evidence group 1: database design / data modeling / database schema"]
+
+
+def test_requirement_matcher_marks_only_unreadable_relevant_evidence_unknown() -> None:
+    payload = {
+        "requestId": "unknown-evidence-001",
+        "applicationId": "application-001",
+        "attemptNo": 1,
+        "candidate": {
+            "summary": "Backend developer",
+            "skills": [],
+            "cvText": "Backend services",
+            "parseConfidence": 0.55,
+            "requiresManualReview": True,
+            "parseWarnings": ["EXPERIENCE_EVIDENCE_UNRESOLVED"],
+            "unreliableEvidenceFields": ["experience"],
+        },
+        "job": {
+            "title": "Backend Developer",
+            "description": "Build APIs",
+            "requirements": [
+                {
+                    "type": "MUST_HAVE",
+                    "category": "EXPERIENCE",
+                    "content": "At least 3 years experience",
+                    "minYears": 3,
+                },
+                {
+                    "type": "MUST_HAVE",
+                    "category": "SKILL",
+                    "content": "Redis",
+                },
+            ],
+        },
+    }
+
+    must_have, _ = RequirementMatcher().match(
+        normalize_request(MatchingRequest.model_validate(payload))
+    )
+
+    assert must_have[0].match_status == "UNKNOWN"
+    assert must_have[0].match_method == "UNKNOWN"
+    assert must_have[0].evidence_coverage == 0
+    assert must_have[0].requires_manual_review is True
+    assert must_have[1].match_status == "NOT_FOUND"
+
+
+def test_requirement_matcher_preserves_partial_when_parser_is_uncertain() -> None:
+    payload = {
+        "requestId": "partial-uncertain-001",
+        "applicationId": "application-001",
+        "attemptNo": 1,
+        "candidate": {
+            "summary": "Backend engineer",
+            "skills": [],
+            "cvText": "Optimized queries and indexing.",
+            "requiresManualReview": True,
+            "unreliableEvidenceFields": ["all"],
+        },
+        "job": {
+            "title": "Engineer",
+            "description": "Database work",
+            "requirements": [{
+                "type": "MUST_HAVE",
+                "category": "OTHER",
+                "content": "Database design and query optimization",
+                "evidenceGroups": [
+                    ["database design"],
+                    ["optimized queries", "indexing"],
+                ],
+            }],
+        },
+    }
+
+    must_have, _ = RequirementMatcher().match(
+        normalize_request(MatchingRequest.model_validate(payload))
+    )
+
+    assert must_have[0].match_status == "PARTIAL"
+    assert must_have[0].evidence_coverage == 0.5

@@ -11,7 +11,7 @@ class RequirementMatch(BaseModel):
     requirement: str
     type: RequirementType
     matched: bool
-    match_status: Literal["MATCHED", "PARTIAL", "NOT_FOUND"] = Field(
+    match_status: Literal["MATCHED", "PARTIAL", "NOT_FOUND", "UNKNOWN"] = Field(
         default="NOT_FOUND", alias="matchStatus"
     )
     evidence_coverage: float = Field(default=0.0, alias="evidenceCoverage", ge=0, le=1)
@@ -23,7 +23,9 @@ class RequirementMatch(BaseModel):
     requires_manual_review: bool = Field(default=False, alias="requiresManualReview")
     warnings: list[str] = Field(default_factory=list)
     suggested_evidence: list[dict] = Field(default_factory=list, alias="suggestedEvidence")
-    match_method: Literal["DETERMINISTIC", "DETERMINISTIC_PARTIAL", "NOT_FOUND"] = Field(alias="matchMethod")
+    match_method: Literal[
+        "DETERMINISTIC", "DETERMINISTIC_PARTIAL", "NOT_FOUND", "UNKNOWN"
+    ] = Field(alias="matchMethod")
 
 
 class MatchingResponse(BaseModel):
@@ -39,5 +41,6 @@ class MatchingResponse(BaseModel):
     candidate_highlights: list[str] = Field(alias="candidateHighlights")
     missing_requirements: list[str] = Field(alias="missingRequirements")
     matching_reasons: list[str] = Field(alias="matchingReasons")
+    requires_manual_review: bool = Field(default=False, alias="requiresManualReview")
     model_name: str = Field(alias="modelName")
     status: Literal["COMPLETED"] = "COMPLETED"

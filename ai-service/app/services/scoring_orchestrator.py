@@ -1,4 +1,6 @@
 import asyncio
+import hashlib
+import json
 import logging
 import time
 
@@ -10,6 +12,7 @@ from app.schemas.cv import CvParseResponse, DocumentMetadata
 from app.schemas.matching_request import Candidate, CandidateSkill, MatchingRequest, RequirementCategory
 from app.schemas.scoring_job import ScoringJobRequest
 from app.services.matching_service import MatchingService
+from app.services.parse_diagnostics import build_parse_diagnostics, unreliable_evidence_fields
 from app.services.structured_cv_parser import StructuredCvParser
 
 logger = logging.getLogger(__name__)
@@ -58,6 +61,7 @@ class ScoringOrchestrator:
             layout=extracted.layout,
             ocr_applied=extracted.ocr_applied,
         )
+        warnings = list(dict.fromkeys([*extracted.warnings, *parsed.warnings]))
         parse_result = CvParseResponse(
             document=DocumentMetadata(
                 fileName=cv_metadata.get("fileName") or "candidate.pdf",
@@ -72,7 +76,8 @@ class ScoringOrchestrator:
             candidate=parsed.candidate,
             parseConfidence=parsed.confidence,
             requiresManualReview=parsed.requires_manual_review,
-            warnings=list(dict.fromkeys([*extracted.warnings, *parsed.warnings])),
+            warnings=warnings,
+            diagnostics=build_parse_diagnostics(extracted, warnings),
         )
         logger.info(
             "CV parsed for MF-03 scoring",
@@ -104,6 +109,21 @@ class ScoringOrchestrator:
                 "mustHaveResult": [item.model_dump(by_alias=True) for item in match.must_have_result],
                 "shouldHaveResult": [item.model_dump(by_alias=True) for item in match.should_have_result],
                 "structuredCvData": parse_result.candidate.model_dump(by_alias=True),
+                "parseConfidence": parse_result.parse_confidence,
+                "requiresManualReview": (
+                    parse_result.requires_manual_review or match.requires_manual_review
+                ),
+                "warnings": parse_result.warnings,
+                "diagnostics": [
+                    item.model_dump(by_alias=True) for item in parse_result.diagnostics
+                ],
+                "semanticScore": match.semantic_score,
+                "missingRequirements": match.missing_requirements,
+                "matchingReasons": match.matching_reasons,
+                "inputFingerprints": {
+                    "cvSha256": hashlib.sha256(data).hexdigest(),
+                    "jdSha256": _job_fingerprint(job_data),
+                },
                 "modelVersion": match.model_name,
                 "errorCode": None,
                 "errorMessage": None,
@@ -165,6 +185,10 @@ def _to_matching_request(job, job_data, parse_result: CvParseResponse) -> Matchi
                 for skill in structured.skills
             ],
             cvText=parse_result.raw_text,
+            parseConfidence=parse_result.parse_confidence,
+            requiresManualReview=parse_result.requires_manual_review,
+            parseWarnings=parse_result.warnings,
+            unreliableEvidenceFields=unreliable_evidence_fields(parse_result.diagnostics),
         ),
         job=job_data,
     )
@@ -178,3 +202,13 @@ def _log_context(job: ScoringJobRequest) -> dict[str, object]:
         "jobId": str(job.job_id),
         "attemptNo": job.attempt_no,
     }
+
+
+def _job_fingerprint(job_data) -> str:
+    canonical = json.dumps(
+        job_data.model_dump(mode="json", by_alias=True),
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()

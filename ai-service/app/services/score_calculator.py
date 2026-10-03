@@ -20,9 +20,13 @@ class ScoreCalculator:
         should_have: list[RequirementMatch],
         semantic_score: float,
     ) -> float:
+        has_unknown = any(
+            item.match_status == "UNKNOWN" for item in [*must_have, *should_have]
+        )
+        effective_semantic_score = 0.0 if has_unknown else semantic_score
         weighted = (
             _ratio(must_have) * self.settings.must_have_weight
             + _ratio(should_have) * self.settings.should_have_weight
-            + semantic_score * self.settings.semantic_weight
+            + effective_semantic_score * self.settings.semantic_weight
         )
         return round(max(0.0, min(100.0, weighted * 100)), 2)
