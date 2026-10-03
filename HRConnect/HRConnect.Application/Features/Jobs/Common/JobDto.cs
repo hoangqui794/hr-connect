@@ -9,7 +9,7 @@ public sealed record JobSkillDto(Guid SkillId, string? SkillName, bool IsMandato
 
 public sealed record JobStatusHistoryDto(
     Guid JobStatusHistoryId, string? OldStatus, string NewStatus,
-    Guid? ChangedBy, string? Reason, DateTime ChangedAt);
+    Guid? ChangedBy, string? ReasonCode, string? ReasonText, DateTime ChangedAt);
 
 public sealed record JobDto(
     Guid JobId, Guid CompanyId, string? CompanyName, Guid ServiceTypeId, string? ServiceTypeCode,
@@ -36,7 +36,7 @@ public sealed record JobDto(
             x.SkillId, x.Skill?.SkillName, x.IsMandatory, x.Weight)).ToList(),
         includeStatusHistories
             ? job.JobStatusHistories.OrderBy(x => x.ChangedAt).Select(x => new JobStatusHistoryDto(
-                x.JobStatusHistoryId, x.OldStatus, x.NewStatus, x.ChangedBy, x.Reason, x.ChangedAt)).ToList()
+                x.JobStatusHistoryId, x.OldStatus, x.NewStatus, x.ChangedBy, x.ReasonCode, x.ReasonText, x.ChangedAt)).ToList()
             : []);
 }
 
@@ -75,7 +75,7 @@ public static class JobTransitions
     public static bool IsAllowed(string currentStatus, string newStatus) =>
         AllowedTransitions.TryGetValue(currentStatus, out var allowed) && allowed.Contains(newStatus);
 
-    public static void ChangeStatus(Job job, string newStatus, Guid userId, string? reason = null)
+    public static void ChangeStatus(Job job, string newStatus, Guid userId, string reasonCode, string? reasonText = null)
     {
         var oldStatus = job.Status;
         if (!IsAllowed(oldStatus, newStatus))
@@ -83,7 +83,7 @@ public static class JobTransitions
 
         var now = DateTime.UtcNow;
         job.Status = newStatus;
-        job.StatusReason = reason;
+        job.StatusReason = reasonText;
         job.UpdatedAt = now;
         job.JobStatusHistories.Add(new JobStatusHistory
         {
@@ -92,7 +92,8 @@ public static class JobTransitions
             OldStatus = oldStatus,
             NewStatus = newStatus,
             ChangedBy = userId,
-            Reason = reason,
+            ReasonCode = reasonCode,
+            ReasonText = reasonText,
             ChangedAt = now
         });
     }

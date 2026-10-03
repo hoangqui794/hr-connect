@@ -224,7 +224,7 @@ public class JobManagementCommandHandlerTests
 
         await submit.Handle(new SubmitJobCommand { JobId = job.JobId, UserId = owner }, default);
         await new RejectJobCommandHandler(_jobs.Object, _uow.Object).Handle(
-            new RejectJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), Reason = "Bổ sung JD" }, default);
+            new RejectJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), ReasonCode = JobReasonCodes.RejectedIncompleteDescription, ReasonText = "Bổ sung JD" }, default);
         await new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
         {
             JobId = job.JobId,
@@ -248,7 +248,7 @@ public class JobManagementCommandHandlerTests
         job.Status.Should().Be(JobStatuses.Active);
         job.JobStatusHistories.Select(x => x.NewStatus).Should().Equal(
             JobStatuses.PendingReview, JobStatuses.Rejected, JobStatuses.PendingReview, JobStatuses.Active);
-        job.JobStatusHistories.Single(x => x.NewStatus == JobStatuses.Rejected).Reason.Should().Be("Bổ sung JD");
+        job.JobStatusHistories.Single(x => x.NewStatus == JobStatuses.Rejected).ReasonText.Should().Be("Bổ sung JD");
     }
 
     [Fact]
@@ -265,7 +265,7 @@ public class JobManagementCommandHandlerTests
     {
         var job = SetupJob(JobStatuses.PendingReview);
         var result = await new RejectJobCommandHandler(_jobs.Object, _uow.Object)
-            .Handle(new RejectJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), Reason = "JD chưa rõ" }, default);
+            .Handle(new RejectJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), ReasonCode = JobReasonCodes.RejectedIncompleteDescription, ReasonText = "JD chưa rõ" }, default);
         result.Data.Status.Should().Be(JobStatuses.Rejected); job.StatusReason.Should().Be("JD chưa rõ");
     }
 
@@ -274,13 +274,13 @@ public class JobManagementCommandHandlerTests
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Active);
         await new PauseJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
-            .Handle(new PauseJobCommand { JobId = job.JobId, UserId = user, Reason = "Đủ CV" }, default);
+            .Handle(new PauseJobCommand { JobId = job.JobId, UserId = user, ReasonText = "Đủ CV" }, default);
         job.Status.Should().Be(JobStatuses.Paused);
         await new ResumeJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
             .Handle(new ResumeJobCommand { JobId = job.JobId, UserId = user }, default);
         job.Status.Should().Be(JobStatuses.Active);
         await new CloseJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
-            .Handle(new CloseJobCommand { JobId = job.JobId, UserId = user, Reason = "Đã tuyển đủ" }, default);
+            .Handle(new CloseJobCommand { JobId = job.JobId, UserId = user, ReasonCode = JobReasonCodes.ClosedPositionFilled, ReasonText = "Đã tuyển đủ" }, default);
         job.Status.Should().Be(JobStatuses.Closed); job.ClosedAt.Should().NotBeNull(); job.JobStatusHistories.Should().HaveCount(3);
     }
 
@@ -311,7 +311,7 @@ public class JobManagementCommandHandlerTests
     public void JobTransitions_ShouldRejectTransitionsOutsideMf01StateMachine(string from, string to)
     {
         var job = SetupJob(from);
-        var action = () => JobTransitions.ChangeStatus(job, to, Guid.NewGuid());
+        var action = () => JobTransitions.ChangeStatus(job, to, Guid.NewGuid(), "TEST");
 
         action.Should().Throw<ConflictException>();
         job.Status.Should().Be(from);

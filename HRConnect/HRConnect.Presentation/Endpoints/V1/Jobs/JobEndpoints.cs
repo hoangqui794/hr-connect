@@ -58,7 +58,7 @@ public static class JobEndpoints
         jobs.MapPost("/{jobId:guid}/pause", async (Guid jobId, ClaimsPrincipal user, [FromBody] PauseJobCommand command, ISender sender, CancellationToken ct) =>
         { command.JobId = jobId; return await ClientAction(user, "job.update_own", id => { command.UserId = id; return sender.Send(command, ct); }); }
         ).WithName("PauseJob").WithSummary("Tạm dừng Job đang hoạt động")
-        .WithDescription("Chỉ Client sở hữu Job. Chuyển ACTIVE sang PAUSED.");
+        .WithDescription("Chỉ Client sở hữu Job. Chuyển ACTIVE sang PAUSED với ReasonCode tự động PAUSED_BY_CLIENT; có thể gửi ReasonText.");
         jobs.MapPost("/{jobId:guid}/resume", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
             await ClientAction(user, "job.update_own", id => sender.Send(new ResumeJobCommand { JobId = jobId, UserId = id }, ct))
         ).WithName("ResumeJob").WithSummary("Tiếp tục Job đang tạm dừng")
@@ -69,7 +69,7 @@ public static class JobEndpoints
             var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async () => Results.Ok(await sender.Send(command, ct)));
         }
         ).WithName("CloseJob").WithSummary("Đóng Job")
-        .WithDescription("Chỉ Client sở hữu Job. Chỉ đóng được Job ACTIVE hoặc PAUSED; chuyển sang CLOSED.");
+        .WithDescription("Chỉ Client sở hữu Job. Chỉ đóng được Job ACTIVE hoặc PAUSED; gửi ReasonCode (CLOSED_POSITION_FILLED, CLOSED_BY_CLIENT hoặc CLOSED_OTHER) và ReasonText; chuyển sang CLOSED.");
 
         jobs.MapGet("/mine", async (ClaimsPrincipal user, string? status, ISender sender, CancellationToken ct) =>
         {
@@ -78,14 +78,15 @@ public static class JobEndpoints
         }
         ).WithName("GetMyJobs").WithSummary("Lấy danh sách Job của doanh nghiệp hiện tại");
         jobs.MapGet("", async (ClaimsPrincipal user, string? search, string? location, string? employmentType,
-            int page, int pageSize, ISender sender, CancellationToken ct) =>
+            Guid? serviceTypeId, decimal? salaryMin, decimal? salaryMax, int page, int pageSize, ISender sender, CancellationToken ct) =>
         {
             if (!user.HasClaim("permission", "job.view")) return Forbidden();
             var internalAccess = ReviewerCan(user, "job.review");
             return await Run(async () => Results.Ok(await sender.Send(new GetPublicJobsQuery(
-                RoleCodes(user), internalAccess, search, location, employmentType,
+                RoleCodes(user), internalAccess, search, location, employmentType, serviceTypeId, salaryMin, salaryMax,
                 page <= 0 ? 1 : page, pageSize <= 0 ? 20 : pageSize), ct)));
-        }).WithName("GetPublicJobs").WithSummary("Tìm Job đang hoạt động theo quyền xem của Service Type");
+        }).WithName("GetPublicJobs").WithSummary("Tìm Job đang hoạt động theo quyền xem của Service Type")
+        .WithDescription("Filters MF01: search, location, employmentType, serviceTypeId, salaryMin, salaryMax. page mặc định 1; pageSize mặc định 20 và tối đa 100.");
         jobs.MapGet("/{jobId:guid}", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized();
@@ -246,7 +247,7 @@ public static class JobEndpoints
             var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async () => Results.Ok(await sender.Send(command, ct)));
         }
         ).WithName("RejectJob").WithSummary("Từ chối Job và trả lý do")
-        .WithDescription("Yêu cầu permission job.review. Chỉ từ chối Job PENDING_REVIEW; Job chuyển sang REJECTED và Client có thể sửa rồi gửi duyệt lại.");
+        .WithDescription("Yêu cầu permission job.review. Chỉ từ chối Job PENDING_REVIEW; gửi ReasonCode (REJECTED_INCOMPLETE_DESCRIPTION, REJECTED_INCOMPLETE_REQUIREMENTS hoặc REJECTED_OTHER) và ReasonText. Job chuyển sang REJECTED và Client có thể sửa rồi gửi duyệt lại.");
         return app;
     }
 
