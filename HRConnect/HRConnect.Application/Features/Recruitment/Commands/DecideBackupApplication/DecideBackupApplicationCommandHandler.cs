@@ -6,6 +6,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Domain.Entities;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -48,7 +49,7 @@ public class DecideBackupApplicationCommandHandler : IRequestHandler<DecideBacku
             case "CHOOSE":
             case "SHORTLIST":
                 normalizedDecision = "SELECT";
-                targetStatus = "INTERVIEW";
+                targetStatus = ApplicationStates.OfferPending;
                 defaultReason = "Được chọn từ danh sách dự phòng (Backup candidate selected).";
                 break;
             case "REJECT":
@@ -56,13 +57,13 @@ public class DecideBackupApplicationCommandHandler : IRequestHandler<DecideBacku
             case "REJECTED":
             case "DECLINE":
                 normalizedDecision = "REJECT";
-                targetStatus = "BACKUP_NOT_SELECTED";
+                targetStatus = ApplicationStates.BackupNotSelected;
                 defaultReason = "Không được chọn từ danh sách dự phòng (Backup candidate not selected).";
                 break;
             case "KEEP_ON_HOLD":
             case "HOLD":
                 normalizedDecision = "KEEP_ON_HOLD";
-                targetStatus = "BACKUP";
+                targetStatus = ApplicationStates.Backup;
                 defaultReason = "Tiếp tục lưu giữ hồ sơ dự phòng (Kept on hold as backup).";
                 break;
             default:
@@ -98,8 +99,7 @@ public class DecideBackupApplicationCommandHandler : IRequestHandler<DecideBacku
             throw new ForbiddenException("Bạn không có quyền quyết định ứng viên dự phòng.");
         }
 
-        var isBackup = string.Equals(application.Status, "BACKUP", StringComparison.OrdinalIgnoreCase)
-            || (application.Interviews?.Any(i => string.Equals(i.Result, "BACKUP", StringComparison.OrdinalIgnoreCase)) == true);
+        var isBackup = string.Equals(application.Status, ApplicationStates.Backup, StringComparison.OrdinalIgnoreCase);
 
         if (!isBackup)
         {

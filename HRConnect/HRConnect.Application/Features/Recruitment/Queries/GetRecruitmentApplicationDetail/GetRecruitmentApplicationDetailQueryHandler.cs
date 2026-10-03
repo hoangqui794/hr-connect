@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using JobApplication = HRConnect.Domain.Entities.Application;
@@ -166,14 +167,21 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
         var actions = new List<string>();
         var status = (app.Status ?? string.Empty).ToUpperInvariant();
 
-        var hasScheduledInterview = app.Interviews?.Any(i => i.Status == "SCHEDULED") == true;
-        var hasInProgressInterview = app.Interviews?.Any(i => i.Status == "IN_PROGRESS") == true;
+        var scheduledInterview = app.Interviews?
+            .Where(i => i.Status == InterviewStates.Scheduled)
+            .OrderByDescending(i => i.ScheduledAt)
+            .FirstOrDefault();
         var latestInterview = app.Interviews?.OrderByDescending(i => i.InterviewRound).ThenByDescending(i => i.CreatedAt).FirstOrDefault();
         var latestOffer = app.Offers?.OrderByDescending(o => o.OfferVersion).FirstOrDefault();
 
-        if (status is "APPLIED" or "SCREENING_PASSED" or "INTERVIEWING")
+        if (status == ApplicationStates.Shortlisted)
         {
-            if (!hasScheduledInterview && !hasInProgressInterview)
+            actions.Add("SCHEDULE_INTERVIEW");
+        }
+
+        if (status == ApplicationStates.Interview)
+        {
+            if (scheduledInterview == null)
             {
                 actions.Add("SCHEDULE_INTERVIEW");
             }
@@ -181,55 +189,41 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             {
                 actions.Add("RESCHEDULE_INTERVIEW");
                 actions.Add("CANCEL_INTERVIEW");
-                actions.Add("RECORD_INTERVIEW_RESULT");
-            }
-
-            if (latestInterview?.Result == "PASS")
-            {
-                actions.Add("CREATE_OFFER");
-            }
-            else if (latestInterview?.Result == "BACKUP")
-            {
-                actions.Add("SELECT_BACKUP");
+                if (!scheduledInterview.ScheduledAt.HasValue || scheduledInterview.ScheduledAt <= DateTime.UtcNow)
+                {
+                    actions.Add("RECORD_INTERVIEW_RESULT");
+                    actions.Add("RECORD_NO_SHOW");
+                }
             }
         }
 
-        if (status == "OFFERED" || (status == "INTERVIEWING" && latestInterview?.Result == "PASS"))
+        if (status == ApplicationStates.Backup)
         {
-            if (latestOffer != null)
-            {
-                if (latestOffer.Status == "DRAFT")
-                {
-                    actions.Add("SEND_OFFER");
-                    actions.Add("UPDATE_OFFER");
-                }
-                else if (latestOffer.Status == "SENT")
-                {
-                    actions.Add("WITHDRAW_OFFER");
-                }
-                else if (latestOffer.Status is "DECLINED" or "WITHDRAWN")
-                {
-                    actions.Add("CREATE_OFFER");
-                }
-            }
-            else
+            actions.Add("SELECT_BACKUP");
+        }
+
+        if (status == ApplicationStates.OfferPending)
+        {
+            if (latestOffer == null || latestOffer.Status is OfferStates.Declined or OfferStates.Withdrawn)
             {
                 actions.Add("CREATE_OFFER");
             }
+            else if (latestOffer.Status == OfferStates.Draft)
+            {
+                actions.Add("UPDATE_OFFER");
+                actions.Add("SEND_OFFER");
+            }
+            else if (latestOffer.Status == OfferStates.Sent)
+            {
+                actions.Add("WITHDRAW_OFFER");
+            }
         }
 
-        if (status is "OFFER_ACCEPTED" or "HIRED" or "PLACED")
+        if (status == ApplicationStates.OfferAccepted)
         {
-            if (app.Placement == null || app.Placement.Status != "CONFIRMED")
-            {
-                actions.Add("CONFIRM_PLACEMENT");
-            }
+            actions.Add("CONFIRM_PLANNED_START_DATE");
+            actions.Add("CONFIRM_PLACEMENT");
             actions.Add("MARK_NOT_STARTED");
-        }
-
-        if (status is not ("REJECTED" or "HIRED" or "PLACED" or "WITHDRAWN" or "NOT_STARTED"))
-        {
-            actions.Add("REJECT_APPLICATION");
         }
 
         return actions;

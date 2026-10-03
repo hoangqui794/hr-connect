@@ -35,7 +35,7 @@ public class GetRecruitmentApplicationsQueryHandlerTests
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(member);
 
-        var app = CreateSampleApplication(companyId, "APPLIED");
+        var app = CreateSampleApplication(companyId, "SUBMITTED");
         _applicationRepositoryMock
             .Setup(r => r.GetRecruitmentApplicationsAsync(
                 companyId,
@@ -95,7 +95,7 @@ public class GetRecruitmentApplicationsQueryHandlerTests
         // Arrange
         var userId = Guid.NewGuid();
         var companyId = Guid.NewGuid();
-        var app = CreateSampleApplication(companyId, "SCREENING_PASSED");
+        var app = CreateSampleApplication(companyId, "SCREENING");
 
         _applicationRepositoryMock
             .Setup(r => r.GetRecruitmentApplicationsAsync(
@@ -150,7 +150,7 @@ public class GetRecruitmentApplicationsQueryHandlerTests
     {
         // Arrange
         var companyId = Guid.NewGuid();
-        var app = CreateSampleApplication(companyId, "INTERVIEWING");
+        var app = CreateSampleApplication(companyId, "INTERVIEW");
 
         // Add 2 interviews
         app.Interviews.Add(new Interview

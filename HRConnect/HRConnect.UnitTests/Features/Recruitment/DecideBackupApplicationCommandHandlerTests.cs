@@ -306,17 +306,17 @@ public class DecideBackupApplicationCommandHandlerTests
         result.Data.Should().NotBeNull();
         result.Data!.ApplicationId.Should().Be(appId);
         result.Data.PreviousStatus.Should().Be("BACKUP");
-        result.Data.CurrentStatus.Should().Be("INTERVIEW");
+        result.Data.CurrentStatus.Should().Be("OFFER_PENDING");
         result.Data.Decision.Should().Be("SELECT");
         result.Data.DecidedBy.Should().Be(userId);
         result.Data.ConcurrencyToken.Should().NotBe(initialToken);
 
-        application.Status.Should().Be("INTERVIEW");
+        application.Status.Should().Be("OFFER_PENDING");
         application.ConcurrencyToken.Should().Be(result.Data.ConcurrencyToken);
         application.ApplicationStatusHistories.Should().HaveCount(1);
         var history = application.ApplicationStatusHistories.First();
         history.OldStatus.Should().Be("BACKUP");
-        history.NewStatus.Should().Be("INTERVIEW");
+        history.NewStatus.Should().Be("OFFER_PENDING");
         history.ChangedBy.Should().Be(userId);
 
         _applicationRepositoryMock.Verify(r => r.Update(application), Times.Once);

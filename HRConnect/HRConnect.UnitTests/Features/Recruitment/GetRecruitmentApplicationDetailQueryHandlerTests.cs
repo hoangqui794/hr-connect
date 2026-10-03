@@ -55,7 +55,7 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
         var companyB = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        var app = CreateSampleApplication(appId, companyA, "APPLIED");
+        var app = CreateSampleApplication(appId, companyA, "SUBMITTED");
         _applicationRepositoryMock
             .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(app);
@@ -87,13 +87,13 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
         var companyA = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        var app = CreateSampleApplication(appId, companyA, "INTERVIEWING");
+        var app = CreateSampleApplication(appId, companyA, "INTERVIEW");
         app.Interviews.Add(new Interview
         {
             InterviewId = Guid.NewGuid(),
             InterviewRound = 1,
             Status = "SCHEDULED",
-            ScheduledAt = DateTime.UtcNow.AddDays(1)
+            ScheduledAt = DateTime.UtcNow.AddDays(-1)
         });
 
         _applicationRepositoryMock
@@ -131,7 +131,7 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
         var companyA = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        var app = CreateSampleApplication(appId, companyA, "OFFERED");
+        var app = CreateSampleApplication(appId, companyA, "OFFER_PENDING");
         app.Offers.Add(new Offer
         {
             OfferId = Guid.NewGuid(),
@@ -167,7 +167,7 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
     {
         // Arrange
         var appId = Guid.NewGuid();
-        var app = CreateSampleApplication(appId, Guid.NewGuid(), "APPLIED");
+        var app = CreateSampleApplication(appId, Guid.NewGuid(), "SUBMITTED");
 
         _applicationRepositoryMock
             .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
@@ -194,7 +194,7 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
         // Arrange
         var appId = Guid.NewGuid();
         var companyId = Guid.NewGuid();
-        var app = CreateSampleApplication(appId, companyId, "INTERVIEWING");
+        var app = CreateSampleApplication(appId, companyId, "OFFER_PENDING");
         app.Interviews.Add(new Interview
         {
             InterviewId = Guid.NewGuid(),
