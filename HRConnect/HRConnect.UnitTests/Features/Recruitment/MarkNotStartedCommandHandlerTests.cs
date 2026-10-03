@@ -21,6 +21,7 @@ public class MarkNotStartedCommandHandlerTests
     private readonly Mock<ICompanyUserRepository> _companyUserRepositoryMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<MarkNotStartedCommandHandler>> _loggerMock = new();
+    private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
 
     private MarkNotStartedCommandHandler CreateHandler() =>
         new(
@@ -28,7 +29,8 @@ public class MarkNotStartedCommandHandlerTests
             _placementRepositoryMock.Object,
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _auditLogServiceMock.Object);
 
     [Theory]
     [InlineData("")]

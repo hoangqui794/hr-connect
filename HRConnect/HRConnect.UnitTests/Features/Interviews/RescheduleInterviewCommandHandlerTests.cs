@@ -20,13 +20,15 @@ public class RescheduleInterviewCommandHandlerTests
     private readonly Mock<ICompanyUserRepository> _companyUserRepositoryMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<RescheduleInterviewCommandHandler>> _loggerMock = new();
+    private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
 
     private RescheduleInterviewCommandHandler CreateHandler() =>
         new(
             _interviewRepositoryMock.Object,
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _auditLogServiceMock.Object);
 
     [Fact]
     public async Task Handle_WhenNewScheduledAtInPast_ShouldThrowBadRequestException()

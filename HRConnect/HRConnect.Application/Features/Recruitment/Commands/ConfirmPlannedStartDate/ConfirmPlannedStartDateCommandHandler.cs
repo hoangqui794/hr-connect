@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -16,17 +17,20 @@ public class ConfirmPlannedStartDateCommandHandler : IRequestHandler<ConfirmPlan
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ConfirmPlannedStartDateCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public ConfirmPlannedStartDateCommandHandler(
         IApplicationRepository applicationRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
-        ILogger<ConfirmPlannedStartDateCommandHandler> logger)
+        ILogger<ConfirmPlannedStartDateCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<ConfirmPlannedStartDateResponse> Handle(ConfirmPlannedStartDateCommand request, CancellationToken cancellationToken)
@@ -80,6 +84,7 @@ public class ConfirmPlannedStartDateCommandHandler : IRequestHandler<ConfirmPlan
         }
 
         var now = DateTime.UtcNow;
+        var oldPlannedStartDate = application.PlannedStartDate;
         application.PlannedStartDate = request.PlannedStartDate;
         if (!string.IsNullOrWhiteSpace(request.Reason))
         {
@@ -89,6 +94,15 @@ public class ConfirmPlannedStartDateCommandHandler : IRequestHandler<ConfirmPlan
         application.ConcurrencyToken = Guid.NewGuid();
 
         _applicationRepository.Update(application);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.ApplicationPlannedStartDateUpdated,
+            EntityType = "APPLICATION",
+            EntityId = application.ApplicationId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { plannedStartDate = oldPlannedStartDate },
+            NewValues = new { plannedStartDate = application.PlannedStartDate, status = application.Status, hasReason = !string.IsNullOrWhiteSpace(request.Reason) }
+        }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Đã cập nhật ngày nhận việc cho hồ sơ {ApplicationId} thành {PlannedStartDate}.",

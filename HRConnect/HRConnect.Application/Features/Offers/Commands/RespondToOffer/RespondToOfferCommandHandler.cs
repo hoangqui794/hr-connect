@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -16,17 +17,20 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
     private readonly IApplicationRepository _applicationRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RespondToOfferCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public RespondToOfferCommandHandler(
         IOfferRepository offerRepository,
         IApplicationRepository applicationRepository,
         IUnitOfWork unitOfWork,
-        ILogger<RespondToOfferCommandHandler> logger)
+        ILogger<RespondToOfferCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _offerRepository = offerRepository;
         _applicationRepository = applicationRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<RespondToOfferResponse> Handle(RespondToOfferCommand request, CancellationToken cancellationToken)
@@ -81,6 +85,7 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
             throw new BadRequestException("Lời mời nhận việc đã hết hạn phản hồi.");
         }
 
+        var oldOfferStatus = offer.Status;
         var now = DateTime.UtcNow;
         offer.RespondedAt = now;
         offer.UpdatedAt = now;
@@ -146,6 +151,34 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
         }
 
         _offerRepository.Update(offer);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = normalizedResponse == "ACCEPTED" ? AuditActions.OfferAccepted : AuditActions.OfferDeclined,
+            EntityType = "OFFER",
+            EntityId = offer.OfferId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { status = oldOfferStatus },
+            NewValues = new
+            {
+                applicationId = offer.ApplicationId,
+                offerVersion = offer.OfferVersion,
+                status = offer.Status,
+                respondedAt = offer.RespondedAt,
+                hasDeclineReason = !string.IsNullOrWhiteSpace(offer.DeclineReason)
+            }
+        }, cancellationToken);
+        if (oldAppStatus != null && oldAppStatus != application?.Status)
+        {
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.ApplicationStatusChanged,
+                EntityType = "APPLICATION",
+                EntityId = offer.ApplicationId,
+                ActorUserId = request.CurrentUserId,
+                OldValues = new { status = oldAppStatus },
+                NewValues = new { status = application!.Status, sourceAction = normalizedResponse == "ACCEPTED" ? AuditActions.OfferAccepted : AuditActions.OfferDeclined }
+            }, cancellationToken);
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Ứng viên {UserId} đã phản hồi {Response} cho offer {OfferId}.",

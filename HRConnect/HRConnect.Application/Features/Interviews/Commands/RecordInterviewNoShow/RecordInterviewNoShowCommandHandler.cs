@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -12,15 +13,18 @@ public class RecordInterviewNoShowCommandHandler : IRequestHandler<RecordIntervi
     private readonly IInterviewRepository _interviewRepository;
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogService _auditLogService;
 
     public RecordInterviewNoShowCommandHandler(
         IInterviewRepository interviewRepository,
         ICompanyUserRepository companyUserRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuditLogService auditLogService)
     {
         _interviewRepository = interviewRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
+        _auditLogService = auditLogService;
     }
 
     public async Task<RecordInterviewNoShowResponse> Handle(RecordInterviewNoShowCommand request, CancellationToken cancellationToken)
@@ -83,6 +87,21 @@ public class RecordInterviewNoShowCommandHandler : IRequestHandler<RecordIntervi
         });
 
         _interviewRepository.Update(interview);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.InterviewNoShowRecorded,
+            EntityType = "INTERVIEW",
+            EntityId = interview.InterviewId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { status = oldStatus },
+            NewValues = new
+            {
+                applicationId = interview.ApplicationId,
+                status = interview.Status,
+                scheduledAt = interview.ScheduledAt,
+                hasReason = true
+            }
+        }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new RecordInterviewNoShowResponse(

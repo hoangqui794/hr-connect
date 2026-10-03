@@ -12,8 +12,9 @@ public class WithdrawApplicationCommandHandlerTests
 {
     private readonly Mock<IApplicationRepository> _applicationRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
 
-    private WithdrawApplicationCommandHandler CreateHandler() => new(_applicationRepository.Object, _unitOfWork.Object);
+    private WithdrawApplicationCommandHandler CreateHandler() => new(_applicationRepository.Object, _unitOfWork.Object, _auditLogServiceMock.Object);
 
     [Fact]
     public async Task Handle_WhenCandidateWithdraws_CancelsScheduledInterviewAndWithdrawsActiveOffer()

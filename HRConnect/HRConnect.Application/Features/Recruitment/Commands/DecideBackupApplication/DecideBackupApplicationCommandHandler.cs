@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -18,17 +19,20 @@ public class DecideBackupApplicationCommandHandler : IRequestHandler<DecideBacku
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<DecideBackupApplicationCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public DecideBackupApplicationCommandHandler(
         IApplicationRepository applicationRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
-        ILogger<DecideBackupApplicationCommandHandler> logger)
+        ILogger<DecideBackupApplicationCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<DecideBackupApplicationResponse> Handle(DecideBackupApplicationCommand request, CancellationToken cancellationToken)
@@ -138,6 +142,27 @@ public class DecideBackupApplicationCommandHandler : IRequestHandler<DecideBacku
         });
 
         _applicationRepository.Update(application);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.ApplicationBackupDecided,
+            EntityType = "APPLICATION",
+            EntityId = application.ApplicationId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { status = oldStatus },
+            NewValues = new { status = targetStatus, decision = normalizedDecision, hasReason = !string.IsNullOrWhiteSpace(request.Reason), hasNote = !string.IsNullOrWhiteSpace(request.Note) }
+        }, cancellationToken);
+        if (oldStatus != targetStatus)
+        {
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.ApplicationStatusChanged,
+                EntityType = "APPLICATION",
+                EntityId = application.ApplicationId,
+                ActorUserId = request.CurrentUserId,
+                OldValues = new { status = oldStatus },
+                NewValues = new { status = targetStatus, sourceAction = AuditActions.ApplicationBackupDecided }
+            }, cancellationToken);
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new DecideBackupApplicationResponse

@@ -21,13 +21,15 @@ public class CancelInterviewCommandHandlerTests
     private readonly Mock<ICompanyUserRepository> _companyUserRepositoryMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<CancelInterviewCommandHandler>> _loggerMock = new();
+    private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
 
     private CancelInterviewCommandHandler CreateHandler() =>
         new(
             _interviewRepositoryMock.Object,
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _auditLogServiceMock.Object);
 
     [Fact]
     public async Task Handle_WhenReasonIsEmpty_ShouldThrowBadRequestException()

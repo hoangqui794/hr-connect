@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -15,17 +16,20 @@ public class UpdateOfferDraftCommandHandler : IRequestHandler<UpdateOfferDraftCo
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateOfferDraftCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public UpdateOfferDraftCommandHandler(
         IOfferRepository offerRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
-        ILogger<UpdateOfferDraftCommandHandler> logger)
+        ILogger<UpdateOfferDraftCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _offerRepository = offerRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<UpdateOfferDraftResponse> Handle(UpdateOfferDraftCommand request, CancellationToken cancellationToken)
@@ -88,6 +92,14 @@ public class UpdateOfferDraftCommandHandler : IRequestHandler<UpdateOfferDraftCo
             throw new BadRequestException($"Chỉ có thể chỉnh sửa offer khi đang ở trạng thái DRAFT. Trạng thái hiện tại: {offer.Status}.");
         }
 
+        var oldValues = new
+        {
+            salary = offer.Salary,
+            currencyCode = offer.CurrencyCode,
+            startDate = offer.StartDate,
+            expiryDate = offer.ExpiryDate
+        };
+
         if (!string.IsNullOrWhiteSpace(request.CurrencyCode))
         {
             var currency = request.CurrencyCode.Trim().ToUpperInvariant();
@@ -123,6 +135,24 @@ public class UpdateOfferDraftCommandHandler : IRequestHandler<UpdateOfferDraftCo
         offer.ConcurrencyToken = Guid.NewGuid();
 
         _offerRepository.Update(offer);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.OfferUpdated,
+            EntityType = "OFFER",
+            EntityId = offer.OfferId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = oldValues,
+            NewValues = new
+            {
+                applicationId = offer.ApplicationId,
+                offerVersion = offer.OfferVersion,
+                status = offer.Status,
+                salary = offer.Salary,
+                currencyCode = offer.CurrencyCode,
+                startDate = offer.StartDate,
+                expiryDate = offer.ExpiryDate
+            }
+        }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Đã cập nhật thành công offer bản nháp {OfferId}.", offer.OfferId);

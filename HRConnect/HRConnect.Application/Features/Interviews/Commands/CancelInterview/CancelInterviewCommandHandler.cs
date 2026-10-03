@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -17,17 +18,20 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CancelInterviewCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public CancelInterviewCommandHandler(
         IInterviewRepository interviewRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
-        ILogger<CancelInterviewCommandHandler> logger)
+        ILogger<CancelInterviewCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _interviewRepository = interviewRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<CancelInterviewResponse> Handle(CancelInterviewCommand request, CancellationToken cancellationToken)
@@ -106,6 +110,20 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
         });
 
         _interviewRepository.Update(interview);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.InterviewCancelled,
+            EntityType = "INTERVIEW",
+            EntityId = interview.InterviewId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { status = oldStatus, scheduledAt = interview.ScheduledAt },
+            NewValues = new
+            {
+                applicationId = interview.ApplicationId,
+                status = interview.Status,
+                hasReason = true
+            }
+        }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new CancelInterviewResponse
