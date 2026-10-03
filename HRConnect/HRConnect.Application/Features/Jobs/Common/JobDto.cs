@@ -1,3 +1,4 @@
+using HRConnect.Application.Common.Exceptions;
 using HRConnect.Domain.Entities;
 
 namespace HRConnect.Application.Features.Jobs.Common;
@@ -43,9 +44,43 @@ public sealed record JobActionResponse(bool Success, string Message, JobDto Data
 
 public static class JobTransitions
 {
+    private static readonly IReadOnlyDictionary<string, IReadOnlySet<string>> AllowedTransitions =
+        new Dictionary<string, IReadOnlySet<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            [JobStatuses.Draft] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                JobStatuses.PendingReview
+            },
+            [JobStatuses.PendingReview] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                JobStatuses.Active,
+                JobStatuses.Rejected
+            },
+            [JobStatuses.Rejected] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                JobStatuses.PendingReview
+            },
+            [JobStatuses.Active] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                JobStatuses.Paused,
+                JobStatuses.Closed
+            },
+            [JobStatuses.Paused] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                JobStatuses.Active,
+                JobStatuses.Closed
+            }
+        };
+
+    public static bool IsAllowed(string currentStatus, string newStatus) =>
+        AllowedTransitions.TryGetValue(currentStatus, out var allowed) && allowed.Contains(newStatus);
+
     public static void ChangeStatus(Job job, string newStatus, Guid userId, string? reason = null)
     {
         var oldStatus = job.Status;
+        if (!IsAllowed(oldStatus, newStatus))
+            throw new ConflictException($"Không thể chuyển Job từ trạng thái {oldStatus} sang {newStatus}.");
+
         var now = DateTime.UtcNow;
         job.Status = newStatus;
         job.StatusReason = reason;

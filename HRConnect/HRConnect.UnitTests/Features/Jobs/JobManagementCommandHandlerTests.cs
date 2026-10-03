@@ -138,6 +138,22 @@ public class JobManagementCommandHandlerTests
     }
 
     [Fact]
+    public async Task Submit_ShouldAllowCompleteJobWithoutSkills()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "Backend Developer"; job.Description = "Build APIs"; job.Benefits = "Insurance and training";
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
+
+        var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        result.Data.Status.Should().Be(JobStatuses.PendingReview);
+        _jobs.Verify(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Submit_ShouldKeepDraft_WhenMandatoryDataIsMissing()
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
@@ -175,7 +191,6 @@ public class JobManagementCommandHandlerTests
     [InlineData("location")]
     [InlineData("employmentType")]
     [InlineData("mustHave")]
-    [InlineData("skill")]
     public async Task Submit_ShouldRejectEachMissingRequiredJdPart(string missingPart)
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
@@ -185,7 +200,7 @@ public class JobManagementCommandHandlerTests
         job.Location = missingPart == "location" ? null : "HCM";
         job.EmploymentType = missingPart == "employmentType" ? null : "FULL_TIME";
         if (missingPart != "mustHave") job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
-        if (missingPart != "skill") job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid() });
+        job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid() });
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
 
@@ -286,6 +301,21 @@ public class JobManagementCommandHandlerTests
         var action = () => new ResumeJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
             .Handle(new ResumeJobCommand { JobId = job.JobId, UserId = user }, default);
         await action.Should().ThrowAsync<ConflictException>();
+    }
+
+    [Theory]
+    [InlineData(JobStatuses.Draft, JobStatuses.Active)]
+    [InlineData(JobStatuses.PendingReview, JobStatuses.Paused)]
+    [InlineData(JobStatuses.Rejected, JobStatuses.Active)]
+    [InlineData(JobStatuses.Closed, JobStatuses.Active)]
+    public void JobTransitions_ShouldRejectTransitionsOutsideMf01StateMachine(string from, string to)
+    {
+        var job = SetupJob(from);
+        var action = () => JobTransitions.ChangeStatus(job, to, Guid.NewGuid());
+
+        action.Should().Throw<ConflictException>();
+        job.Status.Should().Be(from);
+        job.JobStatusHistories.Should().BeEmpty();
     }
 
     private (Job Job, Guid User) SetupOwnedJob(string status)

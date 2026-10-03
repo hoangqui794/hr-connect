@@ -26,8 +26,7 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
             throw new BadRequestException("Mức lương tối thiểu không được lớn hơn mức lương tối đa.");
         if (!job.JobRequirements.Any(x => x.RequirementType == JobRequirementTypes.MustHave && !string.IsNullOrWhiteSpace(x.Content)))
             throw new BadRequestException("Job phải có ít nhất một yêu cầu MUST_HAVE trước khi gửi duyệt.");
-        if (job.JobSkills.Count == 0) throw new BadRequestException("Job phải có ít nhất một kỹ năng trước khi gửi duyệt.");
-        if (!await _jobs.AreSkillsActiveAsync(job.JobSkills.Select(x => x.SkillId).Distinct().ToList(), ct))
+        if (job.JobSkills.Count > 0 && !await _jobs.AreSkillsActiveAsync(job.JobSkills.Select(x => x.SkillId).Distinct().ToList(), ct))
             throw new BadRequestException("Một hoặc nhiều kỹ năng không tồn tại hoặc đã ngừng hoạt động.");
         var serviceTypeCode = await _jobs.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, ct);
         if (serviceTypeCode == null)
