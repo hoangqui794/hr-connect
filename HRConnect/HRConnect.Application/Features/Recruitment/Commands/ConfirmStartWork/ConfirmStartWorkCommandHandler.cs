@@ -6,6 +6,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Domain.Entities;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -79,11 +80,11 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
             throw new ForbiddenException("Bạn không có quyền xác nhận ứng viên bắt đầu làm việc.");
         }
 
-        if (application.Status is "REJECTED" or "WITHDRAWN" or "NOT_STARTED" or "INTERVIEW_FAILED" or "BACKUP_NOT_SELECTED" or "CLOSED")
+        if (application.Status != ApplicationStates.OfferAccepted)
         {
             _logger.LogWarning("Hồ sơ {ApplicationId} đang ở trạng thái {Status}, không thể xác nhận đi làm.",
                 application.ApplicationId, application.Status);
-            throw new BadRequestException($"Không thể xác nhận đi làm cho hồ sơ đang ở trạng thái {application.Status}.");
+            throw new BadRequestException($"Chỉ có thể xác nhận đi làm khi hồ sơ ở trạng thái {ApplicationStates.OfferAccepted}. Trạng thái hiện tại: {application.Status}.");
         }
 
         var existingPlacement = await _placementRepository.GetByApplicationIdAsync(request.ApplicationId, cancellationToken);
@@ -102,7 +103,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
             throw new BadRequestException("Thư mời nhận việc không tồn tại hoặc không thuộc hồ sơ này.");
         }
 
-        if (!string.Equals(offer.Status, "ACCEPTED", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(offer.Status, OfferStates.Accepted, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning("Thư mời nhận việc {OfferId} chưa được chấp thuận (Status: {Status}).",
                 offer.OfferId, offer.Status);
@@ -121,7 +122,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
             ActualStartDate = request.ActualStartDate,
             Position = !string.IsNullOrWhiteSpace(request.Position) ? request.Position.Trim() : application.Job?.Title,
             Department = request.Department?.Trim(),
-            Status = "STARTED",
+            Status = PlacementStates.Started,
             ConfirmedBy = request.CurrentUserId,
             ConfirmedAt = now,
             ConfirmationNote = request.ConfirmationNote?.Trim(),
@@ -131,7 +132,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
 
         await _placementRepository.AddAsync(placement, cancellationToken);
 
-        application.Status = "PLACED";
+        application.Status = ApplicationStates.Placed;
         application.UpdatedAt = now;
         application.ConcurrencyToken = newConcurrencyToken;
 
@@ -140,7 +141,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
             ApplicationStatusHistoryId = Guid.NewGuid(),
             ApplicationId = application.ApplicationId,
             OldStatus = oldStatus,
-            NewStatus = "PLACED",
+            NewStatus = ApplicationStates.Placed,
             ChangedBy = request.CurrentUserId,
             ChangedAt = now,
             Reason = request.ConfirmationNote?.Trim() ?? "Xác nhận ứng viên đã bắt đầu làm việc (Placement started)."

@@ -314,7 +314,7 @@ public class MarkNotStartedCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenValidWithExistingPlacement_ShouldUpdateBothApplicationAndPlacement()
+    public async Task Handle_WhenPlacementAlreadyExists_ShouldThrowConflictException()
     {
         // Arrange
         var appId = Guid.NewGuid();
@@ -324,7 +324,7 @@ public class MarkNotStartedCommandHandlerTests
         var application = new Domain.Entities.Application
         {
             ApplicationId = appId,
-            Status = "PLACED",
+            Status = "OFFER_ACCEPTED",
             ConcurrencyToken = initialToken
         };
 
@@ -352,17 +352,13 @@ public class MarkNotStartedCommandHandlerTests
         );
 
         // Act
-        var result = await CreateHandler().Handle(command, CancellationToken.None);
+        Func<Task> act = async () => await CreateHandler().Handle(command, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull();
-        result.Status.Should().Be("NOT_STARTED");
-
-        application.Status.Should().Be("NOT_STARTED");
-        placement.Status.Should().Be("NOT_STARTED");
-
-        _placementRepositoryMock.Verify(r => r.Update(placement), Times.Once);
-        _applicationRepositoryMock.Verify(r => r.Update(application), Times.Once);
-        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        await act.Should().ThrowAsync<ConflictException>();
+        application.Status.Should().Be("OFFER_ACCEPTED");
+        placement.Status.Should().Be("STARTED");
+        _placementRepositoryMock.Verify(r => r.Update(It.IsAny<Placement>()), Times.Never);
+        _applicationRepositoryMock.Verify(r => r.Update(It.IsAny<Domain.Entities.Application>()), Times.Never);
     }
 }

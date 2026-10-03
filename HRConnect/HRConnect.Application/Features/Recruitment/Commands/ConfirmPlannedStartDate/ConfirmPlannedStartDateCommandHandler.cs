@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -71,11 +72,11 @@ public class ConfirmPlannedStartDateCommandHandler : IRequestHandler<ConfirmPlan
             throw new ForbiddenException("Bạn không có quyền cập nhật ngày nhận việc.");
         }
 
-        if (application.Status is "REJECTED" or "WITHDRAWN" or "NOT_STARTED" or "INTERVIEW_FAILED" or "BACKUP_NOT_SELECTED" or "CLOSED")
+        if (application.Status != ApplicationStates.OfferAccepted)
         {
             _logger.LogWarning("Hồ sơ {ApplicationId} đang ở trạng thái {Status}, không thể cập nhật ngày nhận việc.",
                 application.ApplicationId, application.Status);
-            throw new BadRequestException($"Không thể cập nhật ngày nhận việc cho hồ sơ đang ở trạng thái {application.Status}.");
+            throw new BadRequestException($"Chỉ có thể cập nhật ngày nhận việc sau khi ứng viên chấp nhận offer ({ApplicationStates.OfferAccepted}). Trạng thái hiện tại: {application.Status}.");
         }
 
         var now = DateTime.UtcNow;

@@ -6,6 +6,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Domain.Entities;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -86,26 +87,26 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
             throw new ForbiddenException("Bạn không có quyền tạo offer.");
         }
 
-        if (application.Status is "REJECTED" or "WITHDRAWN" or "NOT_STARTED" or "PLACED" or "OFFER_ACCEPTED" or "BACKUP_NOT_SELECTED" or "INTERVIEW_FAILED")
+        if (application.Status != ApplicationStates.OfferPending)
         {
             _logger.LogWarning("Hồ sơ {ApplicationId} đang ở trạng thái {Status}, không thể tạo offer.",
                 application.ApplicationId, application.Status);
-            throw new BadRequestException($"Không thể tạo offer cho hồ sơ đang ở trạng thái {application.Status}.");
+            throw new BadRequestException($"Chỉ có thể tạo offer khi hồ sơ đang ở trạng thái {ApplicationStates.OfferPending}. Trạng thái hiện tại: {application.Status}.");
         }
 
         var existingOffers = await _offerRepository.GetByApplicationIdAsync(application.ApplicationId, cancellationToken);
 
-        if (existingOffers.Any(o => o.Status == "DRAFT"))
+        if (existingOffers.Any(o => o.Status == OfferStates.Draft))
         {
             throw new BadRequestException("Đã tồn tại một bản nháp offer chưa gửi cho hồ sơ này. Vui lòng cập nhật bản nháp hiện có hoặc gửi đi.");
         }
 
-        if (existingOffers.Any(o => o.Status == "SENT"))
+        if (existingOffers.Any(o => o.Status == OfferStates.Sent))
         {
             throw new BadRequestException("Đang có một offer đã gửi chờ ứng viên phản hồi. Không thể tạo offer mới khi offer trước chưa được xử lý.");
         }
 
-        if (existingOffers.Any(o => o.Status == "ACCEPTED"))
+        if (existingOffers.Any(o => o.Status == OfferStates.Accepted))
         {
             throw new BadRequestException("Ứng viên đã chấp nhận offer trước đó.");
         }
@@ -134,31 +135,13 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
             CurrencyCode = currency,
             StartDate = request.StartDate,
             ExpiryDate = request.ExpiryDate,
-            Status = "DRAFT",
+            Status = OfferStates.Draft,
             CreatedBy = request.CurrentUserId,
             OfferDocumentUrl = request.OfferDocumentUrl,
             ConcurrencyToken = Guid.NewGuid(),
             CreatedAt = now,
             UpdatedAt = now
         };
-
-        if (application.Status != "OFFER_PENDING")
-        {
-            var oldStatus = application.Status;
-            application.Status = "OFFER_PENDING";
-            application.StatusReason = "Đang soạn thảo offer (Offer draft created).";
-
-            application.ApplicationStatusHistories.Add(new ApplicationStatusHistory
-            {
-                ApplicationStatusHistoryId = Guid.NewGuid(),
-                ApplicationId = application.ApplicationId,
-                OldStatus = oldStatus,
-                NewStatus = "OFFER_PENDING",
-                ChangedBy = request.CurrentUserId,
-                ChangedAt = now,
-                Reason = "Đang soạn thảo offer (Offer draft created)."
-            });
-        }
 
         application.UpdatedAt = now;
         application.ConcurrencyToken = Guid.NewGuid();

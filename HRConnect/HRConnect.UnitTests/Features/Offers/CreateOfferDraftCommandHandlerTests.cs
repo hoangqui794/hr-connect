@@ -193,7 +193,7 @@ public class CreateOfferDraftCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenApplicationStatusIsTerminal_ShouldThrowBadRequestException()
+    public async Task Handle_WhenApplicationIsNotOfferPending_ShouldThrowBadRequestException()
     {
         var appId = Guid.NewGuid();
         var app = new HRConnect.Domain.Entities.Application
@@ -220,7 +220,7 @@ public class CreateOfferDraftCommandHandlerTests
         Func<Task> act = async () => await CreateHandler().Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<BadRequestException>()
-            .WithMessage("*Không thể tạo offer cho hồ sơ đang ở trạng thái REJECTED*");
+            .WithMessage("*Chỉ có thể tạo offer khi hồ sơ đang ở trạng thái OFFER_PENDING*");
     }
 
     [Fact]
@@ -304,7 +304,7 @@ public class CreateOfferDraftCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenSuccessful_ShouldCreateDraftOffer_WithNextVersion_AndTransitionApplicationStatus()
+    public async Task Handle_WhenSuccessful_ShouldCreateDraftOffer_WithNextVersion()
     {
         var appId = Guid.NewGuid();
         var clientUserId = Guid.NewGuid();
@@ -313,7 +313,7 @@ public class CreateOfferDraftCommandHandlerTests
         var app = new HRConnect.Domain.Entities.Application
         {
             ApplicationId = appId,
-            Status = "INTERVIEW",
+            Status = "OFFER_PENDING",
             Job = new Job { CompanyId = companyId },
             ConcurrencyToken = Guid.NewGuid()
         };
@@ -373,7 +373,7 @@ public class CreateOfferDraftCommandHandlerTests
         addedOffer.CreatedBy.Should().Be(clientUserId);
 
         app.Status.Should().Be("OFFER_PENDING");
-        app.ApplicationStatusHistories.Should().ContainSingle(h => h.NewStatus == "OFFER_PENDING");
+        app.ApplicationStatusHistories.Should().BeEmpty();
 
         _offerRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Offer>(), It.IsAny<CancellationToken>()), Times.Once);
         _applicationRepositoryMock.Verify(r => r.Update(app), Times.Once);
