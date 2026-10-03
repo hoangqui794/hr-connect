@@ -174,6 +174,28 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             }
 
             candidate = candidateByEmail ?? candidateByPhone;
+            if (candidate != null)
+            {
+                if (!string.Equals(candidate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+                    candidate.MergedIntoCandidateId.HasValue)
+                {
+                    throw new ConflictException("Hồ sơ Candidate đã bị khóa, lưu trữ hoặc hợp nhất và không thể nhận lượt nộp mới.");
+                }
+
+                // Email is the consent identity. Never attach a phone-matched Candidate
+                // to an email that is not already owned by that Candidate.
+                if (candidateByEmail == null && !string.IsNullOrWhiteSpace(normalizedEmail))
+                {
+                    throw new ConflictException("Số điện thoại đã thuộc một Candidate khác hoặc email không khớp với hồ sơ Candidate hiện có.");
+                }
+
+                if (!string.IsNullOrWhiteSpace(normalizedPhone) &&
+                    !string.IsNullOrWhiteSpace(candidate.NormalizedPhone) &&
+                    !string.Equals(normalizedPhone, candidate.NormalizedPhone, StringComparison.Ordinal))
+                {
+                    throw new ConflictException("Email và số điện thoại không khớp với cùng một hồ sơ Candidate.");
+                }
+            }
         }
 
         var now = DateTime.UtcNow;

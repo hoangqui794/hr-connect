@@ -287,6 +287,85 @@ public class SubmitCandidateCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenPhoneMatchesExistingCandidateButEmailDoesNot_ThrowsConflictException()
+    {
+        var userId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public });
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("attacker@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Candidate?)null);
+        _candidateRepositoryMock.Setup(r => r.GetByNormalizedPhoneAsync("0912345678", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate
+            {
+                CandidateId = Guid.NewGuid(),
+                Email = "owner@example.com",
+                NormalizedEmail = "owner@example.com",
+                Phone = "0912345678",
+                NormalizedPhone = "0912345678",
+                Status = "ACTIVE"
+            });
+
+        var action = () => _handler.Handle(new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            FullName = "Candidate",
+            Email = "attacker@example.com",
+            Phone = "0912345678",
+            RoleCodes = [JobAccessPolicy.AffiliateRole]
+        }, CancellationToken.None);
+
+        await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*email không khớp*");
+        _submissionRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Submission>(), It.IsAny<CancellationToken>()), Times.Never);
+        _emailServiceMock.Verify(s => s.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("ARCHIVED", false)]
+    [InlineData("ACTIVE", true)]
+    public async Task Handle_WhenResolvedCandidateIsNotEligible_ThrowsConflictException(string status, bool merged)
+    {
+        var userId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public });
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("candidate@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate
+            {
+                CandidateId = Guid.NewGuid(),
+                Email = "candidate@example.com",
+                NormalizedEmail = "candidate@example.com",
+                Status = status,
+                MergedIntoCandidateId = merged ? Guid.NewGuid() : null
+            });
+
+        var action = () => _handler.Handle(new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            FullName = "Candidate",
+            Email = "candidate@example.com",
+            RoleCodes = [JobAccessPolicy.AffiliateRole]
+        }, CancellationToken.None);
+
+        await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*không thể nhận lượt nộp mới*");
+        _submissionRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Submission>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Handle_WhenCandidateNotFound_CreatesCandidateWithNullUserId_AndProceeds()
     {
         // Arrange
@@ -375,7 +454,7 @@ public class SubmitCandidateCommandHandlerTests
         _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var existingCandidate = new Candidate { CandidateId = Guid.NewGuid(), FullName = "Existing", Email = "exist@example.com" };
+        var existingCandidate = new Candidate { CandidateId = Guid.NewGuid(), FullName = "Existing", Email = "exist@example.com", Status = "ACTIVE" };
         _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("exist@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingCandidate);
 
@@ -479,7 +558,7 @@ public class SubmitCandidateCommandHandlerTests
         _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var existingCandidate = new Candidate { CandidateId = Guid.NewGuid(), FullName = "ByPhone", Email = "byphone@example.com", Phone = "0912345678" };
+        var existingCandidate = new Candidate { CandidateId = Guid.NewGuid(), FullName = "ByPhone", Email = "byphone@example.com", Phone = "0912345678", Status = "ACTIVE" };
         _candidateRepositoryMock.Setup(r => r.GetByNormalizedPhoneAsync("0912345678", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingCandidate);
 
@@ -531,7 +610,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(true);
 
         var candidateId = Guid.NewGuid();
-        var existingCandidate = new Candidate { CandidateId = candidateId, FullName = "Dup", Email = "dup@example.com" };
+        var existingCandidate = new Candidate { CandidateId = candidateId, FullName = "Dup", Email = "dup@example.com", Status = "ACTIVE" };
         _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("dup@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingCandidate);
 
@@ -636,7 +715,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(true);
 
         var candidateId = Guid.NewGuid();
-        var existingCandidate = new Candidate { CandidateId = candidateId, FullName = "Valid Candidate", Email = "valid@example.com" };
+        var existingCandidate = new Candidate { CandidateId = candidateId, FullName = "Valid Candidate", Email = "valid@example.com", Status = "ACTIVE" };
         _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("valid@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingCandidate);
 
@@ -720,7 +799,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(true);
 
         var candidateId = Guid.NewGuid();
-        var candidate = new Candidate { CandidateId = candidateId, FullName = "Racing Candidate", Email = "race@example.com" };
+        var candidate = new Candidate { CandidateId = candidateId, FullName = "Racing Candidate", Email = "race@example.com", Status = "ACTIVE" };
         _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("race@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(candidate);
 
@@ -790,7 +869,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(true);
 
         var candidateId = Guid.NewGuid();
-        var candidate = new Candidate { CandidateId = candidateId, FullName = "Candidate", Email = "c@example.com" };
+        var candidate = new Candidate { CandidateId = candidateId, FullName = "Candidate", Email = "c@example.com", Status = "ACTIVE" };
         _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("c@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(candidate);
 
@@ -849,7 +928,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(true);
 
         var candidateId = Guid.NewGuid();
-        var candidate = new Candidate { CandidateId = candidateId, FullName = "Contested Candidate", Email = "contested@example.com" };
+        var candidate = new Candidate { CandidateId = candidateId, FullName = "Contested Candidate", Email = "contested@example.com", Status = "ACTIVE" };
         _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("contested@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(candidate);
 
@@ -924,7 +1003,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(true);
 
         var candidateId = Guid.NewGuid();
-        var candidate = new Candidate { CandidateId = candidateId, FullName = "Candidate", Email = "c@example.com" };
+        var candidate = new Candidate { CandidateId = candidateId, FullName = "Candidate", Email = "c@example.com", Status = "ACTIVE" };
         _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("c@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(candidate);
 
@@ -1109,7 +1188,7 @@ public class SubmitCandidateCommandHandlerTests
         var candidateId = Guid.NewGuid();
         _candidateRepositoryMock
             .Setup(repository => repository.GetByNormalizedEmailAsync("owner@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Candidate { CandidateId = candidateId, Email = "owner@example.com" });
+            .ReturnsAsync(new Candidate { CandidateId = candidateId, Email = "owner@example.com", Status = "ACTIVE" });
 
         var cvId = Guid.NewGuid();
         _candidateCvRepositoryMock
