@@ -13,11 +13,13 @@ public class RecordInterviewNoShowCommandHandlerTests
     private readonly Mock<IInterviewRepository> _interviewRepository = new();
     private readonly Mock<ICompanyUserRepository> _companyUserRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
 
     private RecordInterviewNoShowCommandHandler CreateHandler() => new(
         _interviewRepository.Object,
         _companyUserRepository.Object,
-        _unitOfWork.Object);
+        _unitOfWork.Object,
+        _auditLogServiceMock.Object);
 
     [Fact]
     public async Task Handle_WhenScheduledInterviewHasPassed_RecordsNoShowWithoutChangingApplicationOutcome()

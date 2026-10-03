@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -20,19 +21,22 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ScheduleInterviewCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public ScheduleInterviewCommandHandler(
         IInterviewRepository interviewRepository,
         IApplicationRepository applicationRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
-        ILogger<ScheduleInterviewCommandHandler> logger)
+        ILogger<ScheduleInterviewCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _interviewRepository = interviewRepository;
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<ScheduleInterviewResponse> Handle(ScheduleInterviewCommand request, CancellationToken cancellationToken)
@@ -168,6 +172,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             Reason = "Lập lịch phỏng vấn mới"
         });
 
+        var oldApplicationStatus = application.Status;
         if (application.Status == ApplicationStates.Shortlisted)
         {
             var oldStatus = application.Status;
@@ -188,6 +193,35 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
         }
 
         await _interviewRepository.AddAsync(interview, cancellationToken);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.InterviewScheduled,
+            EntityType = "INTERVIEW",
+            EntityId = interview.InterviewId,
+            ActorUserId = request.CurrentUserId,
+            NewValues = new
+            {
+                applicationId = interview.ApplicationId,
+                interviewRound,
+                status = interview.Status,
+                scheduledAt = interview.ScheduledAt,
+                durationMinutes = interview.DurationMinutes,
+                interviewType = interview.InterviewType,
+                participantCount = interview.InterviewParticipants.Count
+            }
+        }, cancellationToken);
+        if (oldApplicationStatus != application.Status)
+        {
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.ApplicationStatusChanged,
+                EntityType = "APPLICATION",
+                EntityId = application.ApplicationId,
+                ActorUserId = request.CurrentUserId,
+                OldValues = new { status = oldApplicationStatus },
+                NewValues = new { status = application.Status, sourceAction = AuditActions.InterviewScheduled }
+            }, cancellationToken);
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new ScheduleInterviewResponse

@@ -150,7 +150,8 @@ public static class JobEndpoints
         jobs.MapPost("/{jobId:guid}/candidate-submissions", async (
             Guid jobId,
             ClaimsPrincipal user,
-            [FromForm] string fullName,
+            [FromForm] string? candidateId,
+            [FromForm] string? fullName,
             [FromForm] string? email,
             [FromForm] string? phone,
             [FromForm] string? cvId,
@@ -178,11 +179,25 @@ public static class JobEndpoints
                 parsedCvId = validCvId;
             }
 
+            Guid? parsedCandidateId = null;
+            if (!string.IsNullOrWhiteSpace(candidateId))
+            {
+                if (!Guid.TryParse(candidateId, out var validCandidateId))
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["candidateId"] = ["candidateId phải là UUID hợp lệ hoặc để trống khi nộp Candidate/CV mới."]
+                    });
+                }
+                parsedCandidateId = validCandidateId;
+            }
+
             var command = new SubmitCandidateCommand
             {
                 JobId = jobId,
                 UserId = id.Value,
                 RoleCodes = RoleCodes(user),
+                CandidateId = parsedCandidateId,
                 FullName = fullName ?? string.Empty,
                 Email = email,
                 Phone = phone,
@@ -202,7 +217,7 @@ public static class JobEndpoints
         .WithTags("Affiliate Submissions")
         .WithName("AffiliateSubmitCandidate")
         .WithSummary("Affiliate Recruiter nộp hồ sơ ứng viên vào Job")
-        .WithDescription("Yêu cầu permission submission.create. Hệ thống kiểm tra quyền Service Type và trùng lặp, lưu Submission ở trạng thái PENDING_CONSENT rồi gửi Candidate yêu cầu xác nhận. Application, Attribution và MF03 chỉ được tạo sau khi Candidate đồng ý.")
+        .WithDescription("Yêu cầu permission submission.create. Có hai chế độ: (1) nộp Candidate/CV mới bằng fullName, email và file PDF; (2) tái sử dụng kho bằng candidateId + cvId, không gửi file. Ở chế độ kho, backend tự lấy danh tính Candidate và chỉ chấp nhận CV ACTIVE do chính Affiliate tải, đã được Candidate xác nhận. Mỗi Job vẫn tạo consent mới; Application, Attribution và MF03 chỉ được tạo sau khi Candidate đồng ý.")
         .RequireRateLimiting("submission-consent")
         .DisableAntiforgery()
         .Produces<SubmitCandidateResponse>(StatusCodes.Status200OK)

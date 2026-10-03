@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -17,19 +18,22 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<WithdrawOfferCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public WithdrawOfferCommandHandler(
         IOfferRepository offerRepository,
         IApplicationRepository applicationRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
-        ILogger<WithdrawOfferCommandHandler> logger)
+        ILogger<WithdrawOfferCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _offerRepository = offerRepository;
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<WithdrawOfferResponse> Handle(WithdrawOfferCommand request, CancellationToken cancellationToken)
@@ -87,6 +91,7 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
             throw new BadRequestException($"Không thể thu hồi offer đang ở trạng thái {offer.Status}.");
         }
 
+        var oldOfferStatus = offer.Status;
         var now = DateTime.UtcNow;
         var trimmedReason = request.Reason.Trim();
 
@@ -96,6 +101,7 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
         offer.ConcurrencyToken = Guid.NewGuid();
 
         var application = offer.Application;
+        var oldApplicationStatus = application?.Status;
         if (application != null)
         {
             var oldStatus = application.Status;
@@ -119,6 +125,33 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
         }
 
         _offerRepository.Update(offer);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.OfferWithdrawn,
+            EntityType = "OFFER",
+            EntityId = offer.OfferId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { status = oldOfferStatus },
+            NewValues = new
+            {
+                applicationId = offer.ApplicationId,
+                offerVersion = offer.OfferVersion,
+                status = offer.Status,
+                hasReason = true
+            }
+        }, cancellationToken);
+        if (application != null && oldApplicationStatus != application.Status)
+        {
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.ApplicationStatusChanged,
+                EntityType = "APPLICATION",
+                EntityId = application.ApplicationId,
+                ActorUserId = request.CurrentUserId,
+                OldValues = new { status = oldApplicationStatus },
+                NewValues = new { status = application.Status, sourceAction = AuditActions.OfferWithdrawn }
+            }, cancellationToken);
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Đã thu hồi thành công offer {OfferId} phiên bản {Version}.",

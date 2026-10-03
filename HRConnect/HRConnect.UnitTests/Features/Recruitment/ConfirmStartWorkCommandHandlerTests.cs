@@ -21,6 +21,7 @@ public class ConfirmStartWorkCommandHandlerTests
     private readonly Mock<ICompanyUserRepository> _companyUserRepositoryMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<ConfirmStartWorkCommandHandler>> _loggerMock = new();
+    private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
 
     private ConfirmStartWorkCommandHandler CreateHandler() =>
         new(
@@ -29,7 +30,8 @@ public class ConfirmStartWorkCommandHandlerTests
             _placementRepositoryMock.Object,
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _auditLogServiceMock.Object);
 
     [Fact]
     public async Task Handle_WhenActualStartDateIsInFuture_ShouldThrowBadRequestException()

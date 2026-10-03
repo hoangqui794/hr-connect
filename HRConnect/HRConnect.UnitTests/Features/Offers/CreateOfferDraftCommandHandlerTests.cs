@@ -21,6 +21,7 @@ public class CreateOfferDraftCommandHandlerTests
     private readonly Mock<ICompanyUserRepository> _companyUserRepositoryMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<CreateOfferDraftCommandHandler>> _loggerMock = new();
+    private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
 
     private CreateOfferDraftCommandHandler CreateHandler() =>
         new(
@@ -28,7 +29,8 @@ public class CreateOfferDraftCommandHandlerTests
             _applicationRepositoryMock.Object,
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _auditLogServiceMock.Object);
 
     [Fact]
     public async Task Handle_WhenSalaryIsNegative_ShouldThrowBadRequestException()

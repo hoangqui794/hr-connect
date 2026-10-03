@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -18,19 +19,22 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<MarkNotStartedCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public MarkNotStartedCommandHandler(
         IApplicationRepository applicationRepository,
         IPlacementRepository placementRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
-        ILogger<MarkNotStartedCommandHandler> logger)
+        ILogger<MarkNotStartedCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _applicationRepository = applicationRepository;
         _placementRepository = placementRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<MarkNotStartedResponse> Handle(MarkNotStartedCommand request, CancellationToken cancellationToken)
@@ -116,6 +120,24 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
         });
 
         _applicationRepository.Update(application);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.ApplicationNotStarted,
+            EntityType = "APPLICATION",
+            EntityId = application.ApplicationId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { status = oldStatus },
+            NewValues = new { status = application.Status, hasReason = true }
+        }, cancellationToken);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.ApplicationStatusChanged,
+            EntityType = "APPLICATION",
+            EntityId = application.ApplicationId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { status = oldStatus },
+            NewValues = new { status = application.Status, sourceAction = AuditActions.ApplicationNotStarted }
+        }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Đã đánh dấu hồ sơ {ApplicationId} thành NOT_STARTED. Lý do: {Reason}",

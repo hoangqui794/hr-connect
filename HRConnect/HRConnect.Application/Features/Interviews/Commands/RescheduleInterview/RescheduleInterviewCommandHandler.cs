@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -17,17 +18,20 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RescheduleInterviewCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public RescheduleInterviewCommandHandler(
         IInterviewRepository interviewRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
-        ILogger<RescheduleInterviewCommandHandler> logger)
+        ILogger<RescheduleInterviewCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _interviewRepository = interviewRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<RescheduleInterviewResponse> Handle(RescheduleInterviewCommand request, CancellationToken cancellationToken)
@@ -131,6 +135,22 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
         });
 
         _interviewRepository.Update(interview);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.InterviewRescheduled,
+            EntityType = "INTERVIEW",
+            EntityId = interview.InterviewId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { status = oldStatus, scheduledAt = oldScheduledAt },
+            NewValues = new
+            {
+                applicationId = interview.ApplicationId,
+                status = interview.Status,
+                scheduledAt = interview.ScheduledAt,
+                durationMinutes = interview.DurationMinutes,
+                hasReason = true
+            }
+        }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new RescheduleInterviewResponse
