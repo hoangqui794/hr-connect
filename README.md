@@ -61,7 +61,7 @@ Hệ thống quản lý 5 nhóm vai trò (`Role`) chuẩn hóa:
 | `PLATFORM_ADMIN` | **Quản trị viên nền tảng** | Toàn quyền kiểm soát tài khoản, phê duyệt hồ sơ Doanh nghiệp/Affiliate, cấu hình hệ thống và giám sát giao dịch. |
 | `INTERNAL_HR` | **Chuyên viên tuyển dụng Agency** | Tiếp nhận yêu cầu tuyển dụng từ Doanh nghiệp, điều phối phỏng vấn, kiểm duyệt hồ sơ và duyệt hoa hồng cho Affiliate. |
 | `CLIENT_COMPANY_USER` | **Khách hàng Doanh nghiệp** | Tạo yêu cầu Job tuyển dụng, xem hồ sơ ứng viên do Agency gửi tới, phản hồi kết quả phỏng vấn và duyệt offer. |
-| `AFFILIATE_RECRUITER` | **Cộng tác viên tuyển dụng** | Giới thiệu ứng viên (nộp CV qua link affiliate/portal), theo dõi trạng thái ứng viên và nhận hoa hồng khi thành công. |
+| `AFFILIATE_RECRUITER` | **Cộng tác viên tuyển dụng** | Giới thiệu ứng viên, theo dõi trạng thái tuyển dụng tổng quát của referral do mình giới thiệu và nhận hoa hồng theo điều kiện áp dụng. Không xem lịch phỏng vấn, feedback, offer hoặc dữ liệu nội bộ. |
 | `CANDIDATE` | **Ứng viên** | Quản lý hồ sơ cá nhân, CV, tìm kiếm và nộp đơn ứng tuyển các Job công khai, theo dõi tiến độ ứng tuyển. |
 
 ---
