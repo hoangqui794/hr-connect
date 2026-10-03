@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json;
 using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Interviews.Commands.ScheduleInterview;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -21,6 +23,7 @@ public class ScheduleInterviewCommandHandlerTests
     private readonly Mock<ICompanyUserRepository> _companyUserRepositoryMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<ScheduleInterviewCommandHandler>> _loggerMock = new();
+    private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
 
     private ScheduleInterviewCommandHandler CreateHandler() =>
         new(
@@ -28,7 +31,8 @@ public class ScheduleInterviewCommandHandlerTests
             _applicationRepositoryMock.Object,
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _auditLogServiceMock.Object);
 
     [Fact]
     public async Task Handle_WhenScheduledAtInPast_ShouldThrowBadRequestException()
@@ -225,6 +229,12 @@ public class ScheduleInterviewCommandHandlerTests
             .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
+        var auditEntries = new List<AuditEntry>();
+        _auditLogServiceMock
+            .Setup(service => service.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()))
+            .Callback<AuditEntry, CancellationToken>((entry, _) => auditEntries.Add(entry))
+            .Returns(Task.CompletedTask);
+
         var command = new ScheduleInterviewCommand(
             ApplicationId: applicationId,
             ScheduledAt: DateTime.UtcNow.AddDays(2),
@@ -256,6 +266,10 @@ public class ScheduleInterviewCommandHandlerTests
         _applicationRepositoryMock.Verify(r => r.Update(application), Times.Once);
         _interviewRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Interview>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        auditEntries.Should().Contain(entry => entry.Action == AuditActions.InterviewScheduled && entry.EntityId == addedInterview!.InterviewId);
+        auditEntries.Should().Contain(entry => entry.Action == AuditActions.ApplicationStatusChanged && entry.EntityId == applicationId);
+        JsonSerializer.Serialize(auditEntries.Single(entry => entry.Action == AuditActions.InterviewScheduled).NewValues)
+            .Should().NotContain("meet.google.com");
 
         addedInterview.Should().NotBeNull();
         addedInterview!.InterviewStatusHistories.Should().HaveCount(1);
