@@ -53,19 +53,23 @@ public static class JobEndpoints
 
         jobs.MapPost("/{jobId:guid}/submit", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
             await ClientAction(user, "job.update_own", id => sender.Send(new SubmitJobCommand { JobId = jobId, UserId = id }, ct))
-        ).WithName("SubmitJob").WithSummary("Gửi Job để Internal HR xét duyệt");
+        ).WithName("SubmitJob").WithSummary("Gửi Job để Internal HR xét duyệt")
+        .WithDescription("Chỉ Client sở hữu Job ở trạng thái DRAFT hoặc REJECTED được gửi duyệt. Job phải có tối thiểu một JobRequirement loại MUST_HAVE; JobSkill là không bắt buộc. Chuyển trạng thái sang PENDING_REVIEW.");
         jobs.MapPost("/{jobId:guid}/pause", async (Guid jobId, ClaimsPrincipal user, [FromBody] PauseJobCommand command, ISender sender, CancellationToken ct) =>
         { command.JobId = jobId; return await ClientAction(user, "job.update_own", id => { command.UserId = id; return sender.Send(command, ct); }); }
-        ).WithName("PauseJob").WithSummary("Tạm dừng Job đang hoạt động");
+        ).WithName("PauseJob").WithSummary("Tạm dừng Job đang hoạt động")
+        .WithDescription("Chỉ Client sở hữu Job. Chuyển ACTIVE sang PAUSED.");
         jobs.MapPost("/{jobId:guid}/resume", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
             await ClientAction(user, "job.update_own", id => sender.Send(new ResumeJobCommand { JobId = jobId, UserId = id }, ct))
-        ).WithName("ResumeJob").WithSummary("Tiếp tục Job đang tạm dừng");
+        ).WithName("ResumeJob").WithSummary("Tiếp tục Job đang tạm dừng")
+        .WithDescription("Chỉ Client sở hữu Job. Chuyển PAUSED sang ACTIVE.");
         jobs.MapPost("/{jobId:guid}/close", async (Guid jobId, ClaimsPrincipal user, [FromBody] CloseJobCommand command, ISender sender, IValidator<CloseJobCommand> validator, CancellationToken ct) =>
         {
             command.JobId = jobId; var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, "job.update_own")) return Forbidden(); command.UserId = id.Value;
             var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async () => Results.Ok(await sender.Send(command, ct)));
         }
-        ).WithName("CloseJob").WithSummary("Đóng Job");
+        ).WithName("CloseJob").WithSummary("Đóng Job")
+        .WithDescription("Chỉ Client sở hữu Job. Chỉ đóng được Job ACTIVE hoặc PAUSED; chuyển sang CLOSED.");
 
         jobs.MapGet("/mine", async (ClaimsPrincipal user, string? status, ISender sender, CancellationToken ct) =>
         {
@@ -234,13 +238,15 @@ public static class JobEndpoints
             var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.publish")) return Forbidden();
             return await Run(async () => Results.Ok(await sender.Send(new ApproveJobCommand { JobId = jobId, UserId = id.Value }, ct)));
         }
-        ).WithName("ApproveJob").WithSummary("Duyệt và công bố Job");
+        ).WithName("ApproveJob").WithSummary("Duyệt và công bố Job")
+        .WithDescription("Yêu cầu permission job.publish. Chỉ duyệt Job PENDING_REVIEW và chuyển sang ACTIVE.");
         review.MapPost("/{jobId:guid}/reject", async (Guid jobId, ClaimsPrincipal user, [FromBody] RejectJobCommand command, ISender sender, IValidator<RejectJobCommand> validator, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.review")) return Forbidden(); command.JobId = jobId; command.UserId = id.Value;
             var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async () => Results.Ok(await sender.Send(command, ct)));
         }
-        ).WithName("RejectJob").WithSummary("Từ chối Job và trả lý do");
+        ).WithName("RejectJob").WithSummary("Từ chối Job và trả lý do")
+        .WithDescription("Yêu cầu permission job.review. Chỉ từ chối Job PENDING_REVIEW; Job chuyển sang REJECTED và Client có thể sửa rồi gửi duyệt lại.");
         return app;
     }
 
