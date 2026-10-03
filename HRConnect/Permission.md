@@ -605,6 +605,8 @@ FROM public.role r
 JOIN public.permission p
     ON p.code IN (
         'job.view',
+        'job.review',
+        'job.publish',
         'notification.view_own',
 
         'user.view',

@@ -245,15 +245,15 @@ public class CandidateTestJobSeederTests
         headhuntCand!.CanView.Should().BeFalse();
         headhuntCand.CanSubmit.Should().BeFalse();
 
-        // 3. CV_SOURCING: CANDIDATE can_view=true, can_submit=true AND AFFILIATE_RECRUITER can_view=true, can_submit=true
+        // 3. CV_SOURCING: Candidate is excluded; Affiliate Recruiter can view and submit.
         var sourcingSt = await context.ServiceTypes.FirstOrDefaultAsync(st => st.Code == "CV_SOURCING");
         sourcingSt.Should().NotBeNull();
 
         var sourcingCand = await context.ServiceTypeAllowedRoles
             .FirstOrDefaultAsync(star => star.ServiceTypeId == sourcingSt!.ServiceTypeId && star.RoleId == candidateRole!.RoleId);
         sourcingCand.Should().NotBeNull();
-        sourcingCand!.CanView.Should().BeTrue();
-        sourcingCand.CanSubmit.Should().BeTrue();
+        sourcingCand!.CanView.Should().BeFalse();
+        sourcingCand.CanSubmit.Should().BeFalse();
 
         var sourcingAff = await context.ServiceTypeAllowedRoles
             .FirstOrDefaultAsync(star => star.ServiceTypeId == sourcingSt!.ServiceTypeId && star.RoleId == affiliateRole!.RoleId);

@@ -77,8 +77,7 @@ public static class JobEndpoints
             int page, int pageSize, ISender sender, CancellationToken ct) =>
         {
             if (!user.HasClaim("permission", "job.view")) return Forbidden();
-            var internalAccess = ReviewerCan(user, "job.review") ||
-                                 (user.IsInRole("PLATFORM_ADMIN") && user.HasClaim("permission", "job.view"));
+            var internalAccess = ReviewerCan(user, "job.review");
             return await Run(async () => Results.Ok(await sender.Send(new GetPublicJobsQuery(
                 RoleCodes(user), internalAccess, search, location, employmentType,
                 page <= 0 ? 1 : page, pageSize <= 0 ? 20 : pageSize), ct)));
@@ -86,7 +85,7 @@ public static class JobEndpoints
         jobs.MapGet("/{jobId:guid}", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized();
-            var internalAccess = ReviewerCan(user, "job.review") || (user.IsInRole("PLATFORM_ADMIN") && user.HasClaim("permission", "job.view"));
+            var internalAccess = ReviewerCan(user, "job.review");
             var canAttemptView = internalAccess || ClientCan(user, "job.view_own") || user.HasClaim("permission", "job.view");
             if (!canAttemptView) return Forbidden();
             return await Run(async () => Results.Ok(await sender.Send(new GetJobDetailQuery(jobId, id.Value, internalAccess, RoleCodes(user)), ct)));
@@ -259,7 +258,9 @@ public static class JobEndpoints
     }
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
     private static bool ClientCan(ClaimsPrincipal user, string permission) => user.IsInRole("CLIENT_COMPANY_USER") && user.HasClaim("permission", permission);
-    private static bool ReviewerCan(ClaimsPrincipal user, string permission) => user.IsInRole("INTERNAL_HR") && user.HasClaim("permission", permission);
+    private static bool ReviewerCan(ClaimsPrincipal user, string permission) =>
+        (user.IsInRole("INTERNAL_HR") || user.IsInRole("PLATFORM_ADMIN")) &&
+        user.HasClaim("permission", permission);
     private static string[] RoleCodes(ClaimsPrincipal user) =>
         user.FindAll(ClaimTypes.Role).Select(claim => claim.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     private static IResult Forbidden() => Results.Json(new { success = false, message = "Bạn không có quyền thực hiện thao tác này." }, statusCode: 403);
