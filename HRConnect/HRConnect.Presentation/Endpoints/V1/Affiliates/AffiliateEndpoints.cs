@@ -246,8 +246,8 @@ public static class AffiliateEndpoints
         {
             var userId = GetUserIdFromClaims(user);
             if (userId == null) return Results.Unauthorized();
-            if (!PermissionAuthorization.HasPermission(user, "submission.view_own"))
-                return PermissionAuthorization.Forbidden("submission.view_own");
+            if (!PermissionAuthorization.HasPermission(user, "candidate_library.view_own"))
+                return PermissionAuthorization.Forbidden("candidate_library.view_own");
 
             try
             {
@@ -273,7 +273,7 @@ public static class AffiliateEndpoints
         })
         .WithName("GetAffiliateCandidateLibrary")
         .WithSummary("Lấy kho Candidate/CV của Affiliate")
-        .WithDescription("Yêu cầu permission submission.view_own. Chỉ trả Candidate có CV ACTIVE do chính Affiliate tải và đã từng được Candidate xác nhận trong một Submission ACCEPTED.")
+        .WithDescription("Yêu cầu permission candidate_library.view_own. Chỉ trả Candidate có CV ACTIVE do chính Affiliate tải và đã từng được Candidate xác nhận trong một Submission ACCEPTED.")
         .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateLibrary.GetAffiliateCandidateLibraryResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -287,8 +287,8 @@ public static class AffiliateEndpoints
         {
             var userId = GetUserIdFromClaims(user);
             if (userId == null) return Results.Unauthorized();
-            if (!PermissionAuthorization.HasPermission(user, "submission.view_own"))
-                return PermissionAuthorization.Forbidden("submission.view_own");
+            if (!PermissionAuthorization.HasPermission(user, "candidate_library.view_own"))
+                return PermissionAuthorization.Forbidden("candidate_library.view_own");
 
             try
             {
@@ -309,7 +309,7 @@ public static class AffiliateEndpoints
         })
         .WithName("GetAffiliateCandidateLibraryDetail")
         .WithSummary("Xem Candidate và các CV trong kho của Affiliate")
-        .WithDescription("Yêu cầu permission submission.view_own. Chỉ trả CV ACTIVE do chính Affiliate tải và đã được Candidate xác nhận. Không trả URL lưu trữ hoặc signed URL trong response này.")
+        .WithDescription("Yêu cầu permission candidate_library.view_own. Chỉ trả CV ACTIVE do chính Affiliate tải và đã được Candidate xác nhận. Không trả URL lưu trữ hoặc signed URL trong response này.")
         .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateLibraryDetail.GetAffiliateCandidateLibraryDetailResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
@@ -324,8 +324,8 @@ public static class AffiliateEndpoints
         {
             var userId = GetUserIdFromClaims(user);
             if (userId == null) return Results.Unauthorized();
-            if (!PermissionAuthorization.HasPermission(user, "submission.view_own"))
-                return PermissionAuthorization.Forbidden("submission.view_own");
+            if (!PermissionAuthorization.HasPermission(user, "candidate_library.download_cv"))
+                return PermissionAuthorization.Forbidden("candidate_library.download_cv");
 
             try
             {
@@ -346,7 +346,7 @@ public static class AffiliateEndpoints
         })
         .WithName("GetAffiliateCandidateCvDownloadUrl")
         .WithSummary("Lấy link xem CV trong kho của Affiliate")
-        .WithDescription("Yêu cầu permission submission.view_own. CV phải ACTIVE, thuộc Candidate đã chọn, do chính Affiliate tải và đã được Candidate xác nhận. Signed URL có thời hạn cố định 5 phút.")
+        .WithDescription("Yêu cầu permission candidate_library.download_cv. CV phải ACTIVE, thuộc Candidate đã chọn, do chính Affiliate tải và đã được Candidate xác nhận. Signed URL có thời hạn cố định 5 phút.")
         .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateCvDownloadUrl.GetAffiliateCandidateCvDownloadUrlResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
@@ -365,8 +365,8 @@ public static class AffiliateEndpoints
         {
             var userId = GetUserIdFromClaims(user);
             if (userId == null) return Results.Unauthorized();
-            if (!PermissionAuthorization.HasPermission(user, "submission.view_own"))
-                return PermissionAuthorization.Forbidden("submission.view_own");
+            if (!PermissionAuthorization.HasPermission(user, "submission.consent.resend_own"))
+                return PermissionAuthorization.Forbidden("submission.consent.resend_own");
 
             try
             {
@@ -390,7 +390,7 @@ public static class AffiliateEndpoints
         })
         .WithName("ResendSubmissionConsent")
         .WithSummary("Gửi lại yêu cầu Candidate xác nhận hồ sơ")
-        .WithDescription("Yêu cầu permission submission.view_own và chỉ áp dụng cho Submission của chính Affiliate đang ở PENDING_CONSENT. API có cooldown, giới hạn số lần gửi và vô hiệu hóa liên kết cũ.")
+        .WithDescription("Yêu cầu permission submission.consent.resend_own và chỉ áp dụng cho Submission của chính Affiliate đang ở PENDING_CONSENT. API có cooldown, giới hạn số lần gửi và vô hiệu hóa liên kết cũ.")
         .RequireRateLimiting("submission-consent")
         .Produces<HRConnect.Application.Features.Affiliates.Commands.ResendSubmissionConsent.ResendSubmissionConsentResponse>()
         .Produces(StatusCodes.Status401Unauthorized)

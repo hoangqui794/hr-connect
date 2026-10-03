@@ -11,7 +11,8 @@ Mỗi Job mới vẫn cần một lần xác nhận mới của Candidate. Việ
 Tất cả API trong tài liệu này dùng JWT Bearer của Affiliate và yêu cầu:
 
 - Role `AFFILIATE_RECRUITER`.
-- Permission `submission.view_own` cho API đọc kho.
+- Permission `candidate_library.view_own` cho API danh sách và chi tiết kho.
+- Permission `candidate_library.download_cv` cho API lấy signed URL của CV.
 - Permission `submission.create` cho API nộp Job.
 
 FE chỉ gửi access token trong `Authorization` header. Không truyền `userId` hoặc `affiliateId`.

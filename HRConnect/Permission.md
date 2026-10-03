@@ -111,6 +111,21 @@ VALUES
      'view_own',
      'View own submissions'),
 
+    ('submission.consent.resend_own',
+     'submission_consent',
+     'resend_own',
+     'Resend consent request for own submission'),
+
+    ('candidate_library.view_own',
+     'affiliate_candidate_library',
+     'view_own',
+     'View candidates and CV metadata in own affiliate library'),
+
+    ('candidate_library.download_cv',
+     'affiliate_candidate_library',
+     'download_cv',
+     'Download CV from own affiliate candidate library'),
+
     ('attribution.view_own',
      'attribution',
      'view_own',
@@ -465,6 +480,9 @@ JOIN public.permission p
 
         'submission.create',
         'submission.view_own',
+        'submission.consent.resend_own',
+        'candidate_library.view_own',
+        'candidate_library.download_cv',
         'attribution.view_own',
 
         'dispute.create',

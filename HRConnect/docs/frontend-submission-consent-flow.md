@@ -390,6 +390,8 @@ POST /api/v1/affiliates/submissions/{submissionId}/consent/resend
 Authorization: Bearer <affiliate-access-token>
 ```
 
+Permission: `submission.consent.resend_own`.
+
 Điều kiện:
 
 - Submission thuộc Affiliate đang đăng nhập.
