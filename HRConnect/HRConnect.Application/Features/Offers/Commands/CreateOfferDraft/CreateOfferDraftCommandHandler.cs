@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -19,19 +20,22 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CreateOfferDraftCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public CreateOfferDraftCommandHandler(
         IOfferRepository offerRepository,
         IApplicationRepository applicationRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
-        ILogger<CreateOfferDraftCommandHandler> logger)
+        ILogger<CreateOfferDraftCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _offerRepository = offerRepository;
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<CreateOfferDraftResponse> Handle(CreateOfferDraftCommand request, CancellationToken cancellationToken)
@@ -148,6 +152,23 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
         _applicationRepository.Update(application);
 
         await _offerRepository.AddAsync(offer, cancellationToken);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.OfferDraftCreated,
+            EntityType = "OFFER",
+            EntityId = offer.OfferId,
+            ActorUserId = request.CurrentUserId,
+            NewValues = new
+            {
+                applicationId = offer.ApplicationId,
+                offerVersion = offer.OfferVersion,
+                status = offer.Status,
+                salary = offer.Salary,
+                currencyCode = offer.CurrencyCode,
+                startDate = offer.StartDate,
+                expiryDate = offer.ExpiryDate
+            }
+        }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Đã tạo offer bản nháp {OfferId} phiên bản {Version} cho hồ sơ {ApplicationId}.",
