@@ -13,5 +13,5 @@ public class ResetPasswordResponse
 {
     public bool Success { get; set; } = true;
 
-    public string Message { get; set; } = "Password has been reset successfully.";
+    public string Message { get; set; } = "Đặt lại mật khẩu thành công.";
 }

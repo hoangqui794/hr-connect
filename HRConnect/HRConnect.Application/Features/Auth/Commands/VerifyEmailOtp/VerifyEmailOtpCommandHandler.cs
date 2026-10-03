@@ -179,7 +179,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             return new VerifyEmailOtpResponse
             {
                 Success = true,
-                Message = "Email verified successfully. Your Affiliate registration is pending Admin approval.",
+                Message = "Xác thực email thành công. Hồ sơ Đối tác tuyển dụng đang chờ Ban quản trị phê duyệt.",
                 Data = new VerifyEmailOtpData
                 {
                     UserId = user.UserId,
@@ -236,7 +236,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             return new VerifyEmailOtpResponse
             {
                 Success = true,
-                Message = "Email verified successfully. Your company registration is pending Admin approval.",
+                Message = "Xác thực email thành công. Hồ sơ Doanh nghiệp đang chờ Ban quản trị phê duyệt.",
                 Data = new VerifyEmailOtpData
                 {
                     UserId = user.UserId,

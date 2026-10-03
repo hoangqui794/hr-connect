@@ -17,5 +17,5 @@ public class ChangePasswordResponse
 {
     public bool Success { get; set; } = true;
 
-    public string Message { get; set; } = "Password changed successfully.";
+    public string Message { get; set; } = "Đổi mật khẩu thành công.";
 }

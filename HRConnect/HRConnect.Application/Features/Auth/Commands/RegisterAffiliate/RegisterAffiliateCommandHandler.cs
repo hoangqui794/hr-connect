@@ -221,7 +221,7 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
             return new RegisterAffiliateResponse
             {
                 Success = true,
-                Message = "Registration successful. Please verify your email.",
+                Message = "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.",
                 Data = new RegisterAffiliateData
                 {
                     UserId = newUser.UserId,

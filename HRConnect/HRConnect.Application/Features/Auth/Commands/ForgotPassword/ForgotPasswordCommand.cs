@@ -8,5 +8,5 @@ public class ForgotPasswordResponse
 {
     public bool Success { get; set; } = true;
 
-    public string Message { get; set; } = "If the email is registered, a password reset code has been sent.";
+    public string Message { get; set; } = "Nếu email đã được đăng ký, mã đặt lại mật khẩu sẽ được gửi đến email đó.";
 }

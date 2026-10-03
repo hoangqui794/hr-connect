@@ -31,7 +31,7 @@ public class LogoutAllCommandHandler : IRequestHandler<LogoutAllCommand, LogoutA
         if (userId == null || userId == Guid.Empty)
         {
             _logger.LogWarning("Đăng xuất tất cả thiết bị thất bại: Không tìm thấy định danh người dùng đã xác thực.");
-            throw new UnauthorizedException("User is not authenticated.");
+            throw new UnauthorizedException("Bạn chưa đăng nhập hoặc phiên đăng nhập không hợp lệ.");
         }
 
         await _refreshTokenRepository.RevokeAllByUserIdAsync(userId.Value, "LOGOUT_ALL", cancellationToken);

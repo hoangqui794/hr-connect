@@ -23,7 +23,7 @@ public static class HrConnectEmailTemplates
             : "Sau khi xác thực email, bạn có thể tiếp tục hoàn thiện hồ sơ và sử dụng HR Connect.";
 
         return new HrConnectEmail(
-            $"{otp} là mã xác thực HR Connect của bạn",
+            "Mã xác thực tài khoản HR Connect",
             Render(
                 "Xác thực địa chỉ email",
                 Greeting(recipientName) +
@@ -40,7 +40,7 @@ public static class HrConnectEmailTemplates
         int expirationMinutes)
     {
         return new HrConnectEmail(
-            $"{otp} là mã xác thực HR Connect mới của bạn",
+            "Mã xác thực mới cho tài khoản HR Connect",
             Render(
                 "Mã xác thực mới",
                 Greeting(recipientName) +
@@ -62,7 +62,7 @@ public static class HrConnectEmailTemplates
             : "HR Connect nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Dùng mã dưới đây để tiếp tục:";
 
         return new HrConnectEmail(
-            $"{otp} là mã đặt lại mật khẩu HR Connect",
+            "Mã xác thực đặt lại mật khẩu HR Connect",
             Render(
                 "Đặt lại mật khẩu",
                 Greeting(recipientName) +

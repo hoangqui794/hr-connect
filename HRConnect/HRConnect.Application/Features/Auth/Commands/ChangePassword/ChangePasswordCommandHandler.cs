@@ -38,7 +38,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
         if (userId == null || userId == Guid.Empty)
         {
             _logger.LogWarning("Đổi mật khẩu thất bại: Không tìm thấy định danh người dùng đã xác thực.");
-            throw new UnauthorizedException("User is not authenticated.");
+            throw new UnauthorizedException("Bạn chưa đăng nhập hoặc phiên đăng nhập không hợp lệ.");
         }
 
         // 2. Tìm người dùng
@@ -46,7 +46,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
         if (user == null)
         {
             _logger.LogWarning("Đổi mật khẩu thất bại: Không tìm thấy người dùng UserId {UserId}", userId.Value);
-            throw new NotFoundException("User not found.");
+            throw new NotFoundException("Không tìm thấy tài khoản.");
         }
 
         // 3. Kiểm tra tài khoản có hỗ trợ mật khẩu cục bộ không (chặn tài khoản Google-only)
@@ -56,7 +56,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
         if (isGoogleOnly)
         {
             _logger.LogWarning("Đổi mật khẩu thất bại: Tài khoản Google UserId {UserId} không hỗ trợ đổi mật khẩu cục bộ.", userId.Value);
-            throw new BadRequestException("Password change is not available for this account.");
+            throw new BadRequestException("Tài khoản này không hỗ trợ đổi mật khẩu bằng mật khẩu hiện tại.");
         }
 
         // 4. Kiểm tra mật khẩu hiện tại
@@ -64,14 +64,14 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
         if (!isCurrentPasswordValid)
         {
             _logger.LogWarning("Đổi mật khẩu thất bại: Mật khẩu hiện tại không chính xác cho UserId {UserId}", userId.Value);
-            throw new BadRequestException("Current password is incorrect.");
+            throw new BadRequestException("Mật khẩu hiện tại không chính xác.");
         }
 
         // 5. Kiểm tra mật khẩu mới không được trùng với mật khẩu hiện tại
         if (_passwordHasher.Verify(request.NewPassword, user.PasswordHash))
         {
             _logger.LogWarning("Đổi mật khẩu thất bại: Mật khẩu mới trùng mật khẩu hiện tại cho UserId {UserId}", userId.Value);
-            throw new BadRequestException("New password must be different from the current password.");
+            throw new BadRequestException("Mật khẩu mới phải khác mật khẩu hiện tại.");
         }
 
         // 6. Thực hiện đổi mật khẩu trong Transaction nguyên tử (Atomic Transaction)

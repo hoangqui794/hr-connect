@@ -10,7 +10,9 @@ public class HrConnectEmailTemplatesTests
         var email = HrConnectEmailTemplates.RegistrationOtp(
             "An <script>alert(1)</script>", "123456", 15, "Ứng viên", false);
 
-        Assert.Contains("123456", email.Subject);
+        Assert.Equal("Mã xác thực tài khoản HR Connect", email.Subject);
+        Assert.DoesNotContain("123456", email.Subject);
+        Assert.Contains("123456", email.HtmlBody);
         Assert.Contains("HR Connect", email.HtmlBody);
         Assert.Contains("An &lt;script&gt;alert(1)&lt;/script&gt;", email.HtmlBody);
         Assert.DoesNotContain("<script>alert(1)</script>", email.HtmlBody);

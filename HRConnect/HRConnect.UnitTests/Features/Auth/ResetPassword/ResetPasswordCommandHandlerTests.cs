@@ -272,7 +272,7 @@ public class ResetPasswordCommandHandlerTests
         // Assert
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Message.Should().Be("Password has been reset successfully.");
+        result.Message.Should().Be("Đặt lại mật khẩu thành công.");
 
         // User password updated
         user.PasswordHash.Should().Be("newly_hashed_password_abc");

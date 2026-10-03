@@ -264,7 +264,7 @@ public class RegisterClientCommandHandler : IRequestHandler<RegisterClientComman
             return new RegisterClientResponse
             {
                 Success = true,
-                Message = "Registration successful. Please verify your email.",
+                Message = "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.",
                 Data = new RegisterClientData
                 {
                     UserId = newUser.UserId,
