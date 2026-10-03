@@ -142,13 +142,15 @@ public static class JobEndpoints
         .WithName("CandidateApplyJob")
         .WithSummary("Ứng viên tự ứng tuyển vào Job")
         .WithDescription("Yêu cầu permission application.create. Phải cung cấp đúng một nguồn CV: cvId trong kho của Candidate hoặc một tệp PDF mới. Không được gửi đồng thời cả hai. Hệ thống vẫn kiểm tra quyền submit của Service Type và hồ sơ ứng viên.")
+        .RequireRateLimiting("candidate-application")
         .DisableAntiforgery()
         .Produces<ApplyJobResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
-        .Produces(StatusCodes.Status409Conflict);
+        .Produces(StatusCodes.Status409Conflict)
+        .Produces(StatusCodes.Status429TooManyRequests);
 
         // POST /api/v1/jobs/{jobId}/candidate-submissions - Affiliate Recruiter nộp hồ sơ ứng viên
         jobs.MapPost("/{jobId:guid}/candidate-submissions", async (

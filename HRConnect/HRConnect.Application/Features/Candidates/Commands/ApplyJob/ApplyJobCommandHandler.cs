@@ -13,6 +13,7 @@ namespace HRConnect.Application.Features.Candidates.Commands.ApplyJob;
 public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobResponse>
 {
     private readonly ICandidateRepository _candidateRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IJobRepository _jobRepository;
     private readonly ICandidateCvRepository _candidateCvRepository;
     private readonly ICvStorageService _cvStorageService;
@@ -25,6 +26,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
 
     public ApplyJobCommandHandler(
         ICandidateRepository candidateRepository,
+        IUserRepository userRepository,
         IJobRepository jobRepository,
         ICandidateCvRepository candidateCvRepository,
         ICvStorageService cvStorageService,
@@ -36,6 +38,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         ILogger<ApplyJobCommandHandler> logger)
     {
         _candidateRepository = candidateRepository;
+        _userRepository = userRepository;
         _jobRepository = jobRepository;
         _candidateCvRepository = candidateCvRepository;
         _cvStorageService = cvStorageService;
@@ -55,6 +58,22 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         {
             _logger.LogWarning("Không tìm thấy thông tin Candidate cho UserId: {UserId}", request.UserId);
             throw new NotFoundException("Không tìm thấy thông tin hồ sơ ứng viên tương ứng với tài khoản.");
+        }
+
+        if (!string.Equals(candidate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+            candidate.MergedIntoCandidateId.HasValue)
+        {
+            throw new ConflictException("Hồ sơ Candidate đã bị khóa, lưu trữ hoặc hợp nhất và không thể ứng tuyển.");
+        }
+
+        var user = await _userRepository.GetByIdWithActiveRolesAsync(request.UserId, cancellationToken);
+        var hasActiveCandidateRole = user?.UserRoleUsers.Any(userRole =>
+            string.Equals(userRole.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
+            userRole.Role.IsActive &&
+            string.Equals(userRole.Role.Code, JobAccessPolicy.CandidateRole, StringComparison.OrdinalIgnoreCase)) == true;
+        if (!string.Equals(user?.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) || !hasActiveCandidateRole)
+        {
+            throw new ForbiddenException("Tài khoản Candidate không còn hoạt động hoặc đã bị thu hồi vai trò Candidate.");
         }
 
         // 2. Kiểm tra tồn tại và trạng thái Job

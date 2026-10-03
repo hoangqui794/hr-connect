@@ -108,6 +108,16 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0,
             AutoReplenishment = true
         }));
+
+    options.AddPolicy("candidate-application", context => RateLimitPartition.GetFixedWindowLimiter(
+        $"{ClientKey(context)}:{context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous"}",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromHours(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
 });
 
 // Cấu hình CORS (Cho phép Frontend kết nối API)
