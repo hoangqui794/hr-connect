@@ -22,6 +22,7 @@ public class RecordInterviewResultCommandHandlerTests
     private readonly Mock<ICompanyUserRepository> _companyUserRepositoryMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<RecordInterviewResultCommandHandler>> _loggerMock = new();
+    private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
 
     private RecordInterviewResultCommandHandler CreateHandler() =>
         new(
@@ -29,7 +30,8 @@ public class RecordInterviewResultCommandHandlerTests
             _applicationRepositoryMock.Object,
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _auditLogServiceMock.Object);
 
     [Theory]
     [InlineData("")]
