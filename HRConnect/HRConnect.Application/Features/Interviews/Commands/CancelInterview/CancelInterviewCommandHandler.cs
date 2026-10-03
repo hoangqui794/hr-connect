@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Domain.Entities;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -43,12 +44,12 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
             throw new NotFoundException("Không tìm thấy lịch phỏng vấn.");
         }
 
-        if (interview.Status == "CANCELLED")
+        if (interview.Status == InterviewStates.Cancelled)
         {
             throw new BadRequestException("Buổi phỏng vấn này đã bị hủy trước đó.");
         }
 
-        if (interview.Status == "COMPLETED")
+        if (interview.Status is InterviewStates.Completed or InterviewStates.NoShow)
         {
             throw new BadRequestException("Không thể hủy buổi phỏng vấn đã hoàn thành.");
         }
@@ -85,7 +86,7 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
         var now = DateTime.UtcNow;
         var oldStatus = interview.Status;
 
-        interview.Status = "CANCELLED";
+        interview.Status = InterviewStates.Cancelled;
 
         var newConcurrencyToken = Guid.NewGuid();
         interview.ConcurrencyToken = newConcurrencyToken;
@@ -96,7 +97,7 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
             InterviewStatusHistoryId = Guid.NewGuid(),
             InterviewId = interview.InterviewId,
             OldStatus = oldStatus,
-            NewStatus = "CANCELLED",
+            NewStatus = InterviewStates.Cancelled,
             OldScheduledAt = interview.ScheduledAt,
             NewScheduledAt = null,
             ChangedBy = request.CurrentUserId,
@@ -116,7 +117,7 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
                 InterviewId = interview.InterviewId,
                 ApplicationId = interview.ApplicationId,
                 InterviewRound = interview.InterviewRound,
-                Status = "CANCELLED",
+                Status = InterviewStates.Cancelled,
                 Reason = request.Reason.Trim(),
                 ConcurrencyToken = newConcurrencyToken,
                 CancelledAt = now

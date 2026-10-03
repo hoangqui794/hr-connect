@@ -106,7 +106,7 @@ public class GetInterviewHistoryQueryHandlerTests
                     InterviewStatusHistoryId = Guid.NewGuid(),
                     InterviewId = interviewId,
                     OldStatus = "SCHEDULED",
-                    NewStatus = "RESCHEDULED",
+                    NewStatus = "SCHEDULED",
                     Reason = "Dời lịch lần 1",
                     ChangedAt = t2
                 },
@@ -140,7 +140,7 @@ public class GetInterviewHistoryQueryHandlerTests
         result.Success.Should().BeTrue();
         result.Data.Should().HaveCount(2);
         result.Data[0].NewStatus.Should().Be("SCHEDULED"); // Ordered by ChangedAt ASC
-        result.Data[1].NewStatus.Should().Be("RESCHEDULED");
+        result.Data[1].NewStatus.Should().Be("SCHEDULED");
     }
 
     [Fact]

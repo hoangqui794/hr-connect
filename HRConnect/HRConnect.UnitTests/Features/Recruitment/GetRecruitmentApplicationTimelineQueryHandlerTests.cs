@@ -56,7 +56,7 @@ public class GetRecruitmentApplicationTimelineQueryHandlerTests
         var companyB = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        var app = CreateSampleApplication(appId, companyA, "APPLIED");
+        var app = CreateSampleApplication(appId, companyA, "SUBMITTED");
         _applicationRepositoryMock
             .Setup(r => r.GetApplicationTimelineDataAsync(appId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(app);
@@ -88,7 +88,7 @@ public class GetRecruitmentApplicationTimelineQueryHandlerTests
         var companyA = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        var app = CreateSampleApplication(appId, companyA, "INTERVIEWING");
+        var app = CreateSampleApplication(appId, companyA, "INTERVIEW");
         var baseTime = DateTime.UtcNow.AddDays(-10);
         app.AppliedAt = baseTime;
 
@@ -96,8 +96,8 @@ public class GetRecruitmentApplicationTimelineQueryHandlerTests
         app.ApplicationStatusHistories.Add(new ApplicationStatusHistory
         {
             ApplicationStatusHistoryId = Guid.NewGuid(),
-            OldStatus = "APPLIED",
-            NewStatus = "SCREENING_PASSED",
+            OldStatus = "SUBMITTED",
+            NewStatus = "SHORTLISTED",
             ChangedAt = baseTime.AddDays(1),
             Reason = "CV phù hợp yêu cầu"
         });
@@ -168,13 +168,13 @@ public class GetRecruitmentApplicationTimelineQueryHandlerTests
         // Arrange
         var appId = Guid.NewGuid();
         var companyA = Guid.NewGuid();
-        var app = CreateSampleApplication(appId, companyA, "APPLIED");
+        var app = CreateSampleApplication(appId, companyA, "SUBMITTED");
         app.AppliedAt = DateTime.UtcNow.AddDays(-5);
         app.ApplicationStatusHistories.Add(new ApplicationStatusHistory
         {
             ApplicationStatusHistoryId = Guid.NewGuid(),
-            OldStatus = "APPLIED",
-            NewStatus = "SCREENING_PASSED",
+            OldStatus = "SUBMITTED",
+            NewStatus = "SHORTLISTED",
             ChangedAt = DateTime.UtcNow.AddDays(-2)
         });
 
@@ -204,7 +204,7 @@ public class GetRecruitmentApplicationTimelineQueryHandlerTests
     {
         // Arrange
         var appId = Guid.NewGuid();
-        var app = CreateSampleApplication(appId, Guid.NewGuid(), "APPLIED");
+        var app = CreateSampleApplication(appId, Guid.NewGuid(), "SUBMITTED");
 
         _applicationRepositoryMock
             .Setup(r => r.GetApplicationTimelineDataAsync(appId, It.IsAny<CancellationToken>()))

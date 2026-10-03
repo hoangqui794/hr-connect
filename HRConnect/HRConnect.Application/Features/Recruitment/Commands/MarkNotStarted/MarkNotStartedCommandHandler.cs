@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Domain.Entities;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -74,17 +75,17 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
             throw new ForbiddenException("Bạn không có quyền đánh dấu ứng viên không nhận việc.");
         }
 
-        if (string.Equals(application.Status, "NOT_STARTED", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(application.Status, ApplicationStates.NotStarted, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning("Hồ sơ {ApplicationId} đã ở trạng thái NOT_STARTED.", application.ApplicationId);
             throw new BadRequestException("Hồ sơ ứng tuyển đã ở trạng thái không nhận việc (NOT_STARTED).");
         }
 
-        if (application.Status is "REJECTED" or "WITHDRAWN" or "INTERVIEW_FAILED" or "BACKUP_NOT_SELECTED" or "CLOSED")
+        if (application.Status != ApplicationStates.OfferAccepted)
         {
             _logger.LogWarning("Hồ sơ {ApplicationId} đang ở trạng thái {Status}, không thể đánh dấu không nhận việc.",
                 application.ApplicationId, application.Status);
-            throw new BadRequestException($"Không thể đánh dấu không nhận việc cho hồ sơ đang ở trạng thái {application.Status}.");
+            throw new BadRequestException($"Chỉ có thể đánh dấu không nhận việc sau khi ứng viên chấp nhận offer ({ApplicationStates.OfferAccepted}). Trạng thái hiện tại: {application.Status}.");
         }
 
         var now = DateTime.UtcNow;
@@ -95,12 +96,10 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
         var placement = await _placementRepository.GetByApplicationIdAsync(request.ApplicationId, cancellationToken);
         if (placement != null)
         {
-            placement.Status = "NOT_STARTED";
-            placement.UpdatedAt = now;
-            _placementRepository.Update(placement);
+            throw new ConflictException("Hồ sơ đã có Placement; không thể chuyển ngược sang NOT_STARTED.");
         }
 
-        application.Status = "NOT_STARTED";
+        application.Status = ApplicationStates.NotStarted;
         application.StatusReason = trimmedReason;
         application.UpdatedAt = now;
         application.ConcurrencyToken = newConcurrencyToken;
@@ -110,7 +109,7 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
             ApplicationStatusHistoryId = Guid.NewGuid(),
             ApplicationId = application.ApplicationId,
             OldStatus = oldStatus,
-            NewStatus = "NOT_STARTED",
+            NewStatus = ApplicationStates.NotStarted,
             ChangedBy = request.CurrentUserId,
             ChangedAt = now,
             Reason = trimmedReason

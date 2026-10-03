@@ -7,6 +7,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Domain.Entities;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -60,7 +61,12 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             throw new NotFoundException("Không tìm thấy hồ sơ ứng tuyển.");
         }
 
-        if (application.Status is "REJECTED" or "WITHDRAWN" or "CANCELLED" or "HIRED")
+        if (request.ApplicationConcurrencyToken.HasValue && request.ApplicationConcurrencyToken.Value != application.ConcurrencyToken)
+        {
+            throw new ConflictException("Dữ liệu hồ sơ đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
+        }
+
+        if (application.Status is not (ApplicationStates.Shortlisted or ApplicationStates.Interview))
         {
             _logger.LogWarning("Hồ sơ {ApplicationId} đang ở trạng thái {Status}, không thể tạo lịch phỏng vấn.",
                 application.ApplicationId, application.Status);
@@ -89,9 +95,19 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             throw new ForbiddenException("Bạn không có quyền tạo lịch phỏng vấn.");
         }
 
+        if (application.Interviews.Any(i => i.Status == InterviewStates.Scheduled))
+        {
+            throw new BadRequestException("Hồ sơ đã có lịch phỏng vấn đang chờ. Hãy dời, hủy hoặc ghi kết quả lịch hiện tại trước.");
+        }
+
         var interviewRound = (request.InterviewRound.HasValue && request.InterviewRound.Value > 0)
             ? request.InterviewRound.Value
-            : (application.Interviews?.Count ?? 0) + 1;
+            : (application.Interviews.Any() ? application.Interviews.Max(i => i.InterviewRound) + 1 : 1);
+
+        if (application.Interviews.Any(i => i.InterviewRound == interviewRound))
+        {
+            throw new ConflictException($"Vòng phỏng vấn {interviewRound} đã tồn tại.");
+        }
 
         var interviewType = string.IsNullOrWhiteSpace(request.InterviewType)
             ? "ONLINE"
@@ -110,7 +126,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             DurationMinutes = durationMinutes,
             Location = request.Location,
             MeetingLink = request.MeetingLink,
-            Status = "SCHEDULED",
+            Status = InterviewStates.Scheduled,
             CreatedBy = request.CurrentUserId,
             ConcurrencyToken = concurrencyToken,
             CreatedAt = now,
@@ -120,6 +136,11 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
         var participantsDto = new List<ScheduleInterviewParticipantDto>();
         if (request.Participants != null && request.Participants.Any())
         {
+            if (request.Participants.Select(p => p.UserId).Distinct().Count() != request.Participants.Count)
+            {
+                throw new BadRequestException("Danh sách người phỏng vấn không được chứa trùng người dùng.");
+            }
+
             foreach (var p in request.Participants)
             {
                 var role = string.IsNullOrWhiteSpace(p.Role) ? "INTERVIEWER" : p.Role.Trim().ToUpperInvariant();
@@ -139,7 +160,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             InterviewStatusHistoryId = Guid.NewGuid(),
             InterviewId = interviewId,
             OldStatus = null,
-            NewStatus = "SCHEDULED",
+            NewStatus = InterviewStates.Scheduled,
             OldScheduledAt = null,
             NewScheduledAt = request.ScheduledAt,
             ChangedBy = request.CurrentUserId,
@@ -147,10 +168,22 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             Reason = "Lập lịch phỏng vấn mới"
         });
 
-        if (application.Status is "SUBMITTED" or "SHORTLISTED")
+        if (application.Status == ApplicationStates.Shortlisted)
         {
-            application.Status = "INTERVIEWING";
+            var oldStatus = application.Status;
+            application.Status = ApplicationStates.Interview;
             application.UpdatedAt = now;
+            application.ConcurrencyToken = Guid.NewGuid();
+            application.ApplicationStatusHistories.Add(new ApplicationStatusHistory
+            {
+                ApplicationStatusHistoryId = Guid.NewGuid(),
+                ApplicationId = application.ApplicationId,
+                OldStatus = oldStatus,
+                NewStatus = ApplicationStates.Interview,
+                ChangedBy = request.CurrentUserId,
+                ChangedAt = now,
+                Reason = "Đã lập lịch phỏng vấn."
+            });
             _applicationRepository.Update(application);
         }
 
@@ -171,7 +204,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
                 DurationMinutes = durationMinutes,
                 Location = request.Location,
                 MeetingLink = request.MeetingLink,
-                Status = "SCHEDULED",
+                Status = InterviewStates.Scheduled,
                 ConcurrencyToken = concurrencyToken,
                 CreatedAt = now,
                 Participants = participantsDto

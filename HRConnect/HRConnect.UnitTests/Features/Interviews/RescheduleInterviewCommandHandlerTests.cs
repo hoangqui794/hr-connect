@@ -280,18 +280,18 @@ public class RescheduleInterviewCommandHandlerTests
         // Assert
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Data.Status.Should().Be("RESCHEDULED");
+        result.Data.Status.Should().Be("SCHEDULED");
         result.Data.OldScheduledAt.Should().Be(oldDate);
         result.Data.NewScheduledAt.Should().Be(newDate);
         result.Data.Reason.Should().Be("Phía công ty bận họp đột xuất");
         result.Data.ConcurrencyToken.Should().NotBe(oldToken);
 
-        interview.Status.Should().Be("RESCHEDULED");
+        interview.Status.Should().Be("SCHEDULED");
         interview.ScheduledAt.Should().Be(newDate);
         interview.InterviewStatusHistories.Should().HaveCount(1);
         var history = interview.InterviewStatusHistories.First();
         history.OldStatus.Should().Be("SCHEDULED");
-        history.NewStatus.Should().Be("RESCHEDULED");
+        history.NewStatus.Should().Be("SCHEDULED");
         history.OldScheduledAt.Should().Be(oldDate);
         history.NewScheduledAt.Should().Be(newDate);
         history.Reason.Should().Be("Phía công ty bận họp đột xuất");

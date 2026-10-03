@@ -252,7 +252,7 @@ public class ScheduleInterviewCommandHandlerTests
         result.Data.DurationMinutes.Should().Be(45);
         result.Data.Participants.Should().HaveCount(1);
 
-        application.Status.Should().Be("INTERVIEWING");
+        application.Status.Should().Be("INTERVIEW");
         _applicationRepositoryMock.Verify(r => r.Update(application), Times.Once);
         _interviewRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Interview>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -272,9 +272,9 @@ public class ScheduleInterviewCommandHandlerTests
         var application = new HRConnect.Domain.Entities.Application
         {
             ApplicationId = applicationId,
-            Status = "INTERVIEWING",
+            Status = "INTERVIEW",
             Job = new Job { CompanyId = Guid.NewGuid() },
-            Interviews = new List<Interview> { new() { InterviewId = Guid.NewGuid() } }
+            Interviews = new List<Interview> { new() { InterviewId = Guid.NewGuid(), InterviewRound = 1, Status = "COMPLETED" } }
         };
 
         _applicationRepositoryMock

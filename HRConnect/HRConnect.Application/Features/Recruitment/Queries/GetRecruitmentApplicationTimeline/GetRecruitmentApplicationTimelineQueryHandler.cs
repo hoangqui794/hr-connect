@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -63,7 +64,7 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
             Timestamp = app.AppliedAt,
             ActorUserId = app.Candidate?.UserId,
             ActorName = candidateName,
-            Status = "APPLIED"
+            Status = ApplicationStates.Submitted
         });
 
         // 2. Lịch sử thay đổi trạng thái hồ sơ

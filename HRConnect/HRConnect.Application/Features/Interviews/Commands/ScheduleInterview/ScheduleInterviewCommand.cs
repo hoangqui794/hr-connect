@@ -20,5 +20,6 @@ public record ScheduleInterviewCommand(
     List<ScheduleInterviewParticipantDto>? Participants,
     Guid CurrentUserId,
     bool IsClientCompanyUser = false,
-    bool IsInternalHrOrAdmin = false
+    bool IsInternalHrOrAdmin = false,
+    Guid? ApplicationConcurrencyToken = null
 ) : IRequest<ScheduleInterviewResponse>;

@@ -102,7 +102,7 @@ public class GetInterviewDetailQueryHandlerTests
             InterviewStatusHistoryId = Guid.NewGuid(),
             InterviewId = interviewId,
             OldStatus = "SCHEDULED",
-            NewStatus = "RESCHEDULED",
+            NewStatus = "SCHEDULED",
             Reason = "Ứng viên bận việc đột xuất",
             ChangedAt = DateTime.UtcNow.AddDays(-1)
         });
@@ -266,7 +266,7 @@ public class GetInterviewDetailQueryHandlerTests
             Job = job,
             CandidateId = candidate.CandidateId,
             Candidate = candidate,
-            Status = "INTERVIEWING"
+            Status = "INTERVIEW"
         };
 
         return new Interview

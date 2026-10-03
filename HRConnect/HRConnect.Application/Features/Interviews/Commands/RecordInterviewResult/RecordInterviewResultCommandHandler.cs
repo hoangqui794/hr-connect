@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Domain.Entities;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -40,9 +41,9 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
         }
 
         var normalizedResult = request.Result.Trim().ToUpperInvariant();
-        if (normalizedResult is not ("PASSED" or "FAILED" or "ON_HOLD"))
+        if (normalizedResult is not (InterviewResults.Pass or InterviewResults.Fail or InterviewResults.Backup))
         {
-            throw new BadRequestException("Kết quả phỏng vấn không hợp lệ. Giá trị cho phép: PASSED, FAILED, ON_HOLD.");
+            throw new BadRequestException("Kết quả phỏng vấn không hợp lệ. Giá trị cho phép: PASS, FAIL, BACKUP.");
         }
 
         var interview = await _interviewRepository.GetByIdForUpdateAsync(request.InterviewId, cancellationToken);
@@ -52,12 +53,12 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
             throw new NotFoundException("Không tìm thấy lịch phỏng vấn.");
         }
 
-        if (interview.Status == "CANCELLED")
+        if (interview.Status is InterviewStates.Cancelled or InterviewStates.NoShow)
         {
-            throw new BadRequestException("Không thể ghi nhận kết quả cho buổi phỏng vấn đã bị hủy.");
+            throw new BadRequestException("Không thể ghi nhận kết quả cho buổi phỏng vấn đã bị hủy hoặc ghi nhận vắng mặt.");
         }
 
-        if (interview.Status == "COMPLETED")
+        if (interview.Status == InterviewStates.Completed)
         {
             throw new BadRequestException("Buổi phỏng vấn này đã được ghi nhận kết quả trước đó.");
         }
@@ -67,6 +68,16 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
             _logger.LogWarning("Xung đột concurrency trên Interview {InterviewId}. Token yêu cầu {ReqToken} khác với token hiện tại {CurToken}.",
                 interview.InterviewId, request.ConcurrencyToken.Value, interview.ConcurrencyToken);
             throw new ConflictException("Dữ liệu phỏng vấn đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
+        }
+
+        if (interview.Status != InterviewStates.Scheduled)
+        {
+            throw new BadRequestException($"Chỉ có thể ghi nhận kết quả cho lịch ở trạng thái {InterviewStates.Scheduled}.");
+        }
+
+        if (interview.ScheduledAt.HasValue && interview.ScheduledAt.Value > DateTime.UtcNow)
+        {
+            throw new BadRequestException("Không thể ghi nhận kết quả trước thời gian phỏng vấn.");
         }
 
         if (request.IsClientCompanyUser)
@@ -96,7 +107,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
 
         interview.Result = normalizedResult;
         interview.Feedback = request.Feedback;
-        interview.Status = "COMPLETED";
+        interview.Status = InterviewStates.Completed;
         interview.RecordedBy = request.CurrentUserId;
         interview.RecordedAt = now;
 
@@ -115,7 +126,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
             InterviewStatusHistoryId = Guid.NewGuid(),
             InterviewId = interview.InterviewId,
             OldStatus = oldStatus,
-            NewStatus = "COMPLETED",
+            NewStatus = InterviewStates.Completed,
             OldScheduledAt = interview.ScheduledAt,
             NewScheduledAt = interview.ScheduledAt,
             ChangedBy = request.CurrentUserId,
@@ -125,23 +136,44 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
 
         if (interview.Application != null)
         {
-            if (normalizedResult == "FAILED")
+            var oldApplicationStatus = interview.Application.Status;
+            string? targetApplicationStatus = null;
+
+            if (normalizedResult == InterviewResults.Fail)
             {
                 if (request.IsFinalRound || string.Equals(request.NextAction, "REJECT", StringComparison.OrdinalIgnoreCase))
                 {
-                    interview.Application.Status = "REJECTED";
-                    interview.Application.UpdatedAt = now;
-                    _applicationRepository.Update(interview.Application);
+                    targetApplicationStatus = ApplicationStates.InterviewFailed;
                 }
             }
-            else if (normalizedResult == "PASSED")
+            else if (normalizedResult == InterviewResults.Pass)
             {
                 if (request.IsFinalRound || string.Equals(request.NextAction, "MAKE_OFFER", StringComparison.OrdinalIgnoreCase))
                 {
-                    interview.Application.Status = "OFFER_PENDING";
-                    interview.Application.UpdatedAt = now;
-                    _applicationRepository.Update(interview.Application);
+                    targetApplicationStatus = ApplicationStates.OfferPending;
                 }
+            }
+            else if (normalizedResult == InterviewResults.Backup)
+            {
+                targetApplicationStatus = ApplicationStates.Backup;
+            }
+
+            if (targetApplicationStatus != null)
+            {
+                interview.Application.Status = targetApplicationStatus;
+                interview.Application.UpdatedAt = now;
+                interview.Application.ConcurrencyToken = Guid.NewGuid();
+                interview.Application.ApplicationStatusHistories.Add(new ApplicationStatusHistory
+                {
+                    ApplicationStatusHistoryId = Guid.NewGuid(),
+                    ApplicationId = interview.Application.ApplicationId,
+                    OldStatus = oldApplicationStatus,
+                    NewStatus = targetApplicationStatus,
+                    ChangedBy = request.CurrentUserId,
+                    ChangedAt = now,
+                    Reason = reasonText
+                });
+                _applicationRepository.Update(interview.Application);
             }
         }
 
@@ -157,7 +189,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
                 InterviewId = interview.InterviewId,
                 ApplicationId = interview.ApplicationId,
                 InterviewRound = interview.InterviewRound,
-                Status = "COMPLETED",
+                Status = InterviewStates.Completed,
                 Result = normalizedResult,
                 Feedback = request.Feedback,
                 ApplicationStatus = interview.Application?.Status,
