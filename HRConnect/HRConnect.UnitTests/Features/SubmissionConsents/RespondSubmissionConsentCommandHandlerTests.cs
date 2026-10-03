@@ -133,6 +133,63 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         _consents.Verify(x => x.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("SUSPENDED")]
+    public async Task Confirm_WhenAffiliateIsMissingOrInactive_CancelsSubmission(string? affiliateStatus)
+    {
+        var fixture = CreateConsent();
+        _consents.Setup(x => x.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(fixture.Consent);
+        _submissions.Setup(x => x.GetAcceptedSubmissionAsync(fixture.Candidate.CandidateId, fixture.Job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync((Submission?)null);
+        _applications.Setup(x => x.GetByCandidateAndJobAsync(fixture.Candidate.CandidateId, fixture.Job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync((JobApplication?)null);
+        _affiliates.Setup(x => x.GetByUserIdAsync(fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(affiliateStatus == null
+                ? null
+                : new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = fixture.Submission.SubmittedBy, Status = affiliateStatus });
+
+        var action = () => Handler().Handle(new RespondSubmissionConsentCommand
+        {
+            Token = "valid-token",
+            Decision = "CONFIRM",
+            RequesterUserId = fixture.Candidate.UserId
+        }, CancellationToken.None);
+
+        await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("Affiliate đã bị khóa, chưa được phê duyệt hoặc không còn hoạt động*");
+        fixture.Consent.Status.Should().Be("CANCELLED");
+        fixture.Submission.Status.Should().Be("CANCELLED");
+        fixture.Cv.Status.Should().Be("ARCHIVED");
+        _applications.Verify(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
+        _attributions.Verify(x => x.AddAsync(It.IsAny<Attribution>(), It.IsAny<CancellationToken>()), Times.Never);
+        _scoring.Verify(x => x.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("ARCHIVED", false)]
+    [InlineData("ACTIVE", true)]
+    public async Task Confirm_WhenCandidateIsNotEligible_CancelsSubmission(string status, bool merged)
+    {
+        var fixture = CreateConsent();
+        fixture.Candidate.Status = status;
+        fixture.Candidate.MergedIntoCandidateId = merged ? Guid.NewGuid() : null;
+        _consents.Setup(x => x.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(fixture.Consent);
+
+        var action = () => Handler().Handle(new RespondSubmissionConsentCommand
+        {
+            Token = "valid-token",
+            Decision = "CONFIRM",
+            RequesterUserId = fixture.Candidate.UserId
+        }, CancellationToken.None);
+
+        await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("Hồ sơ Candidate đã bị khóa, lưu trữ hoặc hợp nhất*");
+        fixture.Consent.Status.Should().Be("CANCELLED");
+        fixture.Submission.Status.Should().Be("CANCELLED");
+        fixture.Cv.Status.Should().Be("ARCHIVED");
+        _affiliates.Verify(x => x.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _applications.Verify(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private RespondSubmissionConsentCommandHandler Handler() => new(
         _consents.Object,
         _submissions.Object,
@@ -153,7 +210,8 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
             CandidateId = Guid.NewGuid(),
             UserId = candidateHasAccount ? Guid.NewGuid() : null,
             FullName = "Nguyen Van A",
-            Email = "candidate@example.com"
+            Email = "candidate@example.com",
+            Status = "ACTIVE"
         };
         var cv = new CandidateCv { CvId = Guid.NewGuid(), CandidateId = candidate.CandidateId, Status = "PENDING_CONSENT", FileName = "cv.pdf" };
         var job = new Job

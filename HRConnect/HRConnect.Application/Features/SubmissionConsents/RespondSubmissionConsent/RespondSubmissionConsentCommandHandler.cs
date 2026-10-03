@@ -87,6 +87,14 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             throw new ConflictException("Công việc hiện không còn nhận hồ sơ.");
         }
 
+        var candidate = consent.Submission.Candidate;
+        if (!string.Equals(candidate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+            candidate.MergedIntoCandidateId.HasValue)
+        {
+            await SetTerminalWithoutApplicationAsync(consent, "CANCELLED", "CANCELLED", request, now, cancellationToken);
+            throw new ConflictException("Hồ sơ Candidate đã bị khóa, lưu trữ hoặc hợp nhất nên không thể xác nhận lượt nộp này.");
+        }
+
         var existingSubmission = await _submissionRepository.GetAcceptedSubmissionAsync(
             consent.Submission.CandidateId, consent.Submission.JobId, cancellationToken);
         var existingApplication = await _applicationRepository.GetByCandidateAndJobAsync(
@@ -98,8 +106,12 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             throw new ConflictException("Candidate đã có hồ sơ được tiếp nhận cho công việc này.");
         }
 
-        var affiliate = await _affiliateRepository.GetByUserIdAsync(consent.Submission.SubmittedBy, cancellationToken)
-            ?? throw new InvalidOperationException("Không tìm thấy Affiliate của Submission.");
+        var affiliate = await _affiliateRepository.GetByUserIdAsync(consent.Submission.SubmittedBy, cancellationToken);
+        if (affiliate == null || !IsAffiliateEligible(affiliate))
+        {
+            await SetTerminalWithoutApplicationAsync(consent, "CANCELLED", "CANCELLED", request, now, cancellationToken);
+            throw new ConflictException("Affiliate đã bị khóa, chưa được phê duyệt hoặc không còn hoạt động nên lượt nộp không thể tiếp tục.");
+        }
 
         JobApplication application;
         try
@@ -291,6 +303,10 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
 
     private static string? Limit(string? value, int max) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Length <= max ? value : value[..max];
+
+    private static bool IsAffiliateEligible(HRConnect.Domain.Entities.AffiliateProfile affiliate) =>
+        string.Equals(affiliate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(affiliate.Status, "VERIFIED", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsUniqueViolation(Exception exception)
     {
