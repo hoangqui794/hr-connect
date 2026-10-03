@@ -238,7 +238,7 @@ public class ApplyJobCommandHandlerTests
 
         // Assert
         var ex = await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Your role is not allowed to submit candidates for this service type.");
+            .WithMessage("Vai trò ứng viên không được phép nộp hồ sơ cho loại dịch vụ của công việc này.");
         ex.Which.ErrorCode.Should().Be("SERVICE_TYPE_SUBMISSION_NOT_ALLOWED");
 
         // Verify no DB changes or MF-03 calls
@@ -489,8 +489,9 @@ public class ApplyJobCommandHandlerTests
             RoleCodes = [JobAccessPolicy.CandidateRole]
         }, CancellationToken.None);
 
-        await action.Should().ThrowAsync<ConflictException>()
-            .WithMessage("Hồ sơ Candidate đã bị khóa, lưu trữ hoặc hợp nhất*");
+        var exception = await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("Hồ sơ ứng viên đã bị khóa, lưu trữ hoặc hợp nhất*");
+        exception.Which.ErrorCode.Should().Be("CANDIDATE_PROFILE_NOT_ELIGIBLE");
         _userRepositoryMock.Verify(repository => repository.GetByIdWithActiveRolesAsync(
             It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _jobRepositoryMock.Verify(repository => repository.GetByIdAsync(
@@ -521,8 +522,9 @@ public class ApplyJobCommandHandlerTests
             RoleCodes = [JobAccessPolicy.CandidateRole]
         }, CancellationToken.None);
 
-        await action.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Tài khoản Candidate không còn hoạt động hoặc đã bị thu hồi vai trò Candidate.");
+        var exception = await action.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Tài khoản ứng viên không còn hoạt động hoặc đã bị thu hồi quyền ứng tuyển.");
+        exception.Which.ErrorCode.Should().Be("CANDIDATE_ACCOUNT_NOT_ELIGIBLE");
         _jobRepositoryMock.Verify(repository => repository.GetByIdAsync(
             It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _cvStorageServiceMock.VerifyNoOtherCalls();

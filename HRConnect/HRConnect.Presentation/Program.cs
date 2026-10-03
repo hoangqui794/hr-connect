@@ -27,6 +27,7 @@ using Microsoft.EntityFrameworkCore;
 using HRConnect.Presentation.Middleware;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using HRConnect.Presentation.RateLimiting;
 
 // ==============================================================================
 // 1. Nạp biến môi trường từ file .env
@@ -49,15 +50,23 @@ builder.Services.AddRateLimiter(options =>
     options.OnRejected = async (context, cancellationToken) =>
     {
         context.HttpContext.Response.ContentType = "application/json";
+        int? retryAfterSeconds = null;
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            retryAfterSeconds = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds));
+            context.HttpContext.Response.Headers.RetryAfter = retryAfterSeconds.Value.ToString();
+        }
+
         await context.HttpContext.Response.WriteAsJsonAsync(new
         {
             success = false,
-            message = "Bạn thao tác quá nhanh. Vui lòng chờ rồi thử lại."
+            code = "RATE_LIMIT_EXCEEDED",
+            message = "Bạn thao tác quá nhanh. Vui lòng chờ rồi thử lại.",
+            retryAfterSeconds
         }, cancellationToken);
     };
 
-    static string ClientKey(HttpContext context) =>
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    static string ClientKey(HttpContext context) => RateLimitIdentity.Ip(context);
 
     options.AddPolicy("auth-login", context => RateLimitPartition.GetFixedWindowLimiter(
         ClientKey(context),
@@ -110,7 +119,7 @@ builder.Services.AddRateLimiter(options =>
         }));
 
     options.AddPolicy("candidate-application", context => RateLimitPartition.GetFixedWindowLimiter(
-        $"{ClientKey(context)}:{context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous"}",
+        RateLimitIdentity.UserAndIp(context),
         _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 10,
@@ -263,10 +272,11 @@ app.UseHttpsRedirection();
 
 // Kích hoạt CORS
 app.UseCors("AllowAll");
-app.UseRateLimiter();
 
 // Thứ tự bắt buộc: Xác thực (Authentication) -> Phân quyền (Authorization)
 app.UseAuthentication();
+// Rate limit cần chạy sau Authentication để các policy theo UserId nhận đúng danh tính.
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();

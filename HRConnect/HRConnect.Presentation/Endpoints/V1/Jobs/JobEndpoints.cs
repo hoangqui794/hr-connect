@@ -141,7 +141,7 @@ public static class JobEndpoints
         .WithTags("Candidate Applications")
         .WithName("CandidateApplyJob")
         .WithSummary("Ứng viên tự ứng tuyển vào Job")
-        .WithDescription("Yêu cầu permission application.create. Phải cung cấp đúng một nguồn CV: cvId trong kho của Candidate hoặc một tệp PDF mới. Không được gửi đồng thời cả hai. Hệ thống vẫn kiểm tra quyền submit của Service Type và hồ sơ ứng viên.")
+        .WithDescription("Yêu cầu permission application.create. Candidate và tài khoản phải còn ACTIVE, hồ sơ chưa archive/merge. Phải cung cấp đúng một nguồn CV: cvId trong kho của Candidate hoặc một tệp PDF mới. Không được gửi đồng thời cả hai. Giới hạn 10 yêu cầu mỗi giờ theo UserId + IP; dữ liệu không hợp lệ bị chặn trước khi upload CV.")
         .RequireRateLimiting("candidate-application")
         .DisableAntiforgery()
         .Produces<ApplyJobResponse>(StatusCodes.Status200OK)

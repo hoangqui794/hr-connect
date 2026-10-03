@@ -63,7 +63,9 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         if (!string.Equals(candidate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
             candidate.MergedIntoCandidateId.HasValue)
         {
-            throw new ConflictException("Hồ sơ Candidate đã bị khóa, lưu trữ hoặc hợp nhất và không thể ứng tuyển.");
+            throw new ConflictException(
+                "Hồ sơ ứng viên đã bị khóa, lưu trữ hoặc hợp nhất và không thể ứng tuyển.",
+                "CANDIDATE_PROFILE_NOT_ELIGIBLE");
         }
 
         var user = await _userRepository.GetByIdWithActiveRolesAsync(request.UserId, cancellationToken);
@@ -73,7 +75,9 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             string.Equals(userRole.Role.Code, JobAccessPolicy.CandidateRole, StringComparison.OrdinalIgnoreCase)) == true;
         if (!string.Equals(user?.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) || !hasActiveCandidateRole)
         {
-            throw new ForbiddenException("Tài khoản Candidate không còn hoạt động hoặc đã bị thu hồi vai trò Candidate.");
+            throw new ForbiddenException(
+                "Tài khoản ứng viên không còn hoạt động hoặc đã bị thu hồi quyền ứng tuyển.",
+                "CANDIDATE_ACCOUNT_NOT_ELIGIBLE");
         }
 
         // 2. Kiểm tra tồn tại và trạng thái Job
@@ -93,7 +97,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         // 3. Phân quyền can_submit dựa trên Service Type và Roles
         if (!JobAccessPolicy.CanCandidateApply(job, request.RoleCodes))
         {
-            throw new ForbiddenException("Candidates can only apply to public jobs.", "JOB_VISIBILITY_NOT_ALLOWED");
+            throw new ForbiddenException("Ứng viên chỉ được tự ứng tuyển vào công việc công khai.", "JOB_VISIBILITY_NOT_ALLOWED");
         }
 
         // Check the permission of the actor used by this operation only. A multi-role
@@ -104,7 +108,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         {
             _logger.LogWarning("Vai trò của người dùng {UserId} ({Roles}) không được phép nộp hồ sơ vào ServiceTypeId {ServiceTypeId}",
                 request.UserId, string.Join(",", request.RoleCodes), job.ServiceTypeId);
-            throw new ForbiddenException("Your role is not allowed to submit candidates for this service type.", "SERVICE_TYPE_SUBMISSION_NOT_ALLOWED");
+            throw new ForbiddenException("Vai trò ứng viên không được phép nộp hồ sơ cho loại dịch vụ của công việc này.", "SERVICE_TYPE_SUBMISSION_NOT_ALLOWED");
         }
 
         var hasUploadedFile = request.FileStream != null &&
