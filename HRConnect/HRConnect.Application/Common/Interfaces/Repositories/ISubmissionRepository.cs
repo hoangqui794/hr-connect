@@ -40,6 +40,12 @@ public interface ISubmissionRepository
         Guid userId,
         Guid candidateId,
         CancellationToken cancellationToken = default);
+
+    Task<AffiliateCandidateCvAccessRecord?> GetAffiliateCandidateCvAccessAsync(
+        Guid userId,
+        Guid candidateId,
+        Guid cvId,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record AffiliateCandidateLibraryRecord(
@@ -71,3 +77,8 @@ public sealed record AffiliateCandidateCvRecord(
     DateTime CreatedAt,
     int AcceptedSubmissionCount,
     DateTime? LastUsedAt);
+
+public sealed record AffiliateCandidateCvAccessRecord(
+    Guid CandidateId,
+    Guid CvId,
+    string? FileName);

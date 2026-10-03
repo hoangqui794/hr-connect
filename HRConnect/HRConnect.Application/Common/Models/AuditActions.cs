@@ -12,4 +12,5 @@ public static class AuditActions
     public const string SubmissionConsentConfirmed = "SUBMISSION_CONSENT_CONFIRMED";
     public const string SubmissionConsentDeclined = "SUBMISSION_CONSENT_DECLINED";
     public const string SubmissionConsentClosed = "SUBMISSION_CONSENT_CLOSED";
+    public const string AffiliateCvViewed = "AFFILIATE_CV_VIEWED";
 }

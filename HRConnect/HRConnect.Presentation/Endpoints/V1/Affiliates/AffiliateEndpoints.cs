@@ -315,6 +315,43 @@ public static class AffiliateEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
 
+        candidateLibraryGroup.MapGet("/{candidateId:guid}/cvs/{cvId:guid}/download-url", async (
+            Guid candidateId,
+            Guid cvId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null) return Results.Unauthorized();
+            if (!PermissionAuthorization.HasPermission(user, "submission.view_own"))
+                return PermissionAuthorization.Forbidden("submission.view_own");
+
+            try
+            {
+                var result = await sender.Send(
+                    new HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateCvDownloadUrl.GetAffiliateCandidateCvDownloadUrlQuery(
+                        userId.Value, candidateId, cvId),
+                    cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetAffiliateCandidateCvDownloadUrl")
+        .WithSummary("Lấy link xem CV trong kho của Affiliate")
+        .WithDescription("Yêu cầu permission submission.view_own. CV phải ACTIVE, thuộc Candidate đã chọn, do chính Affiliate tải và đã được Candidate xác nhận. Signed URL có thời hạn cố định 5 phút.")
+        .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateCvDownloadUrl.GetAffiliateCandidateCvDownloadUrlResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
         var submissionsGroup = app.MapGroup("/api/v1/affiliates/submissions")
                                   .WithTags("Affiliate Submissions")
                                   .RequireAuthorization();

@@ -236,4 +236,29 @@ public class SubmissionRepository : ISubmissionRepository
                     .ToList()))
             .SingleOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<AffiliateCandidateCvAccessRecord?> GetAffiliateCandidateCvAccessAsync(
+        Guid userId,
+        Guid candidateId,
+        Guid cvId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.CandidateCvs
+            .AsNoTracking()
+            .Where(cv =>
+                cv.CvId == cvId &&
+                cv.CandidateId == candidateId &&
+                cv.Candidate.Status == "ACTIVE" &&
+                cv.Candidate.MergedIntoCandidateId == null &&
+                cv.CreationMethod == "AFFILIATE_UPLOAD" &&
+                cv.UploadedByUserId == userId &&
+                cv.Status == "ACTIVE" &&
+                cv.Submissions.Any(submission =>
+                    submission.SubmittedBy == userId && submission.Status == "ACCEPTED"))
+            .Select(cv => new AffiliateCandidateCvAccessRecord(
+                cv.CandidateId,
+                cv.CvId,
+                cv.FileName))
+            .SingleOrDefaultAsync(cancellationToken);
+    }
 }
