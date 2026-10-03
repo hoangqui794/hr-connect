@@ -89,6 +89,7 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             ClosedAt = null,
             CreatedAt = now,
             UpdatedAt = now,
+            ConcurrencyToken = Guid.NewGuid(),
             Visibility = request.Visibility.Trim().ToUpperInvariant(),
             StatusReason = null
         };
@@ -159,7 +160,8 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
                 Visibility = job.Visibility,
                 RequirementCount = job.JobRequirements.Count,
                 SkillCount = job.JobSkills.Count,
-                CreatedAt = job.CreatedAt
+                CreatedAt = job.CreatedAt,
+                ConcurrencyToken = job.ConcurrencyToken
             }
         };
     }

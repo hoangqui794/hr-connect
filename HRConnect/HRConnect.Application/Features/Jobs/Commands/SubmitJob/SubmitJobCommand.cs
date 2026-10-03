@@ -7,7 +7,7 @@ using MediatR;
 
 namespace HRConnect.Application.Features.Jobs.Commands.SubmitJob;
 
-public sealed class SubmitJobCommand : IRequest<JobActionResponse> { [JsonIgnore] public Guid JobId { get; set; } [JsonIgnore] public Guid UserId { get; set; } }
+public sealed class SubmitJobCommand : IRequest<JobActionResponse> { [JsonIgnore] public Guid JobId { get; set; } [JsonIgnore] public Guid UserId { get; set; } public Guid ConcurrencyToken { get; set; } }
 public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, JobActionResponse>
 {
     private readonly IJobRepository _jobs; private readonly ICompanyUserRepository _members; private readonly IUnitOfWork _uow;
@@ -15,6 +15,7 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
     public async Task<JobActionResponse> Handle(SubmitJobCommand request, CancellationToken ct)
     {
         var job = await JobHandlerGuards.GetOwnedJobAsync(_jobs, _members, request.JobId, request.UserId, ct);
+        JobTransitions.RequireCurrentToken(job, request.ConcurrencyToken);
         JobHandlerGuards.RequireStatus(job, JobStatuses.Draft, JobStatuses.Rejected);
         if (string.IsNullOrWhiteSpace(job.Title)) throw new BadRequestException("Tiêu đề công việc là bắt buộc trước khi gửi duyệt.");
         if (string.IsNullOrWhiteSpace(job.Description)) throw new BadRequestException("Mô tả công việc là bắt buộc trước khi gửi duyệt.");
