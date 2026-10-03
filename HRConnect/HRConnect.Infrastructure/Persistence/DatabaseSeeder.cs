@@ -132,6 +132,7 @@ public static class DatabaseSeeder
         ('affiliate.profile.update_own', 'affiliate_profile', 'update_own', 'Update own affiliate profile'),
         ('submission.create', 'submission', 'create', 'Submit a candidate and CV for a job'),
         ('submission.view_own', 'submission', 'view_own', 'View own submissions'),
+        ('referral.progress.view_own', 'affiliate_referral', 'view_own', 'View high-level progress of own referrals'),
         ('submission.consent.resend_own', 'submission_consent', 'resend_own', 'Resend consent request for own submission'),
         ('candidate_library.view_own', 'affiliate_candidate_library', 'view_own', 'View candidates and CV metadata in own affiliate library'),
         ('candidate_library.download_cv', 'affiliate_candidate_library', 'download_cv', 'Download CV from own affiliate candidate library'),
@@ -211,7 +212,7 @@ public static class DatabaseSeeder
     FROM public.role r
     JOIN public.permission p ON p.code IN (
         'job.view', 'notification.view_own', 'affiliate.profile.view_own', 'affiliate.profile.update_own',
-        'submission.create', 'submission.view_own', 'submission.consent.resend_own',
+        'submission.create', 'submission.view_own', 'referral.progress.view_own', 'submission.consent.resend_own',
         'candidate_library.view_own', 'candidate_library.download_cv',
         'attribution.view_own', 'dispute.create', 'dispute.view_own',
         'commission.view_own', 'payout.view_own', 'affiliate.performance.view_own'
