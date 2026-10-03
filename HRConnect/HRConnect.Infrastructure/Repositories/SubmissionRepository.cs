@@ -149,24 +149,26 @@ public class SubmissionRepository : ISubmissionRepository
                 (candidate.Phone != null && EF.Functions.ILike(candidate.Phone, pattern)));
         }
 
-        var projected = query.Select(candidate => new AffiliateCandidateLibraryRecord(
+        var projected = query.Select(candidate => new
+        {
             candidate.CandidateId,
             candidate.FullName,
             candidate.Email,
             candidate.Phone,
-            candidate.UserId.HasValue,
-            candidate.CandidateCvs.Count(cv =>
+            HasAccount = candidate.UserId.HasValue,
+            ActiveCvCount = candidate.CandidateCvs.Count(cv =>
                 cv.CreationMethod == "AFFILIATE_UPLOAD" &&
                 cv.UploadedByUserId == userId &&
                 cv.Status == "ACTIVE" &&
                 cv.Submissions.Any(submission =>
                     submission.SubmittedBy == userId && submission.Status == "ACCEPTED")),
-            candidate.Submissions.Count(submission =>
+            AcceptedSubmissionCount = candidate.Submissions.Count(submission =>
                 submission.SubmittedBy == userId && submission.Status == "ACCEPTED"),
-            candidate.Submissions
+            LastSubmittedAt = candidate.Submissions
                 .Where(submission => submission.SubmittedBy == userId && submission.Status == "ACCEPTED")
                 .Select(submission => (DateTime?)submission.SubmittedAt)
-                .Max()));
+                .Max()
+        });
 
         var totalCount = await projected.CountAsync(cancellationToken);
         var ascending = string.Equals(sortDirection, "asc", StringComparison.OrdinalIgnoreCase);
@@ -181,6 +183,15 @@ public class SubmissionRepository : ISubmissionRepository
         var items = await projected
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .Select(item => new AffiliateCandidateLibraryRecord(
+                item.CandidateId,
+                item.FullName,
+                item.Email,
+                item.Phone,
+                item.HasAccount,
+                item.ActiveCvCount,
+                item.AcceptedSubmissionCount,
+                item.LastSubmittedAt))
             .ToListAsync(cancellationToken);
 
         return (items, totalCount);
@@ -191,7 +202,7 @@ public class SubmissionRepository : ISubmissionRepository
         Guid candidateId,
         CancellationToken cancellationToken = default)
     {
-        return await _context.Candidates
+        var candidate = await _context.Candidates
             .AsNoTracking()
             .Where(candidate =>
                 candidate.CandidateId == candidateId &&
@@ -203,38 +214,70 @@ public class SubmissionRepository : ISubmissionRepository
                     cv.Status == "ACTIVE" &&
                     cv.Submissions.Any(submission =>
                         submission.SubmittedBy == userId && submission.Status == "ACCEPTED")))
-            .Select(candidate => new AffiliateCandidateLibraryDetailRecord(
+            .Select(candidate => new
+            {
                 candidate.CandidateId,
                 candidate.FullName,
                 candidate.Email,
                 candidate.Phone,
-                candidate.UserId.HasValue,
-                candidate.Submissions.Count(submission =>
-                    submission.SubmittedBy == userId && submission.Status == "ACCEPTED"),
-                candidate.CandidateCvs
-                    .Where(cv =>
-                        cv.CreationMethod == "AFFILIATE_UPLOAD" &&
-                        cv.UploadedByUserId == userId &&
-                        cv.Status == "ACTIVE" &&
-                        cv.Submissions.Any(submission =>
-                            submission.SubmittedBy == userId && submission.Status == "ACCEPTED"))
-                    .OrderByDescending(cv => cv.UpdatedAt)
-                    .Select(cv => new AffiliateCandidateCvRecord(
-                        cv.CvId,
-                        cv.Title,
-                        cv.FileName,
-                        cv.MimeType,
-                        cv.FileSizeBytes,
-                        cv.Status,
-                        cv.CreatedAt,
-                        cv.Submissions.Count(submission =>
-                            submission.SubmittedBy == userId && submission.Status == "ACCEPTED"),
-                        cv.Submissions
-                            .Where(submission => submission.SubmittedBy == userId && submission.Status == "ACCEPTED")
-                            .Select(submission => (DateTime?)submission.SubmittedAt)
-                            .Max()))
-                    .ToList()))
+                HasAccount = candidate.UserId.HasValue,
+                AcceptedSubmissionCount = candidate.Submissions.Count(submission =>
+                    submission.SubmittedBy == userId && submission.Status == "ACCEPTED")
+            })
             .SingleOrDefaultAsync(cancellationToken);
+
+        if (candidate is null)
+            return null;
+
+        var cvRows = await _context.CandidateCvs
+            .AsNoTracking()
+            .Where(cv =>
+                cv.CandidateId == candidateId &&
+                cv.CreationMethod == "AFFILIATE_UPLOAD" &&
+                cv.UploadedByUserId == userId &&
+                cv.Status == "ACTIVE" &&
+                cv.Submissions.Any(submission =>
+                    submission.SubmittedBy == userId && submission.Status == "ACCEPTED"))
+            .OrderByDescending(cv => cv.UpdatedAt)
+            .Select(cv => new
+            {
+                cv.CvId,
+                cv.Title,
+                cv.FileName,
+                cv.MimeType,
+                cv.FileSizeBytes,
+                cv.Status,
+                cv.CreatedAt,
+                AcceptedSubmissionCount = cv.Submissions.Count(submission =>
+                    submission.SubmittedBy == userId && submission.Status == "ACCEPTED"),
+                LastUsedAt = cv.Submissions
+                    .Where(submission => submission.SubmittedBy == userId && submission.Status == "ACCEPTED")
+                    .Select(submission => (DateTime?)submission.SubmittedAt)
+                    .Max()
+            })
+            .ToListAsync(cancellationToken);
+
+        var cvs = cvRows
+            .Select(cv => new AffiliateCandidateCvRecord(
+                cv.CvId,
+                cv.Title,
+                cv.FileName,
+                cv.MimeType,
+                cv.FileSizeBytes,
+                cv.Status,
+                cv.CreatedAt,
+                cv.AcceptedSubmissionCount,
+                cv.LastUsedAt))
+            .ToList();
+
+        return new AffiliateCandidateLibraryDetailRecord(
+            candidate.CandidateId,
+            candidate.FullName,
+            candidate.Email,
+            candidate.Phone,
+            candidate.HasAccount,
+            candidate.AcceptedSubmissionCount,
+            cvs);
     }
 
     public async Task<AffiliateCandidateCvAccessRecord?> GetAffiliateCandidateCvAccessAsync(
