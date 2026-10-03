@@ -18,6 +18,35 @@ public static class JobRequirementTypes
     public static readonly string[] All = [MustHave, ShouldHave];
 }
 
+public static class EmploymentTypes
+{
+    public const string FullTime = "FULL_TIME";
+    public const string PartTime = "PART_TIME";
+    public const string Contract = "CONTRACT";
+    public const string Internship = "INTERNSHIP";
+    public const string Freelance = "FREELANCE";
+
+    public static readonly string[] All = [FullTime, PartTime, Contract, Internship, Freelance];
+}
+
+public static class JobReasonCodes
+{
+    public const string DraftCreated = "DRAFT_CREATED";
+    public const string SubmittedForReview = "SUBMITTED_FOR_REVIEW";
+    public const string Approved = "APPROVED";
+    public const string RejectedIncompleteDescription = "REJECTED_INCOMPLETE_DESCRIPTION";
+    public const string RejectedIncompleteRequirements = "REJECTED_INCOMPLETE_REQUIREMENTS";
+    public const string RejectedOther = "REJECTED_OTHER";
+    public const string PausedByClient = "PAUSED_BY_CLIENT";
+    public const string ResumedByClient = "RESUMED_BY_CLIENT";
+    public const string ClosedPositionFilled = "CLOSED_POSITION_FILLED";
+    public const string ClosedByClient = "CLOSED_BY_CLIENT";
+    public const string ClosedOther = "CLOSED_OTHER";
+
+    public static readonly string[] RejectionCodes = [RejectedIncompleteDescription, RejectedIncompleteRequirements, RejectedOther];
+    public static readonly string[] CloseCodes = [ClosedPositionFilled, ClosedByClient, ClosedOther];
+}
+
 public static class JobVisibilities
 {
     public const string Public = "PUBLIC";

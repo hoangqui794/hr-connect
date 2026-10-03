@@ -1712,7 +1712,8 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.OldStatus)
                 .HasMaxLength(30)
                 .HasColumnName("old_status");
-            entity.Property(e => e.Reason).HasColumnName("reason");
+            entity.Property(e => e.ReasonCode).HasMaxLength(100).HasColumnName("reason_code");
+            entity.Property(e => e.ReasonText).HasMaxLength(2000).HasColumnName("reason_text");
 
             entity.HasOne(d => d.ChangedByNavigation).WithMany(p => p.JobStatusHistories)
                 .HasForeignKey(d => d.ChangedBy)

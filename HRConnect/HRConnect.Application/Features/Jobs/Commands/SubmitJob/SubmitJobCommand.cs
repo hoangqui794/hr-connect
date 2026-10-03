@@ -32,7 +32,7 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
         if (serviceTypeCode == null)
             throw new BadRequestException("Loại dịch vụ đã ngừng hoạt động nên Job không thể gửi duyệt.");
         JobHandlerGuards.RequireVisibilityAllowed(serviceTypeCode, job.Visibility);
-        JobTransitions.ChangeStatus(job, JobStatuses.PendingReview, request.UserId, "Submitted for review");
+        JobTransitions.ChangeStatus(job, JobStatuses.PendingReview, request.UserId, JobReasonCodes.SubmittedForReview);
         await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
         await _uow.SaveChangesAsync(ct);
         return new(true, "Gửi công việc xét duyệt thành công.", JobDto.From(job, includeStatusHistories: true));

@@ -677,9 +677,15 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(40)")
                         .HasColumnName("old_status");
 
-                    b.Property<string>("Reason")
-                        .HasColumnType("text")
-                        .HasColumnName("reason");
+                    b.Property<string>("ReasonCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reason_code");
+
+                    b.Property<string>("ReasonText")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("reason_text");
 
                     b.HasKey("ApplicationStatusHistoryId")
                         .HasName("application_status_history_pkey");
