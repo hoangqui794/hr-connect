@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -11,11 +12,13 @@ public class WithdrawApplicationCommandHandler : IRequestHandler<WithdrawApplica
 {
     private readonly IApplicationRepository _applicationRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogService _auditLogService;
 
-    public WithdrawApplicationCommandHandler(IApplicationRepository applicationRepository, IUnitOfWork unitOfWork)
+    public WithdrawApplicationCommandHandler(IApplicationRepository applicationRepository, IUnitOfWork unitOfWork, IAuditLogService auditLogService)
     {
         _applicationRepository = applicationRepository;
         _unitOfWork = unitOfWork;
+        _auditLogService = auditLogService;
     }
 
     public async Task<WithdrawApplicationResponse> Handle(WithdrawApplicationCommand request, CancellationToken cancellationToken)
@@ -89,6 +92,24 @@ public class WithdrawApplicationCommandHandler : IRequestHandler<WithdrawApplica
         });
 
         _applicationRepository.Update(application);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.ApplicationWithdrawn,
+            EntityType = "APPLICATION",
+            EntityId = application.ApplicationId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { status = oldStatus },
+            NewValues = new { status = application.Status, cancelledInterviewCount = cancelledCount, withdrawnOfferCount, hasReason = true }
+        }, cancellationToken);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.ApplicationStatusChanged,
+            EntityType = "APPLICATION",
+            EntityId = application.ApplicationId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { status = oldStatus },
+            NewValues = new { status = application.Status, sourceAction = AuditActions.ApplicationWithdrawn }
+        }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new WithdrawApplicationResponse(
