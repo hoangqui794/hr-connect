@@ -106,7 +106,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             throw new ConflictException("Candidate đã có hồ sơ được tiếp nhận cho công việc này.");
         }
 
-        var affiliate = await _affiliateRepository.GetByUserIdAsync(consent.Submission.SubmittedBy, cancellationToken);
+        var affiliate = await _affiliateRepository.GetByUserIdWithDetailsAsync(consent.Submission.SubmittedBy, cancellationToken);
         if (affiliate == null || !IsAffiliateEligible(affiliate))
         {
             await SetTerminalWithoutApplicationAsync(consent, "CANCELLED", "CANCELLED", request, now, cancellationToken);
@@ -304,9 +304,24 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
     private static string? Limit(string? value, int max) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Length <= max ? value : value[..max];
 
-    private static bool IsAffiliateEligible(HRConnect.Domain.Entities.AffiliateProfile affiliate) =>
-        string.Equals(affiliate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(affiliate.Status, "VERIFIED", StringComparison.OrdinalIgnoreCase);
+    private static bool IsAffiliateEligible(HRConnect.Domain.Entities.AffiliateProfile affiliate)
+    {
+        var profileIsEligible =
+            string.Equals(affiliate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(affiliate.Status, "VERIFIED", StringComparison.OrdinalIgnoreCase);
+        var user = affiliate.User;
+        if (!profileIsEligible ||
+            user == null ||
+            !string.Equals(user.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return user.UserRoleUsers.Any(userRole =>
+            string.Equals(userRole.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
+            userRole.Role.IsActive &&
+            string.Equals(userRole.Role.Code, JobAccessPolicy.AffiliateRole, StringComparison.OrdinalIgnoreCase));
+    }
 
     private static bool IsUniqueViolation(Exception exception)
     {

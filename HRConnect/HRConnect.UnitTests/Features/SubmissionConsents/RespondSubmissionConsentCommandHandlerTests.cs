@@ -32,8 +32,8 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         _consents.Setup(x => x.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(fixture.Consent);
         _submissions.Setup(x => x.GetAcceptedSubmissionAsync(fixture.Candidate.CandidateId, fixture.Job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync((Submission?)null);
         _applications.Setup(x => x.GetByCandidateAndJobAsync(fixture.Candidate.CandidateId, fixture.Job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync((JobApplication?)null);
-        _affiliates.Setup(x => x.GetByUserIdAsync(fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = fixture.Submission.SubmittedBy, Status = "ACTIVE" });
+        _affiliates.Setup(x => x.GetByUserIdWithDetailsAsync(fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateEligibleAffiliate(fixture.Submission.SubmittedBy));
 
         JobApplication? created = null;
         _unitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
@@ -111,13 +111,8 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
             .ReturnsAsync((Submission?)null);
         _applications.Setup(x => x.GetByCandidateAndJobAsync(fixture.Candidate.CandidateId, fixture.Job.JobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((JobApplication?)null);
-        _affiliates.Setup(x => x.GetByUserIdAsync(fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AffiliateProfile
-            {
-                AffiliateId = Guid.NewGuid(),
-                UserId = fixture.Submission.SubmittedBy,
-                Status = "ACTIVE"
-            });
+        _affiliates.Setup(x => x.GetByUserIdWithDetailsAsync(fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateEligibleAffiliate(fixture.Submission.SubmittedBy));
         _applications.Setup(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -142,10 +137,10 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         _consents.Setup(x => x.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(fixture.Consent);
         _submissions.Setup(x => x.GetAcceptedSubmissionAsync(fixture.Candidate.CandidateId, fixture.Job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync((Submission?)null);
         _applications.Setup(x => x.GetByCandidateAndJobAsync(fixture.Candidate.CandidateId, fixture.Job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync((JobApplication?)null);
-        _affiliates.Setup(x => x.GetByUserIdAsync(fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
+        _affiliates.Setup(x => x.GetByUserIdWithDetailsAsync(fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
             .ReturnsAsync(affiliateStatus == null
                 ? null
-                : new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = fixture.Submission.SubmittedBy, Status = affiliateStatus });
+                : CreateEligibleAffiliate(fixture.Submission.SubmittedBy, profileStatus: affiliateStatus));
 
         var action = () => Handler().Handle(new RespondSubmissionConsentCommand
         {
@@ -162,6 +157,47 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         _applications.Verify(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
         _attributions.Verify(x => x.AddAsync(It.IsAny<Attribution>(), It.IsAny<CancellationToken>()), Times.Never);
         _scoring.Verify(x => x.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Confirm_WhenAffiliateAppUserIsSuspended_CancelsSubmission()
+    {
+        var fixture = CreateConsent();
+        SetupPendingConfirmation(fixture);
+        _affiliates.Setup(x => x.GetByUserIdWithDetailsAsync(fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateEligibleAffiliate(fixture.Submission.SubmittedBy, userStatus: "SUSPENDED"));
+
+        var action = () => Handler().Handle(new RespondSubmissionConsentCommand
+        {
+            Token = "valid-token",
+            Decision = "CONFIRM",
+            RequesterUserId = fixture.Candidate.UserId
+        }, CancellationToken.None);
+
+        await AssertAffiliateRejectedAsync(action, fixture);
+    }
+
+    [Theory]
+    [InlineData("REVOKED", true)]
+    [InlineData("ACTIVE", false)]
+    public async Task Confirm_WhenAffiliateRoleIsNotActive_CancelsSubmission(string assignmentStatus, bool roleIsActive)
+    {
+        var fixture = CreateConsent();
+        SetupPendingConfirmation(fixture);
+        _affiliates.Setup(x => x.GetByUserIdWithDetailsAsync(fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateEligibleAffiliate(
+                fixture.Submission.SubmittedBy,
+                assignmentStatus: assignmentStatus,
+                roleIsActive: roleIsActive));
+
+        var action = () => Handler().Handle(new RespondSubmissionConsentCommand
+        {
+            Token = "valid-token",
+            Decision = "CONFIRM",
+            RequesterUserId = fixture.Candidate.UserId
+        }, CancellationToken.None);
+
+        await AssertAffiliateRejectedAsync(action, fixture);
     }
 
     [Theory]
@@ -186,8 +222,71 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         fixture.Consent.Status.Should().Be("CANCELLED");
         fixture.Submission.Status.Should().Be("CANCELLED");
         fixture.Cv.Status.Should().Be("ARCHIVED");
-        _affiliates.Verify(x => x.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _affiliates.Verify(x => x.GetByUserIdWithDetailsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _applications.Verify(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private void SetupPendingConfirmation(Fixture fixture)
+    {
+        _consents.Setup(x => x.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fixture.Consent);
+        _submissions.Setup(x => x.GetAcceptedSubmissionAsync(
+                fixture.Candidate.CandidateId, fixture.Job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Submission?)null);
+        _applications.Setup(x => x.GetByCandidateAndJobAsync(
+                fixture.Candidate.CandidateId, fixture.Job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((JobApplication?)null);
+    }
+
+    private async Task AssertAffiliateRejectedAsync(Func<Task> action, Fixture fixture)
+    {
+        await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("Affiliate đã bị khóa, chưa được phê duyệt hoặc không còn hoạt động*");
+        fixture.Consent.Status.Should().Be("CANCELLED");
+        fixture.Submission.Status.Should().Be("CANCELLED");
+        fixture.Cv.Status.Should().Be("ARCHIVED");
+        _applications.Verify(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
+        _attributions.Verify(x => x.AddAsync(It.IsAny<Attribution>(), It.IsAny<CancellationToken>()), Times.Never);
+        _scoring.Verify(x => x.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private static AffiliateProfile CreateEligibleAffiliate(
+        Guid userId,
+        string profileStatus = "ACTIVE",
+        string userStatus = "ACTIVE",
+        string assignmentStatus = "ACTIVE",
+        bool roleIsActive = true)
+    {
+        var role = new Role
+        {
+            RoleId = Guid.NewGuid(),
+            Code = "AFFILIATE_RECRUITER",
+            Name = "Affiliate Recruiter",
+            IsActive = roleIsActive
+        };
+        var user = new AppUser
+        {
+            UserId = userId,
+            Email = "affiliate@example.com",
+            PasswordHash = "hash",
+            Status = userStatus
+        };
+        user.UserRoleUsers.Add(new UserRole
+        {
+            UserId = userId,
+            RoleId = role.RoleId,
+            User = user,
+            Role = role,
+            Status = assignmentStatus,
+            AssignmentSource = "ADMIN"
+        });
+        return new AffiliateProfile
+        {
+            AffiliateId = Guid.NewGuid(),
+            UserId = userId,
+            Status = profileStatus,
+            User = user
+        };
     }
 
     private RespondSubmissionConsentCommandHandler Handler() => new(
