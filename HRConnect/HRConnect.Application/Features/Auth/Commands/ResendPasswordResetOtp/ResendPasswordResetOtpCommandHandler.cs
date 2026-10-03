@@ -121,16 +121,10 @@ public class ResendPasswordResetOtpCommandHandler : IRequestHandler<ResendPasswo
         try
         {
             var recipientName = string.IsNullOrWhiteSpace(user.DisplayName) ? "bạn" : user.DisplayName.Trim();
-            var bodyHtml = $@"
-                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
-                    <h2>HR Connect - Đặt lại mật khẩu</h2>
-                    <p>Xin chào <strong>{recipientName}</strong>,</p>
-                    <p>Mã OTP của bạn là <strong style='font-size: 28px; letter-spacing: 5px;'>{rawOtp}</strong>.</p>
-                    <p>Mã có hiệu lực trong {expirationMinutes} phút. Không chia sẻ mã này cho bất kỳ ai.</p>
-                </div>";
-
+            var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates.PasswordResetOtp(
+                recipientName, rawOtp, expirationMinutes, isResend: true);
             var emailResult = await _emailService.SendEmailAsync(
-                user.Email, "HR Connect - Mã xác thực đặt lại mật khẩu mới", bodyHtml, cancellationToken);
+                user.Email, email.Subject, email.HtmlBody, cancellationToken);
             if (!emailResult.IsSuccess)
             {
                 userToken.UsedAt = DateTime.UtcNow;
