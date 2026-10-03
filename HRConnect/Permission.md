@@ -68,6 +68,11 @@ VALUES
      'view_own',
      'View own job applications'),
 
+    ('application.withdraw_own',
+     'application',
+     'withdraw_own',
+     'Withdraw own job application'),
+
     ('interview.view_own',
      'interview',
      'view_own',
@@ -436,6 +441,7 @@ JOIN public.permission p
 
         'application.create',
         'application.view_own',
+        'application.withdraw_own',
 
         'interview.view_own',
 

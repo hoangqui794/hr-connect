@@ -123,6 +123,7 @@ public static class DatabaseSeeder
         ('cv.delete_own', 'candidate_cv', 'delete_own', 'Delete own CV'),
         ('application.create', 'application', 'create', 'Apply to a job'),
         ('application.view_own', 'application', 'view_own', 'View own job applications'),
+        ('application.withdraw_own', 'application', 'withdraw_own', 'Withdraw own job application'),
         ('interview.view_own', 'interview', 'view_own', 'View own interview schedule'),
         ('offer.view_own', 'offer', 'view_own', 'View own offers'),
         ('offer.respond', 'offer', 'respond', 'Accept or decline own offer'),
@@ -196,7 +197,7 @@ public static class DatabaseSeeder
     FROM public.role r
     JOIN public.permission p ON p.code IN (
         'job.view', 'notification.view_own', 'candidate.profile.view_own', 'candidate.profile.update_own',
-        'cv.create', 'cv.view_own', 'cv.update_own', 'cv.delete_own', 'application.create', 'application.view_own',
+        'cv.create', 'cv.view_own', 'cv.update_own', 'cv.delete_own', 'application.create', 'application.view_own', 'application.withdraw_own',
         'interview.view_own', 'offer.view_own', 'offer.respond', 'affiliate.apply'
     )
     WHERE r.code = 'CANDIDATE'

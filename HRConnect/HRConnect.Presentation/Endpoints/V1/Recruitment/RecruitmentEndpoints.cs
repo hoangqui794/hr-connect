@@ -6,6 +6,7 @@ using HRConnect.Application.Features.Recruitment.Commands.ConfirmPlannedStartDat
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmStartWork;
 using HRConnect.Application.Features.Recruitment.Commands.DecideBackupApplication;
 using HRConnect.Application.Features.Recruitment.Commands.MarkNotStarted;
+using HRConnect.Application.Features.Recruitment.Commands.WithdrawApplication;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplications;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationTimeline;
@@ -24,6 +25,7 @@ public static class RecruitmentEndpoints
     private const string ManageOfferPermission = "offer.manage";
     private const string PlacementConfirmPermission = "placement.confirm";
     private const string MarkNotStartedPermission = "application.mark_not_started";
+    private const string WithdrawOwnPermission = "application.withdraw_own";
 
     public static IEndpointRouteBuilder MapRecruitmentEndpoints(this IEndpointRouteBuilder app)
     {
@@ -208,8 +210,8 @@ public static class RecruitmentEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
 
-        // A04: PUT /api/v1/recruitment/applications/{id:guid}/decide-backup
-        group.MapPut("/applications/{id:guid}/decide-backup", async (
+        // A04: POST /api/v1/recruitment/applications/{id:guid}/backup-decision
+        group.MapPost("/applications/{id:guid}/backup-decision", async (
             Guid id,
             [FromBody] DecideBackupApplicationRequest request,
             [FromServices] ISender sender,
@@ -268,8 +270,62 @@ public static class RecruitmentEndpoints
         })
         .WithName("DecideBackupApplication")
         .WithSummary("Quyết định chọn hoặc xử lý ứng viên dự phòng (Backup candidate)")
-        .WithDescription("Dành cho Client Company HR / Admin hoặc Internal HR (quyền application.decide_backup). Kích hoạt ứng viên dự phòng bước vào quy trình phỏng vấn / tuyển dụng tiếp theo, từ chối hoặc tiếp tục giữ làm dự phòng.")
+        .WithDescription("Dành cho Client Company HR / Admin hoặc Internal HR (quyền application.decide_backup). Chọn ứng viên dự phòng chuyển hồ sơ sang OFFER_PENDING; có thể từ chối hoặc tiếp tục giữ làm dự phòng.")
         .Produces<DecideBackupApplicationResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
+        // A05: POST /api/v1/recruitment/applications/{applicationId:guid}/withdraw
+        group.MapPost("/applications/{applicationId:guid}/withdraw", async (
+            Guid applicationId,
+            [FromBody] WithdrawApplicationRequest request,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (!PermissionAuthorization.HasPermission(user, WithdrawOwnPermission))
+            {
+                return PermissionAuthorization.Forbidden(WithdrawOwnPermission);
+            }
+
+            try
+            {
+                var response = await sender.Send(new WithdrawApplicationCommand(
+                    applicationId,
+                    request.Reason,
+                    request.ConcurrencyToken,
+                    userId.Value), cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("WithdrawApplication")
+        .WithSummary("Ứng viên rút hồ sơ ứng tuyển của mình")
+        .Produces<WithdrawApplicationResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
@@ -336,7 +392,7 @@ public static class RecruitmentEndpoints
         })
         .WithName("CreateOfferDraft")
         .WithSummary("Tạo thư mời nhận việc bản nháp (Create Offer Draft)")
-        .WithDescription("Dành cho Client Company HR / Admin (offer.create) hoặc Internal HR / Admin (offer.manage). Tạo bản nháp thư mời nhận việc cho ứng viên khi hồ sơ đang ở trạng thái OFFER_PENDING hoặc hoàn thành các vòng phỏng vấn.")
+        .WithDescription("Dành cho Client Company HR / Admin (offer.create) hoặc Internal HR / Admin (offer.manage). Chỉ tạo bản nháp thư mời nhận việc khi hồ sơ đang ở trạng thái OFFER_PENDING.")
         .Produces<CreateOfferDraftResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -358,8 +414,7 @@ public static class RecruitmentEndpoints
                 return Results.Unauthorized();
             }
 
-            var isClient = PermissionAuthorization.HasPermission(user, PlacementConfirmPermission) ||
-                           PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
+            var isClient = PermissionAuthorization.HasPermission(user, PlacementConfirmPermission);
             var isInternal = PermissionAuthorization.HasPermission(user, "placement.manage") ||
                              PermissionAuthorization.HasPermission(user, ViewAllPermission);
             var isAdmin = user.IsInRole("PLATFORM_ADMIN");
@@ -406,7 +461,7 @@ public static class RecruitmentEndpoints
         })
         .WithName("ConfirmPlannedStartDate")
         .WithSummary("Cập nhật ngày dự kiến nhận việc (Confirm Planned Start Date)")
-        .WithDescription("Dành cho Client Company HR / Admin (placement.confirm hoặc application.view_company) hoặc Internal HR / Admin (placement.manage hoặc application.view). Cập nhật ngày dự kiến nhận việc cho ứng viên.")
+        .WithDescription("Dành cho Client Company HR / Admin (placement.confirm) hoặc Internal HR / Admin (placement.manage hoặc application.view). Chỉ cập nhật ngày dự kiến nhận việc khi hồ sơ đã ở trạng thái OFFER_ACCEPTED.")
         .Produces<ConfirmPlannedStartDateResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -620,5 +675,11 @@ public class MarkNotStartedRequest
 {
     public string Reason { get; set; } = string.Empty;
     public Guid? ExpectedApplicationVersion { get; set; }
+    public Guid? ConcurrencyToken { get; set; }
+}
+
+public class WithdrawApplicationRequest
+{
+    public string? Reason { get; set; }
     public Guid? ConcurrencyToken { get; set; }
 }
