@@ -35,6 +35,11 @@ public interface ISubmissionRepository
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
+
+    Task<AffiliateCandidateLibraryDetailRecord?> GetAffiliateCandidateLibraryDetailAsync(
+        Guid userId,
+        Guid candidateId,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record AffiliateCandidateLibraryRecord(
@@ -46,3 +51,23 @@ public sealed record AffiliateCandidateLibraryRecord(
     int ActiveCvCount,
     int AcceptedSubmissionCount,
     DateTime? LastSubmittedAt);
+
+public sealed record AffiliateCandidateLibraryDetailRecord(
+    Guid CandidateId,
+    string FullName,
+    string? Email,
+    string? Phone,
+    bool HasAccount,
+    int AcceptedSubmissionCount,
+    IReadOnlyList<AffiliateCandidateCvRecord> Cvs);
+
+public sealed record AffiliateCandidateCvRecord(
+    Guid CvId,
+    string Title,
+    string? FileName,
+    string? MimeType,
+    long? FileSizeBytes,
+    string Status,
+    DateTime CreatedAt,
+    int AcceptedSubmissionCount,
+    DateTime? LastUsedAt);

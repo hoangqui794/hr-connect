@@ -279,6 +279,42 @@ public static class AffiliateEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden);
 
+        candidateLibraryGroup.MapGet("/{candidateId:guid}", async (
+            Guid candidateId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null) return Results.Unauthorized();
+            if (!PermissionAuthorization.HasPermission(user, "submission.view_own"))
+                return PermissionAuthorization.Forbidden("submission.view_own");
+
+            try
+            {
+                var result = await sender.Send(
+                    new HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateLibraryDetail.GetAffiliateCandidateLibraryDetailQuery(
+                        userId.Value, candidateId),
+                    cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetAffiliateCandidateLibraryDetail")
+        .WithSummary("Xem Candidate và các CV trong kho của Affiliate")
+        .WithDescription("Yêu cầu permission submission.view_own. Chỉ trả CV ACTIVE do chính Affiliate tải và đã được Candidate xác nhận. Không trả URL lưu trữ hoặc signed URL trong response này.")
+        .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateLibraryDetail.GetAffiliateCandidateLibraryDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
         var submissionsGroup = app.MapGroup("/api/v1/affiliates/submissions")
                                   .WithTags("Affiliate Submissions")
                                   .RequireAuthorization();
