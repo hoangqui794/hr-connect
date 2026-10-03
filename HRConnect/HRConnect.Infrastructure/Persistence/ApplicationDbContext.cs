@@ -1562,6 +1562,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
             entity.Property(e => e.CurrencyCode)
                 .HasMaxLength(3)
                 .HasDefaultValueSql("'VND'::bpchar")

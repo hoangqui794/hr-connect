@@ -105,4 +105,7 @@ public class CreateJobData
     public int SkillCount { get; set; }
 
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>Token phải được gửi lại khi cập nhật hoặc đổi trạng thái Job.</summary>
+    public Guid ConcurrencyToken { get; set; }
 }

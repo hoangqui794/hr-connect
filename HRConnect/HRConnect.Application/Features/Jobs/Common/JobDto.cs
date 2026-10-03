@@ -18,7 +18,7 @@ public sealed record JobDto(
     int? MinExperienceYears, int? MaxExperienceYears,
     string CurrencyCode, int Quantity,
     string Status, string Visibility, string? StatusReason, DateTime? PostedAt,
-    DateTime? ClosedAt, DateTime CreatedAt, DateTime UpdatedAt,
+    DateTime? ClosedAt, DateTime CreatedAt, DateTime UpdatedAt, Guid ConcurrencyToken,
     IReadOnlyList<JobRequirementDto> Requirements,
     IReadOnlyList<JobSkillDto> Skills,
     IReadOnlyList<JobStatusHistoryDto> StatusHistories)
@@ -29,7 +29,7 @@ public sealed record JobDto(
         job.SalaryMin, job.SalaryMax, job.SalaryNegotiable, job.SalaryNote,
         job.MinExperienceYears, job.MaxExperienceYears,
         job.CurrencyCode.Trim(), job.Quantity, job.Status, job.Visibility, job.StatusReason,
-        job.PostedAt, job.ClosedAt, job.CreatedAt, job.UpdatedAt,
+        job.PostedAt, job.ClosedAt, job.CreatedAt, job.UpdatedAt, job.ConcurrencyToken,
         job.JobRequirements.OrderBy(x => x.CreatedAt).Select(x => new JobRequirementDto(
             x.RequirementId, x.RequirementType, x.Category, x.Content, x.Weight)).ToList(),
         job.JobSkills.OrderBy(x => x.SkillId).Select(x => new JobSkillDto(
@@ -85,6 +85,7 @@ public static class JobTransitions
         job.Status = newStatus;
         job.StatusReason = reasonText;
         job.UpdatedAt = now;
+        job.ConcurrencyToken = Guid.NewGuid();
         job.JobStatusHistories.Add(new JobStatusHistory
         {
             JobStatusHistoryId = Guid.NewGuid(),
@@ -96,5 +97,11 @@ public static class JobTransitions
             ReasonText = reasonText,
             ChangedAt = now
         });
+    }
+
+    public static void RequireCurrentToken(Job job, Guid token)
+    {
+        if (token != job.ConcurrencyToken)
+            throw new ConflictException("Job đã được thay đổi bởi người dùng khác. Hãy tải lại dữ liệu và thử lại.");
     }
 }

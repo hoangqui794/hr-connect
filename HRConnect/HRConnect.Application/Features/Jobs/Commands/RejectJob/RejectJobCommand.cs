@@ -7,7 +7,7 @@ using MediatR;
 
 namespace HRConnect.Application.Features.Jobs.Commands.RejectJob;
 
-public sealed class RejectJobCommand : IRequest<JobActionResponse> { [JsonIgnore] public Guid JobId { get; set; } [JsonIgnore] public Guid UserId { get; set; } public string ReasonCode { get; set; } = string.Empty; public string ReasonText { get; set; } = string.Empty; }
+public sealed class RejectJobCommand : IRequest<JobActionResponse> { [JsonIgnore] public Guid JobId { get; set; } [JsonIgnore] public Guid UserId { get; set; } public Guid ConcurrencyToken { get; set; } public string ReasonCode { get; set; } = string.Empty; public string ReasonText { get; set; } = string.Empty; }
 public sealed class RejectJobCommandValidator : AbstractValidator<RejectJobCommand>
 {
     public RejectJobCommandValidator()
@@ -23,6 +23,7 @@ public sealed class RejectJobCommandHandler : IRequestHandler<RejectJobCommand, 
     public async Task<JobActionResponse> Handle(RejectJobCommand request, CancellationToken ct)
     {
         var job = await JobHandlerGuards.GetJobAsync(_jobs, request.JobId, ct); JobHandlerGuards.RequireStatus(job, JobStatuses.PendingReview);
+        JobTransitions.RequireCurrentToken(job, request.ConcurrencyToken);
         JobTransitions.ChangeStatus(job, JobStatuses.Rejected, request.UserId, request.ReasonCode.Trim().ToUpperInvariant(), request.ReasonText.Trim());
         await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
         await _uow.SaveChangesAsync(ct);

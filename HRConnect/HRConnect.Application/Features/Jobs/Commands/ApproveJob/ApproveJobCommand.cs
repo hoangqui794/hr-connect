@@ -6,7 +6,7 @@ using MediatR;
 
 namespace HRConnect.Application.Features.Jobs.Commands.ApproveJob;
 
-public sealed class ApproveJobCommand : IRequest<JobActionResponse> { [JsonIgnore] public Guid JobId { get; set; } [JsonIgnore] public Guid UserId { get; set; } }
+public sealed class ApproveJobCommand : IRequest<JobActionResponse> { [JsonIgnore] public Guid JobId { get; set; } [JsonIgnore] public Guid UserId { get; set; } public Guid ConcurrencyToken { get; set; } }
 public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand, JobActionResponse>
 {
     private readonly IJobRepository _jobs; private readonly IUnitOfWork _uow;
@@ -14,6 +14,7 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
     public async Task<JobActionResponse> Handle(ApproveJobCommand request, CancellationToken ct)
     {
         var job = await JobHandlerGuards.GetJobAsync(_jobs, request.JobId, ct);
+        JobTransitions.RequireCurrentToken(job, request.ConcurrencyToken);
         JobHandlerGuards.RequireStatus(job, JobStatuses.PendingReview);
         JobTransitions.ChangeStatus(job, JobStatuses.Active, request.UserId, JobReasonCodes.Approved);
         await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
