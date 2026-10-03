@@ -40,6 +40,35 @@ public class SubmitCandidateCommandValidatorTests
         _validator.Validate(command).IsValid.Should().BeTrue();
     }
 
+    [Fact]
+    public void Validate_WhenReusingCandidateFromLibrary_IsValidWithoutIdentityFields()
+    {
+        var command = new SubmitCandidateCommand
+        {
+            JobId = Guid.NewGuid(),
+            CandidateId = Guid.NewGuid(),
+            CvId = Guid.NewGuid()
+        };
+
+        _validator.Validate(command).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_WhenLibraryReuseAlsoUploadsFile_IsInvalid()
+    {
+        var command = new SubmitCandidateCommand
+        {
+            JobId = Guid.NewGuid(),
+            CandidateId = Guid.NewGuid(),
+            CvId = Guid.NewGuid(),
+            FileStream = new MemoryStream([1]),
+            FileName = "cv.pdf",
+            FileSizeBytes = 1
+        };
+
+        _validator.Validate(command).IsValid.Should().BeFalse();
+    }
+
     private static SubmitCandidateCommand ValidCommand() => new()
     {
         JobId = Guid.NewGuid(),

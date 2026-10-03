@@ -1142,4 +1142,107 @@ public class SubmitCandidateCommandHandlerTests
             repository => repository.AddAsync(It.IsAny<Submission>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
+
+    [Fact]
+    public async Task Handle_WhenReusingCandidateFromLibrary_UsesPersistedIdentityAndCv()
+    {
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var cvId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        _affiliateProfileRepositoryMock.Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
+        _jobRepositoryMock.Setup(repository => repository.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job
+            {
+                JobId = jobId,
+                ServiceTypeId = serviceTypeId,
+                Status = JobStatuses.Active,
+                Visibility = JobVisibilities.Public
+            });
+        _jobRepositoryMock.Setup(repository => repository.CanAnyRoleSubmitJobAsync(
+                serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _submissionRepositoryMock.Setup(repository => repository.GetAffiliateCandidateCvAccessAsync(
+                userId, candidateId, cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateCandidateCvAccessRecord(candidateId, cvId, "library.pdf"));
+        _candidateRepositoryMock.Setup(repository => repository.GetByIdAsync(candidateId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate
+            {
+                CandidateId = candidateId,
+                FullName = "Persisted Candidate",
+                Email = "persisted@example.com",
+                NormalizedEmail = "persisted@example.com",
+                Status = "ACTIVE"
+            });
+
+        Submission? createdSubmission = null;
+        _submissionRepositoryMock.Setup(repository => repository.AddAsync(It.IsAny<Submission>(), It.IsAny<CancellationToken>()))
+            .Callback<Submission, CancellationToken>((submission, _) => createdSubmission = submission)
+            .Returns(Task.CompletedTask);
+
+        var result = await _handler.Handle(new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            CandidateId = candidateId,
+            CvId = cvId,
+            FullName = "Tampered Name",
+            Email = "tampered@example.com",
+            RoleCodes = [JobAccessPolicy.AffiliateRole]
+        }, CancellationToken.None);
+
+        result.Data!.CandidateId.Should().Be(candidateId);
+        result.Data.CvId.Should().Be(cvId);
+        createdSubmission.Should().NotBeNull();
+        createdSubmission!.CandidateId.Should().Be(candidateId);
+        createdSubmission.CvId.Should().Be(cvId);
+        _emailServiceMock.Verify(service => service.SendEmailAsync(
+            "persisted@example.com", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        _candidateCvRepositoryMock.Verify(repository => repository.GetByIdAsync(
+            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _cvStorageServiceMock.Verify(service => service.UploadAffiliateCvPdfAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(),
+            It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidateCvIsNotInAffiliateLibrary_ThrowsNotFound()
+    {
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var cvId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        _affiliateProfileRepositoryMock.Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
+        _jobRepositoryMock.Setup(repository => repository.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job
+            {
+                JobId = jobId,
+                ServiceTypeId = serviceTypeId,
+                Status = JobStatuses.Active,
+                Visibility = JobVisibilities.Public
+            });
+        _jobRepositoryMock.Setup(repository => repository.CanAnyRoleSubmitJobAsync(
+                serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _submissionRepositoryMock.Setup(repository => repository.GetAffiliateCandidateCvAccessAsync(
+                userId, candidateId, cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AffiliateCandidateCvAccessRecord?)null);
+
+        var action = () => _handler.Handle(new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            CandidateId = candidateId,
+            CvId = cvId,
+            RoleCodes = [JobAccessPolicy.AffiliateRole]
+        }, CancellationToken.None);
+
+        await action.Should().ThrowAsync<NotFoundException>();
+        _submissionRepositoryMock.Verify(repository => repository.AddAsync(
+            It.IsAny<Submission>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
