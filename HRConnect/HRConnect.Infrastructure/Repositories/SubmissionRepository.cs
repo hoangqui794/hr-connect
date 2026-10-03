@@ -118,4 +118,71 @@ public class SubmissionRepository : ISubmissionRepository
             .Include(s => s.Consent)
             .FirstOrDefaultAsync(s => s.SubmissionId == submissionId, cancellationToken);
     }
+
+    public async Task<(IReadOnlyList<AffiliateCandidateLibraryRecord> Items, int TotalCount)> GetAffiliateCandidateLibraryAsync(
+        Guid userId,
+        string? search,
+        string sortBy,
+        string sortDirection,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Candidates
+            .AsNoTracking()
+            .Where(candidate =>
+                candidate.Status == "ACTIVE" &&
+                candidate.MergedIntoCandidateId == null &&
+                candidate.CandidateCvs.Any(cv =>
+                    cv.CreationMethod == "AFFILIATE_UPLOAD" &&
+                    cv.UploadedByUserId == userId &&
+                    cv.Status == "ACTIVE" &&
+                    cv.Submissions.Any(submission =>
+                        submission.SubmittedBy == userId && submission.Status == "ACCEPTED")));
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var pattern = $"%{search.Trim()}%";
+            query = query.Where(candidate =>
+                EF.Functions.ILike(candidate.FullName, pattern) ||
+                (candidate.Email != null && EF.Functions.ILike(candidate.Email, pattern)) ||
+                (candidate.Phone != null && EF.Functions.ILike(candidate.Phone, pattern)));
+        }
+
+        var projected = query.Select(candidate => new AffiliateCandidateLibraryRecord(
+            candidate.CandidateId,
+            candidate.FullName,
+            candidate.Email,
+            candidate.Phone,
+            candidate.UserId.HasValue,
+            candidate.CandidateCvs.Count(cv =>
+                cv.CreationMethod == "AFFILIATE_UPLOAD" &&
+                cv.UploadedByUserId == userId &&
+                cv.Status == "ACTIVE" &&
+                cv.Submissions.Any(submission =>
+                    submission.SubmittedBy == userId && submission.Status == "ACCEPTED")),
+            candidate.Submissions.Count(submission =>
+                submission.SubmittedBy == userId && submission.Status == "ACCEPTED"),
+            candidate.Submissions
+                .Where(submission => submission.SubmittedBy == userId && submission.Status == "ACCEPTED")
+                .Select(submission => (DateTime?)submission.SubmittedAt)
+                .Max()));
+
+        var totalCount = await projected.CountAsync(cancellationToken);
+        var ascending = string.Equals(sortDirection, "asc", StringComparison.OrdinalIgnoreCase);
+        projected = string.Equals(sortBy, "candidateName", StringComparison.OrdinalIgnoreCase)
+            ? ascending
+                ? projected.OrderBy(item => item.FullName).ThenBy(item => item.CandidateId)
+                : projected.OrderByDescending(item => item.FullName).ThenBy(item => item.CandidateId)
+            : ascending
+                ? projected.OrderBy(item => item.LastSubmittedAt).ThenBy(item => item.CandidateId)
+                : projected.OrderByDescending(item => item.LastSubmittedAt).ThenBy(item => item.CandidateId);
+
+        var items = await projected
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
 }

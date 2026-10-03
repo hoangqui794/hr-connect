@@ -230,6 +230,55 @@ public static class AffiliateEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
+        var candidateLibraryGroup = app.MapGroup("/api/v1/affiliates/candidates")
+            .WithTags("Affiliate Candidate Library")
+            .RequireAuthorization();
+
+        candidateLibraryGroup.MapGet("/", async (
+            ClaimsPrincipal user,
+            [FromQuery] string? search,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
+            [FromQuery] string? sortBy,
+            [FromQuery] string? sortDirection,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null) return Results.Unauthorized();
+            if (!PermissionAuthorization.HasPermission(user, "submission.view_own"))
+                return PermissionAuthorization.Forbidden("submission.view_own");
+
+            try
+            {
+                var result = await sender.Send(
+                    new HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateLibrary.GetAffiliateCandidateLibraryQuery(
+                        userId.Value,
+                        search,
+                        page ?? 1,
+                        pageSize ?? 20,
+                        sortBy ?? "lastSubmittedAt",
+                        sortDirection ?? "desc"),
+                    cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetAffiliateCandidateLibrary")
+        .WithSummary("Lấy kho Candidate/CV của Affiliate")
+        .WithDescription("Yêu cầu permission submission.view_own. Chỉ trả Candidate có CV ACTIVE do chính Affiliate tải và đã từng được Candidate xác nhận trong một Submission ACCEPTED.")
+        .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateLibrary.GetAffiliateCandidateLibraryResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden);
+
         var submissionsGroup = app.MapGroup("/api/v1/affiliates/submissions")
                                   .WithTags("Affiliate Submissions")
                                   .RequireAuthorization();

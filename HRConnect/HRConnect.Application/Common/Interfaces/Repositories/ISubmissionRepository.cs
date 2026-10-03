@@ -26,4 +26,23 @@ public interface ISubmissionRepository
         CancellationToken cancellationToken = default);
 
     Task<Submission?> GetByIdWithDetailsAsync(Guid submissionId, CancellationToken cancellationToken = default);
+
+    Task<(IReadOnlyList<AffiliateCandidateLibraryRecord> Items, int TotalCount)> GetAffiliateCandidateLibraryAsync(
+        Guid userId,
+        string? search,
+        string sortBy,
+        string sortDirection,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 }
+
+public sealed record AffiliateCandidateLibraryRecord(
+    Guid CandidateId,
+    string FullName,
+    string? Email,
+    string? Phone,
+    bool HasAccount,
+    int ActiveCvCount,
+    int AcceptedSubmissionCount,
+    DateTime? LastSubmittedAt);
