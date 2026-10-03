@@ -23,6 +23,7 @@ public class AiResultCallbackProcessorTests
         result.MatchScore.Should().Be(82m);
         result.MatchTier.Should().Be("HIGH");
         result.ModelVersion.Should().Be("BAAI/bge-m3");
+        result.NextAttemptAt.Should().BeNull();
         result.RawResponse.Should().NotContain("structuredCvData");
         result.RawResponse.Should().NotContain("private@example.com");
         (await db.CandidateCvs.SingleAsync()).ParsedData.Should().Contain("private@example.com");
@@ -78,6 +79,7 @@ public class AiResultCallbackProcessorTests
         result.Status.Should().Be("FAILED");
         result.FailureCode.Should().Be("OCR_FAILED");
         result.ErrorMessage.Should().Be("Unable to read CV");
+        result.NextAttemptAt.Should().BeNull();
         (await db.AuditLogs.SingleAsync()).Action.Should().Be("AI_SCORING_FAILED");
     }
 
@@ -129,6 +131,7 @@ public class AiResultCallbackProcessorTests
             ExternalReference = fixture.RequestId.ToString(),
             Status = "PROCESSING",
             RequestedAt = DateTime.UtcNow,
+            NextAttemptAt = DateTime.UtcNow.AddMinutes(5),
             Application = application
         });
         db.MatchTierConfigs.Add(new MatchTierConfig

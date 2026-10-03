@@ -143,7 +143,7 @@ public static class InternalHrEndpoints
         })
         .WithName("RetryAiScoring")
         .WithSummary("Yêu cầu AI chấm lại một hồ sơ thất bại")
-        .WithDescription("Chỉ Internal HR hoặc Platform Admin có quyền mới được tạo lượt chấm AI mới cho Application có attempt gần nhất FAILED. Không tạo Submission hoặc CV mới.")
+        .WithDescription("MF02 tự gửi lại theo lịch chờ tăng dần và chuyển attempt sang FAILED khi hết giới hạn. Sau đó, chỉ Internal HR hoặc Platform Admin có quyền mới được tạo một attempt chấm AI mới. Không tạo Submission hoặc CV mới.")
         .Produces<RetryAiScoringResponse>(StatusCodes.Status202Accepted)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)

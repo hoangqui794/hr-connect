@@ -344,6 +344,9 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => new { e.ApplicationId, e.AttemptNo }, "idx_ai_match_application").IsDescending(false, true);
 
+            entity.HasIndex(e => new { e.Status, e.NextAttemptAt }, "idx_ai_match_result_pending_dispatch")
+                .HasFilter("status = 'PENDING'");
+
             entity.Property(e => e.MatchResultId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("match_result_id");
@@ -386,6 +389,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("requested_at");
             entity.Property(e => e.ProcessingStartedAt).HasColumnName("processing_started_at");
             entity.Property(e => e.LastDispatchedAt).HasColumnName("last_dispatched_at");
+            entity.Property(e => e.NextAttemptAt).HasColumnName("next_attempt_at");
             entity.Property(e => e.ShouldHaveResult)
                 .HasColumnType("jsonb")
                 .HasColumnName("should_have_result");

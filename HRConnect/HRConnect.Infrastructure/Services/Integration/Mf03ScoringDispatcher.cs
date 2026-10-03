@@ -58,15 +58,18 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
         var processingTimeout = _settings.ProcessingTimeoutSeconds > 0
             ? TimeSpan.FromSeconds(Math.Max(30, _settings.ProcessingTimeoutSeconds))
             : TimeSpan.FromMinutes(Math.Max(1, _settings.ProcessingTimeoutMinutes));
-        var timeoutAt = DateTime.UtcNow.Subtract(processingTimeout);
+        var now = DateTime.UtcNow;
+        var timeoutAt = now.Subtract(processingTimeout);
+        var maxDispatchAttempts = Mf03RetryPolicy.NormalizeMaxAttempts(_settings.MaxDispatchAttempts);
 
         var jobs = await db.AiMatchResults
             .Include(result => result.Application)
             .ThenInclude(application => application.Submission)
-            .Where(result => result.Status == "PENDING" ||
+            .Where(result => (result.Status == "PENDING" &&
+                    (result.NextAttemptAt == null || result.NextAttemptAt <= now)) ||
                 (result.Status == "PROCESSING" &&
                     (result.LastDispatchedAt ?? result.ProcessingStartedAt ?? result.RequestedAt) < timeoutAt))
-            .OrderBy(result => result.RequestedAt)
+            .OrderBy(result => result.NextAttemptAt ?? result.RequestedAt)
             .Take(Math.Clamp(_settings.BatchSize, 1, 100))
             .ToListAsync(cancellationToken);
 
@@ -81,11 +84,33 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
                 job.Status = "FAILED";
                 job.FailureCode = "ACCEPTED_SUBMISSION_MISSING";
                 job.ErrorMessage = "Accepted submission is missing for this application.";
+                job.NextAttemptAt = null;
                 job.CompletedAt = DateTime.UtcNow;
                 db.AuditLogs.Add(CreateSystemAudit(job, "AI_SCORING_FAILED", previousStatus));
+                await db.SaveChangesAsync(cancellationToken);
                 _logger.LogError(
                     "MF-03 request {RequestId} failed because ApplicationId={ApplicationId} has no accepted submission.",
                     job.ExternalReference, job.ApplicationId);
+                continue;
+            }
+
+            if (job.DispatchCount >= maxDispatchAttempts)
+            {
+                var previousStatus = job.Status;
+                job.Status = "FAILED";
+                job.FailureCode = previousStatus == "PROCESSING"
+                    ? "MF03_PROCESSING_TIMEOUT_RETRY_EXHAUSTED"
+                    : "MF03_DISPATCH_RETRY_EXHAUSTED";
+                job.ErrorMessage = previousStatus == "PROCESSING"
+                    ? $"MF-03 did not complete after {job.DispatchCount} dispatch attempts."
+                    : $"MF-03 could not be reached after {job.DispatchCount} dispatch attempts.";
+                job.NextAttemptAt = null;
+                job.CompletedAt = DateTime.UtcNow;
+                db.AuditLogs.Add(CreateSystemAudit(job, "AI_SCORING_FAILED", previousStatus));
+                await db.SaveChangesAsync(cancellationToken);
+                _logger.LogError(
+                    "MF-03 request {RequestId} exhausted {DispatchCount} dispatch attempts and was marked FAILED ({FailureCode}).",
+                    job.ExternalReference, job.DispatchCount, job.FailureCode);
                 continue;
             }
 
@@ -105,9 +130,11 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
                 // Persist the claim before enqueueing. A fast MF-03 callback must
                 // never be overwritten by a later, tracked PROCESSING update.
                 job.Status = "PROCESSING";
-                job.ProcessingStartedAt ??= DateTime.UtcNow;
+                job.ProcessingStartedAt = DateTime.UtcNow;
                 job.LastDispatchedAt = DateTime.UtcNow;
                 job.DispatchCount += 1;
+                job.NextAttemptAt = null;
+                job.CompletedAt = null;
                 job.FailureCode = null;
                 job.ErrorMessage = null;
                 await db.SaveChangesAsync(cancellationToken);
@@ -130,14 +157,46 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
                     _logger.LogWarning(ex, "MF-03 dispatch {RequestId} failed after its state changed to {Status}; leaving the newer state intact.", requestId, job.Status);
                     continue;
                 }
-                job.Status = "PENDING";
-                job.ErrorMessage = ex.Message.Length <= 2000 ? ex.Message : ex.Message[..2000];
+
+                var failureMessage = ex.Message.Length <= 2000 ? ex.Message : ex.Message[..2000];
+                if (job.DispatchCount >= maxDispatchAttempts)
+                {
+                    job.Status = "FAILED";
+                    job.FailureCode = "MF03_DISPATCH_RETRY_EXHAUSTED";
+                    job.ErrorMessage = failureMessage;
+                    job.NextAttemptAt = null;
+                    job.CompletedAt = DateTime.UtcNow;
+                    db.AuditLogs.Add(CreateSystemAudit(job, "AI_SCORING_FAILED", "PROCESSING"));
+                    _logger.LogError(
+                        ex,
+                        "MF-03 dispatch {RequestId} exhausted {DispatchCount} attempts and was marked FAILED.",
+                        requestId,
+                        job.DispatchCount);
+                }
+                else
+                {
+                    var retryDelay = Mf03RetryPolicy.CalculateDelay(
+                        job.DispatchCount,
+                        _settings.InitialRetryDelaySeconds,
+                        _settings.MaxRetryDelaySeconds);
+                    job.Status = "PENDING";
+                    job.ProcessingStartedAt = null;
+                    job.FailureCode = "MF03_DISPATCH_FAILED";
+                    job.ErrorMessage = failureMessage;
+                    job.NextAttemptAt = DateTime.UtcNow.Add(retryDelay);
+                    db.AuditLogs.Add(CreateSystemAudit(job, "AI_SCORING_RETRY_SCHEDULED", "PROCESSING"));
+                    _logger.LogWarning(
+                        ex,
+                        "Could not dispatch MF-03 request {RequestId}; retry {NextAttemptNumber}/{MaxAttempts} is scheduled at {NextAttemptAt}.",
+                        requestId,
+                        job.DispatchCount + 1,
+                        maxDispatchAttempts,
+                        job.NextAttemptAt);
+                }
+
                 await db.SaveChangesAsync(cancellationToken);
-                _logger.LogWarning(ex, "Could not dispatch MF-03 request {RequestId}; it remains pending.", requestId);
             }
         }
-
-        await db.SaveChangesAsync(cancellationToken);
     }
 
     private static AuditLog CreateSystemAudit(AiMatchResult result, string action, string previousStatus)
@@ -153,7 +212,9 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
             {
                 status = result.Status,
                 attemptNo = result.AttemptNo,
-                failureCode = result.FailureCode
+                failureCode = result.FailureCode,
+                dispatchCount = result.DispatchCount,
+                nextAttemptAt = result.NextAttemptAt
             }),
             CorrelationId = correlationId,
             CreatedAt = DateTime.UtcNow

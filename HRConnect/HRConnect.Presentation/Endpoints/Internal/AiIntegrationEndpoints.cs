@@ -85,6 +85,7 @@ public static class AiIntegrationEndpoints
                     item.ProcessingStartedAt,
                     item.LastDispatchedAt,
                     item.DispatchCount,
+                    item.NextAttemptAt,
                     item.CompletedAt
                 })
                 .FirstOrDefaultAsync(ct);
@@ -226,6 +227,7 @@ public static class AiResultCallbackProcessor
             result.ModelVersion = payload.ModelVersion;
             result.FailureCode = null;
             result.ErrorMessage = null;
+            result.NextAttemptAt = null;
             result.CompletedAt = DateTime.UtcNow;
 
             if (payload.StructuredCvData.HasValue)
@@ -244,6 +246,7 @@ public static class AiResultCallbackProcessor
             result.ErrorMessage = payload.ErrorMessage;
             result.ModelVersion = payload.ModelVersion;
             result.RawResponse = SerializeSafeCallback(payload);
+            result.NextAttemptAt = null;
             result.CompletedAt = DateTime.UtcNow;
         }
         else
