@@ -57,6 +57,70 @@ def test_unknown_conjunct_is_not_silently_discarded():
     assert any("welding" in value.lower() for value in result.missing_evidence)
 
 
+def test_measured_performance_rejects_completion_percentage_and_prefers_capacity():
+    result = evaluate(
+        "Direct backend and client performance optimization with measurable improvement "
+        "in response time, user experience, or system capacity",
+        "Built 80% of core system modules.\n"
+        "Engineered high throughput data processing pipelines handling 1M+ daily records "
+        "using database partitioning and optimized indexing.",
+    )
+
+    criteria = {item["criterion"]: item for item in result.criteria}
+    assert criteria["Backend performance"]["status"] == "MATCHED"
+    assert criteria["Client performance"]["status"] == "NOT_FOUND"
+    measured = criteria["Measured improvement"]
+    assert measured["status"] == "MATCHED"
+    assert "1M+ daily records" in measured["evidence"]["text"]
+    assert "80%" not in measured["evidence"]["text"]
+    assert "Unresolved AND/OR grouping" not in criteria
+    assert result.match_status == "PARTIAL"
+    assert result.evidence_coverage == pytest.approx(2 / 3)
+
+
+def test_completion_percentage_alone_is_not_measured_performance_evidence():
+    result = evaluate(
+        "Backend performance optimization with measurable improvement",
+        "Built 80% of core system modules.",
+    )
+
+    criteria = {item["criterion"]: item for item in result.criteria}
+    assert criteria["Measured improvement"]["status"] == "NOT_FOUND"
+
+
+def test_completion_percentage_near_technical_context_is_not_a_performance_metric():
+    result = evaluate(
+        "Backend performance optimization with measurable improvement",
+        "Built 80% of core modules using optimized indexing strategies.",
+    )
+
+    criteria = {item["criterion"]: item for item in result.criteria}
+    assert criteria["Measured improvement"]["status"] == "NOT_FOUND"
+
+
+def test_simple_or_list_normalizes_and_matches_mentoring_evidence():
+    result = evaluate(
+        "Large-scale systems, unit testing, code review, or mentoring",
+        "Mentored new team members through code reviews and engineering best practices.",
+    )
+
+    criteria = {item["criterion"]: item for item in result.criteria}
+    assert result.match_status == "MATCHED"
+    assert result.evidence_coverage == 1
+    assert "Mentoring" in criteria
+    assert criteria["Mentoring"]["status"] == "MATCHED"
+    assert not any(item.lower().startswith("or ") for item in criteria)
+
+
+def test_aspirational_mentoring_is_not_verified():
+    result = evaluate(
+        "Large-scale systems, unit testing, code review, or mentoring",
+        "Seeking to mentor new team members in the future.",
+    )
+
+    assert result.match_status == "NOT_FOUND"
+
+
 def test_plain_language_requirement_through_match_api(client):
     payload = {
         "requestId": "anonymous", "applicationId": "anonymous", "attemptNo": 1,
