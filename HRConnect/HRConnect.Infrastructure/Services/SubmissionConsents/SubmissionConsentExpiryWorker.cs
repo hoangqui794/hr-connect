@@ -1,3 +1,5 @@
+using HRConnect.Application.Features.SubmissionConsents.Common;
+using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,6 +51,10 @@ public sealed class SubmissionConsentExpiryWorker : BackgroundService
         var expired = await context.SubmissionConsents
             .Include(consent => consent.Submission)
                 .ThenInclude(submission => submission.CandidateCv)
+            .Include(consent => consent.Submission)
+                .ThenInclude(submission => submission.Candidate)
+            .Include(consent => consent.Submission)
+                .ThenInclude(submission => submission.Job)
             .Where(consent => consent.Status == "PENDING" && consent.ExpiresAt <= now)
             .OrderBy(consent => consent.ExpiresAt)
             .Take(100)
@@ -64,6 +70,18 @@ public sealed class SubmissionConsentExpiryWorker : BackgroundService
             {
                 consent.Submission.CandidateCv.Status = "ARCHIVED";
                 consent.Submission.CandidateCv.UpdatedAt = now;
+            }
+
+            var notificationExists = await context.Notifications.AnyAsync(notification =>
+                notification.UserId == consent.Submission.SubmittedBy &&
+                notification.NotificationType == SubmissionConsentNotificationFactory.NotificationType &&
+                notification.RelatedEntityType == "SUBMISSION" &&
+                notification.RelatedEntityId == consent.SubmissionId,
+                cancellationToken);
+            if (!notificationExists)
+            {
+                context.Notifications.Add(
+                    SubmissionConsentNotificationFactory.CreateAffiliateResult(consent.Submission, "EXPIRED", now));
             }
         }
 

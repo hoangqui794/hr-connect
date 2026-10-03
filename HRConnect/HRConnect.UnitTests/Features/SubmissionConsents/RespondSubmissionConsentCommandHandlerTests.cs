@@ -60,6 +60,11 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         fixture.Cv.Status.Should().Be("ACTIVE");
         _attributions.Verify(x => x.AddAsync(It.Is<Attribution>(a => a.WinningSubmissionId == fixture.Submission.SubmissionId), It.IsAny<CancellationToken>()), Times.Once);
         _scoring.Verify(x => x.TriggerScoringAsync(It.Is<Mf03TriggerPayload>(p => p.ApplicationId == created.ApplicationId), It.IsAny<CancellationToken>()), Times.Once);
+        _notifications.Verify(x => x.AddAsync(It.Is<Notification>(notification =>
+            notification.UserId == fixture.Submission.SubmittedBy &&
+            notification.NotificationType == "SUBMISSION_CONSENT_RESULT" &&
+            notification.RelatedEntityId == fixture.Submission.SubmissionId &&
+            notification.Title.Contains("đồng ý")), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         persistenceOrder.Should().Equal("submission", "application");
@@ -80,6 +85,36 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         response.SubmissionStatus.Should().Be("CONSENT_REJECTED");
         fixture.Consent.Status.Should().Be("DECLINED");
         fixture.Cv.Status.Should().Be("ARCHIVED");
+        _applications.Verify(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
+        _scoring.Verify(x => x.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
+        _notifications.Verify(x => x.AddAsync(It.Is<Notification>(notification =>
+            notification.UserId == fixture.Submission.SubmittedBy &&
+            notification.NotificationType == "SUBMISSION_CONSENT_RESULT" &&
+            notification.Title.Contains("từ chối")), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Confirm_WhenConsentExpired_NotifiesAffiliateAndDoesNotCreateApplication()
+    {
+        var fixture = CreateConsent(candidateHasAccount: false);
+        fixture.Consent.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+        _consents.Setup(x => x.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fixture.Consent);
+
+        var action = () => Handler().Handle(new RespondSubmissionConsentCommand
+        {
+            Token = "valid-token",
+            Decision = "CONFIRM"
+        }, CancellationToken.None);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*đã hết hạn*");
+        fixture.Consent.Status.Should().Be("EXPIRED");
+        fixture.Submission.Status.Should().Be("CONSENT_EXPIRED");
+        _notifications.Verify(x => x.AddAsync(It.Is<Notification>(notification =>
+            notification.UserId == fixture.Submission.SubmittedBy &&
+            notification.NotificationType == "SUBMISSION_CONSENT_RESULT" &&
+            notification.Title.Contains("hết hạn")), It.IsAny<CancellationToken>()), Times.Once);
         _applications.Verify(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
         _scoring.Verify(x => x.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
     }

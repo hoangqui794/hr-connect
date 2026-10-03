@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.SubmissionConsents.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using JobApplication = HRConnect.Domain.Entities.Application;
@@ -195,6 +196,8 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
                 }, cancellationToken);
             }
 
+            await AddAffiliateResultNotificationAsync(consent, "CONFIRMED", now, cancellationToken);
+
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
         catch (Exception ex) when (IsUniqueViolation(ex))
@@ -247,7 +250,30 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             ActorUserId = request.RequesterUserId,
             NewValues = new { consentStatus, submissionStatus }
         }, cancellationToken);
+        if (consentStatus is "DECLINED" or "EXPIRED")
+            await AddAffiliateResultNotificationAsync(consent, consentStatus, now, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task AddAffiliateResultNotificationAsync(
+        HRConnect.Domain.Entities.SubmissionConsent consent,
+        string status,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var submission = consent.Submission;
+        var exists = await _notificationRepository.ExistsAsync(
+            submission.SubmittedBy,
+            SubmissionConsentNotificationFactory.NotificationType,
+            "SUBMISSION",
+            submission.SubmissionId,
+            cancellationToken);
+        if (!exists)
+        {
+            await _notificationRepository.AddAsync(
+                SubmissionConsentNotificationFactory.CreateAffiliateResult(submission, status, now),
+                cancellationToken);
+        }
     }
 
     private async Task<HRConnect.Domain.Entities.SubmissionConsent> ResolveConsentAsync(

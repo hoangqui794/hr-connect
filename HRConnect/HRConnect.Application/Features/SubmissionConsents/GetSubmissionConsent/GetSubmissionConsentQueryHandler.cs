@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.SubmissionConsents.Common;
 using MediatR;
 
 namespace HRConnect.Application.Features.SubmissionConsents.GetSubmissionConsent;
@@ -9,15 +10,18 @@ public sealed class GetSubmissionConsentQueryHandler : IRequestHandler<GetSubmis
 {
     private readonly ISubmissionConsentRepository _repository;
     private readonly ICvStorageService _cvStorage;
+    private readonly INotificationRepository _notifications;
     private readonly IUnitOfWork _unitOfWork;
 
     public GetSubmissionConsentQueryHandler(
         ISubmissionConsentRepository repository,
         ICvStorageService cvStorage,
+        INotificationRepository notifications,
         IUnitOfWork unitOfWork)
     {
         _repository = repository;
         _cvStorage = cvStorage;
+        _notifications = notifications;
         _unitOfWork = unitOfWork;
     }
 
@@ -97,6 +101,18 @@ public sealed class GetSubmissionConsentQueryHandler : IRequestHandler<GetSubmis
         {
             consent.Submission.CandidateCv.Status = "ARCHIVED";
             consent.Submission.CandidateCv.UpdatedAt = now;
+        }
+        var notificationExists = await _notifications.ExistsAsync(
+            consent.Submission.SubmittedBy,
+            SubmissionConsentNotificationFactory.NotificationType,
+            "SUBMISSION",
+            consent.SubmissionId,
+            cancellationToken);
+        if (!notificationExists)
+        {
+            await _notifications.AddAsync(
+                SubmissionConsentNotificationFactory.CreateAffiliateResult(consent.Submission, "EXPIRED", now),
+                cancellationToken);
         }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
