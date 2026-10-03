@@ -88,16 +88,26 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             throw new ForbiddenException("Your role is not allowed to submit candidates for this service type.", "SERVICE_TYPE_SUBMISSION_NOT_ALLOWED");
         }
 
+        var hasUploadedFile = request.FileStream != null &&
+            request.FileStream != Stream.Null &&
+            !string.IsNullOrWhiteSpace(request.FileName) &&
+            request.FileSizeBytes > 0;
+        var hasCvId = request.CvId.HasValue && request.CvId.Value != Guid.Empty;
+        if (hasUploadedFile == hasCvId)
+        {
+            throw new BadRequestException("Phải cung cấp đúng một nguồn CV: tệp PDF mới hoặc cvId trong kho CV của Candidate.");
+        }
+
         // 4. Xử lý CV (Upload mới hoặc chọn CV có sẵn)
         Guid cvId;
         Guid? newlyUploadedCvId = null;
-        if (request.FileStream != null && request.FileStream != Stream.Null && !string.IsNullOrWhiteSpace(request.FileName))
+        if (hasUploadedFile)
         {
             var uploadResult = await _cvStorageService.UploadCvPdfAsync(
                 candidate.CandidateId,
-                request.FileStream,
-                request.FileName,
-                request.FileSizeBytes ?? request.FileStream.Length,
+                request.FileStream!,
+                request.FileName!,
+                request.FileSizeBytes!.Value,
                 cancellationToken: cancellationToken);
             cvId = uploadResult.CvId;
             newlyUploadedCvId = cvId;
@@ -116,17 +126,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             cvId = cv.CvId;
         }
         else
-        {
-            var primaryCv = await _candidateCvRepository.GetPrimaryByCandidateIdAsync(candidate.CandidateId, cancellationToken);
-            if (primaryCv != null && !string.IsNullOrWhiteSpace(primaryCv.SourceFileUrl))
-            {
-                cvId = primaryCv.CvId;
-            }
-            else
-            {
-                throw new BadRequestException("Vui lòng tải lên tệp CV định dạng PDF hoặc chọn CV có sẵn.");
-            }
-        }
+            throw new BadRequestException("Phải cung cấp đúng một nguồn CV: tệp PDF mới hoặc cvId trong kho CV của Candidate.");
 
         // 5. Kiểm tra trùng lặp (Duplicate Check): Cùng Candidate + Cùng Job
         var existingSubmission = await _submissionRepository.GetAcceptedSubmissionAsync(candidate.CandidateId, job.JobId, cancellationToken);

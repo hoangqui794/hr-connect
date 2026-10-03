@@ -100,6 +100,7 @@ public static class JobEndpoints
             [FromForm] string? cvId,
             IFormFile? file,
             ISender sender,
+            IValidator<ApplyJobCommand> validator,
             CancellationToken ct) =>
         {
             var id = UserId(user);
@@ -132,12 +133,15 @@ public static class JobEndpoints
                 FileSizeBytes = file?.Length
             };
 
+            var invalid = await Validate(command, validator, ct);
+            if (invalid != null) return invalid;
+
             return await Run(async () => Results.Ok(await sender.Send(command, ct)));
         })
         .WithTags("Candidate Applications")
         .WithName("CandidateApplyJob")
         .WithSummary("Ứng viên tự ứng tuyển vào Job")
-        .WithDescription("Yêu cầu permission application.create. Ứng viên nộp hồ sơ vào công việc bằng CV có sẵn hoặc tải lên tệp CV PDF mới. Hệ thống vẫn kiểm tra quyền submit của Service Type và hồ sơ ứng viên.")
+        .WithDescription("Yêu cầu permission application.create. Phải cung cấp đúng một nguồn CV: cvId trong kho của Candidate hoặc một tệp PDF mới. Không được gửi đồng thời cả hai. Hệ thống vẫn kiểm tra quyền submit của Service Type và hồ sơ ứng viên.")
         .DisableAntiforgery()
         .Produces<ApplyJobResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)

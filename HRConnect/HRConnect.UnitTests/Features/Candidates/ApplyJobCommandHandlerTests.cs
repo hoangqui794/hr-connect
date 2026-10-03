@@ -416,4 +416,47 @@ public class ApplyJobCommandHandlerTests
         _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Handle_WhenCvSourceCountIsNotExactlyOne_ThrowsBadRequest(bool provideBoth)
+    {
+        var userId = Guid.NewGuid();
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(),
+            Status = JobStatuses.Active,
+            ServiceTypeId = Guid.NewGuid(),
+            Visibility = JobVisibilities.Public
+        };
+        _candidateRepositoryMock.Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate { CandidateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
+        _jobRepositoryMock.Setup(repository => repository.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+        _jobRepositoryMock.Setup(repository => repository.CanAnyRoleSubmitJobAsync(
+                job.ServiceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var command = new ApplyJobCommand
+        {
+            JobId = job.JobId,
+            UserId = userId,
+            RoleCodes = [JobAccessPolicy.CandidateRole],
+            CvId = provideBoth ? Guid.NewGuid() : null,
+            FileStream = provideBoth ? new MemoryStream([1]) : null,
+            FileName = provideBoth ? "cv.pdf" : null,
+            FileSizeBytes = provideBoth ? 1 : null
+        };
+
+        var action = () => _handler.Handle(command, CancellationToken.None);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*đúng một nguồn CV*");
+        _cvStorageServiceMock.Verify(service => service.UploadCvPdfAsync(
+            It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(),
+            It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _applicationRepositoryMock.Verify(repository => repository.AddAsync(
+            It.IsAny<HRConnect.Domain.Entities.Application>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
