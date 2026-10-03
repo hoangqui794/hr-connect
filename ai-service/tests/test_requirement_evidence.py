@@ -121,6 +121,15 @@ def test_aspirational_mentoring_is_not_verified():
     assert result.match_status == "NOT_FOUND"
 
 
+def test_customer_guidance_is_not_misclassified_as_mentoring():
+    result = evaluate(
+        "Large-scale systems, unit testing, code review, or mentoring",
+        "Hướng dẫn khách hàng sử dụng sản phẩm và xử lý thanh toán.",
+    )
+
+    assert result.match_status == "NOT_FOUND"
+
+
 def test_plain_language_requirement_through_match_api(client):
     payload = {
         "requestId": "anonymous", "applicationId": "anonymous", "attemptNo": 1,

@@ -33,7 +33,11 @@ CAPABILITIES = (
     Capability("Testable code", r"testable|kiểm thử", r"unit test\w*|integration test\w*|test.driven|testable|kiểm thử"),
     Capability("Maintainable code", r"maintainable|bảo trì", r"maintainab\w*|refactor\w*|bảo trì"),
     Capability("Readable code", r"readable", r"readable|coding standards|code quality standards"),
-    Capability("Mentoring", r"\bmentor(?:ing|ed|s)?\b|cố vấn|hướng dẫn", r"\bmentor(?:ing|ed|s)?\b|cố vấn|hướng dẫn"),
+    Capability(
+        "Mentoring",
+        r"\bmentor(?:ing|ed|s)?\b|cố vấn|hướng dẫn (?:thành viên|nhân viên|đội ngũ|team)",
+        r"\bmentor(?:ing|ed|s)?\b|cố vấn|hướng dẫn (?:thành viên|nhân viên|đội ngũ|team)",
+    ),
     Capability("Sales prospecting", r"prospecting|tìm kiếm khách hàng", r"prospect\w*|generated leads|tìm kiếm khách hàng"),
     Capability("Negotiation", r"negotiat\w*|đàm phán", r"negotiat\w*|đàm phán"),
     Capability("Content creation", r"content creation|sáng tạo nội dung", r"(?:created|produced|wrote).{0,30}(?:content|articles|posts)|sáng tạo nội dung|viết bài"),
