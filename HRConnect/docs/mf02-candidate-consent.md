@@ -23,6 +23,11 @@ The default consent lifetime is 48 hours. A background worker marks unanswered r
 | `POST` | `/api/v1/affiliates/submissions/{submissionId}/consent/resend` | Owning Affiliate + `submission.view_own` | Rotate the token and explicitly resend the email. |
 | `GET` | `/api/v1/affiliates/submissions` | Affiliate + `submission.view_own` | View Submission and consent statuses and expiry. |
 | `GET` | `/api/v1/affiliates/submissions/{submissionId}` | Owning Affiliate + `submission.view_own` | View Submission and consent details. |
+| `GET` | `/api/v1/affiliates/candidates` | Affiliate + `submission.view_own` | List Candidates with reusable, confirmed Affiliate-uploaded CVs. |
+| `GET` | `/api/v1/affiliates/candidates/{candidateId}` | Owning Affiliate + `submission.view_own` | View one library Candidate and reusable CV metadata. |
+| `GET` | `/api/v1/affiliates/candidates/{candidateId}/cvs/{cvId}/download-url` | Owning Affiliate + `submission.view_own` | Receive a five-minute signed URL for an owned reusable CV. |
+
+`POST /api/v1/jobs/{jobId}/candidate-submissions` supports two modes. A new intake sends identity fields plus a PDF. A library reuse sends `candidateId` and `cvId` without a file; the backend loads the persisted identity, creates a new consent for the selected Job, and never duplicates the CV object.
 
 ## Statuses
 
