@@ -29,6 +29,8 @@ public class ApplicationRepository : IApplicationRepository
                 .ThenInclude(j => j.Company)
             .Include(a => a.Candidate)
             .Include(a => a.Interviews)
+                .ThenInclude(i => i.InterviewStatusHistories)
+            .Include(a => a.Offers)
             .Include(a => a.Attribution)
             .Include(a => a.Submission)
             .Include(a => a.ApplicationStatusHistories)
