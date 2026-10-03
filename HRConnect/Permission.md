@@ -116,6 +116,11 @@ VALUES
      'view_own',
      'View own submissions'),
 
+    ('referral.progress.view_own',
+     'affiliate_referral',
+     'view_own',
+     'View high-level progress of own referrals'),
+
     ('submission.consent.resend_own',
      'submission_consent',
      'resend_own',
@@ -486,6 +491,7 @@ JOIN public.permission p
 
         'submission.create',
         'submission.view_own',
+        'referral.progress.view_own',
         'submission.consent.resend_own',
         'candidate_library.view_own',
         'candidate_library.download_cv',

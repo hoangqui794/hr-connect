@@ -6,6 +6,7 @@ using HRConnect.Application.Features.Affiliates.Commands.UpdateAffiliateProfile;
 using HRConnect.Application.Features.Affiliates.Queries.GetAffiliateBankAccount;
 using HRConnect.Application.Features.Affiliates.Queries.GetAffiliatePerformance;
 using HRConnect.Application.Features.Affiliates.Queries.GetAffiliateProfile;
+using HRConnect.Application.Features.Affiliates.Queries.GetAffiliateReferralProgress;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using HRConnect.Presentation.Authorization;
@@ -355,6 +356,47 @@ public static class AffiliateEndpoints
         var submissionsGroup = app.MapGroup("/api/v1/affiliates/submissions")
                                   .WithTags("Affiliate Submissions")
                                   .RequireAuthorization();
+
+        var referralsGroup = app.MapGroup("/api/v1/affiliates/referrals")
+            .WithTags("Affiliate Referral Progress")
+            .RequireAuthorization();
+
+        // This intentionally exposes only a coarse status; detailed recruitment records stay private.
+        referralsGroup.MapGet("/", async (
+            ClaimsPrincipal user,
+            [FromQuery] Guid? jobId,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null) return Results.Unauthorized();
+            if (!PermissionAuthorization.HasPermission(user, "referral.progress.view_own"))
+                return PermissionAuthorization.Forbidden("referral.progress.view_own");
+
+            try
+            {
+                var result = await sender.Send(new GetAffiliateReferralProgressQuery(
+                    userId.Value, jobId, page ?? 1, pageSize ?? 20), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+            }
+        })
+        .WithName("GetAffiliateReferralProgress")
+        .WithSummary("Xem tiến độ tuyển dụng tổng quát của referral do Affiliate giới thiệu")
+        .WithDescription("Không trả lịch phỏng vấn, meeting link, feedback, offer, lương hoặc tài liệu nội bộ.")
+        .Produces<AffiliateReferralProgressResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status500InternalServerError);
 
         // POST /api/v1/affiliates/submissions/{submissionId}/consent/resend
         submissionsGroup.MapPost("/{submissionId:guid}/consent/resend", async (

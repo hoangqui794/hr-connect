@@ -93,6 +93,7 @@ public class SubmissionRepository : ISubmissionRepository
 
         var items = await query
             .Include(s => s.Job)
+                .ThenInclude(job => job.Company)
             .Include(s => s.Candidate)
             .Include(s => s.Applications)
             .Include(s => s.Attribution)
