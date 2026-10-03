@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -20,6 +21,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ConfirmStartWorkCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public ConfirmStartWorkCommandHandler(
         IApplicationRepository applicationRepository,
@@ -27,7 +29,8 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         IPlacementRepository placementRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
-        ILogger<ConfirmStartWorkCommandHandler> logger)
+        ILogger<ConfirmStartWorkCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _applicationRepository = applicationRepository;
         _offerRepository = offerRepository;
@@ -35,6 +38,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<ConfirmStartWorkResponse> Handle(ConfirmStartWorkCommand request, CancellationToken cancellationToken)
@@ -148,6 +152,23 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         });
 
         _applicationRepository.Update(application);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.PlacementConfirmed,
+            EntityType = "PLACEMENT",
+            EntityId = placement.PlacementId,
+            ActorUserId = request.CurrentUserId,
+            NewValues = new { applicationId = application.ApplicationId, offerId = offer.OfferId, actualStartDate = placement.ActualStartDate, status = placement.Status, position = placement.Position, department = placement.Department }
+        }, cancellationToken);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.ApplicationStatusChanged,
+            EntityType = "APPLICATION",
+            EntityId = application.ApplicationId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { status = oldStatus },
+            NewValues = new { status = application.Status, sourceAction = AuditActions.PlacementConfirmed }
+        }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Đã xác nhận ứng viên bắt đầu làm việc cho hồ sơ {ApplicationId}, Placement {PlacementId}.",
