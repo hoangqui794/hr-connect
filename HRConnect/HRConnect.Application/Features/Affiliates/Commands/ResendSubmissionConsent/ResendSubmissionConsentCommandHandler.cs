@@ -52,6 +52,7 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         if (consent.ExpiresAt <= now)
         {
             consent.Status = "EXPIRED";
+            consent.ConcurrencyToken = Guid.NewGuid();
             consent.Submission.Status = "CONSENT_EXPIRED";
             consent.UpdatedAt = now;
             consent.Submission.UpdatedAt = now;
@@ -81,6 +82,7 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         consent.EmailSentAt = null;
         consent.LastEmailError = null;
         consent.UpdatedAt = now;
+        consent.ConcurrencyToken = Guid.NewGuid();
 
         var outbox = new EmailOutbox
         {

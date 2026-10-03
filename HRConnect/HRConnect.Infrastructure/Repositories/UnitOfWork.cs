@@ -1,5 +1,7 @@
 using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Common.Exceptions;
 using HRConnect.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace HRConnect.Infrastructure.Repositories;
@@ -16,7 +18,17 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        return await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            return await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new ConflictException(
+                "Dữ liệu vừa được xử lý bởi một yêu cầu khác. Vui lòng tải lại trạng thái mới nhất.",
+                "CONCURRENT_UPDATE",
+                ex);
+        }
     }
 
     public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
@@ -39,6 +51,14 @@ public class UnitOfWork : IUnitOfWork
             {
                 await _currentTransaction.CommitAsync(cancellationToken);
             }
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            await RollbackTransactionAsync(cancellationToken);
+            throw new ConflictException(
+                "Dữ liệu vừa được xử lý bởi một yêu cầu khác. Vui lòng tải lại trạng thái mới nhất.",
+                "CONCURRENT_UPDATE",
+                ex);
         }
         catch
         {

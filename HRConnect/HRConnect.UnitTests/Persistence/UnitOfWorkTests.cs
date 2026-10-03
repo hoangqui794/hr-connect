@@ -3,11 +3,57 @@ using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using HRConnect.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using HRConnect.Application.Common.Exceptions;
 
 namespace HRConnect.UnitTests.Persistence;
 
 public class UnitOfWorkTests
 {
+    [Fact]
+    public async Task SaveChangesAsync_WhenSubmissionConsentWasChangedConcurrently_ReturnsConflict()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        var consentId = Guid.NewGuid();
+        await using (var seed = new ApplicationDbContext(options))
+        {
+            seed.SubmissionConsents.Add(new SubmissionConsent
+            {
+                ConsentId = consentId,
+                SubmissionId = Guid.NewGuid(),
+                RecipientEmail = "candidate@example.com",
+                TokenHash = "initial-token-hash",
+                Status = "PENDING",
+                RequestedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddHours(24),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var firstContext = new ApplicationDbContext(options);
+        await using var secondContext = new ApplicationDbContext(options);
+        var first = await firstContext.SubmissionConsents.SingleAsync(x => x.ConsentId == consentId);
+        var second = await secondContext.SubmissionConsents.SingleAsync(x => x.ConsentId == consentId);
+
+        first.TokenHash = "first-request-token";
+        first.ConcurrencyToken = Guid.NewGuid();
+        await new UnitOfWork(firstContext).SaveChangesAsync();
+
+        second.TokenHash = "second-request-token";
+        second.ConcurrencyToken = Guid.NewGuid();
+        var saveSecond = () => new UnitOfWork(secondContext).SaveChangesAsync();
+
+        var exception = await saveSecond.Should().ThrowAsync<ConflictException>();
+        exception.Which.ErrorCode.Should().Be("CONCURRENT_UPDATE");
+
+        await using var verification = new ApplicationDbContext(options);
+        (await verification.SubmissionConsents.SingleAsync(x => x.ConsentId == consentId))
+            .TokenHash.Should().Be("first-request-token");
+    }
+
     [Fact]
     public async Task CommitTransactionAsync_WhenSaveFails_ClearsRejectedGraph_BeforeBlockedDuplicateAuditIsSaved()
     {

@@ -2219,7 +2219,6 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CanSubmit).HasDefaultValue(false).HasColumnName("can_submit");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
-
             entity.HasOne(d => d.ServiceType).WithMany(p => p.AllowedRoles)
                 .HasForeignKey(d => d.ServiceTypeId)
                 .OnDelete(DeleteBehavior.Cascade)
@@ -2364,6 +2363,10 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.LastEmailError).HasMaxLength(1000).HasColumnName("last_email_error");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
 
             entity.HasOne(e => e.Submission).WithOne(s => s.Consent)
                 .HasForeignKey<SubmissionConsent>(e => e.SubmissionId)

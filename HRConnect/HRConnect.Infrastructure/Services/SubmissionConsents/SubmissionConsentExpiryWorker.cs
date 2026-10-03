@@ -64,6 +64,7 @@ public sealed class SubmissionConsentExpiryWorker : BackgroundService
         {
             consent.Status = "EXPIRED";
             consent.UpdatedAt = now;
+            consent.ConcurrencyToken = Guid.NewGuid();
             consent.Submission.Status = "CONSENT_EXPIRED";
             consent.Submission.UpdatedAt = now;
             if (consent.Submission.CandidateCv.Status == "PENDING_CONSENT")

@@ -20,6 +20,7 @@ public class SubmissionConsent
     public string? LastEmailError { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
 
     public virtual Submission Submission { get; set; } = null!;
 }

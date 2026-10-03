@@ -123,6 +123,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             consent.ResponseIp = Limit(request.IpAddress, 64);
             consent.ResponseUserAgent = Limit(request.UserAgent, 512);
             consent.UpdatedAt = now;
+            consent.ConcurrencyToken = Guid.NewGuid();
 
             consent.Submission.Status = "ACCEPTED";
             consent.Submission.UpdatedAt = now;
@@ -235,6 +236,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         consent.ResponseIp = Limit(request.IpAddress, 64);
         consent.ResponseUserAgent = Limit(request.UserAgent, 512);
         consent.UpdatedAt = now;
+        consent.ConcurrencyToken = Guid.NewGuid();
         consent.Submission.Status = submissionStatus;
         consent.Submission.UpdatedAt = now;
         if (consent.Submission.CandidateCv.Status == "PENDING_CONSENT")

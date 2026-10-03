@@ -95,6 +95,7 @@ public sealed class GetSubmissionConsentQueryHandler : IRequestHandler<GetSubmis
         var now = DateTime.UtcNow;
         consent.Status = "EXPIRED";
         consent.UpdatedAt = now;
+        consent.ConcurrencyToken = Guid.NewGuid();
         consent.Submission.Status = "CONSENT_EXPIRED";
         consent.Submission.UpdatedAt = now;
         if (consent.Submission.CandidateCv.Status == "PENDING_CONSENT")

@@ -243,6 +243,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 pendingSubmission.UpdatedAt = now;
                 pendingConsent.Status = "EXPIRED";
                 pendingConsent.UpdatedAt = now;
+                pendingConsent.ConcurrencyToken = Guid.NewGuid();
                 if (pendingSubmission.CandidateCv.CreationMethod == "AFFILIATE_UPLOAD" &&
                     pendingSubmission.CandidateCv.Status == "PENDING_CONSENT")
                 {

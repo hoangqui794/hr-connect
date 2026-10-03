@@ -20,6 +20,7 @@ public sealed class ResendSubmissionConsentCommandHandlerTests
         var ownerId = Guid.NewGuid();
         var consent = CreateConsent(ownerId);
         var oldHash = consent.TokenHash;
+        var oldConcurrencyToken = consent.ConcurrencyToken;
         var repository = new Mock<ISubmissionConsentRepository>();
         repository.Setup(x => x.GetBySubmissionIdAsync(consent.SubmissionId, It.IsAny<CancellationToken>())).ReturnsAsync(consent);
         var email = new Mock<IEmailService>();
@@ -39,6 +40,7 @@ public sealed class ResendSubmissionConsentCommandHandlerTests
 
         result.EmailDeliveryStatus.Should().Be("SENT");
         consent.TokenHash.Should().NotBe(oldHash);
+        consent.ConcurrencyToken.Should().NotBe(oldConcurrencyToken);
         consent.EmailSendCount.Should().Be(2);
         emailHtml.Should().Contain("#token=").And.NotContain("#submissionId=");
         email.Verify(x => x.SendEmailAsync(consent.RecipientEmail, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -81,6 +83,37 @@ public sealed class ResendSubmissionConsentCommandHandlerTests
 
         var action = () => handler.Handle(new ResendSubmissionConsentCommand(consent.SubmissionId, Guid.NewGuid()), CancellationToken.None);
         await action.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async Task Handle_ConcurrentUpdate_DoesNotSendSecondEmail()
+    {
+        var ownerId = Guid.NewGuid();
+        var consent = CreateConsent(ownerId);
+        var repository = new Mock<ISubmissionConsentRepository>();
+        repository.Setup(x => x.GetBySubmissionIdAsync(consent.SubmissionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(consent);
+        var email = new Mock<IEmailService>();
+        var unitOfWork = new Mock<IUnitOfWork>();
+        unitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ConflictException(
+                "Dữ liệu vừa được xử lý bởi một yêu cầu khác.",
+                "CONCURRENT_UPDATE"));
+        var handler = new ResendSubmissionConsentCommandHandler(
+            repository.Object, Mock.Of<IEmailOutboxRepository>(), email.Object,
+            Mock.Of<IAuditLogService>(), unitOfWork.Object,
+            Options.Create(new SubmissionConsentSettings { ResendCooldownMinutes = 2, MaxEmailSends = 5 }),
+            Mock.Of<ILogger<ResendSubmissionConsentCommandHandler>>());
+
+        var action = () => handler.Handle(
+            new ResendSubmissionConsentCommand(consent.SubmissionId, ownerId),
+            CancellationToken.None);
+
+        var exception = await action.Should().ThrowAsync<ConflictException>();
+        exception.Which.ErrorCode.Should().Be("CONCURRENT_UPDATE");
+        email.Verify(x => x.SendEmailAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     private static SubmissionConsent CreateConsent(Guid ownerId, bool candidateHasAccount = false)
