@@ -108,6 +108,46 @@ public class AdminUserManagementHandlerTests
     }
 
     [Fact]
+    public async Task ChangeStatus_SuspendedToActive_AuditsWithoutRestoringOldRefreshTokens()
+    {
+        var actorId = Guid.NewGuid();
+        var user = CreateUser("SUSPENDED", "CANDIDATE");
+        var repository = new Mock<IAdminUserRepository>();
+        repository.Setup(item => item.GetByIdWithRolesAsync(
+                user.UserId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        var refreshTokens = new Mock<IRefreshTokenRepository>();
+        var audit = new Mock<IAuditLogService>();
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var handler = new ChangeUserStatusCommandHandler(
+            repository.Object, refreshTokens.Object, audit.Object, unitOfWork.Object);
+
+        var result = await handler.Handle(
+            new ChangeUserStatusCommand(user.UserId, actorId, "ACTIVE", "Đã hoàn tất đối soát"),
+            CancellationToken.None);
+
+        result.Data.Status.Should().Be("ACTIVE");
+        refreshTokens.Verify(item => item.RevokeAllByUserIdAsync(
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        audit.Verify(item => item.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.UserReactivated && entry.ActorUserId == actorId),
+            It.IsAny<CancellationToken>()), Times.Once);
+        unitOfWork.Verify(item => item.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChangeStatusValidator_WhenSuspendingWithoutReason_ReturnsValidationError()
+    {
+        var validator = new ChangeUserStatusCommandValidator();
+
+        var result = await validator.ValidateAsync(new ChangeUserStatusCommand(
+            Guid.NewGuid(), Guid.NewGuid(), "SUSPENDED", " "));
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(error => error.PropertyName == nameof(ChangeUserStatusCommand.Reason));
+    }
+
+    [Fact]
     public async Task ChangeStatus_WhenTargetIsPlatformAdmin_IsForbidden()
     {
         var user = CreateUser("ACTIVE", "PLATFORM_ADMIN");
@@ -178,6 +218,29 @@ public class AdminUserManagementHandlerTests
             It.Is<AuditEntry>(entry => entry.Action == AuditActions.UserLoginUnlocked && entry.ActorUserId == actorId),
             It.IsAny<CancellationToken>()), Times.Once);
         unitOfWork.Verify(item => item.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Unlock_WhenTargetIsPlatformAdmin_IsForbidden()
+    {
+        var user = CreateUser("ACTIVE", "PLATFORM_ADMIN");
+        user.LockoutEndAt = DateTime.UtcNow.AddHours(1);
+        var repository = new Mock<IAdminUserRepository>();
+        repository.Setup(item => item.GetByIdWithRolesAsync(
+                user.UserId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var handler = new UnlockUserCommandHandler(
+            repository.Object,
+            new Mock<IAuditLogService>().Object,
+            unitOfWork.Object);
+
+        var action = () => handler.Handle(
+            new UnlockUserCommand(user.UserId, Guid.NewGuid()),
+            CancellationToken.None);
+
+        await action.Should().ThrowAsync<ForbiddenException>();
+        unitOfWork.Verify(item => item.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private static AppUser CreateUser(string status, string roleCode)
