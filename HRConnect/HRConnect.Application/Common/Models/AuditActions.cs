@@ -16,4 +16,5 @@ public static class AuditActions
     public const string AffiliateCvViewed = "AFFILIATE_CV_VIEWED";
     public const string CandidateCvDownloadUrlIssued = "CANDIDATE_CV_DOWNLOAD_URL_ISSUED";
     public const string InternalCvDownloadUrlIssued = "INTERNAL_CV_DOWNLOAD_URL_ISSUED";
+    public const string SubmissionConsentCvDownloadUrlIssued = "SUBMISSION_CONSENT_CV_DOWNLOAD_URL_ISSUED";
 }
