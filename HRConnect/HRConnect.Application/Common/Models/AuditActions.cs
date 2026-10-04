@@ -13,6 +13,9 @@ public static class AuditActions
     public const string SubmissionConsentDeclined = "SUBMISSION_CONSENT_DECLINED";
     public const string SubmissionConsentExpired = "SUBMISSION_CONSENT_EXPIRED";
     public const string SubmissionConsentClosed = "SUBMISSION_CONSENT_CLOSED";
+    public const string UserSuspended = "USER_SUSPENDED";
+    public const string UserReactivated = "USER_REACTIVATED";
+    public const string UserLoginUnlocked = "USER_LOGIN_UNLOCKED";
     public const string AffiliateCvViewed = "AFFILIATE_CV_VIEWED";
     public const string ApplicationStatusChanged = "APPLICATION_STATUS_CHANGED";
     public const string ApplicationBackupDecided = "APPLICATION_BACKUP_DECIDED";
