@@ -2,6 +2,7 @@ using FluentAssertions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.SubmissionConsents.GetSubmissionConsent;
+using HRConnect.Application.Features.SubmissionConsents.Common;
 using HRConnect.Domain.Entities;
 using Moq;
 
@@ -14,8 +15,7 @@ public sealed class GetSubmissionConsentQueryHandlerTests
     {
         var consents = new Mock<ISubmissionConsentRepository>();
         var storage = new Mock<ICvStorageService>();
-        var notifications = new Mock<INotificationRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
+        var expiryService = new Mock<ISubmissionConsentExpiryService>();
         var candidate = new Candidate { CandidateId = Guid.NewGuid(), FullName = "Candidate", Status = "ACTIVE" };
         var job = new Job
         {
@@ -48,20 +48,26 @@ public sealed class GetSubmissionConsentQueryHandlerTests
         };
         consents.Setup(repository => repository.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(consent);
+        expiryService.Setup(service => service.ExpireAsync(
+                consent, It.IsAny<DateTime>(), null, "CONSENT_REVIEW", It.IsAny<CancellationToken>()))
+            .Callback(() =>
+            {
+                consent.Status = "EXPIRED";
+                submission.Status = "CONSENT_EXPIRED";
+                cv.Status = "ARCHIVED";
+            })
+            .ReturnsAsync(true);
 
         var result = await new GetSubmissionConsentQueryHandler(
-            consents.Object, storage.Object, notifications.Object, unitOfWork.Object).Handle(
+            consents.Object, storage.Object, expiryService.Object).Handle(
             new GetSubmissionConsentQuery("expired-token", null, null), CancellationToken.None);
 
         result.Data!.Status.Should().Be("EXPIRED");
         submission.Status.Should().Be("CONSENT_EXPIRED");
         cv.Status.Should().Be("ARCHIVED");
-        notifications.Verify(repository => repository.AddAsync(It.Is<Notification>(notification =>
-            notification.UserId == submission.SubmittedBy &&
-            notification.NotificationType == "SUBMISSION_CONSENT_RESULT" &&
-            notification.Title.Contains("hết hạn")), It.IsAny<CancellationToken>()), Times.Once);
+        expiryService.Verify(service => service.ExpireAsync(
+            consent, It.IsAny<DateTime>(), null, "CONSENT_REVIEW", It.IsAny<CancellationToken>()), Times.Once);
         storage.Verify(service => service.GetCvDownloadUrlAsync(
             It.IsAny<Guid>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
-        unitOfWork.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }

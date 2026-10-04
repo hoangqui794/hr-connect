@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.SubmissionConsents.Common;
 using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -33,6 +34,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
     private readonly IAuditLogService _auditLogService;
     private readonly SubmissionConsentSettings _consentSettings;
     private readonly ILogger<SubmitCandidateCommandHandler> _logger;
+    private readonly ISubmissionConsentExpiryService _expiryService;
 
     public SubmitCandidateCommandHandler(
         IAffiliateProfileRepository affiliateProfileRepository,
@@ -51,7 +53,8 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         IUnitOfWork unitOfWork,
         IAuditLogService auditLogService,
         IOptions<SubmissionConsentSettings> consentSettings,
-        ILogger<SubmitCandidateCommandHandler> logger)
+        ILogger<SubmitCandidateCommandHandler> logger,
+        ISubmissionConsentExpiryService expiryService)
     {
         _affiliateProfileRepository = affiliateProfileRepository;
         _candidateRepository = candidateRepository;
@@ -70,6 +73,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         _auditLogService = auditLogService;
         _consentSettings = consentSettings.Value;
         _logger = logger;
+        _expiryService = expiryService;
     }
 
     public async Task<SubmitCandidateResponse> Handle(SubmitCandidateCommand request, CancellationToken cancellationToken)
@@ -239,20 +243,12 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                         $"Hồ sơ này đang chờ Candidate xác nhận đến {pendingConsent.ExpiresAt:O}.");
                 }
 
-                pendingSubmission.Status = "CONSENT_EXPIRED";
-                pendingSubmission.UpdatedAt = now;
-                pendingConsent.Status = "EXPIRED";
-                pendingConsent.UpdatedAt = now;
-                pendingConsent.ConcurrencyToken = Guid.NewGuid();
-                if (pendingSubmission.CandidateCv.CreationMethod == "AFFILIATE_UPLOAD" &&
-                    pendingSubmission.CandidateCv.Status == "PENDING_CONSENT")
-                {
-                    pendingSubmission.CandidateCv.Status = "ARCHIVED";
-                    pendingSubmission.CandidateCv.UpdatedAt = now;
-                }
-                _submissionRepository.Update(pendingSubmission);
-                _consentRepository.Update(pendingConsent);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await _expiryService.ExpireAsync(
+                    pendingConsent,
+                    now,
+                    request.UserId,
+                    "AFFILIATE_RESUBMISSION",
+                    cancellationToken);
             }
         }
 

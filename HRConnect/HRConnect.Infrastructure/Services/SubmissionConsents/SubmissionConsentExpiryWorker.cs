@@ -1,7 +1,5 @@
-using System.Text.Json;
-using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.SubmissionConsents.Common;
-using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,6 +63,7 @@ public sealed class SubmissionConsentExpiryWorker : BackgroundService
         {
             await using var itemScope = _scopeFactory.CreateAsyncScope();
             var context = itemScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var expiryService = itemScope.ServiceProvider.GetRequiredService<ISubmissionConsentExpiryService>();
             var consent = await context.SubmissionConsents
                 .Include(item => item.Submission).ThenInclude(submission => submission.CandidateCv)
                 .Include(item => item.Submission).ThenInclude(submission => submission.Candidate)
@@ -73,55 +72,15 @@ public sealed class SubmissionConsentExpiryWorker : BackgroundService
             if (consent == null || consent.Status != "PENDING" || consent.ExpiresAt > now)
                 continue;
 
-            consent.Status = "EXPIRED";
-            consent.UpdatedAt = now;
-            consent.ConcurrencyToken = Guid.NewGuid();
-            consent.Submission.Status = "CONSENT_EXPIRED";
-            consent.Submission.UpdatedAt = now;
-            if (consent.Submission.CandidateCv.Status == "PENDING_CONSENT")
-            {
-                consent.Submission.CandidateCv.Status = "ARCHIVED";
-                consent.Submission.CandidateCv.UpdatedAt = now;
-            }
-
-            var notificationExists = await context.Notifications.AnyAsync(notification =>
-                notification.UserId == consent.Submission.SubmittedBy &&
-                notification.NotificationType == SubmissionConsentNotificationFactory.NotificationType &&
-                notification.RelatedEntityType == "SUBMISSION" &&
-                notification.RelatedEntityId == consent.SubmissionId,
-                cancellationToken);
-            if (!notificationExists)
-            {
-                context.Notifications.Add(
-                    SubmissionConsentNotificationFactory.CreateAffiliateResult(consent.Submission, "EXPIRED", now));
-            }
-
-            context.AuditLogs.Add(new AuditLog
-            {
-                Action = AuditActions.SubmissionConsentExpired,
-                EntityType = "SUBMISSION",
-                EntityId = consent.SubmissionId,
-                OldValues = JsonSerializer.Serialize(new
-                {
-                    consentStatus = "PENDING",
-                    submissionStatus = "PENDING_CONSENT"
-                }),
-                NewValues = JsonSerializer.Serialize(new
-                {
-                    consentStatus = "EXPIRED",
-                    submissionStatus = "CONSENT_EXPIRED",
-                    cvStatus = consent.Submission.CandidateCv.Status
-                }),
-                CorrelationId = consent.ConsentId,
-                CreatedAt = now
-            });
-
             try
             {
-                await context.SaveChangesAsync(cancellationToken);
-                expiredCount++;
+                if (await expiryService.ExpireAsync(
+                        consent, now, null, "BACKGROUND_WORKER", cancellationToken))
+                {
+                    expiredCount++;
+                }
             }
-            catch (DbUpdateConcurrencyException)
+            catch (ConflictException exception) when (exception.ErrorCode == "CONCURRENT_UPDATE")
             {
                 _logger.LogInformation(
                     "Bỏ qua consent {ConsentId} vì trạng thái vừa được cập nhật bởi yêu cầu khác.",

@@ -10,25 +10,27 @@ public sealed class GetSubmissionConsentQueryHandler : IRequestHandler<GetSubmis
 {
     private readonly ISubmissionConsentRepository _repository;
     private readonly ICvStorageService _cvStorage;
-    private readonly INotificationRepository _notifications;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ISubmissionConsentExpiryService _expiryService;
 
     public GetSubmissionConsentQueryHandler(
         ISubmissionConsentRepository repository,
         ICvStorageService cvStorage,
-        INotificationRepository notifications,
-        IUnitOfWork unitOfWork)
+        ISubmissionConsentExpiryService expiryService)
     {
         _repository = repository;
         _cvStorage = cvStorage;
-        _notifications = notifications;
-        _unitOfWork = unitOfWork;
+        _expiryService = expiryService;
     }
 
     public async Task<SubmissionConsentReviewResponse> Handle(GetSubmissionConsentQuery request, CancellationToken cancellationToken)
     {
         var consent = await ResolveConsentAsync(request, cancellationToken);
-        await ExpireIfNeededAsync(consent, cancellationToken);
+        await _expiryService.ExpireAsync(
+            consent,
+            DateTime.UtcNow,
+            request.RequesterUserId,
+            "CONSENT_REVIEW",
+            cancellationToken);
 
         string? url = null;
         DateTime? urlExpiresAt = null;
@@ -89,32 +91,4 @@ public sealed class GetSubmissionConsentQueryHandler : IRequestHandler<GetSubmis
             throw new ForbiddenException("Vui lòng đăng nhập đúng tài khoản Candidate để xem và xác nhận hồ sơ.");
     }
 
-    private async Task ExpireIfNeededAsync(HRConnect.Domain.Entities.SubmissionConsent consent, CancellationToken cancellationToken)
-    {
-        if (consent.Status != "PENDING" || consent.ExpiresAt > DateTime.UtcNow) return;
-        var now = DateTime.UtcNow;
-        consent.Status = "EXPIRED";
-        consent.UpdatedAt = now;
-        consent.ConcurrencyToken = Guid.NewGuid();
-        consent.Submission.Status = "CONSENT_EXPIRED";
-        consent.Submission.UpdatedAt = now;
-        if (consent.Submission.CandidateCv.Status == "PENDING_CONSENT")
-        {
-            consent.Submission.CandidateCv.Status = "ARCHIVED";
-            consent.Submission.CandidateCv.UpdatedAt = now;
-        }
-        var notificationExists = await _notifications.ExistsAsync(
-            consent.Submission.SubmittedBy,
-            SubmissionConsentNotificationFactory.NotificationType,
-            "SUBMISSION",
-            consent.SubmissionId,
-            cancellationToken);
-        if (!notificationExists)
-        {
-            await _notifications.AddAsync(
-                SubmissionConsentNotificationFactory.CreateAffiliateResult(consent.Submission, "EXPIRED", now),
-                cancellationToken);
-        }
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-    }
 }

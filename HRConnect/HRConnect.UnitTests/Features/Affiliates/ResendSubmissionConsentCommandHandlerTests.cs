@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Affiliates.Commands.ResendSubmissionConsent;
+using HRConnect.Application.Features.SubmissionConsents.Common;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -34,7 +35,8 @@ public sealed class ResendSubmissionConsentCommandHandlerTests
             repository.Object, Mock.Of<IEmailOutboxRepository>(), email.Object,
             Mock.Of<IAuditLogService>(), unitOfWork.Object,
             Options.Create(new SubmissionConsentSettings { ResendCooldownMinutes = 2, MaxEmailSends = 5 }),
-            Mock.Of<ILogger<ResendSubmissionConsentCommandHandler>>());
+            Mock.Of<ILogger<ResendSubmissionConsentCommandHandler>>(),
+            Mock.Of<ISubmissionConsentExpiryService>());
 
         var result = await handler.Handle(new ResendSubmissionConsentCommand(consent.SubmissionId, ownerId), CancellationToken.None);
 
@@ -63,7 +65,8 @@ public sealed class ResendSubmissionConsentCommandHandlerTests
             repository.Object, Mock.Of<IEmailOutboxRepository>(), email.Object,
             Mock.Of<IAuditLogService>(), Mock.Of<IUnitOfWork>(),
             Options.Create(new SubmissionConsentSettings { ResendCooldownMinutes = 2, MaxEmailSends = 5 }),
-            Mock.Of<ILogger<ResendSubmissionConsentCommandHandler>>());
+            Mock.Of<ILogger<ResendSubmissionConsentCommandHandler>>(),
+            Mock.Of<ISubmissionConsentExpiryService>());
 
         await handler.Handle(new ResendSubmissionConsentCommand(consent.SubmissionId, ownerId), CancellationToken.None);
 
@@ -79,10 +82,37 @@ public sealed class ResendSubmissionConsentCommandHandlerTests
         var handler = new ResendSubmissionConsentCommandHandler(
             repository.Object, Mock.Of<IEmailOutboxRepository>(), Mock.Of<IEmailService>(),
             Mock.Of<IAuditLogService>(), Mock.Of<IUnitOfWork>(), Options.Create(new SubmissionConsentSettings()),
-            Mock.Of<ILogger<ResendSubmissionConsentCommandHandler>>());
+            Mock.Of<ILogger<ResendSubmissionConsentCommandHandler>>(),
+            Mock.Of<ISubmissionConsentExpiryService>());
 
         var action = () => handler.Handle(new ResendSubmissionConsentCommand(consent.SubmissionId, Guid.NewGuid()), CancellationToken.None);
         await action.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    [Fact]
+    public async Task Handle_ExpiredConsent_UsesSharedExpiryFlowAndReturnsConflict()
+    {
+        var ownerId = Guid.NewGuid();
+        var consent = CreateConsent(ownerId);
+        consent.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+        var repository = new Mock<ISubmissionConsentRepository>();
+        repository.Setup(x => x.GetBySubmissionIdAsync(consent.SubmissionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(consent);
+        var expiryService = new Mock<ISubmissionConsentExpiryService>();
+        expiryService.Setup(service => service.ExpireAsync(
+                consent, It.IsAny<DateTime>(), ownerId, "CONSENT_RESEND", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        var handler = new ResendSubmissionConsentCommandHandler(
+            repository.Object, Mock.Of<IEmailOutboxRepository>(), Mock.Of<IEmailService>(),
+            Mock.Of<IAuditLogService>(), Mock.Of<IUnitOfWork>(), Options.Create(new SubmissionConsentSettings()),
+            Mock.Of<ILogger<ResendSubmissionConsentCommandHandler>>(), expiryService.Object);
+
+        var action = () => handler.Handle(
+            new ResendSubmissionConsentCommand(consent.SubmissionId, ownerId), CancellationToken.None);
+
+        await action.Should().ThrowAsync<ConflictException>();
+        expiryService.Verify(service => service.ExpireAsync(
+            consent, It.IsAny<DateTime>(), ownerId, "CONSENT_RESEND", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -103,7 +133,8 @@ public sealed class ResendSubmissionConsentCommandHandlerTests
             repository.Object, Mock.Of<IEmailOutboxRepository>(), email.Object,
             Mock.Of<IAuditLogService>(), unitOfWork.Object,
             Options.Create(new SubmissionConsentSettings { ResendCooldownMinutes = 2, MaxEmailSends = 5 }),
-            Mock.Of<ILogger<ResendSubmissionConsentCommandHandler>>());
+            Mock.Of<ILogger<ResendSubmissionConsentCommandHandler>>(),
+            Mock.Of<ISubmissionConsentExpiryService>());
 
         var action = () => handler.Handle(
             new ResendSubmissionConsentCommand(consent.SubmissionId, ownerId),

@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.SubmissionConsents;
+using HRConnect.Application.Features.SubmissionConsents.Common;
 using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,7 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
     private readonly IUnitOfWork _unitOfWork;
     private readonly SubmissionConsentSettings _settings;
     private readonly ILogger<ResendSubmissionConsentCommandHandler> _logger;
+    private readonly ISubmissionConsentExpiryService _expiryService;
 
     public ResendSubmissionConsentCommandHandler(
         ISubmissionConsentRepository consents,
@@ -28,7 +30,8 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         IAuditLogService audit,
         IUnitOfWork unitOfWork,
         IOptions<SubmissionConsentSettings> settings,
-        ILogger<ResendSubmissionConsentCommandHandler> logger)
+        ILogger<ResendSubmissionConsentCommandHandler> logger,
+        ISubmissionConsentExpiryService expiryService)
     {
         _consents = consents;
         _outboxes = outboxes;
@@ -37,6 +40,7 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         _unitOfWork = unitOfWork;
         _settings = settings.Value;
         _logger = logger;
+        _expiryService = expiryService;
     }
 
     public async Task<ResendSubmissionConsentResponse> Handle(ResendSubmissionConsentCommand request, CancellationToken cancellationToken)
@@ -51,17 +55,8 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         var now = DateTime.UtcNow;
         if (consent.ExpiresAt <= now)
         {
-            consent.Status = "EXPIRED";
-            consent.ConcurrencyToken = Guid.NewGuid();
-            consent.Submission.Status = "CONSENT_EXPIRED";
-            consent.UpdatedAt = now;
-            consent.Submission.UpdatedAt = now;
-            if (consent.Submission.CandidateCv is { Status: "PENDING_CONSENT" } candidateCv)
-            {
-                candidateCv.Status = "ARCHIVED";
-                candidateCv.UpdatedAt = now;
-            }
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await _expiryService.ExpireAsync(
+                consent, now, request.UserId, "CONSENT_RESEND", cancellationToken);
             throw new ConflictException("Yêu cầu đã hết hạn. Vui lòng tạo lượt nộp mới.");
         }
 

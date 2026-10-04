@@ -1,12 +1,18 @@
 using System.Text.Json;
 using FluentAssertions;
+using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.SubmissionConsents.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
+using HRConnect.Infrastructure.Repositories;
+using HRConnect.Infrastructure.Services.Audit;
 using HRConnect.Infrastructure.Services.SubmissionConsents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 
 namespace HRConnect.UnitTests.Services.SubmissionConsents;
 
@@ -18,6 +24,7 @@ public sealed class SubmissionConsentExpiryWorkerTests
         var databaseName = Guid.NewGuid().ToString();
         var services = new ServiceCollection();
         services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase(databaseName));
+        AddExpiryServices(services);
         await using var provider = services.BuildServiceProvider();
         var fixture = CreateConsent(DateTime.UtcNow.AddMinutes(-1));
 
@@ -56,6 +63,7 @@ public sealed class SubmissionConsentExpiryWorkerTests
         using var newValues = JsonDocument.Parse(audit.NewValues!);
         newValues.RootElement.GetProperty("consentStatus").GetString().Should().Be("EXPIRED");
         newValues.RootElement.GetProperty("submissionStatus").GetString().Should().Be("CONSENT_EXPIRED");
+        newValues.RootElement.GetProperty("source").GetString().Should().Be("BACKGROUND_WORKER");
     }
 
     [Fact]
@@ -64,6 +72,7 @@ public sealed class SubmissionConsentExpiryWorkerTests
         var databaseName = Guid.NewGuid().ToString();
         var services = new ServiceCollection();
         services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase(databaseName));
+        AddExpiryServices(services);
         await using var provider = services.BuildServiceProvider();
         var fixture = CreateConsent(DateTime.UtcNow.AddHours(1));
         await using (var seedScope = provider.CreateAsyncScope())
@@ -149,6 +158,15 @@ public sealed class SubmissionConsentExpiryWorkerTests
             UpdatedAt = now.AddHours(-1)
         };
         return new ConsentFixture(consent, affiliateUserId, consent.ConcurrencyToken);
+    }
+
+    private static void AddExpiryServices(IServiceCollection services)
+    {
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<ISubmissionConsentExpiryService, SubmissionConsentExpiryService>();
+        services.AddSingleton(Mock.Of<IRequestContext>());
     }
 
     private sealed record ConsentFixture(
