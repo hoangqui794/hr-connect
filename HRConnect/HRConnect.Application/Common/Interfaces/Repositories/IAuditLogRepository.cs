@@ -6,7 +6,10 @@ public interface IAuditLogRepository
 {
     Task<(IReadOnlyList<AuditLog> Items, int TotalCount)> GetListAsync(
         Guid? actorUserId,
+        string? actorType,
         string? action,
+        string? source,
+        string? serviceName,
         string? entityType,
         Guid? entityId,
         Guid? correlationId,

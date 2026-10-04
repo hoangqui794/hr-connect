@@ -242,7 +242,7 @@ public class LoginCommandHandlerTests
         var act = async () => await _handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Please verify your email before continuing.");
+            .WithMessage("Vui lòng xác thực email trước khi tiếp tục.");
     }
 
     [Fact]
@@ -271,7 +271,7 @@ public class LoginCommandHandlerTests
         var act = async () => await _handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Your registration is pending Admin approval.");
+            .WithMessage("Hồ sơ đăng ký của bạn đang chờ Ban quản trị phê duyệt.");
     }
 
     [Fact]
@@ -300,7 +300,7 @@ public class LoginCommandHandlerTests
         var act = async () => await _handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Your registration was rejected.");
+            .WithMessage("Hồ sơ đăng ký của bạn đã bị từ chối.");
     }
 
     [Fact]
@@ -332,7 +332,7 @@ public class LoginCommandHandlerTests
         var act = async () => await _handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Please verify your email before continuing.");
+            .WithMessage("Vui lòng xác thực email trước khi tiếp tục.");
     }
 
     [Fact]
@@ -364,7 +364,7 @@ public class LoginCommandHandlerTests
         var act = async () => await _handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Your registration is pending Admin approval.");
+            .WithMessage("Hồ sơ đăng ký của bạn đang chờ Ban quản trị phê duyệt.");
     }
 
     [Fact]
@@ -396,7 +396,7 @@ public class LoginCommandHandlerTests
         var act = async () => await _handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Your registration was rejected.");
+            .WithMessage("Hồ sơ đăng ký của bạn đã bị từ chối.");
     }
 
     [Fact]

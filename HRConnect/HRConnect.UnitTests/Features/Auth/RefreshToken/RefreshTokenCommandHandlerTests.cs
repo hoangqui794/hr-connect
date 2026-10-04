@@ -410,7 +410,7 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Your registration was rejected.");
+            .WithMessage("Hồ sơ đăng ký của bạn đã bị từ chối.");
     }
 
     [Fact]
@@ -453,7 +453,7 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Your registration was rejected.");
+            .WithMessage("Hồ sơ đăng ký của bạn đã bị từ chối.");
     }
 
     [Fact]

@@ -15,4 +15,12 @@ public sealed class AuditEntry
     public Guid? ActorUserId { get; init; }
 
     public Guid? CorrelationId { get; init; }
+
+    public string? ActorType { get; init; }
+
+    public string? Source { get; init; }
+
+    public string? ServiceName { get; init; }
+
+    public int EventVersion { get; init; } = 1;
 }

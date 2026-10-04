@@ -47,6 +47,12 @@ public partial class AiMatchResult
 
     public int DispatchCount { get; set; }
 
+    /// <summary>
+    /// Earliest UTC time at which the dispatcher may try this attempt again.
+    /// Null means the request is ready for immediate dispatch.
+    /// </summary>
+    public DateTime? NextAttemptAt { get; set; }
+
     public DateTime? CompletedAt { get; set; }
 
     public virtual Application Application { get; set; } = null!;

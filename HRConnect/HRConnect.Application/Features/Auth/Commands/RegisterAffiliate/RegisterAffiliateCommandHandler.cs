@@ -178,22 +178,10 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
             // Raw OTP chỉ tồn tại trong bộ nhớ và không được ghi vào log/outbox.
             try
             {
-                var subject = "Mã xác thực đăng ký Đối tác tuyển dụng - HR Connect";
-                var bodyHtml = $@"
-                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                        <h2 style='color: #4F46E5; margin-top: 0;'>HR Connect - Đối tác tuyển dụng</h2>
-                        <p>Xin chào <strong>{request.FullName.Trim()}</strong>,</p>
-                        <p>Cảm ơn bạn đã đăng ký trở thành Đối tác tuyển dụng (Affiliate Recruiter) của HR Connect. Vui lòng sử dụng mã xác thực (OTP) dưới đây để xác nhận địa chỉ email của bạn:</p>
-                        <div style='background-color: #F3F4F6; padding: 16px; border-radius: 6px; text-align: center; margin: 24px 0;'>
-                            <span style='font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1F2937;'>{rawOtp}</span>
-                        </div>
-                        <p style='color: #4B5563; font-size: 14px;'>Mã xác thực này có hiệu lực trong vòng <strong>{expirationMinutes} phút</strong>. Sau khi xác thực email, hồ sơ của bạn sẽ được chuyển đến Ban quản trị xem xét phê duyệt.</p>
-                        <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                        <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
-                    </div>";
-
+                var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates.RegistrationOtp(
+                    request.FullName, rawOtp, expirationMinutes, "Đối tác tuyển dụng", true);
                 var emailResult = await _emailService.SendEmailAsync(
-                    newUser.Email, subject, bodyHtml, CancellationToken.None);
+                    newUser.Email, email.Subject, email.HtmlBody, CancellationToken.None);
 
                 if (emailResult.IsSuccess)
                 {
@@ -233,7 +221,7 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
             return new RegisterAffiliateResponse
             {
                 Success = true,
-                Message = "Registration successful. Please verify your email.",
+                Message = "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.",
                 Data = new RegisterAffiliateData
                 {
                     UserId = newUser.UserId,

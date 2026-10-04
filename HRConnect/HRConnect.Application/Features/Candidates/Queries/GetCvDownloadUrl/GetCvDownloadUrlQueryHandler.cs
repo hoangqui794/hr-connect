@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -12,17 +13,23 @@ public class GetCvDownloadUrlQueryHandler : IRequestHandler<GetCvDownloadUrlQuer
     private readonly ICandidateCvRepository _candidateCvRepository;
     private readonly ICandidateRepository _candidateRepository;
     private readonly ILogger<GetCvDownloadUrlQueryHandler> _logger;
+    private readonly IAuditLogService _audit;
+    private readonly IUnitOfWork _unitOfWork;
 
     public GetCvDownloadUrlQueryHandler(
         ICvStorageService cvStorageService,
         ICandidateCvRepository candidateCvRepository,
         ICandidateRepository candidateRepository,
-        ILogger<GetCvDownloadUrlQueryHandler> logger)
+        ILogger<GetCvDownloadUrlQueryHandler> logger,
+        IAuditLogService audit,
+        IUnitOfWork unitOfWork)
     {
         _cvStorageService = cvStorageService;
         _candidateCvRepository = candidateCvRepository;
         _candidateRepository = candidateRepository;
         _logger = logger;
+        _audit = audit;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<GetCvDownloadUrlResponse> Handle(GetCvDownloadUrlQuery request, CancellationToken cancellationToken)
@@ -55,6 +62,21 @@ public class GetCvDownloadUrlQueryHandler : IRequestHandler<GetCvDownloadUrlQuer
             : null;
 
         var result = await _cvStorageService.GetCvDownloadUrlAsync(request.CvId, expiry, cancellationToken);
+
+        await _audit.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.CandidateCvDownloadUrlIssued,
+            EntityType = "CANDIDATE_CV",
+            EntityId = cv.CvId,
+            ActorUserId = request.UserId,
+            NewValues = new
+            {
+                cv.CandidateId,
+                result.ExpiresAt,
+                requestedExpiryMinutes = request.ExpiryMinutes
+            }
+        }, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new GetCvDownloadUrlResponse
         {

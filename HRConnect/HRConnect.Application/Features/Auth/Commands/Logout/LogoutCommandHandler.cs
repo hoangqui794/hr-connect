@@ -35,7 +35,7 @@ public class LogoutCommandHandler : IRequestHandler<LogoutCommand, LogoutRespons
         if (userId == null || userId == Guid.Empty)
         {
             _logger.LogWarning("Đăng xuất thất bại: Không tìm thấy định danh người dùng đã xác thực.");
-            throw new UnauthorizedException("User is not authenticated.");
+            throw new UnauthorizedException("Bạn chưa đăng nhập hoặc phiên đăng nhập không hợp lệ.");
         }
 
         // 2. Băm Refresh Token để tra cứu an toàn trong database

@@ -332,7 +332,7 @@ public class VerifyEmailOtpCommandHandlerTests
 
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Message.Should().Contain("pending Admin approval");
+        result.Message.Should().Contain("đang chờ Ban quản trị phê duyệt");
         result.Data!.Status.Should().Be("PENDING_ADMIN_APPROVAL");
 
         // QUY TẮC: User status vẫn là PENDING, đơn chuyển sang UNDER_REVIEW
@@ -397,7 +397,7 @@ public class VerifyEmailOtpCommandHandlerTests
 
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Message.Should().Contain("pending Admin approval");
+        result.Message.Should().Contain("đang chờ Ban quản trị phê duyệt");
         result.Data!.Status.Should().Be("PENDING_ADMIN_APPROVAL");
 
         // QUY TẮC: User status vẫn là PENDING, request & company chuyển sang UNDER_REVIEW

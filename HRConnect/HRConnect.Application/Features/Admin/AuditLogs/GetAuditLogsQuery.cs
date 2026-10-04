@@ -1,12 +1,16 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using MediatR;
 
 namespace HRConnect.Application.Features.Admin.AuditLogs;
 
 public sealed record GetAuditLogsQuery(
     Guid? ActorUserId = null,
+    string? ActorType = null,
     string? Action = null,
+    string? Source = null,
+    string? ServiceName = null,
     string? EntityType = null,
     Guid? EntityId = null,
     Guid? CorrelationId = null,
@@ -65,11 +69,22 @@ public sealed class GetAuditLogsQueryHandler : IRequestHandler<GetAuditLogsQuery
         }
 
         var action = NormalizeFilter(request.Action, 120, "action");
+        var actorType = NormalizeFilter(request.ActorType, 30, "actorType");
+        var source = NormalizeFilter(request.Source, 30, "source");
+        var serviceName = NormalizeFilter(request.ServiceName, 80, "serviceName");
         var entityType = NormalizeFilter(request.EntityType, 80, "entityType");
+
+        if (actorType != null && !AuditActorTypes.All.Contains(actorType))
+            throw new BadRequestException("Bộ lọc actorType không hợp lệ.");
+        if (source != null && !AuditSources.All.Contains(source))
+            throw new BadRequestException("Bộ lọc source không hợp lệ.");
 
         var (items, total) = await _repository.GetListAsync(
             request.ActorUserId,
+            actorType,
             action,
+            source,
+            serviceName,
             entityType,
             request.EntityId,
             request.CorrelationId,

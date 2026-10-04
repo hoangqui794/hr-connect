@@ -50,7 +50,7 @@ public class ChangePasswordCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<UnauthorizedException>()
-            .WithMessage("User is not authenticated.");
+            .WithMessage("Bạn chưa đăng nhập hoặc phiên đăng nhập không hợp lệ.");
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class ChangePasswordCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>()
-            .WithMessage("User not found.");
+            .WithMessage("Không tìm thấy tài khoản.");
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class ChangePasswordCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<BadRequestException>()
-            .WithMessage("Password change is not available for this account.");
+            .WithMessage("Tài khoản này không hỗ trợ đổi mật khẩu bằng mật khẩu hiện tại.");
     }
 
     [Fact]
@@ -134,7 +134,7 @@ public class ChangePasswordCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<BadRequestException>()
-            .WithMessage("Current password is incorrect.");
+            .WithMessage("Mật khẩu hiện tại không chính xác.");
     }
 
     [Fact]
@@ -167,7 +167,7 @@ public class ChangePasswordCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<BadRequestException>()
-            .WithMessage("New password must be different from the current password.");
+            .WithMessage("Mật khẩu mới phải khác mật khẩu hiện tại.");
     }
 
     [Fact]
@@ -209,7 +209,7 @@ public class ChangePasswordCommandHandlerTests
         // Assert
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Message.Should().Be("Password changed successfully.");
+        result.Message.Should().Be("Đổi mật khẩu thành công.");
 
         user.PasswordHash.Should().Be("$2a$12$brandnewhash999");
         _userRepositoryMock.Verify(x => x.Update(user), Times.Once);

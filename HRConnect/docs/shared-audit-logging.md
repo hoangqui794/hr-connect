@@ -4,6 +4,26 @@
 
 Every HTTP request receives an `X-Correlation-ID` response header. A valid GUID supplied in the same request header is reused; otherwise the API creates one. Request logs and audit rows use this value so an incident can be traced across both sources.
 
+The API also records the client IP for HTTP audit events. In production,
+configure `ForwardedHeaders__KnownProxies__0` (and subsequent indexes) with the
+trusted reverse proxy addresses. Forwarded headers from untrusted clients are
+ignored.
+
+## Actor and source context
+
+Every audit row has explicit context even when `actor_user_id` is null:
+
+- `actor_type`: `USER`, `ANONYMOUS`, `SYSTEM`, `SERVICE`, or `DATABASE_TRIGGER`.
+- `source`: `API`, `APPLICATION`, `BACKGROUND_WORKER`, `INTEGRATION`, or `DATABASE_TRIGGER`.
+- `service_name`: identifies a service or worker such as `MF03`,
+  `MF03_DISPATCHER`, or `CONSENT_EXPIRY_WORKER`.
+- `event_version`: version of the JSON event shape, currently `1`.
+
+`actor_user_id` is retained with `ON DELETE RESTRICT`. Accounts referenced by
+audit history must be deactivated instead of hard deleted. `entity_type` and
+`entity_id` remain a polymorphic reference and deliberately do not use a foreign
+key because audit events can refer to several business tables.
+
 ## Writing an audit event
 
 Inject `IAuditLogService`, add the event before the unit of work is committed, and let the existing business transaction save it:
@@ -42,14 +62,42 @@ await unitOfWork.SaveChangesAsync(cancellationToken);
 | `CV_PRIMARY_SET` | `CANDIDATE_CV` | Candidate changes the primary CV |
 | `CV_DELETED` | `CANDIDATE_CV` | CV is hidden or physically deleted |
 | `APPLICATION_SUBMITTED` | `APPLICATION` | Candidate submits an accepted application |
-| `AFFILIATE_SUBMISSION_CREATED` | `SUBMISSION` | Affiliate creates an accepted submission |
+| `AFFILIATE_SUBMISSION_CREATED` | `SUBMISSION` | Affiliate creates a submission pending Candidate consent |
 | `SUBMISSION_DUPLICATE_BLOCKED` | `SUBMISSION` | A duplicate submission is recorded and blocked |
+| `SUBMISSION_CONSENT_CONFIRMED` | `SUBMISSION` | Candidate accepts an Affiliate submission |
+| `SUBMISSION_CONSENT_DECLINED` | `SUBMISSION` | Candidate declines an Affiliate submission |
+| `SUBMISSION_CONSENT_EXPIRED` | `SUBMISSION` | A consent expires through the worker, review, resend, or resubmission flow |
+| `SUBMISSION_CONSENT_CLOSED` | `SUBMISSION` | A pending consent is closed for another controlled business reason |
+| `SUBMISSION_CONSENT_EMAIL_RESENT` | `SUBMISSION` | Affiliate requests another consent email |
+| `AFFILIATE_CV_VIEWED` | `CANDIDATE_CV` | Affiliate receives a short-lived URL for an authorized Candidate CV |
+| `CANDIDATE_CV_DOWNLOAD_URL_ISSUED` | `CANDIDATE_CV` | Candidate receives a short-lived URL for an owned CV |
+| `SUBMISSION_CONSENT_CV_DOWNLOAD_URL_ISSUED` | `CANDIDATE_CV` | Consent reviewer receives a five-minute CV URL through an account or email link |
+| `INTERNAL_CV_DOWNLOAD_URL_ISSUED` | `CANDIDATE_CV` | MF03 receives a short-lived internal CV URL |
+| `AI_SCORING_REQUESTED` | `APPLICATION` | MF02 creates the initial MF03 scoring request |
+| `AI_SCORING_RETRY_REQUESTED` | `APPLICATION` | An authorized manual retry is requested |
+| `AI_SCORING_RETRY_SCHEDULED` | `APPLICATION` | The dispatcher schedules a bounded retry |
+| `AI_SCORING_FAILED` | `APPLICATION` | Dispatch reaches a terminal failure |
 
-The application uses the existing `public.audit_log` table. Migration `20260926150000_AddAuditCorrelationIndex` only adds an index for correlation lookup; it does not create another log table.
+Consent expiration uses one shared application service. The consent, submission,
+pending CV, Affiliate notification, and audit row are persisted by the same unit
+of work. Every entry includes a `source` value so support staff can distinguish a
+background expiry from an expiry discovered during review, resend, or resubmission.
+
+Short-lived URL events record identifiers, the expiry time, and the access path.
+They never record the signed URL. Ordinary list and detail queries are not audited
+because they do not change business state and do not grant access to the CV file.
+
+The application uses the existing `public.audit_log` table. Migration
+`20261004043422_AddAuditContextMetadata` adds actor/source context, validates
+allowed values, backfills existing rows, preserves the append-only trigger, and
+adds indexes for operational filtering. It does not create another log table.
 
 ## MF04 events
 
-MF04 writes audit events for all state-changing Interview, Offer, Application, and Placement commands. A command that changes an application status also writes `APPLICATION_STATUS_CHANGED` for the application, in addition to its primary entity event.
+MF04 writes audit events for all state-changing Interview, Offer, Application,
+and Placement commands. A command that changes an application status also writes
+`APPLICATION_STATUS_CHANGED` for the application, in addition to its primary
+entity event.
 
 | Area | Actions |
 | --- | --- |
@@ -57,4 +105,6 @@ MF04 writes audit events for all state-changing Interview, Offer, Application, a
 | Offer | `OFFER_DRAFT_CREATED`, `OFFER_UPDATED`, `OFFER_SENT`, `OFFER_ACCEPTED`, `OFFER_DECLINED`, `OFFER_WITHDRAWN` |
 | Application and placement | `APPLICATION_BACKUP_DECIDED`, `APPLICATION_WITHDRAWN`, `APPLICATION_PLANNED_START_DATE_UPDATED`, `APPLICATION_NOT_STARTED`, `APPLICATION_STATUS_CHANGED`, `PLACEMENT_CONFIRMED` |
 
-MF04 audit payloads contain IDs, statuses, dates, version numbers, and small business metadata only. They must not contain concurrency tokens, meeting links, offer document URLs, detailed interview feedback, or candidate CV content.
+MF04 audit payloads contain IDs, statuses, dates, version numbers, and small
+business metadata only. They must not contain concurrency tokens, meeting links,
+offer document URLs, detailed interview feedback, or candidate CV content.

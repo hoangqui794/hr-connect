@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Affiliates.Commands.SubmitCandidate;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.SubmissionConsents.Common;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -82,7 +83,8 @@ public class SubmitCandidateCommandHandlerTests
             _unitOfWorkMock.Object,
             _auditLogServiceMock.Object,
             Options.Create(new SubmissionConsentSettings()),
-            _loggerMock.Object);
+            _loggerMock.Object,
+            Mock.Of<ISubmissionConsentExpiryService>());
     }
 
     [Fact]

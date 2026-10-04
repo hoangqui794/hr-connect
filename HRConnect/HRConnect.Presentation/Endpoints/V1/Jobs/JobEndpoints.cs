@@ -105,6 +105,7 @@ public static class JobEndpoints
             [FromForm] string? cvId,
             IFormFile? file,
             ISender sender,
+            IValidator<ApplyJobCommand> validator,
             CancellationToken ct) =>
         {
             var id = UserId(user);
@@ -137,19 +138,24 @@ public static class JobEndpoints
                 FileSizeBytes = file?.Length
             };
 
+            var invalid = await Validate(command, validator, ct);
+            if (invalid != null) return invalid;
+
             return await Run(async () => Results.Ok(await sender.Send(command, ct)));
         })
         .WithTags("Candidate Applications")
         .WithName("CandidateApplyJob")
         .WithSummary("Ứng viên tự ứng tuyển vào Job")
-        .WithDescription("Yêu cầu permission application.create. Ứng viên nộp hồ sơ vào công việc bằng CV có sẵn hoặc tải lên tệp CV PDF mới. Hệ thống vẫn kiểm tra quyền submit của Service Type và hồ sơ ứng viên.")
+        .WithDescription("Yêu cầu permission application.create. Candidate và tài khoản phải còn ACTIVE, hồ sơ chưa archive/merge. Phải cung cấp đúng một nguồn CV: cvId trong kho của Candidate hoặc một tệp PDF mới. Không được gửi đồng thời cả hai. Giới hạn 10 yêu cầu mỗi giờ theo UserId + IP; dữ liệu không hợp lệ bị chặn trước khi upload CV.")
+        .RequireRateLimiting("candidate-application")
         .DisableAntiforgery()
         .Produces<ApplyJobResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
-        .Produces(StatusCodes.Status409Conflict);
+        .Produces(StatusCodes.Status409Conflict)
+        .Produces(StatusCodes.Status429TooManyRequests);
 
         // POST /api/v1/jobs/{jobId}/candidate-submissions - Affiliate Recruiter nộp hồ sơ ứng viên
         jobs.MapPost("/{jobId:guid}/candidate-submissions", async (

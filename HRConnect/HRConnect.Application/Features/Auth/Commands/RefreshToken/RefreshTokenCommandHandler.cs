@@ -110,13 +110,13 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
                 if (user.EmailVerifiedAt == null)
                 {
                     _logger.LogWarning("Từ chối refresh token: Tài khoản Affiliate {Email} chưa xác thực email.", user.Email);
-                    throw new ForbiddenException("Please verify your email before continuing.");
+                    throw new ForbiddenException("Vui lòng xác thực email trước khi tiếp tục.");
                 }
 
                 if (string.Equals(user.AffiliateApplicationUser.Status, "REJECTED", StringComparison.OrdinalIgnoreCase))
                 {
                     _logger.LogWarning("Từ chối refresh token: Đơn Affiliate của {Email} đã bị từ chối.", user.Email);
-                    throw new ForbiddenException("Your registration was rejected.");
+                    throw new ForbiddenException("Hồ sơ đăng ký của bạn đã bị từ chối.");
                 }
             }
 
@@ -129,7 +129,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
                 if (user.EmailVerifiedAt == null)
                 {
                     _logger.LogWarning("Từ chối refresh token: Tài khoản Client {Email} chưa xác thực email.", user.Email);
-                    throw new ForbiddenException("Please verify your email before continuing.");
+                    throw new ForbiddenException("Vui lòng xác thực email trước khi tiếp tục.");
                 }
 
                 var isRequestRejected = clientRequest != null && string.Equals(clientRequest.Status, "REJECTED", StringComparison.OrdinalIgnoreCase);
@@ -138,7 +138,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
                 if (isRequestRejected || isCompanyRejected)
                 {
                     _logger.LogWarning("Từ chối refresh token: Đăng ký doanh nghiệp của {Email} đã bị từ chối.", user.Email);
-                    throw new ForbiddenException("Your registration was rejected.");
+                    throw new ForbiddenException("Hồ sơ đăng ký của bạn đã bị từ chối.");
                 }
             }
 

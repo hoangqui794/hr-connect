@@ -16,6 +16,8 @@ public class GetInternalCvDownloadUrlQueryHandlerTests
     private readonly Mock<ICvStorageService> _cvStorageServiceMock;
     private readonly Mock<ICandidateCvRepository> _candidateCvRepositoryMock;
     private readonly Mock<ILogger<GetInternalCvDownloadUrlQueryHandler>> _loggerMock;
+    private readonly Mock<IAuditLogService> _auditMock;
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly GetInternalCvDownloadUrlQueryHandler _handler;
 
     public GetInternalCvDownloadUrlQueryHandlerTests()
@@ -23,11 +25,15 @@ public class GetInternalCvDownloadUrlQueryHandlerTests
         _cvStorageServiceMock = new Mock<ICvStorageService>();
         _candidateCvRepositoryMock = new Mock<ICandidateCvRepository>();
         _loggerMock = new Mock<ILogger<GetInternalCvDownloadUrlQueryHandler>>();
+        _auditMock = new Mock<IAuditLogService>();
+        _unitOfWorkMock = new Mock<IUnitOfWork>();
 
         _handler = new GetInternalCvDownloadUrlQueryHandler(
             _cvStorageServiceMock.Object,
             _candidateCvRepositoryMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _auditMock.Object,
+            _unitOfWorkMock.Object);
     }
 
     [Fact]
@@ -76,6 +82,15 @@ public class GetInternalCvDownloadUrlQueryHandlerTests
         response.Data.MimeType.Should().Be("application/pdf");
         response.Data.DownloadUrl.Should().Be(downloadResult.DownloadUrl);
         response.Data.ExpiresAt.Should().Be(downloadResult.ExpiresAt);
+        _auditMock.Verify(service => service.AddAsync(It.Is<AuditEntry>(entry =>
+            entry.Action == AuditActions.InternalCvDownloadUrlIssued &&
+            entry.EntityType == "CANDIDATE_CV" &&
+            entry.EntityId == cvId &&
+            entry.ActorUserId == null &&
+            entry.ActorType == AuditActorTypes.Service &&
+            entry.Source == AuditSources.Integration &&
+            entry.ServiceName == "MF03"), It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

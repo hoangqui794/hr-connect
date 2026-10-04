@@ -87,7 +87,7 @@ public class LogoutCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<UnauthorizedException>()
-            .WithMessage("User is not authenticated.");
+            .WithMessage("Bạn chưa đăng nhập hoặc phiên đăng nhập không hợp lệ.");
 
         _refreshTokenRepositoryMock.Verify(x => x.GetByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }

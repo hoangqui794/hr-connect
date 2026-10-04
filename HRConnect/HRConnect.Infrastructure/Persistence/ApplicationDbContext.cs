@@ -338,11 +338,20 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.MatchResultId).HasName("ai_match_result_pkey");
 
-            entity.ToTable("ai_match_result", "public", tb => tb.HasComment("Post-application AI screening support. Match Score/Tier/Highlight support human review; AI does not auto-reject/shortlist/hire."));
+            entity.ToTable("ai_match_result", "public", table =>
+            {
+                table.HasComment("Post-application AI screening support. Match Score/Tier/Highlight support human review; AI does not auto-reject/shortlist/hire.");
+                table.HasCheckConstraint(
+                    "ai_match_result_status_check",
+                    "status IN ('PENDING','PROCESSING','COMPLETED','FAILED','UNAVAILABLE')");
+            });
 
             entity.HasIndex(e => new { e.ApplicationId, e.AttemptNo }, "ai_match_result_application_id_attempt_no_key").IsUnique();
 
             entity.HasIndex(e => new { e.ApplicationId, e.AttemptNo }, "idx_ai_match_application").IsDescending(false, true);
+
+            entity.HasIndex(e => new { e.Status, e.NextAttemptAt }, "idx_ai_match_result_pending_dispatch")
+                .HasFilter("status = 'PENDING'");
 
             entity.Property(e => e.MatchResultId)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -386,6 +395,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("requested_at");
             entity.Property(e => e.ProcessingStartedAt).HasColumnName("processing_started_at");
             entity.Property(e => e.LastDispatchedAt).HasColumnName("last_dispatched_at");
+            entity.Property(e => e.NextAttemptAt).HasColumnName("next_attempt_at");
             entity.Property(e => e.ShouldHaveResult)
                 .HasColumnType("jsonb")
                 .HasColumnName("should_have_result");
@@ -597,13 +607,29 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.AuditLogId).HasName("audit_log_pkey");
 
-            entity.ToTable("audit_log", "public", tb => tb.HasComment("Append-only audit trail. Set hr_connect.current_user_id in the application transaction when actor identity is available."));
+            entity.ToTable("audit_log", "public", tb =>
+            {
+                tb.HasComment("Append-only audit trail with actor and source context.");
+                tb.HasCheckConstraint("audit_log_actor_type_check", "actor_type IN ('USER', 'ANONYMOUS', 'SYSTEM', 'SERVICE', 'DATABASE_TRIGGER')");
+                tb.HasCheckConstraint("audit_log_actor_identity_check", "(actor_user_id IS NULL AND actor_type <> 'USER') OR (actor_user_id IS NOT NULL AND actor_type = 'USER')");
+                tb.HasCheckConstraint("audit_log_source_check", "source IN ('API', 'APPLICATION', 'BACKGROUND_WORKER', 'INTEGRATION', 'DATABASE_TRIGGER')");
+                tb.HasCheckConstraint("audit_log_event_version_check", "event_version >= 1");
+                tb.HasCheckConstraint("audit_log_service_actor_check", "actor_type <> 'SERVICE' OR service_name IS NOT NULL");
+            });
 
             entity.HasIndex(e => new { e.ActorUserId, e.CreatedAt }, "idx_audit_log_actor").IsDescending(false, true);
 
             entity.HasIndex(e => new { e.EntityType, e.EntityId, e.CreatedAt }, "idx_audit_log_entity").IsDescending(false, false, true);
 
             entity.HasIndex(e => new { e.CorrelationId, e.CreatedAt }, "idx_audit_log_correlation").IsDescending(false, true);
+
+            entity.HasIndex(e => new { e.ActorType, e.CreatedAt }, "idx_audit_log_actor_type").IsDescending(false, true);
+
+            entity.HasIndex(e => new { e.Source, e.CreatedAt }, "idx_audit_log_source").IsDescending(false, true);
+
+            entity.HasIndex(e => new { e.ServiceName, e.CreatedAt }, "idx_audit_log_service")
+                .IsDescending(false, true)
+                .HasFilter("service_name IS NOT NULL");
 
             entity.Property(e => e.AuditLogId)
                 .HasDefaultValueSql("nextval('audit_log_audit_log_id_seq'::regclass)")
@@ -612,6 +638,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(120)
                 .HasColumnName("action");
             entity.Property(e => e.ActorUserId).HasColumnName("actor_user_id");
+            entity.Property(e => e.ActorType)
+                .HasMaxLength(30)
+                .HasDefaultValue("SYSTEM")
+                .HasColumnName("actor_type");
             entity.Property(e => e.CorrelationId).HasColumnName("correlation_id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
@@ -621,17 +651,27 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(80)
                 .HasColumnName("entity_type");
             entity.Property(e => e.IpAddress).HasColumnName("ip_address");
+            entity.Property(e => e.EventVersion)
+                .HasDefaultValue(1)
+                .HasColumnName("event_version");
             entity.Property(e => e.NewValues)
                 .HasColumnType("jsonb")
                 .HasColumnName("new_values");
             entity.Property(e => e.OldValues)
                 .HasColumnType("jsonb")
                 .HasColumnName("old_values");
+            entity.Property(e => e.ServiceName)
+                .HasMaxLength(80)
+                .HasColumnName("service_name");
+            entity.Property(e => e.Source)
+                .HasMaxLength(30)
+                .HasDefaultValue("APPLICATION")
+                .HasColumnName("source");
             entity.Property(e => e.UserAgent).HasColumnName("user_agent");
 
             entity.HasOne(d => d.ActorUser).WithMany(p => p.AuditLogs)
                 .HasForeignKey(d => d.ActorUserId)
-                .OnDelete(DeleteBehavior.SetNull)
+                .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("audit_log_actor_user_id_fkey");
         });
 
@@ -1767,7 +1807,13 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.NotificationId).HasName("notification_pkey");
 
-            entity.ToTable("notification", "public", tb => tb.HasComment("In-app notification store. JOB_FIT notifications may reference a Job through related_entity_type/related_entity_id."));
+            entity.ToTable("notification", "public", tb =>
+            {
+                tb.HasComment("In-app notification store. JOB_FIT notifications may reference a Job through related_entity_type/related_entity_id.");
+                tb.HasCheckConstraint(
+                    "ck_notification_type",
+                    "notification_type IN ('ACCOUNT','COMPANY','JOB','SUBMISSION','SUBMISSION_CONSENT_RESULT','JOB_FIT','APPLICATION_STATUS','INTERVIEW','OFFER','AFFILIATE','COMMISSION','PAYOUT','SYSTEM')");
+            });
 
             entity.HasIndex(e => new { e.UserId, e.CreatedAt }, "idx_notification_unread")
                 .IsDescending(false, true)
@@ -2220,7 +2266,6 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CanSubmit).HasDefaultValue(false).HasColumnName("can_submit");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
-
             entity.HasOne(d => d.ServiceType).WithMany(p => p.AllowedRoles)
                 .HasForeignKey(d => d.ServiceTypeId)
                 .OnDelete(DeleteBehavior.Cascade)
@@ -2365,6 +2410,10 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.LastEmailError).HasMaxLength(1000).HasColumnName("last_email_error");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
 
             entity.HasOne(e => e.Submission).WithOne(s => s.Consent)
                 .HasForeignKey<SubmissionConsent>(e => e.SubmissionId)

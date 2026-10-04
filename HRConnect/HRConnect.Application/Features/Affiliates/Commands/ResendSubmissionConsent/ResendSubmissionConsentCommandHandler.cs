@@ -1,10 +1,10 @@
-using System.Net;
 using System.Text.Json;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.SubmissionConsents;
+using HRConnect.Application.Features.SubmissionConsents.Common;
 using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -21,6 +21,7 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
     private readonly IUnitOfWork _unitOfWork;
     private readonly SubmissionConsentSettings _settings;
     private readonly ILogger<ResendSubmissionConsentCommandHandler> _logger;
+    private readonly ISubmissionConsentExpiryService _expiryService;
 
     public ResendSubmissionConsentCommandHandler(
         ISubmissionConsentRepository consents,
@@ -29,7 +30,8 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         IAuditLogService audit,
         IUnitOfWork unitOfWork,
         IOptions<SubmissionConsentSettings> settings,
-        ILogger<ResendSubmissionConsentCommandHandler> logger)
+        ILogger<ResendSubmissionConsentCommandHandler> logger,
+        ISubmissionConsentExpiryService expiryService)
     {
         _consents = consents;
         _outboxes = outboxes;
@@ -38,6 +40,7 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         _unitOfWork = unitOfWork;
         _settings = settings.Value;
         _logger = logger;
+        _expiryService = expiryService;
     }
 
     public async Task<ResendSubmissionConsentResponse> Handle(ResendSubmissionConsentCommand request, CancellationToken cancellationToken)
@@ -52,16 +55,8 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         var now = DateTime.UtcNow;
         if (consent.ExpiresAt <= now)
         {
-            consent.Status = "EXPIRED";
-            consent.Submission.Status = "CONSENT_EXPIRED";
-            consent.UpdatedAt = now;
-            consent.Submission.UpdatedAt = now;
-            if (consent.Submission.CandidateCv is { Status: "PENDING_CONSENT" } candidateCv)
-            {
-                candidateCv.Status = "ARCHIVED";
-                candidateCv.UpdatedAt = now;
-            }
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await _expiryService.ExpireAsync(
+                consent, now, request.UserId, "CONSENT_RESEND", cancellationToken);
             throw new ConflictException("Yêu cầu đã hết hạn. Vui lòng tạo lượt nộp mới.");
         }
 
@@ -82,6 +77,7 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         consent.EmailSentAt = null;
         consent.LastEmailError = null;
         consent.UpdatedAt = now;
+        consent.ConcurrencyToken = Guid.NewGuid();
 
         var outbox = new EmailOutbox
         {
@@ -109,13 +105,13 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         var confirmationUrl = consent.Submission.Candidate.UserId.HasValue
             ? $"{_settings.ConfirmationUrlBase.TrimEnd('/')}#submissionId={consent.SubmissionId}"
             : $"{_settings.ConfirmationUrlBase.TrimEnd('/')}#token={Uri.EscapeDataString(rawToken)}";
+        var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates.SubmissionConsent(
+            consent.Submission.Candidate.FullName, consent.Submission.Job.Title,
+            consent.Submission.Job.Company.CompanyName, confirmationUrl, consent.ExpiresAt,
+            consent.Submission.Candidate.UserId.HasValue, isReminder: true);
+        outbox.Subject = email.Subject;
         var result = await _email.SendEmailAsync(
-            consent.RecipientEmail,
-            outbox.Subject!,
-            BuildEmail(consent.Submission.Candidate.FullName, consent.Submission.Job.Title,
-                consent.Submission.Job.Company.CompanyName, confirmationUrl, consent.ExpiresAt,
-                consent.Submission.Candidate.UserId.HasValue),
-            CancellationToken.None);
+            consent.RecipientEmail, email.Subject, email.HtmlBody, CancellationToken.None);
 
         var deliveryStatus = result.IsSuccess ? "SENT" : "FAILED";
         if (result.IsSuccess)
@@ -147,14 +143,4 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         };
     }
 
-    private static string BuildEmail(string name, string job, string company, string url, DateTime expiresAt, bool requiresLogin) => $"""
-        <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#1f2937">
-          <h2 style="color:#315c2b">Nhắc lại yêu cầu xác nhận hồ sơ</h2>
-          <p>Xin chào <strong>{WebUtility.HtmlEncode(name)}</strong>,</p>
-          <p>Affiliate Recruiter đang chờ bạn xác nhận hồ sơ cho vị trí <strong>{WebUtility.HtmlEncode(job)}</strong> tại <strong>{WebUtility.HtmlEncode(company)}</strong>.</p>
-          <p>CV không được đính kèm trong email. {(requiresLogin ? "Hãy đăng nhập đúng tài khoản Candidate trên HR Connect để xem và xác nhận." : "Bạn có thể xem và xác nhận qua liên kết bảo mật bên dưới.")}</p>
-          <p style="margin:28px 0"><a href="{WebUtility.HtmlEncode(url)}" style="background:#315c2b;color:white;padding:12px 20px;border-radius:6px;text-decoration:none">Xem và xác nhận</a></p>
-          <p style="font-size:13px;color:#6b7280">Liên kết hết hạn lúc {expiresAt:dd/MM/yyyy HH:mm} UTC.</p>
-        </div>
-        """;
 }

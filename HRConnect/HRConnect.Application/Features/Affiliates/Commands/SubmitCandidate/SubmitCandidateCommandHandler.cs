@@ -3,11 +3,11 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.SubmissionConsents.Common;
 using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -34,6 +34,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
     private readonly IAuditLogService _auditLogService;
     private readonly SubmissionConsentSettings _consentSettings;
     private readonly ILogger<SubmitCandidateCommandHandler> _logger;
+    private readonly ISubmissionConsentExpiryService _expiryService;
 
     public SubmitCandidateCommandHandler(
         IAffiliateProfileRepository affiliateProfileRepository,
@@ -52,7 +53,8 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         IUnitOfWork unitOfWork,
         IAuditLogService auditLogService,
         IOptions<SubmissionConsentSettings> consentSettings,
-        ILogger<SubmitCandidateCommandHandler> logger)
+        ILogger<SubmitCandidateCommandHandler> logger,
+        ISubmissionConsentExpiryService expiryService)
     {
         _affiliateProfileRepository = affiliateProfileRepository;
         _candidateRepository = candidateRepository;
@@ -71,6 +73,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         _auditLogService = auditLogService;
         _consentSettings = consentSettings.Value;
         _logger = logger;
+        _expiryService = expiryService;
     }
 
     public async Task<SubmitCandidateResponse> Handle(SubmitCandidateCommand request, CancellationToken cancellationToken)
@@ -240,19 +243,12 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                         $"Hồ sơ này đang chờ Candidate xác nhận đến {pendingConsent.ExpiresAt:O}.");
                 }
 
-                pendingSubmission.Status = "CONSENT_EXPIRED";
-                pendingSubmission.UpdatedAt = now;
-                pendingConsent.Status = "EXPIRED";
-                pendingConsent.UpdatedAt = now;
-                if (pendingSubmission.CandidateCv.CreationMethod == "AFFILIATE_UPLOAD" &&
-                    pendingSubmission.CandidateCv.Status == "PENDING_CONSENT")
-                {
-                    pendingSubmission.CandidateCv.Status = "ARCHIVED";
-                    pendingSubmission.CandidateCv.UpdatedAt = now;
-                }
-                _submissionRepository.Update(pendingSubmission);
-                _consentRepository.Update(pendingConsent);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await _expiryService.ExpireAsync(
+                    pendingConsent,
+                    now,
+                    request.UserId,
+                    "AFFILIATE_RESUBMISSION",
+                    cancellationToken);
             }
         }
 
@@ -483,12 +479,12 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             var confirmationUrl = candidate.UserId.HasValue
                 ? $"{_consentSettings.ConfirmationUrlBase.TrimEnd('/')}#submissionId={submission.SubmissionId}"
                 : $"{_consentSettings.ConfirmationUrlBase.TrimEnd('/')}#token={Uri.EscapeDataString(rawToken)}";
+            var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates.SubmissionConsent(
+                candidate.FullName, job.Title, job.Company?.CompanyName ?? "doanh nghiệp tuyển dụng",
+                confirmationUrl, expiresAt, candidate.UserId.HasValue, isReminder: false);
+            emailOutbox.Subject = email.Subject;
             var result = await _emailService.SendEmailAsync(
-                consent.RecipientEmail,
-                emailOutbox.Subject!,
-                BuildConsentEmailHtml(candidate.FullName, job.Title, job.Company?.CompanyName ?? "doanh nghiệp tuyển dụng",
-                    confirmationUrl, expiresAt, candidate.UserId.HasValue),
-                CancellationToken.None);
+                consent.RecipientEmail, email.Subject, email.HtmlBody, CancellationToken.None);
 
             consent.EmailSendCount = 1;
             consent.UpdatedAt = DateTime.UtcNow;
@@ -558,33 +554,6 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
 
     private static string HashToken(string token) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token))).ToLowerInvariant();
-
-    private static string BuildConsentEmailHtml(
-        string candidateName,
-        string jobTitle,
-        string companyName,
-        string confirmationUrl,
-        DateTime expiresAt,
-        bool requiresLogin)
-    {
-        var safeName = WebUtility.HtmlEncode(candidateName);
-        var safeJob = WebUtility.HtmlEncode(jobTitle);
-        var safeCompany = WebUtility.HtmlEncode(companyName);
-        var safeUrl = WebUtility.HtmlEncode(confirmationUrl);
-        var instruction = requiresLogin
-            ? "Hãy mở HR Connect và đăng nhập đúng tài khoản Candidate để xem thông tin, kiểm tra CV và chọn Đồng ý hoặc Từ chối."
-            : "Hãy mở liên kết bảo mật dưới đây để xem thông tin, kiểm tra CV và chọn Đồng ý hoặc Từ chối.";
-        return $"""
-            <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#1f2937">
-              <h2 style="color:#315c2b">Xác nhận hồ sơ ứng tuyển</h2>
-              <p>Xin chào <strong>{safeName}</strong>,</p>
-              <p>Một Affiliate Recruiter đã giới thiệu hồ sơ của bạn cho vị trí <strong>{safeJob}</strong> tại <strong>{safeCompany}</strong>.</p>
-              <p>HR Connect không đính kèm CV trong email để bảo vệ dữ liệu cá nhân. {instruction}</p>
-              <p style="margin:28px 0"><a href="{safeUrl}" style="background:#315c2b;color:white;padding:12px 20px;border-radius:6px;text-decoration:none">Xem và xác nhận hồ sơ</a></p>
-              <p style="font-size:13px;color:#6b7280">Liên kết hết hạn lúc {expiresAt:dd/MM/yyyy HH:mm} UTC. Nếu bạn không thực hiện yêu cầu này, hãy chọn Từ chối.</p>
-            </div>
-            """;
-    }
 
     private static bool IsDuplicateConstraintViolation(Exception ex)
     {

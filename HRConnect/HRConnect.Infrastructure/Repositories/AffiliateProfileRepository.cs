@@ -24,6 +24,8 @@ public class AffiliateProfileRepository : IAffiliateProfileRepository
     {
         return await _context.AffiliateProfiles
             .Include(p => p.User)
+                .ThenInclude(user => user.UserRoleUsers)
+                    .ThenInclude(userRole => userRole.Role)
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
     }
 

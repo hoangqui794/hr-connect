@@ -6,7 +6,7 @@ public class ResendSettings
 
     public string ApiKey { get; set; } = string.Empty;
 
-    public string FromEmail { get; set; } = "onboarding@resend.dev";
+    public string FromEmail { get; set; } = "no-reply@hrconnectvn.online";
 
-    public string FromName { get; set; } = "HR Connect System";
+    public string FromName { get; set; } = "HR Connect";
 }

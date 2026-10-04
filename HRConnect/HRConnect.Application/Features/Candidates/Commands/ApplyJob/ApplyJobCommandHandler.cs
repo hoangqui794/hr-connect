@@ -13,6 +13,7 @@ namespace HRConnect.Application.Features.Candidates.Commands.ApplyJob;
 public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobResponse>
 {
     private readonly ICandidateRepository _candidateRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IJobRepository _jobRepository;
     private readonly ICandidateCvRepository _candidateCvRepository;
     private readonly ICvStorageService _cvStorageService;
@@ -25,6 +26,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
 
     public ApplyJobCommandHandler(
         ICandidateRepository candidateRepository,
+        IUserRepository userRepository,
         IJobRepository jobRepository,
         ICandidateCvRepository candidateCvRepository,
         ICvStorageService cvStorageService,
@@ -36,6 +38,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         ILogger<ApplyJobCommandHandler> logger)
     {
         _candidateRepository = candidateRepository;
+        _userRepository = userRepository;
         _jobRepository = jobRepository;
         _candidateCvRepository = candidateCvRepository;
         _cvStorageService = cvStorageService;
@@ -57,6 +60,26 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             throw new NotFoundException("Không tìm thấy thông tin hồ sơ ứng viên tương ứng với tài khoản.");
         }
 
+        if (!string.Equals(candidate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+            candidate.MergedIntoCandidateId.HasValue)
+        {
+            throw new ConflictException(
+                "Hồ sơ ứng viên đã bị khóa, lưu trữ hoặc hợp nhất và không thể ứng tuyển.",
+                "CANDIDATE_PROFILE_NOT_ELIGIBLE");
+        }
+
+        var user = await _userRepository.GetByIdWithActiveRolesAsync(request.UserId, cancellationToken);
+        var hasActiveCandidateRole = user?.UserRoleUsers.Any(userRole =>
+            string.Equals(userRole.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
+            userRole.Role.IsActive &&
+            string.Equals(userRole.Role.Code, JobAccessPolicy.CandidateRole, StringComparison.OrdinalIgnoreCase)) == true;
+        if (!string.Equals(user?.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) || !hasActiveCandidateRole)
+        {
+            throw new ForbiddenException(
+                "Tài khoản ứng viên không còn hoạt động hoặc đã bị thu hồi quyền ứng tuyển.",
+                "CANDIDATE_ACCOUNT_NOT_ELIGIBLE");
+        }
+
         // 2. Kiểm tra tồn tại và trạng thái Job
         var job = await _jobRepository.GetByIdAsync(request.JobId, cancellationToken);
         if (job == null)
@@ -74,7 +97,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         // 3. Phân quyền can_submit dựa trên Service Type và Roles
         if (!JobAccessPolicy.CanCandidateApply(job, request.RoleCodes))
         {
-            throw new ForbiddenException("Candidates can only apply to public jobs.", "JOB_VISIBILITY_NOT_ALLOWED");
+            throw new ForbiddenException("Ứng viên chỉ được tự ứng tuyển vào công việc công khai.", "JOB_VISIBILITY_NOT_ALLOWED");
         }
 
         // Check the permission of the actor used by this operation only. A multi-role
@@ -85,19 +108,29 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         {
             _logger.LogWarning("Vai trò của người dùng {UserId} ({Roles}) không được phép nộp hồ sơ vào ServiceTypeId {ServiceTypeId}",
                 request.UserId, string.Join(",", request.RoleCodes), job.ServiceTypeId);
-            throw new ForbiddenException("Your role is not allowed to submit candidates for this service type.", "SERVICE_TYPE_SUBMISSION_NOT_ALLOWED");
+            throw new ForbiddenException("Vai trò ứng viên không được phép nộp hồ sơ cho loại dịch vụ của công việc này.", "SERVICE_TYPE_SUBMISSION_NOT_ALLOWED");
+        }
+
+        var hasUploadedFile = request.FileStream != null &&
+            request.FileStream != Stream.Null &&
+            !string.IsNullOrWhiteSpace(request.FileName) &&
+            request.FileSizeBytes > 0;
+        var hasCvId = request.CvId.HasValue && request.CvId.Value != Guid.Empty;
+        if (hasUploadedFile == hasCvId)
+        {
+            throw new BadRequestException("Phải cung cấp đúng một nguồn CV: tệp PDF mới hoặc cvId trong kho CV của Candidate.");
         }
 
         // 4. Xử lý CV (Upload mới hoặc chọn CV có sẵn)
         Guid cvId;
         Guid? newlyUploadedCvId = null;
-        if (request.FileStream != null && request.FileStream != Stream.Null && !string.IsNullOrWhiteSpace(request.FileName))
+        if (hasUploadedFile)
         {
             var uploadResult = await _cvStorageService.UploadCvPdfAsync(
                 candidate.CandidateId,
-                request.FileStream,
-                request.FileName,
-                request.FileSizeBytes ?? request.FileStream.Length,
+                request.FileStream!,
+                request.FileName!,
+                request.FileSizeBytes!.Value,
                 cancellationToken: cancellationToken);
             cvId = uploadResult.CvId;
             newlyUploadedCvId = cvId;
@@ -116,17 +149,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             cvId = cv.CvId;
         }
         else
-        {
-            var primaryCv = await _candidateCvRepository.GetPrimaryByCandidateIdAsync(candidate.CandidateId, cancellationToken);
-            if (primaryCv != null && !string.IsNullOrWhiteSpace(primaryCv.SourceFileUrl))
-            {
-                cvId = primaryCv.CvId;
-            }
-            else
-            {
-                throw new BadRequestException("Vui lòng tải lên tệp CV định dạng PDF hoặc chọn CV có sẵn.");
-            }
-        }
+            throw new BadRequestException("Phải cung cấp đúng một nguồn CV: tệp PDF mới hoặc cvId trong kho CV của Candidate.");
 
         // 5. Kiểm tra trùng lặp (Duplicate Check): Cùng Candidate + Cùng Job
         var existingSubmission = await _submissionRepository.GetAcceptedSubmissionAsync(candidate.CandidateId, job.JobId, cancellationToken);
