@@ -21,13 +21,15 @@ public class UpdateInterviewCommandHandlerTests
     private readonly Mock<ICompanyUserRepository> _companyUserRepositoryMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<UpdateInterviewCommandHandler>> _loggerMock = new();
+    private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
 
     private UpdateInterviewCommandHandler CreateHandler() =>
         new(
             _interviewRepositoryMock.Object,
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _auditLogServiceMock.Object);
 
     [Fact]
     public async Task Handle_WhenInterviewNotFound_ShouldThrowNotFoundException()

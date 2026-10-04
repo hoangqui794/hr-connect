@@ -123,37 +123,83 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         }
 
         // 4. Nhận diện / Tạo mới ứng viên (Candidate Identification)
-        var normalizedEmail = !string.IsNullOrWhiteSpace(request.Email)
-            ? _emailNormalizer.Normalize(request.Email)
-            : null;
+        var hasUploadedFile = request.FileStream != null &&
+                              request.FileStream != Stream.Null &&
+                              !string.IsNullOrWhiteSpace(request.FileName);
+        var isLibraryReuse = request.CandidateId.HasValue && request.CandidateId.Value != Guid.Empty;
+        Candidate? candidate;
+        AffiliateCandidateCvAccessRecord? libraryCv = null;
+        string? normalizedEmail;
+        string? normalizedPhone;
 
-        var normalizedPhone = !string.IsNullOrWhiteSpace(request.Phone)
-            ? _phoneNormalizer.Normalize(request.Phone)
-            : null;
-
-        Candidate? candidateByEmail = null;
-        if (!string.IsNullOrWhiteSpace(normalizedEmail))
+        if (isLibraryReuse)
         {
-            candidateByEmail = await _candidateRepository.GetByNormalizedEmailAsync(normalizedEmail, cancellationToken);
+            if (hasUploadedFile || !request.CvId.HasValue || request.CvId.Value == Guid.Empty)
+                throw new BadRequestException("Khi sử dụng Candidate từ kho, phải chọn đúng một cvId và không tải tệp CV mới.");
+
+            libraryCv = await _submissionRepository.GetAffiliateCandidateCvAccessAsync(
+                request.UserId, request.CandidateId!.Value, request.CvId.Value, cancellationToken);
+            if (libraryCv == null)
+                throw new NotFoundException("Không tìm thấy Candidate/CV trong kho của Affiliate.");
+
+            candidate = await _candidateRepository.GetByIdAsync(request.CandidateId.Value, cancellationToken);
+            if (candidate == null || candidate.Status != "ACTIVE" || candidate.MergedIntoCandidateId.HasValue)
+                throw new NotFoundException("Không tìm thấy Candidate/CV trong kho của Affiliate.");
+
+            normalizedEmail = candidate.NormalizedEmail;
+            normalizedPhone = candidate.NormalizedPhone;
+        }
+        else
+        {
+            normalizedEmail = !string.IsNullOrWhiteSpace(request.Email)
+                ? _emailNormalizer.Normalize(request.Email)
+                : null;
+            normalizedPhone = !string.IsNullOrWhiteSpace(request.Phone)
+                ? _phoneNormalizer.Normalize(request.Phone)
+                : null;
+
+            Candidate? candidateByEmail = null;
+            if (!string.IsNullOrWhiteSpace(normalizedEmail))
+                candidateByEmail = await _candidateRepository.GetByNormalizedEmailAsync(normalizedEmail, cancellationToken);
+
+            Candidate? candidateByPhone = null;
+            if (!string.IsNullOrWhiteSpace(normalizedPhone))
+                candidateByPhone = await _candidateRepository.GetByNormalizedPhoneAsync(normalizedPhone, cancellationToken);
+
+            if (candidateByEmail != null && candidateByPhone != null && candidateByEmail.CandidateId != candidateByPhone.CandidateId)
+            {
+                _logger.LogWarning("Xung đột danh tính ứng viên: Email {Email} (CandidateId {EmailCandId}) và Phone {Phone} (CandidateId {PhoneCandId})",
+                    normalizedEmail, candidateByEmail.CandidateId, normalizedPhone, candidateByPhone.CandidateId);
+                throw new ConflictException("Email và số điện thoại này thuộc về hai ứng viên khác nhau trong hệ thống.");
+            }
+
+            candidate = candidateByEmail ?? candidateByPhone;
+            if (candidate != null)
+            {
+                if (!string.Equals(candidate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+                    candidate.MergedIntoCandidateId.HasValue)
+                {
+                    throw new ConflictException("Hồ sơ Candidate đã bị khóa, lưu trữ hoặc hợp nhất và không thể nhận lượt nộp mới.");
+                }
+
+                // Email is the consent identity. Never attach a phone-matched Candidate
+                // to an email that is not already owned by that Candidate.
+                if (candidateByEmail == null && !string.IsNullOrWhiteSpace(normalizedEmail))
+                {
+                    throw new ConflictException("Số điện thoại đã thuộc một Candidate khác hoặc email không khớp với hồ sơ Candidate hiện có.");
+                }
+
+                if (!string.IsNullOrWhiteSpace(normalizedPhone) &&
+                    !string.IsNullOrWhiteSpace(candidate.NormalizedPhone) &&
+                    !string.Equals(normalizedPhone, candidate.NormalizedPhone, StringComparison.Ordinal))
+                {
+                    throw new ConflictException("Email và số điện thoại không khớp với cùng một hồ sơ Candidate.");
+                }
+            }
         }
 
-        Candidate? candidateByPhone = null;
-        if (!string.IsNullOrWhiteSpace(normalizedPhone))
-        {
-            candidateByPhone = await _candidateRepository.GetByNormalizedPhoneAsync(normalizedPhone, cancellationToken);
-        }
-
-        // Kiểm tra xung đột danh tính: email và số điện thoại thuộc về 2 ứng viên khác nhau
-        if (candidateByEmail != null && candidateByPhone != null && candidateByEmail.CandidateId != candidateByPhone.CandidateId)
-        {
-            _logger.LogWarning("Xung đột danh tính ứng viên: Email {Email} (CandidateId {EmailCandId}) và Phone {Phone} (CandidateId {PhoneCandId})",
-                normalizedEmail, candidateByEmail.CandidateId, normalizedPhone, candidateByPhone.CandidateId);
-            throw new ConflictException("Email và số điện thoại này thuộc về hai ứng viên khác nhau trong hệ thống.");
-        }
-
-        var candidate = candidateByEmail ?? candidateByPhone;
         var now = DateTime.UtcNow;
-        var recipientEmail = !string.IsNullOrWhiteSpace(request.Email)
+        var recipientEmail = !isLibraryReuse && !string.IsNullOrWhiteSpace(request.Email)
             ? request.Email.Trim()
             : candidate?.Email?.Trim();
         if (string.IsNullOrWhiteSpace(recipientEmail))
@@ -210,13 +256,13 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             }
         }
 
-        var hasUploadedFile = request.FileStream != null &&
-                              request.FileStream != Stream.Null &&
-                              !string.IsNullOrWhiteSpace(request.FileName);
-
         // CV đã lưu chỉ hợp lệ khi danh tính Candidate đã tồn tại và CV do chính Affiliate này tải.
         Guid? selectedCvId = null;
-        if (!hasUploadedFile && request.CvId.HasValue && request.CvId.Value != Guid.Empty)
+        if (isLibraryReuse)
+        {
+            selectedCvId = libraryCv!.CvId;
+        }
+        else if (!hasUploadedFile && request.CvId.HasValue && request.CvId.Value != Guid.Empty)
         {
             if (candidate == null)
             {

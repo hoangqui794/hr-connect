@@ -9,6 +9,7 @@ public sealed class UpdateJobCommand : IRequest<JobActionResponse>
 {
     [JsonIgnore] public Guid JobId { get; set; }
     [JsonIgnore] public Guid UserId { get; set; }
+    public Guid ConcurrencyToken { get; set; }
     public Guid ServiceTypeId { get; set; }
     public string? Title { get; set; }
     public string? Description { get; set; }

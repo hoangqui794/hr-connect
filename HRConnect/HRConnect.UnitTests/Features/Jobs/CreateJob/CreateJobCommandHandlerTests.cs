@@ -38,6 +38,7 @@ public class CreateJobCommandHandlerTests
             ServiceTypeId = serviceTypeId,
             Title = "  Senior .NET Developer  ",
             Benefits = "  KPI bonus, insurance and training  ",
+            WorkingTime = "  Monday-Friday, 08:00-17:30  ",
             EmploymentType = " full_time ",
             MinExperienceYears = 3,
             MaxExperienceYears = 5,
@@ -84,6 +85,8 @@ public class CreateJobCommandHandlerTests
         createdJob.ServiceTypeId.Should().Be(serviceTypeId);
         createdJob.Title.Should().Be("Senior .NET Developer");
         createdJob.Benefits.Should().Be("KPI bonus, insurance and training");
+        createdJob.WorkingTime.Should().Be("Monday-Friday, 08:00-17:30");
+        createdJob.ConcurrencyToken.Should().NotBe(Guid.Empty);
         createdJob.EmploymentType.Should().Be("FULL_TIME");
         createdJob.MinExperienceYears.Should().Be(3);
         createdJob.MaxExperienceYears.Should().Be(5);

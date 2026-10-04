@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -18,19 +19,22 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RecordInterviewResultCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public RecordInterviewResultCommandHandler(
         IInterviewRepository interviewRepository,
         IApplicationRepository applicationRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
-        ILogger<RecordInterviewResultCommandHandler> logger)
+        ILogger<RecordInterviewResultCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _interviewRepository = interviewRepository;
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<RecordInterviewResultResponse> Handle(RecordInterviewResultCommand request, CancellationToken cancellationToken)
@@ -134,9 +138,9 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
             Reason = reasonText
         });
 
+        var oldApplicationStatus = interview.Application?.Status;
         if (interview.Application != null)
         {
-            var oldApplicationStatus = interview.Application.Status;
             string? targetApplicationStatus = null;
 
             if (normalizedResult == InterviewResults.Fail)
@@ -178,6 +182,34 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
         }
 
         _interviewRepository.Update(interview);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.InterviewResultRecorded,
+            EntityType = "INTERVIEW",
+            EntityId = interview.InterviewId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { status = oldStatus, result = (string?)null },
+            NewValues = new
+            {
+                applicationId = interview.ApplicationId,
+                status = interview.Status,
+                result = interview.Result,
+                isFinalRound = request.IsFinalRound,
+                nextAction = request.NextAction
+            }
+        }, cancellationToken);
+        if (oldApplicationStatus != null && oldApplicationStatus != interview.Application?.Status)
+        {
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.ApplicationStatusChanged,
+                EntityType = "APPLICATION",
+                EntityId = interview.ApplicationId,
+                ActorUserId = request.CurrentUserId,
+                OldValues = new { status = oldApplicationStatus },
+                NewValues = new { status = interview.Application!.Status, sourceAction = AuditActions.InterviewResultRecorded }
+            }, cancellationToken);
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new RecordInterviewResultResponse

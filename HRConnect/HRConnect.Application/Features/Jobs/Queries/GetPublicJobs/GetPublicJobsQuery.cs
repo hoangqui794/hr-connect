@@ -10,6 +10,9 @@ public sealed record GetPublicJobsQuery(
     string? Search,
     string? Location,
     string? EmploymentType,
+    Guid? ServiceTypeId = null,
+    decimal? SalaryMin = null,
+    decimal? SalaryMax = null,
     int Page = 1,
     int PageSize = 20) : IRequest<JobPageDto>;
 
@@ -30,6 +33,10 @@ public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQue
     {
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
+        if (!string.IsNullOrWhiteSpace(request.EmploymentType) && !EmploymentTypes.All.Contains(request.EmploymentType.Trim().ToUpperInvariant()))
+            throw new HRConnect.Application.Common.Exceptions.BadRequestException("EmploymentType phải là FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP hoặc FREELANCE.");
+        if (request.SalaryMin < 0 || request.SalaryMax < 0 || (request.SalaryMin.HasValue && request.SalaryMax.HasValue && request.SalaryMin > request.SalaryMax))
+            throw new HRConnect.Application.Common.Exceptions.BadRequestException("Khoảng lương filter không hợp lệ.");
         var roleCodes = request.RoleCodes.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var allowedVisibilities = JobAccessPolicy.GetDiscoverableVisibilities(
             roleCodes, request.HasInternalAccess);
@@ -40,6 +47,9 @@ public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQue
             request.Search,
             request.Location,
             request.EmploymentType,
+            request.ServiceTypeId,
+            request.SalaryMin,
+            request.SalaryMax,
             page,
             pageSize,
             cancellationToken);

@@ -46,3 +46,15 @@ await unitOfWork.SaveChangesAsync(cancellationToken);
 | `SUBMISSION_DUPLICATE_BLOCKED` | `SUBMISSION` | A duplicate submission is recorded and blocked |
 
 The application uses the existing `public.audit_log` table. Migration `20260926150000_AddAuditCorrelationIndex` only adds an index for correlation lookup; it does not create another log table.
+
+## MF04 events
+
+MF04 writes audit events for all state-changing Interview, Offer, Application, and Placement commands. A command that changes an application status also writes `APPLICATION_STATUS_CHANGED` for the application, in addition to its primary entity event.
+
+| Area | Actions |
+| --- | --- |
+| Interview | `INTERVIEW_SCHEDULED`, `INTERVIEW_UPDATED`, `INTERVIEW_RESCHEDULED`, `INTERVIEW_CANCELLED`, `INTERVIEW_NO_SHOW_RECORDED`, `INTERVIEW_RESULT_RECORDED` |
+| Offer | `OFFER_DRAFT_CREATED`, `OFFER_UPDATED`, `OFFER_SENT`, `OFFER_ACCEPTED`, `OFFER_DECLINED`, `OFFER_WITHDRAWN` |
+| Application and placement | `APPLICATION_BACKUP_DECIDED`, `APPLICATION_WITHDRAWN`, `APPLICATION_PLANNED_START_DATE_UPDATED`, `APPLICATION_NOT_STARTED`, `APPLICATION_STATUS_CHANGED`, `PLACEMENT_CONFIRMED` |
+
+MF04 audit payloads contain IDs, statuses, dates, version numbers, and small business metadata only. They must not contain concurrency tokens, meeting links, offer document URLs, detailed interview feedback, or candidate CV content.

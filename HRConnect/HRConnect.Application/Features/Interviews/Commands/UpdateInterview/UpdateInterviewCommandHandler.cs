@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Interviews.Commands.ScheduleInterview;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
@@ -20,17 +21,20 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateInterviewCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public UpdateInterviewCommandHandler(
         IInterviewRepository interviewRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
-        ILogger<UpdateInterviewCommandHandler> logger)
+        ILogger<UpdateInterviewCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _interviewRepository = interviewRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<UpdateInterviewResponse> Handle(UpdateInterviewCommand request, CancellationToken cancellationToken)
@@ -77,6 +81,14 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
             _logger.LogWarning("User {UserId} không có quyền cập nhật lịch phỏng vấn.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền cập nhật lịch phỏng vấn.");
         }
+
+        var oldValues = new
+        {
+            durationMinutes = interview.DurationMinutes,
+            interviewType = interview.InterviewType,
+            location = interview.Location,
+            participantCount = interview.InterviewParticipants.Count
+        };
 
         if (request.DurationMinutes.HasValue)
         {
@@ -131,6 +143,22 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
         interview.UpdatedAt = now;
 
         _interviewRepository.Update(interview);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.InterviewUpdated,
+            EntityType = "INTERVIEW",
+            EntityId = interview.InterviewId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = oldValues,
+            NewValues = new
+            {
+                applicationId = interview.ApplicationId,
+                durationMinutes = interview.DurationMinutes,
+                interviewType = interview.InterviewType,
+                location = interview.Location,
+                participantCount = interview.InterviewParticipants.Count
+            }
+        }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new UpdateInterviewResponse

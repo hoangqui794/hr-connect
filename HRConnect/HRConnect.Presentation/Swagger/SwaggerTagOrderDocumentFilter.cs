@@ -23,6 +23,7 @@ public sealed class SwaggerTagOrderDocumentFilter : IDocumentFilter
         new() { Name = "Candidate Submission Consents", Description = "Candidate đã đăng nhập xem và phản hồi yêu cầu Affiliate sử dụng hồ sơ bằng submissionId." },
 
         new() { Name = "Affiliate Profile", Description = "Quản lý hồ sơ, hiệu suất và tài khoản nhận hoa hồng của Affiliate Recruiter." },
+        new() { Name = "Affiliate Candidate Library", Description = "Xem lại Candidate và CV đã được xác nhận để tái sử dụng khi nộp Job mới." },
         new() { Name = "Affiliate Submissions", Description = "Nộp ứng viên, xem lịch sử và chi tiết lượt nộp của Affiliate Recruiter." },
         new() { Name = "Submission Consents", Description = "Candidate chưa có tài khoản xem và phản hồi yêu cầu Affiliate sử dụng hồ sơ bằng token email." },
         new() { Name = "Affiliate Attributions", Description = "Theo dõi lịch sử ghi nhận nguồn giới thiệu của Affiliate Recruiter." },

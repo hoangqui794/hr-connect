@@ -485,7 +485,7 @@ public static class CandidateTestJobSeeder
             var affMapping = await context.ServiceTypeAllowedRoles
                 .FirstOrDefaultAsync(star => star.ServiceTypeId == sourcingSt.ServiceTypeId && star.RoleId == affiliateRole.RoleId, cancellationToken);
 
-            if (candMapping == null || !candMapping.CanView || !candMapping.CanSubmit)
+            if (candMapping == null || candMapping.CanView || candMapping.CanSubmit)
             {
                 logger?.LogWarning("ServiceTypeAllowedRole cho CV_SOURCING và Role CANDIDATE chưa đủ quyền can_view=true, can_submit=true.");
             }

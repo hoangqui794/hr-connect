@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -16,19 +17,22 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SendOfferCommandHandler> _logger;
+    private readonly IAuditLogService _auditLogService;
 
     public SendOfferCommandHandler(
         IOfferRepository offerRepository,
         IApplicationRepository applicationRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
-        ILogger<SendOfferCommandHandler> logger)
+        ILogger<SendOfferCommandHandler> logger,
+        IAuditLogService auditLogService)
     {
         _offerRepository = offerRepository;
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _auditLogService = auditLogService;
     }
 
     public async Task<SendOfferResponse> Handle(SendOfferCommand request, CancellationToken cancellationToken)
@@ -81,6 +85,7 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
             throw new BadRequestException("Offer đã quá hạn phản hồi, không thể gửi. Vui lòng cập nhật hạn phản hồi trước khi gửi.");
         }
 
+        var oldStatus = offer.Status;
         var now = DateTime.UtcNow;
         offer.Status = "SENT";
         offer.SentAt = now;
@@ -96,6 +101,22 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
         }
 
         _offerRepository.Update(offer);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.OfferSent,
+            EntityType = "OFFER",
+            EntityId = offer.OfferId,
+            ActorUserId = request.CurrentUserId,
+            OldValues = new { status = oldStatus },
+            NewValues = new
+            {
+                applicationId = offer.ApplicationId,
+                offerVersion = offer.OfferVersion,
+                status = offer.Status,
+                sentAt = offer.SentAt,
+                expiryDate = offer.ExpiryDate
+            }
+        }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Đã gửi thành công offer {OfferId} phiên bản {Version} cho ứng viên.",

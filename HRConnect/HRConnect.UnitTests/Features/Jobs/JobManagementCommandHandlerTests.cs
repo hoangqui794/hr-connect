@@ -39,6 +39,7 @@ public class JobManagementCommandHandlerTests
             Title = " Senior Dev ",
             Description = " API development ",
             Benefits = " Health insurance and annual bonus ",
+            WorkingTime = " Monday-Friday, 08:00-17:30 ",
             MinExperienceYears = 2,
             MaxExperienceYears = 4,
             SalaryMin = 20_000_000,
@@ -53,6 +54,7 @@ public class JobManagementCommandHandlerTests
         }, default);
         result.Data.Title.Should().Be("Senior Dev"); result.Data.ServiceTypeId.Should().Be(serviceType);
         result.Data.Benefits.Should().Be("Health insurance and annual bonus");
+        result.Data.WorkingTime.Should().Be("Monday-Friday, 08:00-17:30");
         result.Data.MinExperienceYears.Should().Be(2);
         result.Data.MaxExperienceYears.Should().Be(4);
         result.Data.SalaryNegotiable.Should().BeFalse();
@@ -61,6 +63,7 @@ public class JobManagementCommandHandlerTests
         job.MinExperienceYears.Should().Be(2);
         job.MaxExperienceYears.Should().Be(4);
         job.SalaryNegotiable.Should().BeFalse();
+        job.WorkingTime.Should().Be("Monday-Friday, 08:00-17:30");
         job.SalaryNote.Should().Be("Có thể thương lượng thêm thưởng dự án");
         job.JobRequirements.Should().ContainSingle(x => x.RequirementType == JobRequirementTypes.MustHave);
         job.JobSkills.Should().ContainSingle().Which.Should().BeSameAs(existingSkill);
@@ -138,6 +141,22 @@ public class JobManagementCommandHandlerTests
     }
 
     [Fact]
+    public async Task Submit_ShouldAllowCompleteJobWithoutSkills()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "Backend Developer"; job.Description = "Build APIs"; job.Benefits = "Insurance and training";
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
+
+        var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        result.Data.Status.Should().Be(JobStatuses.PendingReview);
+        _jobs.Verify(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Submit_ShouldKeepDraft_WhenMandatoryDataIsMissing()
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
@@ -175,7 +194,6 @@ public class JobManagementCommandHandlerTests
     [InlineData("location")]
     [InlineData("employmentType")]
     [InlineData("mustHave")]
-    [InlineData("skill")]
     public async Task Submit_ShouldRejectEachMissingRequiredJdPart(string missingPart)
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
@@ -185,7 +203,7 @@ public class JobManagementCommandHandlerTests
         job.Location = missingPart == "location" ? null : "HCM";
         job.EmploymentType = missingPart == "employmentType" ? null : "FULL_TIME";
         if (missingPart != "mustHave") job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
-        if (missingPart != "skill") job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid() });
+        job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid() });
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
 
@@ -207,13 +225,14 @@ public class JobManagementCommandHandlerTests
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
         var submit = new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object);
 
-        await submit.Handle(new SubmitJobCommand { JobId = job.JobId, UserId = owner }, default);
+        await submit.Handle(new SubmitJobCommand { JobId = job.JobId, UserId = owner, ConcurrencyToken = job.ConcurrencyToken }, default);
         await new RejectJobCommandHandler(_jobs.Object, _uow.Object).Handle(
-            new RejectJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), Reason = "Bổ sung JD" }, default);
+            new RejectJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), ConcurrencyToken = job.ConcurrencyToken, ReasonCode = JobReasonCodes.RejectedIncompleteDescription, ReasonText = "Bổ sung JD" }, default);
         await new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
         {
             JobId = job.JobId,
             UserId = owner,
+            ConcurrencyToken = job.ConcurrencyToken,
             ServiceTypeId = job.ServiceTypeId,
             Title = "Backend Developer Updated",
             Description = "Build APIs",
@@ -226,14 +245,14 @@ public class JobManagementCommandHandlerTests
             Requirements = [new CreateJobRequirementRequest { RequirementType = JobRequirementTypes.MustHave, Content = "C#" }],
             Skills = [new JobSkillRequest { SkillId = job.JobSkills.Single().SkillId, IsMandatory = true, Weight = 0.8m }]
         }, default);
-        await submit.Handle(new SubmitJobCommand { JobId = job.JobId, UserId = owner }, default);
+        await submit.Handle(new SubmitJobCommand { JobId = job.JobId, UserId = owner, ConcurrencyToken = job.ConcurrencyToken }, default);
         await new ApproveJobCommandHandler(_jobs.Object, _uow.Object).Handle(
-            new ApproveJobCommand { JobId = job.JobId, UserId = Guid.NewGuid() }, default);
+            new ApproveJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), ConcurrencyToken = job.ConcurrencyToken }, default);
 
         job.Status.Should().Be(JobStatuses.Active);
         job.JobStatusHistories.Select(x => x.NewStatus).Should().Equal(
             JobStatuses.PendingReview, JobStatuses.Rejected, JobStatuses.PendingReview, JobStatuses.Active);
-        job.JobStatusHistories.Single(x => x.NewStatus == JobStatuses.Rejected).Reason.Should().Be("Bổ sung JD");
+        job.JobStatusHistories.Single(x => x.NewStatus == JobStatuses.Rejected).ReasonText.Should().Be("Bổ sung JD");
     }
 
     [Fact]
@@ -250,7 +269,7 @@ public class JobManagementCommandHandlerTests
     {
         var job = SetupJob(JobStatuses.PendingReview);
         var result = await new RejectJobCommandHandler(_jobs.Object, _uow.Object)
-            .Handle(new RejectJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), Reason = "JD chưa rõ" }, default);
+            .Handle(new RejectJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), ReasonCode = JobReasonCodes.RejectedIncompleteDescription, ReasonText = "JD chưa rõ" }, default);
         result.Data.Status.Should().Be(JobStatuses.Rejected); job.StatusReason.Should().Be("JD chưa rõ");
     }
 
@@ -259,13 +278,13 @@ public class JobManagementCommandHandlerTests
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Active);
         await new PauseJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
-            .Handle(new PauseJobCommand { JobId = job.JobId, UserId = user, Reason = "Đủ CV" }, default);
+            .Handle(new PauseJobCommand { JobId = job.JobId, UserId = user, ConcurrencyToken = job.ConcurrencyToken, ReasonText = "Đủ CV" }, default);
         job.Status.Should().Be(JobStatuses.Paused);
         await new ResumeJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
-            .Handle(new ResumeJobCommand { JobId = job.JobId, UserId = user }, default);
+            .Handle(new ResumeJobCommand { JobId = job.JobId, UserId = user, ConcurrencyToken = job.ConcurrencyToken }, default);
         job.Status.Should().Be(JobStatuses.Active);
         await new CloseJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
-            .Handle(new CloseJobCommand { JobId = job.JobId, UserId = user, Reason = "Đã tuyển đủ" }, default);
+            .Handle(new CloseJobCommand { JobId = job.JobId, UserId = user, ConcurrencyToken = job.ConcurrencyToken, ReasonCode = JobReasonCodes.ClosedPositionFilled, ReasonText = "Đã tuyển đủ" }, default);
         job.Status.Should().Be(JobStatuses.Closed); job.ClosedAt.Should().NotBeNull(); job.JobStatusHistories.Should().HaveCount(3);
     }
 
@@ -286,6 +305,37 @@ public class JobManagementCommandHandlerTests
         var action = () => new ResumeJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
             .Handle(new ResumeJobCommand { JobId = job.JobId, UserId = user }, default);
         await action.Should().ThrowAsync<ConflictException>();
+    }
+
+    [Fact]
+    public async Task Update_ShouldRejectStaleConcurrencyToken()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.ConcurrencyToken = Guid.NewGuid();
+
+        var action = () => new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
+        {
+            JobId = job.JobId, UserId = user, ConcurrencyToken = Guid.NewGuid(),
+            ServiceTypeId = job.ServiceTypeId, Title = "Stale update", CurrencyCode = "VND", Quantity = 1, Visibility = "PUBLIC"
+        }, default);
+
+        await action.Should().ThrowAsync<ConflictException>();
+        job.Title.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(JobStatuses.Draft, JobStatuses.Active)]
+    [InlineData(JobStatuses.PendingReview, JobStatuses.Paused)]
+    [InlineData(JobStatuses.Rejected, JobStatuses.Active)]
+    [InlineData(JobStatuses.Closed, JobStatuses.Active)]
+    public void JobTransitions_ShouldRejectTransitionsOutsideMf01StateMachine(string from, string to)
+    {
+        var job = SetupJob(from);
+        var action = () => JobTransitions.ChangeStatus(job, to, Guid.NewGuid(), "TEST");
+
+        action.Should().Throw<ConflictException>();
+        job.Status.Should().Be(from);
+        job.JobStatusHistories.Should().BeEmpty();
     }
 
     private (Job Job, Guid User) SetupOwnedJob(string status)

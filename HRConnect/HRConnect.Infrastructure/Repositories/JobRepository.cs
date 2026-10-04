@@ -99,6 +99,9 @@ public class JobRepository : IJobRepository
         string? search,
         string? location,
         string? employmentType,
+        Guid? serviceTypeId,
+        decimal? salaryMin,
+        decimal? salaryMax,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -130,6 +133,15 @@ public class JobRepository : IJobRepository
             var normalized = employmentType.Trim().ToUpperInvariant();
             query = query.Where(job => job.EmploymentType == normalized);
         }
+
+        if (serviceTypeId.HasValue)
+            query = query.Where(job => job.ServiceTypeId == serviceTypeId.Value);
+
+        if (salaryMin.HasValue)
+            query = query.Where(job => job.SalaryMax == null || job.SalaryMax >= salaryMin.Value);
+
+        if (salaryMax.HasValue)
+            query = query.Where(job => job.SalaryMin == null || job.SalaryMin <= salaryMax.Value);
 
         var totalCount = await query.CountAsync(cancellationToken);
         var items = await query
