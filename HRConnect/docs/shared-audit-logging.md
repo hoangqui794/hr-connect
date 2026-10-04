@@ -42,7 +42,29 @@ await unitOfWork.SaveChangesAsync(cancellationToken);
 | `CV_PRIMARY_SET` | `CANDIDATE_CV` | Candidate changes the primary CV |
 | `CV_DELETED` | `CANDIDATE_CV` | CV is hidden or physically deleted |
 | `APPLICATION_SUBMITTED` | `APPLICATION` | Candidate submits an accepted application |
-| `AFFILIATE_SUBMISSION_CREATED` | `SUBMISSION` | Affiliate creates an accepted submission |
+| `AFFILIATE_SUBMISSION_CREATED` | `SUBMISSION` | Affiliate creates a submission pending Candidate consent |
 | `SUBMISSION_DUPLICATE_BLOCKED` | `SUBMISSION` | A duplicate submission is recorded and blocked |
+| `SUBMISSION_CONSENT_CONFIRMED` | `SUBMISSION` | Candidate accepts an Affiliate submission |
+| `SUBMISSION_CONSENT_DECLINED` | `SUBMISSION` | Candidate declines an Affiliate submission |
+| `SUBMISSION_CONSENT_EXPIRED` | `SUBMISSION` | A consent expires through the worker, review, resend, or resubmission flow |
+| `SUBMISSION_CONSENT_CLOSED` | `SUBMISSION` | A pending consent is closed for another controlled business reason |
+| `SUBMISSION_CONSENT_EMAIL_RESENT` | `SUBMISSION` | Affiliate requests another consent email |
+| `AFFILIATE_CV_VIEWED` | `CANDIDATE_CV` | Affiliate receives a short-lived URL for an authorized Candidate CV |
+| `CANDIDATE_CV_DOWNLOAD_URL_ISSUED` | `CANDIDATE_CV` | Candidate receives a short-lived URL for an owned CV |
+| `SUBMISSION_CONSENT_CV_DOWNLOAD_URL_ISSUED` | `CANDIDATE_CV` | Consent reviewer receives a five-minute CV URL through an account or email link |
+| `INTERNAL_CV_DOWNLOAD_URL_ISSUED` | `CANDIDATE_CV` | MF03 receives a short-lived internal CV URL |
+| `AI_SCORING_REQUESTED` | `APPLICATION` | MF02 creates the initial MF03 scoring request |
+| `AI_SCORING_RETRY_REQUESTED` | `APPLICATION` | An authorized manual retry is requested |
+| `AI_SCORING_RETRY_SCHEDULED` | `APPLICATION` | The dispatcher schedules a bounded retry |
+| `AI_SCORING_FAILED` | `APPLICATION` | Dispatch reaches a terminal failure |
+
+Consent expiration uses one shared application service. The consent, submission,
+pending CV, Affiliate notification, and audit row are persisted by the same unit
+of work. Every entry includes a `source` value so support staff can distinguish a
+background expiry from an expiry discovered during review, resend, or resubmission.
+
+Short-lived URL events record identifiers, the expiry time, and the access path.
+They never record the signed URL. Ordinary list and detail queries are not audited
+because they do not change business state and do not grant access to the CV file.
 
 The application uses the existing `public.audit_log` table. Migration `20260926150000_AddAuditCorrelationIndex` only adds an index for correlation lookup; it does not create another log table.
