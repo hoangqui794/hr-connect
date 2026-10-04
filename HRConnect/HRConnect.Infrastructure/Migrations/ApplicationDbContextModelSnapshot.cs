@@ -686,15 +686,9 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(40)")
                         .HasColumnName("old_status");
 
-                    b.Property<string>("ReasonCode")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("reason_code");
-
-                    b.Property<string>("ReasonText")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("reason_text");
+                    b.Property<string>("Reason")
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
 
                     b.HasKey("ApplicationStatusHistoryId")
                         .HasName("application_status_history_pkey");
@@ -2240,6 +2234,13 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -2249,13 +2250,6 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
-
-                    b.Property<Guid>("ConcurrencyToken")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasDefaultValueSql("gen_random_uuid()")
-                        .HasColumnName("concurrency_token");
 
                     b.Property<string>("CurrencyCode")
                         .IsRequired()
@@ -2499,9 +2493,15 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(30)")
                         .HasColumnName("old_status");
 
-                    b.Property<string>("Reason")
-                        .HasColumnType("text")
-                        .HasColumnName("reason");
+                    b.Property<string>("ReasonCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reason_code");
+
+                    b.Property<string>("ReasonText")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("reason_text");
 
                     b.HasKey("JobStatusHistoryId")
                         .HasName("job_status_history_pkey");
