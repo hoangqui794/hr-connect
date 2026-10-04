@@ -202,8 +202,8 @@ builder.Services.AddSwaggerGen(options =>
     options.OperationFilter<InternalServiceAuthOperationFilter>();
     options.OperationFilter<SwaggerEndpointTagFilter>();
     options.OperationFilter<AnonymousEndpointSecurityOperationFilter>();
+    options.OperationFilter<LoginRequestExamplesOperationFilter>();
     options.DocumentFilter<SwaggerTagOrderDocumentFilter>();
-    options.SchemaFilter<LoginRequestExampleSchemaFilter>();
 });
 
 // Cấu hình Xác thực JWT (Authentication)
