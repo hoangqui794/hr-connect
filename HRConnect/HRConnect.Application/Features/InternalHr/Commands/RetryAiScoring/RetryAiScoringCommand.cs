@@ -6,14 +6,18 @@ using Microsoft.Extensions.Logging;
 
 namespace HRConnect.Application.Features.InternalHr.Commands.RetryAiScoring;
 
-public sealed record RetryAiScoringCommand(Guid ApplicationId, Guid RequestedByUserId)
+public sealed record RetryAiScoringCommand(
+    Guid ApplicationId,
+    Guid RequestedByUserId,
+    string Reason = Mf03ScoringReasons.FailedRetry)
     : IRequest<RetryAiScoringResponse>;
 
 public sealed record RetryAiScoringResponse(
     bool Success,
     string Message,
     Guid ApplicationId,
-    string AiStatus);
+    string AiStatus,
+    string Reason);
 
 public sealed class RetryAiScoringCommandHandler
     : IRequestHandler<RetryAiScoringCommand, RetryAiScoringResponse>
@@ -52,28 +56,41 @@ public sealed class RetryAiScoringCommandHandler
             .FirstOrDefault();
         if (latestAttempt == null)
             throw new ConflictException("Hồ sơ này chưa có lượt chấm AI để thử lại.");
-        if (!string.Equals(latestAttempt.Status, "FAILED", StringComparison.OrdinalIgnoreCase))
-            throw new ConflictException("Chỉ có thể thử lại khi lượt chấm AI gần nhất đã thất bại.");
+
+        var reason = request.Reason.Trim().ToUpperInvariant();
+        if (!Mf03ScoringReasons.IsRetryOrRescore(reason))
+            throw new ConflictException("Lý do chấm lại phải là FAILED_RETRY, JD_UPDATED hoặc MANUAL_REVIEW.");
+
+        var latestStatus = latestAttempt.Status.ToUpperInvariant();
+        if (latestStatus is "PENDING" or "PROCESSING")
+            throw new ConflictException("Hồ sơ đang được chấm AI; không thể tạo thêm lượt chấm song song.");
+        if (latestStatus is not ("COMPLETED" or "FAILED"))
+            throw new ConflictException("Chỉ có thể chấm lại sau một lượt AI đã kết thúc.");
+        if (reason == Mf03ScoringReasons.FailedRetry && latestStatus != "FAILED")
+            throw new ConflictException("FAILED_RETRY chỉ dùng khi lượt chấm AI gần nhất đã thất bại.");
 
         await _scoringTrigger.TriggerScoringAsync(
             new Mf03TriggerPayload(
                 application.ApplicationId,
                 submission.CvId,
                 application.JobId,
-                request.RequestedByUserId),
+                request.RequestedByUserId,
+                reason),
             cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
-            "Internal user {UserId} queued MF-03 retry for ApplicationId={ApplicationId} after failed AttemptNo={AttemptNo}.",
+            "Internal user {UserId} queued MF-03 scoring for ApplicationId={ApplicationId}, Reason={Reason}, PreviousAttemptNo={AttemptNo}.",
             request.RequestedByUserId,
             application.ApplicationId,
+            reason,
             latestAttempt.AttemptNo);
 
         return new RetryAiScoringResponse(
             true,
             "Đã đưa yêu cầu chấm AI lại vào hàng đợi.",
             application.ApplicationId,
-            "PENDING");
+            "PENDING",
+            reason);
     }
 }

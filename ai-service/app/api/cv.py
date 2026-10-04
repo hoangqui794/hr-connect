@@ -17,37 +17,16 @@ from app.schemas.cv import (
     DocumentMetadata,
     FileMatchingMetadata,
     FileMatchingResponse,
-    ParseDiagnostic,
 )
 from app.schemas.matching_request import Candidate, CandidateSkill, MatchingRequest, RequirementCategory
 from app.services.document_parser import CvProcessingError, DocumentParser
 from app.services.matching_service import MatchingService
+from app.services.parse_diagnostics import build_parse_diagnostics, unreliable_evidence_fields
 from app.services.semantic_matcher import SemanticMatcher
 from app.services.structured_cv_parser import StructuredCvParser
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["cv"])
-
-
-def _parse_diagnostics(extracted, warnings: list[str]) -> list[ParseDiagnostic]:
-    """Expose parser safeguards without returning CV text or geometry."""
-    diagnostics: list[ParseDiagnostic] = []
-    if extracted.ocr_applied:
-        diagnostics.append(ParseDiagnostic(code="OCR_APPLIED", category="OCR"))
-    else:
-        diagnostics.append(ParseDiagnostic(code="TEXT_LAYER_USED", category="TEXT_LAYER"))
-    diagnostics.append(ParseDiagnostic(code=f"LAYOUT_{extracted.layout}", category="LAYOUT"))
-    for warning in warnings:
-        if "EVIDENCE" in warning or warning.endswith("NOT_DETECTED"):
-            category, field = "MISSING_EVIDENCE", warning.split("_", maxsplit=1)[0].lower()
-        elif warning.startswith("OCR"):
-            category, field = "OCR", None
-        elif warning.startswith(("LAYOUT", "MULTI_COLUMN", "SECTION_ROUTING")):
-            category, field = "LAYOUT", None
-        else:
-            category, field = "PARSER", None
-        diagnostics.append(ParseDiagnostic(code=warning, category=category, field=field))
-    return diagnostics
 
 
 async def _read_upload(file: UploadFile) -> bytes:
@@ -94,7 +73,7 @@ async def _parse_upload(
             parseConfidence=parsed.confidence,
             requiresManualReview=parsed.requires_manual_review,
             warnings=warnings,
-            diagnostics=_parse_diagnostics(extracted, warnings),
+            diagnostics=build_parse_diagnostics(extracted, warnings),
         )
     finally:
         await file.close()
@@ -174,6 +153,10 @@ async def match_cv_file(
                     for skill in structured.skills
                 ],
                 cvText=parse_result.raw_text,
+                parseConfidence=parse_result.parse_confidence,
+                requiresManualReview=parse_result.requires_manual_review,
+                parseWarnings=parse_result.warnings,
+                unreliableEvidenceFields=unreliable_evidence_fields(parse_result.diagnostics),
             ),
             job=parsed_metadata.job,
         )

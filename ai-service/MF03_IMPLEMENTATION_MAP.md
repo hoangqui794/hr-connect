@@ -2,13 +2,13 @@
 
 Tài liệu này ghi lại những khu vực và tệp đã được triển khai hoặc tác động để xây dựng MF-03 AI Matching Service. Mục đích là giúp nhóm xác định nhanh phạm vi MF-03 khi review, pull code, xử lý conflict hoặc tiếp tục phát triển.
 
-> Cập nhật ngày 24/09/2026 từ source local trên branch `dev`.
+> Cập nhật ngày 03/10/2026 từ source local trên branch `feature/mf03-evidence-rescoring`, xuất phát từ commit `22726fb` của `main`.
 >
 > Đây là bản đồ kỹ thuật, không phải tuyên bố rằng MF-03 đã production-ready. Một số thay đổi được liệt kê bên dưới hiện vẫn là thay đổi local chưa commit.
 
 ## 1. Ranh giới trách nhiệm
 
-MF-02 chịu trách nhiệm nhận submission, kiểm tra duplicate, lưu CV, tạo `Submission`/`Application` và attribution.
+MF-02 chịu trách nhiệm nhận submission, kiểm tra duplicate, lưu CV và tạo `Submission`/`Application`. Với hồ sơ do Headhunter giới thiệu, MF-03 chỉ được kích hoạt sau khi ứng viên xác nhận consent; attribution vẫn thuộc nghiệp vụ HR Connect, không thuộc AI.
 
 MF-03 chịu trách nhiệm:
 
@@ -19,9 +19,10 @@ MF-03 chịu trách nhiệm:
 - Lấy Job Description và Job Requirements.
 - So khớp CV với Job và tính điểm thực nghiệm.
 - Gửi kết quả hoặc lỗi về HR Connect bằng callback.
+- Gửi confidence, warnings, diagnostics, bằng chứng matching và fingerprint đầu vào không chứa PII để HR kiểm tra.
 - Ghi structured log phục vụ theo dõi; không truy cập trực tiếp PostgreSQL.
 
-MF-03 chỉ cung cấp bằng chứng và điểm hỗ trợ quyết định. AI không tự trả quyết định `SHORTLIST`, `REJECT` hoặc `HIRE`, không đổi trạng thái Application và không tự xác định `MatchTier`.
+MF-03 chỉ cung cấp bằng chứng và điểm hỗ trợ quyết định. AI không tự trả quyết định `SHORTLIST`, `REJECT` hoặc `HIRE`, không đổi trạng thái Application và không tự xác định `MatchTier`. MF-03 cũng không tính Qualified/Counted CV, Service Fee, Commission, Attribution, Offer hoặc Placement.
 
 ## 2. AI Service Python
 
@@ -54,9 +55,10 @@ HR Connect commit Application và AI result PENDING
     -> đọc text hoặc OCR
     -> trích xuất CV có cấu trúc
     -> lấy JD/requirements
-    -> matching và tính điểm
+    -> matching bốn trạng thái MATCHED/PARTIAL/NOT_FOUND/UNKNOWN và tính điểm thực nghiệm
     -> callback COMPLETED hoặc FAILED
-    -> HR Connect lưu kết quả và audit
+    -> HR Connect tự xác định Match Tier, lưu safe diagnostics và audit
+    -> Internal HR/Client xem bằng chứng và tự quyết định tuyển dụng
 ```
 
 ### Đọc và phân tích CV
@@ -66,6 +68,7 @@ HR Connect commit Application và AI result PENDING
 | `app/services/document_parser.py` | Đọc PDF/DOCX, nhận diện layout và giới hạn tài liệu. |
 | `app/services/ocr_service.py` | OCR CV dạng ảnh hoặc PDF scan. |
 | `app/services/structured_cv_parser.py` | Trích xuất contact, skills, kinh nghiệm, học vấn, chứng chỉ, ngôn ngữ và confidence. |
+| `app/services/parse_diagnostics.py` | Chuẩn hóa diagnostics không chứa PII cho parse trực tiếp và job nền. |
 | `app/services/normalizer.py` | Chuẩn hóa text và tên kỹ năng. |
 
 ### Matching và chấm điểm
@@ -116,6 +119,8 @@ Log không được ghi raw CV, structured CV đầy đủ, presigned URL hoặc
 
 Candidate hoặc Affiliate nhận phản hồi submit thành công mà không phải chờ AI parse và matching xong.
 
+Đối với Affiliate/Headhunter, việc nộp CV mới chỉ tạo yêu cầu consent. Chỉ khi ứng viên đồng ý thì hệ thống mới tạo Application/Attribution và đưa yêu cầu MF-03 vào hàng đợi; từ chối hoặc chưa xác nhận không được chấm.
+
 ### Internal API và callback
 
 | Tệp | Tác động |
@@ -147,10 +152,19 @@ Các sự kiện audit đã dùng:
 
 - `AI_SCORING_REQUESTED`
 - `AI_SCORING_RETRY_REQUESTED`
+- `AI_SCORING_RESCORE_REQUESTED`
 - `AI_SCORING_COMPLETED`
 - `AI_SCORING_FAILED`
 
 Callback được xử lý theo hướng idempotent và không cho kết quả `FAILED` đến sau ghi đè một kết quả `COMPLETED`.
+
+Internal HR có thể yêu cầu lượt mới với lý do:
+
+- `FAILED_RETRY`: chỉ khi attempt gần nhất là `FAILED`.
+- `JD_UPDATED`: khi attempt gần nhất đã kết thúc (`COMPLETED` hoặc `FAILED`).
+- `MANUAL_REVIEW`: khi attempt gần nhất đã kết thúc và HR cần chạy lại sau kiểm tra.
+
+Mọi yêu cầu đều bị từ chối khi attempt gần nhất đang `PENDING` hoặc `PROCESSING`. Lượt mới dùng CV đã được chấp nhận của Application và JD hiện tại; versioning CV/JD lịch sử chưa nằm trong phase này.
 
 ## 4. Kiểm thử
 
@@ -197,6 +211,7 @@ Backend sử dụng URL của AI Service để dispatcher gọi `/api/v1/scoring
 - Chưa khẳng định migration đã được apply vào mọi database.
 - Chưa khẳng định model BGE-M3 và OCR đã được benchmark production.
 - Trọng số matching vẫn là `EXPERIMENTAL`, chưa phải business rule được phê duyệt.
+- `UNKNOWN` là thiếu khả năng đọc bằng chứng, không phải bằng chứng ứng viên không có năng lực; bắt buộc manual review.
 - Không coi build/test pass là bằng chứng toàn bộ E2E production đã hoàn tất.
 - Không coi các file đang thay đổi local là đã tồn tại trên remote cho đến khi được review, commit và push.
 

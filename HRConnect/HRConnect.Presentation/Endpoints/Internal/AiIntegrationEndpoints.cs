@@ -140,7 +140,15 @@ public sealed record AiResultCallback(
     JsonElement? StructuredCvData,
     string? ModelVersion,
     string? ErrorCode,
-    string? ErrorMessage);
+    string? ErrorMessage,
+    decimal? ParseConfidence = null,
+    bool? RequiresManualReview = null,
+    JsonElement? Warnings = null,
+    JsonElement? Diagnostics = null,
+    decimal? SemanticScore = null,
+    JsonElement? MissingRequirements = null,
+    JsonElement? MatchingReasons = null,
+    JsonElement? InputFingerprints = null);
 
 public static class AiResultCallbackProcessor
 {
@@ -271,6 +279,14 @@ public static class AiResultCallbackProcessor
         payload.CandidateHighlights,
         payload.MustHaveResult,
         payload.ShouldHaveResult,
+        payload.ParseConfidence,
+        payload.RequiresManualReview,
+        payload.Warnings,
+        payload.Diagnostics,
+        payload.SemanticScore,
+        payload.MissingRequirements,
+        payload.MatchingReasons,
+        payload.InputFingerprints,
         payload.ModelVersion,
         payload.ErrorCode,
         payload.ErrorMessage

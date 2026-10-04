@@ -45,6 +45,12 @@ class Candidate(StrictTextModel):
     highest_education: str | None = Field(default=None, alias="highestEducation", max_length=300)
     skills: list[CandidateSkill] = Field(default_factory=list, max_length=200)
     cv_text: str = Field(alias="cvText", min_length=1, max_length=100_000)
+    parse_confidence: float = Field(default=1.0, alias="parseConfidence", ge=0, le=1)
+    requires_manual_review: bool = Field(default=False, alias="requiresManualReview")
+    parse_warnings: list[str] = Field(default_factory=list, alias="parseWarnings", max_length=100)
+    unreliable_evidence_fields: list[str] = Field(
+        default_factory=list, alias="unreliableEvidenceFields", max_length=20
+    )
 
 
 class JobRequirement(StrictTextModel):

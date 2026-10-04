@@ -39,7 +39,12 @@ public class Mf03ScoringTrigger : IMf03ScoringTrigger
         await _context.AuditLogs.AddAsync(new AuditLog
         {
             ActorUserId = payload.ActorUserId,
-            Action = attemptNo == 0 ? "AI_SCORING_REQUESTED" : "AI_SCORING_RETRY_REQUESTED",
+            Action = payload.Reason switch
+            {
+                Mf03ScoringReasons.Initial => "AI_SCORING_REQUESTED",
+                Mf03ScoringReasons.FailedRetry => "AI_SCORING_RETRY_REQUESTED",
+                _ => "AI_SCORING_RESCORE_REQUESTED"
+            },
             EntityType = "APPLICATION",
             EntityId = payload.ApplicationId,
             NewValues = JsonSerializer.Serialize(new
@@ -47,14 +52,15 @@ public class Mf03ScoringTrigger : IMf03ScoringTrigger
                 status = "PENDING",
                 attemptNo = attemptNo + 1,
                 cvId = payload.CvId,
-                jobId = payload.JobId
+                jobId = payload.JobId,
+                reason = payload.Reason
             }),
             CorrelationId = requestId,
             CreatedAt = DateTime.UtcNow
         }, cancellationToken);
 
         _logger.LogInformation(
-            "Queued MF-03 scoring request {RequestId}: ApplicationId={ApplicationId}, CvId={CvId}, JobId={JobId}, AttemptNo={AttemptNo}.",
-            requestId, payload.ApplicationId, payload.CvId, payload.JobId, attemptNo + 1);
+            "Queued MF-03 scoring request {RequestId}: ApplicationId={ApplicationId}, CvId={CvId}, JobId={JobId}, AttemptNo={AttemptNo}, Reason={Reason}.",
+            requestId, payload.ApplicationId, payload.CvId, payload.JobId, attemptNo + 1, payload.Reason);
     }
 }

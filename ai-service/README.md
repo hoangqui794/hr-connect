@@ -12,6 +12,15 @@ The service returns evidence and an experimental `MatchScore` only. It never ret
 
 Rule matching and semantic similarity are separate. A high semantic score does not silently turn a missing MUST_HAVE into a deterministic match. Explanations are generated only from observed evidence; no LLM is used.
 
+Each requirement has one evidence state:
+
+- `MATCHED`: sufficient deterministic evidence was found.
+- `PARTIAL`: some required evidence was found, but the requirement is not fully proven.
+- `NOT_FOUND`: the relevant CV content was read reliably and no evidence was found.
+- `UNKNOWN`: the relevant CV content could not be read reliably; this is not treated as candidate absence.
+
+`UNKNOWN` contributes zero deterministic coverage, disables the semantic contribution to the experimental score, and requires manual review. Semantic suggestions are review hints only and never promote an unproven requirement.
+
 ## Experimental scoring
 
 The initial weights are `MUST_HAVE=0.50`, `SHOULD_HAVE=0.20`, and `SEMANTIC=0.30`. **EXPERIMENTAL ONLY — NOT AN APPROVED OR FINAL BUSINESS RULE.** They are environment configuration and must total `1.0`. The returned score is `0–100`; `MatchScore != MatchTier`.
@@ -43,6 +52,8 @@ uvicorn app.main:app --reload --port 8001
 MF-02 commits the Application and a durable `ai_match_result` row with status `PENDING` in the same database transaction, then returns submission success. A hosted dispatcher sends pending work to this service; the Candidate/Affiliate request does not wait for PDF parsing or matching.
 
 The AI worker then calls HR Connect internal endpoints to obtain a temporary CV download URL and the JD, parses and matches the CV, and posts the result back. The AI service does not connect to PostgreSQL and does not receive R2 credentials.
+
+The callback includes non-PII review metadata: `parseConfidence`, `requiresManualReview`, `warnings`, `diagnostics`, `semanticScore`, `missingRequirements`, `matchingReasons`, and SHA-256 fingerprints of the CV bytes and canonical JD. HR Connect persists that safe envelope in the existing attempt result; raw CV text, presigned URLs, service tokens, email, and phone are excluded from it.
 
 Use the same long random secret in both processes:
 
@@ -90,6 +101,8 @@ The in-process queue is suitable for local and initial standalone operation. HR 
 Files are processed for the request only and are not persisted by this standalone service. Default safeguards limit uploads to 10 MB, PDFs to 20 pages, images to 40 million pixels, DOCX archive expansion to 50 MB, and extracted text to 100,000 characters. The service validates file signatures instead of trusting the filename or declared content type.
 
 Digital PDFs are read as positioned text blocks. The parser detects common one-column and two-column/sidebar layouts, reconstructs reading order per column, and exposes `document.layout`. Structured parsing searches contact and language evidence globally, supports numeric and English/Vietnamese month ranges, and returns `parseConfidence`, `requiresManualReview`, and machine-readable warnings. Low-confidence fields remain `null` instead of being guessed.
+
+MF-03 does not calculate Qualified/Counted CV, Service Fee, Commission, Attribution, shortlist, reject, offer, or placement. Those remain HR Connect business workflows and human decisions.
 
 ## Tests
 

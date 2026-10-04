@@ -73,7 +73,8 @@ public class Mf03ScoringTriggerTests
             applicationId,
             Guid.NewGuid(),
             Guid.NewGuid(),
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            Mf03ScoringReasons.ManualReview);
 
         await trigger.TriggerScoringAsync(payload, CancellationToken.None);
 
@@ -81,6 +82,8 @@ public class Mf03ScoringTriggerTests
             .Single(entry => entry.State == EntityState.Added)
             .Entity.AttemptNo.Should().Be(2);
         context.ChangeTracker.Entries<HRConnect.Domain.Entities.AuditLog>()
-            .Single().Entity.Action.Should().Be("AI_SCORING_RETRY_REQUESTED");
+            .Single().Entity.Action.Should().Be("AI_SCORING_RESCORE_REQUESTED");
+        context.ChangeTracker.Entries<HRConnect.Domain.Entities.AuditLog>()
+            .Single().Entity.NewValues.Should().Contain(Mf03ScoringReasons.ManualReview);
     }
 }

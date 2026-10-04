@@ -93,6 +93,38 @@ public class RecruitmentAiMatchSummaryDto
     public string? CandidateHighlight { get; set; }
 
     public string? Status { get; set; }
+
+    public decimal? ParseConfidence { get; set; }
+
+    public bool? RequiresManualReview { get; set; }
+
+    public decimal? SemanticScore { get; set; }
+
+    public List<string> Warnings { get; set; } = new();
+
+    public List<RecruitmentAiDiagnosticDto> Diagnostics { get; set; } = new();
+
+    public List<string> MissingRequirements { get; set; } = new();
+
+    public List<string> MatchingReasons { get; set; } = new();
+
+    public RecruitmentAiInputFingerprintsDto? InputFingerprints { get; set; }
+}
+
+public class RecruitmentAiDiagnosticDto
+{
+    public string Code { get; set; } = string.Empty;
+
+    public string Category { get; set; } = string.Empty;
+
+    public string? Field { get; set; }
+}
+
+public class RecruitmentAiInputFingerprintsDto
+{
+    public string? CvSha256 { get; set; }
+
+    public string? JdSha256 { get; set; }
 }
 
 public class RecruitmentInterviewSummaryDto
