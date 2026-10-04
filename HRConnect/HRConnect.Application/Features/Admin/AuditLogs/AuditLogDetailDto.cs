@@ -9,11 +9,19 @@ public sealed class AuditLogDetailDto
 
     public Guid? ActorUserId { get; init; }
 
+    public required string ActorType { get; init; }
+
     public string? ActorDisplayName { get; init; }
 
     public string? ActorEmail { get; init; }
 
     public required string Action { get; init; }
+
+    public required string Source { get; init; }
+
+    public string? ServiceName { get; init; }
+
+    public int EventVersion { get; init; }
 
     public string? EntityType { get; init; }
 
@@ -35,9 +43,13 @@ public sealed class AuditLogDetailDto
     {
         AuditLogId = log.AuditLogId,
         ActorUserId = log.ActorUserId,
+        ActorType = log.ActorType,
         ActorDisplayName = log.ActorUser?.DisplayName,
         ActorEmail = log.ActorUser?.Email,
         Action = log.Action,
+        Source = log.Source,
+        ServiceName = log.ServiceName,
+        EventVersion = log.EventVersion,
         EntityType = log.EntityType,
         EntityId = log.EntityId,
         OldValues = ParseJson(log.OldValues),

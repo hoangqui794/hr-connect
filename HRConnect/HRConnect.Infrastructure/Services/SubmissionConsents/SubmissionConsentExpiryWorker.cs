@@ -1,3 +1,5 @@
+using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Features.SubmissionConsents.Common;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,36 +43,54 @@ public sealed class SubmissionConsentExpiryWorker : BackgroundService
         }
     }
 
-    private async Task ExpireBatchAsync(CancellationToken cancellationToken)
+    internal async Task ExpireBatchAsync(CancellationToken cancellationToken)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var now = DateTime.UtcNow;
-        var expired = await context.SubmissionConsents
-            .Include(consent => consent.Submission)
-                .ThenInclude(submission => submission.CandidateCv)
-            .Where(consent => consent.Status == "PENDING" && consent.ExpiresAt <= now)
-            .OrderBy(consent => consent.ExpiresAt)
-            .Take(100)
-            .ToListAsync(cancellationToken);
-
-        foreach (var consent in expired)
+        List<Guid> expiredIds;
+        await using (var discoveryScope = _scopeFactory.CreateAsyncScope())
         {
-            consent.Status = "EXPIRED";
-            consent.UpdatedAt = now;
-            consent.Submission.Status = "CONSENT_EXPIRED";
-            consent.Submission.UpdatedAt = now;
-            if (consent.Submission.CandidateCv.Status == "PENDING_CONSENT")
+            var discoveryContext = discoveryScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            expiredIds = await discoveryContext.SubmissionConsents.AsNoTracking()
+                .Where(consent => consent.Status == "PENDING" && consent.ExpiresAt <= now)
+                .OrderBy(consent => consent.ExpiresAt)
+                .Take(100)
+                .Select(consent => consent.ConsentId)
+                .ToListAsync(cancellationToken);
+        }
+
+        var expiredCount = 0;
+        foreach (var consentId in expiredIds)
+        {
+            await using var itemScope = _scopeFactory.CreateAsyncScope();
+            var context = itemScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var expiryService = itemScope.ServiceProvider.GetRequiredService<ISubmissionConsentExpiryService>();
+            var consent = await context.SubmissionConsents
+                .Include(item => item.Submission).ThenInclude(submission => submission.CandidateCv)
+                .Include(item => item.Submission).ThenInclude(submission => submission.Candidate)
+                .Include(item => item.Submission).ThenInclude(submission => submission.Job)
+                .SingleOrDefaultAsync(item => item.ConsentId == consentId, cancellationToken);
+            if (consent == null || consent.Status != "PENDING" || consent.ExpiresAt > now)
+                continue;
+
+            try
             {
-                consent.Submission.CandidateCv.Status = "ARCHIVED";
-                consent.Submission.CandidateCv.UpdatedAt = now;
+                if (await expiryService.ExpireAsync(
+                        consent, now, null, "BACKGROUND_WORKER", cancellationToken))
+                {
+                    expiredCount++;
+                }
+            }
+            catch (ConflictException exception) when (exception.ErrorCode == "CONCURRENT_UPDATE")
+            {
+                _logger.LogInformation(
+                    "Bỏ qua consent {ConsentId} vì trạng thái vừa được cập nhật bởi yêu cầu khác.",
+                    consentId);
             }
         }
 
-        if (expired.Count > 0)
+        if (expiredCount > 0)
         {
-            await context.SaveChangesAsync(cancellationToken);
-            _logger.LogInformation("Đã đóng {Count} yêu cầu Candidate consent hết hạn.", expired.Count);
+            _logger.LogInformation("Đã đóng {Count} yêu cầu Candidate consent hết hạn.", expiredCount);
         }
     }
 }

@@ -427,12 +427,12 @@ public static class AffiliateEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return Results.Conflict(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
             }
         })
         .WithName("ResendSubmissionConsent")
         .WithSummary("Gửi lại yêu cầu Candidate xác nhận hồ sơ")
-        .WithDescription("Yêu cầu permission submission.consent.resend_own và chỉ áp dụng cho Submission của chính Affiliate đang ở PENDING_CONSENT. API có cooldown, giới hạn số lần gửi và vô hiệu hóa liên kết cũ.")
+        .WithDescription("Yêu cầu permission submission.consent.resend_own và chỉ áp dụng cho Submission của chính Affiliate đang ở PENDING_CONSENT. API có cooldown, giới hạn số lần gửi, vô hiệu hóa liên kết cũ và chống hai yêu cầu gửi lại chạy đồng thời. Xung đột đồng thời trả 409 với errorCode CONCURRENT_UPDATE.")
         .RequireRateLimiting("submission-consent")
         .Produces<HRConnect.Application.Features.Affiliates.Commands.ResendSubmissionConsent.ResendSubmissionConsentResponse>()
         .Produces(StatusCodes.Status401Unauthorized)

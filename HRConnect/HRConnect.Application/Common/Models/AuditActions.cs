@@ -11,6 +11,7 @@ public static class AuditActions
     public const string SubmissionDuplicateBlocked = "SUBMISSION_DUPLICATE_BLOCKED";
     public const string SubmissionConsentConfirmed = "SUBMISSION_CONSENT_CONFIRMED";
     public const string SubmissionConsentDeclined = "SUBMISSION_CONSENT_DECLINED";
+    public const string SubmissionConsentExpired = "SUBMISSION_CONSENT_EXPIRED";
     public const string SubmissionConsentClosed = "SUBMISSION_CONSENT_CLOSED";
     public const string AffiliateCvViewed = "AFFILIATE_CV_VIEWED";
     public const string ApplicationStatusChanged = "APPLICATION_STATUS_CHANGED";
@@ -31,4 +32,7 @@ public static class AuditActions
     public const string OfferDeclined = "OFFER_DECLINED";
     public const string OfferWithdrawn = "OFFER_WITHDRAWN";
     public const string PlacementConfirmed = "PLACEMENT_CONFIRMED";
+    public const string CandidateCvDownloadUrlIssued = "CANDIDATE_CV_DOWNLOAD_URL_ISSUED";
+    public const string InternalCvDownloadUrlIssued = "INTERNAL_CV_DOWNLOAD_URL_ISSUED";
+    public const string SubmissionConsentCvDownloadUrlIssued = "SUBMISSION_CONSENT_CV_DOWNLOAD_URL_ISSUED";
 }

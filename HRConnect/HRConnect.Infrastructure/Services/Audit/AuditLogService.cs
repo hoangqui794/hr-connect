@@ -40,19 +40,78 @@ public sealed class AuditLogService : IAuditLogService
             throw new ArgumentException("Audit entity type must not exceed 80 characters.", nameof(entry));
         }
 
+        var actorUserId = entry.ActorUserId ?? _requestContext.UserId;
+        var hasRequestContext = _requestContext.CorrelationId.HasValue ||
+            _requestContext.IpAddress != null || !string.IsNullOrWhiteSpace(_requestContext.UserAgent);
+        var actorType = NormalizeContextValue(
+            entry.ActorType,
+            actorUserId.HasValue
+                ? AuditActorTypes.User
+                : hasRequestContext ? AuditActorTypes.Anonymous : AuditActorTypes.System,
+            AuditActorTypes.All,
+            nameof(entry.ActorType));
+        if (actorType == AuditActorTypes.User && !actorUserId.HasValue)
+        {
+            throw new ArgumentException("USER audit actor requires ActorUserId.", nameof(entry));
+        }
+        if (actorType != AuditActorTypes.User && actorUserId.HasValue)
+        {
+            throw new ArgumentException("An audit ActorUserId must use actor type USER.", nameof(entry));
+        }
+
+        var source = NormalizeContextValue(
+            entry.Source,
+            hasRequestContext
+                ? AuditSources.Api
+                : actorUserId.HasValue ? AuditSources.Application : AuditSources.BackgroundWorker,
+            AuditSources.All,
+            nameof(entry.Source));
+        var serviceName = entry.ServiceName?.Trim();
+        if (serviceName?.Length > 80)
+        {
+            throw new ArgumentException("Audit service name must not exceed 80 characters.", nameof(entry));
+        }
+        if (actorType == AuditActorTypes.Service && string.IsNullOrWhiteSpace(serviceName))
+        {
+            throw new ArgumentException("SERVICE audit actor requires ServiceName.", nameof(entry));
+        }
+        if (entry.EventVersion < 1)
+        {
+            throw new ArgumentException("Audit event version must be at least 1.", nameof(entry));
+        }
+
         await _dbContext.AuditLogs.AddAsync(new AuditLog
         {
-            ActorUserId = entry.ActorUserId ?? _requestContext.UserId,
+            ActorUserId = actorUserId,
+            ActorType = actorType,
             Action = action,
             EntityType = entityType,
             EntityId = entry.EntityId,
             OldValues = SerializeSafe(entry.OldValues),
             NewValues = SerializeSafe(entry.NewValues),
             CorrelationId = entry.CorrelationId ?? _requestContext.CorrelationId,
+            Source = source,
+            ServiceName = serviceName,
+            EventVersion = entry.EventVersion,
             IpAddress = _requestContext.IpAddress,
             UserAgent = _requestContext.UserAgent,
             CreatedAt = DateTime.UtcNow
         }, cancellationToken);
+    }
+
+    private static string NormalizeContextValue(
+        string? value,
+        string fallback,
+        IReadOnlySet<string> allowed,
+        string parameterName)
+    {
+        var normalized = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim().ToUpperInvariant();
+        if (!allowed.Contains(normalized))
+        {
+            throw new ArgumentException($"Unsupported audit context value '{normalized}'.", parameterName);
+        }
+
+        return normalized;
     }
 
     private static string? SerializeSafe(object? value)

@@ -13,7 +13,7 @@ public class RegisterCandidateResponse
 {
     public bool Success { get; set; } = true;
 
-    public string Message { get; set; } = "Registration successful. Please verify your email.";
+    public string Message { get; set; } = "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.";
 
     public RegisterCandidateData? Data { get; set; }
 }

@@ -12,6 +12,8 @@ public interface IUserRepository
 
     Task<AppUser?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    Task<AppUser?> GetByIdWithActiveRolesAsync(Guid userId, CancellationToken cancellationToken = default);
+
     Task<AppUser?> GetByIdWithRolesAndPermissionsAsync(Guid userId, CancellationToken cancellationToken = default);
 
     Task AddAsync(AppUser user, CancellationToken cancellationToken = default);

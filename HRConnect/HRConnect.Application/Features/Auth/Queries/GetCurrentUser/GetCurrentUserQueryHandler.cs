@@ -33,7 +33,7 @@ public class GetCurrentUserQueryHandler : IRequestHandler<GetCurrentUserQuery, C
         if (targetUserId == null || targetUserId == Guid.Empty)
         {
             _logger.LogWarning("GetCurrentUser: Người dùng chưa được xác thực (chưa có token hoặc claim không hợp lệ).");
-            throw new UnauthorizedException("User is not authenticated.");
+            throw new UnauthorizedException("Bạn chưa đăng nhập hoặc phiên đăng nhập không hợp lệ.");
         }
 
         // 2. Truy vấn người dùng kèm vai trò và quyền hạn mới nhất từ DB
@@ -41,7 +41,7 @@ public class GetCurrentUserQueryHandler : IRequestHandler<GetCurrentUserQuery, C
         if (user == null)
         {
             _logger.LogWarning("GetCurrentUser: Không tìm thấy người dùng có ID {UserId}.", targetUserId.Value);
-            throw new NotFoundException("User not found.");
+            throw new NotFoundException("Không tìm thấy tài khoản.");
         }
 
         // 3. Lấy danh sách các vai trò đang kích hoạt (ACTIVE)

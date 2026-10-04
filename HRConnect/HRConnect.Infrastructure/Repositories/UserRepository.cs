@@ -48,6 +48,15 @@ public class UserRepository : IUserRepository
             .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
     }
 
+    public async Task<AppUser?> GetByIdWithActiveRolesAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _context.AppUsers
+            .AsNoTracking()
+            .Include(user => user.UserRoleUsers.Where(userRole => userRole.Status == "ACTIVE"))
+                .ThenInclude(userRole => userRole.Role)
+            .FirstOrDefaultAsync(user => user.UserId == userId, cancellationToken);
+    }
+
     public async Task<AppUser?> GetByIdWithRolesAndPermissionsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _context.AppUsers

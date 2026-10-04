@@ -11,4 +11,7 @@ public sealed class Mf03IntegrationSettings
     public int ProcessingTimeoutSeconds { get; set; }
     public int ProcessingTimeoutMinutes { get; set; } = 15;
     public int BatchSize { get; set; } = 10;
+    public int MaxDispatchAttempts { get; set; } = 5;
+    public int InitialRetryDelaySeconds { get; set; } = 30;
+    public int MaxRetryDelaySeconds { get; set; } = 900;
 }

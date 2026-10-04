@@ -17,6 +17,8 @@ public class GetCvDownloadUrlQueryHandlerTests
     private readonly Mock<ICandidateCvRepository> _candidateCvRepositoryMock;
     private readonly Mock<ICandidateRepository> _candidateRepositoryMock;
     private readonly Mock<ILogger<GetCvDownloadUrlQueryHandler>> _loggerMock;
+    private readonly Mock<IAuditLogService> _auditMock;
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly GetCvDownloadUrlQueryHandler _handler;
 
     public GetCvDownloadUrlQueryHandlerTests()
@@ -25,12 +27,16 @@ public class GetCvDownloadUrlQueryHandlerTests
         _candidateCvRepositoryMock = new Mock<ICandidateCvRepository>();
         _candidateRepositoryMock = new Mock<ICandidateRepository>();
         _loggerMock = new Mock<ILogger<GetCvDownloadUrlQueryHandler>>();
+        _auditMock = new Mock<IAuditLogService>();
+        _unitOfWorkMock = new Mock<IUnitOfWork>();
 
         _handler = new GetCvDownloadUrlQueryHandler(
             _cvStorageServiceMock.Object,
             _candidateCvRepositoryMock.Object,
             _candidateRepositoryMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _auditMock.Object,
+            _unitOfWorkMock.Object);
     }
 
     [Fact]
@@ -72,6 +78,12 @@ public class GetCvDownloadUrlQueryHandlerTests
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
         result.Data.Should().BeEquivalentTo(downloadResult);
+        _auditMock.Verify(service => service.AddAsync(It.Is<AuditEntry>(entry =>
+            entry.Action == AuditActions.CandidateCvDownloadUrlIssued &&
+            entry.EntityType == "CANDIDATE_CV" &&
+            entry.EntityId == cvId &&
+            entry.ActorUserId == userId), It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

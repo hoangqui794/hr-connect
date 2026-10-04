@@ -430,6 +430,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("must_have_result");
 
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
                     b.Property<DateTime?>("ProcessingStartedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("processing_started_at");
@@ -467,9 +471,14 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "ApplicationId", "AttemptNo" }, "idx_ai_match_application")
                         .IsDescending(false, true);
 
+                    b.HasIndex(new[] { "Status", "NextAttemptAt" }, "idx_ai_match_result_pending_dispatch")
+                        .HasFilter("status = 'PENDING'");
+
                     b.ToTable("ai_match_result", "public", t =>
                         {
                             t.HasComment("Post-application AI screening support. Match Score/Tier/Highlight support human review; AI does not auto-reject/shortlist/hire.");
+
+                            t.HasCheckConstraint("ai_match_result_status_check", "status IN ('PENDING','PROCESSING','COMPLETED','FAILED','UNAVAILABLE')");
                         });
                 });
 
@@ -777,6 +786,14 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(120)")
                         .HasColumnName("action");
 
+                    b.Property<string>("ActorType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("SYSTEM")
+                        .HasColumnName("actor_type");
+
                     b.Property<Guid?>("ActorUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_user_id");
@@ -800,6 +817,12 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(80)")
                         .HasColumnName("entity_type");
 
+                    b.Property<int>("EventVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("event_version");
+
                     b.Property<IPAddress>("IpAddress")
                         .HasColumnType("inet")
                         .HasColumnName("ip_address");
@@ -812,6 +835,19 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("old_values");
 
+                    b.Property<string>("ServiceName")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("service_name");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("APPLICATION")
+                        .HasColumnName("source");
+
                     b.Property<string>("UserAgent")
                         .HasColumnType("text")
                         .HasColumnName("user_agent");
@@ -822,15 +858,35 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "ActorUserId", "CreatedAt" }, "idx_audit_log_actor")
                         .IsDescending(false, true);
 
+                    b.HasIndex(new[] { "ActorType", "CreatedAt" }, "idx_audit_log_actor_type")
+                        .IsDescending(false, true);
+
                     b.HasIndex(new[] { "CorrelationId", "CreatedAt" }, "idx_audit_log_correlation")
                         .IsDescending(false, true);
 
                     b.HasIndex(new[] { "EntityType", "EntityId", "CreatedAt" }, "idx_audit_log_entity")
                         .IsDescending(false, false, true);
 
+                    b.HasIndex(new[] { "ServiceName", "CreatedAt" }, "idx_audit_log_service")
+                        .IsDescending(false, true)
+                        .HasFilter("service_name IS NOT NULL");
+
+                    b.HasIndex(new[] { "Source", "CreatedAt" }, "idx_audit_log_source")
+                        .IsDescending(false, true);
+
                     b.ToTable("audit_log", "public", t =>
                         {
-                            t.HasComment("Append-only audit trail. Set hr_connect.current_user_id in the application transaction when actor identity is available.");
+                            t.HasComment("Append-only audit trail with actor and source context.");
+
+                            t.HasCheckConstraint("audit_log_actor_identity_check", "(actor_user_id IS NULL AND actor_type <> 'USER') OR (actor_user_id IS NOT NULL AND actor_type = 'USER')");
+
+                            t.HasCheckConstraint("audit_log_actor_type_check", "actor_type IN ('USER', 'ANONYMOUS', 'SYSTEM', 'SERVICE', 'DATABASE_TRIGGER')");
+
+                            t.HasCheckConstraint("audit_log_event_version_check", "event_version >= 1");
+
+                            t.HasCheckConstraint("audit_log_service_actor_check", "actor_type <> 'SERVICE' OR service_name IS NOT NULL");
+
+                            t.HasCheckConstraint("audit_log_source_check", "source IN ('API', 'APPLICATION', 'BACKGROUND_WORKER', 'INTEGRATION', 'DATABASE_TRIGGER')");
                         });
                 });
 
@@ -2590,6 +2646,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.ToTable("notification", "public", t =>
                         {
                             t.HasComment("In-app notification store. JOB_FIT notifications may reference a Job through related_entity_type/related_entity_id.");
+
+                            t.HasCheckConstraint("ck_notification_type", "notification_type IN ('ACCOUNT','COMPANY','JOB','SUBMISSION','SUBMISSION_CONSENT_RESULT','JOB_FIT','APPLICATION_STATUS','INTERVIEW','OFFER','AFFILIATE','COMMISSION','PAYOUT','SYSTEM')");
                         });
                 });
 
@@ -3410,6 +3468,13 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("consent_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -3850,7 +3915,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasOne("HRConnect.Domain.Entities.AppUser", "ActorUser")
                         .WithMany("AuditLogs")
                         .HasForeignKey("ActorUserId")
-                        .OnDelete(DeleteBehavior.SetNull)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("audit_log_actor_user_id_fkey");
 
                     b.Navigation("ActorUser");

@@ -15,6 +15,7 @@ namespace HRConnect.UnitTests.Features.Candidates;
 public class ApplyJobCommandHandlerTests
 {
     private readonly Mock<ICandidateRepository> _candidateRepositoryMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IJobRepository> _jobRepositoryMock;
     private readonly Mock<ICandidateCvRepository> _candidateCvRepositoryMock;
     private readonly Mock<ICvStorageService> _cvStorageServiceMock;
@@ -29,6 +30,7 @@ public class ApplyJobCommandHandlerTests
     public ApplyJobCommandHandlerTests()
     {
         _candidateRepositoryMock = new Mock<ICandidateRepository>();
+        _userRepositoryMock = new Mock<IUserRepository>();
         _jobRepositoryMock = new Mock<IJobRepository>();
         _candidateCvRepositoryMock = new Mock<ICandidateCvRepository>();
         _cvStorageServiceMock = new Mock<ICvStorageService>();
@@ -38,9 +40,13 @@ public class ApplyJobCommandHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _auditLogServiceMock = new Mock<IAuditLogService>();
         _loggerMock = new Mock<ILogger<ApplyJobCommandHandler>>();
+        _userRepositoryMock.Setup(repository => repository.GetByIdWithActiveRolesAsync(
+                It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateActiveCandidateUser());
 
         _handler = new ApplyJobCommandHandler(
             _candidateRepositoryMock.Object,
+            _userRepositoryMock.Object,
             _jobRepositoryMock.Object,
             _candidateCvRepositoryMock.Object,
             _cvStorageServiceMock.Object,
@@ -62,7 +68,7 @@ public class ApplyJobCommandHandlerTests
         var cvId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
 
-        var candidate = new Candidate { CandidateId = candidateId, UserId = userId, FullName = "Candidate One" };
+        var candidate = new Candidate { CandidateId = candidateId, UserId = userId, FullName = "Candidate One", Status = "ACTIVE" };
         var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
         var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "candidates/1/cvs/1.pdf" };
 
@@ -163,7 +169,7 @@ public class ApplyJobCommandHandlerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = userId };
+        var candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" };
         _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(candidate);
 
@@ -189,7 +195,7 @@ public class ApplyJobCommandHandlerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = userId };
+        var candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" };
         var job = new Job { JobId = Guid.NewGuid(), Status = inactiveStatus };
 
         _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
@@ -213,7 +219,7 @@ public class ApplyJobCommandHandlerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = userId };
+        var candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" };
         var job = new Job { JobId = Guid.NewGuid(), Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid(), Visibility = JobVisibilities.Public };
 
         _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
@@ -232,7 +238,7 @@ public class ApplyJobCommandHandlerTests
 
         // Assert
         var ex = await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Your role is not allowed to submit candidates for this service type.");
+            .WithMessage("Vai trò ứng viên không được phép nộp hồ sơ cho loại dịch vụ của công việc này.");
         ex.Which.ErrorCode.Should().Be("SERVICE_TYPE_SUBMISSION_NOT_ALLOWED");
 
         // Verify no DB changes or MF-03 calls
@@ -253,7 +259,7 @@ public class ApplyJobCommandHandlerTests
             ServiceTypeId = Guid.NewGuid(), Visibility = visibility
         };
         _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Candidate { CandidateId = Guid.NewGuid(), UserId = userId });
+            .ReturnsAsync(new Candidate { CandidateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
 
         var action = () => _handler.Handle(new ApplyJobCommand
@@ -276,7 +282,7 @@ public class ApplyJobCommandHandlerTests
         var jobId = Guid.NewGuid();
         var cvId = Guid.NewGuid();
 
-        var candidate = new Candidate { CandidateId = candidateId, UserId = userId };
+        var candidate = new Candidate { CandidateId = candidateId, UserId = userId, Status = "ACTIVE" };
         var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid(), Visibility = JobVisibilities.Public };
         var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "key" };
         var existingAcceptedSubmission = new Submission { SubmissionId = Guid.NewGuid(), CandidateId = candidateId, JobId = jobId, Status = "ACCEPTED" };
@@ -330,7 +336,7 @@ public class ApplyJobCommandHandlerTests
         var jobId = Guid.NewGuid();
         var cvId = Guid.NewGuid();
 
-        var candidate = new Candidate { CandidateId = candidateId, UserId = userId };
+        var candidate = new Candidate { CandidateId = candidateId, UserId = userId, Status = "ACTIVE" };
         var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid(), Visibility = JobVisibilities.Public };
 
         _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
@@ -385,7 +391,7 @@ public class ApplyJobCommandHandlerTests
         var jobId = Guid.NewGuid();
         var cvId = Guid.NewGuid();
 
-        var candidate = new Candidate { CandidateId = candidateId, UserId = userId };
+        var candidate = new Candidate { CandidateId = candidateId, UserId = userId, Status = "ACTIVE" };
         var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid(), Visibility = JobVisibilities.Public };
         var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf" };
 
@@ -415,5 +421,146 @@ public class ApplyJobCommandHandlerTests
         await act.Should().ThrowAsync<InvalidOperationException>();
         _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Handle_WhenCvSourceCountIsNotExactlyOne_ThrowsBadRequest(bool provideBoth)
+    {
+        var userId = Guid.NewGuid();
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(),
+            Status = JobStatuses.Active,
+            ServiceTypeId = Guid.NewGuid(),
+            Visibility = JobVisibilities.Public
+        };
+        _candidateRepositoryMock.Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate { CandidateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
+        _jobRepositoryMock.Setup(repository => repository.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+        _jobRepositoryMock.Setup(repository => repository.CanAnyRoleSubmitJobAsync(
+                job.ServiceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var command = new ApplyJobCommand
+        {
+            JobId = job.JobId,
+            UserId = userId,
+            RoleCodes = [JobAccessPolicy.CandidateRole],
+            CvId = provideBoth ? Guid.NewGuid() : null,
+            FileStream = provideBoth ? new MemoryStream([1]) : null,
+            FileName = provideBoth ? "cv.pdf" : null,
+            FileSizeBytes = provideBoth ? 1 : null
+        };
+
+        var action = () => _handler.Handle(command, CancellationToken.None);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*đúng một nguồn CV*");
+        _cvStorageServiceMock.Verify(service => service.UploadCvPdfAsync(
+            It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(),
+            It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _applicationRepositoryMock.Verify(repository => repository.AddAsync(
+            It.IsAny<HRConnect.Domain.Entities.Application>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("ARCHIVED", false)]
+    [InlineData("ACTIVE", true)]
+    public async Task Handle_WhenCandidateProfileIsNotEligible_RejectsBeforeUpload(string status, bool merged)
+    {
+        var userId = Guid.NewGuid();
+        _candidateRepositoryMock.Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate
+            {
+                CandidateId = Guid.NewGuid(),
+                UserId = userId,
+                Status = status,
+                MergedIntoCandidateId = merged ? Guid.NewGuid() : null
+            });
+
+        var action = () => _handler.Handle(new ApplyJobCommand
+        {
+            JobId = Guid.NewGuid(),
+            UserId = userId,
+            CvId = Guid.NewGuid(),
+            RoleCodes = [JobAccessPolicy.CandidateRole]
+        }, CancellationToken.None);
+
+        var exception = await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("Hồ sơ ứng viên đã bị khóa, lưu trữ hoặc hợp nhất*");
+        exception.Which.ErrorCode.Should().Be("CANDIDATE_PROFILE_NOT_ELIGIBLE");
+        _userRepositoryMock.Verify(repository => repository.GetByIdWithActiveRolesAsync(
+            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _jobRepositoryMock.Verify(repository => repository.GetByIdAsync(
+            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _cvStorageServiceMock.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("SUSPENDED", true, true)]
+    [InlineData("ACTIVE", false, true)]
+    [InlineData("ACTIVE", true, false)]
+    public async Task Handle_WhenCandidateAccountOrRoleIsNotActive_RejectsBeforeUpload(
+        string userStatus,
+        bool hasCandidateRole,
+        bool roleIsActive)
+    {
+        var userId = Guid.NewGuid();
+        _candidateRepositoryMock.Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate { CandidateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
+        _userRepositoryMock.Setup(repository => repository.GetByIdWithActiveRolesAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateActiveCandidateUser(userStatus, hasCandidateRole, roleIsActive));
+
+        var action = () => _handler.Handle(new ApplyJobCommand
+        {
+            JobId = Guid.NewGuid(),
+            UserId = userId,
+            CvId = Guid.NewGuid(),
+            RoleCodes = [JobAccessPolicy.CandidateRole]
+        }, CancellationToken.None);
+
+        var exception = await action.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Tài khoản ứng viên không còn hoạt động hoặc đã bị thu hồi quyền ứng tuyển.");
+        exception.Which.ErrorCode.Should().Be("CANDIDATE_ACCOUNT_NOT_ELIGIBLE");
+        _jobRepositoryMock.Verify(repository => repository.GetByIdAsync(
+            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _cvStorageServiceMock.VerifyNoOtherCalls();
+    }
+
+    private static AppUser CreateActiveCandidateUser(
+        string status = "ACTIVE",
+        bool hasCandidateRole = true,
+        bool roleIsActive = true)
+    {
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "candidate@example.com",
+            PasswordHash = "hash",
+            Status = status
+        };
+        if (hasCandidateRole)
+        {
+            var role = new Role
+            {
+                RoleId = Guid.NewGuid(),
+                Code = JobAccessPolicy.CandidateRole,
+                Name = "Candidate",
+                IsActive = roleIsActive
+            };
+            user.UserRoleUsers.Add(new UserRole
+            {
+                UserId = user.UserId,
+                RoleId = role.RoleId,
+                User = user,
+                Role = role,
+                Status = "ACTIVE",
+                AssignmentSource = "SYSTEM"
+            });
+        }
+        return user;
     }
 }

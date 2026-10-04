@@ -18,13 +18,18 @@ public class GetAuditLogsQueryHandlerTests
         var log = new AuditLog
         {
             AuditLogId = 11,
+            ActorType = "USER",
             Action = "CV_UPDATED",
+            Source = "API",
             EntityType = "CANDIDATE_CV",
             CreatedAt = createdAt
         };
         _repository.Setup(repository => repository.GetListAsync(
                 null,
+                "USER",
                 "CV_UPDATED",
+                "API",
+                null,
                 "CANDIDATE_CV",
                 null,
                 null,
@@ -38,12 +43,16 @@ public class GetAuditLogsQueryHandlerTests
 
         var result = await handler.Handle(new GetAuditLogsQuery(
             Action: "  cv_updated ",
+            ActorType: " user ",
+            Source: " api ",
             EntityType: " candidate_cv ",
             Page: 0,
             PageSize: 500), CancellationToken.None);
 
         result.Data.Items.Should().ContainSingle();
         result.Data.Items[0].AuditLogId.Should().Be(11);
+        result.Data.Items[0].ActorType.Should().Be("USER");
+        result.Data.Items[0].Source.Should().Be("API");
         result.Data.Page.Should().Be(1);
         result.Data.PageSize.Should().Be(100);
         result.Data.Total.Should().Be(101);

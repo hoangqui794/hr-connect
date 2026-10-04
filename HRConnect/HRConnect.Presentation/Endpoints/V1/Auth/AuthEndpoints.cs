@@ -454,7 +454,7 @@ public static class AuthEndpoints
 
             if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
             {
-                return Results.Unauthorized();
+                return UnauthorizedResponse();
             }
 
             command.UserId = userId;
@@ -587,7 +587,7 @@ public static class AuthEndpoints
 
             if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
             {
-                return Results.Unauthorized();
+                return UnauthorizedResponse();
             }
 
             command.UserId = userId;
@@ -640,7 +640,7 @@ public static class AuthEndpoints
 
             if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
             {
-                return Results.Unauthorized();
+                return UnauthorizedResponse();
             }
 
             var command = new LogoutAllCommand { UserId = userId };
@@ -677,7 +677,7 @@ public static class AuthEndpoints
 
             if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
             {
-                return Results.Unauthorized();
+                return UnauthorizedResponse();
             }
 
             try
@@ -691,7 +691,7 @@ public static class AuthEndpoints
             }
             catch (UnauthorizedException)
             {
-                return Results.Unauthorized();
+                return UnauthorizedResponse();
             }
         })
         .RequireAuthorization()
@@ -713,7 +713,7 @@ public static class AuthEndpoints
 
             if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
             {
-                return Results.Unauthorized();
+                return UnauthorizedResponse();
             }
 
             try
@@ -727,7 +727,7 @@ public static class AuthEndpoints
             }
             catch (UnauthorizedException)
             {
-                return Results.Unauthorized();
+                return UnauthorizedResponse();
             }
         })
         .RequireAuthorization()
@@ -737,4 +737,10 @@ public static class AuthEndpoints
 
         return app;
     }
+
+    private static IResult UnauthorizedResponse() => Results.Json(new
+    {
+        success = false,
+        message = "Bạn chưa đăng nhập hoặc phiên đăng nhập không hợp lệ."
+    }, statusCode: StatusCodes.Status401Unauthorized);
 }

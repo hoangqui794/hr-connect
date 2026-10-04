@@ -38,12 +38,51 @@ public class AuditLogServiceTests
         (await db.AuditLogs.CountAsync()).Should().Be(0);
         var pending = db.AuditLogs.Local.Should().ContainSingle().Subject;
         pending.ActorUserId.Should().Be(userId);
+        pending.ActorType.Should().Be(AuditActorTypes.User);
+        pending.Source.Should().Be(AuditSources.Api);
+        pending.EventVersion.Should().Be(1);
         pending.CorrelationId.Should().Be(correlationId);
         pending.IpAddress.Should().Be(IPAddress.Loopback);
         pending.UserAgent.Should().Be("test-agent");
         pending.EntityId.Should().Be(entityId);
         pending.OldValues.Should().Contain("Old");
         pending.NewValues.Should().Contain("New");
+    }
+
+    [Fact]
+    public async Task AddAsync_WithoutHttpContext_ClassifiesBackgroundSystemActor()
+    {
+        await using var db = CreateDbContext();
+        var service = new AuditLogService(db, Mock.Of<IRequestContext>());
+
+        await service.AddAsync(new AuditEntry { Action = "CONSENT_EXPIRED" });
+
+        var pending = db.AuditLogs.Local.Should().ContainSingle().Subject;
+        pending.ActorUserId.Should().BeNull();
+        pending.ActorType.Should().Be(AuditActorTypes.System);
+        pending.Source.Should().Be(AuditSources.BackgroundWorker);
+    }
+
+    [Fact]
+    public async Task AddAsync_WithExplicitServiceContext_PreservesServiceMetadata()
+    {
+        await using var db = CreateDbContext();
+        var service = new AuditLogService(db, Mock.Of<IRequestContext>());
+
+        await service.AddAsync(new AuditEntry
+        {
+            Action = "AI_SCORING_FAILED",
+            ActorType = AuditActorTypes.Service,
+            Source = AuditSources.Integration,
+            ServiceName = "MF03",
+            EventVersion = 2
+        });
+
+        var pending = db.AuditLogs.Local.Should().ContainSingle().Subject;
+        pending.ActorType.Should().Be(AuditActorTypes.Service);
+        pending.Source.Should().Be(AuditSources.Integration);
+        pending.ServiceName.Should().Be("MF03");
+        pending.EventVersion.Should().Be(2);
     }
 
     [Fact]

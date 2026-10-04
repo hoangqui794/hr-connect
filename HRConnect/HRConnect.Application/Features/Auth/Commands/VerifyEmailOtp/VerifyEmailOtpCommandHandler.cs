@@ -165,20 +165,10 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             {
                 try
                 {
-                    var subject = "HR Connect - Đã tiếp nhận hồ sơ đăng ký Đối tác tuyển dụng";
-                    var bodyHtml = $@"
-                        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                            <h2 style='color: #4F46E5; margin-top: 0;'>HR Connect - Đối tác tuyển dụng</h2>
-                            <p>Cảm ơn bạn đã đăng ký trở thành Đối tác tuyển dụng (Affiliate Recruiter) trên hệ thống HR Connect.</p>
-                            <p>Địa chỉ email của bạn đã được xác thực thành công.</p>
-                            <p><strong>Hồ sơ đăng ký của bạn hiện đang chờ Ban quản trị hệ thống xem xét và phê duyệt.</strong></p>
-                            <p>Chúng tôi sẽ gửi email thông báo kết quả ngay sau khi hồ sơ của bạn được xử lý.</p>
-                            <p>Cảm ơn sự hợp tác và kiên nhẫn của bạn.</p>
-                            <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                            <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
-                        </div>";
-
-                    await _emailService.SendEmailAsync(user.Email, subject, bodyHtml, CancellationToken.None);
+                    var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates
+                        .RegistrationUnderReview("Đối tác tuyển dụng");
+                    await _emailService.SendEmailAsync(
+                        user.Email, email.Subject, email.HtmlBody, CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
@@ -189,7 +179,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             return new VerifyEmailOtpResponse
             {
                 Success = true,
-                Message = "Email verified successfully. Your Affiliate registration is pending Admin approval.",
+                Message = "Xác thực email thành công. Hồ sơ Đối tác tuyển dụng đang chờ Ban quản trị phê duyệt.",
                 Data = new VerifyEmailOtpData
                 {
                     UserId = user.UserId,
@@ -232,20 +222,10 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             {
                 try
                 {
-                    var subject = "HR Connect - Đã tiếp nhận hồ sơ đăng ký Doanh nghiệp";
-                    var bodyHtml = $@"
-                        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                            <h2 style='color: #4F46E5; margin-top: 0;'>HR Connect - Đăng ký Doanh nghiệp</h2>
-                            <p>Cảm ơn bạn đã đăng ký tài khoản Doanh nghiệp tuyển dụng trên hệ thống HR Connect.</p>
-                            <p>Địa chỉ email của bạn đã được xác thực thành công.</p>
-                            <p><strong>Hồ sơ xác thực doanh nghiệp của bạn hiện đang chờ Ban quản trị hệ thống xem xét và phê duyệt.</strong></p>
-                            <p>Chúng tôi sẽ gửi email thông báo kết quả ngay sau khi hồ sơ được xét duyệt.</p>
-                            <p>Cảm ơn sự hợp tác và kiên nhẫn của bạn.</p>
-                            <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                            <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
-                        </div>";
-
-                    await _emailService.SendEmailAsync(user.Email, subject, bodyHtml, CancellationToken.None);
+                    var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates
+                        .RegistrationUnderReview("Doanh nghiệp tuyển dụng");
+                    await _emailService.SendEmailAsync(
+                        user.Email, email.Subject, email.HtmlBody, CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
@@ -256,7 +236,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             return new VerifyEmailOtpResponse
             {
                 Success = true,
-                Message = "Email verified successfully. Your company registration is pending Admin approval.",
+                Message = "Xác thực email thành công. Hồ sơ Doanh nghiệp đang chờ Ban quản trị phê duyệt.",
                 Data = new VerifyEmailOtpData
                 {
                     UserId = user.UserId,

@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.SubmissionConsents.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using JobApplication = HRConnect.Domain.Entities.Application;
@@ -106,7 +107,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             throw new ConflictException("Candidate đã có hồ sơ được tiếp nhận cho công việc này.");
         }
 
-        var affiliate = await _affiliateRepository.GetByUserIdAsync(consent.Submission.SubmittedBy, cancellationToken);
+        var affiliate = await _affiliateRepository.GetByUserIdWithDetailsAsync(consent.Submission.SubmittedBy, cancellationToken);
         if (affiliate == null || !IsAffiliateEligible(affiliate))
         {
             await SetTerminalWithoutApplicationAsync(consent, "CANCELLED", "CANCELLED", request, now, cancellationToken);
@@ -122,6 +123,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             consent.ResponseIp = Limit(request.IpAddress, 64);
             consent.ResponseUserAgent = Limit(request.UserAgent, 512);
             consent.UpdatedAt = now;
+            consent.ConcurrencyToken = Guid.NewGuid();
 
             consent.Submission.Status = "ACCEPTED";
             consent.Submission.UpdatedAt = now;
@@ -195,6 +197,8 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
                 }, cancellationToken);
             }
 
+            await AddAffiliateResultNotificationAsync(consent, "CONFIRMED", now, cancellationToken);
+
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
         catch (Exception ex) when (IsUniqueViolation(ex))
@@ -232,6 +236,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         consent.ResponseIp = Limit(request.IpAddress, 64);
         consent.ResponseUserAgent = Limit(request.UserAgent, 512);
         consent.UpdatedAt = now;
+        consent.ConcurrencyToken = Guid.NewGuid();
         consent.Submission.Status = submissionStatus;
         consent.Submission.UpdatedAt = now;
         if (consent.Submission.CandidateCv.Status == "PENDING_CONSENT")
@@ -247,7 +252,30 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             ActorUserId = request.RequesterUserId,
             NewValues = new { consentStatus, submissionStatus }
         }, cancellationToken);
+        if (consentStatus is "DECLINED" or "EXPIRED")
+            await AddAffiliateResultNotificationAsync(consent, consentStatus, now, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task AddAffiliateResultNotificationAsync(
+        HRConnect.Domain.Entities.SubmissionConsent consent,
+        string status,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var submission = consent.Submission;
+        var exists = await _notificationRepository.ExistsAsync(
+            submission.SubmittedBy,
+            SubmissionConsentNotificationFactory.NotificationType,
+            "SUBMISSION",
+            submission.SubmissionId,
+            cancellationToken);
+        if (!exists)
+        {
+            await _notificationRepository.AddAsync(
+                SubmissionConsentNotificationFactory.CreateAffiliateResult(submission, status, now),
+                cancellationToken);
+        }
     }
 
     private async Task<HRConnect.Domain.Entities.SubmissionConsent> ResolveConsentAsync(
@@ -304,9 +332,24 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
     private static string? Limit(string? value, int max) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Length <= max ? value : value[..max];
 
-    private static bool IsAffiliateEligible(HRConnect.Domain.Entities.AffiliateProfile affiliate) =>
-        string.Equals(affiliate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(affiliate.Status, "VERIFIED", StringComparison.OrdinalIgnoreCase);
+    private static bool IsAffiliateEligible(HRConnect.Domain.Entities.AffiliateProfile affiliate)
+    {
+        var profileIsEligible =
+            string.Equals(affiliate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(affiliate.Status, "VERIFIED", StringComparison.OrdinalIgnoreCase);
+        var user = affiliate.User;
+        if (!profileIsEligible ||
+            user == null ||
+            !string.Equals(user.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return user.UserRoleUsers.Any(userRole =>
+            string.Equals(userRole.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
+            userRole.Role.IsActive &&
+            string.Equals(userRole.Role.Code, JobAccessPolicy.AffiliateRole, StringComparison.OrdinalIgnoreCase));
+    }
 
     private static bool IsUniqueViolation(Exception exception)
     {

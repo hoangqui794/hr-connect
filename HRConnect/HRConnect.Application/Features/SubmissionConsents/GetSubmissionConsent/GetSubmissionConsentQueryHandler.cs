@@ -1,6 +1,8 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.SubmissionConsents.Common;
+using HRConnect.Application.Common.Models;
 using MediatR;
 
 namespace HRConnect.Application.Features.SubmissionConsents.GetSubmissionConsent;
@@ -9,22 +11,33 @@ public sealed class GetSubmissionConsentQueryHandler : IRequestHandler<GetSubmis
 {
     private readonly ISubmissionConsentRepository _repository;
     private readonly ICvStorageService _cvStorage;
+    private readonly ISubmissionConsentExpiryService _expiryService;
+    private readonly IAuditLogService _audit;
     private readonly IUnitOfWork _unitOfWork;
 
     public GetSubmissionConsentQueryHandler(
         ISubmissionConsentRepository repository,
         ICvStorageService cvStorage,
+        ISubmissionConsentExpiryService expiryService,
+        IAuditLogService audit,
         IUnitOfWork unitOfWork)
     {
         _repository = repository;
         _cvStorage = cvStorage;
+        _expiryService = expiryService;
+        _audit = audit;
         _unitOfWork = unitOfWork;
     }
 
     public async Task<SubmissionConsentReviewResponse> Handle(GetSubmissionConsentQuery request, CancellationToken cancellationToken)
     {
         var consent = await ResolveConsentAsync(request, cancellationToken);
-        await ExpireIfNeededAsync(consent, cancellationToken);
+        await _expiryService.ExpireAsync(
+            consent,
+            DateTime.UtcNow,
+            request.RequesterUserId,
+            "CONSENT_REVIEW",
+            cancellationToken);
 
         string? url = null;
         DateTime? urlExpiresAt = null;
@@ -34,6 +47,23 @@ public sealed class GetSubmissionConsentQueryHandler : IRequestHandler<GetSubmis
                 consent.Submission.CvId, TimeSpan.FromMinutes(5), cancellationToken);
             url = download.DownloadUrl;
             urlExpiresAt = download.ExpiresAt;
+
+            await _audit.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.SubmissionConsentCvDownloadUrlIssued,
+                EntityType = "CANDIDATE_CV",
+                EntityId = consent.Submission.CvId,
+                ActorUserId = request.RequesterUserId,
+                CorrelationId = consent.ConsentId,
+                NewValues = new
+                {
+                    consent.SubmissionId,
+                    consent.Submission.CandidateId,
+                    accessMethod = request.RequesterUserId.HasValue ? "CANDIDATE_ACCOUNT" : "EMAIL_LINK",
+                    download.ExpiresAt
+                }
+            }, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         return new SubmissionConsentReviewResponse
@@ -85,19 +115,4 @@ public sealed class GetSubmissionConsentQueryHandler : IRequestHandler<GetSubmis
             throw new ForbiddenException("Vui lòng đăng nhập đúng tài khoản Candidate để xem và xác nhận hồ sơ.");
     }
 
-    private async Task ExpireIfNeededAsync(HRConnect.Domain.Entities.SubmissionConsent consent, CancellationToken cancellationToken)
-    {
-        if (consent.Status != "PENDING" || consent.ExpiresAt > DateTime.UtcNow) return;
-        var now = DateTime.UtcNow;
-        consent.Status = "EXPIRED";
-        consent.UpdatedAt = now;
-        consent.Submission.Status = "CONSENT_EXPIRED";
-        consent.Submission.UpdatedAt = now;
-        if (consent.Submission.CandidateCv.Status == "PENDING_CONSENT")
-        {
-            consent.Submission.CandidateCv.Status = "ARCHIVED";
-            consent.Submission.CandidateCv.UpdatedAt = now;
-        }
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-    }
 }

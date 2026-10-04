@@ -97,19 +97,10 @@ public class ResendRegistrationOtpCommandHandler
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var recipientName = string.IsNullOrWhiteSpace(user.DisplayName) ? "bạn" : user.DisplayName.Trim();
-        var subject = "HR Connect - Mã xác thực đăng ký mới";
-        var bodyHtml = $@"
-            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
-                <h2 style='color: #4F46E5;'>Xác thực email đăng ký HR Connect</h2>
-                <p>Xin chào <strong>{recipientName}</strong>,</p>
-                <p>Mã OTP đăng ký mới của bạn là:</p>
-                <div style='background-color: #F3F4F6; padding: 16px; text-align: center;'>
-                    <span style='font-size: 32px; font-weight: bold; letter-spacing: 6px;'>{rawOtp}</span>
-                </div>
-                <p>Mã có hiệu lực trong <strong>{expirationMinutes} phút</strong>. Các mã cũ đã bị vô hiệu hóa.</p>
-            </div>";
-
-        var emailResult = await _emailService.SendEmailAsync(user.Email, subject, bodyHtml, cancellationToken);
+        var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates.RegistrationOtpResent(
+            recipientName, rawOtp, expirationMinutes);
+        var emailResult = await _emailService.SendEmailAsync(
+            user.Email, email.Subject, email.HtmlBody, cancellationToken);
         if (!emailResult.IsSuccess)
         {
             token.UsedAt = DateTime.UtcNow;

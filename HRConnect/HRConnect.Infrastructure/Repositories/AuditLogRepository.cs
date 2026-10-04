@@ -16,7 +16,10 @@ public sealed class AuditLogRepository : IAuditLogRepository
 
     public async Task<(IReadOnlyList<AuditLog> Items, int TotalCount)> GetListAsync(
         Guid? actorUserId,
+        string? actorType,
         string? action,
+        string? source,
+        string? serviceName,
         string? entityType,
         Guid? entityId,
         Guid? correlationId,
@@ -33,8 +36,14 @@ public sealed class AuditLogRepository : IAuditLogRepository
 
         if (actorUserId.HasValue)
             query = query.Where(log => log.ActorUserId == actorUserId);
+        if (!string.IsNullOrWhiteSpace(actorType))
+            query = query.Where(log => log.ActorType == actorType);
         if (!string.IsNullOrWhiteSpace(action))
             query = query.Where(log => log.Action == action);
+        if (!string.IsNullOrWhiteSpace(source))
+            query = query.Where(log => log.Source == source);
+        if (!string.IsNullOrWhiteSpace(serviceName))
+            query = query.Where(log => log.ServiceName == serviceName);
         if (!string.IsNullOrWhiteSpace(entityType))
             query = query.Where(log => log.EntityType == entityType);
         if (entityId.HasValue)

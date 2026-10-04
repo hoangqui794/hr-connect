@@ -101,20 +101,20 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             if (user.EmailVerifiedAt == null)
             {
                 _logger.LogWarning("Đăng nhập từ chối: Tài khoản Affiliate {Email} chưa xác thực email.", normalizedEmail);
-                throw new ForbiddenException("Please verify your email before continuing.");
+                throw new ForbiddenException("Vui lòng xác thực email trước khi tiếp tục.");
             }
 
             if (string.Equals(user.AffiliateApplicationUser.Status, "REJECTED", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogWarning("Đăng nhập từ chối: Đơn đăng ký Affiliate của {Email} đã bị từ chối.", normalizedEmail);
-                throw new ForbiddenException("Your registration was rejected.");
+                throw new ForbiddenException("Hồ sơ đăng ký của bạn đã bị từ chối.");
             }
 
             if (string.Equals(user.AffiliateApplicationUser.Status, "PENDING", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(user.AffiliateApplicationUser.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogWarning("Đăng nhập từ chối: Đơn đăng ký Affiliate của {Email} đang chờ Admin duyệt.", normalizedEmail);
-                throw new ForbiddenException("Your registration is pending Admin approval.");
+                throw new ForbiddenException("Hồ sơ đăng ký của bạn đang chờ Ban quản trị phê duyệt.");
             }
         }
 
@@ -127,7 +127,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             if (user.EmailVerifiedAt == null)
             {
                 _logger.LogWarning("Đăng nhập từ chối: Tài khoản Client {Email} chưa xác thực email.", normalizedEmail);
-                throw new ForbiddenException("Please verify your email before continuing.");
+                throw new ForbiddenException("Vui lòng xác thực email trước khi tiếp tục.");
             }
 
             var isRequestRejected = clientRequest != null && string.Equals(clientRequest.Status, "REJECTED", StringComparison.OrdinalIgnoreCase);
@@ -136,7 +136,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             if (isRequestRejected || isCompanyRejected)
             {
                 _logger.LogWarning("Đăng nhập từ chối: Đăng ký doanh nghiệp của {Email} đã bị từ chối.", normalizedEmail);
-                throw new ForbiddenException("Your registration was rejected.");
+                throw new ForbiddenException("Hồ sơ đăng ký của bạn đã bị từ chối.");
             }
 
             var isRequestPending = clientRequest != null && (string.Equals(clientRequest.Status, "PENDING", StringComparison.OrdinalIgnoreCase) || string.Equals(clientRequest.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase));
@@ -145,7 +145,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             if (isRequestPending || isCompanyPending)
             {
                 _logger.LogWarning("Đăng nhập từ chối: Đăng ký doanh nghiệp của {Email} đang chờ Admin duyệt.", normalizedEmail);
-                throw new ForbiddenException("Your registration is pending Admin approval.");
+                throw new ForbiddenException("Hồ sơ đăng ký của bạn đang chờ Ban quản trị phê duyệt.");
             }
         }
 

@@ -38,7 +38,10 @@ public class AuditLogRepositoryTests
 
         var (items, total) = await repository.GetListAsync(
             actorId,
+            "USER",
             "CV_UPDATED",
+            "API",
+            null,
             "CANDIDATE_CV",
             entityId,
             correlationId,
@@ -99,7 +102,9 @@ public class AuditLogRepositoryTests
     {
         AuditLogId = id,
         ActorUserId = actorId,
+        ActorType = "USER",
         Action = "CV_UPDATED",
+        Source = "API",
         EntityType = "CANDIDATE_CV",
         EntityId = entityId,
         CorrelationId = correlationId,
