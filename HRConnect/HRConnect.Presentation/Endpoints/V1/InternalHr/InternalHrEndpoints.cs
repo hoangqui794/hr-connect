@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Features.InternalHr.Commands.UpdateInternalHrProfile;
 using HRConnect.Application.Features.InternalHr.Commands.RetryAiScoring;
 using HRConnect.Application.Features.InternalHr.Queries.GetInternalHrProfile;
@@ -120,7 +121,8 @@ public static class InternalHrEndpoints
             Guid applicationId,
             ClaimsPrincipal user,
             [FromServices] ISender sender,
-            CancellationToken cancellationToken) =>
+            CancellationToken cancellationToken,
+            [FromQuery] string? reason = null) =>
         {
             var userId = GetUserIdFromClaims(user);
             if (userId == null) return Results.Unauthorized();
@@ -129,7 +131,10 @@ public static class InternalHrEndpoints
 
             try
             {
-                var result = await sender.Send(new RetryAiScoringCommand(applicationId, userId.Value), cancellationToken);
+                var result = await sender.Send(new RetryAiScoringCommand(
+                    applicationId,
+                    userId.Value,
+                    string.IsNullOrWhiteSpace(reason) ? Mf03ScoringReasons.FailedRetry : reason), cancellationToken);
                 return Results.Json(result, statusCode: StatusCodes.Status202Accepted);
             }
             catch (NotFoundException ex)
@@ -142,8 +147,8 @@ public static class InternalHrEndpoints
             }
         })
         .WithName("RetryAiScoring")
-        .WithSummary("Yêu cầu AI chấm lại một hồ sơ thất bại")
-        .WithDescription("Chỉ Internal HR hoặc Platform Admin có quyền mới được tạo lượt chấm AI mới cho Application có attempt gần nhất FAILED. Không tạo Submission hoặc CV mới.")
+        .WithSummary("Yêu cầu AI thử lại hoặc chấm lại một hồ sơ")
+        .WithDescription("Reason: FAILED_RETRY (attempt gần nhất FAILED), JD_UPDATED hoặc MANUAL_REVIEW (attempt gần nhất COMPLETED/FAILED). Luôn từ chối khi attempt đang PENDING/PROCESSING; không tạo Submission hoặc CV mới.")
         .Produces<RetryAiScoringResponse>(StatusCodes.Status202Accepted)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)

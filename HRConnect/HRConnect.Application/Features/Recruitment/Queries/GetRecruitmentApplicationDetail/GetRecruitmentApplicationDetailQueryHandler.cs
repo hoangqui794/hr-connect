@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Domain.Constants;
@@ -53,6 +54,7 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
         }
 
         var latestAi = app.AiMatchResults?.OrderByDescending(r => r.AttemptNo).FirstOrDefault();
+        var aiMetadata = ParseSafeAiMetadata(latestAi?.RawResponse);
         var cvEntity = app.Submission?.CandidateCv;
 
         var interviewsDto = (app.Interviews ?? new List<Domain.Entities.Interview>())
@@ -146,7 +148,15 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
                 MatchScore = latestAi.MatchScore,
                 MatchTier = latestAi.MatchTier,
                 CandidateHighlight = latestAi.CandidateHighlight,
-                Status = latestAi.Status
+                Status = latestAi.Status,
+                ParseConfidence = aiMetadata?.ParseConfidence,
+                RequiresManualReview = aiMetadata?.RequiresManualReview,
+                SemanticScore = aiMetadata?.SemanticScore,
+                Warnings = aiMetadata?.Warnings ?? new List<string>(),
+                Diagnostics = aiMetadata?.Diagnostics ?? new List<RecruitmentAiDiagnosticDto>(),
+                MissingRequirements = aiMetadata?.MissingRequirements ?? new List<string>(),
+                MatchingReasons = aiMetadata?.MatchingReasons ?? new List<string>(),
+                InputFingerprints = aiMetadata?.InputFingerprints
             } : null,
             Interviews = interviewsDto,
             Offers = offersDto,
@@ -160,6 +170,35 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             Message = "Lấy chi tiết hồ sơ tuyển dụng thành công.",
             Data = data
         };
+    }
+
+    private static SafeAiMetadata? ParseSafeAiMetadata(string? rawResponse)
+    {
+        if (string.IsNullOrWhiteSpace(rawResponse)) return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<SafeAiMetadata>(rawResponse, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private sealed class SafeAiMetadata
+    {
+        public decimal? ParseConfidence { get; set; }
+        public bool? RequiresManualReview { get; set; }
+        public decimal? SemanticScore { get; set; }
+        public List<string>? Warnings { get; set; }
+        public List<RecruitmentAiDiagnosticDto>? Diagnostics { get; set; }
+        public List<string>? MissingRequirements { get; set; }
+        public List<string>? MatchingReasons { get; set; }
+        public RecruitmentAiInputFingerprintsDto? InputFingerprints { get; set; }
     }
 
     private static List<string> ComputeAllowedActions(JobApplication app)

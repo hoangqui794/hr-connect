@@ -26,13 +26,18 @@ CAPABILITIES = (
     Capability("Technical proposals", r"propos\w*|đề xuất", r"propos(?:ed|ing).{0,50}(?:solution|architecture|technical)|đề xuất.{0,35}(?:giải pháp|kỹ thuật)"),
     Capability("Backend performance", r"backend.*(?:performance|tối ưu)|(?:performance|tối ưu).*backend", r"(?:quer|index|database|backend|server).{0,65}(?:optimi|performance|throughput)|(?:optimi|performance|throughput).{0,65}(?:quer|index|database|backend|server)"),
     Capability("Client performance", r"(?:client|frontend).*(?:performance|tối ưu)|(?:performance|tối ưu).*(?:client|frontend)", r"(?:client|frontend|render|page|web vital|lighthouse).{0,65}(?:optimi|performance|latency|load time)|(?:optimi|reduced|improved).{0,65}(?:render|page load|client performance|frontend performance)"),
-    Capability("Measured improvement", r"measurable|đo lường|cải thiện thực tế", r"\d[\d.,]*\s*(?:%|ms\b|req/s|records|daily)|throughput|response time.{0,20}\d"),
+    Capability("Measured improvement", r"measurable|đo lường|cải thiện thực tế", r".+"),
     Capability("OOP", r"\boop\b|object.oriented", r"\boop\b|object.oriented"),
     Capability("SOLID", r"\bsolid\b", r"\bsolid\b"),
     Capability("Design patterns", r"design patterns?", r"design patterns?"),
     Capability("Testable code", r"testable|kiểm thử", r"unit test\w*|integration test\w*|test.driven|testable|kiểm thử"),
     Capability("Maintainable code", r"maintainable|bảo trì", r"maintainab\w*|refactor\w*|bảo trì"),
     Capability("Readable code", r"readable", r"readable|coding standards|code quality standards"),
+    Capability(
+        "Mentoring",
+        r"\bmentor(?:ing|ed|s)?\b|cố vấn|hướng dẫn (?:thành viên|nhân viên|đội ngũ|team)",
+        r"\bmentor(?:ing|ed|s)?\b|cố vấn|hướng dẫn (?:thành viên|nhân viên|đội ngũ|team)",
+    ),
     Capability("Sales prospecting", r"prospecting|tìm kiếm khách hàng", r"prospect\w*|generated leads|tìm kiếm khách hàng"),
     Capability("Negotiation", r"negotiat\w*|đàm phán", r"negotiat\w*|đàm phán"),
     Capability("Content creation", r"content creation|sáng tạo nội dung", r"(?:created|produced|wrote).{0,30}(?:content|articles|posts)|sáng tạo nội dung|viết bài"),
@@ -40,6 +45,24 @@ CAPABILITIES = (
 )
 _UNSUPPORTED = re.compile(r"\b(?:no|not|without|lack\w*|want to|wish to|seeking to|plan to|aim to|aspir\w*)\b|chưa có|không có|mong muốn", re.I)
 _THIRD_PARTY = re.compile(r"\bby (?:the )?(?:ba|another|other|external|design)\b|do nhóm khác", re.I)
+_LEADING_CONNECTOR = re.compile(r"^(?:(?:and|or|và|hoặc)\b[\s,:;-]*)+", re.I)
+_PERFORMANCE_CONTEXT = re.compile(
+    r"\b(?:optimi[sz]\w*|improv\w*|reduc\w*|increas\w*|accelerat\w*|"
+    r"throughput|latency|response time|load time|page load|capacity|scal(?:e|ed|ing)|"
+    r"process(?:ed|ing)?|handl(?:ed|ing)|concurren\w*|quer(?:y|ies)|index(?:ed|ing)?)\b",
+    re.I,
+)
+_PERFORMANCE_SCALE_METRIC = re.compile(
+    r"\b\d[\d.,]*\s*(?:[kmb]\s*)?\+?\s*(?:ms\b|milliseconds?\b|seconds?\b|"
+    r"req(?:uests?)?\s*/\s*s\b|rps\b|qps\b|(?:daily\s+)?records?\b|users?\b|"
+    r"transactions?\b|requests?\b)",
+    re.I,
+)
+_PERFORMANCE_PERCENT = re.compile(
+    r"\b(?:improv\w*|reduc\w*|increas\w*|accelerat\w*|optimi[sz]\w*)"
+    r"[^.!?\n]{0,60}\b\d[\d.,]*\s*%",
+    re.I,
+)
 
 
 def evidence_spans(text: str) -> list[dict]:
@@ -53,6 +76,44 @@ def evidence_spans(text: str) -> list[dict]:
                 start = match.start() + part.start() + len(part.group()) - len(part.group().lstrip())
                 spans.append({"text": value, "start": start, "end": start + len(value), "source": "cvText"})
     return spans
+
+
+def _normalize_fragment(fragment: str) -> str:
+    """Remove list syntax without weakening the clause itself."""
+    value = fragment.strip(" ,.;:-")
+    return _LEADING_CONNECTOR.sub("", value).strip(" ,.;:-")
+
+
+def _is_measured_performance_span(value: str) -> bool:
+    """A metric is evidence only when its sentence also describes performance."""
+    return bool(
+        _PERFORMANCE_PERCENT.search(value)
+        or (_PERFORMANCE_CONTEXT.search(value) and _PERFORMANCE_SCALE_METRIC.search(value))
+    )
+
+
+def _evidence_rank(capability: Capability, span: dict) -> tuple[int, int]:
+    """Prefer the most specific evidence while keeping source order stable."""
+    if capability.name != "Measured improvement":
+        return (0, -span["start"])
+    value = span["text"]
+    score = (
+        len(_PERFORMANCE_CONTEXT.findall(value))
+        + len(_PERFORMANCE_SCALE_METRIC.findall(value)) * 2
+        + len(_PERFORMANCE_PERCENT.findall(value)) * 2
+    )
+    return (score, -span["start"])
+
+
+def _find_evidence(capability: Capability, spans: list[dict]) -> dict | None:
+    matches = [
+        span for span in spans
+        if re.search(capability.evidence, span["text"], re.I)
+        and not _UNSUPPORTED.search(span["text"])
+        and not _THIRD_PARTY.search(span["text"])
+        and (capability.name != "Measured improvement" or _is_measured_performance_span(span["text"]))
+    ]
+    return max(matches, key=lambda span: _evidence_rank(capability, span), default=None)
 
 
 def evaluate_clauses(requirement: JobRequirement, text: str) -> dict | None:
@@ -71,7 +132,7 @@ def evaluate_clauses(requirement: JobRequirement, text: str) -> dict | None:
     # the recognized part (e.g. negotiation AND underwater welding).
     fragments = re.split(r"\s+\b(?:and|or|và|hoặc)\b\s+|,\s*", content, flags=re.I)
     for fragment in fragments:
-        fragment = fragment.strip(" ,.")
+        fragment = _normalize_fragment(fragment)
         if not fragment or re.fullmatch(r"(?:build|design|develop|standardize)", fragment, re.I):
             continue
         if any(re.search(c.trigger, fragment, re.I) for c in capabilities):
@@ -89,19 +150,18 @@ def evaluate_clauses(requirement: JobRequirement, text: str) -> dict | None:
     spans = evidence_spans(text)
     criteria = []
     for capability in capabilities:
-        found = next((s for s in spans if re.search(capability.evidence, s["text"], re.I)
-                      and not _UNSUPPORTED.search(s["text"])
-                      and not _THIRD_PARTY.search(s["text"])), None)
+        found = _find_evidence(capability, spans)
         criteria.append({"criterion": capability.name, "status": "MATCHED" if found else "NOT_FOUND", "evidence": found})
     count = sum(c["status"] == "MATCHED" for c in criteria)
     coverage = float(bool(count)) if operator == "ANY_OF" else count / len(criteria)
     # Capability vocabulary is bounded, so inferred decomposition always stays
     # reviewable instead of pretending to understand every residual clause.
     warnings = ["INFERRED_CRITERIA_REVIEW"]
-    if has_and and has_or:
+    performance_group_resolved = {
+        "Backend performance", "Client performance", "Measured improvement"
+    }.issubset({capability.name for capability in capabilities})
+    if has_and and has_or and not performance_group_resolved:
         warnings.append("MIXED_REQUIREMENT_LOGIC_REVIEW")
-        criteria.append({"criterion": "Unresolved AND/OR grouping", "status": "NOT_FOUND", "evidence": None})
-        coverage = count / len(criteria)
     return {"criteria": criteria, "operator": operator, "coverage": coverage,
             "status": "MATCHED" if coverage == 1 else "PARTIAL" if count else "NOT_FOUND",
             "warnings": warnings}

@@ -25,6 +25,9 @@ public class AiResultCallbackProcessorTests
         result.ModelVersion.Should().Be("BAAI/bge-m3");
         result.RawResponse.Should().NotContain("structuredCvData");
         result.RawResponse.Should().NotContain("private@example.com");
+        result.RawResponse.Should().Contain("ParseConfidence");
+        result.RawResponse.Should().Contain("RequiresManualReview");
+        result.RawResponse.Should().Contain("InputFingerprints");
         (await db.CandidateCvs.SingleAsync()).ParsedData.Should().Contain("private@example.com");
 
         var audit = await db.AuditLogs.SingleAsync();
@@ -149,6 +152,13 @@ public class AiResultCallbackProcessorTests
     {
         using var structured = JsonDocument.Parse("""{"email":"private@example.com","skills":["C#"]}""");
         using var highlights = JsonDocument.Parse("""["Strong backend experience"]""");
+        using var warnings = JsonDocument.Parse("""["EXPERIENCE_EVIDENCE_UNRESOLVED"]""");
+        using var diagnostics = JsonDocument.Parse(
+            """[{"code":"EXPERIENCE_EVIDENCE_UNRESOLVED","category":"MISSING_EVIDENCE","field":"experience"}]""");
+        using var missing = JsonDocument.Parse("""["Experience could not be verified"]""");
+        using var reasons = JsonDocument.Parse("""["Manual review is required"]""");
+        using var fingerprints = JsonDocument.Parse(
+            """{"cvSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","jdSha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}""");
         return new AiResultCallback(
             fixture.RequestId.ToString(),
             fixture.ApplicationId,
@@ -163,7 +173,15 @@ public class AiResultCallbackProcessorTests
             structured.RootElement.Clone(),
             "BAAI/bge-m3",
             status == "FAILED" ? "OCR_FAILED" : null,
-            status == "FAILED" ? "Unable to read CV" : null);
+            status == "FAILED" ? "Unable to read CV" : null,
+            0.55m,
+            true,
+            warnings.RootElement.Clone(),
+            diagnostics.RootElement.Clone(),
+            0.42m,
+            missing.RootElement.Clone(),
+            reasons.RootElement.Clone(),
+            fingerprints.RootElement.Clone());
     }
 
     private sealed record AttemptFixture(Guid ApplicationId, Guid CvId, Guid JobId, Guid RequestId);
