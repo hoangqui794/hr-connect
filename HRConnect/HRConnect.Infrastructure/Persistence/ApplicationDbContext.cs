@@ -338,7 +338,13 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.MatchResultId).HasName("ai_match_result_pkey");
 
-            entity.ToTable("ai_match_result", "public", tb => tb.HasComment("Post-application AI screening support. Match Score/Tier/Highlight support human review; AI does not auto-reject/shortlist/hire."));
+            entity.ToTable("ai_match_result", "public", table =>
+            {
+                table.HasComment("Post-application AI screening support. Match Score/Tier/Highlight support human review; AI does not auto-reject/shortlist/hire.");
+                table.HasCheckConstraint(
+                    "ai_match_result_status_check",
+                    "status IN ('PENDING','PROCESSING','COMPLETED','FAILED','UNAVAILABLE')");
+            });
 
             entity.HasIndex(e => new { e.ApplicationId, e.AttemptNo }, "ai_match_result_application_id_attempt_no_key").IsUnique();
 
