@@ -25,6 +25,17 @@ public class InternalServiceAuthOperationFilterTests
     }
 
     [Fact]
+    public void Apply_AdminUsersRouteWithoutServiceMetadata_DoesNotAddServiceToken()
+    {
+        var operation = new OpenApiOperation();
+        var context = CreateContext("api/v1/admin/users");
+
+        Filter.Apply(operation, context);
+
+        operation.Security.Should().BeEmpty();
+    }
+
+    [Fact]
     public void Apply_ServiceEndpointWithMetadata_UsesInternalServiceToken()
     {
         var operation = new OpenApiOperation();

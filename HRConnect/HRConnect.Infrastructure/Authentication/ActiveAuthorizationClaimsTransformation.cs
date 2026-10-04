@@ -32,6 +32,11 @@ public sealed class ActiveAuthorizationClaimsTransformation : IClaimsTransformat
         }
 
         var user = await _userRepository.GetByIdWithRolesAndPermissionsAsync(userId);
+        if (user == null || !string.Equals(user.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+        {
+            return new ClaimsPrincipal(new ClaimsIdentity());
+        }
+
         var identity = new ClaimsIdentity(
             principal.Claims.Where(claim =>
                 claim.Type != ClaimTypes.Role &&
@@ -41,27 +46,24 @@ public sealed class ActiveAuthorizationClaimsTransformation : IClaimsTransformat
             ClaimTypes.Name,
             ClaimTypes.Role);
 
-        if (user != null && string.Equals(user.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+        var activeAssignments = user.UserRoleUsers
+            .Where(assignment =>
+                string.Equals(assignment.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
+                assignment.Role.IsActive)
+            .ToList();
+
+        foreach (var role in activeAssignments.Select(assignment => assignment.Role.Code).Distinct())
         {
-            var activeAssignments = user.UserRoleUsers
-                .Where(assignment =>
-                    string.Equals(assignment.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
-                    assignment.Role.IsActive)
-                .ToList();
+            identity.AddClaim(new Claim(ClaimTypes.Role, role));
+        }
 
-            foreach (var role in activeAssignments.Select(assignment => assignment.Role.Code).Distinct())
-            {
-                identity.AddClaim(new Claim(ClaimTypes.Role, role));
-            }
-
-            foreach (var permission in activeAssignments
-                         .SelectMany(assignment => assignment.Role.RolePermissions)
-                         .Where(rolePermission => rolePermission.Permission.IsActive)
-                         .Select(rolePermission => rolePermission.Permission.Code)
-                         .Distinct())
-            {
-                identity.AddClaim(new Claim("permission", permission));
-            }
+        foreach (var permission in activeAssignments
+                     .SelectMany(assignment => assignment.Role.RolePermissions)
+                     .Where(rolePermission => rolePermission.Permission.IsActive)
+                     .Select(rolePermission => rolePermission.Permission.Code)
+                     .Distinct())
+        {
+            identity.AddClaim(new Claim("permission", permission));
         }
 
         return new ClaimsPrincipal(identity);

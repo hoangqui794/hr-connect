@@ -50,8 +50,39 @@ public class ActiveAuthorizationClaimsTransformationTests
             new Claim(ClaimTypes.Role, "ADMIN"),
             new Claim("permission", "user.manage")));
 
+        result.Identity!.IsAuthenticated.Should().BeFalse();
         result.Claims.Should().NotContain(claim =>
             claim.Type == ClaimTypes.Role || claim.Type == "permission");
+    }
+
+    [Fact]
+    public async Task TransformAsync_WhenUserNoLongerExists_ReturnsUnauthenticatedPrincipal()
+    {
+        var userId = Guid.NewGuid();
+        var repository = new Mock<IUserRepository>();
+        repository.Setup(item => item.GetByIdWithRolesAndPermissionsAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AppUser?)null);
+        var transformer = new ActiveAuthorizationClaimsTransformation(repository.Object);
+
+        var result = await transformer.TransformAsync(Principal(userId));
+
+        result.Identity!.IsAuthenticated.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TransformAsync_WhenPrincipalHasNoApplicationUserId_PreservesServicePrincipal()
+    {
+        var repository = new Mock<IUserRepository>();
+        var transformer = new ActiveAuthorizationClaimsTransformation(repository.Object);
+        var original = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("service", "mf03")],
+            "InternalService"));
+
+        var result = await transformer.TransformAsync(original);
+
+        result.Should().BeSameAs(original);
+        result.Identity!.IsAuthenticated.Should().BeTrue();
+        repository.VerifyNoOtherCalls();
     }
 
     private static ClaimsPrincipal Principal(Guid userId, params Claim[] claims)
