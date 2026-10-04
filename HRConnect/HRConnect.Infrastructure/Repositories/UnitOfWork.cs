@@ -9,11 +9,13 @@ namespace HRConnect.Infrastructure.Repositories;
 public class UnitOfWork : IUnitOfWork
 {
     private readonly ApplicationDbContext _context;
+    private readonly IRequestContext? _requestContext;
     private IDbContextTransaction? _currentTransaction;
 
-    public UnitOfWork(ApplicationDbContext context)
+    public UnitOfWork(ApplicationDbContext context, IRequestContext? requestContext = null)
     {
         _context = context;
+        _requestContext = requestContext;
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -39,6 +41,22 @@ public class UnitOfWork : IUnitOfWork
         }
 
         _currentTransaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        await SetDatabaseAuditContextAsync(cancellationToken);
+    }
+
+    private async Task SetDatabaseAuditContextAsync(CancellationToken cancellationToken)
+    {
+        var actorUserId = _requestContext?.UserId?.ToString() ?? string.Empty;
+        var correlationId = _requestContext?.CorrelationId?.ToString() ?? string.Empty;
+        var ipAddress = _requestContext?.IpAddress?.ToString() ?? string.Empty;
+        var userAgent = _requestContext?.UserAgent ?? string.Empty;
+        await _context.Database.ExecuteSqlInterpolatedAsync($$"""
+            SELECT
+                set_config('app.current_user_id', {{actorUserId}}, true),
+                set_config('app.correlation_id', {{correlationId}}, true),
+                set_config('app.ip_address', {{ipAddress}}, true),
+                set_config('app.user_agent', {{userAgent}}, true)
+            """, cancellationToken);
     }
 
     public async Task CommitTransactionAsync(CancellationToken cancellationToken = default)

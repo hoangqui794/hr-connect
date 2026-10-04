@@ -67,6 +67,9 @@ public sealed class SubmissionConsentExpiryService : ISubmissionConsentExpirySer
             EntityType = "SUBMISSION",
             EntityId = consent.SubmissionId,
             ActorUserId = actorUserId,
+            ActorType = source == "BACKGROUND_WORKER" ? AuditActorTypes.Service : null,
+            Source = source == "BACKGROUND_WORKER" ? AuditSources.BackgroundWorker : null,
+            ServiceName = source == "BACKGROUND_WORKER" ? "CONSENT_EXPIRY_WORKER" : null,
             CorrelationId = consent.ConsentId,
             OldValues = new
             {

@@ -86,7 +86,10 @@ public class GetInternalCvDownloadUrlQueryHandlerTests
             entry.Action == AuditActions.InternalCvDownloadUrlIssued &&
             entry.EntityType == "CANDIDATE_CV" &&
             entry.EntityId == cvId &&
-            entry.ActorUserId == null), It.IsAny<CancellationToken>()), Times.Once);
+            entry.ActorUserId == null &&
+            entry.ActorType == AuditActorTypes.Service &&
+            entry.Source == AuditSources.Integration &&
+            entry.ServiceName == "MF03"), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

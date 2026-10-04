@@ -1,4 +1,6 @@
 using System.Text.Json;
+using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Authentication;
 using HRConnect.Infrastructure.Persistence;
@@ -97,11 +99,13 @@ public static class AiIntegrationEndpoints
         group.MapPost("/ai-results", async (
             AiResultCallback payload,
             ApplicationDbContext db,
+            IAuditLogService audit,
             ILoggerFactory loggerFactory,
             CancellationToken ct) =>
             await AiResultCallbackProcessor.ProcessAsync(
                 payload,
                 db,
+                audit,
                 loggerFactory.CreateLogger("MF03.AiResultCallback"),
                 ct));
 
@@ -149,11 +153,19 @@ public static class AiResultCallbackProcessor
         AiResultCallback payload,
         ApplicationDbContext db,
         CancellationToken ct) =>
-        await ProcessAsync(payload, db, NullLogger.Instance, ct);
+        await ProcessAsync(payload, db, null, NullLogger.Instance, ct);
 
     public static async Task<IResult> ProcessAsync(
         AiResultCallback payload,
         ApplicationDbContext db,
+        ILogger logger,
+        CancellationToken ct)
+        => await ProcessAsync(payload, db, null, logger, ct);
+
+    public static async Task<IResult> ProcessAsync(
+        AiResultCallback payload,
+        ApplicationDbContext db,
+        IAuditLogService? audit,
         ILogger logger,
         CancellationToken ct)
     {
@@ -254,7 +266,14 @@ public static class AiResultCallbackProcessor
             return Results.BadRequest(new { message = "Status must be COMPLETED or FAILED." });
         }
 
-        db.AuditLogs.Add(CreateResultAudit(result, previousStatus));
+        if (audit == null)
+        {
+            db.AuditLogs.Add(CreateResultAudit(result, previousStatus));
+        }
+        else
+        {
+            await audit.AddAsync(CreateResultAuditEntry(result, previousStatus), ct);
+        }
         await db.SaveChangesAsync(ct);
         logger.LogInformation(
             "Persisted MF-03 callback {RequestId}: ApplicationId={ApplicationId}, AttemptNo={AttemptNo}, Status={Status}, ModelVersion={ModelVersion}, FailureCode={FailureCode}.",
@@ -284,7 +303,11 @@ public static class AiResultCallbackProcessor
         Guid? correlationId = Guid.TryParse(result.ExternalReference, out var parsed) ? parsed : null;
         return new AuditLog
         {
+            ActorType = AuditActorTypes.Service,
             Action = result.Status == "COMPLETED" ? "AI_SCORING_COMPLETED" : "AI_SCORING_FAILED",
+            Source = AuditSources.Integration,
+            ServiceName = "MF03",
+            EventVersion = 1,
             EntityType = "APPLICATION",
             EntityId = result.ApplicationId,
             OldValues = JsonSerializer.Serialize(new { status = previousStatus }),
@@ -298,6 +321,30 @@ public static class AiResultCallbackProcessor
             }),
             CorrelationId = correlationId,
             CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    private static AuditEntry CreateResultAuditEntry(AiMatchResult result, string previousStatus)
+    {
+        Guid? correlationId = Guid.TryParse(result.ExternalReference, out var parsed) ? parsed : null;
+        return new AuditEntry
+        {
+            ActorType = AuditActorTypes.Service,
+            Action = result.Status == "COMPLETED" ? "AI_SCORING_COMPLETED" : "AI_SCORING_FAILED",
+            Source = AuditSources.Integration,
+            ServiceName = "MF03",
+            EntityType = "APPLICATION",
+            EntityId = result.ApplicationId,
+            OldValues = new { status = previousStatus },
+            NewValues = new
+            {
+                status = result.Status,
+                attemptNo = result.AttemptNo,
+                score = result.MatchScore,
+                modelVersion = result.ModelVersion,
+                failureCode = result.FailureCode
+            },
+            CorrelationId = correlationId
         };
     }
 }

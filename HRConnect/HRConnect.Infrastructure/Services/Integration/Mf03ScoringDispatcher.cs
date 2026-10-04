@@ -204,7 +204,11 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
         Guid? correlationId = Guid.TryParse(result.ExternalReference, out var parsed) ? parsed : null;
         return new AuditLog
         {
+            ActorType = AuditActorTypes.Service,
             Action = action,
+            Source = AuditSources.BackgroundWorker,
+            ServiceName = "MF03_DISPATCHER",
+            EventVersion = 1,
             EntityType = "APPLICATION",
             EntityId = result.ApplicationId,
             OldValues = System.Text.Json.JsonSerializer.Serialize(new { status = previousStatus }),

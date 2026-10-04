@@ -607,13 +607,29 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.AuditLogId).HasName("audit_log_pkey");
 
-            entity.ToTable("audit_log", "public", tb => tb.HasComment("Append-only audit trail. Set hr_connect.current_user_id in the application transaction when actor identity is available."));
+            entity.ToTable("audit_log", "public", tb =>
+            {
+                tb.HasComment("Append-only audit trail with actor and source context.");
+                tb.HasCheckConstraint("audit_log_actor_type_check", "actor_type IN ('USER', 'ANONYMOUS', 'SYSTEM', 'SERVICE', 'DATABASE_TRIGGER')");
+                tb.HasCheckConstraint("audit_log_actor_identity_check", "(actor_user_id IS NULL AND actor_type <> 'USER') OR (actor_user_id IS NOT NULL AND actor_type = 'USER')");
+                tb.HasCheckConstraint("audit_log_source_check", "source IN ('API', 'APPLICATION', 'BACKGROUND_WORKER', 'INTEGRATION', 'DATABASE_TRIGGER')");
+                tb.HasCheckConstraint("audit_log_event_version_check", "event_version >= 1");
+                tb.HasCheckConstraint("audit_log_service_actor_check", "actor_type <> 'SERVICE' OR service_name IS NOT NULL");
+            });
 
             entity.HasIndex(e => new { e.ActorUserId, e.CreatedAt }, "idx_audit_log_actor").IsDescending(false, true);
 
             entity.HasIndex(e => new { e.EntityType, e.EntityId, e.CreatedAt }, "idx_audit_log_entity").IsDescending(false, false, true);
 
             entity.HasIndex(e => new { e.CorrelationId, e.CreatedAt }, "idx_audit_log_correlation").IsDescending(false, true);
+
+            entity.HasIndex(e => new { e.ActorType, e.CreatedAt }, "idx_audit_log_actor_type").IsDescending(false, true);
+
+            entity.HasIndex(e => new { e.Source, e.CreatedAt }, "idx_audit_log_source").IsDescending(false, true);
+
+            entity.HasIndex(e => new { e.ServiceName, e.CreatedAt }, "idx_audit_log_service")
+                .IsDescending(false, true)
+                .HasFilter("service_name IS NOT NULL");
 
             entity.Property(e => e.AuditLogId)
                 .HasDefaultValueSql("nextval('audit_log_audit_log_id_seq'::regclass)")
@@ -622,6 +638,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(120)
                 .HasColumnName("action");
             entity.Property(e => e.ActorUserId).HasColumnName("actor_user_id");
+            entity.Property(e => e.ActorType)
+                .HasMaxLength(30)
+                .HasDefaultValue("SYSTEM")
+                .HasColumnName("actor_type");
             entity.Property(e => e.CorrelationId).HasColumnName("correlation_id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
@@ -631,17 +651,27 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(80)
                 .HasColumnName("entity_type");
             entity.Property(e => e.IpAddress).HasColumnName("ip_address");
+            entity.Property(e => e.EventVersion)
+                .HasDefaultValue(1)
+                .HasColumnName("event_version");
             entity.Property(e => e.NewValues)
                 .HasColumnType("jsonb")
                 .HasColumnName("new_values");
             entity.Property(e => e.OldValues)
                 .HasColumnType("jsonb")
                 .HasColumnName("old_values");
+            entity.Property(e => e.ServiceName)
+                .HasMaxLength(80)
+                .HasColumnName("service_name");
+            entity.Property(e => e.Source)
+                .HasMaxLength(30)
+                .HasDefaultValue("APPLICATION")
+                .HasColumnName("source");
             entity.Property(e => e.UserAgent).HasColumnName("user_agent");
 
             entity.HasOne(d => d.ActorUser).WithMany(p => p.AuditLogs)
                 .HasForeignKey(d => d.ActorUserId)
-                .OnDelete(DeleteBehavior.SetNull)
+                .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("audit_log_actor_user_id_fkey");
         });
 

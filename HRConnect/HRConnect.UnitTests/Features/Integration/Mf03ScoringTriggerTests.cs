@@ -2,6 +2,7 @@ using FluentAssertions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Infrastructure.Services.Integration;
 using HRConnect.Infrastructure.Persistence;
+using HRConnect.Infrastructure.Services.Audit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -20,7 +21,10 @@ public class Mf03ScoringTriggerTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         await using var context = new ApplicationDbContext(options);
-        var trigger = new Mf03ScoringTrigger(context, loggerMock.Object);
+        var trigger = new Mf03ScoringTrigger(
+            context,
+            loggerMock.Object,
+            new AuditLogService(context, Mock.Of<IRequestContext>()));
 
         var payload = new Mf03TriggerPayload(
             Guid.NewGuid(),
@@ -47,6 +51,9 @@ public class Mf03ScoringTriggerTests
         audit.EntityType.Should().Be("APPLICATION");
         audit.EntityId.Should().Be(payload.ApplicationId);
         audit.CorrelationId.Should().Be(queued.MatchResultId);
+        audit.ActorType.Should().Be("USER");
+        audit.Source.Should().Be("INTEGRATION");
+        audit.ServiceName.Should().Be("MF02_MF03_TRIGGER");
     }
 
     [Fact]
@@ -68,7 +75,8 @@ public class Mf03ScoringTriggerTests
         await context.SaveChangesAsync();
         var trigger = new Mf03ScoringTrigger(
             context,
-            new Mock<ILogger<Mf03ScoringTrigger>>().Object);
+            new Mock<ILogger<Mf03ScoringTrigger>>().Object,
+            new AuditLogService(context, Mock.Of<IRequestContext>()));
         var payload = new Mf03TriggerPayload(
             applicationId,
             Guid.NewGuid(),

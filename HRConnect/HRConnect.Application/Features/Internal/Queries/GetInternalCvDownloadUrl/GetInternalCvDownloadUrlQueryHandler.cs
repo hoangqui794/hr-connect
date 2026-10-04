@@ -54,6 +54,9 @@ public class GetInternalCvDownloadUrlQueryHandler : IRequestHandler<GetInternalC
         await _audit.AddAsync(new AuditEntry
         {
             Action = AuditActions.InternalCvDownloadUrlIssued,
+            ActorType = AuditActorTypes.Service,
+            Source = AuditSources.Integration,
+            ServiceName = "MF03",
             EntityType = "CANDIDATE_CV",
             EntityId = cv.CvId,
             NewValues = new

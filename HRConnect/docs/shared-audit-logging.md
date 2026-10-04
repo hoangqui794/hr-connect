@@ -4,6 +4,26 @@
 
 Every HTTP request receives an `X-Correlation-ID` response header. A valid GUID supplied in the same request header is reused; otherwise the API creates one. Request logs and audit rows use this value so an incident can be traced across both sources.
 
+The API also records the client IP for HTTP audit events. In production,
+configure `ForwardedHeaders__KnownProxies__0` (and subsequent indexes) with the
+trusted reverse proxy addresses. Forwarded headers from untrusted clients are
+ignored.
+
+## Actor and source context
+
+Every audit row has explicit context even when `actor_user_id` is null:
+
+- `actor_type`: `USER`, `ANONYMOUS`, `SYSTEM`, `SERVICE`, or `DATABASE_TRIGGER`.
+- `source`: `API`, `APPLICATION`, `BACKGROUND_WORKER`, `INTEGRATION`, or `DATABASE_TRIGGER`.
+- `service_name`: identifies a service or worker such as `MF03`,
+  `MF03_DISPATCHER`, or `CONSENT_EXPIRY_WORKER`.
+- `event_version`: version of the JSON event shape, currently `1`.
+
+`actor_user_id` is retained with `ON DELETE RESTRICT`. Accounts referenced by
+audit history must be deactivated instead of hard deleted. `entity_type` and
+`entity_id` remain a polymorphic reference and deliberately do not use a foreign
+key because audit events can refer to several business tables.
+
 ## Writing an audit event
 
 Inject `IAuditLogService`, add the event before the unit of work is committed, and let the existing business transaction save it:
@@ -67,4 +87,7 @@ Short-lived URL events record identifiers, the expiry time, and the access path.
 They never record the signed URL. Ordinary list and detail queries are not audited
 because they do not change business state and do not grant access to the CV file.
 
-The application uses the existing `public.audit_log` table. Migration `20260926150000_AddAuditCorrelationIndex` only adds an index for correlation lookup; it does not create another log table.
+The application uses the existing `public.audit_log` table. Migration
+`20261004043422_AddAuditContextMetadata` adds actor/source context, validates
+allowed values, backfills existing rows, preserves the append-only trigger, and
+adds indexes for operational filtering. It does not create another log table.

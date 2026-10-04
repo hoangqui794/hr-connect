@@ -19,7 +19,10 @@ public static class AdminAuditLogEndpoints
 
         group.MapGet("/", async (
             [FromQuery] Guid? actorUserId,
+            [FromQuery] string? actorType,
             [FromQuery] string? action,
+            [FromQuery] string? source,
+            [FromQuery] string? serviceName,
             [FromQuery] string? entityType,
             [FromQuery] Guid? entityId,
             [FromQuery] Guid? correlationId,
@@ -38,7 +41,10 @@ public static class AdminAuditLogEndpoints
             {
                 var result = await sender.Send(new GetAuditLogsQuery(
                     actorUserId,
+                    actorType,
                     action,
+                    source,
+                    serviceName,
                     entityType,
                     entityId,
                     correlationId,
@@ -55,7 +61,7 @@ public static class AdminAuditLogEndpoints
         })
         .WithName("GetAuditLogs")
         .WithSummary("Xem danh sách audit log")
-        .WithDescription("Yêu cầu quyền audit.view. Hỗ trợ lọc theo người thực hiện, action, entity, correlation ID, khoảng thời gian và phân trang; dữ liệu mới nhất được trả về trước.")
+        .WithDescription("Yêu cầu quyền audit.view. Hỗ trợ lọc theo người thực hiện, loại actor, action, nguồn, service, entity, correlation ID, khoảng thời gian và phân trang; dữ liệu mới nhất được trả về trước.")
         .Produces<GetAuditLogsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)

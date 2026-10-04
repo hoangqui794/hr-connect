@@ -1,9 +1,9 @@
 using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
 
 namespace HRConnect.Infrastructure.Services.Integration;
 
@@ -11,11 +11,16 @@ public class Mf03ScoringTrigger : IMf03ScoringTrigger
 {
     private readonly ILogger<Mf03ScoringTrigger> _logger;
     private readonly ApplicationDbContext _context;
+    private readonly IAuditLogService _audit;
 
-    public Mf03ScoringTrigger(ApplicationDbContext context, ILogger<Mf03ScoringTrigger> logger)
+    public Mf03ScoringTrigger(
+        ApplicationDbContext context,
+        ILogger<Mf03ScoringTrigger> logger,
+        IAuditLogService audit)
     {
         _context = context;
         _logger = logger;
+        _audit = audit;
     }
 
     public async Task TriggerScoringAsync(Mf03TriggerPayload payload, CancellationToken cancellationToken = default)
@@ -36,21 +41,22 @@ public class Mf03ScoringTrigger : IMf03ScoringTrigger
             RequestedAt = DateTime.UtcNow
         }, cancellationToken);
 
-        await _context.AuditLogs.AddAsync(new AuditLog
+        await _audit.AddAsync(new AuditEntry
         {
             ActorUserId = payload.ActorUserId,
             Action = attemptNo == 0 ? "AI_SCORING_REQUESTED" : "AI_SCORING_RETRY_REQUESTED",
             EntityType = "APPLICATION",
             EntityId = payload.ApplicationId,
-            NewValues = JsonSerializer.Serialize(new
+            NewValues = new
             {
                 status = "PENDING",
                 attemptNo = attemptNo + 1,
                 cvId = payload.CvId,
                 jobId = payload.JobId
-            }),
+            },
             CorrelationId = requestId,
-            CreatedAt = DateTime.UtcNow
+            Source = AuditSources.Integration,
+            ServiceName = "MF02_MF03_TRIGGER"
         }, cancellationToken);
 
         _logger.LogInformation(

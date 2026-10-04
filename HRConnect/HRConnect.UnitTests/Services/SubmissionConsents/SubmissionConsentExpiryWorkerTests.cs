@@ -58,6 +58,9 @@ public sealed class SubmissionConsentExpiryWorkerTests
         var audit = await verification.AuditLogs.SingleAsync();
         audit.Action.Should().Be(AuditActions.SubmissionConsentExpired);
         audit.ActorUserId.Should().BeNull();
+        audit.ActorType.Should().Be(AuditActorTypes.Service);
+        audit.Source.Should().Be(AuditSources.BackgroundWorker);
+        audit.ServiceName.Should().Be("CONSENT_EXPIRY_WORKER");
         audit.EntityId.Should().Be(fixture.Consent.SubmissionId);
         audit.CorrelationId.Should().Be(fixture.Consent.ConsentId);
         using var newValues = JsonDocument.Parse(audit.NewValues!);
