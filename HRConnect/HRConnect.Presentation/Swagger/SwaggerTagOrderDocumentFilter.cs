@@ -35,6 +35,7 @@ public sealed class SwaggerTagOrderDocumentFilter : IDocumentFilter
         new() { Name = "Internal HR AI Screening", Description = "Theo dõi và yêu cầu AI chấm lại hồ sơ tuyển dụng bị lỗi." },
 
         new() { Name = "Admin Profile", Description = "Xem và cập nhật hồ sơ Platform Admin." },
+        new() { Name = "Admin Users", Description = "Tra cứu, tạm khóa, kích hoạt lại và mở khóa đăng nhập cho người dùng nền tảng." },
         new() { Name = "Admin Approvals", Description = "Xét duyệt tài khoản Affiliate và hồ sơ xác thực doanh nghiệp." },
         new() { Name = "Admin Audit Logs", Description = "Tra cứu lịch sử thao tác nghiệp vụ và chi tiết thay đổi trong hệ thống." },
         new() { Name = "Admin Service Types", Description = "Quản trị loại dịch vụ tuyển dụng và cấu hình vai trò được phép truy cập." },
