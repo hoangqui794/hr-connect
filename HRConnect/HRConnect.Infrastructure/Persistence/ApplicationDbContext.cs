@@ -1802,7 +1802,13 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.NotificationId).HasName("notification_pkey");
 
-            entity.ToTable("notification", "public", tb => tb.HasComment("In-app notification store. JOB_FIT notifications may reference a Job through related_entity_type/related_entity_id."));
+            entity.ToTable("notification", "public", tb =>
+            {
+                tb.HasComment("In-app notification store. JOB_FIT notifications may reference a Job through related_entity_type/related_entity_id.");
+                tb.HasCheckConstraint(
+                    "ck_notification_type",
+                    "notification_type IN ('ACCOUNT','COMPANY','JOB','SUBMISSION','SUBMISSION_CONSENT_RESULT','JOB_FIT','APPLICATION_STATUS','INTERVIEW','OFFER','AFFILIATE','COMMISSION','PAYOUT','SYSTEM')");
+            });
 
             entity.HasIndex(e => new { e.UserId, e.CreatedAt }, "idx_notification_unread")
                 .IsDescending(false, true)
