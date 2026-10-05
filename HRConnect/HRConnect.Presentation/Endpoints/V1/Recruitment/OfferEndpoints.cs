@@ -165,10 +165,8 @@ public static class OfferEndpoints
             }
 
             var isClient = PermissionAuthorization.HasPermission(user, UpdatePermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!isClient && !isInternal && !isAdmin)
+            if (!isClient)
             {
                 return PermissionAuthorization.Forbidden(UpdatePermission);
             }
@@ -184,8 +182,8 @@ public static class OfferEndpoints
                     OfferDocumentUrl: request.OfferDocumentUrl,
                     ConcurrencyToken: request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: isClient && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -210,7 +208,7 @@ public static class OfferEndpoints
         })
         .WithName("UpdateOfferDraft")
         .WithSummary("Chỉnh sửa thư mời nhận việc bản nháp (Update Offer Draft)")
-        .WithDescription("Dành cho Client Company HR / Admin (offer.update) hoặc Internal HR / Admin (offer.manage). Chỉ có thể chỉnh sửa khi offer đang ở trạng thái DRAFT.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền offer.update được sửa offer ở trạng thái DRAFT.")
         .Produces<UpdateOfferDraftResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
