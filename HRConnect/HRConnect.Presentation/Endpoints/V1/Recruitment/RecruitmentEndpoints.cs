@@ -286,15 +286,11 @@ public static class RecruitmentEndpoints
             }
 
             var hasPermission = PermissionAuthorization.HasPermission(user, DecideBackupPermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!hasPermission && !isAdmin)
+            if (!hasPermission)
             {
                 return PermissionAuthorization.Forbidden(DecideBackupPermission);
             }
-
-            var isInternalOrAdmin = user.IsInRole("INTERNAL_HR") || isAdmin || PermissionAuthorization.HasPermission(user, "application.view");
-            var isClient = !isInternalOrAdmin;
 
             try
             {
@@ -305,8 +301,8 @@ public static class RecruitmentEndpoints
                     Note: request.Note,
                     ConcurrencyToken: request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: isClient,
-                    IsInternalHrOrAdmin: isInternalOrAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -331,7 +327,7 @@ public static class RecruitmentEndpoints
         })
         .WithName("DecideBackupApplication")
         .WithSummary("Quyết định chọn hoặc xử lý ứng viên dự phòng (Backup candidate)")
-        .WithDescription("Dành cho Client Company HR / Admin hoặc Internal HR (quyền application.decide_backup). Chọn ứng viên dự phòng chuyển hồ sơ sang OFFER_PENDING; có thể từ chối hoặc tiếp tục giữ làm dự phòng.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền application.decide_backup được chọn, loại hoặc giữ ứng viên dự phòng. Chọn ứng viên dự phòng chuyển hồ sơ sang OFFER_PENDING.")
         .Produces<DecideBackupApplicationResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
