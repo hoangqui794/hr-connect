@@ -470,17 +470,11 @@ public static class RecruitmentEndpoints
             }
 
             var isClient = PermissionAuthorization.HasPermission(user, PlacementConfirmPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, "placement.manage") ||
-                             PermissionAuthorization.HasPermission(user, ViewAllPermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!isClient && !isInternal && !isAdmin)
+            if (!isClient)
             {
                 return PermissionAuthorization.Forbidden(PlacementConfirmPermission);
             }
-
-            var isInternalOrAdmin = user.IsInRole("INTERNAL_HR") || isAdmin || isInternal;
-            var isClientUser = !isInternalOrAdmin;
 
             try
             {
@@ -490,8 +484,8 @@ public static class RecruitmentEndpoints
                     Reason: request.Reason,
                     ConcurrencyToken: request.ExpectedApplicationVersion ?? request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: isClientUser,
-                    IsInternalHrOrAdmin: isInternalOrAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -516,7 +510,7 @@ public static class RecruitmentEndpoints
         })
         .WithName("ConfirmPlannedStartDate")
         .WithSummary("Cập nhật ngày dự kiến nhận việc (Confirm Planned Start Date)")
-        .WithDescription("Dành cho Client Company HR / Admin (placement.confirm) hoặc Internal HR / Admin (placement.manage hoặc application.view). Chỉ cập nhật ngày dự kiến nhận việc khi hồ sơ đã ở trạng thái OFFER_ACCEPTED.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền placement.confirm được cập nhật ngày dự kiến nhận việc khi hồ sơ đã ở trạng thái OFFER_ACCEPTED.")
         .Produces<ConfirmPlannedStartDateResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -539,16 +533,11 @@ public static class RecruitmentEndpoints
             }
 
             var hasConfirm = PermissionAuthorization.HasPermission(user, PlacementConfirmPermission);
-            var hasManage = PermissionAuthorization.HasPermission(user, "placement.manage");
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!hasConfirm && !hasManage && !isAdmin)
+            if (!hasConfirm)
             {
                 return PermissionAuthorization.Forbidden(PlacementConfirmPermission);
             }
-
-            var isInternalOrAdmin = user.IsInRole("INTERNAL_HR") || isAdmin || hasManage;
-            var isClientUser = !isInternalOrAdmin;
 
             try
             {
@@ -561,8 +550,8 @@ public static class RecruitmentEndpoints
                     Department: request.Department,
                     ConcurrencyToken: request.ExpectedApplicationVersion ?? request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: isClientUser,
-                    IsInternalHrOrAdmin: isInternalOrAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -592,7 +581,7 @@ public static class RecruitmentEndpoints
         })
         .WithName("ConfirmStartWork")
         .WithSummary("Xác nhận ứng viên thực tế đi làm (Confirm Start Work & Create Placement)")
-        .WithDescription("Dành cho Client Company HR / Admin (placement.confirm) hoặc Internal HR / Admin (placement.manage). Thực hiện một transaction: xác nhận đi làm, tạo bản ghi Placement, chuyển trạng thái hồ sơ sang PLACED và ghi nhận lịch sử trạng thái.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền placement.confirm được xác nhận đi làm. API tạo Placement, chuyển hồ sơ sang PLACED và ghi nhận lịch sử trạng thái trong một transaction.")
         .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -615,15 +604,11 @@ public static class RecruitmentEndpoints
             }
 
             var hasMarkPermission = PermissionAuthorization.HasPermission(user, MarkNotStartedPermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!hasMarkPermission && !isAdmin)
+            if (!hasMarkPermission)
             {
                 return PermissionAuthorization.Forbidden(MarkNotStartedPermission);
             }
-
-            var isInternalOrAdmin = user.IsInRole("INTERNAL_HR") || isAdmin || PermissionAuthorization.HasPermission(user, "placement.manage");
-            var isClientUser = !isInternalOrAdmin;
 
             try
             {
@@ -632,8 +617,8 @@ public static class RecruitmentEndpoints
                     Reason: request.Reason,
                     ConcurrencyToken: request.ExpectedApplicationVersion ?? request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: isClientUser,
-                    IsInternalHrOrAdmin: isInternalOrAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -663,7 +648,7 @@ public static class RecruitmentEndpoints
         })
         .WithName("MarkNotStarted")
         .WithSummary("Đánh dấu ứng viên không nhận việc (Mark Candidate As Not Started)")
-        .WithDescription("Dành cho Client Company HR / Admin hoặc Internal HR / Admin (application.mark_not_started). Cập nhật trạng thái hồ sơ sang NOT_STARTED khi ứng viên không đến nhận việc hoặc hủy nhận việc sau khi đã trúng tuyển/chấp thuận offer.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền application.mark_not_started được đánh dấu ứng viên không nhận việc sau khi ứng viên chấp thuận offer.")
         .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
