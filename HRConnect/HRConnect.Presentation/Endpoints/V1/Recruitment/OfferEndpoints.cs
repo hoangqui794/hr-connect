@@ -351,10 +351,8 @@ public static class OfferEndpoints
             }
 
             var isClient = PermissionAuthorization.HasPermission(user, WithdrawPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!isClient && !isInternal && !isAdmin)
+            if (!isClient)
             {
                 return PermissionAuthorization.Forbidden(WithdrawPermission);
             }
@@ -366,8 +364,8 @@ public static class OfferEndpoints
                     Reason: request.Reason,
                     ConcurrencyToken: request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: isClient && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -392,7 +390,7 @@ public static class OfferEndpoints
         })
         .WithName("WithdrawOffer")
         .WithSummary("Thu hồi thư mời nhận việc (Withdraw Offer)")
-        .WithDescription("Dành cho Client Company HR / Admin (offer.withdraw) hoặc Internal HR / Admin (offer.manage). Thu hồi một offer chưa được chấp nhận (DRAFT hoặc SENT), trạng thái hồ sơ ứng tuyển được giữ ở OFFER_PENDING để có thể phát hành offer thay thế.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền offer.withdraw được thu hồi offer chưa được chấp nhận. Hồ sơ giữ ở OFFER_PENDING để Company có thể phát hành offer thay thế.")
         .Produces<WithdrawOfferResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
