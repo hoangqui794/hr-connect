@@ -34,7 +34,11 @@ public static class AdminApprovalEndpoints
             ClaimsPrincipal user = null!,
             CancellationToken cancellationToken = default) =>
         {
-            if (!HasAdminAccess(user))
+            var isPlatformAdmin = user.IsInRole("PLATFORM_ADMIN");
+            var canVerifyAffiliate = isPlatformAdmin || user.HasClaim("permission", "affiliate.verify");
+            var canVerifyCompany = isPlatformAdmin || user.HasClaim("permission", "company.verify");
+
+            if (!canVerifyAffiliate && !canVerifyCompany)
             {
                 return Results.Json(new
                 {
@@ -43,7 +47,32 @@ public static class AdminApprovalEndpoints
                 }, statusCode: StatusCodes.Status403Forbidden);
             }
 
-            var query = new GetApprovalListQuery(type, status, search, page, pageSize, sortBy, sortDirection);
+            var requestedType = string.IsNullOrWhiteSpace(type)
+                ? null
+                : type.Trim().ToUpperInvariant();
+
+            if (requestedType is not null and not "AFFILIATE" and not "CLIENT")
+            {
+                return Results.BadRequest(new { success = false, message = "type chỉ nhận AFFILIATE hoặc CLIENT." });
+            }
+
+            if (requestedType == "AFFILIATE" && !canVerifyAffiliate ||
+                requestedType == "CLIENT" && !canVerifyCompany)
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Bạn không có quyền xem loại hồ sơ phê duyệt này."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            // Quyền một phía chỉ được xem đúng hàng đợi mình phụ trách. Platform Admin
+            // hoặc người có cả hai quyền mới được xem danh sách hợp nhất.
+            var effectiveType = requestedType
+                ?? (canVerifyAffiliate && !canVerifyCompany ? "AFFILIATE" : null)
+                ?? (!canVerifyAffiliate && canVerifyCompany ? "CLIENT" : null);
+
+            var query = new GetApprovalListQuery(effectiveType, status, search, page, pageSize, sortBy, sortDirection);
             var result = await sender.Send(query, cancellationToken);
             return Results.Ok(result);
         })

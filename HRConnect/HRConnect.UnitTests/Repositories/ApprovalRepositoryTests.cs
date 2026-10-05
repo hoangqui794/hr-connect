@@ -42,6 +42,38 @@ public class ApprovalRepositoryTests
         items[0].Status.Should().Be("UNDER_REVIEW");
     }
 
+    [Fact]
+    public async Task GetApprovalsAsync_WithoutStatusFilter_ShouldNeverReturnUnverifiedPendingRecords()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        var pendingUser = CreateUser("pending@example.com", emailVerifiedAt: null);
+        var approvedUser = CreateUser("approved@example.com", DateTime.UtcNow);
+
+        await context.AppUsers.AddRangeAsync(pendingUser, approvedUser);
+        await context.AffiliateApplications.AddRangeAsync(
+            CreateApplication(pendingUser.UserId, "PENDING"),
+            CreateApplication(approvedUser.UserId, "APPROVED"));
+        await context.SaveChangesAsync();
+
+        var repository = new ApprovalRepository(context);
+        var (items, totalCount) = await repository.GetApprovalsAsync(
+            type: "AFFILIATE",
+            status: null,
+            search: null,
+            sortBy: "submittedAt",
+            sortDirection: "desc",
+            page: 1,
+            pageSize: 20);
+
+        totalCount.Should().Be(1);
+        items.Should().ContainSingle(item => item.Email == "approved@example.com");
+        items.Should().NotContain(item => item.Status == "PENDING");
+    }
+
     private static AppUser CreateUser(string email, DateTime? emailVerifiedAt) => new()
     {
         UserId = Guid.NewGuid(),

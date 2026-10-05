@@ -67,6 +67,10 @@ public class ApprovalRepository : IApprovalRepository
             query = affiliateQuery.Concat(clientQuery);
         }
 
+        // Hồ sơ PENDING chưa xác thực OTP không phải là một yêu cầu để Admin xét duyệt.
+        // Điều kiện này luôn áp dụng, kể cả khi caller không gửi status.
+        query = query.Where(x => x.Status != "PENDING");
+
         // 1. Lọc theo Status
         if (!string.IsNullOrWhiteSpace(status))
         {
