@@ -35,18 +35,20 @@ export const JobCardHorizontal: React.FC<JobCardHorizontalProps> = ({
 }) => {
   const navigate = useNavigate();
 
-  const isCOD =
-    job.serviceType === ServiceType.HEADHUNT_COD ||
-    String(job.serviceType).toUpperCase() === 'HEADHUNT_COD' ||
-    Boolean(job.estimatedCommission);
+  if (!job) return null;
 
-  const deadlineText = job.deadline || (job.isUrgent ? 'Còn 3 ngày' : 'Còn 15 ngày');
-  const uniqueTags = useMemo(() => deduplicateTags(job.tags), [job.tags]);
+  const isCOD =
+    job?.serviceType === ServiceType.HEADHUNT_COD ||
+    String(job?.serviceType || '').toUpperCase() === 'HEADHUNT_COD' ||
+    Boolean(job?.estimatedCommission);
+
+  const deadlineText = job?.deadline || (job?.isUrgent ? 'Còn 3 ngày' : 'Còn 15 ngày');
+  const uniqueTags = useMemo(() => deduplicateTags(job?.tags || []), [job?.tags]);
 
   const handleClickCard = () => {
     if (onViewDetail) {
       onViewDetail(job);
-    } else {
+    } else if (job?.id) {
       navigate(`/jobs/${job.id}`);
     }
   };

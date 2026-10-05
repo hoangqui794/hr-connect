@@ -13,16 +13,21 @@ import { UserRole } from '@/types/roles';
 import { RoleBadge } from '@/components/common/RoleBadge';
 import { PageHeaderB2B } from '@/components/common/PageHeaderB2B';
 import { FintechMetricCard } from '@/components/common/FintechMetricCard';
+import { candidateService } from '@/services/candidateService';
+import { useCandidateProfile } from '@/hooks/useCandidateProfile';
+import { useSavedJobs } from '@/hooks/useSavedJobs';
 
 const { Text } = Typography;
 
 export const CandidateDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, role } = useAuthStore();
-  const { cvs, applications: storeApps, savedJobs, interviews } = useCandidateStore();
+  const { profile } = useCandidateProfile();
+  const { cvs, applications: storeApps, interviews } = useCandidateStore();
   const sharedApps = useApplicationStore((s) => s.applications);
+  const { savedJobIds } = useSavedJobs();
 
-  // Job seeking toggle status persisted in localStorage
+  // Job seeking toggle status persisted in localStorage & backend visibility
   const [isJobSeeking, setIsJobSeeking] = useState<boolean>(() => {
     try {
       const raw = localStorage.getItem('hrconnect_candidate_job_seeking');
@@ -32,11 +37,28 @@ export const CandidateDashboardPage: React.FC = () => {
     }
   });
 
-  const handleToggleJobSeeking = (checked: boolean) => {
+  // Sync initial visibility from candidate profile API
+  React.useEffect(() => {
+    if (profile?.profileVisibility) {
+      const isPublic = profile.profileVisibility.toUpperCase() !== 'PRIVATE';
+      setIsJobSeeking(isPublic);
+      try {
+        localStorage.setItem('hrconnect_candidate_job_seeking', JSON.stringify(isPublic));
+      } catch {}
+    }
+  }, [profile?.profileVisibility]);
+
+  const handleToggleJobSeeking = async (checked: boolean) => {
     setIsJobSeeking(checked);
     try {
       localStorage.setItem('hrconnect_candidate_job_seeking', JSON.stringify(checked));
-    } catch {}
+      await candidateService.updateVisibility({
+        visibility: checked ? 'PUBLIC' : 'PRIVATE',
+      });
+    } catch (err) {
+      console.warn('Backend updateVisibility error (falling back to client state):', err);
+    }
+
     if (checked) {
       message.success({
         content: 'Đã bật trạng thái tìm việc! Hồ sơ của bạn đã hiển thị cho các nhà tuyển dụng và Headhunter.',
@@ -115,20 +137,8 @@ export const CandidateDashboardPage: React.FC = () => {
     return fromShared + fromCandidateStore;
   }, [mySharedApps, interviews, currentUserEmail]);
 
-  // Stat 3: Saved jobs for this candidate
-  const userSavedJobsCount = useMemo(() => {
-    if (!currentUserEmail) return 0;
-    try {
-      const userKey = `hrconnect_saved_jobs_${currentUserEmail}`;
-      const raw = localStorage.getItem(userKey);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parsed.length;
-      }
-    } catch {}
-    const list = savedJobs || [];
-    return list.filter((j) => (j.userEmail || '').toLowerCase().trim() === currentUserEmail).length;
-  }, [currentUserEmail, savedJobs]);
+  // Stat 3: Saved jobs for this candidate (real-time from useSavedJobs)
+  const userSavedJobsCount = savedJobIds.length;
 
   // Stat 4: CVs created/uploaded by this candidate
   const userCVsCount = useMemo(() => {
