@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -14,6 +15,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
     private readonly IPasswordHasher _passwordHasher;
     private readonly IOtpService _otpService;
     private readonly IEmailNormalizer _emailNormalizer;
+    private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ResetPasswordCommandHandler> _logger;
 
@@ -27,6 +29,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
         IPasswordHasher passwordHasher,
         IOtpService otpService,
         IEmailNormalizer emailNormalizer,
+        IAuditLogService auditLogService,
         IUnitOfWork unitOfWork,
         ILogger<ResetPasswordCommandHandler> logger)
     {
@@ -36,6 +39,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
         _passwordHasher = passwordHasher;
         _otpService = otpService;
         _emailNormalizer = emailNormalizer;
+        _auditLogService = auditLogService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -141,7 +145,19 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
             // 9.4 Thu hồi toàn bộ Refresh Token / phiên đăng nhập hiện tại
             await _refreshTokenRepository.RevokeAllByUserIdAsync(user.UserId, "PASSWORD_RESET", cancellationToken);
 
-            // 9.5 Lưu và commit transaction
+            // 9.5 Ghi audit PASSWORD_RESET cùng transaction
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.PasswordReset,
+                EntityType = "APP_USER",
+                EntityId = user.UserId,
+                ActorUserId = user.UserId,
+                ActorType = AuditActorTypes.User,
+                NewValues = new { userId = user.UserId, sessionsRevoked = true },
+                Source = AuditSources.Api
+            }, cancellationToken);
+
+            // 9.6 Lưu và commit transaction
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
