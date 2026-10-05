@@ -86,6 +86,35 @@ public class AuditLogServiceTests
     }
 
     [Fact]
+    public async Task AddAsync_WithSystemSecurityEvent_DoesNotAttributeTheAttackerToAffectedUser()
+    {
+        await using var db = CreateDbContext();
+        var correlationId = Guid.NewGuid();
+        var affectedUserId = Guid.NewGuid();
+        var requestContext = new Mock<IRequestContext>();
+        requestContext.SetupGet(context => context.CorrelationId).Returns(correlationId);
+        requestContext.SetupGet(context => context.IpAddress).Returns(IPAddress.Loopback);
+        var service = new AuditLogService(db, requestContext.Object);
+
+        await service.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.RefreshTokenReuseDetected,
+            EntityType = "REFRESH_TOKEN",
+            EntityId = Guid.NewGuid(),
+            ActorType = AuditActorTypes.System,
+            Source = AuditSources.Api,
+            NewValues = new { affectedUserId, allSessionsRevoked = true }
+        });
+
+        var pending = db.AuditLogs.Local.Should().ContainSingle().Subject;
+        pending.ActorUserId.Should().BeNull();
+        pending.ActorType.Should().Be(AuditActorTypes.System);
+        pending.Source.Should().Be(AuditSources.Api);
+        pending.CorrelationId.Should().Be(correlationId);
+        pending.NewValues.Should().Contain(affectedUserId.ToString());
+    }
+
+    [Fact]
     public async Task AddAsync_RedactsSensitivePropertyNamesRecursively()
     {
         await using var db = CreateDbContext();

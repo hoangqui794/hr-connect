@@ -1,5 +1,7 @@
+using System.Text.Json;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -10,16 +12,16 @@ namespace HRConnect.Infrastructure.Services.Admin;
 public class AdminApprovalService : IAdminApprovalService
 {
     private readonly ApplicationDbContext _context;
-    private readonly IEmailService _emailService;
+    private readonly IAuditLogService _auditLogService;
     private readonly ILogger<AdminApprovalService> _logger;
 
     public AdminApprovalService(
         ApplicationDbContext context,
-        IEmailService emailService,
+        IAuditLogService auditLogService,
         ILogger<AdminApprovalService> logger)
     {
         _context = context;
-        _emailService = emailService;
+        _auditLogService = auditLogService;
         _logger = logger;
     }
 
@@ -122,6 +124,24 @@ public class AdminApprovalService : IAdminApprovalService
             application.User.UpdatedAt = now;
             _context.AppUsers.Update(application.User);
 
+            await AddReviewAuditAsync(
+                AuditActions.AffiliateApproved,
+                "AFFILIATE_APPLICATION",
+                application.AffiliateApplicationId,
+                adminUserId,
+                "UNDER_REVIEW",
+                "APPROVED",
+                cancellationToken);
+            await QueueReviewEmailAsync(
+                application.UserId,
+                application.User.Email,
+                "AFFILIATE_REGISTRATION_APPROVED",
+                "Đối tác tuyển dụng",
+                approved: true,
+                reviewNote,
+                now,
+                cancellationToken);
+
             await _context.SaveChangesAsync(cancellationToken);
         };
 
@@ -143,21 +163,6 @@ public class AdminApprovalService : IAdminApprovalService
         _logger.LogInformation("Admin {AdminId} đã phê duyệt đơn đăng ký Affiliate {AppId} cho UserId {UserId}",
             adminUserId, applicationId, application.UserId);
 
-        // 5. Gửi email thông báo phê duyệt
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates
-                    .RegistrationReviewResult("Đối tác tuyển dụng", approved: true);
-                await _emailService.SendEmailAsync(
-                    application.User.Email, email.Subject, email.HtmlBody, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi gửi email thông báo phê duyệt Affiliate tới {Email}", application.User.Email);
-            }
-        }, CancellationToken.None);
     }
 
     public async Task RejectAffiliateApplicationAsync(
@@ -194,6 +199,24 @@ public class AdminApprovalService : IAdminApprovalService
             application.ReviewedAt = now;
             application.ReviewNote = reviewNote;
 
+            await AddReviewAuditAsync(
+                AuditActions.AffiliateRejected,
+                "AFFILIATE_APPLICATION",
+                application.AffiliateApplicationId,
+                adminUserId,
+                "UNDER_REVIEW",
+                "REJECTED",
+                cancellationToken);
+            await QueueReviewEmailAsync(
+                application.UserId,
+                application.User.Email,
+                "AFFILIATE_REGISTRATION_REJECTED",
+                "Đối tác tuyển dụng",
+                approved: false,
+                reviewNote,
+                now,
+                cancellationToken);
+
             await _context.SaveChangesAsync(cancellationToken);
         };
 
@@ -215,20 +238,6 @@ public class AdminApprovalService : IAdminApprovalService
         _logger.LogInformation("Admin {AdminId} đã từ chối đơn đăng ký Affiliate {AppId} cho UserId {UserId}",
             adminUserId, applicationId, application.UserId);
 
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates
-                    .RegistrationReviewResult("Đối tác tuyển dụng", approved: false, reviewNote);
-                await _emailService.SendEmailAsync(
-                    application.User.Email, email.Subject, email.HtmlBody, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi gửi email từ chối Affiliate tới {Email}", application.User.Email);
-            }
-        }, CancellationToken.None);
     }
 
     public async Task ApproveCompanyVerificationRequestAsync(
@@ -318,6 +327,24 @@ public class AdminApprovalService : IAdminApprovalService
             request.SubmittedByNavigation.Status = "ACTIVE";
             request.SubmittedByNavigation.UpdatedAt = now;
 
+            await AddReviewAuditAsync(
+                AuditActions.ClientApproved,
+                "COMPANY_VERIFICATION_REQUEST",
+                request.CompanyVerificationRequestId,
+                adminUserId,
+                "UNDER_REVIEW",
+                "APPROVED",
+                cancellationToken);
+            await QueueReviewEmailAsync(
+                request.SubmittedBy,
+                request.SubmittedByNavigation.Email,
+                "CLIENT_REGISTRATION_APPROVED",
+                "Doanh nghiệp tuyển dụng",
+                approved: true,
+                reviewNote,
+                now,
+                cancellationToken);
+
             await _context.SaveChangesAsync(cancellationToken);
         };
 
@@ -339,21 +366,6 @@ public class AdminApprovalService : IAdminApprovalService
         _logger.LogInformation("Admin {AdminId} đã phê duyệt doanh nghiệp {CompanyId} cho UserId {UserId}",
             adminUserId, request.CompanyId, request.SubmittedBy);
 
-        // 6. Gửi email phê duyệt
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates
-                    .RegistrationReviewResult("Doanh nghiệp tuyển dụng", approved: true);
-                await _emailService.SendEmailAsync(
-                    request.SubmittedByNavigation.Email, email.Subject, email.HtmlBody, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi gửi email thông báo phê duyệt Doanh nghiệp tới {Email}", request.SubmittedByNavigation.Email);
-            }
-        }, CancellationToken.None);
     }
 
     public async Task RejectCompanyVerificationRequestAsync(
@@ -395,6 +407,24 @@ public class AdminApprovalService : IAdminApprovalService
             request.Company.VerificationStatus = "REJECTED";
             request.Company.UpdatedAt = now;
 
+            await AddReviewAuditAsync(
+                AuditActions.ClientRejected,
+                "COMPANY_VERIFICATION_REQUEST",
+                request.CompanyVerificationRequestId,
+                adminUserId,
+                "UNDER_REVIEW",
+                "REJECTED",
+                cancellationToken);
+            await QueueReviewEmailAsync(
+                request.SubmittedBy,
+                request.SubmittedByNavigation.Email,
+                "CLIENT_REGISTRATION_REJECTED",
+                "Doanh nghiệp tuyển dụng",
+                approved: false,
+                reviewNote,
+                now,
+                cancellationToken);
+
             await _context.SaveChangesAsync(cancellationToken);
         };
 
@@ -416,19 +446,53 @@ public class AdminApprovalService : IAdminApprovalService
         _logger.LogInformation("Admin {AdminId} đã từ chối xác thực doanh nghiệp {CompanyId}",
             adminUserId, request.CompanyId);
 
-        _ = Task.Run(async () =>
+    }
+
+    private async Task AddReviewAuditAsync(
+        string action,
+        string entityType,
+        Guid entityId,
+        Guid adminUserId,
+        string oldStatus,
+        string newStatus,
+        CancellationToken cancellationToken)
+    {
+        await _auditLogService.AddAsync(new AuditEntry
         {
-            try
-            {
-                var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates
-                    .RegistrationReviewResult("Doanh nghiệp tuyển dụng", approved: false, reviewNote);
-                await _emailService.SendEmailAsync(
-                    request.SubmittedByNavigation.Email, email.Subject, email.HtmlBody, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi gửi email từ chối Doanh nghiệp tới {Email}", request.SubmittedByNavigation.Email);
-            }
-        }, CancellationToken.None);
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId,
+            ActorUserId = adminUserId,
+            OldValues = new { status = oldStatus },
+            NewValues = new { status = newStatus },
+            Source = AuditSources.Application
+        }, cancellationToken);
+    }
+
+    private async Task QueueReviewEmailAsync(
+        Guid userId,
+        string recipientEmail,
+        string templateCode,
+        string accountLabel,
+        bool approved,
+        string? reviewNote,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates
+            .RegistrationReviewResult(accountLabel, approved, reviewNote);
+        await _context.EmailOutboxes.AddAsync(new EmailOutbox
+        {
+            EmailOutboxId = Guid.NewGuid(),
+            UserId = userId,
+            RecipientEmail = recipientEmail,
+            TemplateCode = templateCode,
+            Subject = email.Subject,
+            Payload = JsonSerializer.Serialize(new { accountLabel, approved, reviewNote }),
+            Status = "PENDING",
+            RetryCount = 0,
+            NextRetryAt = now,
+            CreatedAt = now
+        }, cancellationToken);
     }
 }

@@ -30,7 +30,7 @@ public class GetApprovalListQueryHandlerTests
                 UserId = Guid.NewGuid(),
                 Email = "affiliate@example.com",
                 DisplayName = "Nguyen Van A",
-                Status = "PENDING",
+                Status = "UNDER_REVIEW",
                 SubmittedAt = DateTime.UtcNow
             },
             new()
@@ -41,7 +41,7 @@ public class GetApprovalListQueryHandlerTests
                 Email = "client@example.com",
                 DisplayName = "Tran Thi B",
                 CompanyName = "ABC Corp",
-                Status = "PENDING",
+                Status = "UNDER_REVIEW",
                 SubmittedAt = DateTime.UtcNow
             }
         };
@@ -78,7 +78,7 @@ public class GetApprovalListQueryHandlerTests
         // Arrange
         _approvalRepositoryMock.Setup(r => r.GetApprovalsAsync(
                 "AFFILIATE",
-                "PENDING",
+                "UNDER_REVIEW",
                 "test",
                 "status",
                 "asc",
@@ -89,7 +89,7 @@ public class GetApprovalListQueryHandlerTests
 
         var query = new GetApprovalListQuery(
             Type: "affiliate",
-            Status: "PENDING",
+            Status: "under_review",
             Search: "  test  ",
             Page: 2,
             PageSize: 10,
@@ -106,5 +106,42 @@ public class GetApprovalListQueryHandlerTests
         result.Data.PageSize.Should().Be(10);
         result.Data.Total.Should().Be(15);
         result.Data.TotalPages.Should().Be(2);
+    }
+
+    [Theory]
+    [InlineData("UNDER_REVIEW", true)]
+    [InlineData("approved", true)]
+    [InlineData("REJECTED", true)]
+    [InlineData("PENDING", false)]
+    [InlineData("UNKNOWN", false)]
+    public void Validator_ShouldAcceptOnlyAdminReviewStatuses(string status, bool expectedValid)
+    {
+        var validator = new GetApprovalListQueryValidator();
+
+        var result = validator.Validate(new GetApprovalListQuery(Status: status));
+
+        result.IsValid.Should().Be(expectedValid);
+    }
+
+    [Fact]
+    public void Validator_ShouldRejectInvalidPaginationSortingAndOversizedSearch()
+    {
+        var validator = new GetApprovalListQueryValidator();
+        var query = new GetApprovalListQuery(
+            Search: new string('x', 101),
+            Page: 0,
+            PageSize: 101,
+            SortBy: "email",
+            SortDirection: "sideways");
+
+        var result = validator.Validate(query);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Select(error => error.PropertyName).Should().BeEquivalentTo(
+            nameof(GetApprovalListQuery.Search),
+            nameof(GetApprovalListQuery.Page),
+            nameof(GetApprovalListQuery.PageSize),
+            nameof(GetApprovalListQuery.SortBy),
+            nameof(GetApprovalListQuery.SortDirection));
     }
 }

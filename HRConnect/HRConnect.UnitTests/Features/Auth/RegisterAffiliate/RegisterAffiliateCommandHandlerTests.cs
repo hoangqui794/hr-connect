@@ -17,6 +17,7 @@ public class RegisterAffiliateCommandHandlerTests
     private readonly Mock<IAffiliateApplicationRepository> _affiliateApplicationRepositoryMock;
     private readonly Mock<IUserTokenRepository> _userTokenRepositoryMock;
     private readonly Mock<IEmailOutboxRepository> _emailOutboxRepositoryMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IPasswordHasher> _passwordHasherMock;
     private readonly Mock<IOtpService> _otpServiceMock;
@@ -34,6 +35,7 @@ public class RegisterAffiliateCommandHandlerTests
         _affiliateApplicationRepositoryMock = new Mock<IAffiliateApplicationRepository>();
         _userTokenRepositoryMock = new Mock<IUserTokenRepository>();
         _emailOutboxRepositoryMock = new Mock<IEmailOutboxRepository>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _passwordHasherMock = new Mock<IPasswordHasher>();
         _otpServiceMock = new Mock<IOtpService>();
@@ -56,6 +58,7 @@ public class RegisterAffiliateCommandHandlerTests
             _affiliateApplicationRepositoryMock.Object,
             _userTokenRepositoryMock.Object,
             _emailOutboxRepositoryMock.Object,
+            _auditLogServiceMock.Object,
             _unitOfWorkMock.Object,
             _passwordHasherMock.Object,
             _otpServiceMock.Object,
