@@ -23,7 +23,6 @@ public static class RecruitmentEndpoints
     private const string ViewAllPermission = "application.view";
     private const string DecideBackupPermission = "application.decide_backup";
     private const string CreateOfferPermission = "offer.create";
-    private const string ManageOfferPermission = "offer.manage";
     private const string PlacementConfirmPermission = "placement.confirm";
     private const string MarkNotStartedPermission = "application.mark_not_started";
     private const string WithdrawOwnPermission = "application.withdraw_own";
@@ -409,10 +408,8 @@ public static class RecruitmentEndpoints
             }
 
             var isClient = PermissionAuthorization.HasPermission(user, CreateOfferPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManageOfferPermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!isClient && !isInternal && !isAdmin)
+            if (!isClient)
             {
                 return PermissionAuthorization.Forbidden(CreateOfferPermission);
             }
@@ -428,8 +425,8 @@ public static class RecruitmentEndpoints
                     OfferDocumentUrl: request.OfferDocumentUrl,
                     ConcurrencyToken: request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: isClient && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -454,7 +451,7 @@ public static class RecruitmentEndpoints
         })
         .WithName("CreateOfferDraft")
         .WithSummary("Tạo thư mời nhận việc bản nháp (Create Offer Draft)")
-        .WithDescription("Dành cho Client Company HR / Admin (offer.create) hoặc Internal HR / Admin (offer.manage). Chỉ tạo bản nháp thư mời nhận việc khi hồ sơ đang ở trạng thái OFFER_PENDING.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền offer.create được tạo bản nháp khi hồ sơ ở trạng thái OFFER_PENDING.")
         .Produces<CreateOfferDraftResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
