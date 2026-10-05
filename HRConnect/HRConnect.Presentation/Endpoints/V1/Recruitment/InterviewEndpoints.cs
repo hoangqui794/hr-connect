@@ -310,10 +310,8 @@ public static class InterviewEndpoints
             }
 
             var canUpdate = PermissionAuthorization.HasPermission(user, UpdatePermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!canUpdate && !isInternal && !isAdmin)
+            if (!canUpdate)
             {
                 return PermissionAuthorization.Forbidden(UpdatePermission);
             }
@@ -329,8 +327,8 @@ public static class InterviewEndpoints
                     MeetingLink: request.MeetingLink,
                     ConcurrencyToken: request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: canUpdate && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -355,7 +353,7 @@ public static class InterviewEndpoints
         })
         .WithName("RescheduleInterview")
         .WithSummary("Dời lịch phỏng vấn sang thời gian mới")
-        .WithDescription("Dành cho Client Company (interview.update) hoặc Internal HR / Admin (interview.manage). Bắt buộc nhập thời gian mới và lý do dời lịch. Lịch vẫn giữ trạng thái SCHEDULED; history lưu giờ cũ và giờ mới.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền interview.update được dời lịch. Bắt buộc nhập thời gian mới và lý do dời lịch; history lưu giờ cũ và giờ mới.")
         .Produces<RescheduleInterviewResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
