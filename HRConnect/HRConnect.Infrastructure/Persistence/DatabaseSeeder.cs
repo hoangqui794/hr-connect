@@ -121,6 +121,7 @@ public static class DatabaseSeeder
         ('cv.view_own', 'candidate_cv', 'view_own', 'View own CV'),
         ('cv.update_own', 'candidate_cv', 'update_own', 'Update own CV'),
         ('cv.delete_own', 'candidate_cv', 'delete_own', 'Delete own CV'),
+        ('cv.affiliate_reuse.manage_own', 'candidate_cv', 'affiliate_reuse_manage_own', 'Manage whether an Affiliate may reuse an uploaded CV for new consent requests'),
         ('application.create', 'application', 'create', 'Apply to a job'),
         ('application.view_own', 'application', 'view_own', 'View own job applications'),
         ('application.withdraw_own', 'application', 'withdraw_own', 'Withdraw own job application'),
@@ -201,7 +202,7 @@ public static class DatabaseSeeder
     FROM public.role r
     JOIN public.permission p ON p.code IN (
         'job.view', 'notification.view_own', 'candidate.profile.view_own', 'candidate.profile.update_own',
-        'cv.create', 'cv.view_own', 'cv.update_own', 'cv.delete_own', 'application.create', 'application.view_own', 'application.withdraw_own',
+        'cv.create', 'cv.view_own', 'cv.update_own', 'cv.delete_own', 'cv.affiliate_reuse.manage_own', 'application.create', 'application.view_own', 'application.withdraw_own',
         'interview.view_own', 'offer.view_own', 'offer.respond', 'affiliate.apply'
     )
     WHERE r.code = 'CANDIDATE'

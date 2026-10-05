@@ -58,6 +58,11 @@ VALUES
      'delete_own',
      'Delete own CV'),
 
+    ('cv.affiliate_reuse.manage_own',
+     'candidate_cv',
+     'affiliate_reuse_manage_own',
+     'Manage whether an Affiliate may reuse an uploaded CV for new consent requests'),
+
     ('application.create',
      'application',
      'create',
@@ -458,6 +463,7 @@ JOIN public.permission p
         'cv.view_own',
         'cv.update_own',
         'cv.delete_own',
+        'cv.affiliate_reuse.manage_own',
 
         'application.create',
         'application.view_own',

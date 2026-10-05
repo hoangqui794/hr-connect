@@ -774,6 +774,10 @@ public partial class ApplicationDbContext : DbContext
                 table.HasCheckConstraint(
                     "ck_candidate_cv_affiliate_uploader",
                     "creation_method <> 'AFFILIATE_UPLOAD' OR uploaded_by_user_id IS NOT NULL");
+                table.HasCheckConstraint(
+                    "ck_candidate_cv_affiliate_reuse_status",
+                    "((creation_method = 'AFFILIATE_UPLOAD' AND affiliate_reuse_status IN ('NOT_GRANTED','ALLOWED','REVOKED')) OR " +
+                    "(creation_method <> 'AFFILIATE_UPLOAD' AND affiliate_reuse_status IS NULL))");
             });
 
             entity.HasIndex(e => new { e.CandidateId, e.CreatedAt }, "idx_candidate_cv_candidate").IsDescending(false, true);
@@ -781,6 +785,8 @@ public partial class ApplicationDbContext : DbContext
             entity.HasIndex(e => new { e.CreationMethod, e.Status }, "idx_candidate_cv_creation_method");
 
             entity.HasIndex(e => e.UploadedByUserId, "idx_candidate_cv_uploaded_by");
+
+            entity.HasIndex(e => new { e.UploadedByUserId, e.AffiliateReuseStatus, e.Status }, "idx_candidate_cv_affiliate_reuse");
 
             entity.HasIndex(e => new { e.CandidateId, e.CvId }, "uq_candidate_cv_owner").IsUnique();
 
@@ -799,6 +805,15 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(40)
                 .HasColumnName("creation_method");
             entity.Property(e => e.UploadedByUserId).HasColumnName("uploaded_by_user_id");
+            entity.Property(e => e.AffiliateReuseStatus)
+                .HasMaxLength(20)
+                .HasColumnName("affiliate_reuse_status");
+            entity.Property(e => e.AffiliateReuseChangedAt).HasColumnName("affiliate_reuse_changed_at");
+            entity.Property(e => e.AffiliateReuseChangedByUserId).HasColumnName("affiliate_reuse_changed_by_user_id");
+            entity.Property(e => e.AffiliateReuseConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("affiliate_reuse_concurrency_token");
             entity.Property(e => e.CvTemplateId).HasColumnName("cv_template_id");
             entity.Property(e => e.FileName)
                 .HasMaxLength(255)
@@ -843,6 +858,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.UploadedByUserId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("candidate_cv_uploaded_by_user_id_fkey");
+
+            entity.HasOne<AppUser>().WithMany()
+                .HasForeignKey(d => d.AffiliateReuseChangedByUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("candidate_cv_reuse_changed_by_user_id_fkey");
         });
 
         modelBuilder.Entity<CandidateJobMatch>(entity =>

@@ -159,6 +159,10 @@ public class CvStorageService : ICvStorageService
                 Title = cvTitle,
                 CreationMethod = creationMethod,
                 UploadedByUserId = uploadedByUserId,
+                AffiliateReuseStatus = string.Equals(creationMethod, "AFFILIATE_UPLOAD", StringComparison.Ordinal)
+                    ? "NOT_GRANTED"
+                    : null,
+                AffiliateReuseConcurrencyToken = Guid.NewGuid(),
                 SourceFileUrl = uploadedKey, // Lưu object key ổn định thay vì temporary URL
                 FileName = Path.GetFileName(fileName),
                 MimeType = "application/pdf",

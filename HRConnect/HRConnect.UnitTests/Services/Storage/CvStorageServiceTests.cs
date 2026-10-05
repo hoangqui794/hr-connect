@@ -173,6 +173,8 @@ public class CvStorageServiceTests
         savedCv.Should().NotBeNull();
         savedCv!.CreationMethod.Should().Be("AFFILIATE_UPLOAD");
         savedCv.UploadedByUserId.Should().Be(affiliateUserId);
+        savedCv.AffiliateReuseStatus.Should().Be("NOT_GRANTED");
+        savedCv.AffiliateReuseConcurrencyToken.Should().NotBeEmpty();
         savedCv.IsPrimary.Should().BeFalse();
         savedCv.Status.Should().Be("PENDING_CONSENT");
         _unitOfWorkMock.Verify(
