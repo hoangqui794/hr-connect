@@ -29,7 +29,7 @@ HR Connect là nền tảng tuyển dụng kết nối Candidate, Affiliate Recr
 
 | MF | Chức năng | Trạng thái/phụ trách |
 | --- | --- | --- |
-| MF01 | Account, Auth, role/permission, đăng ký OTP và Admin approval | Đã làm nhiều; đang hoàn thiện audit Auth/Admin. |
+| MF01 | Account, Auth, role/permission, đăng ký OTP và Admin approval | Audit Auth/Admin cho đăng ký, approval, mật khẩu và session đã hoàn thành trên nhánh feature. |
 | **MF02** | Candidate/CV submission, duplicate check, attribution, Candidate consent, trigger AI | **Đây là phần trọng tâm người dùng phụ trách.** Luồng chính đã khá hoàn chỉnh. |
 | MF03 | AI matching/chấm điểm CV so với Job, hỗ trợ reviewer sàng lọc | Dev khác phụ trách. MF02 chỉ tạo queue/outbox để gọi MF03. |
 | MF04+ | Tuyển dụng tiếp theo: screening, interview, offer, placement, commission/payout | Dev khác phụ trách. |
@@ -242,7 +242,7 @@ flowchart LR
 
 | Module | Trạng thái bàn giao | Lưu ý |
 | --- | --- | --- |
-| Auth / OTP / approval | Hoạt động, đang hoàn thiện audit session/password. | Xem backlog Auth bên dưới. |
+| Auth / OTP / approval | Hoạt động; audit đăng ký, mật khẩu, session và approval đã được bổ sung. | Không audit secret/token/hash. |
 | RBAC / seed | Có role/permission và kiểm tra active khi login/refresh. | Permission mới phải seed + map role. |
 | Candidate profile/CV | Có profile, nhiều CV, primary CV, storage R2 và ownership. | Cần tiếp tục policy quản lý CV Affiliate upload. |
 | Job / service type | Có Job lifecycle và service type permission. | Client pipeline API có tài liệu; cần kiểm tra implementation với owner module. |
@@ -250,15 +250,15 @@ flowchart LR
 | MF03 integration | MF02 queue/dispatcher/retry/manual retry đã có. | MF03 logic AI do dev khác sở hữu. |
 | Recruitment MF04 | Có entities/endpoints cho Interview, Offer, Placement. | Không tự đổi business nếu owner MF04 chưa yêu cầu. |
 | Finance / affiliate | Attribution, commission, payout, dispute có domain/API. | Cần owner module review policy commission end-to-end. |
-| Audit | Platform + MF02/MF04 mạnh, Auth audit đang bổ sung. | Không audit secrets/PII không cần thiết. |
+| Audit | Platform, Auth/Admin, MF02 và MF04 đã có audit cho các thay đổi nghiệp vụ quan trọng. | Không audit secrets/PII không cần thiết. |
 
 ## Backlog sau bàn giao
 
-### Ưu tiên ngay — tiếp tục trên `feature/auth-admin-production-hardening`
+### Auth/Admin vừa hoàn thành trên `feature/auth-admin-production-hardening`
 
-1. Hoàn thiện audit `PASSWORD_CHANGED`, `PASSWORD_RESET`, `SESSION_REVOKED`, `ALL_SESSIONS_REVOKED`, `REFRESH_TOKEN_REUSE_DETECTED`.
-2. Bổ sung/điều chỉnh unit test từng handler, bảo đảm audit được ghi trong cùng transaction và không lộ secret.
-3. Push commit riêng sau nhóm API hoàn chỉnh; chưa merge `dev`/`main` khi người dùng chưa yêu cầu.
+1. Audit `PASSWORD_CHANGED`, `PASSWORD_RESET`, `SESSION_REVOKED`, `ALL_SESSIONS_REVOKED`, `REFRESH_TOKEN_REUSE_DETECTED`.
+2. Audit và thay đổi password/session được lưu nguyên tử; logout một phiên giữ tính idempotent.
+3. Refresh-token reuse được ghi với actor `SYSTEM`, không gán kẻ gọi là chủ tài khoản bị ảnh hưởng.
 
 ### Ưu tiên MF02 tiếp theo
 
@@ -359,27 +359,20 @@ f1e1b58 merge: promote dev to main
    - `EMAIL_VERIFIED`.
    - `AFFILIATE_APPROVED`, `AFFILIATE_REJECTED`.
    - `CLIENT_APPROVED`, `CLIENT_REJECTED`.
+   - `PASSWORD_CHANGED`, `PASSWORD_RESET`.
+   - `SESSION_REVOKED`, `ALL_SESSIONS_REVOKED`.
+   - `REFRESH_TOKEN_REUSE_DETECTED`.
 4. Kiểm tra đã chạy trước khi dừng:
    - `AdminApprovalServiceTests` và `VerifyEmailOtpCommandHandlerTests`: 24 tests passed.
    - `RegisterAffiliate/Client/CandidateCommandHandlerTests`: 14 tests passed.
    - Build solution thành công; còn một warning cũ ở `CreateJobCommandValidator.cs` về nullable dereference, không thuộc thay đổi này.
 
-## Việc Auth/Admin còn phải làm tiếp
+## Audit Auth/Admin đã hoàn thành
 
-Hoàn thiện audit cho các API/command bảo mật sau, cùng transaction với thay đổi dữ liệu:
-
-1. `PASSWORD_CHANGED` — `ChangePasswordCommandHandler`.
-2. `PASSWORD_RESET` — `ResetPasswordCommandHandler`.
-3. `SESSION_REVOKED` — `LogoutCommandHandler`, chỉ khi token thuộc user và thực sự bị revoke.
-4. `ALL_SESSIONS_REVOKED` — `LogoutAllCommandHandler`.
-5. `REFRESH_TOKEN_REUSE_DETECTED` — `RefreshTokenCommandHandler`, khi refresh token đã revoked/replaced bị dùng lại và hệ thống thu hồi toàn bộ session.
-
-Yêu cầu khi làm:
-
-- Không log password/token/hash dưới bất kỳ dạng nào.
-- Audit phải không làm hỏng idempotency của logout.
-- Khi refresh token reuse: audit cần được ghi trước commit cùng việc revoke toàn bộ session.
-- Cập nhật unit tests của từng handler; commit/push riêng một nhóm API đã hoàn chỉnh.
+- Đổi/reset mật khẩu ghi audit cùng việc thu hồi session; không lưu password, OTP, token hoặc hash.
+- Logout chỉ ghi `SESSION_REVOKED` khi phiên thuộc user và vừa được thu hồi; gọi lại vẫn idempotent.
+- Logout-all ghi `ALL_SESSIONS_REVOKED` cùng unit of work.
+- Token reuse thu hồi session và ghi `REFRESH_TOKEN_REUSE_DETECTED` trong cùng transaction trước khi trả lỗi chung cho caller.
 
 ## Các phần MF02 nên rà lại sau khi Auth audit hoàn thành
 
@@ -404,5 +397,5 @@ Không cần sửa ngay nếu chưa có yêu cầu, nhưng đây là backlog pro
 ## Prompt ngắn để bắt đầu chat mới
 
 ```text
-Bạn là VIKI, đang tiếp tục dự án HR Connect tại D:\\Ki_9\\HRConnect\\HRConnect. Hãy đọc file docs/chatgpt-plus-handoff-2026-10-05.md trước khi làm bất kỳ thay đổi nào. Hiện nhánh làm việc là feature/auth-admin-production-hardening; chưa được merge vào dev/main. Tiếp tục hoàn thiện audit Auth còn lại theo đúng file bàn giao: Change Password, Reset Password, Logout, Logout All và refresh-token reuse. Làm trên nhánh hiện tại, kiểm tra bằng test phù hợp, commit và push ngay sau mỗi nhóm API hoàn chỉnh. Không ghi password, OTP hay token vào audit/log. Trao đổi bằng tiếng Việt dễ hiểu.
+Bạn là VIKI, đang tiếp tục dự án HR Connect tại D:\\Ki_9\\HRConnect\\HRConnect. Hãy đọc file docs/chatgpt-plus-handoff-2026-10-05.md trước khi làm bất kỳ thay đổi nào. Hiện nhánh làm việc là feature/auth-admin-production-hardening; chưa được merge vào dev/main. Audit Auth/Admin cho registration, approval, password, logout và refresh-token reuse đã hoàn thành. Hãy kiểm tra Git và test trước khi tiếp tục backlog MF02 trong file bàn giao. Làm trên nhánh feature phù hợp, commit và push ngay sau mỗi nhóm API hoàn chỉnh. Không ghi password, OTP hay token vào audit/log. Trao đổi bằng tiếng Việt dễ hiểu.
 ```
