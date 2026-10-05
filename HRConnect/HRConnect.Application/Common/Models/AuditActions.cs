@@ -2,6 +2,11 @@ namespace HRConnect.Application.Common.Models;
 
 public static class AuditActions
 {
+    public const string AffiliateApproved = "AFFILIATE_APPROVED";
+    public const string AffiliateRejected = "AFFILIATE_REJECTED";
+    public const string ClientApproved = "CLIENT_APPROVED";
+    public const string ClientRejected = "CLIENT_REJECTED";
+    public const string EmailVerified = "EMAIL_VERIFIED";
     public const string CvUploaded = "CV_UPLOADED";
     public const string CvUpdated = "CV_UPDATED";
     public const string CvPrimarySet = "CV_PRIMARY_SET";

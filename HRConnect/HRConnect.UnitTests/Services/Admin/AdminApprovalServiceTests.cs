@@ -1,6 +1,7 @@
 using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using HRConnect.Infrastructure.Services.Admin;
@@ -13,7 +14,7 @@ namespace HRConnect.UnitTests.Services.Admin;
 public class AdminApprovalServiceTests
 {
     private readonly ApplicationDbContext _context;
-    private readonly Mock<IEmailService> _emailServiceMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<ILogger<AdminApprovalService>> _loggerMock;
     private readonly AdminApprovalService _service;
 
@@ -24,12 +25,12 @@ public class AdminApprovalServiceTests
             .Options;
 
         _context = new ApplicationDbContext(options);
-        _emailServiceMock = new Mock<IEmailService>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _loggerMock = new Mock<ILogger<AdminApprovalService>>();
 
         _service = new AdminApprovalService(
             _context,
-            _emailServiceMock.Object,
+            _auditLogServiceMock.Object,
             _loggerMock.Object);
     }
 
@@ -89,6 +90,11 @@ public class AdminApprovalServiceTests
         var profile = await _context.AffiliateProfiles.FirstOrDefaultAsync(p => p.UserId == user.UserId);
         profile.Should().NotBeNull();
         profile!.Status.Should().Be("ACTIVE");
+
+        (await _context.EmailOutboxes.SingleAsync()).TemplateCode.Should().Be("AFFILIATE_REGISTRATION_APPROVED");
+        _auditLogServiceMock.Verify(audit => audit.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.AffiliateApproved && entry.ActorUserId == adminId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -130,6 +136,10 @@ public class AdminApprovalServiceTests
 
         var userRole = await _context.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == user.UserId);
         userRole.Should().BeNull();
+        (await _context.EmailOutboxes.SingleAsync()).TemplateCode.Should().Be("AFFILIATE_REGISTRATION_REJECTED");
+        _auditLogServiceMock.Verify(audit => audit.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.AffiliateRejected && entry.ActorUserId == adminId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -193,6 +203,10 @@ public class AdminApprovalServiceTests
         userRole.Should().NotBeNull();
         userRole!.RoleId.Should().Be(role.RoleId);
         userRole.Status.Should().Be("ACTIVE");
+        (await _context.EmailOutboxes.SingleAsync()).TemplateCode.Should().Be("CLIENT_REGISTRATION_APPROVED");
+        _auditLogServiceMock.Verify(audit => audit.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.ClientApproved && entry.ActorUserId == adminId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -242,6 +256,10 @@ public class AdminApprovalServiceTests
 
         var userRole = await _context.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == user.UserId);
         userRole.Should().BeNull();
+        (await _context.EmailOutboxes.SingleAsync()).TemplateCode.Should().Be("CLIENT_REGISTRATION_REJECTED");
+        _auditLogServiceMock.Verify(audit => audit.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.ClientRejected && entry.ActorUserId == adminId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

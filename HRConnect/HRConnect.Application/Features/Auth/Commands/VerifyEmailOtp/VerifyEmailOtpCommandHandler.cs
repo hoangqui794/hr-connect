@@ -1,6 +1,9 @@
+using System.Text.Json;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
+using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using HRConnect.Application.Features.Auth.Common;
@@ -16,7 +19,8 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
     private readonly IAffiliateApplicationRepository _affiliateApplicationRepository;
     private readonly ICompanyVerificationRequestRepository _companyVerificationRequestRepository;
     private readonly ICompanyRepository _companyRepository;
-    private readonly IEmailService _emailService;
+    private readonly IEmailOutboxRepository _emailOutboxRepository;
+    private readonly IAuditLogService _auditLogService;
     private readonly IEmailNormalizer _emailNormalizer;
     private readonly IOtpService _otpService;
     private readonly IUnitOfWork _unitOfWork;
@@ -29,7 +33,8 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         IAffiliateApplicationRepository affiliateApplicationRepository,
         ICompanyVerificationRequestRepository companyVerificationRequestRepository,
         ICompanyRepository companyRepository,
-        IEmailService emailService,
+        IEmailOutboxRepository emailOutboxRepository,
+        IAuditLogService auditLogService,
         IEmailNormalizer emailNormalizer,
         IOtpService otpService,
         IUnitOfWork unitOfWork,
@@ -41,7 +46,8 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         _affiliateApplicationRepository = affiliateApplicationRepository;
         _companyVerificationRequestRepository = companyVerificationRequestRepository;
         _companyRepository = companyRepository;
-        _emailService = emailService;
+        _emailOutboxRepository = emailOutboxRepository;
+        _auditLogService = auditLogService;
         _emailNormalizer = emailNormalizer;
         _otpService = otpService;
         _unitOfWork = unitOfWork;
@@ -155,26 +161,18 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             _affiliateApplicationRepository.Update(affiliateApp);
             _userRepository.Update(user);
 
+            await QueueUnderReviewEmailAsync(
+                user,
+                "AFFILIATE_REGISTRATION_UNDER_REVIEW",
+                "Đối tác tuyển dụng",
+                now,
+                cancellationToken);
+            await AddEmailVerifiedAuditAsync(user.UserId, now, "AFFILIATE", cancellationToken);
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Xác thực email thành công cho Affiliate UserId {UserId}. Hồ sơ chuyển sang UNDER_REVIEW chờ Admin duyệt.",
                 user.UserId);
-
-            // Gửi email xác nhận tiếp nhận hồ sơ Affiliate (Stage 2)
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates
-                        .RegistrationUnderReview("Đối tác tuyển dụng");
-                    await _emailService.SendEmailAsync(
-                        user.Email, email.Subject, email.HtmlBody, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Lỗi gửi email tiếp nhận hồ sơ Affiliate tới {Email}", user.Email);
-                }
-            }, CancellationToken.None);
 
             return new VerifyEmailOtpResponse
             {
@@ -212,26 +210,17 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             }
 
             _userRepository.Update(user);
+            await QueueUnderReviewEmailAsync(
+                user,
+                "CLIENT_REGISTRATION_UNDER_REVIEW",
+                "Doanh nghiệp tuyển dụng",
+                now,
+                cancellationToken);
+            await AddEmailVerifiedAuditAsync(user.UserId, now, "CLIENT", cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Xác thực email thành công cho Client UserId {UserId}, Company {CompanyId}. Chờ Admin duyệt.",
                 user.UserId, companyVerification.CompanyId);
-
-            // Gửi email xác nhận tiếp nhận hồ sơ Doanh nghiệp (Stage 2)
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates
-                        .RegistrationUnderReview("Doanh nghiệp tuyển dụng");
-                    await _emailService.SendEmailAsync(
-                        user.Email, email.Subject, email.HtmlBody, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Lỗi gửi email tiếp nhận hồ sơ Doanh nghiệp tới {Email}", user.Email);
-                }
-            }, CancellationToken.None);
 
             return new VerifyEmailOtpResponse
             {
@@ -262,6 +251,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
 
             user.Status = "ACTIVE";
             _userRepository.Update(user);
+            await AddEmailVerifiedAuditAsync(user.UserId, now, "CANDIDATE", cancellationToken);
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
         catch
@@ -286,4 +276,44 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             }
         };
     }
+
+    private async Task QueueUnderReviewEmailAsync(
+        AppUser user,
+        string templateCode,
+        string accountLabel,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates
+            .RegistrationUnderReview(accountLabel);
+        await _emailOutboxRepository.AddAsync(new EmailOutbox
+        {
+            EmailOutboxId = Guid.NewGuid(),
+            UserId = user.UserId,
+            RecipientEmail = user.Email,
+            TemplateCode = templateCode,
+            Subject = email.Subject,
+            Payload = JsonSerializer.Serialize(new { accountLabel }),
+            Status = "PENDING",
+            RetryCount = 0,
+            NextRetryAt = now,
+            CreatedAt = now
+        }, cancellationToken);
+    }
+
+    private Task AddEmailVerifiedAuditAsync(
+        Guid userId,
+        DateTime verifiedAt,
+        string accountType,
+        CancellationToken cancellationToken) =>
+        _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.EmailVerified,
+            EntityType = "APP_USER",
+            EntityId = userId,
+            ActorUserId = userId,
+            OldValues = new { emailVerifiedAt = (DateTime?)null },
+            NewValues = new { emailVerifiedAt = verifiedAt, accountType },
+            Source = AuditSources.Application
+        }, cancellationToken);
 }
