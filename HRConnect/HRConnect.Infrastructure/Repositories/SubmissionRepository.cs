@@ -305,4 +305,64 @@ public class SubmissionRepository : ISubmissionRepository
                 cv.FileName))
             .SingleOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<(IReadOnlyList<CandidateAffiliateCvRecord> Items, int TotalCount)> GetCandidateAffiliateCvsAsync(
+        Guid candidateId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query =
+            from cv in _context.CandidateCvs.AsNoTracking()
+            join affiliateUser in _context.AppUsers.AsNoTracking()
+                on cv.UploadedByUserId equals affiliateUser.UserId
+            where cv.CandidateId == candidateId &&
+                  cv.CreationMethod == "AFFILIATE_UPLOAD" &&
+                  cv.Status != "DELETED" &&
+                  cv.Submissions.Any()
+            select new
+            {
+                cv.CvId,
+                cv.Title,
+                cv.FileName,
+                cv.MimeType,
+                cv.FileSizeBytes,
+                DocumentStatus = cv.Status,
+                AffiliateReuseStatus = cv.AffiliateReuseStatus ?? "NOT_GRANTED",
+                ReuseConcurrencyToken = cv.AffiliateReuseConcurrencyToken,
+                AffiliateUserId = affiliateUser.UserId,
+                AffiliateDisplayName = affiliateUser.DisplayName,
+                SubmissionCount = cv.Submissions.Count,
+                PendingConsentCount = cv.Submissions.Count(submission => submission.Status == "PENDING_CONSENT"),
+                AcceptedSubmissionCount = cv.Submissions.Count(submission => submission.Status == "ACCEPTED"),
+                LastSubmittedAt = cv.Submissions.Select(submission => (DateTime?)submission.SubmittedAt).Max(),
+                cv.CreatedAt
+            };
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var rows = await query
+            .OrderByDescending(item => item.LastSubmittedAt)
+            .ThenByDescending(item => item.CreatedAt)
+            .ThenBy(item => item.CvId)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (rows.Select(item => new CandidateAffiliateCvRecord(
+            item.CvId,
+            item.Title,
+            item.FileName,
+            item.MimeType,
+            item.FileSizeBytes,
+            item.DocumentStatus,
+            item.AffiliateReuseStatus,
+            item.ReuseConcurrencyToken,
+            item.AffiliateUserId,
+            item.AffiliateDisplayName,
+            item.SubmissionCount,
+            item.PendingConsentCount,
+            item.AcceptedSubmissionCount,
+            item.LastSubmittedAt,
+            item.CreatedAt)).ToList(), totalCount);
+    }
 }
