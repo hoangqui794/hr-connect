@@ -17,6 +17,7 @@ public class RefreshTokenCommandHandlerTests
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IJwtTokenGenerator> _jwtTokenGeneratorMock;
     private readonly Mock<IOtpService> _otpServiceMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly IOptions<JwtSettings> _jwtOptions;
     private readonly Mock<ILogger<RefreshTokenCommandHandler>> _loggerMock;
@@ -29,6 +30,7 @@ public class RefreshTokenCommandHandlerTests
         _userRepositoryMock = new Mock<IUserRepository>();
         _jwtTokenGeneratorMock = new Mock<IJwtTokenGenerator>();
         _otpServiceMock = new Mock<IOtpService>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _loggerMock = new Mock<ILogger<RefreshTokenCommandHandler>>();
 
@@ -43,6 +45,7 @@ public class RefreshTokenCommandHandlerTests
             _userRepositoryMock.Object,
             _jwtTokenGeneratorMock.Object,
             _otpServiceMock.Object,
+            _auditLogServiceMock.Object,
             _unitOfWorkMock.Object,
             _jwtOptions,
             _loggerMock.Object);
@@ -145,6 +148,9 @@ public class RefreshTokenCommandHandlerTests
         // Verify transaction was committed
         _unitOfWorkMock.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+
+        // No reuse audit on normal rotation
+        _auditLogServiceMock.Verify(x => x.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -204,6 +210,20 @@ public class RefreshTokenCommandHandlerTests
             userId, "TOKEN_REUSE_DETECTED", It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+
+        // Audit REFRESH_TOKEN_REUSE_DETECTED recorded
+        _auditLogServiceMock.Verify(x => x.AddAsync(
+            It.Is<AuditEntry>(a =>
+                a.Action == AuditActions.RefreshTokenReuseDetected &&
+                a.EntityType == "REFRESH_TOKEN" &&
+                a.EntityId == revokedToken.RefreshTokenId &&
+                a.ActorUserId == null &&
+                a.ActorType == AuditActorTypes.System &&
+                a.Source == AuditSources.Api),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(
+            x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -239,6 +259,18 @@ public class RefreshTokenCommandHandlerTests
 
         _refreshTokenRepositoryMock.Verify(x => x.RevokeAllByUserIdAsync(
             userId, "TOKEN_REUSE_DETECTED", It.IsAny<CancellationToken>()), Times.Once);
+
+        // Audit REFRESH_TOKEN_REUSE_DETECTED recorded
+        _auditLogServiceMock.Verify(x => x.AddAsync(
+            It.Is<AuditEntry>(a =>
+                a.Action == AuditActions.RefreshTokenReuseDetected &&
+                a.EntityId == replacedToken.RefreshTokenId &&
+                a.ActorUserId == null &&
+                a.ActorType == AuditActorTypes.System),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(
+            x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]

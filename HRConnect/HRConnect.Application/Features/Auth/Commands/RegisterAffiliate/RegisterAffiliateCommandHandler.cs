@@ -16,6 +16,7 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
     private readonly IAffiliateApplicationRepository _affiliateApplicationRepository;
     private readonly IUserTokenRepository _userTokenRepository;
     private readonly IEmailOutboxRepository _emailOutboxRepository;
+    private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IOtpService _otpService;
@@ -30,6 +31,7 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
         IAffiliateApplicationRepository affiliateApplicationRepository,
         IUserTokenRepository userTokenRepository,
         IEmailOutboxRepository emailOutboxRepository,
+        IAuditLogService auditLogService,
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         IOtpService otpService,
@@ -43,6 +45,7 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
         _affiliateApplicationRepository = affiliateApplicationRepository;
         _userTokenRepository = userTokenRepository;
         _emailOutboxRepository = emailOutboxRepository;
+        _auditLogService = auditLogService;
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _otpService = otpService;
@@ -167,6 +170,15 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
             };
 
             await _emailOutboxRepository.AddAsync(emailOutbox, cancellationToken);
+
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.AffiliateRegistered,
+                EntityType = "AFFILIATE_APPLICATION",
+                EntityId = affiliateApp.AffiliateApplicationId,
+                NewValues = new { userId = newUser.UserId, status = "PENDING", accountType = "AFFILIATE" },
+                Source = AuditSources.Api
+            }, cancellationToken);
 
             // 9. Commit Transaction
             await _unitOfWork.CommitTransactionAsync(cancellationToken);

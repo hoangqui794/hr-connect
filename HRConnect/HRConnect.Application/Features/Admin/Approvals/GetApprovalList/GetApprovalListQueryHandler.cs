@@ -6,9 +6,6 @@ namespace HRConnect.Application.Features.Admin.Approvals.GetApprovalList;
 public class GetApprovalListQueryHandler : IRequestHandler<GetApprovalListQuery, GetApprovalListResponse>
 {
     private readonly IApprovalRepository _approvalRepository;
-    private const int DefaultPageSize = 20;
-    private const int MaxPageSize = 100;
-
     public GetApprovalListQueryHandler(IApprovalRepository approvalRepository)
     {
         _approvalRepository = approvalRepository;
@@ -16,9 +13,9 @@ public class GetApprovalListQueryHandler : IRequestHandler<GetApprovalListQuery,
 
     public async Task<GetApprovalListResponse> Handle(GetApprovalListQuery request, CancellationToken cancellationToken)
     {
-        // Chuẩn hóa và giới hạn page, pageSize
-        var page = request.Page < 1 ? 1 : request.Page;
-        var pageSize = request.PageSize < 1 ? DefaultPageSize : (request.PageSize > MaxPageSize ? MaxPageSize : request.PageSize);
+        // Endpoint validates these bounds. Keep the handler deterministic for every caller.
+        var page = request.Page;
+        var pageSize = request.PageSize;
 
         // Chuẩn hóa sortBy an toàn (chống SQL injection / arbitrary column names)
         var sortBy = request.SortBy?.ToLowerInvariant() switch
@@ -42,7 +39,9 @@ public class GetApprovalListQueryHandler : IRequestHandler<GetApprovalListQuery,
         }
 
         // Chuẩn hóa status
-        var status = string.IsNullOrWhiteSpace(request.Status) ? null : request.Status.Trim();
+        var status = string.IsNullOrWhiteSpace(request.Status)
+            ? null
+            : request.Status.Trim().ToUpperInvariant();
 
         // Chuẩn hóa search
         var search = string.IsNullOrWhiteSpace(request.Search) ? null : request.Search.Trim();

@@ -2,6 +2,7 @@ using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -16,7 +17,8 @@ public class VerifyEmailOtpCommandHandlerTests
     private readonly Mock<IAffiliateApplicationRepository> _affiliateApplicationRepositoryMock;
     private readonly Mock<ICompanyVerificationRequestRepository> _companyVerificationRequestRepositoryMock;
     private readonly Mock<ICompanyRepository> _companyRepositoryMock;
-    private readonly Mock<IEmailService> _emailServiceMock;
+    private readonly Mock<IEmailOutboxRepository> _emailOutboxRepositoryMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<IEmailNormalizer> _emailNormalizerMock;
     private readonly Mock<IOtpService> _otpServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
@@ -32,7 +34,8 @@ public class VerifyEmailOtpCommandHandlerTests
         _affiliateApplicationRepositoryMock = new Mock<IAffiliateApplicationRepository>();
         _companyVerificationRequestRepositoryMock = new Mock<ICompanyVerificationRequestRepository>();
         _companyRepositoryMock = new Mock<ICompanyRepository>();
-        _emailServiceMock = new Mock<IEmailService>();
+        _emailOutboxRepositoryMock = new Mock<IEmailOutboxRepository>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _emailNormalizerMock = new Mock<IEmailNormalizer>();
         _otpServiceMock = new Mock<IOtpService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
@@ -44,7 +47,8 @@ public class VerifyEmailOtpCommandHandlerTests
             _affiliateApplicationRepositoryMock.Object,
             _companyVerificationRequestRepositoryMock.Object,
             _companyRepositoryMock.Object,
-            _emailServiceMock.Object,
+            _emailOutboxRepositoryMock.Object,
+            _auditLogServiceMock.Object,
             _emailNormalizerMock.Object,
             _otpServiceMock.Object,
             _unitOfWorkMock.Object,
@@ -343,6 +347,12 @@ public class VerifyEmailOtpCommandHandlerTests
         _affiliateApplicationRepositoryMock.Verify(x => x.Update(affiliateApp), Times.Once);
         _userRepositoryMock.Verify(x => x.Update(affiliateUser), Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _emailOutboxRepositoryMock.Verify(x => x.AddAsync(
+            It.Is<EmailOutbox>(item => item.TemplateCode == "AFFILIATE_REGISTRATION_UNDER_REVIEW" && item.Status == "PENDING"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _auditLogServiceMock.Verify(x => x.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.EmailVerified && entry.ActorUserId == affiliateUser.UserId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -410,5 +420,11 @@ public class VerifyEmailOtpCommandHandlerTests
         _companyRepositoryMock.Verify(x => x.Update(company), Times.Once);
         _userRepositoryMock.Verify(x => x.Update(clientUser), Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _emailOutboxRepositoryMock.Verify(x => x.AddAsync(
+            It.Is<EmailOutbox>(item => item.TemplateCode == "CLIENT_REGISTRATION_UNDER_REVIEW" && item.Status == "PENDING"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _auditLogServiceMock.Verify(x => x.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.EmailVerified && entry.ActorUserId == clientUser.UserId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 }

@@ -18,6 +18,7 @@ public class RegisterClientCommandHandler : IRequestHandler<RegisterClientComman
     private readonly ICompanyVerificationRequestRepository _companyVerificationRequestRepository;
     private readonly IUserTokenRepository _userTokenRepository;
     private readonly IEmailOutboxRepository _emailOutboxRepository;
+    private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IOtpService _otpService;
@@ -34,6 +35,7 @@ public class RegisterClientCommandHandler : IRequestHandler<RegisterClientComman
         ICompanyVerificationRequestRepository companyVerificationRequestRepository,
         IUserTokenRepository userTokenRepository,
         IEmailOutboxRepository emailOutboxRepository,
+        IAuditLogService auditLogService,
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         IOtpService otpService,
@@ -49,6 +51,7 @@ public class RegisterClientCommandHandler : IRequestHandler<RegisterClientComman
         _companyVerificationRequestRepository = companyVerificationRequestRepository;
         _userTokenRepository = userTokenRepository;
         _emailOutboxRepository = emailOutboxRepository;
+        _auditLogService = auditLogService;
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _otpService = otpService;
@@ -210,6 +213,15 @@ public class RegisterClientCommandHandler : IRequestHandler<RegisterClientComman
             };
 
             await _emailOutboxRepository.AddAsync(emailOutbox, cancellationToken);
+
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.ClientRegistered,
+                EntityType = "COMPANY_VERIFICATION_REQUEST",
+                EntityId = verificationRequest.CompanyVerificationRequestId,
+                NewValues = new { userId = newUser.UserId, companyId = newCompany.CompanyId, status = "PENDING", accountType = "CLIENT" },
+                Source = AuditSources.Api
+            }, cancellationToken);
 
             // 12. Commit Transaction
             await _unitOfWork.CommitTransactionAsync(cancellationToken);

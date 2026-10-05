@@ -111,6 +111,7 @@ public static class DependencyInjection
         });
         services.AddHostedService<HRConnect.Infrastructure.Services.Integration.Mf03ScoringDispatcher>();
         services.AddHostedService<HRConnect.Infrastructure.Services.SubmissionConsents.SubmissionConsentExpiryWorker>();
+        services.AddHostedService<AccountLifecycleEmailOutboxWorker>();
 
         // 5. Cloudflare R2 Object Storage & CV Storage
         var r2Settings = new R2Settings();

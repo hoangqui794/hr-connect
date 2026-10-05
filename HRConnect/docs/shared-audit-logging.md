@@ -92,6 +92,27 @@ The application uses the existing `public.audit_log` table. Migration
 allowed values, backfills existing rows, preserves the append-only trigger, and
 adds indexes for operational filtering. It does not create another log table.
 
+## Auth and approval events
+
+| Action | Entity | Trigger |
+| --- | --- | --- |
+| `CANDIDATE_REGISTERED` | `APP_USER` | Candidate registration data is committed |
+| `AFFILIATE_REGISTERED` | `AFFILIATE_APPLICATION` | Affiliate registration data is committed |
+| `CLIENT_REGISTERED` | `COMPANY_VERIFICATION_REQUEST` | Client and Company registration data is committed |
+| `EMAIL_VERIFIED` | `APP_USER` | A registration OTP is accepted |
+| `AFFILIATE_APPROVED` / `AFFILIATE_REJECTED` | `AFFILIATE_APPLICATION` | Admin decides an Affiliate application |
+| `CLIENT_APPROVED` / `CLIENT_REJECTED` | `COMPANY_VERIFICATION_REQUEST` | Admin decides a Client verification request |
+| `PASSWORD_CHANGED` | `APP_USER` | An authenticated user changes password and sessions are revoked |
+| `PASSWORD_RESET` | `APP_USER` | A password-reset OTP is accepted and sessions are revoked |
+| `SESSION_REVOKED` | `REFRESH_TOKEN` | Logout revokes an active refresh-token session |
+| `ALL_SESSIONS_REVOKED` | `APP_USER` | An authenticated user requests logout on all devices |
+| `REFRESH_TOKEN_REUSE_DETECTED` | `REFRESH_TOKEN` | The system detects reuse of a revoked/replaced token and revokes active sessions |
+
+Refresh-token reuse is classified as a `SYSTEM` actor with no `actor_user_id`.
+The affected account ID is stored as small event metadata; the caller may be an
+attacker and must not be attributed to the affected user. Passwords, OTP values,
+token values, and token hashes are never included.
+
 ## MF04 events
 
 MF04 writes audit events for all state-changing Interview, Offer, Application,

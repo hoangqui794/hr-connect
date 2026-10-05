@@ -2,6 +2,7 @@ using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Auth.Commands.ChangePassword;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,7 @@ public class ChangePasswordCommandHandlerTests
     private readonly Mock<IRefreshTokenRepository> _refreshTokenRepositoryMock;
     private readonly Mock<IPasswordHasher> _passwordHasherMock;
     private readonly Mock<ICurrentUserService> _currentUserServiceMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<ILogger<ChangePasswordCommandHandler>> _loggerMock;
 
@@ -26,6 +28,7 @@ public class ChangePasswordCommandHandlerTests
         _refreshTokenRepositoryMock = new Mock<IRefreshTokenRepository>();
         _passwordHasherMock = new Mock<IPasswordHasher>();
         _currentUserServiceMock = new Mock<ICurrentUserService>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _loggerMock = new Mock<ILogger<ChangePasswordCommandHandler>>();
 
@@ -34,6 +37,7 @@ public class ChangePasswordCommandHandlerTests
             _refreshTokenRepositoryMock.Object,
             _passwordHasherMock.Object,
             _currentUserServiceMock.Object,
+            _auditLogServiceMock.Object,
             _unitOfWorkMock.Object,
             _loggerMock.Object);
     }
@@ -217,9 +221,43 @@ public class ChangePasswordCommandHandlerTests
         // Sessions/refresh tokens revoked
         _refreshTokenRepositoryMock.Verify(x => x.RevokeAllByUserIdAsync(userId, "PASSWORD_CHANGE", It.IsAny<CancellationToken>()), Times.Once);
 
+        // Audit PASSWORD_CHANGED recorded
+        _auditLogServiceMock.Verify(x => x.AddAsync(
+            It.Is<AuditEntry>(a =>
+                a.Action == AuditActions.PasswordChanged &&
+                a.EntityType == "APP_USER" &&
+                a.EntityId == userId &&
+                a.ActorUserId == userId),
+            It.IsAny<CancellationToken>()), Times.Once);
+
         // Transaction lifecycle verified
         _unitOfWorkMock.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotAudit_WhenChangePasswordFails()
+    {
+        // Arrange — wrong current password → no audit
+        var userId = Guid.NewGuid();
+        var user = new AppUser
+        {
+            UserId = userId,
+            Email = "user@example.com",
+            PasswordHash = "$2a$12$hash",
+            Status = "ACTIVE"
+        };
+        var command = new ChangePasswordCommand("Wrong@123", "New@123") { UserId = userId };
+
+        _userRepositoryMock.Setup(x => x.GetByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _passwordHasherMock.Setup(x => x.Verify("Wrong@123", user.PasswordHash)).Returns(false);
+
+        // Act
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BadRequestException>();
+        _auditLogServiceMock.Verify(x => x.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

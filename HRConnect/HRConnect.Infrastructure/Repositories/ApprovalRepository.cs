@@ -67,20 +67,15 @@ public class ApprovalRepository : IApprovalRepository
             query = affiliateQuery.Concat(clientQuery);
         }
 
+        // Hồ sơ PENDING chưa xác thực OTP không phải là một yêu cầu để Admin xét duyệt.
+        // Điều kiện này luôn áp dụng, kể cả khi caller không gửi status.
+        query = query.Where(x => x.Status != "PENDING");
+
         // 1. Lọc theo Status
         if (!string.IsNullOrWhiteSpace(status))
         {
             var normalizedStatus = status.Trim().ToUpperInvariant();
-            if (normalizedStatus == "PENDING")
-            {
-                // Với Admin, "PENDING" là hàng chờ duyệt sau khi người dùng đã xác thực OTP.
-                // PENDING ở domain vẫn là hồ sơ đang chờ xác thực email và không được lộ vào hàng chờ này.
-                query = query.Where(x => x.Status == "UNDER_REVIEW");
-            }
-            else
-            {
-                query = query.Where(x => x.Status == normalizedStatus);
-            }
+            query = query.Where(x => x.Status == normalizedStatus);
         }
 
         // 2. Tìm kiếm (Search)

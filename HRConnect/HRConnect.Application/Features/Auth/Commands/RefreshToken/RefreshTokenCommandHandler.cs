@@ -16,6 +16,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
     private readonly IUserRepository _userRepository;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IOtpService _otpService;
+    private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly JwtSettings _jwtSettings;
     private readonly ILogger<RefreshTokenCommandHandler> _logger;
@@ -25,6 +26,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         IUserRepository userRepository,
         IJwtTokenGenerator jwtTokenGenerator,
         IOtpService otpService,
+        IAuditLogService auditLogService,
         IUnitOfWork unitOfWork,
         IOptions<JwtSettings> jwtOptions,
         ILogger<RefreshTokenCommandHandler> logger)
@@ -33,6 +35,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         _userRepository = userRepository;
         _jwtTokenGenerator = jwtTokenGenerator;
         _otpService = otpService;
+        _auditLogService = auditLogService;
         _unitOfWork = unitOfWork;
         _jwtSettings = jwtOptions.Value;
         _logger = logger;
@@ -48,6 +51,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         var incomingTokenHash = _otpService.HashOtp(request.RefreshToken.Trim());
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        var transactionCommitted = false;
 
         try
         {
@@ -67,8 +71,21 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
                     existingToken.UserId);
 
                 await _refreshTokenRepository.RevokeAllByUserIdAsync(existingToken.UserId, "TOKEN_REUSE_DETECTED", cancellationToken);
+
+                // Ghi audit REFRESH_TOKEN_REUSE_DETECTED trước commit cùng transaction
+                await _auditLogService.AddAsync(new AuditEntry
+                {
+                    Action = AuditActions.RefreshTokenReuseDetected,
+                    EntityType = "REFRESH_TOKEN",
+                    EntityId = existingToken.RefreshTokenId,
+                    ActorType = AuditActorTypes.System,
+                    NewValues = new { affectedUserId = existingToken.UserId, allSessionsRevoked = true },
+                    Source = AuditSources.Api
+                }, cancellationToken);
+
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
                 await _unitOfWork.CommitTransactionAsync(cancellationToken);
+                transactionCommitted = true;
 
                 throw new BadRequestException("Token làm mới không hợp lệ hoặc đã hết hạn.");
             }
@@ -194,6 +211,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            transactionCommitted = true;
 
             _logger.LogInformation("Xoay vòng refresh token thành công cho UserId {UserId} ({Email}).", user.UserId, user.Email);
 
@@ -222,7 +240,13 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         }
         catch
         {
-            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            // Reuse detection deliberately returns 400 after its revocation/audit transaction
+            // has committed. Do not roll back or clear that completed unit of work.
+            if (!transactionCommitted)
+            {
+                await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+            }
+
             throw;
         }
     }
