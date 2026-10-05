@@ -34,7 +34,7 @@ public class Mf04SchemaReconcileTests
         }
 
         AssertRoleContainsPermissions(sql, "CLIENT_COMPANY_USER", Mf04Permissions);
-        AssertRoleContainsPermissions(sql, "INTERNAL_HR", Mf04Permissions);
+        AssertRoleDoesNotContainPermissions(sql, "INTERNAL_HR", Mf04Permissions);
         AssertRoleContainsPermissions(sql, "PLATFORM_ADMIN", Mf04Permissions);
     }
 
@@ -52,7 +52,7 @@ public class Mf04SchemaReconcileTests
         }
 
         AssertRoleContainsPermissions(sql, "CLIENT_COMPANY_USER", Mf04Permissions);
-        AssertRoleContainsPermissions(sql, "INTERNAL_HR", Mf04Permissions);
+        AssertRoleDoesNotContainPermissions(sql, "INTERNAL_HR", Mf04Permissions);
         AssertRoleContainsPermissions(sql, "PLATFORM_ADMIN", Mf04Permissions);
     }
 
@@ -173,6 +173,21 @@ public class Mf04SchemaReconcileTests
         foreach (var perm in permissions)
         {
             section.Should().Contain($"'{perm}'", $"role {roleCode} should have permission {perm}");
+        }
+    }
+
+    private static void AssertRoleDoesNotContainPermissions(string sql, string roleCode, string[] permissions)
+    {
+        var roleEnd = sql.IndexOf($"WHERE r.code = '{roleCode}'", StringComparison.Ordinal);
+        roleEnd.Should().BeGreaterThan(0, $"role {roleCode} should exist in seed script");
+
+        var roleStart = sql.LastIndexOf("JOIN public.permission p", roleEnd, StringComparison.Ordinal);
+        roleStart.Should().BeGreaterThanOrEqualTo(0);
+
+        var section = sql[roleStart..roleEnd];
+        foreach (var permission in permissions)
+        {
+            section.Should().NotContain($"'{permission}'", $"role {roleCode} must not mutate MF04 recruitment data");
         }
     }
 

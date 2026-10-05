@@ -20,7 +20,7 @@ public static class InterviewEndpoints
 {
     private const string ViewCompanyPermission = "interview.view_company";
     private const string ViewOwnPermission = "interview.view_own";
-    private const string ManagePermission = "interview.manage";
+    private const string InternalViewPermission = "application.view";
     private const string CreatePermission = "interview.create";
     private const string UpdatePermission = "interview.update";
     private const string RecordResultPermission = "interview.record_result";
@@ -56,13 +56,13 @@ public static class InterviewEndpoints
             }
 
             var isClient = PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, InternalViewPermission);
             var isCandidate = PermissionAuthorization.HasPermission(user, ViewOwnPermission);
             var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
             if (!isClient && !isInternal && !isCandidate && !isAdmin)
             {
-                return PermissionAuthorization.Forbidden(ManagePermission);
+                return PermissionAuthorization.Forbidden(InternalViewPermission);
             }
 
             try
@@ -97,7 +97,7 @@ public static class InterviewEndpoints
         })
         .WithName("GetInterviews")
         .WithSummary("Lấy danh sách lịch phỏng vấn")
-        .WithDescription("Hỗ trợ lọc theo jobId, applicationId, interviewerId, status, result, khoảng thời gian và phân trang. Tự động áp dụng phân quyền theo Client Company (interview.view_company), Internal HR (interview.manage), hoặc Candidate (interview.view_own).")
+        .WithDescription("Hỗ trợ lọc theo jobId, applicationId, interviewerId, status, result, khoảng thời gian và phân trang. Tự động áp dụng phân quyền theo Client Company (interview.view_company), Internal HR (application.view), hoặc Candidate (interview.view_own).")
         .Produces<GetInterviewsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -117,13 +117,13 @@ public static class InterviewEndpoints
             }
 
             var isClient = PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, InternalViewPermission);
             var isCandidate = PermissionAuthorization.HasPermission(user, ViewOwnPermission);
             var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
             if (!isClient && !isInternal && !isCandidate && !isAdmin)
             {
-                return PermissionAuthorization.Forbidden(ManagePermission);
+                return PermissionAuthorization.Forbidden(InternalViewPermission);
             }
 
             try
@@ -154,7 +154,7 @@ public static class InterviewEndpoints
         })
         .WithName("GetInterviewDetail")
         .WithSummary("Lấy chi tiết một lịch phỏng vấn")
-        .WithDescription("Dành cho Client Company (interview.view_company), Internal HR / Admin (interview.manage), hoặc Candidate (interview.view_own). Trả về chi tiết ứng viên, công việc, hình thức, link/địa điểm, danh sách người tham gia, lịch sử dời/hủy lịch và kết quả đánh giá.")
+        .WithDescription("Dành cho Client Company (interview.view_company), Internal HR / Admin (application.view), hoặc Candidate (interview.view_own). Trả về chi tiết ứng viên, công việc, hình thức, link/địa điểm, danh sách người tham gia, lịch sử dời/hủy lịch và kết quả đánh giá.")
         .Produces<GetInterviewDetailResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -176,10 +176,8 @@ public static class InterviewEndpoints
             }
 
             var canCreate = PermissionAuthorization.HasPermission(user, CreatePermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!canCreate && !isInternal && !isAdmin)
+            if (!canCreate)
             {
                 return PermissionAuthorization.Forbidden(CreatePermission);
             }
@@ -196,8 +194,8 @@ public static class InterviewEndpoints
                     MeetingLink: request.MeetingLink,
                     Participants: request.Participants,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: canCreate && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin,
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false,
                     ApplicationConcurrencyToken: request.ApplicationConcurrencyToken
                 );
 
@@ -223,7 +221,7 @@ public static class InterviewEndpoints
         })
         .WithName("ScheduleInterview")
         .WithSummary("Lập lịch phỏng vấn mới")
-        .WithDescription("Dành cho Client Company (interview.create) hoặc Internal HR / Admin (interview.manage). Chỉ lập lịch vòng đầu khi hồ sơ SHORTLISTED; các vòng tiếp theo dùng hồ sơ INTERVIEW. Lập lịch đầu tiên chuyển hồ sơ sang INTERVIEW.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền interview.create được lập lịch. Lập lịch vòng đầu khi hồ sơ SHORTLISTED; các vòng tiếp theo dùng hồ sơ INTERVIEW. Lập lịch đầu tiên chuyển hồ sơ sang INTERVIEW.")
         .Produces<ScheduleInterviewResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -246,10 +244,8 @@ public static class InterviewEndpoints
             }
 
             var canUpdate = PermissionAuthorization.HasPermission(user, UpdatePermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!canUpdate && !isInternal && !isAdmin)
+            if (!canUpdate)
             {
                 return PermissionAuthorization.Forbidden(UpdatePermission);
             }
@@ -265,8 +261,8 @@ public static class InterviewEndpoints
                     Participants: request.Participants,
                     ConcurrencyToken: request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: canUpdate && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -291,7 +287,7 @@ public static class InterviewEndpoints
         })
         .WithName("UpdateInterview")
         .WithSummary("Cập nhật thông tin lịch phỏng vấn")
-        .WithDescription("Dành cho Client Company (interview.update) hoặc Internal HR / Admin (interview.manage). Chỉ cập nhật khi lịch ở trạng thái SCHEDULED. Hỗ trợ kiểm tra ConcurrencyToken chống ghi đè dữ liệu.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền interview.update được cập nhật lịch ở trạng thái SCHEDULED. Hỗ trợ kiểm tra ConcurrencyToken chống ghi đè dữ liệu.")
         .Produces<UpdateInterviewResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -314,10 +310,8 @@ public static class InterviewEndpoints
             }
 
             var canUpdate = PermissionAuthorization.HasPermission(user, UpdatePermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!canUpdate && !isInternal && !isAdmin)
+            if (!canUpdate)
             {
                 return PermissionAuthorization.Forbidden(UpdatePermission);
             }
@@ -333,8 +327,8 @@ public static class InterviewEndpoints
                     MeetingLink: request.MeetingLink,
                     ConcurrencyToken: request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: canUpdate && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -359,7 +353,7 @@ public static class InterviewEndpoints
         })
         .WithName("RescheduleInterview")
         .WithSummary("Dời lịch phỏng vấn sang thời gian mới")
-        .WithDescription("Dành cho Client Company (interview.update) hoặc Internal HR / Admin (interview.manage). Bắt buộc nhập thời gian mới và lý do dời lịch. Lịch vẫn giữ trạng thái SCHEDULED; history lưu giờ cũ và giờ mới.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền interview.update được dời lịch. Bắt buộc nhập thời gian mới và lý do dời lịch; history lưu giờ cũ và giờ mới.")
         .Produces<RescheduleInterviewResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -382,10 +376,8 @@ public static class InterviewEndpoints
             }
 
             var canUpdate = PermissionAuthorization.HasPermission(user, UpdatePermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!canUpdate && !isInternal && !isAdmin)
+            if (!canUpdate)
             {
                 return PermissionAuthorization.Forbidden(UpdatePermission);
             }
@@ -397,8 +389,8 @@ public static class InterviewEndpoints
                     Reason: request.Reason,
                     ConcurrencyToken: request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: canUpdate && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -423,7 +415,7 @@ public static class InterviewEndpoints
         })
         .WithName("CancelInterview")
         .WithSummary("Hủy lịch phỏng vấn")
-        .WithDescription("Dành cho Client Company (interview.update) hoặc Internal HR / Admin (interview.manage). Bắt buộc nhập lý do hủy. Chuyển trạng thái sang CANCELLED và ghi lịch sử trạng thái.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền interview.update được hủy lịch. Bắt buộc nhập lý do hủy; hệ thống chuyển trạng thái sang CANCELLED và ghi lịch sử.")
         .Produces<CancelInterviewResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -446,9 +438,7 @@ public static class InterviewEndpoints
             }
 
             var canRecord = PermissionAuthorization.HasPermission(user, RecordResultPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
-            if (!canRecord && !isInternal && !isAdmin)
+            if (!canRecord)
             {
                 return PermissionAuthorization.Forbidden(RecordResultPermission);
             }
@@ -460,8 +450,8 @@ public static class InterviewEndpoints
                     request.Reason,
                     request.ConcurrencyToken,
                     userId.Value,
-                    canRecord && !isInternal && !isAdmin,
-                    isInternal || isAdmin), cancellationToken);
+                    true,
+                    false), cancellationToken);
                 return Results.Ok(response);
             }
             catch (NotFoundException ex)
@@ -483,6 +473,7 @@ public static class InterviewEndpoints
         })
         .WithName("RecordInterviewNoShow")
         .WithSummary("Ghi nhận ứng viên vắng mặt phỏng vấn")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền interview.record_result được ghi nhận ứng viên vắng mặt.")
         .Produces<RecordInterviewNoShowResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -505,10 +496,8 @@ public static class InterviewEndpoints
             }
 
             var canRecord = PermissionAuthorization.HasPermission(user, RecordResultPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!canRecord && !isInternal && !isAdmin)
+            if (!canRecord)
             {
                 return PermissionAuthorization.Forbidden(RecordResultPermission);
             }
@@ -523,8 +512,8 @@ public static class InterviewEndpoints
                     NextAction: request.NextAction,
                     ConcurrencyToken: request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: canRecord && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -549,7 +538,7 @@ public static class InterviewEndpoints
         })
         .WithName("RecordInterviewResult")
         .WithSummary("Ghi nhận kết quả đánh giá phỏng vấn")
-        .WithDescription("Dành cho Client Company (interview.record_result) hoặc Internal HR / Admin (interview.manage). Kết quả: PASS, FAIL hoặc BACKUP. Kết quả cuối chuyển hồ sơ lần lượt sang OFFER_PENDING, INTERVIEW_FAILED hoặc BACKUP.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền interview.record_result được ghi kết quả PASS, FAIL hoặc BACKUP. Kết quả cuối chuyển hồ sơ lần lượt sang OFFER_PENDING, INTERVIEW_FAILED hoặc BACKUP.")
         .Produces<RecordInterviewResultResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -571,13 +560,13 @@ public static class InterviewEndpoints
             }
 
             var isClient = PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, InternalViewPermission);
             var isCandidate = PermissionAuthorization.HasPermission(user, ViewOwnPermission);
             var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
             if (!isClient && !isInternal && !isCandidate && !isAdmin)
             {
-                return PermissionAuthorization.Forbidden(ManagePermission);
+                return PermissionAuthorization.Forbidden(InternalViewPermission);
             }
 
             try
@@ -608,7 +597,7 @@ public static class InterviewEndpoints
         })
         .WithName("GetInterviewHistory")
         .WithSummary("Lấy lịch sử thay đổi trạng thái, dời, hủy lịch phỏng vấn")
-        .WithDescription("Dành cho Client Company (interview.view_company), Candidate (interview.view_own) hoặc Internal HR / Admin (interview.manage). Trả về danh sách biến động trạng thái và lý do theo thời gian.")
+        .WithDescription("Dành cho Client Company (interview.view_company), Candidate (interview.view_own) hoặc Internal HR / Admin (application.view). Trả về danh sách biến động trạng thái và lý do theo thời gian.")
         .Produces<GetInterviewHistoryResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)

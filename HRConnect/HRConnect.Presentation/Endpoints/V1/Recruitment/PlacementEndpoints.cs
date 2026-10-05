@@ -11,9 +11,9 @@ namespace HRConnect.Presentation.Endpoints.V1.Recruitment;
 
 public static class PlacementEndpoints
 {
-    private const string PlacementManagePermission = "placement.manage";
     private const string PlacementConfirmPermission = "placement.confirm";
     private const string ViewCompanyPermission = "application.view_company";
+    private const string InternalViewPermission = "application.view";
 
     public static IEndpointRouteBuilder MapPlacementEndpoints(this IEndpointRouteBuilder app)
     {
@@ -43,13 +43,12 @@ public static class PlacementEndpoints
 
             var isClient = PermissionAuthorization.HasPermission(user, PlacementConfirmPermission) ||
                            PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, PlacementManagePermission) ||
-                             PermissionAuthorization.HasPermission(user, "application.view");
+            var isInternal = PermissionAuthorization.HasPermission(user, InternalViewPermission);
             var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
             if (!isClient && !isInternal && !isAdmin)
             {
-                return PermissionAuthorization.Forbidden(PlacementManagePermission);
+                return PermissionAuthorization.Forbidden(InternalViewPermission);
             }
 
             var isInternalOrAdmin = user.IsInRole("INTERNAL_HR") || isAdmin || isInternal;
@@ -85,7 +84,7 @@ public static class PlacementEndpoints
         })
         .WithName("GetPlacements")
         .WithSummary("Lấy danh sách tiếp nhận việc (Placements)")
-        .WithDescription("Dành cho Client Company HR / Admin (xem các placement của công ty mình) hoặc Internal HR / Admin (xem toàn hệ thống qua quyền placement.manage). Hỗ trợ lọc theo doanh nghiệp, công việc, ứng viên, trạng thái, khoảng ngày đi làm và phân trang.")
+        .WithDescription("Dành cho Client Company HR / Admin (xem các placement của công ty mình) hoặc Internal HR / Admin (xem toàn hệ thống qua quyền application.view). Hỗ trợ lọc theo doanh nghiệp, công việc, ứng viên, trạng thái, khoảng ngày đi làm và phân trang.")
         .Produces<GetPlacementsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -106,14 +105,13 @@ public static class PlacementEndpoints
 
             var isClient = PermissionAuthorization.HasPermission(user, PlacementConfirmPermission) ||
                            PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, PlacementManagePermission) ||
-                             PermissionAuthorization.HasPermission(user, "application.view");
+            var isInternal = PermissionAuthorization.HasPermission(user, InternalViewPermission);
             var isCandidate = user.IsInRole("CANDIDATE");
             var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
             if (!isClient && !isInternal && !isCandidate && !isAdmin)
             {
-                return PermissionAuthorization.Forbidden(PlacementManagePermission);
+                return PermissionAuthorization.Forbidden(InternalViewPermission);
             }
 
             var isInternalOrAdmin = user.IsInRole("INTERNAL_HR") || isAdmin || isInternal;
@@ -144,7 +142,7 @@ public static class PlacementEndpoints
         })
         .WithName("GetPlacementDetail")
         .WithSummary("Lấy chi tiết tiếp nhận việc (Placement Detail)")
-        .WithDescription("Dành cho Client Company HR / Admin (xem placement thuộc công ty mình), Candidate (xem placement của chính mình), hoặc Internal HR / Admin (xem toàn hệ thống qua quyền placement.manage). Trả về thông tin chi tiết ứng viên, công việc, offer, thử việc (probation), bảo hành (warranty) và các hành động được phép.")
+        .WithDescription("Dành cho Client Company HR / Admin (xem placement thuộc công ty mình), Candidate (xem placement của chính mình), hoặc Internal HR / Admin (xem toàn hệ thống qua quyền application.view). Trả về thông tin chi tiết ứng viên, công việc, offer, thử việc (probation), bảo hành (warranty) và các hành động được phép.")
         .Produces<GetPlacementDetailResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)

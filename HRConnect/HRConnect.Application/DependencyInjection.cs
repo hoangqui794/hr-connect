@@ -1,5 +1,6 @@
 using System.Reflection;
 using FluentValidation;
+using HRConnect.Application.Features.Offers.Common;
 using HRConnect.Application.Features.SubmissionConsents.Common;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,6 +15,7 @@ public static class DependencyInjection
 
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
         services.AddScoped<ISubmissionConsentExpiryService, SubmissionConsentExpiryService>();
+        services.AddScoped<IOfferExpiryService, OfferExpiryService>();
 
         return services;
     }

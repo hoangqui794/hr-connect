@@ -31,6 +31,7 @@ public static class AuditActions
     public const string UserLoginUnlocked = "USER_LOGIN_UNLOCKED";
     public const string AffiliateCvViewed = "AFFILIATE_CV_VIEWED";
     public const string ApplicationStatusChanged = "APPLICATION_STATUS_CHANGED";
+    public const string ApplicationScreened = "APPLICATION_SCREENED";
     public const string ApplicationBackupDecided = "APPLICATION_BACKUP_DECIDED";
     public const string ApplicationWithdrawn = "APPLICATION_WITHDRAWN";
     public const string ApplicationPlannedStartDateUpdated = "APPLICATION_PLANNED_START_DATE_UPDATED";
@@ -47,6 +48,7 @@ public static class AuditActions
     public const string OfferAccepted = "OFFER_ACCEPTED";
     public const string OfferDeclined = "OFFER_DECLINED";
     public const string OfferWithdrawn = "OFFER_WITHDRAWN";
+    public const string OfferExpired = "OFFER_EXPIRED";
     public const string PlacementConfirmed = "PLACEMENT_CONFIRMED";
     public const string CandidateCvDownloadUrlIssued = "CANDIDATE_CV_DOWNLOAD_URL_ISSUED";
     public const string InternalCvDownloadUrlIssued = "INTERNAL_CV_DOWNLOAD_URL_ISSUED";
