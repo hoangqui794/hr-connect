@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -11,6 +12,7 @@ public class LogoutCommandHandler : IRequestHandler<LogoutCommand, LogoutRespons
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IOtpService _otpService;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<LogoutCommandHandler> _logger;
 
@@ -18,12 +20,14 @@ public class LogoutCommandHandler : IRequestHandler<LogoutCommand, LogoutRespons
         IRefreshTokenRepository refreshTokenRepository,
         IOtpService otpService,
         ICurrentUserService currentUserService,
+        IAuditLogService auditLogService,
         IUnitOfWork unitOfWork,
         ILogger<LogoutCommandHandler> logger)
     {
         _refreshTokenRepository = refreshTokenRepository;
         _otpService = otpService;
         _currentUserService = currentUserService;
+        _auditLogService = auditLogService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -68,6 +72,19 @@ public class LogoutCommandHandler : IRequestHandler<LogoutCommand, LogoutRespons
                 existingToken.RevokeReason = "LOGOUT";
 
                 _refreshTokenRepository.Update(existingToken);
+
+                // Ghi audit SESSION_REVOKED cùng SaveChanges
+                await _auditLogService.AddAsync(new AuditEntry
+                {
+                    Action = AuditActions.SessionRevoked,
+                    EntityType = "REFRESH_TOKEN",
+                    EntityId = existingToken.RefreshTokenId,
+                    ActorUserId = userId.Value,
+                    ActorType = AuditActorTypes.User,
+                    NewValues = new { userId = userId.Value, reason = "LOGOUT" },
+                    Source = AuditSources.Api
+                }, cancellationToken);
+
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 _logger.LogInformation("Người dùng {UserId} đăng xuất thành công. Refresh token đã được thu hồi.", userId.Value);
