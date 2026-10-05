@@ -20,6 +20,7 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IUserTokenRepository _userTokenRepository;
     private readonly IEmailOutboxRepository _emailOutboxRepository;
+    private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IOtpService _otpService;
@@ -36,6 +37,7 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
         IUserRoleRepository userRoleRepository,
         IUserTokenRepository userTokenRepository,
         IEmailOutboxRepository emailOutboxRepository,
+        IAuditLogService auditLogService,
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         IOtpService otpService,
@@ -51,6 +53,7 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
         _userRoleRepository = userRoleRepository;
         _userTokenRepository = userTokenRepository;
         _emailOutboxRepository = emailOutboxRepository;
+        _auditLogService = auditLogService;
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _otpService = otpService;
@@ -224,6 +227,15 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
             };
 
             await _emailOutboxRepository.AddAsync(emailOutbox, cancellationToken);
+
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.CandidateRegistered,
+                EntityType = "APP_USER",
+                EntityId = newUser.UserId,
+                NewValues = new { status = "PENDING", accountType = "CANDIDATE", candidateExisted = existingCandidate != null },
+                Source = AuditSources.Api
+            }, cancellationToken);
 
             // 12. Commit Transaction
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
