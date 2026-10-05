@@ -9,7 +9,7 @@ namespace HRConnect.UnitTests.Repositories;
 public class ApprovalRepositoryTests
 {
     [Fact]
-    public async Task GetApprovalsAsync_WithPendingFilter_ShouldOnlyReturnOtpVerifiedQueue()
+    public async Task GetApprovalsAsync_WithUnderReviewFilter_ShouldOnlyReturnOtpVerifiedQueue()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -29,7 +29,7 @@ public class ApprovalRepositoryTests
 
         var (items, totalCount) = await repository.GetApprovalsAsync(
             type: "AFFILIATE",
-            status: "PENDING",
+            status: "UNDER_REVIEW",
             search: null,
             sortBy: "submittedAt",
             sortDirection: "desc",

@@ -31,6 +31,7 @@ public static class AdminApprovalEndpoints
             [FromQuery] string sortBy = "submittedAt",
             [FromQuery] string sortDirection = "desc",
             [FromServices] ISender sender = null!,
+            [FromServices] IValidator<GetApprovalListQuery> validator = null!,
             ClaimsPrincipal user = null!,
             CancellationToken cancellationToken = default) =>
         {
@@ -73,13 +74,20 @@ public static class AdminApprovalEndpoints
                 ?? (!canVerifyAffiliate && canVerifyCompany ? "CLIENT" : null);
 
             var query = new GetApprovalListQuery(effectiveType, status, search, page, pageSize, sortBy, sortDirection);
+            var validation = await validator.ValidateAsync(query, cancellationToken);
+            if (!validation.IsValid)
+            {
+                return Results.ValidationProblem(validation.ToDictionary());
+            }
+
             var result = await sender.Send(query, cancellationToken);
             return Results.Ok(result);
         })
         .WithName("GetApprovalList")
         .WithSummary("Lấy danh sách yêu cầu phê duyệt hợp nhất (Affiliate & Client)")
-        .WithDescription("Hỗ trợ lọc theo type (AFFILIATE, CLIENT), status (PENDING, APPROVED, REJECTED), search không phân biệt hoa thường, phân trang và sắp xếp. PENDING chỉ trả về hồ sơ UNDER_REVIEW đã xác thực OTP và đang chờ Admin duyệt.")
+        .WithDescription("Hỗ trợ lọc theo type (AFFILIATE, CLIENT), status (UNDER_REVIEW, APPROVED, REJECTED), search không phân biệt hoa thường, phân trang và sắp xếp. UNDER_REVIEW là hồ sơ đã xác thực OTP và đang chờ Admin xử lý; hồ sơ PENDING chưa xác thực OTP không xuất hiện trong API này.")
         .Produces<GetApprovalListResponse>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden);
 
