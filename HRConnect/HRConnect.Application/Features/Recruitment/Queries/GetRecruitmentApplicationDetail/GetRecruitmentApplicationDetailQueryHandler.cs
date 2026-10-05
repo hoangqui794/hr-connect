@@ -109,7 +109,7 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             };
         }
 
-        var allowedActions = ComputeAllowedActions(app);
+        var allowedActions = ComputeAllowedActions(app, request.IsClientCompanyUser);
 
         var data = new RecruitmentApplicationDetailData
         {
@@ -201,9 +201,14 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
         public RecruitmentAiInputFingerprintsDto? InputFingerprints { get; set; }
     }
 
-    private static List<string> ComputeAllowedActions(JobApplication app)
+    private static List<string> ComputeAllowedActions(JobApplication app, bool isClientCompanyUser)
     {
         var actions = new List<string>();
+        if (!isClientCompanyUser)
+        {
+            return actions;
+        }
+
         var status = (app.Status ?? string.Empty).ToUpperInvariant();
 
         var scheduledInterview = app.Interviews?
@@ -212,6 +217,21 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             .FirstOrDefault();
         var latestInterview = app.Interviews?.OrderByDescending(i => i.InterviewRound).ThenByDescending(i => i.CreatedAt).FirstOrDefault();
         var latestOffer = app.Offers?.OrderByDescending(o => o.OfferVersion).FirstOrDefault();
+
+        if (status == ApplicationStates.Submitted)
+        {
+            actions.Add("START_SCREENING");
+            actions.Add("SHORTLIST");
+            actions.Add("REJECT");
+            actions.Add("MARK_BACKUP");
+        }
+
+        if (status == ApplicationStates.Screening)
+        {
+            actions.Add("SHORTLIST");
+            actions.Add("REJECT");
+            actions.Add("MARK_BACKUP");
+        }
 
         if (status == ApplicationStates.Shortlisted)
         {
@@ -239,6 +259,8 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
         if (status == ApplicationStates.Backup)
         {
             actions.Add("SELECT_BACKUP");
+            actions.Add("SHORTLIST");
+            actions.Add("REJECT_BACKUP");
         }
 
         if (status == ApplicationStates.OfferPending)

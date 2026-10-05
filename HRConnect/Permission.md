@@ -569,27 +569,16 @@ JOIN public.permission p
         'candidate.view',
 
         'application.view',
-        'application.screen',
         'application.retry_ai_scoring',
 
         'submission.view',
         'attribution.view',
 
-        'interview.manage',
-        'offer.manage',
-        'placement.manage',
         'probation.manage',
         'warranty.manage',
 
         'commission.view',
-        'payout.view',
-
-        'interview.record_result',
-        'application.decide_backup',
-        'offer.send',
-        'offer.withdraw',
-        'placement.confirm',
-        'application.mark_not_started'
+        'payout.view'
     )
 WHERE r.code = 'INTERNAL_HR'
 ON CONFLICT (role_id, permission_id) DO NOTHING;

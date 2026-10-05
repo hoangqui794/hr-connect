@@ -123,9 +123,15 @@ entity event.
 | Area | Actions |
 | --- | --- |
 | Interview | `INTERVIEW_SCHEDULED`, `INTERVIEW_UPDATED`, `INTERVIEW_RESCHEDULED`, `INTERVIEW_CANCELLED`, `INTERVIEW_NO_SHOW_RECORDED`, `INTERVIEW_RESULT_RECORDED` |
-| Offer | `OFFER_DRAFT_CREATED`, `OFFER_UPDATED`, `OFFER_SENT`, `OFFER_ACCEPTED`, `OFFER_DECLINED`, `OFFER_WITHDRAWN` |
-| Application and placement | `APPLICATION_BACKUP_DECIDED`, `APPLICATION_WITHDRAWN`, `APPLICATION_PLANNED_START_DATE_UPDATED`, `APPLICATION_NOT_STARTED`, `APPLICATION_STATUS_CHANGED`, `PLACEMENT_CONFIRMED` |
+| Offer | `OFFER_DRAFT_CREATED`, `OFFER_UPDATED`, `OFFER_SENT`, `OFFER_ACCEPTED`, `OFFER_DECLINED`, `OFFER_WITHDRAWN`, `OFFER_EXPIRED` |
+| Application and placement | `APPLICATION_SCREENED`, `APPLICATION_BACKUP_DECIDED`, `APPLICATION_WITHDRAWN`, `APPLICATION_PLANNED_START_DATE_UPDATED`, `APPLICATION_NOT_STARTED`, `APPLICATION_STATUS_CHANGED`, `PLACEMENT_CONFIRMED` |
 
 MF04 audit payloads contain IDs, statuses, dates, version numbers, and small
 business metadata only. They must not contain concurrency tokens, meeting links,
 offer document URLs, detailed interview feedback, or candidate CV content.
+
+`OFFER_EXPIRED` is produced by `OFFER_EXPIRY_WORKER` after the end of an
+offer's expiry date. The worker changes only the offer from `SENT` to
+`EXPIRED`; it does not itself transition the Application, so an ordinary
+`OFFER_PENDING` application remains ready for a replacement offer. The event has no human actor and is marked as
+`SERVICE` / `BACKGROUND_WORKER`.

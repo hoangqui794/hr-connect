@@ -124,7 +124,7 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenInternalHrOrAdmin_ShouldReturnDetailForAnyCompany()
+    public async Task Handle_WhenInternalHrOrAdmin_ShouldReturnReadOnlyDetailForAnyCompany()
     {
         // Arrange
         var appId = Guid.NewGuid();
@@ -158,7 +158,7 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
         result.Success.Should().BeTrue();
         result.Data.ApplicationId.Should().Be(appId);
         result.Data.Offers.Should().HaveCount(1);
-        result.Data.AllowedActions.Should().Contain("WITHDRAW_OFFER");
+        result.Data.AllowedActions.Should().BeEmpty();
         _companyUserRepositoryMock.Verify(r => r.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -234,7 +234,7 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenInterviewPass_AllowedActionsShouldIncludeCreateOffer()
+    public async Task Handle_WhenCompanyUserViewsInterviewPass_AllowedActionsShouldIncludeCreateOffer()
     {
         // Arrange
         var appId = Guid.NewGuid();
@@ -252,11 +252,16 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
             .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(app);
 
+        var userId = Guid.NewGuid();
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+
         var query = new GetRecruitmentApplicationDetailQuery(
             ApplicationId: appId,
-            UserId: Guid.NewGuid(),
-            IsClientCompanyUser: false,
-            IsInternalHrOrAdmin: true
+            UserId: userId,
+            IsClientCompanyUser: true,
+            IsInternalHrOrAdmin: false
         );
 
         // Act
