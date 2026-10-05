@@ -6,6 +6,7 @@ using HRConnect.Application.Features.Recruitment.Commands.ConfirmPlannedStartDat
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmStartWork;
 using HRConnect.Application.Features.Recruitment.Commands.DecideBackupApplication;
 using HRConnect.Application.Features.Recruitment.Commands.MarkNotStarted;
+using HRConnect.Application.Features.Recruitment.Commands.UpdateApplicationScreeningStatus;
 using HRConnect.Application.Features.Recruitment.Commands.WithdrawApplication;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplications;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
@@ -26,12 +27,73 @@ public static class RecruitmentEndpoints
     private const string PlacementConfirmPermission = "placement.confirm";
     private const string MarkNotStartedPermission = "application.mark_not_started";
     private const string WithdrawOwnPermission = "application.withdraw_own";
+    private const string ReviewCompanyPermission = "candidate.review_company";
 
     public static IEndpointRouteBuilder MapRecruitmentEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/recruitment")
                        .WithTags("Recruitment")
                        .RequireAuthorization();
+        var companyJobGroup = app.MapGroup("/api/v1/jobs")
+            .WithTags("Recruitment")
+            .RequireAuthorization();
+
+        companyJobGroup.MapPatch("/{jobId:guid}/applications/{applicationId:guid}/status", async (
+            Guid jobId,
+            Guid applicationId,
+            [FromBody] UpdateApplicationScreeningStatusRequest request,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (!PermissionAuthorization.HasPermission(user, ReviewCompanyPermission))
+            {
+                return PermissionAuthorization.Forbidden(ReviewCompanyPermission);
+            }
+
+            try
+            {
+                var response = await sender.Send(new UpdateApplicationScreeningStatusCommand(
+                    jobId,
+                    applicationId,
+                    request.TargetStatus,
+                    request.Reason,
+                    request.ConcurrencyToken,
+                    userId.Value), cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("UpdateApplicationScreeningStatus")
+        .WithSummary("Company cập nhật trạng thái sàng lọc hồ sơ")
+        .WithDescription("Chỉ Client Company sở hữu Job mới được chuyển SUBMITTED sang SCREENING, SHORTLISTED, REJECTED hoặc BACKUP; SCREENING sang SHORTLISTED, REJECTED hoặc BACKUP; BACKUP sang SHORTLISTED hoặc BACKUP_NOT_SELECTED.")
+        .Produces<UpdateApplicationScreeningStatusResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
 
         // A01: GET /api/v1/recruitment/applications
         group.MapGet("/applications", async (
@@ -638,6 +700,13 @@ public class DecideBackupApplicationRequest
     public string Decision { get; set; } = string.Empty;
     public string? Reason { get; set; }
     public string? Note { get; set; }
+    public Guid? ConcurrencyToken { get; set; }
+}
+
+public class UpdateApplicationScreeningStatusRequest
+{
+    public string TargetStatus { get; set; } = string.Empty;
+    public string? Reason { get; set; }
     public Guid? ConcurrencyToken { get; set; }
 }
 

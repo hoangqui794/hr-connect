@@ -18,6 +18,7 @@ public static class AuditActions
     public const string UserLoginUnlocked = "USER_LOGIN_UNLOCKED";
     public const string AffiliateCvViewed = "AFFILIATE_CV_VIEWED";
     public const string ApplicationStatusChanged = "APPLICATION_STATUS_CHANGED";
+    public const string ApplicationScreened = "APPLICATION_SCREENED";
     public const string ApplicationBackupDecided = "APPLICATION_BACKUP_DECIDED";
     public const string ApplicationWithdrawn = "APPLICATION_WITHDRAWN";
     public const string ApplicationPlannedStartDateUpdated = "APPLICATION_PLANNED_START_DATE_UPDATED";
