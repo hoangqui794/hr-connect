@@ -17,7 +17,7 @@ public static class OfferEndpoints
 {
     private const string ViewCompanyPermission = "offer.view_company";
     private const string ViewOwnPermission = "offer.view_own";
-    private const string ManagePermission = "offer.manage";
+    private const string InternalViewPermission = "application.view";
     private const string UpdatePermission = "offer.update";
     private const string SendPermission = "offer.send";
     private const string RespondPermission = "offer.respond";
@@ -48,13 +48,13 @@ public static class OfferEndpoints
             }
 
             var isClient = PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, InternalViewPermission);
             var isCandidate = PermissionAuthorization.HasPermission(user, ViewOwnPermission);
             var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
             if (!isClient && !isInternal && !isCandidate && !isAdmin)
             {
-                return PermissionAuthorization.Forbidden(ManagePermission);
+                return PermissionAuthorization.Forbidden(InternalViewPermission);
             }
 
             try
@@ -86,7 +86,7 @@ public static class OfferEndpoints
         })
         .WithName("GetOffers")
         .WithSummary("Lấy danh sách lời mời nhận việc (Offers)")
-        .WithDescription("Hỗ trợ lọc theo applicationId, candidateId, jobId, status và phân trang. Yêu cầu quyền offer.view_company (Client Company), offer.view_own (Candidate), hoặc offer.manage (Internal HR/Admin).")
+        .WithDescription("Hỗ trợ lọc theo applicationId, candidateId, jobId, status và phân trang. Yêu cầu quyền offer.view_company (Client Company), offer.view_own (Candidate), hoặc application.view (Internal HR/Admin).")
         .Produces<GetOffersResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -106,13 +106,13 @@ public static class OfferEndpoints
             }
 
             var isClient = PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
+            var isInternal = PermissionAuthorization.HasPermission(user, InternalViewPermission);
             var isCandidate = PermissionAuthorization.HasPermission(user, ViewOwnPermission);
             var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
             if (!isClient && !isInternal && !isCandidate && !isAdmin)
             {
-                return PermissionAuthorization.Forbidden(ManagePermission);
+                return PermissionAuthorization.Forbidden(InternalViewPermission);
             }
 
             try
@@ -143,7 +143,7 @@ public static class OfferEndpoints
         })
         .WithName("GetOfferDetail")
         .WithSummary("Lấy thông tin chi tiết một lời mời nhận việc (Offer)")
-        .WithDescription("Yêu cầu quyền offer.view_company (Client Company), offer.view_own (Candidate - chỉ xem được offer đã gửi), hoặc offer.manage (Internal HR/Admin). Trả về thông tin đầy đủ về mức đãi ngộ, phê duyệt, tài liệu đính kèm và hợp đồng nhận việc.")
+        .WithDescription("Yêu cầu quyền offer.view_company (Client Company), offer.view_own (Candidate - chỉ xem được offer đã gửi), hoặc application.view (Internal HR/Admin). Trả về thông tin đầy đủ về mức đãi ngộ, phê duyệt, tài liệu đính kèm và hợp đồng nhận việc.")
         .Produces<GetOfferDetailResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
