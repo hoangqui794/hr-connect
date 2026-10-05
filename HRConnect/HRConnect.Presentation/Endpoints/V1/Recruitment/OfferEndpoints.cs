@@ -231,10 +231,8 @@ public static class OfferEndpoints
             }
 
             var isClient = PermissionAuthorization.HasPermission(user, SendPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!isClient && !isInternal && !isAdmin)
+            if (!isClient)
             {
                 return PermissionAuthorization.Forbidden(SendPermission);
             }
@@ -245,8 +243,8 @@ public static class OfferEndpoints
                     OfferId: offerId,
                     ConcurrencyToken: request?.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: isClient && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -271,7 +269,7 @@ public static class OfferEndpoints
         })
         .WithName("SendOffer")
         .WithSummary("Gửi thư mời nhận việc cho ứng viên (Send Offer)")
-        .WithDescription("Dành cho Client Company HR / Admin (offer.send) hoặc Internal HR / Admin (offer.manage). Chuyển trạng thái offer từ DRAFT sang SENT và gửi thông báo tới ứng viên.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền offer.send được gửi offer. API chuyển offer từ DRAFT sang SENT và gửi thông báo tới ứng viên.")
         .Produces<SendOfferResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
