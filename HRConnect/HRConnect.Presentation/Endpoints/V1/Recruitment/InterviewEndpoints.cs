@@ -438,9 +438,7 @@ public static class InterviewEndpoints
             }
 
             var canRecord = PermissionAuthorization.HasPermission(user, RecordResultPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
-            if (!canRecord && !isInternal && !isAdmin)
+            if (!canRecord)
             {
                 return PermissionAuthorization.Forbidden(RecordResultPermission);
             }
@@ -452,8 +450,8 @@ public static class InterviewEndpoints
                     request.Reason,
                     request.ConcurrencyToken,
                     userId.Value,
-                    canRecord && !isInternal && !isAdmin,
-                    isInternal || isAdmin), cancellationToken);
+                    true,
+                    false), cancellationToken);
                 return Results.Ok(response);
             }
             catch (NotFoundException ex)
@@ -475,6 +473,7 @@ public static class InterviewEndpoints
         })
         .WithName("RecordInterviewNoShow")
         .WithSummary("Ghi nhận ứng viên vắng mặt phỏng vấn")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền interview.record_result được ghi nhận ứng viên vắng mặt.")
         .Produces<RecordInterviewNoShowResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
