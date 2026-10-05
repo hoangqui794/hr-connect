@@ -35,6 +35,7 @@ public static class AuditActions
     public const string OfferAccepted = "OFFER_ACCEPTED";
     public const string OfferDeclined = "OFFER_DECLINED";
     public const string OfferWithdrawn = "OFFER_WITHDRAWN";
+    public const string OfferExpired = "OFFER_EXPIRED";
     public const string PlacementConfirmed = "PLACEMENT_CONFIRMED";
     public const string CandidateCvDownloadUrlIssued = "CANDIDATE_CV_DOWNLOAD_URL_ISSUED";
     public const string InternalCvDownloadUrlIssued = "INTERNAL_CV_DOWNLOAD_URL_ISSUED";
