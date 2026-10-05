@@ -176,10 +176,8 @@ public static class InterviewEndpoints
             }
 
             var canCreate = PermissionAuthorization.HasPermission(user, CreatePermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!canCreate && !isInternal && !isAdmin)
+            if (!canCreate)
             {
                 return PermissionAuthorization.Forbidden(CreatePermission);
             }
@@ -196,8 +194,8 @@ public static class InterviewEndpoints
                     MeetingLink: request.MeetingLink,
                     Participants: request.Participants,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: canCreate && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin,
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false,
                     ApplicationConcurrencyToken: request.ApplicationConcurrencyToken
                 );
 
@@ -223,7 +221,7 @@ public static class InterviewEndpoints
         })
         .WithName("ScheduleInterview")
         .WithSummary("Lập lịch phỏng vấn mới")
-        .WithDescription("Dành cho Client Company (interview.create) hoặc Internal HR / Admin (interview.manage). Chỉ lập lịch vòng đầu khi hồ sơ SHORTLISTED; các vòng tiếp theo dùng hồ sơ INTERVIEW. Lập lịch đầu tiên chuyển hồ sơ sang INTERVIEW.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền interview.create được lập lịch. Lập lịch vòng đầu khi hồ sơ SHORTLISTED; các vòng tiếp theo dùng hồ sơ INTERVIEW. Lập lịch đầu tiên chuyển hồ sơ sang INTERVIEW.")
         .Produces<ScheduleInterviewResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
