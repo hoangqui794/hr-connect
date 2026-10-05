@@ -78,7 +78,9 @@ public sealed class GetSubmissionConsentQueryHandler : IRequestHandler<GetSubmis
                 CompanyName = consent.Submission.Job.Company.CompanyName,
                 CvFileName = consent.Submission.CandidateCv.FileName ?? "candidate-cv.pdf",
                 CvDownloadUrl = url,
-                CvUrlExpiresAt = urlExpiresAt
+                CvUrlExpiresAt = urlExpiresAt,
+                AffiliateReuseStatus = consent.Submission.CandidateCv.AffiliateReuseStatus,
+                ReuseConcurrencyToken = consent.Submission.CandidateCv.AffiliateReuseConcurrencyToken
             }
         };
     }

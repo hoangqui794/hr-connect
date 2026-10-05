@@ -21,6 +21,9 @@ internal static class SubmissionConsentPage
     .details dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
     label { display: block; margin: 14px 0 6px; font-weight: 600; }
     input { box-sizing: border-box; width: 100%; padding: 11px 12px; border: 1px solid #b9c9bd; border-radius: 9px; }
+    .reuse-option { display: flex; gap: 10px; align-items: flex-start; margin-top: 18px; padding: 14px; border-radius: 10px; background: #f0f6f2; }
+    .reuse-option input { width: auto; margin-top: 3px; }
+    .reuse-option label { margin: 0; font-weight: 500; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
     button, .button { border: 0; border-radius: 9px; padding: 11px 18px; font-weight: 700; cursor: pointer; text-decoration: none; }
     .primary { background: #236b3a; color: white; }
@@ -56,6 +59,11 @@ internal static class SubmissionConsentPage
       <dt>Hạn xác nhận</dt><dd id="expiresAt"></dd>
     </dl>
 
+    <div id="reuseOption" class="reuse-option" hidden>
+      <input id="allowFutureReuse" type="checkbox">
+      <label for="allowFutureReuse">Cho phép Affiliate này dùng lại CV để gửi yêu cầu xác nhận cho công việc khác. Mỗi công việc mới vẫn cần tôi đồng ý riêng.</label>
+    </div>
+
     <div id="actions" class="actions" hidden>
       <a id="viewCv" class="button secondary" target="_blank" rel="noopener noreferrer">Xem CV</a>
       <button id="confirm" class="primary" type="button">Đồng ý nộp hồ sơ</button>
@@ -74,6 +82,7 @@ internal static class SubmissionConsentPage
   const loginBox = document.getElementById('loginBox');
   const details = document.getElementById('details');
   const actions = document.getElementById('actions');
+  const reuseOption = document.getElementById('reuseOption');
   let accessToken = '';
 
   function headers() {
@@ -96,7 +105,7 @@ internal static class SubmissionConsentPage
       return;
     }
     show('Đang tải yêu cầu xác nhận…');
-    details.hidden = true; actions.hidden = true;
+    details.hidden = true; actions.hidden = true; reuseOption.hidden = true;
     try {
       const response = submissionId
         ? await fetch(`/api/v1/candidates/me/submission-consents/${encodeURIComponent(submissionId)}`, {
@@ -115,7 +124,9 @@ internal static class SubmissionConsentPage
       const viewCv = document.getElementById('viewCv');
       viewCv.href = data.cvDownloadUrl || '#';
       viewCv.hidden = !data.cvDownloadUrl;
-      loginBox.hidden = true; details.hidden = false; actions.hidden = false;
+      const allowFutureReuse = document.getElementById('allowFutureReuse');
+      allowFutureReuse.checked = data.affiliateReuseStatus === 'ALLOWED';
+      loginBox.hidden = true; details.hidden = false; reuseOption.hidden = false; actions.hidden = false;
       show('Vui lòng xem CV và chọn quyết định.');
     } catch (error) {
       if (error.status === 403) {
@@ -153,15 +164,18 @@ internal static class SubmissionConsentPage
     document.querySelectorAll('button').forEach(button => button.disabled = true);
     show('Đang ghi nhận quyết định…');
     try {
+      const payload = decision === 'CONFIRM'
+        ? { decision, allowFutureReuse: document.getElementById('allowFutureReuse').checked }
+        : { decision };
       const response = submissionId
         ? await fetch(`/api/v1/candidates/me/submission-consents/${encodeURIComponent(submissionId)}/respond`, {
-            method: 'POST', headers: headers(), body: JSON.stringify({ decision })
+            method: 'POST', headers: headers(), body: JSON.stringify(payload)
           })
         : await fetch('/api/v1/submission-consents/respond', {
-            method: 'POST', headers: headers(), body: JSON.stringify({ token, decision })
+            method: 'POST', headers: headers(), body: JSON.stringify({ token, ...payload })
           });
       const body = await json(response);
-      actions.hidden = true;
+      actions.hidden = true; reuseOption.hidden = true;
       history.replaceState(null, '', location.pathname);
       show(`${body.message}\nTrạng thái hồ sơ: ${body.submissionStatus}`);
     } catch (error) {

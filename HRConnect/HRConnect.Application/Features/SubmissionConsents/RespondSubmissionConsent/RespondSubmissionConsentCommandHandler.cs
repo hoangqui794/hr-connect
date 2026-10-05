@@ -127,12 +127,52 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
 
             consent.Submission.Status = "ACCEPTED";
             consent.Submission.UpdatedAt = now;
-            if (consent.Submission.CandidateCv.Status == "PENDING_CONSENT")
+            var candidateCv = consent.Submission.CandidateCv;
+            if (candidateCv.Status == "PENDING_CONSENT")
             {
-                consent.Submission.CandidateCv.Status = "ACTIVE";
-                consent.Submission.CandidateCv.UpdatedAt = now;
-                _cvRepository.Update(consent.Submission.CandidateCv);
+                candidateCv.Status = "ACTIVE";
+                candidateCv.UpdatedAt = now;
             }
+
+            if (request.AllowFutureReuse.HasValue &&
+                string.Equals(candidateCv.CreationMethod, "AFFILIATE_UPLOAD", StringComparison.Ordinal))
+            {
+                var previousReuseStatus = candidateCv.AffiliateReuseStatus ?? "NOT_GRANTED";
+                var nextReuseStatus = request.AllowFutureReuse.Value
+                    ? "ALLOWED"
+                    : previousReuseStatus == "ALLOWED" ? "REVOKED" : "NOT_GRANTED";
+
+                if (!string.Equals(previousReuseStatus, nextReuseStatus, StringComparison.Ordinal))
+                {
+                    candidateCv.AffiliateReuseStatus = nextReuseStatus;
+                    candidateCv.AffiliateReuseChangedAt = now;
+                    candidateCv.AffiliateReuseChangedByUserId = request.RequesterUserId;
+                    candidateCv.AffiliateReuseConcurrencyToken = Guid.NewGuid();
+                    candidateCv.UpdatedAt = now;
+                    await _audit.AddAsync(new AuditEntry
+                    {
+                        Action = nextReuseStatus == "ALLOWED"
+                            ? AuditActions.AffiliateCvReuseGranted
+                            : AuditActions.AffiliateCvReuseRevoked,
+                        EntityType = "CANDIDATE_CV",
+                        EntityId = candidateCv.CvId,
+                        ActorUserId = request.RequesterUserId,
+                        CorrelationId = consent.ConsentId,
+                        OldValues = new { affiliateReuseStatus = previousReuseStatus },
+                        NewValues = new
+                        {
+                            affiliateReuseStatus = nextReuseStatus,
+                            consent.SubmissionId,
+                            consent.Submission.JobId,
+                            consent.Submission.CandidateId,
+                            affiliateUserId = consent.Submission.SubmittedBy,
+                            accessMethod = request.RequesterUserId.HasValue ? "CANDIDATE_ACCOUNT" : "EMAIL_LINK"
+                        }
+                    }, cancellationToken);
+                }
+            }
+
+            _cvRepository.Update(candidateCv);
 
             // Persist the accepted submission first inside the same transaction.
             // PostgreSQL validates accepted_submission_id when the application row is
@@ -219,7 +259,9 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             SubmissionId = consent.SubmissionId,
             SubmissionStatus = "ACCEPTED",
             ApplicationId = application.ApplicationId,
-            AiStatus = "PENDING"
+            AiStatus = "PENDING",
+            AffiliateReuseStatus = consent.Submission.CandidateCv.AffiliateReuseStatus,
+            ReuseConcurrencyToken = consent.Submission.CandidateCv.AffiliateReuseConcurrencyToken
         };
     }
 
@@ -326,7 +368,9 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         SubmissionId = consent.SubmissionId,
         SubmissionStatus = consent.Submission.Status,
         ApplicationId = consent.Submission.Applications.FirstOrDefault()?.ApplicationId,
-        AiStatus = consent.Status == "CONFIRMED" ? "PENDING" : "NOT_QUEUED"
+        AiStatus = consent.Status == "CONFIRMED" ? "PENDING" : "NOT_QUEUED",
+        AffiliateReuseStatus = consent.Submission.CandidateCv.AffiliateReuseStatus,
+        ReuseConcurrencyToken = consent.Submission.CandidateCv.AffiliateReuseConcurrencyToken
     };
 
     private static string? Limit(string? value, int max) =>

@@ -56,6 +56,7 @@ public static class SubmissionConsentEndpoints
             {
                 Token = request.Token,
                 Decision = request.Decision,
+                AllowFutureReuse = request.AllowFutureReuse,
                 RequesterUserId = UserId(user),
                 IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
                 UserAgent = httpContext.Request.Headers.UserAgent.ToString()
@@ -66,7 +67,7 @@ public static class SubmissionConsentEndpoints
         })
             .WithName("RespondSubmissionConsent")
             .WithSummary("Candidate đồng ý hoặc từ chối hồ sơ do Affiliate nộp")
-            .WithDescription("Dành cho Candidate chưa có tài khoản. Token một lần từ email và decision CONFIRM hoặc DECLINE là bắt buộc. Candidate đã có tài khoản dùng API có Bearer tại nhóm Candidate Submission Consents. CONFIRM kiểm tra trùng lần cuối rồi mới tạo Application, Attribution và hàng đợi MF03 trong cùng transaction.")
+            .WithDescription("Dành cho Candidate chưa có tài khoản. Token một lần từ email và decision CONFIRM hoặc DECLINE là bắt buộc. Khi CONFIRM, allowFutureReuse là lựa chọn cho phép đúng Affiliate đã tải CV tạo yêu cầu consent mới cho Job khác; mỗi Job vẫn cần Candidate đồng ý riêng. Candidate đã có tài khoản dùng API có Bearer tại nhóm Candidate Submission Consents.")
             .Produces<RespondSubmissionConsentResponse>()
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status403Forbidden)
@@ -114,6 +115,7 @@ public static class SubmissionConsentEndpoints
             {
                 SubmissionId = submissionId,
                 Decision = request.Decision,
+                AllowFutureReuse = request.AllowFutureReuse,
                 RequesterUserId = userId,
                 IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
                 UserAgent = httpContext.Request.Headers.UserAgent.ToString()
@@ -124,7 +126,7 @@ public static class SubmissionConsentEndpoints
         })
             .WithName("RespondAuthenticatedCandidateSubmissionConsent")
             .WithSummary("Candidate đã đăng nhập đồng ý hoặc từ chối hồ sơ")
-            .WithDescription("Dùng Bearer token qua nút Authorize và submissionId; body chỉ nhận decision CONFIRM hoặc DECLINE. Không cần token email. CONFIRM tạo Application, Attribution và hàng đợi MF03 trong cùng transaction.")
+            .WithDescription("Dùng Bearer token qua nút Authorize và submissionId; không cần token email. Khi CONFIRM, allowFutureReuse là lựa chọn cho phép đúng Affiliate đã tải CV tạo yêu cầu consent mới cho Job khác; mỗi Job vẫn cần Candidate đồng ý riêng. Application, Attribution và hàng đợi MF03 được tạo trong cùng transaction.")
             .Produces<RespondSubmissionConsentResponse>()
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
@@ -152,6 +154,6 @@ public static class SubmissionConsentEndpoints
     }
 
     public sealed record ConsentTokenRequest(string Token);
-    public sealed record ConsentDecisionRequest(string Token, string Decision);
-    public sealed record CandidateConsentDecisionRequest(string Decision);
+    public sealed record ConsentDecisionRequest(string Token, string Decision, bool? AllowFutureReuse);
+    public sealed record CandidateConsentDecisionRequest(string Decision, bool? AllowFutureReuse);
 }
