@@ -496,10 +496,8 @@ public static class InterviewEndpoints
             }
 
             var canRecord = PermissionAuthorization.HasPermission(user, RecordResultPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ManagePermission);
-            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
-            if (!canRecord && !isInternal && !isAdmin)
+            if (!canRecord)
             {
                 return PermissionAuthorization.Forbidden(RecordResultPermission);
             }
@@ -514,8 +512,8 @@ public static class InterviewEndpoints
                     NextAction: request.NextAction,
                     ConcurrencyToken: request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
-                    IsClientCompanyUser: canRecord && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin
+                    IsClientCompanyUser: true,
+                    IsInternalHrOrAdmin: false
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -540,7 +538,7 @@ public static class InterviewEndpoints
         })
         .WithName("RecordInterviewResult")
         .WithSummary("Ghi nhận kết quả đánh giá phỏng vấn")
-        .WithDescription("Dành cho Client Company (interview.record_result) hoặc Internal HR / Admin (interview.manage). Kết quả: PASS, FAIL hoặc BACKUP. Kết quả cuối chuyển hồ sơ lần lượt sang OFFER_PENDING, INTERVIEW_FAILED hoặc BACKUP.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền interview.record_result được ghi kết quả PASS, FAIL hoặc BACKUP. Kết quả cuối chuyển hồ sơ lần lượt sang OFFER_PENDING, INTERVIEW_FAILED hoặc BACKUP.")
         .Produces<RecordInterviewResultResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
