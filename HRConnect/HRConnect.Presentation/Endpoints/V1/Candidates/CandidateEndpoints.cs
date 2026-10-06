@@ -12,6 +12,7 @@ using HRConnect.Application.Features.Candidates.Queries.GetCandidateAffiliateCvs
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateAffiliateCvDetail;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateAffiliateCvUsages;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateAffiliateCvDownloadUrl;
+using HRConnect.Application.Features.Candidates.Commands.UpdateCandidateAffiliateCvReuse;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using HRConnect.Application.Features.Candidates.Queries.GetCvDownloadUrl;
 using MediatR;
@@ -215,6 +216,51 @@ public static class CandidateEndpoints
         .WithSummary("Candidate xem danh sách CV do Affiliate đã nộp thay")
         .WithDescription("Yêu cầu permission cv.view_own. Trả riêng tài liệu do Affiliate tải lên, trạng thái consent tổng hợp và trạng thái cho phép tái sử dụng; không trộn vào kho CV cá nhân.")
         .Produces<GetCandidateAffiliateCvsResponse>()
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
+        affiliateCvGroup.MapPatch("/{cvId:guid}/reuse", async (
+            Guid cvId,
+            [FromBody] UpdateCandidateAffiliateCvReuseRequest request,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "cv.affiliate_reuse.manage_own"))
+                return PermissionAuthorization.Forbidden("cv.affiliate_reuse.manage_own");
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            try
+            {
+                return Results.Ok(await sender.Send(
+                    new UpdateCandidateAffiliateCvReuseCommand(
+                        userId.Value,
+                        cvId,
+                        request.Allowed,
+                        request.ConcurrencyToken),
+                    cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new
+                {
+                    success = false,
+                    message = ex.Message,
+                    errorCode = ex.ErrorCode
+                });
+            }
+        })
+        .WithName("UpdateCandidateAffiliateCvReuse")
+        .WithSummary("Candidate bật hoặc thu hồi quyền Affiliate tái sử dụng CV")
+        .WithDescription("Yêu cầu permission cv.affiliate_reuse.manage_own. concurrencyToken phải lấy từ API danh sách/chi tiết. Thu hồi chỉ chặn lần nộp mới; lịch sử Submission/Application cũ được giữ nguyên.")
+        .Produces<UpdateCandidateAffiliateCvReuseResponse>()
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
