@@ -313,17 +313,18 @@ public class RecordInterviewResultCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenUserIsInternalHrOrAdmin_FailedFinalRound_ShouldCompleteAndSetInterviewFailed()
+    public async Task Handle_WhenClientCompanyUser_FailedFinalRound_ShouldCompleteAndSetInterviewFailed()
     {
         // Arrange
         var interviewId = Guid.NewGuid();
-        var adminId = Guid.NewGuid();
+        var clientUserId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
 
         var application = new HRConnect.Domain.Entities.Application
         {
             ApplicationId = Guid.NewGuid(),
             Status = "INTERVIEW",
-            Job = new Job { CompanyId = Guid.NewGuid() }
+            Job = new Job { CompanyId = companyId }
         };
 
         var interview = new Interview
@@ -339,6 +340,10 @@ public class RecordInterviewResultCommandHandlerTests
             .Setup(r => r.GetByIdForUpdateAsync(interviewId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(interview);
 
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = clientUserId, CompanyId = companyId });
+
         _unitOfWorkMock
             .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
@@ -350,8 +355,8 @@ public class RecordInterviewResultCommandHandlerTests
             IsFinalRound: true,
             NextAction: "REJECT",
             ConcurrencyToken: null,
-            CurrentUserId: adminId,
-            IsInternalHrOrAdmin: true
+            CurrentUserId: clientUserId,
+            IsClientCompanyUser: true
         );
 
         // Act

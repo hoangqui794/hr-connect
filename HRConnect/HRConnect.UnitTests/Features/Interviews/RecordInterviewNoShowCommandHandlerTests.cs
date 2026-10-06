@@ -24,6 +24,8 @@ public class RecordInterviewNoShowCommandHandlerTests
     [Fact]
     public async Task Handle_WhenScheduledInterviewHasPassed_RecordsNoShowWithoutChangingApplicationOutcome()
     {
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
         var interview = new Interview
         {
             InterviewId = Guid.NewGuid(),
@@ -31,16 +33,22 @@ public class RecordInterviewNoShowCommandHandlerTests
             Status = "SCHEDULED",
             ScheduledAt = DateTime.UtcNow.AddMinutes(-5),
             ConcurrencyToken = Guid.NewGuid(),
-            Application = new Domain.Entities.Application { Status = "INTERVIEW" },
+            Application = new Domain.Entities.Application
+            {
+                Status = "INTERVIEW",
+                Job = new Job { CompanyId = companyId }
+            },
             InterviewStatusHistories = new List<InterviewStatusHistory>()
         };
         _interviewRepository.Setup(r => r.GetByIdForUpdateAsync(interview.InterviewId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(interview);
+        _companyUserRepository.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
         _unitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         var result = await CreateHandler().Handle(new RecordInterviewNoShowCommand(
-            interview.InterviewId, "Ứng viên không tham dự.", interview.ConcurrencyToken, Guid.NewGuid(),
-            IsInternalHrOrAdmin: true), CancellationToken.None);
+            interview.InterviewId, "Ứng viên không tham dự.", interview.ConcurrencyToken, userId,
+            IsClientCompanyUser: true), CancellationToken.None);
 
         result.Status.Should().Be("NO_SHOW");
         interview.Status.Should().Be("NO_SHOW");
