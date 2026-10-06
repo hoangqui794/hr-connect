@@ -56,7 +56,18 @@ namespace HRConnect.Infrastructure.Migrations
                 defaultValue: "APPLICATION");
 
             migrationBuilder.Sql("""
-                ALTER TABLE public.audit_log DISABLE TRIGGER trg_audit_log_no_update;
+                -- Databases built only from EF migrations do not have this trigger.
+                DO $guard$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM pg_trigger
+                        WHERE tgname = 'trg_audit_log_no_update'
+                          AND tgrelid = 'public.audit_log'::regclass
+                    ) THEN
+                        ALTER TABLE public.audit_log DISABLE TRIGGER trg_audit_log_no_update;
+                    END IF;
+                END
+                $guard$;
 
                 UPDATE public.audit_log
                 SET actor_type = CASE
@@ -88,7 +99,18 @@ namespace HRConnect.Infrastructure.Migrations
                     END,
                     event_version = 1;
 
-                ALTER TABLE public.audit_log ENABLE TRIGGER trg_audit_log_no_update;
+                -- Databases built only from EF migrations do not have this trigger.
+                DO $guard$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM pg_trigger
+                        WHERE tgname = 'trg_audit_log_no_update'
+                          AND tgrelid = 'public.audit_log'::regclass
+                    ) THEN
+                        ALTER TABLE public.audit_log ENABLE TRIGGER trg_audit_log_no_update;
+                    END IF;
+                END
+                $guard$;
 
                 CREATE OR REPLACE FUNCTION public.audit_business_row_change()
                 RETURNS trigger
