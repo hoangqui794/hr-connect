@@ -57,6 +57,21 @@ public class Mf04SchemaReconcileTests
     }
 
     [Fact]
+    public void Seeds_GrantMf03ScreeningToInternalHr()
+    {
+        var embeddedSql = (string)typeof(DatabaseSeeder).GetField(
+            "EmbeddedPermissionSeedSql",
+            BindingFlags.NonPublic | BindingFlags.Static)!.GetRawConstantValue()!;
+        var permissionFileSql = File.ReadAllText(FindPermissionFile()!);
+
+        foreach (var sql in new[] { embeddedSql, permissionFileSql })
+        {
+            AssertRoleContainsPermissions(sql, "INTERNAL_HR", ["application.screen"]);
+            AssertRoleContainsPermissions(sql, "CLIENT_COMPANY_USER", ["candidate.review_company"]);
+        }
+    }
+
+    [Fact]
     public async Task ModelBuilder_MapsMf04EntitiesAndPropertiesProperly()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()

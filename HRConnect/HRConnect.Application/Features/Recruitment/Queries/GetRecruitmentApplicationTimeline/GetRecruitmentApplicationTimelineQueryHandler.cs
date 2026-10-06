@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -44,6 +45,14 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                 _logger.LogWarning("Tài khoản {UserId} không có quyền xem timeline hồ sơ thuộc công ty {CompanyId}", request.UserId, app.Job?.CompanyId);
                 throw new ForbiddenException("Bạn không có quyền truy cập hồ sơ ứng tuyển của công ty khác.");
             }
+
+            if (!ClientVisibilityPolicy.IsVisibleToClient(
+                    app.Job?.ServiceType?.Code,
+                    app.Status,
+                    (app.ApplicationStatusHistories ?? []).Select(h => h.NewStatus)))
+            {
+                throw new NotFoundException("Không tìm thấy thông tin hồ sơ ứng tuyển.");
+            }
         }
         else if (!request.IsInternalHrOrAdmin)
         {
@@ -82,7 +91,8 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                     Timestamp = h.ChangedAt,
                     ActorUserId = h.ChangedBy,
                     ActorName = h.ChangedByNavigation?.DisplayName ?? h.ChangedByNavigation?.Email,
-                    Status = h.NewStatus
+                    Status = h.NewStatus,
+                    ReasonCode = h.ReasonCode
                 });
             }
         }

@@ -495,6 +495,9 @@ public partial class ApplicationDbContext : DbContext
                 .HasComment("Allowed Application states. Exact transition graph is enforced by application service until Business Rule state machine is formally baselined.")
                 .HasColumnName("status");
             entity.Property(e => e.StatusReason).HasColumnName("status_reason");
+            entity.Property(e => e.StatusReasonCode)
+                .HasMaxLength(100)
+                .HasColumnName("status_reason_code");
             entity.Property(e => e.PlannedStartDate).HasColumnName("planned_start_date");
             entity.Property(e => e.ConcurrencyToken)
                 .IsConcurrencyToken()
@@ -544,6 +547,9 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(40)
                 .HasColumnName("old_status");
             entity.Property(e => e.Reason).HasColumnName("reason");
+            entity.Property(e => e.ReasonCode)
+                .HasMaxLength(100)
+                .HasColumnName("reason_code");
 
             entity.HasOne(d => d.Application).WithMany(p => p.ApplicationStatusHistories)
                 .HasForeignKey(d => d.ApplicationId)

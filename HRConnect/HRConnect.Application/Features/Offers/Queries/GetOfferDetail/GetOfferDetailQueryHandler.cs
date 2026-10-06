@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Recruitment.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -87,8 +88,8 @@ public class GetOfferDetailQueryHandler : IRequestHandler<GetOfferDetailQuery, G
             {
                 CandidateId = offer.Application.CandidateId,
                 FullName = offer.Application.Candidate?.FullName ?? string.Empty,
-                Email = offer.Application.Candidate?.Email,
-                Phone = offer.Application.Candidate?.Phone
+                Email = request.IsClientCompanyUser && ClientVisibilityPolicy.ShouldMaskContactForClient(offer.Application.Job?.ServiceType?.Code, offer.Application.Status, offer.Placements.Count > 0) ? null : offer.Application.Candidate?.Email,
+                Phone = request.IsClientCompanyUser && ClientVisibilityPolicy.ShouldMaskContactForClient(offer.Application.Job?.ServiceType?.Code, offer.Application.Status, offer.Placements.Count > 0) ? null : offer.Application.Candidate?.Phone
             },
             OfferVersion = offer.OfferVersion,
             Salary = offer.Salary,

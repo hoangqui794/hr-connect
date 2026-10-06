@@ -48,6 +48,8 @@ public class RecruitmentApplicationDetailData
 
     public string? StatusReason { get; set; }
 
+    public string? StatusReasonCode { get; set; }
+
     public DateTime AppliedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
@@ -67,6 +69,14 @@ public class RecruitmentApplicationDetailData
     public RecruitmentPlacementSummaryDto? Placement { get; set; }
 
     public List<string> AllowedActions { get; set; } = new();
+
+    public string? ServiceTypeCode { get; set; }
+
+    /// <summary>Who contacts the candidate after screening: ClientCompany or InternalHr (MF-03).</summary>
+    public string ContactOwner { get; set; } = string.Empty;
+
+    /// <summary>True when email, phone, address and CV file are hidden from the Client (HEADHUNT_COD before PLACED).</summary>
+    public bool IsContactMasked { get; set; }
 }
 
 public class RecruitmentCvSummaryDto

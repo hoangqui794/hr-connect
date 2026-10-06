@@ -1,5 +1,6 @@
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Infrastructure.Persistence;
+using HRConnect.Application.Features.Recruitment.Common;
 using Microsoft.EntityFrameworkCore;
 using JobApplication = HRConnect.Domain.Entities.Application;
 
@@ -116,7 +117,11 @@ public class ApplicationRepository : IApplicationRepository
 
         if (companyId.HasValue && companyId.Value != Guid.Empty)
         {
-            query = query.Where(a => a.Job.CompanyId == companyId.Value);
+            // Company-scoped listing is the Client view: hide platform-screened applications
+            // until Internal HR shortlists them (MF-03).
+            query = query
+                .Where(a => a.Job.CompanyId == companyId.Value)
+                .Where(ClientVisibilityPolicy.IsVisibleToClientExpression);
         }
 
         if (jobId.HasValue && jobId.Value != Guid.Empty)
@@ -152,6 +157,8 @@ public class ApplicationRepository : IApplicationRepository
         var items = await query
             .Include(a => a.Job)
                 .ThenInclude(j => j.Company)
+            .Include(a => a.Job)
+                .ThenInclude(j => j.ServiceType)
             .Include(a => a.Candidate)
             .Include(a => a.Interviews)
             .Include(a => a.Offers)
@@ -173,10 +180,13 @@ public class ApplicationRepository : IApplicationRepository
             .AsNoTracking()
             .Include(a => a.Job)
                 .ThenInclude(j => j.Company)
+            .Include(a => a.Job)
+                .ThenInclude(j => j.ServiceType)
             .Include(a => a.Candidate)
             .Include(a => a.Submission)
                 .ThenInclude(s => s!.CandidateCv)
             .Include(a => a.AiMatchResults)
+            .Include(a => a.ApplicationStatusHistories)
             .Include(a => a.Interviews)
                 .ThenInclude(i => i.InterviewParticipants)
             .Include(a => a.Interviews)
@@ -197,6 +207,8 @@ public class ApplicationRepository : IApplicationRepository
             .AsNoTracking()
             .Include(a => a.Job)
                 .ThenInclude(j => j.Company)
+            .Include(a => a.Job)
+                .ThenInclude(j => j.ServiceType)
             .Include(a => a.Candidate)
             .Include(a => a.ApplicationStatusHistories)
                 .ThenInclude(h => h.ChangedByNavigation)

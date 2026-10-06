@@ -188,6 +188,8 @@ DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
 | `CV_APPLICATION` | Client | Client mua quyền nhận và tự chọn hồ sơ |
 | `HEADHUNT_COD`, `CV_SOURCING` | Internal HR lọc trước; Client chỉ thấy hồ sơ đã đạt | Giá trị dịch vụ là hồ sơ đã được nền tảng chọn lọc |
 
+Code: quy tắc nằm ở `ScreeningPolicy`; sai người theo loại dịch vụ thì API trả 403.
+
 **Điều kiện:** có hồ sơ ứng tuyển `SUBMITTED` từ MF-02.
 
 **Luồng chính:**
@@ -195,24 +197,36 @@ DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
 1. Hệ thống tự gọi AI chấm điểm CV so với mô tả job. Nếu AI service lỗi hoặc quá thời gian xử lý (15 phút), hệ thống tự thử lại với khoảng chờ tăng dần (từ 30 giây đến tối đa 15 phút) và có giới hạn số lần thử.
 2. AI trả về điểm phù hợp, tier, kết quả từng yêu cầu bắt buộc/ưu tiên kèm bằng chứng trích từ CV.
 3. Người sàng lọc xem kết quả; Internal HR có thể yêu cầu chấm lại.
-4. Người sàng lọc quyết định **[CHƯA CÓ CODE]**:
+4. Người sàng lọc quyết định (`PATCH /api/v1/jobs/{jobId}/applications/{applicationId}/status`, bắt buộc `concurrencyToken`):
    - Đạt → `SHORTLISTED`, chuyển MF-04.
-   - Không đạt → `REJECTED` kèm lý do bắt buộc, kết thúc.
+   - Không đạt → `REJECTED` kèm **mã lý do bắt buộc**, ghi chú tự do không bắt buộc (bắt buộc khi chọn `OTHER`), kết thúc.
+
+| Mã lý do loại | Ý nghĩa |
+|---|---|
+| `SKILL_MISMATCH` | Thiếu kỹ năng |
+| `INSUFFICIENT_EXPERIENCE` | Thiếu kinh nghiệm |
+| `SALARY_MISMATCH` | Lương không phù hợp |
+| `LOCATION_MISMATCH` | Địa điểm không phù hợp |
+| `LANGUAGE_REQUIREMENT` | Không đạt yêu cầu ngoại ngữ |
+| `CANDIDATE_UNREACHABLE` | Không liên hệ được ứng viên |
+| `POSITION_FILLED` | Vị trí đã tuyển đủ |
+| `OTHER` | Lý do khác, phải ghi chú |
 
 **Quy tắc:**
 
 - AI chỉ hỗ trợ ra quyết định. AI không tự loại, không tự chọn, không quyết định kết quả phỏng vấn hay offer.
 - CV thiếu bằng chứng cho một yêu cầu (ví dụ IELTS) là nội dung sàng lọc, không làm lượt nộp thành trùng hay không hợp lệ.
 - Tier theo điểm: ≥80, 70–79, 60–69, <60. Ngưỡng và màu lưu trong bảng cấu hình, không viết cứng.
-- Hồ sơ đang được xem xét dùng trạng thái `SCREENING`. Không dùng `NEED_MORE_INFORMATION` hay `UNDER_REVIEW` như bản cũ **[CẦN XÁC NHẬN]**.
-- Ai liên hệ ứng viên sau sàng lọc **[CHƯA CÓ CODE]**:
+- Hồ sơ đang được xem xét dùng trạng thái `SCREENING`. Không dùng `NEED_MORE_INFORMATION` hay `UNDER_REVIEW` như bản cũ **[CẦN XÁC NHẬN]**. Khi người sàng lọc mở hồ sơ, giao diện gọi `POST /api/v1/jobs/{jobId}/applications/{applicationId}/start-screening`: hồ sơ `SUBMITTED` chuyển sang `SCREENING`; gọi lặp lại hoặc người không phụ trách sàng lọc gọi thì không đổi gì.
+- Ai liên hệ ứng viên sau sàng lọc (API trả trường `contactOwner`):
 
 | Service Type | Người liên hệ ứng viên |
 |---|---|
 | `HEADHUNT_COD` | Internal HR |
 | `CV_SOURCING`, `CV_APPLICATION` | HR của Client |
 
-- Che thông tin liên hệ của ứng viên khi Client xem hồ sơ **[CHƯA CÓ CODE]**.
+- Với `HEADHUNT_COD` và `CV_SOURCING`, Client chỉ thấy hồ sơ đã từng được `SHORTLISTED`; hồ sơ chưa qua sàng lọc không có trong danh sách và trả 404 khi mở.
+- Với `HEADHUNT_COD`, Client không thấy email, số điện thoại, địa chỉ và file CV của ứng viên cho tới khi hồ sơ `PLACED` (`isContactMasked = true`). `CV_SOURCING` và `CV_APPLICATION` không che vì HR của Client là người liên hệ.
 
 **Kết quả:** `SHORTLISTED` → MF-04, hoặc `REJECTED` → kết thúc.
 

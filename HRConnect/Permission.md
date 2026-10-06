@@ -569,6 +569,7 @@ JOIN public.permission p
         'candidate.view',
 
         'application.view',
+        'application.screen', -- MF-03: chỉ HEADHUNT_COD / CV_SOURCING (ScreeningPolicy)
         'application.retry_ai_scoring',
 
         'submission.view',

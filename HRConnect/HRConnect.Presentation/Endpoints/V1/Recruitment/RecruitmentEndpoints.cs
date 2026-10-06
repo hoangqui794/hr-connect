@@ -1,13 +1,16 @@
 using System;
 using System.Security.Claims;
+using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Offers.Commands.CreateOfferDraft;
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmPlannedStartDate;
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmStartWork;
 using HRConnect.Application.Features.Recruitment.Commands.DecideBackupApplication;
 using HRConnect.Application.Features.Recruitment.Commands.MarkNotStarted;
+using HRConnect.Application.Features.Recruitment.Commands.StartScreening;
 using HRConnect.Application.Features.Recruitment.Commands.UpdateApplicationScreeningStatus;
 using HRConnect.Application.Features.Recruitment.Commands.WithdrawApplication;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplications;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationTimeline;
@@ -27,6 +30,7 @@ public static class RecruitmentEndpoints
     private const string MarkNotStartedPermission = "application.mark_not_started";
     private const string WithdrawOwnPermission = "application.withdraw_own";
     private const string ReviewCompanyPermission = "candidate.review_company";
+    private const string ScreenApplicationPermission = "application.screen";
 
     public static IEndpointRouteBuilder MapRecruitmentEndpoints(this IEndpointRouteBuilder app)
     {
@@ -42,6 +46,7 @@ public static class RecruitmentEndpoints
             Guid applicationId,
             [FromBody] UpdateApplicationScreeningStatusRequest request,
             [FromServices] ISender sender,
+            [FromServices] IValidator<UpdateApplicationScreeningStatusCommand> validator,
             ClaimsPrincipal user,
             CancellationToken cancellationToken) =>
         {
@@ -51,20 +56,36 @@ public static class RecruitmentEndpoints
                 return Results.Unauthorized();
             }
 
-            if (!PermissionAuthorization.HasPermission(user, ReviewCompanyPermission))
+            if (ResolveScreeningActor(user) is not { } actor)
             {
-                return PermissionAuthorization.Forbidden(ReviewCompanyPermission);
+                return PermissionAuthorization.Forbidden($"{ReviewCompanyPermission} | {ScreenApplicationPermission}");
+            }
+
+            var command = new UpdateApplicationScreeningStatusCommand(
+                jobId,
+                applicationId,
+                request.TargetStatus,
+                request.Reason,
+                request.ReasonCode,
+                request.ConcurrencyToken,
+                userId.Value,
+                actor);
+            var validation = await validator.ValidateAsync(command, cancellationToken);
+            if (!validation.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu không hợp lệ.",
+                    errors = validation.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+                });
             }
 
             try
             {
-                var response = await sender.Send(new UpdateApplicationScreeningStatusCommand(
-                    jobId,
-                    applicationId,
-                    request.TargetStatus,
-                    request.Reason,
-                    request.ConcurrencyToken,
-                    userId.Value), cancellationToken);
+                var response = await sender.Send(command, cancellationToken);
                 return Results.Ok(response);
             }
             catch (NotFoundException ex)
@@ -85,10 +106,52 @@ public static class RecruitmentEndpoints
             }
         })
         .WithName("UpdateApplicationScreeningStatus")
-        .WithSummary("Company cập nhật trạng thái sàng lọc hồ sơ")
-        .WithDescription("Chỉ Client Company sở hữu Job mới được chuyển SUBMITTED sang SCREENING, SHORTLISTED, REJECTED hoặc BACKUP; SCREENING sang SHORTLISTED, REJECTED hoặc BACKUP; BACKUP sang SHORTLISTED hoặc BACKUP_NOT_SELECTED.")
+        .WithSummary("Cập nhật trạng thái sàng lọc hồ sơ (MF-03)")
+        .WithDescription("Người sàng lọc theo loại dịch vụ: CV_APPLICATION do Client Company sở hữu Job (candidate.review_company); HEADHUNT_COD và CV_SOURCING do Internal HR (application.screen). Chuyển SUBMITTED sang SCREENING, SHORTLISTED, REJECTED hoặc BACKUP; SCREENING sang SHORTLISTED, REJECTED hoặc BACKUP; BACKUP sang SHORTLISTED hoặc BACKUP_NOT_SELECTED. REJECTED bắt buộc reasonCode (OTHER thì phải có reason làm ghi chú); concurrencyToken bắt buộc.")
         .Produces<UpdateApplicationScreeningStatusResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
+        companyJobGroup.MapPost("/{jobId:guid}/applications/{applicationId:guid}/start-screening", async (
+            Guid jobId,
+            Guid applicationId,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (ResolveScreeningActor(user) is not { } actor)
+            {
+                return PermissionAuthorization.Forbidden($"{ReviewCompanyPermission} | {ScreenApplicationPermission}");
+            }
+
+            try
+            {
+                var response = await sender.Send(
+                    new StartScreeningCommand(jobId, applicationId, userId.Value, actor), cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("StartApplicationScreening")
+        .WithSummary("Đánh dấu hồ sơ đang được sàng lọc (MF-03)")
+        .WithDescription("Giao diện gọi khi người sàng lọc mở hồ sơ. Gọi lặp lại không sao: chỉ chuyển SUBMITTED sang SCREENING khi người gọi đúng là người sàng lọc theo loại dịch vụ; các trường hợp khác trả về trạng thái hiện tại với changed = false.")
+        .Produces<StartScreeningResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
@@ -185,7 +248,8 @@ public static class RecruitmentEndpoints
                     applicationId,
                     userId.Value,
                     IsClientCompanyUser: isClient && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin
+                    IsInternalHrOrAdmin: isInternal || isAdmin,
+                    ScreeningActor: ResolveScreeningActor(user)
                 );
 
                 var response = await sender.Send(query, cancellationToken);
@@ -659,6 +723,17 @@ public static class RecruitmentEndpoints
         return app;
     }
 
+    /// <summary>
+    /// Who the caller screens as (MF-03). Internal HR wins when a user holds both permissions;
+    /// ScreeningPolicy then decides per Service Type.
+    /// </summary>
+    private static ScreeningActor? ResolveScreeningActor(ClaimsPrincipal user)
+    {
+        if (PermissionAuthorization.HasPermission(user, ScreenApplicationPermission)) return ScreeningActor.InternalHr;
+        if (PermissionAuthorization.HasPermission(user, ReviewCompanyPermission)) return ScreeningActor.ClientCompany;
+        return null;
+    }
+
     private static Guid? GetUserIdFromClaims(ClaimsPrincipal user)
     {
         var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -684,7 +759,12 @@ public class DecideBackupApplicationRequest
 public class UpdateApplicationScreeningStatusRequest
 {
     public string TargetStatus { get; set; } = string.Empty;
+
+    /// <summary>Optional free-text note. Required only when reasonCode is OTHER.</summary>
     public string? Reason { get; set; }
+
+    /// <summary>Required for REJECTED: SKILL_MISMATCH, INSUFFICIENT_EXPERIENCE, SALARY_MISMATCH, LOCATION_MISMATCH, LANGUAGE_REQUIREMENT, CANDIDATE_UNREACHABLE, POSITION_FILLED, OTHER.</summary>
+    public string? ReasonCode { get; set; }
     public Guid? ConcurrencyToken { get; set; }
 }
 

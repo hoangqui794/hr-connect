@@ -26,6 +26,8 @@ public partial class Application
 
     public string? StatusReason { get; set; }
 
+    public string? StatusReasonCode { get; set; }
+
     public DateOnly? PlannedStartDate { get; set; }
 
     public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();

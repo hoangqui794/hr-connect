@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Text.Json;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -38,6 +39,11 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             throw new NotFoundException("Không tìm thấy thông tin hồ sơ ứng tuyển.");
         }
 
+        var serviceTypeCode = app.Job?.ServiceType?.Code;
+        var contactOwner = ClientVisibilityPolicy.GetContactOwner(serviceTypeCode);
+        var maskContact = request.IsClientCompanyUser
+            && ClientVisibilityPolicy.ShouldMaskContactForClient(serviceTypeCode, app.Status, app.Placement != null);
+
         if (request.IsClientCompanyUser)
         {
             var member = await _companyUserRepository.GetByUserIdAsync(request.UserId, cancellationToken);
@@ -45,6 +51,14 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             {
                 _logger.LogWarning("Tài khoản {UserId} không có quyền xem hồ sơ thuộc công ty {CompanyId}", request.UserId, app.Job?.CompanyId);
                 throw new ForbiddenException("Bạn không có quyền truy cập hồ sơ ứng tuyển của công ty khác.");
+            }
+
+            if (!ClientVisibilityPolicy.IsVisibleToClient(
+                    serviceTypeCode,
+                    app.Status,
+                    (app.ApplicationStatusHistories ?? []).Select(h => h.NewStatus)))
+            {
+                throw new NotFoundException("Không tìm thấy thông tin hồ sơ ứng tuyển.");
             }
         }
         else if (!request.IsInternalHrOrAdmin)
@@ -109,7 +123,7 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             };
         }
 
-        var allowedActions = ComputeAllowedActions(app, request.IsClientCompanyUser);
+        var allowedActions = ComputeAllowedActions(app, request.IsClientCompanyUser, request.ScreeningActor, serviceTypeCode);
 
         var data = new RecruitmentApplicationDetailData
         {
@@ -120,16 +134,17 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             CompanyName = app.Job?.Company?.CompanyName ?? string.Empty,
             CandidateId = app.CandidateId,
             CandidateFullName = app.Candidate?.FullName ?? string.Empty,
-            CandidateEmail = app.Candidate?.Email,
-            CandidatePhone = app.Candidate?.Phone,
+            CandidateEmail = maskContact ? null : app.Candidate?.Email,
+            CandidatePhone = maskContact ? null : app.Candidate?.Phone,
             DateOfBirth = app.Candidate?.DateOfBirth,
             Gender = app.Candidate?.Gender,
-            CurrentAddress = app.Candidate?.CurrentAddress,
+            CurrentAddress = maskContact ? null : app.Candidate?.CurrentAddress,
             YearsOfExperience = app.Candidate?.YearsOfExperience,
             HighestEducation = app.Candidate?.HighestEducation,
             Status = app.Status,
             CurrentStage = app.CurrentStage,
             StatusReason = app.StatusReason,
+            StatusReasonCode = app.StatusReasonCode,
             AppliedAt = app.AppliedAt,
             UpdatedAt = app.UpdatedAt,
             PlannedStartDate = app.PlannedStartDate,
@@ -139,7 +154,7 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
                 CvId = cvEntity.CvId,
                 Title = cvEntity.Title,
                 FileName = cvEntity.FileName,
-                FileUrl = cvEntity.RenderedFileUrl ?? cvEntity.SourceFileUrl,
+                FileUrl = maskContact ? null : cvEntity.RenderedFileUrl ?? cvEntity.SourceFileUrl,
                 FileSizeBytes = cvEntity.FileSizeBytes,
                 CreatedAt = cvEntity.CreatedAt
             } : null,
@@ -161,7 +176,10 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             Interviews = interviewsDto,
             Offers = offersDto,
             Placement = placementDto,
-            AllowedActions = allowedActions
+            AllowedActions = allowedActions,
+            ServiceTypeCode = serviceTypeCode,
+            ContactOwner = contactOwner.ToString(),
+            IsContactMasked = maskContact
         };
 
         return new RecruitmentApplicationDetailResponse
@@ -201,15 +219,33 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
         public RecruitmentAiInputFingerprintsDto? InputFingerprints { get; set; }
     }
 
-    private static List<string> ComputeAllowedActions(JobApplication app, bool isClientCompanyUser)
+    private static List<string> ComputeAllowedActions(
+        JobApplication app,
+        bool isClientCompanyUser,
+        ScreeningActor? screeningActor,
+        string? serviceTypeCode)
     {
         var actions = new List<string>();
+        var status = (app.Status ?? string.Empty).ToUpperInvariant();
+
+        // Screening actions follow ScreeningPolicy: only the responsible screener sees them.
+        var canScreen = screeningActor.HasValue && ScreeningPolicy.CanScreen(screeningActor.Value, serviceTypeCode);
+        if (canScreen && status is ApplicationStates.Submitted or ApplicationStates.Screening)
+        {
+            if (status == ApplicationStates.Submitted)
+            {
+                actions.Add("START_SCREENING");
+            }
+
+            actions.Add("SHORTLIST");
+            actions.Add("REJECT");
+            actions.Add("MARK_BACKUP");
+        }
+
         if (!isClientCompanyUser)
         {
             return actions;
         }
-
-        var status = (app.Status ?? string.Empty).ToUpperInvariant();
 
         var scheduledInterview = app.Interviews?
             .Where(i => i.Status == InterviewStates.Scheduled)
@@ -217,21 +253,6 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             .FirstOrDefault();
         var latestInterview = app.Interviews?.OrderByDescending(i => i.InterviewRound).ThenByDescending(i => i.CreatedAt).FirstOrDefault();
         var latestOffer = app.Offers?.OrderByDescending(o => o.OfferVersion).FirstOrDefault();
-
-        if (status == ApplicationStates.Submitted)
-        {
-            actions.Add("START_SCREENING");
-            actions.Add("SHORTLIST");
-            actions.Add("REJECT");
-            actions.Add("MARK_BACKUP");
-        }
-
-        if (status == ApplicationStates.Screening)
-        {
-            actions.Add("SHORTLIST");
-            actions.Add("REJECT");
-            actions.Add("MARK_BACKUP");
-        }
 
         if (status == ApplicationStates.Shortlisted)
         {

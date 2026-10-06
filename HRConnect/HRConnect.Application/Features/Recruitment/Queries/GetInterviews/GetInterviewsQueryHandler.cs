@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Recruitment.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -90,8 +91,8 @@ public class GetInterviewsQueryHandler : IRequestHandler<GetInterviewsQuery, Get
                 CompanyName = i.Application?.Job?.Company?.CompanyName ?? string.Empty,
                 CandidateId = i.Application?.CandidateId ?? Guid.Empty,
                 CandidateName = i.Application?.Candidate?.FullName ?? string.Empty,
-                CandidateEmail = i.Application?.Candidate?.Email,
-                CandidatePhone = i.Application?.Candidate?.Phone,
+                CandidateEmail = request.IsClientCompanyUser && ClientVisibilityPolicy.ShouldMaskContactForClient(i.Application?.Job?.ServiceType?.Code, i.Application?.Status, hasPlacement: false) ? null : i.Application?.Candidate?.Email,
+                CandidatePhone = request.IsClientCompanyUser && ClientVisibilityPolicy.ShouldMaskContactForClient(i.Application?.Job?.ServiceType?.Code, i.Application?.Status, hasPlacement: false) ? null : i.Application?.Candidate?.Phone,
                 InterviewRound = i.InterviewRound,
                 InterviewType = i.InterviewType,
                 ScheduledAt = i.ScheduledAt,
