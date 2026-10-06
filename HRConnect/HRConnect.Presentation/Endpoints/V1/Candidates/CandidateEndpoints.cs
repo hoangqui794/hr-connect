@@ -587,6 +587,10 @@ public static class CandidateEndpoints
             {
                 return Results.BadRequest(new { success = false, message = ex.Message });
             }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
+            }
             catch (Exception ex)
             {
                 return Results.Problem(detail: ex.Message, statusCode: 500);
@@ -594,12 +598,13 @@ public static class CandidateEndpoints
         })
         .WithName("UpdateCandidateCvMetadata")
         .WithSummary("Cập nhật thông tin CV của ứng viên")
-        .WithDescription("Yêu cầu permission cv.update_own. API này chỉ cập nhật metadata như title; không thay thế file PDF.")
+        .WithDescription("Yêu cầu permission cv.update_own. Chỉ cập nhật metadata CV thuộc kho cá nhân; CV do Affiliate tải lên phải được quản lý qua nhóm Candidate Affiliate CVs.")
         .Produces<UpdateCandidateCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict)
         .Produces(StatusCodes.Status500InternalServerError);
 
         // 7. PATCH /api/v1/candidates/cv/{cvId:guid}/primary - Đặt CV làm CV chính của ứng viên

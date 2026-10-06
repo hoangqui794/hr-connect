@@ -188,4 +188,43 @@ public class UpdateCandidateCvCommandHandlerTests
         await act.Should().ThrowAsync<NotFoundException>()
             .WithMessage("*Không tìm thấy thông tin ứng viên*");
     }
+
+    [Fact]
+    public async Task Handle_WhenCvWasUploadedByAffiliate_ThrowsConflictWithoutMutationOrAudit()
+    {
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var cvId = Guid.NewGuid();
+        var cv = new CandidateCv
+        {
+            CvId = cvId,
+            CandidateId = candidateId,
+            Title = "Affiliate CV",
+            CreationMethod = "AFFILIATE_UPLOAD",
+            Status = "ACTIVE"
+        };
+        _candidateRepositoryMock.Setup(repository => repository.GetByUserIdAsync(
+                userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate { CandidateId = candidateId, UserId = userId });
+        _candidateCvRepositoryMock.Setup(repository => repository.GetByIdAsync(
+                cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cv);
+
+        var action = () => _handler.Handle(new UpdateCandidateCvCommand
+        {
+            CvId = cvId,
+            UserId = userId,
+            Title = "Tampered title"
+        }, CancellationToken.None);
+
+        var exception = await action.Should().ThrowAsync<ConflictException>();
+        exception.Which.ErrorCode.Should().Be("AFFILIATE_CV_MANAGED_SEPARATELY");
+        cv.Title.Should().Be("Affiliate CV");
+        _candidateCvRepositoryMock.Verify(repository => repository.Update(
+            It.IsAny<CandidateCv>()), Times.Never);
+        _auditLogServiceMock.Verify(service => service.AddAsync(
+            It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(unit => unit.SaveChangesAsync(
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

@@ -54,6 +54,13 @@ public class UpdateCandidateCvCommandHandler : IRequestHandler<UpdateCandidateCv
             throw new ForbiddenException("Bạn không có quyền chỉnh sửa thông tin CV này.");
         }
 
+        if (string.Equals(cv.CreationMethod, "AFFILIATE_UPLOAD", StringComparison.Ordinal))
+        {
+            throw new ConflictException(
+                "CV do Affiliate tải lên không thuộc kho CV cá nhân. Bạn chỉ có thể quản lý quyền tái sử dụng của CV này.",
+                "AFFILIATE_CV_MANAGED_SEPARATELY");
+        }
+
         var oldTitle = cv.Title;
         var trimmedTitle = request.Title.Trim();
         cv.Title = trimmedTitle;
