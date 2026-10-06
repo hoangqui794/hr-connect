@@ -102,7 +102,7 @@ public sealed class GetRecruitmentApplicationDetailMf03Tests
             new GetRecruitmentApplicationDetailQuery(app.ApplicationId, Guid.NewGuid(), false, true, ScreeningActor.InternalHr),
             CancellationToken.None);
 
-        result.Data.AllowedActions.Should().BeEquivalentTo(["START_SCREENING", "SHORTLIST", "REJECT", "MARK_BACKUP"]);
+        result.Data.AllowedActions.Should().BeEquivalentTo(["START_SCREENING", "SHORTLIST", "REJECT"]);
         result.Data.CandidateEmail.Should().Be("thib@example.com");
         result.Data.IsContactMasked.Should().BeFalse();
     }
