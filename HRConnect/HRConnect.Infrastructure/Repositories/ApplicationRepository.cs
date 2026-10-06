@@ -28,11 +28,14 @@ public class ApplicationRepository : IApplicationRepository
         return await _context.Applications
             .Include(a => a.Job)
                 .ThenInclude(j => j.Company)
+            .Include(a => a.Job)
+                .ThenInclude(j => j.ServiceType)
             .Include(a => a.Candidate)
             .Include(a => a.Interviews)
                 .ThenInclude(i => i.InterviewStatusHistories)
             .Include(a => a.Offers)
             .Include(a => a.Attribution)
+                .ThenInclude(attribution => attribution!.Affiliate)
             .Include(a => a.Submission)
             .Include(a => a.ApplicationStatusHistories)
             .FirstOrDefaultAsync(a => a.ApplicationId == applicationId, cancellationToken);
@@ -91,6 +94,8 @@ public class ApplicationRepository : IApplicationRepository
         var items = await query
             .Include(a => a.Job)
                 .ThenInclude(j => j.Company)
+            .Include(a => a.Job)
+                .ThenInclude(j => j.ServiceType)
             .Include(a => a.Submission)
                 .ThenInclude(s => s!.CandidateCv)
             .Include(a => a.AiMatchResults)
@@ -111,7 +116,9 @@ public class ApplicationRepository : IApplicationRepository
         DateTime? toDate,
         int page,
         int pageSize,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? sortBy = null,
+        string? sortDirection = null)
     {
         var query = _context.Applications.AsNoTracking();
 
@@ -154,7 +161,22 @@ public class ApplicationRepository : IApplicationRepository
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var items = await query
+        var scoreDescending = !string.Equals(sortDirection?.Trim(), "ASC", StringComparison.OrdinalIgnoreCase);
+        var orderedQuery = string.Equals(sortBy?.Trim(), "AI_MATCH_SCORE", StringComparison.OrdinalIgnoreCase)
+            ? scoreDescending
+                ? query.OrderByDescending(a => a.AiMatchResults
+                    .OrderByDescending(result => result.AttemptNo)
+                    .Select(result => result.MatchScore)
+                    .FirstOrDefault())
+                    .ThenByDescending(a => a.AppliedAt)
+                : query.OrderBy(a => a.AiMatchResults
+                    .OrderByDescending(result => result.AttemptNo)
+                    .Select(result => result.MatchScore)
+                    .FirstOrDefault())
+                    .ThenByDescending(a => a.AppliedAt)
+            : query.OrderByDescending(a => a.AppliedAt);
+
+        var items = await orderedQuery
             .Include(a => a.Job)
                 .ThenInclude(j => j.Company)
             .Include(a => a.Job)
@@ -165,7 +187,6 @@ public class ApplicationRepository : IApplicationRepository
             .Include(a => a.AiMatchResults)
             .Include(a => a.Submission)
                 .ThenInclude(s => s!.CandidateCv)
-            .OrderByDescending(a => a.AppliedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .AsSplitQuery()

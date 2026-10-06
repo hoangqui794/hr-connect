@@ -13,5 +13,7 @@ public record GetRecruitmentApplicationsQuery(
     DateTime? FromDate = null,
     DateTime? ToDate = null,
     int Page = 1,
-    int PageSize = 10
+    int PageSize = 10,
+    string? SortBy = null,
+    string? SortDirection = null
 ) : IRequest<RecruitmentApplicationsResponse>;

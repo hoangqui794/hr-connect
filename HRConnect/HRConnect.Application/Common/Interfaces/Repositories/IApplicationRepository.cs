@@ -29,7 +29,9 @@ public interface IApplicationRepository
         DateTime? toDate,
         int page,
         int pageSize,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? sortBy = null,
+        string? sortDirection = null);
 
     Task<JobApplication?> GetRecruitmentApplicationDetailAsync(Guid applicationId, CancellationToken cancellationToken = default);
 
