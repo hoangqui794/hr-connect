@@ -2,6 +2,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -37,6 +38,7 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
 
     private readonly IApplicationRepository _applicationRepository;
     private readonly ICompanyUserRepository _companyUserRepository;
+    private readonly IServiceTypeRepository _serviceTypeRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
     private readonly ILogger<UpdateApplicationScreeningStatusCommandHandler> _logger;
@@ -44,12 +46,14 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
     public UpdateApplicationScreeningStatusCommandHandler(
         IApplicationRepository applicationRepository,
         ICompanyUserRepository companyUserRepository,
+        IServiceTypeRepository serviceTypeRepository,
         IUnitOfWork unitOfWork,
         IAuditLogService auditLogService,
         ILogger<UpdateApplicationScreeningStatusCommandHandler> logger)
     {
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
+        _serviceTypeRepository = serviceTypeRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
         _logger = logger;
@@ -71,20 +75,42 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
             throw new NotFoundException("Không tìm thấy hồ sơ ứng tuyển thuộc công việc này.");
         }
 
-        var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-        if (companyUser == null || !string.Equals(companyUser.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+        if (request.Actor == ScreeningActor.ClientCompany)
         {
-            throw new ForbiddenException("Tài khoản doanh nghiệp không còn hoạt động.");
+            var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
+            if (companyUser == null || !string.Equals(companyUser.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ForbiddenException("Tài khoản doanh nghiệp không còn hoạt động.");
+            }
+
+            if (application.Job?.CompanyId != companyUser.CompanyId)
+            {
+                _logger.LogWarning(
+                    "Company user {UserId} attempted to screen application {ApplicationId} outside company {CompanyId}.",
+                    request.CurrentUserId,
+                    application.ApplicationId,
+                    companyUser.CompanyId);
+                throw new NotFoundException("Không tìm thấy hồ sơ ứng tuyển thuộc công việc này.");
+            }
         }
 
-        if (application.Job?.CompanyId != companyUser.CompanyId)
+        var serviceTypeCode = application.Job?.ServiceType?.Code;
+        if (serviceTypeCode == null && application.Job != null)
         {
-            _logger.LogWarning(
-                "Company user {UserId} attempted to screen application {ApplicationId} outside company {CompanyId}.",
-                request.CurrentUserId,
-                application.ApplicationId,
-                companyUser.CompanyId);
-            throw new NotFoundException("Không tìm thấy hồ sơ ứng tuyển thuộc công việc này.");
+            serviceTypeCode = (await _serviceTypeRepository.GetByIdAsync(application.Job.ServiceTypeId, cancellationToken))?.Code;
+        }
+
+        if (!ScreeningPolicy.CanScreen(request.Actor, serviceTypeCode))
+        {
+            var responsible = ScreeningPolicy.GetResponsibleActor(serviceTypeCode) switch
+            {
+                ScreeningActor.ClientCompany => "Client Company sở hữu Job",
+                ScreeningActor.InternalHr => "Internal HR",
+                _ => null
+            };
+            throw new ForbiddenException(responsible == null
+                ? $"Loại dịch vụ {serviceTypeCode ?? "(không xác định)"} chưa hỗ trợ sàng lọc."
+                : $"Hồ sơ thuộc loại dịch vụ {serviceTypeCode} do {responsible} sàng lọc.");
         }
 
         var currentStatus = application.Status.Trim().ToUpperInvariant();
@@ -94,14 +120,24 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
                 $"Không thể chuyển hồ sơ từ {currentStatus} sang {targetStatus} trong bước sàng lọc.");
         }
 
-        if (request.ConcurrencyToken.HasValue && request.ConcurrencyToken.Value != application.ConcurrencyToken)
+        var reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim();
+        if (targetStatus == ApplicationStates.Rejected && reason == null)
+        {
+            throw new BadRequestException("Phải nhập lý do khi loại hồ sơ.");
+        }
+
+        if (!request.ConcurrencyToken.HasValue)
+        {
+            throw new BadRequestException("Thiếu concurrencyToken của hồ sơ. Vui lòng tải lại trang.");
+        }
+
+        if (request.ConcurrencyToken.Value != application.ConcurrencyToken)
         {
             throw new ConflictException("Dữ liệu hồ sơ đã được thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
 
         var now = DateTime.UtcNow;
         var newConcurrencyToken = Guid.NewGuid();
-        var reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim();
 
         application.Status = targetStatus;
         application.StatusReason = reason;
@@ -126,7 +162,13 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
             EntityId = application.ApplicationId,
             ActorUserId = request.CurrentUserId,
             OldValues = new { status = currentStatus },
-            NewValues = new { status = targetStatus, hasReason = reason != null }
+            NewValues = new
+            {
+                status = targetStatus,
+                hasReason = reason != null,
+                screenedBy = request.Actor.ToString(),
+                serviceType = serviceTypeCode
+            }
         }, cancellationToken);
         await _auditLogService.AddAsync(new AuditEntry
         {

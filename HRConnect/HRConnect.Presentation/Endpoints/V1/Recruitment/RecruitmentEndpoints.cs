@@ -8,6 +8,7 @@ using HRConnect.Application.Features.Recruitment.Commands.DecideBackupApplicatio
 using HRConnect.Application.Features.Recruitment.Commands.MarkNotStarted;
 using HRConnect.Application.Features.Recruitment.Commands.UpdateApplicationScreeningStatus;
 using HRConnect.Application.Features.Recruitment.Commands.WithdrawApplication;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplications;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationTimeline;
@@ -27,6 +28,7 @@ public static class RecruitmentEndpoints
     private const string MarkNotStartedPermission = "application.mark_not_started";
     private const string WithdrawOwnPermission = "application.withdraw_own";
     private const string ReviewCompanyPermission = "candidate.review_company";
+    private const string ScreenApplicationPermission = "application.screen";
 
     public static IEndpointRouteBuilder MapRecruitmentEndpoints(this IEndpointRouteBuilder app)
     {
@@ -51,9 +53,18 @@ public static class RecruitmentEndpoints
                 return Results.Unauthorized();
             }
 
-            if (!PermissionAuthorization.HasPermission(user, ReviewCompanyPermission))
+            ScreeningActor actor;
+            if (PermissionAuthorization.HasPermission(user, ScreenApplicationPermission))
             {
-                return PermissionAuthorization.Forbidden(ReviewCompanyPermission);
+                actor = ScreeningActor.InternalHr;
+            }
+            else if (PermissionAuthorization.HasPermission(user, ReviewCompanyPermission))
+            {
+                actor = ScreeningActor.ClientCompany;
+            }
+            else
+            {
+                return PermissionAuthorization.Forbidden($"{ReviewCompanyPermission} | {ScreenApplicationPermission}");
             }
 
             try
@@ -64,7 +75,8 @@ public static class RecruitmentEndpoints
                     request.TargetStatus,
                     request.Reason,
                     request.ConcurrencyToken,
-                    userId.Value), cancellationToken);
+                    userId.Value,
+                    actor), cancellationToken);
                 return Results.Ok(response);
             }
             catch (NotFoundException ex)
@@ -85,8 +97,8 @@ public static class RecruitmentEndpoints
             }
         })
         .WithName("UpdateApplicationScreeningStatus")
-        .WithSummary("Company cập nhật trạng thái sàng lọc hồ sơ")
-        .WithDescription("Chỉ Client Company sở hữu Job mới được chuyển SUBMITTED sang SCREENING, SHORTLISTED, REJECTED hoặc BACKUP; SCREENING sang SHORTLISTED, REJECTED hoặc BACKUP; BACKUP sang SHORTLISTED hoặc BACKUP_NOT_SELECTED.")
+        .WithSummary("Cập nhật trạng thái sàng lọc hồ sơ (MF-03)")
+        .WithDescription("Người sàng lọc theo loại dịch vụ: CV_APPLICATION do Client Company sở hữu Job (candidate.review_company); HEADHUNT_COD và CV_SOURCING do Internal HR (application.screen). Chuyển SUBMITTED sang SCREENING, SHORTLISTED, REJECTED hoặc BACKUP; SCREENING sang SHORTLISTED, REJECTED hoặc BACKUP; BACKUP sang SHORTLISTED hoặc BACKUP_NOT_SELECTED. REJECTED bắt buộc có reason; concurrencyToken bắt buộc.")
         .Produces<UpdateApplicationScreeningStatusResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
