@@ -16,6 +16,15 @@ public interface IFileStorageService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Creates an independent copy of an existing private object.
+    /// </summary>
+    Task<string> CopyAsync(
+        string sourceObjectKey,
+        string destinationObjectKey,
+        string contentType,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Deletes an object by its key.
     /// </summary>
     Task DeleteAsync(

@@ -768,7 +768,7 @@ public partial class ApplicationDbContext : DbContext
                 table.HasComment("Supports CVs created by candidates and submission-scoped CVs uploaded by Affiliates.");
                 table.HasCheckConstraint(
                     "candidate_cv_creation_method_check",
-                    "creation_method IN ('PLATFORM_BUILDER','TEMPLATE_FORM','FILE_UPLOAD','AFFILIATE_UPLOAD')");
+                    "creation_method IN ('PLATFORM_BUILDER','TEMPLATE_FORM','FILE_UPLOAD','AFFILIATE_UPLOAD','AFFILIATE_ADOPTED')");
                 table.HasCheckConstraint(
                     "candidate_cv_status_check",
                     "status IN ('DRAFT','PENDING_CONSENT','ACTIVE','ARCHIVED','DELETED')");
@@ -776,7 +776,7 @@ public partial class ApplicationDbContext : DbContext
                     "ck_candidate_cv_creation_method",
                     "((creation_method = 'PLATFORM_BUILDER' AND structured_content IS NOT NULL) OR " +
                     "(creation_method = 'TEMPLATE_FORM' AND structured_content IS NOT NULL AND cv_template_id IS NOT NULL) OR " +
-                    "(creation_method IN ('FILE_UPLOAD','AFFILIATE_UPLOAD') AND source_file_url IS NOT NULL))");
+                    "(creation_method IN ('FILE_UPLOAD','AFFILIATE_UPLOAD','AFFILIATE_ADOPTED') AND source_file_url IS NOT NULL))");
                 table.HasCheckConstraint(
                     "ck_candidate_cv_affiliate_uploader",
                     "creation_method <> 'AFFILIATE_UPLOAD' OR uploaded_by_user_id IS NOT NULL");
@@ -789,6 +789,10 @@ public partial class ApplicationDbContext : DbContext
             entity.HasIndex(e => new { e.CandidateId, e.CreatedAt }, "idx_candidate_cv_candidate").IsDescending(false, true);
 
             entity.HasIndex(e => new { e.CreationMethod, e.Status }, "idx_candidate_cv_creation_method");
+
+            entity.HasIndex(e => e.AdoptedFromCvId, "ux_candidate_cv_adopted_from")
+                .IsUnique()
+                .HasFilter("adopted_from_cv_id IS NOT NULL");
 
             entity.HasIndex(e => e.UploadedByUserId, "idx_candidate_cv_uploaded_by");
 
@@ -810,6 +814,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CreationMethod)
                 .HasMaxLength(40)
                 .HasColumnName("creation_method");
+            entity.Property(e => e.AdoptedFromCvId).HasColumnName("adopted_from_cv_id");
             entity.Property(e => e.UploadedByUserId).HasColumnName("uploaded_by_user_id");
             entity.Property(e => e.AffiliateReuseStatus)
                 .HasMaxLength(20)
@@ -854,6 +859,17 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.CandidateId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("candidate_cv_candidate_id_fkey");
+
+            entity.HasOne<CandidateCv>()
+                .WithMany()
+                .HasForeignKey(d => d.AdoptedFromCvId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("candidate_cv_adopted_from_cv_id_fkey");
+
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_candidate_cv_adoption_source",
+                "((creation_method = 'AFFILIATE_ADOPTED' AND adopted_from_cv_id IS NOT NULL) OR " +
+                "(creation_method <> 'AFFILIATE_ADOPTED' AND adopted_from_cv_id IS NULL))"));
 
             entity.HasOne(d => d.CvTemplate).WithMany(p => p.CandidateCvs)
                 .HasForeignKey(d => d.CvTemplateId)

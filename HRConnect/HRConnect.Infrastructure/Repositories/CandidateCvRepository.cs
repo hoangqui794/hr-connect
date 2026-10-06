@@ -47,6 +47,18 @@ public class CandidateCvRepository : ICandidateCvRepository
             .ToListAsync(cancellationToken);
     }
 
+    public Task<CandidateCv?> GetAdoptedBySourceCvIdAsync(
+        Guid candidateId,
+        Guid sourceCvId,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.CandidateCvs.FirstOrDefaultAsync(
+            cv => cv.CandidateId == candidateId &&
+                  cv.AdoptedFromCvId == sourceCvId &&
+                  cv.Status != "DELETED",
+            cancellationToken);
+    }
+
     public async Task AddAsync(CandidateCv candidateCv, CancellationToken cancellationToken = default)
     {
         await _context.CandidateCvs.AddAsync(candidateCv, cancellationToken);

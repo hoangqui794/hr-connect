@@ -33,6 +33,17 @@ public interface ICvStorageService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Copies an accepted Affiliate submission document into the Candidate's personal CV library.
+    /// The source document and all existing recruitment history remain unchanged.
+    /// </summary>
+    Task<UploadCvResult> AdoptAffiliateCvAsync(
+        Guid candidateId,
+        Guid actorUserId,
+        Guid sourceCvId,
+        string? title = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Removes an object uploaded for a transaction that later rolled back.
     /// This method only compensates object storage and does not change database state.
     /// </summary>

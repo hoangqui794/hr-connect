@@ -473,6 +473,96 @@ public class CvStorageServiceTests
             Times.Never);
     }
 
+    [Fact]
+    public async Task AdoptAffiliateCvAsync_CopiesObjectAndCreatesIndependentPersonalCv()
+    {
+        var candidateId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        var sourceCvId = Guid.NewGuid();
+        var sourceKey = $"candidates/{candidateId}/cvs/{sourceCvId}.pdf";
+        _candidateCvRepositoryMock.Setup(repository => repository.GetByCandidateIdAndCvIdAsync(
+                candidateId, sourceCvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CandidateCv
+            {
+                CvId = sourceCvId,
+                CandidateId = candidateId,
+                Title = "Affiliate CV",
+                CreationMethod = "AFFILIATE_UPLOAD",
+                SourceFileUrl = sourceKey,
+                FileName = "affiliate.pdf",
+                MimeType = "application/pdf",
+                FileSizeBytes = 4096,
+                Status = "ACTIVE"
+            });
+        _candidateCvRepositoryMock.Setup(repository => repository.GetAdoptedBySourceCvIdAsync(
+                candidateId, sourceCvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CandidateCv?)null);
+        _fileStorageServiceMock.Setup(service => service.CopyAsync(
+                sourceKey, It.IsAny<string>(), "application/pdf", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string _, string destination, string _, CancellationToken _) => destination);
+        CandidateCv? adopted = null;
+        _candidateCvRepositoryMock.Setup(repository => repository.AddAsync(
+                It.IsAny<CandidateCv>(), It.IsAny<CancellationToken>()))
+            .Callback<CandidateCv, CancellationToken>((cv, _) => adopted = cv)
+            .Returns(Task.CompletedTask);
+        _unitOfWorkMock.Setup(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var result = await _service.AdoptAffiliateCvAsync(
+            candidateId, actorUserId, sourceCvId, "CV cá nhân");
+
+        adopted.Should().NotBeNull();
+        adopted!.CreationMethod.Should().Be("AFFILIATE_ADOPTED");
+        adopted.AdoptedFromCvId.Should().Be(sourceCvId);
+        adopted.UploadedByUserId.Should().Be(actorUserId);
+        adopted.SourceFileUrl.Should().NotBe(sourceKey);
+        adopted.IsPrimary.Should().BeFalse();
+        result.CvId.Should().Be(adopted.CvId);
+        _auditLogServiceMock.Verify(audit => audit.AddAsync(
+            It.Is<AuditEntry>(entry =>
+                entry.Action == AuditActions.CandidateAffiliateCvAdopted &&
+                entry.EntityId == adopted.CvId &&
+                entry.CorrelationId == sourceCvId),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(unit => unit.SaveChangesAsync(
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AdoptAffiliateCvAsync_WhenDatabaseSaveFails_DeletesCopiedObject()
+    {
+        var candidateId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        var sourceCvId = Guid.NewGuid();
+        var copiedKey = $"candidates/{candidateId}/cvs/{Guid.NewGuid()}.pdf";
+        _candidateCvRepositoryMock.Setup(repository => repository.GetByCandidateIdAndCvIdAsync(
+                candidateId, sourceCvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CandidateCv
+            {
+                CvId = sourceCvId,
+                CandidateId = candidateId,
+                Title = "Affiliate CV",
+                CreationMethod = "AFFILIATE_UPLOAD",
+                SourceFileUrl = "source.pdf",
+                Status = "ACTIVE"
+            });
+        _candidateCvRepositoryMock.Setup(repository => repository.GetAdoptedBySourceCvIdAsync(
+                candidateId, sourceCvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CandidateCv?)null);
+        _fileStorageServiceMock.Setup(service => service.CopyAsync(
+                "source.pdf", It.IsAny<string>(), "application/pdf", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(copiedKey);
+        _unitOfWorkMock.Setup(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("database unavailable"));
+
+        var action = () => _service.AdoptAffiliateCvAsync(
+            candidateId, actorUserId, sourceCvId);
+
+        await action.Should().ThrowAsync<InvalidOperationException>();
+        _fileStorageServiceMock.Verify(service => service.DeleteAsync(
+            copiedKey, CancellationToken.None), Times.Once);
+    }
+
     private static byte[] CreateMinimalPdf(string catalogExtra = "")
     {
         var objects = new[]

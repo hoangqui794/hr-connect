@@ -5,6 +5,8 @@ using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using System.Globalization;
 using System.Text;
 
@@ -85,6 +87,129 @@ public class CvStorageService : ICvStorageService
             persistChanges: false,
             cancellationToken);
     }
+
+    public async Task<UploadCvResult> AdoptAffiliateCvAsync(
+        Guid candidateId,
+        Guid actorUserId,
+        Guid sourceCvId,
+        string? title = null,
+        CancellationToken cancellationToken = default)
+    {
+        var source = await _candidateCvRepository.GetByCandidateIdAndCvIdAsync(
+            candidateId, sourceCvId, cancellationToken);
+        if (source == null ||
+            !string.Equals(source.CreationMethod, "AFFILIATE_UPLOAD", StringComparison.Ordinal) ||
+            !string.Equals(source.Status, "ACTIVE", StringComparison.Ordinal))
+        {
+            throw new NotFoundException("Không tìm thấy CV Affiliate hợp lệ để nhận vào kho cá nhân.");
+        }
+        if (string.IsNullOrWhiteSpace(source.SourceFileUrl))
+            throw new BadRequestException("CV Affiliate không có tệp lưu trữ hợp lệ.");
+
+        var existing = await _candidateCvRepository.GetAdoptedBySourceCvIdAsync(
+            candidateId, sourceCvId, cancellationToken);
+        if (existing != null)
+            return MapUploadResult(existing);
+
+        var cvId = Guid.NewGuid();
+        var destinationKey = $"candidates/{candidateId}/cvs/{cvId}.pdf";
+        var copiedKey = await _fileStorageService.CopyAsync(
+            source.SourceFileUrl,
+            destinationKey,
+            source.MimeType ?? "application/pdf",
+            cancellationToken);
+
+        try
+        {
+            var now = DateTime.UtcNow;
+            var adoptedTitle = string.IsNullOrWhiteSpace(title)
+                ? $"{source.Title} (Bản cá nhân)"
+                : title.Trim();
+            if (adoptedTitle.Length > 180) adoptedTitle = adoptedTitle[..180];
+
+            var adopted = new CandidateCv
+            {
+                CvId = cvId,
+                CandidateId = candidateId,
+                Title = adoptedTitle,
+                CreationMethod = "AFFILIATE_ADOPTED",
+                UploadedByUserId = actorUserId,
+                AdoptedFromCvId = sourceCvId,
+                AffiliateReuseStatus = null,
+                AffiliateReuseConcurrencyToken = Guid.NewGuid(),
+                SourceFileUrl = copiedKey,
+                FileName = source.FileName ?? $"{cvId}.pdf",
+                MimeType = source.MimeType ?? "application/pdf",
+                FileSizeBytes = source.FileSizeBytes,
+                IsPrimary = false,
+                Status = "ACTIVE",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            await _candidateCvRepository.AddAsync(adopted, cancellationToken);
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.CandidateAffiliateCvAdopted,
+                EntityType = "CANDIDATE_CV",
+                EntityId = adopted.CvId,
+                ActorUserId = actorUserId,
+                CorrelationId = sourceCvId,
+                NewValues = new
+                {
+                    candidateId,
+                    sourceAffiliateCvId = sourceCvId,
+                    adoptedCvId = adopted.CvId,
+                    adopted.CreationMethod,
+                    adopted.IsPrimary
+                }
+            }, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return MapUploadResult(adopted);
+        }
+        catch (DbUpdateException ex) when (
+            ex.InnerException is PostgresException postgres &&
+            postgres.SqlState == PostgresErrorCodes.UniqueViolation &&
+            postgres.ConstraintName == "ux_candidate_cv_adopted_from")
+        {
+            await CompensateCopyAsync(copiedKey);
+            throw new ConflictException(
+                "CV này vừa được nhận vào kho cá nhân từ một yêu cầu khác. Vui lòng tải lại danh sách CV.",
+                "AFFILIATE_CV_ALREADY_ADOPTED",
+                ex);
+        }
+        catch
+        {
+            await CompensateCopyAsync(copiedKey);
+            throw;
+        }
+    }
+
+    private async Task CompensateCopyAsync(string objectKey)
+    {
+        try
+        {
+            await _fileStorageService.DeleteAsync(objectKey, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Không thể bồi hoàn bản sao CV trên R2: Key={Key}", objectKey);
+        }
+    }
+
+    private static UploadCvResult MapUploadResult(CandidateCv cv) => new()
+    {
+        CvId = cv.CvId,
+        CandidateId = cv.CandidateId,
+        Title = cv.Title,
+        ObjectKey = cv.SourceFileUrl ?? string.Empty,
+        FileName = cv.FileName ?? $"{cv.CvId}.pdf",
+        MimeType = cv.MimeType ?? "application/pdf",
+        FileSizeBytes = cv.FileSizeBytes ?? 0,
+        IsPrimary = cv.IsPrimary,
+        Status = cv.Status,
+        CreatedAt = cv.CreatedAt
+    };
 
     private async Task<UploadCvResult> UploadCvPdfCoreAsync(
         Guid candidateId,

@@ -13,6 +13,7 @@ using HRConnect.Application.Features.Candidates.Queries.GetCandidateAffiliateCvD
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateAffiliateCvUsages;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateAffiliateCvDownloadUrl;
 using HRConnect.Application.Features.Candidates.Commands.UpdateCandidateAffiliateCvReuse;
+using HRConnect.Application.Features.Candidates.Commands.AdoptCandidateAffiliateCv;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using HRConnect.Application.Features.Candidates.Queries.GetCvDownloadUrl;
 using MediatR;
@@ -261,6 +262,70 @@ public static class CandidateEndpoints
         .WithSummary("Candidate bật hoặc thu hồi quyền Affiliate tái sử dụng CV")
         .WithDescription("Yêu cầu permission cv.affiliate_reuse.manage_own. concurrencyToken phải lấy từ API danh sách/chi tiết. Thu hồi chỉ chặn lần nộp mới; lịch sử Submission/Application cũ được giữ nguyên.")
         .Produces<UpdateCandidateAffiliateCvReuseResponse>()
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
+        affiliateCvGroup.MapPost("/{cvId:guid}/adopt", async (
+            Guid cvId,
+            [FromBody] AdoptCandidateAffiliateCvRequest? request,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<AdoptCandidateAffiliateCvCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "cv.create"))
+                return PermissionAuthorization.Forbidden("cv.create");
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            var command = new AdoptCandidateAffiliateCvCommand(userId.Value, cvId, request?.Title);
+            var validation = await validator.ValidateAsync(command, cancellationToken);
+            if (!validation.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu nhận CV không hợp lệ.",
+                    errors = validation.Errors
+                        .GroupBy(error => error.PropertyName)
+                        .ToDictionary(grouping => grouping.Key, grouping =>
+                            grouping.Select(error => error.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return result.Data.AlreadyAdopted
+                    ? Results.Ok(result)
+                    : Results.Created($"/api/v1/candidates/cv/{result.Data.CvId}", result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new
+                {
+                    success = false,
+                    message = ex.Message,
+                    errorCode = ex.ErrorCode
+                });
+            }
+        })
+        .WithName("AdoptCandidateAffiliateCv")
+        .WithSummary("Candidate nhận CV do Affiliate tải lên vào kho CV cá nhân")
+        .WithDescription("Yêu cầu permission cv.create. Chỉ áp dụng cho CV đã được Candidate đồng ý ít nhất một lần. Hệ thống tạo bản sao độc lập trong R2; CV nguồn, Submission, Application, Attribution và kết quả MF03 cũ không thay đổi. Gọi lại cùng cvId trả về bản đã nhận thay vì tạo trùng.")
+        .Produces<AdoptCandidateAffiliateCvResponse>(StatusCodes.Status200OK)
+        .Produces<AdoptCandidateAffiliateCvResponse>(StatusCodes.Status201Created)
+        .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
