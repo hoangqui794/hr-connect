@@ -402,4 +402,91 @@ public class SubmissionRepository : ISubmissionRepository
                 cv.UpdatedAt))
             .SingleOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<(IReadOnlyList<CandidateAffiliateCvUsageRecord> Items, int TotalCount)> GetCandidateAffiliateCvUsagesAsync(
+        Guid candidateId,
+        Guid cvId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Submissions
+            .AsNoTracking()
+            .Where(submission =>
+                submission.CandidateId == candidateId &&
+                submission.CvId == cvId &&
+                submission.Source == "AFFILIATE" &&
+                submission.CandidateCv.CreationMethod == "AFFILIATE_UPLOAD");
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var rows = await query
+            .OrderByDescending(submission => submission.SubmittedAt)
+            .ThenByDescending(submission => submission.SubmissionId)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(submission => new
+            {
+                submission.SubmissionId,
+                submission.JobId,
+                JobTitle = submission.Job.Title,
+                submission.Job.CompanyId,
+                submission.Job.Company.CompanyName,
+                AffiliateUserId = submission.SubmittedBy,
+                AffiliateDisplayName = submission.SubmittedByNavigation.DisplayName ?? submission.SubmittedByNavigation.Email,
+                SubmissionStatus = submission.Status,
+                submission.SubmittedAt,
+                ConsentStatus = submission.Consent == null ? null : submission.Consent.Status,
+                ConsentRequestedAt = submission.Consent == null ? (DateTime?)null : submission.Consent.RequestedAt,
+                ConsentExpiresAt = submission.Consent == null ? (DateTime?)null : submission.Consent.ExpiresAt,
+                ConsentRespondedAt = submission.Consent == null ? null : submission.Consent.RespondedAt,
+                Application = submission.Applications
+                    .OrderByDescending(application => application.AppliedAt)
+                    .Select(application => new
+                    {
+                        application.ApplicationId,
+                        ApplicationStatus = application.Status,
+                        ApplicationCurrentStage = application.CurrentStage,
+                        AiStatus = application.AiMatchResults
+                            .OrderByDescending(result => result.AttemptNo)
+                            .Select(result => result.Status)
+                            .FirstOrDefault(),
+                        AiMatchScore = application.AiMatchResults
+                            .OrderByDescending(result => result.AttemptNo)
+                            .Select(result => result.MatchScore)
+                            .FirstOrDefault(),
+                        AiMatchTier = application.AiMatchResults
+                            .OrderByDescending(result => result.AttemptNo)
+                            .Select(result => result.MatchTier)
+                            .FirstOrDefault(),
+                        AiCompletedAt = application.AiMatchResults
+                            .OrderByDescending(result => result.AttemptNo)
+                            .Select(result => result.CompletedAt)
+                            .FirstOrDefault()
+                    })
+                    .FirstOrDefault()
+            })
+            .ToListAsync(cancellationToken);
+
+        return (rows.Select(row => new CandidateAffiliateCvUsageRecord(
+            row.SubmissionId,
+            row.JobId,
+            row.JobTitle,
+            row.CompanyId,
+            row.CompanyName,
+            row.AffiliateUserId,
+            row.AffiliateDisplayName,
+            row.SubmissionStatus,
+            row.SubmittedAt,
+            row.ConsentStatus,
+            row.ConsentRequestedAt,
+            row.ConsentExpiresAt,
+            row.ConsentRespondedAt,
+            row.Application?.ApplicationId,
+            row.Application?.ApplicationStatus,
+            row.Application?.ApplicationCurrentStage,
+            row.Application?.AiStatus,
+            row.Application?.AiMatchScore,
+            row.Application?.AiMatchTier,
+            row.Application?.AiCompletedAt)).ToList(), totalCount);
+    }
 }

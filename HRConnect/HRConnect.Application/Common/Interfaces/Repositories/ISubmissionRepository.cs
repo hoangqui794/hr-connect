@@ -57,6 +57,13 @@ public interface ISubmissionRepository
         Guid candidateId,
         Guid cvId,
         CancellationToken cancellationToken = default);
+
+    Task<(IReadOnlyList<CandidateAffiliateCvUsageRecord> Items, int TotalCount)> GetCandidateAffiliateCvUsagesAsync(
+        Guid candidateId,
+        Guid cvId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record CandidateAffiliateCvRecord(
@@ -96,6 +103,28 @@ public sealed record CandidateAffiliateCvDetailRecord(
     DateTime? LastSubmittedAt,
     DateTime CreatedAt,
     DateTime UpdatedAt);
+
+public sealed record CandidateAffiliateCvUsageRecord(
+    Guid SubmissionId,
+    Guid JobId,
+    string JobTitle,
+    Guid CompanyId,
+    string CompanyName,
+    Guid AffiliateUserId,
+    string AffiliateDisplayName,
+    string SubmissionStatus,
+    DateTime SubmittedAt,
+    string? ConsentStatus,
+    DateTime? ConsentRequestedAt,
+    DateTime? ConsentExpiresAt,
+    DateTime? ConsentRespondedAt,
+    Guid? ApplicationId,
+    string? ApplicationStatus,
+    string? ApplicationCurrentStage,
+    string? AiStatus,
+    decimal? AiMatchScore,
+    string? AiMatchTier,
+    DateTime? AiCompletedAt);
 
 public sealed record AffiliateCandidateLibraryRecord(
     Guid CandidateId,
