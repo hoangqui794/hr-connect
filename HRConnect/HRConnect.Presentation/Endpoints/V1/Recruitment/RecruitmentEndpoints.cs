@@ -53,16 +53,7 @@ public static class RecruitmentEndpoints
                 return Results.Unauthorized();
             }
 
-            ScreeningActor actor;
-            if (PermissionAuthorization.HasPermission(user, ScreenApplicationPermission))
-            {
-                actor = ScreeningActor.InternalHr;
-            }
-            else if (PermissionAuthorization.HasPermission(user, ReviewCompanyPermission))
-            {
-                actor = ScreeningActor.ClientCompany;
-            }
-            else
+            if (ResolveScreeningActor(user) is not { } actor)
             {
                 return PermissionAuthorization.Forbidden($"{ReviewCompanyPermission} | {ScreenApplicationPermission}");
             }
@@ -197,7 +188,8 @@ public static class RecruitmentEndpoints
                     applicationId,
                     userId.Value,
                     IsClientCompanyUser: isClient && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin
+                    IsInternalHrOrAdmin: isInternal || isAdmin,
+                    ScreeningActor: ResolveScreeningActor(user)
                 );
 
                 var response = await sender.Send(query, cancellationToken);
@@ -669,6 +661,17 @@ public static class RecruitmentEndpoints
         .Produces(StatusCodes.Status409Conflict);
 
         return app;
+    }
+
+    /// <summary>
+    /// Who the caller screens as (MF-03). Internal HR wins when a user holds both permissions;
+    /// ScreeningPolicy then decides per Service Type.
+    /// </summary>
+    private static ScreeningActor? ResolveScreeningActor(ClaimsPrincipal user)
+    {
+        if (PermissionAuthorization.HasPermission(user, ScreenApplicationPermission)) return ScreeningActor.InternalHr;
+        if (PermissionAuthorization.HasPermission(user, ReviewCompanyPermission)) return ScreeningActor.ClientCompany;
+        return null;
     }
 
     private static Guid? GetUserIdFromClaims(ClaimsPrincipal user)

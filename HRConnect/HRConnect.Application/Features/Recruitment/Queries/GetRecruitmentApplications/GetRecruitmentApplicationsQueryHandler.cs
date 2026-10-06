@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Recruitment.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -66,6 +67,9 @@ public class GetRecruitmentApplicationsQueryHandler : IRequestHandler<GetRecruit
             var latestAi = a.AiMatchResults?.OrderByDescending(r => r.AttemptNo).FirstOrDefault();
             var latestInterview = a.Interviews?.OrderByDescending(i => i.InterviewRound).ThenByDescending(i => i.CreatedAt).FirstOrDefault();
             var latestOffer = a.Offers?.OrderByDescending(o => o.OfferVersion).FirstOrDefault();
+            var serviceTypeCode = a.Job?.ServiceType?.Code;
+            var maskContact = request.IsClientCompanyUser
+                && ClientVisibilityPolicy.ShouldMaskContactForClient(serviceTypeCode, a.Status, hasPlacement: false);
 
             return new RecruitmentApplicationItemDto
             {
@@ -76,8 +80,8 @@ public class GetRecruitmentApplicationsQueryHandler : IRequestHandler<GetRecruit
                 CompanyName = a.Job?.Company?.CompanyName ?? string.Empty,
                 CandidateId = a.CandidateId,
                 CandidateName = a.Candidate?.FullName ?? string.Empty,
-                CandidateEmail = a.Candidate?.Email,
-                CandidatePhone = a.Candidate?.Phone,
+                CandidateEmail = maskContact ? null : a.Candidate?.Email,
+                CandidatePhone = maskContact ? null : a.Candidate?.Phone,
                 CvId = a.Submission?.CvId,
                 CvTitle = a.Submission?.CandidateCv?.Title ?? a.Submission?.CandidateCv?.FileName,
                 Status = a.Status,
@@ -94,7 +98,10 @@ public class GetRecruitmentApplicationsQueryHandler : IRequestHandler<GetRecruit
                 LatestOfferStatus = latestOffer?.Status,
                 LatestOfferSalary = latestOffer?.Salary,
                 PlannedStartDate = a.PlannedStartDate,
-                ConcurrencyToken = a.ConcurrencyToken
+                ConcurrencyToken = a.ConcurrencyToken,
+                ServiceTypeCode = serviceTypeCode,
+                ContactOwner = ClientVisibilityPolicy.GetContactOwner(serviceTypeCode).ToString(),
+                IsContactMasked = maskContact
             };
         }).ToList();
 

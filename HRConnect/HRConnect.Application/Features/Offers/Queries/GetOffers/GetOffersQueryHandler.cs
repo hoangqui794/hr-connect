@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Recruitment.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -80,8 +81,8 @@ public class GetOffersQueryHandler : IRequestHandler<GetOffersQuery, GetOffersRe
             CompanyName = o.Application.Job?.Company?.CompanyName ?? string.Empty,
             CandidateId = o.Application.CandidateId,
             CandidateName = o.Application.Candidate?.FullName ?? string.Empty,
-            CandidateEmail = o.Application.Candidate?.Email,
-            CandidatePhone = o.Application.Candidate?.Phone,
+            CandidateEmail = request.IsClientCompanyUser && ClientVisibilityPolicy.ShouldMaskContactForClient(o.Application.Job?.ServiceType?.Code, o.Application.Status, hasPlacement: false) ? null : o.Application.Candidate?.Email,
+            CandidatePhone = request.IsClientCompanyUser && ClientVisibilityPolicy.ShouldMaskContactForClient(o.Application.Job?.ServiceType?.Code, o.Application.Status, hasPlacement: false) ? null : o.Application.Candidate?.Phone,
             OfferVersion = o.OfferVersion,
             Salary = o.Salary,
             CurrencyCode = o.CurrencyCode ?? "VND",

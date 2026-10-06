@@ -78,4 +78,12 @@ public class RecruitmentApplicationItemDto
     public DateOnly? PlannedStartDate { get; set; }
 
     public Guid ConcurrencyToken { get; set; }
+
+    public string? ServiceTypeCode { get; set; }
+
+    /// <summary>Who contacts the candidate after screening: ClientCompany or InternalHr (MF-03).</summary>
+    public string ContactOwner { get; set; } = string.Empty;
+
+    /// <summary>True when email and phone are hidden from the Client (HEADHUNT_COD before PLACED).</summary>
+    public bool IsContactMasked { get; set; }
 }
