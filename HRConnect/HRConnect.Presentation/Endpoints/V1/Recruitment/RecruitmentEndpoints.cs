@@ -7,6 +7,7 @@ using HRConnect.Application.Features.Recruitment.Commands.ConfirmPlannedStartDat
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmStartWork;
 using HRConnect.Application.Features.Recruitment.Commands.DecideBackupApplication;
 using HRConnect.Application.Features.Recruitment.Commands.MarkNotStarted;
+using HRConnect.Application.Features.Recruitment.Commands.StartScreening;
 using HRConnect.Application.Features.Recruitment.Commands.UpdateApplicationScreeningStatus;
 using HRConnect.Application.Features.Recruitment.Commands.WithdrawApplication;
 using HRConnect.Application.Features.Recruitment.Common;
@@ -109,6 +110,48 @@ public static class RecruitmentEndpoints
         .WithDescription("Người sàng lọc theo loại dịch vụ: CV_APPLICATION do Client Company sở hữu Job (candidate.review_company); HEADHUNT_COD và CV_SOURCING do Internal HR (application.screen). Chuyển SUBMITTED sang SCREENING, SHORTLISTED, REJECTED hoặc BACKUP; SCREENING sang SHORTLISTED, REJECTED hoặc BACKUP; BACKUP sang SHORTLISTED hoặc BACKUP_NOT_SELECTED. REJECTED bắt buộc reasonCode (OTHER thì phải có reason làm ghi chú); concurrencyToken bắt buộc.")
         .Produces<UpdateApplicationScreeningStatusResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
+        companyJobGroup.MapPost("/{jobId:guid}/applications/{applicationId:guid}/start-screening", async (
+            Guid jobId,
+            Guid applicationId,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (ResolveScreeningActor(user) is not { } actor)
+            {
+                return PermissionAuthorization.Forbidden($"{ReviewCompanyPermission} | {ScreenApplicationPermission}");
+            }
+
+            try
+            {
+                var response = await sender.Send(
+                    new StartScreeningCommand(jobId, applicationId, userId.Value, actor), cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("StartApplicationScreening")
+        .WithSummary("Đánh dấu hồ sơ đang được sàng lọc (MF-03)")
+        .WithDescription("Giao diện gọi khi người sàng lọc mở hồ sơ. Gọi lặp lại không sao: chỉ chuyển SUBMITTED sang SCREENING khi người gọi đúng là người sàng lọc theo loại dịch vụ; các trường hợp khác trả về trạng thái hiện tại với changed = false.")
+        .Produces<StartScreeningResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)

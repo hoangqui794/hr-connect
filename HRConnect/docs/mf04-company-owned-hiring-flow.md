@@ -31,8 +31,19 @@ Who screens depends on the Job's Service Type (`ScreeningPolicy`, see
 | `CV_APPLICATION` | Company user that owns the Job | `candidate.review_company` |
 | `HEADHUNT_COD`, `CV_SOURCING` | `INTERNAL_HR` | `application.screen` |
 
-A wrong actor for the Service Type receives `403`. `reason` is required for
-`REJECTED`, and `concurrencyToken` is required on every call.
+A wrong actor for the Service Type receives `403`. `REJECTED` requires a
+`reasonCode` (see `ApplicationReasonCodes`); `reason` is an optional note,
+required only for `OTHER`. `concurrencyToken` is required on every call.
+
+`POST /api/v1/jobs/{jobId}/applications/{applicationId}/start-screening` moves
+`SUBMITTED` to `SCREENING` when the responsible screener opens the
+application; repeated or out-of-role calls return `changed: false`.
+
+Client visibility (`ClientVisibilityPolicy`): for `HEADHUNT_COD` and
+`CV_SOURCING` the Company only sees applications that were ever
+`SHORTLISTED`. For `HEADHUNT_COD`, candidate email, phone, address and CV file
+are hidden from the Company until `PLACED`, in application, interview and
+offer responses.
 
 ```http
 PATCH /api/v1/jobs/{jobId}/applications/{applicationId}/status
