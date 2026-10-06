@@ -38,6 +38,40 @@ public sealed class AffiliateCandidateLibraryRepositoryTests
             item.CandidateId == allowedCandidate.CandidateId && item.ActiveCvCount == 1);
     }
 
+    [Fact]
+    public async Task GetLibraryDetail_ReturnsOnlyAllowedCvs()
+    {
+        await using var context = CreateContext();
+        var affiliateUserId = AddAffiliate(context);
+        var candidate = Candidate("Candidate");
+        context.Candidates.Add(candidate);
+        var allowedCv = AddAcceptedAffiliateCv(context, candidate, affiliateUserId, "ALLOWED");
+        AddAcceptedAffiliateCv(context, candidate, affiliateUserId, "REVOKED");
+        await context.SaveChangesAsync();
+
+        var detail = await new SubmissionRepository(context)
+            .GetAffiliateCandidateLibraryDetailAsync(affiliateUserId, candidate.CandidateId);
+
+        detail.Should().NotBeNull();
+        detail!.Cvs.Should().ContainSingle(cv => cv.CvId == allowedCv.CvId);
+    }
+
+    [Fact]
+    public async Task GetLibraryDetail_WhenEveryCvIsRevoked_ReturnsNotFoundShape()
+    {
+        await using var context = CreateContext();
+        var affiliateUserId = AddAffiliate(context);
+        var candidate = Candidate("Candidate");
+        context.Candidates.Add(candidate);
+        AddAcceptedAffiliateCv(context, candidate, affiliateUserId, "REVOKED");
+        await context.SaveChangesAsync();
+
+        var detail = await new SubmissionRepository(context)
+            .GetAffiliateCandidateLibraryDetailAsync(affiliateUserId, candidate.CandidateId);
+
+        detail.Should().BeNull();
+    }
+
     private static ApplicationDbContext CreateContext() => new(
         new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -53,7 +87,22 @@ public sealed class AffiliateCandidateLibraryRepositoryTests
         UpdatedAt = DateTime.UtcNow
     };
 
-    private static void AddAcceptedAffiliateCv(
+    private static Guid AddAffiliate(ApplicationDbContext context)
+    {
+        var userId = Guid.NewGuid();
+        context.AppUsers.Add(new AppUser
+        {
+            UserId = userId,
+            Email = $"affiliate-{userId:N}@example.com",
+            PasswordHash = "hash",
+            Status = "ACTIVE",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+        return userId;
+    }
+
+    private static CandidateCv AddAcceptedAffiliateCv(
         ApplicationDbContext context,
         Candidate candidate,
         Guid affiliateUserId,
@@ -87,5 +136,6 @@ public sealed class AffiliateCandidateLibraryRepositoryTests
             SubmittedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         });
+        return cv;
     }
 }
