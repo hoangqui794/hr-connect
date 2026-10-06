@@ -2,6 +2,7 @@ using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.SubmissionConsents.RespondSubmissionConsent;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -51,6 +52,7 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         {
             Token = "valid-token",
             Decision = "CONFIRM",
+            AllowFutureReuse = true,
             RequesterUserId = fixture.Candidate.UserId
         }, CancellationToken.None);
 
@@ -58,6 +60,11 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         response.ApplicationId.Should().Be(created!.ApplicationId);
         fixture.Consent.Status.Should().Be("CONFIRMED");
         fixture.Cv.Status.Should().Be("ACTIVE");
+        fixture.Cv.AffiliateReuseStatus.Should().Be("ALLOWED");
+        response.AffiliateReuseStatus.Should().Be("ALLOWED");
+        _audit.Verify(x => x.AddAsync(It.Is<AuditEntry>(entry =>
+            entry.Action == AuditActions.AffiliateCvReuseGranted &&
+            entry.EntityId == fixture.Cv.CvId), It.IsAny<CancellationToken>()), Times.Once);
         _attributions.Verify(x => x.AddAsync(It.Is<Attribution>(a => a.WinningSubmissionId == fixture.Submission.SubmissionId), It.IsAny<CancellationToken>()), Times.Once);
         _scoring.Verify(x => x.TriggerScoringAsync(It.Is<Mf03TriggerPayload>(p => p.ApplicationId == created.ApplicationId), It.IsAny<CancellationToken>()), Times.Once);
         _notifications.Verify(x => x.AddAsync(It.Is<Notification>(notification =>
@@ -261,6 +268,61 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         _applications.Verify(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task Confirm_WithoutReuseChoice_PreservesCurrentReuseStatus()
+    {
+        var fixture = CreateConsent();
+        fixture.Cv.AffiliateReuseStatus = "ALLOWED";
+        var originalToken = fixture.Cv.AffiliateReuseConcurrencyToken;
+        SetupPendingConfirmation(fixture);
+        _affiliates.Setup(x => x.GetByUserIdWithDetailsAsync(
+                fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateEligibleAffiliate(fixture.Submission.SubmittedBy));
+        _applications.Setup(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await Handler().Handle(new RespondSubmissionConsentCommand
+        {
+            Token = "valid-token",
+            Decision = "CONFIRM",
+            RequesterUserId = fixture.Candidate.UserId
+        }, CancellationToken.None);
+
+        response.AffiliateReuseStatus.Should().Be("ALLOWED");
+        fixture.Cv.AffiliateReuseConcurrencyToken.Should().Be(originalToken);
+        _audit.Verify(x => x.AddAsync(It.Is<AuditEntry>(entry =>
+            entry.Action == AuditActions.AffiliateCvReuseGranted ||
+            entry.Action == AuditActions.AffiliateCvReuseRevoked), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Confirm_WhenFutureReuseIsExplicitlyDisabled_RevokesExistingGrant()
+    {
+        var fixture = CreateConsent();
+        fixture.Cv.AffiliateReuseStatus = "ALLOWED";
+        var originalToken = fixture.Cv.AffiliateReuseConcurrencyToken;
+        SetupPendingConfirmation(fixture);
+        _affiliates.Setup(x => x.GetByUserIdWithDetailsAsync(
+                fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateEligibleAffiliate(fixture.Submission.SubmittedBy));
+        _applications.Setup(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await Handler().Handle(new RespondSubmissionConsentCommand
+        {
+            Token = "valid-token",
+            Decision = "CONFIRM",
+            AllowFutureReuse = false,
+            RequesterUserId = fixture.Candidate.UserId
+        }, CancellationToken.None);
+
+        response.AffiliateReuseStatus.Should().Be("REVOKED");
+        fixture.Cv.AffiliateReuseConcurrencyToken.Should().NotBe(originalToken);
+        _audit.Verify(x => x.AddAsync(It.Is<AuditEntry>(entry =>
+            entry.Action == AuditActions.AffiliateCvReuseRevoked &&
+            entry.EntityId == fixture.Cv.CvId), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     private void SetupPendingConfirmation(Fixture fixture)
     {
         _consents.Setup(x => x.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -347,7 +409,16 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
             Email = "candidate@example.com",
             Status = "ACTIVE"
         };
-        var cv = new CandidateCv { CvId = Guid.NewGuid(), CandidateId = candidate.CandidateId, Status = "PENDING_CONSENT", FileName = "cv.pdf" };
+        var cv = new CandidateCv
+        {
+            CvId = Guid.NewGuid(),
+            CandidateId = candidate.CandidateId,
+            Status = "PENDING_CONSENT",
+            CreationMethod = "AFFILIATE_UPLOAD",
+            AffiliateReuseStatus = "NOT_GRANTED",
+            AffiliateReuseConcurrencyToken = Guid.NewGuid(),
+            FileName = "cv.pdf"
+        };
         var job = new Job
         {
             JobId = Guid.NewGuid(),

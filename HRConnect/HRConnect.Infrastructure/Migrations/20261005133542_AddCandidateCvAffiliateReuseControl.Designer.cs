@@ -4,6 +4,7 @@ using System.Net;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HRConnect.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261005133542_AddCandidateCvAffiliateReuseControl")]
+    partial class AddCandidateCvAffiliateReuseControl
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -628,11 +631,6 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("status_reason");
 
-                    b.Property<string>("StatusReasonCode")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("status_reason_code");
-
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -694,11 +692,6 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Property<string>("Reason")
                         .HasColumnType("text")
                         .HasColumnName("reason");
-
-                    b.Property<string>("ReasonCode")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("reason_code");
 
                     b.HasKey("ApplicationStatusHistoryId")
                         .HasName("application_status_history_pkey");
@@ -1021,10 +1014,6 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("cv_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
-                    b.Property<Guid?>("AdoptedFromCvId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("adopted_from_cv_id");
-
                     b.Property<DateTime?>("AffiliateReuseChangedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("affiliate_reuse_changed_at");
@@ -1148,25 +1137,19 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("((is_primary = true) AND ((status)::text = 'ACTIVE'::text))");
 
-                    b.HasIndex(new[] { "AdoptedFromCvId" }, "ux_candidate_cv_adopted_from")
-                        .IsUnique()
-                        .HasFilter("adopted_from_cv_id IS NOT NULL");
-
                     b.ToTable("candidate_cv", "public", t =>
                         {
                             t.HasComment("Supports CVs created by candidates and submission-scoped CVs uploaded by Affiliates.");
 
-                            t.HasCheckConstraint("candidate_cv_creation_method_check", "creation_method IN ('PLATFORM_BUILDER','TEMPLATE_FORM','FILE_UPLOAD','AFFILIATE_UPLOAD','AFFILIATE_ADOPTED')");
+                            t.HasCheckConstraint("candidate_cv_creation_method_check", "creation_method IN ('PLATFORM_BUILDER','TEMPLATE_FORM','FILE_UPLOAD','AFFILIATE_UPLOAD')");
 
                             t.HasCheckConstraint("candidate_cv_status_check", "status IN ('DRAFT','PENDING_CONSENT','ACTIVE','ARCHIVED','DELETED')");
-
-                            t.HasCheckConstraint("ck_candidate_cv_adoption_source", "((creation_method = 'AFFILIATE_ADOPTED' AND adopted_from_cv_id IS NOT NULL) OR (creation_method <> 'AFFILIATE_ADOPTED' AND adopted_from_cv_id IS NULL))");
 
                             t.HasCheckConstraint("ck_candidate_cv_affiliate_reuse_status", "((creation_method = 'AFFILIATE_UPLOAD' AND affiliate_reuse_status IN ('NOT_GRANTED','ALLOWED','REVOKED')) OR (creation_method <> 'AFFILIATE_UPLOAD' AND affiliate_reuse_status IS NULL))");
 
                             t.HasCheckConstraint("ck_candidate_cv_affiliate_uploader", "creation_method <> 'AFFILIATE_UPLOAD' OR uploaded_by_user_id IS NOT NULL");
 
-                            t.HasCheckConstraint("ck_candidate_cv_creation_method", "((creation_method = 'PLATFORM_BUILDER' AND structured_content IS NOT NULL) OR (creation_method = 'TEMPLATE_FORM' AND structured_content IS NOT NULL AND cv_template_id IS NOT NULL) OR (creation_method IN ('FILE_UPLOAD','AFFILIATE_UPLOAD','AFFILIATE_ADOPTED') AND source_file_url IS NOT NULL))");
+                            t.HasCheckConstraint("ck_candidate_cv_creation_method", "((creation_method = 'PLATFORM_BUILDER' AND structured_content IS NOT NULL) OR (creation_method = 'TEMPLATE_FORM' AND structured_content IS NOT NULL AND cv_template_id IS NOT NULL) OR (creation_method IN ('FILE_UPLOAD','AFFILIATE_UPLOAD') AND source_file_url IS NOT NULL))");
                         });
                 });
 
@@ -3988,12 +3971,6 @@ namespace HRConnect.Infrastructure.Migrations
 
             modelBuilder.Entity("HRConnect.Domain.Entities.CandidateCv", b =>
                 {
-                    b.HasOne("HRConnect.Domain.Entities.CandidateCv", null)
-                        .WithMany()
-                        .HasForeignKey("AdoptedFromCvId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("candidate_cv_adopted_from_cv_id_fkey");
-
                     b.HasOne("HRConnect.Domain.Entities.AppUser", null)
                         .WithMany()
                         .HasForeignKey("AffiliateReuseChangedByUserId")

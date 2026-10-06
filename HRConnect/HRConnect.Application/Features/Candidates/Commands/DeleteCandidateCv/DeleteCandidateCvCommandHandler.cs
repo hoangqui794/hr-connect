@@ -56,6 +56,13 @@ public class DeleteCandidateCvCommandHandler : IRequestHandler<DeleteCandidateCv
             throw new ForbiddenException("Bạn không có quyền xóa CV này.");
         }
 
+        if (string.Equals(cv.CreationMethod, "AFFILIATE_UPLOAD", StringComparison.Ordinal))
+        {
+            throw new ConflictException(
+                "CV do Affiliate tải lên không thuộc kho CV cá nhân nên không thể xóa tại đây. Bạn có thể thu hồi quyền tái sử dụng CV trong mục CV do Affiliate gửi.",
+                "AFFILIATE_CV_MANAGED_SEPARATELY");
+        }
+
         var isInUse = await _candidateCvRepository.IsCvInUseAsync(cv.CvId, cancellationToken);
         if (isInUse)
         {

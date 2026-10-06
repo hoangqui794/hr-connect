@@ -722,7 +722,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(existingCandidate);
 
         var cvId = Guid.NewGuid();
-        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = userId };
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = userId, AffiliateReuseStatus = "ALLOWED" };
         _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cv);
 
@@ -876,7 +876,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(candidate);
 
         var cvId = Guid.NewGuid();
-        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = userId };
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = userId, AffiliateReuseStatus = "ALLOWED" };
         _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cv);
 
@@ -935,7 +935,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(candidate);
 
         var cvId = Guid.NewGuid();
-        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = affiliateBUserId };
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = affiliateBUserId, AffiliateReuseStatus = "ALLOWED" };
         _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cv);
 
@@ -1010,7 +1010,7 @@ public class SubmitCandidateCommandHandlerTests
             .ReturnsAsync(candidate);
 
         var cvId = Guid.NewGuid();
-        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = userId };
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf", CreationMethod = "AFFILIATE_UPLOAD", UploadedByUserId = userId, AffiliateReuseStatus = "ALLOWED" };
         _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cv);
 
@@ -1286,6 +1286,78 @@ public class SubmitCandidateCommandHandlerTests
         _cvStorageServiceMock.Verify(service => service.UploadAffiliateCvPdfAsync(
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(),
             It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("NOT_GRANTED")]
+    [InlineData("REVOKED")]
+    public async Task Handle_WhenDirectCvIdReuseIsNotAllowed_ThrowsForbiddenBeforeTransaction(
+        string reuseStatus)
+    {
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var cvId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        _affiliateProfileRepositoryMock.Setup(repository => repository.GetByUserIdAsync(
+                userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateProfile
+            {
+                AffiliateId = Guid.NewGuid(),
+                UserId = userId,
+                Status = "ACTIVE"
+            });
+        _jobRepositoryMock.Setup(repository => repository.GetByIdAsync(
+                jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job
+            {
+                JobId = jobId,
+                ServiceTypeId = serviceTypeId,
+                Status = JobStatuses.Active,
+                Visibility = JobVisibilities.Public
+            });
+        _jobRepositoryMock.Setup(repository => repository.CanAnyRoleSubmitJobAsync(
+                serviceTypeId,
+                It.IsAny<IReadOnlyCollection<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _candidateRepositoryMock.Setup(repository => repository.GetByNormalizedEmailAsync(
+                "candidate@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate
+            {
+                CandidateId = candidateId,
+                Email = "candidate@example.com",
+                Status = "ACTIVE"
+            });
+        _candidateCvRepositoryMock.Setup(repository => repository.GetByIdAsync(
+                cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CandidateCv
+            {
+                CvId = cvId,
+                CandidateId = candidateId,
+                CreationMethod = "AFFILIATE_UPLOAD",
+                UploadedByUserId = userId,
+                AffiliateReuseStatus = reuseStatus,
+                Status = "ACTIVE",
+                SourceFileUrl = "private.pdf"
+            });
+
+        var action = () => _handler.Handle(new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            FullName = "Candidate",
+            Email = "candidate@example.com",
+            CvId = cvId,
+            RoleCodes = [JobAccessPolicy.AffiliateRole]
+        }, CancellationToken.None);
+
+        var exception = await action.Should().ThrowAsync<ForbiddenException>();
+        exception.Which.ErrorCode.Should().Be("CV_REUSE_NOT_ALLOWED");
+        _unitOfWorkMock.Verify(unit => unit.BeginTransactionAsync(
+            It.IsAny<CancellationToken>()), Times.Never);
+        _submissionRepositoryMock.Verify(repository => repository.AddAsync(
+            It.IsAny<Submission>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
