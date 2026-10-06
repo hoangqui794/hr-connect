@@ -176,43 +176,9 @@ const resolveUserEmail = (email?: string): string => {
   return '';
 };
 
-const DEFAULT_CVS: CandidateCV[] = [
-  {
-    id: 'cv-01',
-    userEmail: 'minh.nguyen@gmail.com',
-    name: 'CV Senior Fullstack Engineer (ATS Standard 2026)',
-    updatedAt: '16/09/2026',
-    size: '2.4 MB',
-    isDefault: true,
-    atsScore: 94,
-    type: 'Platform Builder',
-  },
-  {
-    id: 'cv-02',
-    userEmail: 'minh.nguyen@gmail.com',
-    name: 'CV Frontend Lead & React Architecture',
-    updatedAt: '08/09/2026',
-    size: '1.8 MB',
-    isDefault: false,
-    atsScore: 89,
-    type: 'Template ATS',
-  },
-  {
-    id: 'cv-03',
-    userEmail: 'minh.nguyen@gmail.com',
-    name: 'Nguyen_Van_Minh_Resume_English.pdf',
-    updatedAt: '01/09/2026',
-    size: '3.1 MB',
-    isDefault: false,
-    atsScore: 92,
-    type: 'File Upload',
-  },
-];
+const DEFAULT_CVS: CandidateCV[] = [];
 
-const DEFAULT_SAVED_JOBS: SavedJobItem[] = [
-  { jobId: 'job-hot-003', userEmail: 'minh.nguyen@gmail.com' },
-  { jobId: 'job-hot-005', userEmail: 'minh.nguyen@gmail.com' },
-];
+const DEFAULT_SAVED_JOBS: SavedJobItem[] = [];
 
 const DEFAULT_APPLICATIONS: CandidateApplication[] = [
   {
@@ -366,7 +332,7 @@ export const useCandidateStore = create<CandidateState>()(
           profile: DEFAULT_PROFILE,
           cvs: DEFAULT_CVS,
           savedJobs: DEFAULT_SAVED_JOBS,
-          savedJobIds: ['job-hot-003', 'job-hot-005'],
+          savedJobIds: [],
           applications: DEFAULT_APPLICATIONS,
           interviews: DEFAULT_INTERVIEWS,
           recruiterConnects: DEFAULT_RECRUITER_CONNECTS,
@@ -376,33 +342,47 @@ export const useCandidateStore = create<CandidateState>()(
       initCandidateFromUser: (user) => {
         set((state) => ({
           profile: {
-            ...state.profile,
-            // Always overwrite identity fields from the logged-in account
-            fullName: user.name || state.profile.fullName || '',
-            email:    user.email || state.profile.email || '',
-            phone:    user.phone || state.profile.phone || '',
+            ...(state?.profile || INITIAL_BLANK_PROFILE),
+            fullName: user?.name || state?.profile?.fullName || '',
+            email:    user?.email || state?.profile?.email || '',
+            phone:    user?.phone || state?.profile?.phone || '',
           },
         }));
       },
 
       updateProfile: (profileUpdate) => {
         set((state) => ({
-          profile: { ...state.profile, ...profileUpdate },
+          profile: { ...(state?.profile || INITIAL_BLANK_PROFILE), ...(profileUpdate || {}) },
         }));
       },
 
       toggleSaveJob: (jobId, email) => {
         const userEmail = resolveUserEmail(email) || 'ungvien5@gmail.com';
-        const stringId = String(jobId);
+        const stringId = String(jobId || '').trim();
+        if (!stringId) return false;
         
         // Đọc danh sách IDs trực tiếp từ key hrconnect_saved_job_ids
         let currentIds: string[] = [];
         try {
           const raw = localStorage.getItem('hrconnect_saved_job_ids') || localStorage.getItem('hrconnect_saved_jobs');
-          if (raw) currentIds = JSON.parse(raw);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              currentIds = parsed
+                .map((item) => {
+                  if (!item) return '';
+                  if (typeof item === 'string' || typeof item === 'number') return String(item).trim();
+                  return item?.jobId || item?.id ? String(item.jobId || item.id).trim() : '';
+                })
+                .filter(Boolean);
+            }
+          }
         } catch {}
-        if (!Array.isArray(currentIds) || currentIds.length === 0) {
-          currentIds = (get().savedJobs || []).map((j) => j.jobId);
+
+        if (currentIds.length === 0) {
+          currentIds = (get()?.savedJobs || [])
+            .map((j) => (j?.jobId ? String(j.jobId).trim() : ''))
+            .filter(Boolean);
         }
 
         const exists = currentIds.includes(stringId);
@@ -436,68 +416,78 @@ export const useCandidateStore = create<CandidateState>()(
       },
 
       isJobSaved: (jobId, _email) => {
-        const stringId = String(jobId);
+        if (!jobId) return false;
+        const stringId = String(jobId).trim();
         try {
           const raw = localStorage.getItem('hrconnect_saved_job_ids') || localStorage.getItem('hrconnect_saved_jobs');
           if (raw) {
             const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed)) return parsed.includes(stringId);
+            if (Array.isArray(parsed)) {
+              return parsed.some((item) => {
+                const id = typeof item === 'object' && item !== null ? (item?.jobId || item?.id) : item;
+                return String(id || '').trim() === stringId;
+              });
+            }
           }
         } catch {}
-        const currentSaved = get().savedJobs || [];
-        if (currentSaved.some((j) => j.jobId === stringId)) return true;
+        const currentSaved = get()?.savedJobs || [];
+        if (Array.isArray(currentSaved)) {
+          return currentSaved.some((j) => String(j?.jobId || '').trim() === stringId);
+        }
         return false;
       },
 
       applyJob: (applicationData) => {
-        const userEmail = applicationData.applicantEmail || resolveUserEmail();
+        if (!applicationData) return;
+        const userEmail = applicationData?.applicantEmail || resolveUserEmail();
         const newApp: CandidateApplication = {
           id: `app-${Date.now()}`,
-          jobId: applicationData.jobId,
-          jobTitle: applicationData.jobTitle,
-          company: applicationData.company,
-          salary: applicationData.salary,
-          cvUsed: applicationData.cvUsed,
-          coverLetter: applicationData.coverLetter,
-          applicantName: applicationData.applicantName,
+          jobId: applicationData?.jobId || '',
+          jobTitle: applicationData?.jobTitle || 'Vị trí ứng tuyển',
+          company: applicationData?.company || 'Doanh nghiệp',
+          salary: applicationData?.salary || 'Thỏa thuận',
+          cvUsed: applicationData?.cvUsed || 'CV Mặc định',
+          coverLetter: applicationData?.coverLetter,
+          applicantName: applicationData?.applicantName,
           applicantEmail: userEmail,
           candidateEmail: userEmail,
-          applicantPhone: applicationData.applicantPhone,
+          applicantPhone: applicationData?.applicantPhone,
           appliedDate: 'Hôm nay (Vừa xong)',
           status: 'SUBMITTED',
           statusLabel: 'Đã nộp hồ sơ (Chờ AI sơ duyệt)',
           statusColor: '#0284c7',
         };
         set((state) => ({
-          applications: [newApp, ...state.applications],
+          applications: [newApp, ...(state?.applications || [])],
         }));
       },
 
       setDefaultCV: (cvId) => {
         set((state) => ({
-          cvs: state.cvs.map((c) => ({
+          cvs: (state?.cvs || []).map((c) => ({
             ...c,
-            isDefault: c.id === cvId,
+            isDefault: c?.id === cvId,
           })),
         }));
       },
 
       addCV: (newCv) => {
+        if (!newCv) return;
         set((state) => ({
-          cvs: [newCv, ...state.cvs],
+          cvs: [newCv, ...(state?.cvs || [])],
         }));
       },
 
       deleteCV: (cvId) => {
         set((state) => ({
-          cvs: state.cvs.filter((c) => c.id !== cvId),
+          cvs: (state?.cvs || []).filter((c) => c?.id !== cvId),
         }));
       },
 
       respondToOffer: (appId, decision) => {
         set((state) => ({
-          applications: state.applications.map((app) => {
-            if (app.id === appId && app.offerDetails) {
+          applications: (state?.applications || []).map((app) => {
+            if (app?.id === appId && app?.offerDetails) {
               return {
                 ...app,
                 offerDetails: {
@@ -514,15 +504,16 @@ export const useCandidateStore = create<CandidateState>()(
       },
 
       addRecruiterConnect: (item) => {
-        const userEmail = item.candidateEmail || resolveUserEmail();
+        if (!item) return;
+        const userEmail = item?.candidateEmail || resolveUserEmail();
         const newConnect: RecruiterConnectItem = {
           id: `rec-con-${Date.now()}`,
-          recruiterId: item.recruiterId,
-          recruiterName: item.recruiterName,
-          recruiterTitle: item.recruiterTitle,
-          recruiterAvatar: item.recruiterAvatar,
-          cvUsed: item.cvUsed,
-          note: item.note,
+          recruiterId: item?.recruiterId || '',
+          recruiterName: item?.recruiterName || '',
+          recruiterTitle: item?.recruiterTitle || '',
+          recruiterAvatar: item?.recruiterAvatar || 'RC',
+          cvUsed: item?.cvUsed || '',
+          note: item?.note || '',
           candidateEmail: userEmail,
           userEmail: userEmail,
           sentDate: 'Hôm nay',
@@ -531,7 +522,7 @@ export const useCandidateStore = create<CandidateState>()(
           statusColor: '#0284c7',
         };
         set((state) => ({
-          recruiterConnects: [newConnect, ...state.recruiterConnects],
+          recruiterConnects: [newConnect, ...(state?.recruiterConnects || [])],
         }));
       },
     }),

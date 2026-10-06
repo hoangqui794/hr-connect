@@ -34,6 +34,9 @@ const LoginPage = React.lazy(() =>
 const RegisterPage = React.lazy(() =>
   import('@/features/auth/RegisterPage').then((m: any) => ({ default: m.default || m.RegisterPage }))
 );
+const VerifyOtpPage = React.lazy(() =>
+  import('@/features/auth/VerifyOtpPage').then((m: any) => ({ default: m.default || m.VerifyOtpPage }))
+);
 const Dashboard = React.lazy(() =>
   import('@/features/dashboard/Dashboard').then((m: any) => ({ default: m.default || m.Dashboard }))
 );
@@ -330,4 +333,5 @@ export const AppRoutes = {
   AffiliateCommissionsPage,
   JobDetailPage,
   JobSearchPage,
+  VerifyOtpPage,
 } as const;

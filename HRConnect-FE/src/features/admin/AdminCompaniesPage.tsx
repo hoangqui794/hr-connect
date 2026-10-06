@@ -1,15 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Table, Card, Typography, Space, Tag, Button, Modal,
-  Row, Col, Badge, Avatar, message, Popconfirm, Descriptions, Statistic,
+  Table,
+  Typography,
+  Space,
+  Tag,
+  Button,
+  Modal,
+  Row,
+  Col,
+  Badge,
+  Avatar,
+  message,
+  Popconfirm,
+  Descriptions,
+  Tabs,
+  Input,
+  Form,
+  Spin,
+  Tooltip,
 } from 'antd';
 import {
-  BankOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  EyeOutlined, StopOutlined, FileProtectOutlined,
+  BankOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  EyeOutlined,
+  StopOutlined,
+  FileProtectOutlined,
+  ReloadOutlined,
+  UsergroupAddOutlined,
+  SafetyCertificateOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { adminService, ApprovalListItemDto, CompanyVerificationDetailDto } from '@/services/adminService';
+import { getApiErrorMessage } from '@/services/apiClient';
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
+const { TextArea } = Input;
 
 interface CompanyRecord {
   id: string;
@@ -74,7 +101,7 @@ const INITIAL_COMPANIES: CompanyRecord[] = [
     phone: '0933 221 100',
     activeJobs: 2,
     packageType: 'CV_APPLICATION',
-    status: 'PENDING',
+    status: 'VERIFIED',
     registrationDate: '2026-09-20',
     address: 'Lầu 5, Pearl Plaza, 561A Điện Biên Phủ, P.25, Bình Thạnh, TP. HCM',
   },
@@ -93,9 +120,6 @@ const INITIAL_COMPANIES: CompanyRecord[] = [
   },
 ];
 
-/**
- * Load company list by reading hrconnect_users (role === 'CLIENT') and binding active jobs from hrconnect_all_jobs
- */
 function loadCompaniesFromStorage(): CompanyRecord[] {
   let clientUsers: any[] = [];
   try {
@@ -125,11 +149,11 @@ function loadCompaniesFromStorage(): CompanyRecord[] {
 
   const dynamicCompanies: CompanyRecord[] = clientUsers.map((u: any, idx: number) => {
     const userCompany = u.companyName || u.name || 'Doanh nghiệp ' + (idx + 1);
-    // Count jobs matching this client
-    const matchingJobs = allJobs.filter((j: any) =>
-      (j.clientEmail && u.email && j.clientEmail.toLowerCase() === u.email.toLowerCase()) ||
-      (j.clientId && j.clientId === u.id) ||
-      (j.company && j.company.trim().toLowerCase() === userCompany.trim().toLowerCase())
+    const matchingJobs = allJobs.filter(
+      (j: any) =>
+        (j.clientEmail && u.email && j.clientEmail.toLowerCase() === u.email.toLowerCase()) ||
+        (j.clientId && j.clientId === u.id) ||
+        (j.company && j.company.trim().toLowerCase() === userCompany.trim().toLowerCase())
     );
 
     return {
@@ -139,7 +163,7 @@ function loadCompaniesFromStorage(): CompanyRecord[] {
       contactPerson: u.fullName || u.name || 'Người đại diện',
       email: u.email,
       phone: u.phone || '0901 234 567',
-      activeJobs: matchingJobs.length > 0 ? matchingJobs.length : (u.email?.includes('client@demo.com') ? 4 : 1),
+      activeJobs: matchingJobs.length > 0 ? matchingJobs.length : 1,
       packageType: 'COD',
       status: 'VERIFIED',
       registrationDate: u.createdAt ? u.createdAt.slice(0, 10) : '2026-03-01',
@@ -148,38 +172,200 @@ function loadCompaniesFromStorage(): CompanyRecord[] {
   });
 
   const existingEmails = new Set(dynamicCompanies.map((c) => c.email.toLowerCase()));
-  const merged = [
+  return [
     ...dynamicCompanies,
     ...INITIAL_COMPANIES.filter((c) => !existingEmails.has(c.email.toLowerCase())),
   ];
-
-  return merged;
 }
 
 export const AdminCompaniesPage: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<string>('pending_companies');
   const [companies, setCompanies] = useState<CompanyRecord[]>(loadCompaniesFromStorage);
   const [selectedCompany, setSelectedCompany] = useState<CompanyRecord | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
 
-  const handleApprove = (company: CompanyRecord) => {
-    setCompanies((prev) =>
-      prev.map((c) => (c.id === company.id ? { ...c, status: 'VERIFIED' } : c))
-    );
-    message.success(`Đã phê duyệt hồ sơ doanh nghiệp "${company.name}" thành công!`);
+  // ─── Real Backend Approval Queue State ───
+  const [pendingCompanyRequests, setPendingCompanyRequests] = useState<ApprovalListItemDto[]>([]);
+  const [pendingAffiliateRequests, setPendingAffiliateRequests] = useState<ApprovalListItemDto[]>([]);
+  const [loadingApprovals, setLoadingApprovals] = useState(false);
+
+  // Approval/Rejection Action Modals
+  const [actionModal, setActionModal] = useState<{
+    open: boolean;
+    type: 'APPROVE' | 'REJECT';
+    targetType: 'CLIENT' | 'AFFILIATE';
+    item: ApprovalListItemDto | null;
+  }>({
+    open: false,
+    type: 'APPROVE',
+    targetType: 'CLIENT',
+    item: null,
+  });
+
+  const [actionForm] = Form.useForm();
+  const [actionSubmitting, setActionSubmitting] = useState(false);
+
+  // Detailed Verification Request Info Modal
+  const [requestDetailModal, setRequestDetailModal] = useState<{
+    open: boolean;
+    loading: boolean;
+    data: CompanyVerificationDetailDto | null;
+  }>({
+    open: false,
+    loading: false,
+    data: null,
+  });
+
+  // Fetch pending approvals from real backend API
+  const fetchApprovals = useCallback(async () => {
+    setLoadingApprovals(true);
+    try {
+      // 1. Fetch pending client company verification requests
+      const clientRes = await adminService.getApprovals({
+        type: 'CLIENT',
+        status: 'PENDING',
+        pageSize: 50,
+      });
+      if (clientRes.success && clientRes.data) {
+        setPendingCompanyRequests(clientRes.data.items || []);
+      }
+
+      // 2. Fetch pending affiliate recruiter applications
+      const affiliateRes = await adminService.getApprovals({
+        type: 'AFFILIATE',
+        status: 'PENDING',
+        pageSize: 50,
+      });
+      if (affiliateRes.success && affiliateRes.data) {
+        setPendingAffiliateRequests(affiliateRes.data.items || []);
+      }
+    } catch (err) {
+      console.warn('Backend approval endpoint currently offline or unauthorized, using fallback queue state.', err);
+    } finally {
+      setLoadingApprovals(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchApprovals();
+  }, [fetchApprovals]);
+
+  // Open Detailed Company Verification Info
+  const handleViewDetail = async (item: ApprovalListItemDto) => {
+    setRequestDetailModal({ open: true, loading: true, data: null });
+    try {
+      const res = await adminService.getCompanyVerificationDetail(item.approvalId);
+      if (res.success && res.data) {
+        setRequestDetailModal({ open: true, loading: false, data: res.data });
+      } else {
+        throw new Error('Không thể tải chi tiết');
+      }
+    } catch {
+      // Fallback display from item
+      setRequestDetailModal({
+        open: true,
+        loading: false,
+        data: {
+          verificationRequestId: item.approvalId,
+          userId: item.userId,
+          email: item.email,
+          displayName: item.displayName,
+          companyId: item.approvalId,
+          companyName: item.companyName || 'Doanh nghiệp đăng ký',
+          status: item.status,
+          submittedPayload: '{}',
+          submittedAt: item.submittedAt,
+        },
+      });
+    }
   };
 
-  const handleReject = (company: CompanyRecord) => {
-    setCompanies((prev) =>
-      prev.map((c) => (c.id === company.id ? { ...c, status: 'SUSPENDED' } : c))
-    );
-    message.warning(`Đã từ chối / đình chỉ doanh nghiệp "${company.name}".`);
+  // Open Approval Confirmation Modal
+  const openApproveModal = (item: ApprovalListItemDto, targetType: 'CLIENT' | 'AFFILIATE') => {
+    actionForm.resetFields();
+    setActionModal({
+      open: true,
+      type: 'APPROVE',
+      targetType,
+      item,
+    });
+  };
+
+  // Open Rejection Prompt Modal
+  const openRejectModal = (item: ApprovalListItemDto, targetType: 'CLIENT' | 'AFFILIATE') => {
+    actionForm.resetFields();
+    setActionModal({
+      open: true,
+      type: 'REJECT',
+      targetType,
+      item,
+    });
+  };
+
+  // Execute Approve or Reject against Backend API
+  const handleExecuteAction = async (values: { note?: string; reason?: string }) => {
+    if (!actionModal.item) return;
+    setActionSubmitting(true);
+
+    const { approvalId, companyName, displayName } = actionModal.item;
+    const isApprove = actionModal.type === 'APPROVE';
+    const isClient = actionModal.targetType === 'CLIENT';
+
+    try {
+      if (isClient) {
+        if (isApprove) {
+          // POST /api/v1/admin/company-verification-requests/{id}/approve
+          await adminService.approveCompanyVerification(approvalId, values.note);
+          message.success(`Đã phê duyệt hồ sơ doanh nghiệp "${companyName || displayName}" thành công!`);
+
+          // Add to verified companies table
+          const newVerified: CompanyRecord = {
+            id: approvalId,
+            name: companyName || displayName,
+            taxCode: 'Chưa cập nhật',
+            contactPerson: displayName,
+            email: actionModal.item.email,
+            phone: 'Chưa cập nhật',
+            activeJobs: 0,
+            packageType: 'COD',
+            status: 'VERIFIED',
+            registrationDate: new Date().toISOString().slice(0, 10),
+            address: 'Hà Nội / TP. Hồ Chí Minh',
+          };
+          setCompanies((prev) => [newVerified, ...prev]);
+        } else {
+          // POST /api/v1/admin/company-verification-requests/{id}/reject
+          await adminService.rejectCompanyVerification(approvalId, values.reason || 'Thông tin chưa đủ điều kiện xác thực');
+          message.warning(`Đã từ chối yêu cầu xác thực doanh nghiệp "${companyName || displayName}".`);
+        }
+      } else {
+        // Affiliate
+        if (isApprove) {
+          await adminService.approveAffiliate(approvalId, values.note);
+          message.success(`Đã phê duyệt đối tác tuyển dụng "${displayName}" thành công!`);
+        } else {
+          await adminService.rejectAffiliate(approvalId, values.reason || 'Hồ sơ chưa phù hợp tiêu chí');
+          message.warning(`Đã từ chối đơn đăng ký CTV "${displayName}".`);
+        }
+      }
+
+      setActionModal({ open: false, type: 'APPROVE', targetType: 'CLIENT', item: null });
+      fetchApprovals();
+    } catch (err: unknown) {
+      const msg = getApiErrorMessage(err, 'Thao tác không thành công. Vui lòng thử lại!');
+      message.error(msg);
+    } finally {
+      setActionSubmitting(false);
+    }
   };
 
   const verifiedCount = companies.filter((c) => c.status === 'VERIFIED').length;
-  const pendingCount = companies.filter((c) => c.status === 'PENDING').length;
+  const pendingCount = pendingCompanyRequests.length;
+  const affiliatePendingCount = pendingAffiliateRequests.length;
   const totalJobs = companies.reduce((acc, c) => acc + c.activeJobs, 0);
 
-  const columns: ColumnsType<CompanyRecord> = [
+  // ─── Columns for Verified Companies Table ───
+  const verifiedColumns: ColumnsType<CompanyRecord> = [
     {
       title: 'Doanh nghiệp',
       key: 'company',
@@ -198,8 +384,8 @@ export const AdminCompaniesPage: React.FC = () => {
             {record.name.charAt(0)}
           </Avatar>
           <div>
-            <div style={{ fontWeight: 600, color: '#0f172a' }}>{record.name}</div>
-            <div style={{ fontSize: 12, color: '#64748b' }}>MST: {record.taxCode}</div>
+            <div style={{ fontWeight: 600, color: '#f8fafc' }}>{record.name}</div>
+            <div style={{ fontSize: 12, color: '#94a3b8' }}>MST: {record.taxCode}</div>
           </div>
         </div>
       ),
@@ -209,8 +395,8 @@ export const AdminCompaniesPage: React.FC = () => {
       key: 'contact',
       render: (_, record) => (
         <div>
-          <div style={{ fontWeight: 500, color: '#1e293b' }}>{record.contactPerson}</div>
-          <div style={{ fontSize: 12, color: '#64748b' }}>{record.email}</div>
+          <div style={{ fontWeight: 500, color: '#e2e8f0' }}>{record.contactPerson}</div>
+          <div style={{ fontSize: 12, color: '#94a3b8' }}>{record.email}</div>
         </div>
       ),
     },
@@ -233,7 +419,7 @@ export const AdminCompaniesPage: React.FC = () => {
       dataIndex: 'activeJobs',
       key: 'activeJobs',
       render: (jobs: number) => (
-        <span style={{ fontWeight: 700, color: jobs > 0 ? '#0284c7' : '#94a3b8' }}>
+        <span style={{ fontWeight: 700, color: jobs > 0 ? '#38bdf8' : '#94a3b8' }}>
           {jobs} tin tuyển dụng
         </span>
       ),
@@ -244,12 +430,12 @@ export const AdminCompaniesPage: React.FC = () => {
       key: 'status',
       render: (status: 'VERIFIED' | 'PENDING' | 'SUSPENDED') => {
         if (status === 'VERIFIED') {
-          return <Badge status="success" text={<span style={{ fontWeight: 600, color: '#16a34a' }}>Đã xác minh</span>} />;
+          return <Badge status="success" text={<span style={{ fontWeight: 600, color: '#34d399' }}>Đã xác minh</span>} />;
         }
         if (status === 'PENDING') {
-          return <Badge status="warning" text={<span style={{ fontWeight: 600, color: '#d97706' }}>Chờ phê duyệt</span>} />;
+          return <Badge status="warning" text={<span style={{ fontWeight: 600, color: '#fbbf24' }}>Chờ phê duyệt</span>} />;
         }
-        return <Badge status="error" text={<span style={{ fontWeight: 600, color: '#dc2626' }}>Tạm đình chỉ</span>} />;
+        return <Badge status="error" text={<span style={{ fontWeight: 600, color: '#f87171' }}>Tạm đình chỉ</span>} />;
       },
     },
     {
@@ -268,57 +454,201 @@ export const AdminCompaniesPage: React.FC = () => {
           >
             Chi tiết
           </Button>
-
-          {record.status === 'PENDING' && (
+          <Popconfirm
+            title="Đình chỉ doanh nghiệp"
+            description={`Bạn có chắc muốn đình chỉ hoạt động của ${record.name}?`}
+            onConfirm={() => {
+              setCompanies((prev) =>
+                prev.map((c) => (c.id === record.id ? { ...c, status: 'SUSPENDED' } : c))
+              );
+              message.warning(`Đã đình chỉ doanh nghiệp "${record.name}".`);
+            }}
+            okText="Đình chỉ"
+            cancelText="Hủy"
+            okButtonProps={{ danger: true }}
+          >
             <Button
               size="small"
-              type="primary"
-              icon={<CheckCircleOutlined />}
-              onClick={() => handleApprove(record)}
-              style={{
-                borderRadius: 6,
-                fontSize: 12,
-                background: '#16a34a',
-                borderColor: '#16a34a',
-              }}
+              danger
+              icon={<StopOutlined />}
+              style={{ borderRadius: 6, fontSize: 12 }}
             >
-              Duyệt
+              Đình chỉ
             </Button>
-          )}
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
 
-          {record.status === 'VERIFIED' ? (
-            <Popconfirm
-              title="Đình chỉ doanh nghiệp"
-              description={`Bạn có chắc muốn đình chỉ hoạt động của ${record.name}?`}
-              onConfirm={() => handleReject(record)}
-              okText="Đình chỉ"
-              cancelText="Hủy"
-              okButtonProps={{ danger: true }}
-            >
-              <Button
-                size="small"
-                danger
-                icon={<StopOutlined />}
-                style={{ borderRadius: 6, fontSize: 12 }}
-              >
-                Đình chỉ
-              </Button>
-            </Popconfirm>
-          ) : record.status === 'SUSPENDED' ? (
-            <Button
-              size="small"
-              icon={<CheckCircleOutlined />}
-              onClick={() => handleApprove(record)}
-              style={{
-                borderRadius: 6,
-                fontSize: 12,
-                color: '#16a34a',
-                borderColor: '#16a34a',
-              }}
-            >
-              Kích hoạt lại
-            </Button>
-          ) : null}
+  // ─── Columns for Client Approval Queue Table ───
+  const clientApprovalColumns: ColumnsType<ApprovalListItemDto> = [
+    {
+      title: 'Doanh nghiệp',
+      key: 'company',
+      render: (_, record) => (
+        <div className="flex items-center gap-3">
+          <Avatar
+            shape="square"
+            size={40}
+            className="bg-blue-600 font-bold text-white rounded-lg flex items-center justify-center shrink-0"
+          >
+            {(record.companyName || record.displayName || 'C').charAt(0)}
+          </Avatar>
+          <div>
+            <div className="font-semibold text-slate-100 text-sm">
+              {record.companyName || 'Doanh nghiệp chưa đặt tên'}
+            </div>
+            <div className="text-xs text-slate-400">
+              Người đại diện: <span className="text-slate-300 font-medium">{record.displayName}</span>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Email liên hệ',
+      dataIndex: 'email',
+      key: 'email',
+      render: (email: string) => (
+        <span className="font-mono text-xs text-slate-300 select-all">{email}</span>
+      ),
+    },
+    {
+      title: 'Ngày nộp yêu cầu',
+      dataIndex: 'submittedAt',
+      key: 'submittedAt',
+      render: (dateStr: string) => {
+        const d = new Date(dateStr);
+        return (
+          <span className="text-xs text-slate-400">
+            {isNaN(d.getTime()) ? dateStr : d.toLocaleString('vi-VN')}
+          </span>
+        );
+      },
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      key: 'status',
+      render: (st: string) => (
+        <Tag color="warning" className="rounded-md font-semibold text-xs border-amber-500/30 text-amber-400 bg-amber-500/10">
+          <ClockCircleOutlined className="mr-1" />
+          {st === 'UNDER_REVIEW' ? 'Đang thẩm định' : 'Chờ phê duyệt'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Thao tác phê duyệt',
+      key: 'actions',
+      render: (_, record) => (
+        <Space size="small">
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => handleViewDetail(record)}
+            className="rounded-lg text-xs border-slate-700 bg-slate-800 text-slate-200 hover:text-white"
+          >
+            Chi tiết
+          </Button>
+          <Button
+            size="small"
+            type="primary"
+            icon={<CheckCircleOutlined />}
+            onClick={() => openApproveModal(record, 'CLIENT')}
+            className="rounded-lg text-xs bg-emerald-600 hover:bg-emerald-500 border-none font-semibold text-white shadow-sm"
+          >
+            Phê duyệt
+          </Button>
+          <Button
+            size="small"
+            danger
+            icon={<CloseCircleOutlined />}
+            onClick={() => openRejectModal(record, 'CLIENT')}
+            className="rounded-lg text-xs font-semibold"
+          >
+            Từ chối
+          </Button>
+        </Space>
+      ),
+    },
+  ];
+
+  // ─── Columns for Affiliate Recruiter Approval Queue Table ───
+  const affiliateApprovalColumns: ColumnsType<ApprovalListItemDto> = [
+    {
+      title: 'Cộng tác viên / Headhunter',
+      key: 'affiliate',
+      render: (_, record) => (
+        <div className="flex items-center gap-3">
+          <Avatar
+            size={40}
+            className="bg-amber-600 font-bold text-white rounded-full flex items-center justify-center shrink-0"
+          >
+            {record.displayName.charAt(0)}
+          </Avatar>
+          <div>
+            <div className="font-semibold text-slate-100 text-sm">{record.displayName}</div>
+            <div className="text-xs text-amber-400 font-medium">Đối tác tuyển dụng (Affiliate Recruiter)</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Email',
+      dataIndex: 'email',
+      key: 'email',
+      render: (email: string) => (
+        <span className="font-mono text-xs text-slate-300 select-all">{email}</span>
+      ),
+    },
+    {
+      title: 'Ngày nộp hồ sơ',
+      dataIndex: 'submittedAt',
+      key: 'submittedAt',
+      render: (dateStr: string) => {
+        const d = new Date(dateStr);
+        return (
+          <span className="text-xs text-slate-400">
+            {isNaN(d.getTime()) ? dateStr : d.toLocaleString('vi-VN')}
+          </span>
+        );
+      },
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      key: 'status',
+      render: (st: string) => (
+        <Tag color="warning" className="rounded-md font-semibold text-xs border-amber-500/30 text-amber-400 bg-amber-500/10">
+          <ClockCircleOutlined className="mr-1" />
+          {st === 'UNDER_REVIEW' ? 'Đang thẩm định' : 'Chờ phê duyệt'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Thao tác phê duyệt',
+      key: 'actions',
+      render: (_, record) => (
+        <Space size="small">
+          <Button
+            size="small"
+            type="primary"
+            icon={<CheckCircleOutlined />}
+            onClick={() => openApproveModal(record, 'AFFILIATE')}
+            className="rounded-lg text-xs bg-emerald-600 hover:bg-emerald-500 border-none font-semibold text-white shadow-sm"
+          >
+            Duyệt CTV
+          </Button>
+          <Button
+            size="small"
+            danger
+            icon={<CloseCircleOutlined />}
+            onClick={() => openRejectModal(record, 'AFFILIATE')}
+            className="rounded-lg text-xs font-semibold"
+          >
+            Từ chối
+          </Button>
         </Space>
       ),
     },
@@ -327,14 +657,24 @@ export const AdminCompaniesPage: React.FC = () => {
   return (
     <div style={{ padding: '0 4px' }}>
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800, letterSpacing: '-0.02em' }}>
-          <BankOutlined style={{ color: '#38bdf8', marginRight: 10 }} />
-          Quản lý Doanh nghiệp Tuyển dụng (Clients)
-        </Title>
-        <Text style={{ fontSize: 13, color: '#94a3b8' }}>
-          Xét duyệt hồ sơ pháp nhân, giấy phép kinh doanh, giám sát hạn mức đăng tin và thanh toán của các đối tác doanh nghiệp.
-        </Text>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800, letterSpacing: '-0.02em' }}>
+            <BankOutlined style={{ color: '#38bdf8', marginRight: 10 }} />
+            Quản trị & Xét duyệt Doanh nghiệp (Clients Approval Hub)
+          </Title>
+          <Text style={{ fontSize: 13, color: '#94a3b8' }}>
+            Hàng đợi kiểm duyệt pháp nhân, phê duyệt tài khoản nhà tuyển dụng & đối tác CTV tuyển dụng kết nối trực tiếp API Backend.
+          </Text>
+        </div>
+        <Button
+          icon={<ReloadOutlined spin={loadingApprovals} />}
+          onClick={fetchApprovals}
+          loading={loadingApprovals}
+          className="rounded-xl bg-slate-800 border-slate-700 text-slate-200 hover:text-white shrink-0"
+        >
+          Làm mới hàng đợi
+        </Button>
       </div>
 
       {/* KPI Stats */}
@@ -361,6 +701,24 @@ export const AdminCompaniesPage: React.FC = () => {
           <div
             style={{
               borderRadius: 16,
+              border: pendingCount > 0 ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(51, 65, 85, 0.65)',
+              background: pendingCount > 0 ? 'rgba(245, 158, 11, 0.05)' : 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              padding: '20px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: pendingCount > 0 ? '#fbbf24' : '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Doanh nghiệp chờ duyệt
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#fbbf24', marginTop: 6, fontFamily: 'monospace' }}>
+              {pendingCount}
+            </div>
+          </div>
+        </Col>
+        <Col xs={12} sm={8} md={6}>
+          <div
+            style={{
+              borderRadius: 16,
               border: '1px solid rgba(51, 65, 85, 0.65)',
               background: 'rgba(15, 23, 42, 0.65)',
               backdropFilter: 'blur(12px)',
@@ -368,10 +726,10 @@ export const AdminCompaniesPage: React.FC = () => {
             }}
           >
             <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Hồ sơ chờ phê duyệt
+              CTV Tuyển dụng chờ duyệt
             </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#fbbf24', marginTop: 6, fontFamily: 'monospace' }}>
-              {pendingCount}
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#c084fc', marginTop: 6, fontFamily: 'monospace' }}>
+              {affiliatePendingCount}
             </div>
           </div>
         </Col>
@@ -393,46 +751,268 @@ export const AdminCompaniesPage: React.FC = () => {
             </div>
           </div>
         </Col>
-        <Col xs={12} sm={8} md={6}>
-          <div
-            style={{
-              borderRadius: 16,
-              border: '1px solid rgba(51, 65, 85, 0.65)',
-              background: 'rgba(15, 23, 42, 0.65)',
-              backdropFilter: 'blur(12px)',
-              padding: '20px',
-            }}
-          >
-            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Tỷ lệ kích hoạt COD
-            </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#c084fc', marginTop: 6, fontFamily: 'monospace' }}>
-              80%
-            </div>
-          </div>
-        </Col>
       </Row>
 
-      {/* Companies Table */}
-      <div
-        style={{
-          borderRadius: 16,
-          border: '1px solid rgba(51, 65, 85, 0.65)',
-          overflow: 'hidden',
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(12px)',
-        }}
-      >
-        <Table
-          dataSource={companies}
-          columns={columns}
-          rowKey="id"
-          pagination={{ pageSize: 8 }}
-          size="middle"
+      {/* Main Tabs Navigation */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl backdrop-blur-md">
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            {
+              key: 'pending_companies',
+              label: (
+                <span className="flex items-center gap-2 font-semibold">
+                  <ClockCircleOutlined />
+                  <span>Hàng đợi chờ duyệt Doanh nghiệp</span>
+                  {pendingCount > 0 && (
+                    <Badge count={pendingCount} className="site-badge-count-4 ml-1" />
+                  )}
+                </span>
+              ),
+              children: (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <Text className="text-xs text-slate-400">
+                      Danh sách các doanh nghiệp đã xác thực email và đang chờ Admin duyệt hồ sơ để kích hoạt tài khoản.
+                    </Text>
+                  </div>
+                  <Table
+                    loading={loadingApprovals}
+                    dataSource={pendingCompanyRequests}
+                    columns={clientApprovalColumns}
+                    rowKey="approvalId"
+                    pagination={{ pageSize: 8 }}
+                    size="middle"
+                    locale={{
+                      emptyText: (
+                        <div className="py-8 text-center text-slate-500">
+                          <CheckCircleOutlined className="text-3xl text-emerald-500/50 mb-2" />
+                          <p>Hiện không có yêu cầu xác thực doanh nghiệp nào đang chờ duyệt.</p>
+                        </div>
+                      ),
+                    }}
+                  />
+                </div>
+              ),
+            },
+            {
+              key: 'verified_companies',
+              label: (
+                <span className="flex items-center gap-2 font-semibold">
+                  <SafetyCertificateOutlined />
+                  <span>Doanh nghiệp đã xác minh ({verifiedCount})</span>
+                </span>
+              ),
+              children: (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <Text className="text-xs text-slate-400">
+                      Danh sách các đối tác doanh nghiệp đã được phê duyệt và đang hoạt động tuyển dụng trên hệ thống.
+                    </Text>
+                  </div>
+                  <Table
+                    dataSource={companies}
+                    columns={verifiedColumns}
+                    rowKey="id"
+                    pagination={{ pageSize: 8 }}
+                    size="middle"
+                  />
+                </div>
+              ),
+            },
+            {
+              key: 'pending_affiliates',
+              label: (
+                <span className="flex items-center gap-2 font-semibold">
+                  <UsergroupAddOutlined />
+                  <span>CTV Tuyển dụng chờ duyệt</span>
+                  {affiliatePendingCount > 0 && (
+                    <Badge count={affiliatePendingCount} className="site-badge-count-4 ml-1" />
+                  )}
+                </span>
+              ),
+              children: (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <Text className="text-xs text-slate-400">
+                      Danh sách các đối tác tuyển dụng (Affiliate Recruiter) đã xác thực email và chờ cấp quyền hoạt động.
+                    </Text>
+                  </div>
+                  <Table
+                    loading={loadingApprovals}
+                    dataSource={pendingAffiliateRequests}
+                    columns={affiliateApprovalColumns}
+                    rowKey="approvalId"
+                    pagination={{ pageSize: 8 }}
+                    size="middle"
+                    locale={{
+                      emptyText: (
+                        <div className="py-8 text-center text-slate-500">
+                          <CheckCircleOutlined className="text-3xl text-emerald-500/50 mb-2" />
+                          <p>Không có đơn đăng ký CTV tuyển dụng nào đang chờ duyệt.</p>
+                        </div>
+                      ),
+                    }}
+                  />
+                </div>
+              ),
+            },
+          ]}
         />
       </div>
 
-      {/* Detail & License Modal */}
+      {/* Approve / Reject Modal Dialog */}
+      <Modal
+        open={actionModal.open}
+        title={
+          <div className="flex items-center gap-2">
+            {actionModal.type === 'APPROVE' ? (
+              <>
+                <CheckCircleOutlined className="text-emerald-500" />
+                <span>
+                  Phê duyệt {actionModal.targetType === 'CLIENT' ? 'Doanh nghiệp' : 'Cộng tác viên tuyển dụng'}
+                </span>
+              </>
+            ) : (
+              <>
+                <CloseCircleOutlined className="text-red-500" />
+                <span>
+                  Từ chối yêu cầu {actionModal.targetType === 'CLIENT' ? 'Doanh nghiệp' : 'Cộng tác viên tuyển dụng'}
+                </span>
+              </>
+            )}
+          </div>
+        }
+        onCancel={() => setActionModal({ open: false, type: 'APPROVE', targetType: 'CLIENT', item: null })}
+        footer={null}
+        destroyOnClose
+      >
+        <div className="py-2">
+          {actionModal.type === 'APPROVE' ? (
+            <p className="text-sm text-slate-600 mb-4">
+              Bạn có chắc chắn muốn phê duyệt{' '}
+              <strong>
+                {actionModal.item?.companyName || actionModal.item?.displayName}
+              </strong>
+              ? Sau khi phê duyệt, tài khoản của họ sẽ được chuyển sang trạng thái <strong>ACTIVE</strong> và nhận được email thông báo kích hoạt.
+            </p>
+          ) : (
+            <p className="text-sm text-slate-600 mb-4">
+              Vui lòng nhập lý do từ chối yêu cầu của{' '}
+              <strong>
+                {actionModal.item?.companyName || actionModal.item?.displayName}
+              </strong>
+              . Lý do này sẽ được ghi vào hệ thống và gửi email thông báo cho đối tác.
+            </p>
+          )}
+
+          <Form form={actionForm} layout="vertical" onFinish={handleExecuteAction}>
+            {actionModal.type === 'APPROVE' ? (
+              <Form.Item name="note" label="Ghi chú phê duyệt (tùy chọn)">
+                <TextArea rows={3} placeholder="Ví dụ: Hồ sơ giấy phép kinh doanh đầy đủ, hợp lệ." />
+              </Form.Item>
+            ) : (
+              <Form.Item
+                name="reason"
+                label="Lý do từ chối"
+                rules={[{ required: true, message: 'Vui lòng nhập lý do từ chối!' }]}
+              >
+                <TextArea rows={3} placeholder="Ví dụ: Mã số thuế chưa khớp với đăng ký kinh doanh..." />
+              </Form.Item>
+            )}
+
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                onClick={() =>
+                  setActionModal({ open: false, type: 'APPROVE', targetType: 'CLIENT', item: null })
+                }
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                type="primary"
+                danger={actionModal.type === 'REJECT'}
+                htmlType="submit"
+                loading={actionSubmitting}
+                className={actionModal.type === 'APPROVE' ? 'bg-emerald-600 hover:bg-emerald-500' : ''}
+              >
+                {actionModal.type === 'APPROVE' ? 'Xác nhận phê duyệt' : 'Xác nhận từ chối'}
+              </Button>
+            </div>
+          </Form>
+        </div>
+      </Modal>
+
+      {/* Detailed Verification Request Modal (API GetCompanyVerificationDetail) */}
+      <Modal
+        open={requestDetailModal.open}
+        onCancel={() => setRequestDetailModal({ open: false, loading: false, data: null })}
+        title="Chi tiết hồ sơ xác thực Doanh nghiệp"
+        width={680}
+        footer={[
+          <Button
+            key="close"
+            onClick={() => setRequestDetailModal({ open: false, loading: false, data: null })}
+          >
+            Đóng
+          </Button>,
+        ]}
+      >
+        {requestDetailModal.loading ? (
+          <div className="py-12 text-center">
+            <Spin size="large" />
+          </div>
+        ) : requestDetailModal.data ? (
+          <div className="py-2">
+            <Descriptions bordered column={2} size="small">
+              <Descriptions.Item label="Tên công ty" span={2}>
+                <strong>{requestDetailModal.data.companyName}</strong>
+              </Descriptions.Item>
+              <Descriptions.Item label="Mã số thuế">
+                {requestDetailModal.data.taxCode || 'Chưa cung cấp'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Ngành nghề">
+                {requestDetailModal.data.industry || 'Công nghệ thông tin'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Quy mô công ty">
+                {requestDetailModal.data.companySize || 'Chưa cập nhật'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Website">
+                {requestDetailModal.data.website ? (
+                  <a href={requestDetailModal.data.website} target="_blank" rel="noreferrer">
+                    {requestDetailModal.data.website}
+                  </a>
+                ) : (
+                  'Chưa cung cấp'
+                )}
+              </Descriptions.Item>
+              <Descriptions.Item label="Người đại diện">
+                {requestDetailModal.data.displayName || 'Chưa cập nhật'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Email">
+                <span className="font-mono text-xs">{requestDetailModal.data.email}</span>
+              </Descriptions.Item>
+              <Descriptions.Item label="Số điện thoại">
+                {requestDetailModal.data.phone || 'Chưa cập nhật'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái">
+                <Tag color="warning">
+                  {requestDetailModal.data.status}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Địa chỉ" span={2}>
+                {requestDetailModal.data.address || 'Chưa cập nhật'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Mô tả công ty" span={2}>
+                {requestDetailModal.data.description || 'Không có mô tả bổ sung'}
+              </Descriptions.Item>
+            </Descriptions>
+          </div>
+        ) : null}
+      </Modal>
+
+      {/* Verified Company Detail Modal */}
       <Modal
         open={detailModalOpen}
         onCancel={() => setDetailModalOpen(false)}
@@ -440,66 +1020,45 @@ export const AdminCompaniesPage: React.FC = () => {
           <Button key="close" onClick={() => setDetailModalOpen(false)} style={{ borderRadius: 8 }}>
             Đóng
           </Button>,
-          selectedCompany?.status === 'PENDING' && (
-            <Button
-              key="approve"
-              type="primary"
-              onClick={() => {
-                if (selectedCompany) handleApprove(selectedCompany);
-                setDetailModalOpen(false);
-              }}
-              style={{ borderRadius: 8, background: '#16a34a', borderColor: '#16a34a' }}
-            >
-              Phê duyệt hồ sơ
-            </Button>
-          ),
         ]}
         title={
-          <Space>
-            <FileProtectOutlined style={{ color: '#0284c7' }} />
-            <span>Hồ sơ thẩm định pháp nhân doanh nghiệp</span>
-          </Space>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <FileProtectOutlined style={{ color: '#0284c7', fontSize: 20 }} />
+            <span>Hồ sơ Pháp nhân Doanh nghiệp</span>
+          </div>
         }
-        width={680}
+        width={650}
       >
         {selectedCompany && (
-          <div style={{ marginTop: 16 }}>
-            <Descriptions bordered size="small" column={2}>
-              <Descriptions.Item label="Tên doanh nghiệp" span={2}>
+          <div>
+            <Descriptions bordered column={2} size="small" style={{ marginTop: 16 }}>
+              <Descriptions.Item label="Tên công ty" span={2}>
                 <strong>{selectedCompany.name}</strong>
               </Descriptions.Item>
               <Descriptions.Item label="Mã số thuế">{selectedCompany.taxCode}</Descriptions.Item>
-              <Descriptions.Item label="Ngày đăng ký">{selectedCompany.registrationDate}</Descriptions.Item>
+              <Descriptions.Item label="Ngày gia nhập">{selectedCompany.registrationDate}</Descriptions.Item>
               <Descriptions.Item label="Người đại diện">{selectedCompany.contactPerson}</Descriptions.Item>
-              <Descriptions.Item label="Số điện thoại">{selectedCompany.phone}</Descriptions.Item>
-              <Descriptions.Item label="Email công ty" span={2}>{selectedCompany.email}</Descriptions.Item>
-              <Descriptions.Item label="Trụ sở chính" span={2}>{selectedCompany.address}</Descriptions.Item>
-              <Descriptions.Item label="Gói dịch vụ tuyển dụng" span={2}>
-                <Tag color="blue">{selectedCompany.packageType}</Tag> (Hạn mức: Bảo hành 60 ngày)
+              <Descriptions.Item label="Điện thoại">{selectedCompany.phone}</Descriptions.Item>
+              <Descriptions.Item label="Email liên hệ" span={2}>
+                <span style={{ fontFamily: 'monospace' }}>{selectedCompany.email}</span>
+              </Descriptions.Item>
+              <Descriptions.Item label="Địa chỉ trụ sở" span={2}>{selectedCompany.address}</Descriptions.Item>
+              <Descriptions.Item label="Gói dịch vụ">
+                <Tag color="blue">{selectedCompany.packageType}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái">
+                {selectedCompany.status === 'VERIFIED' ? (
+                  <Tag color="success">Đã xác minh</Tag>
+                ) : (
+                  <Tag color="error">Đình chỉ</Tag>
+                )}
               </Descriptions.Item>
             </Descriptions>
-
-            <div
-              style={{
-                marginTop: 16,
-                padding: 16,
-                borderRadius: 8,
-                background: '#f8fafc',
-                border: '1px dashed #cbd5e1',
-                textAlign: 'center',
-              }}
-            >
-              <FileProtectOutlined style={{ fontSize: 32, color: '#0284c7', marginBottom: 8 }} />
-              <div style={{ fontWeight: 600, color: '#334155' }}>
-                Giấy chứng nhận Đăng ký Kinh doanh (GPĐKKD_2026.pdf)
-              </div>
-              <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                Đã được đối chiếu với Cơ sở dữ liệu Quốc gia về Đăng ký Doanh nghiệp.
-              </div>
-            </div>
           </div>
         )}
       </Modal>
     </div>
   );
 };
+
+export default AdminCompaniesPage;
