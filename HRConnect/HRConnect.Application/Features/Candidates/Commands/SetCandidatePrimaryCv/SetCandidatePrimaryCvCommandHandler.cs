@@ -54,6 +54,13 @@ public class SetCandidatePrimaryCvCommandHandler : IRequestHandler<SetCandidateP
             throw new ForbiddenException("Bạn không có quyền thiết lập CV này làm CV chính.");
         }
 
+        if (string.Equals(targetCv.CreationMethod, "AFFILIATE_UPLOAD", StringComparison.Ordinal))
+        {
+            throw new ConflictException(
+                "CV do Affiliate tải lên không thuộc kho CV cá nhân nên không thể đặt làm CV chính.",
+                "AFFILIATE_CV_MANAGED_SEPARATELY");
+        }
+
         if (targetCv.IsPrimary)
         {
             return new SetCandidatePrimaryCvResponse

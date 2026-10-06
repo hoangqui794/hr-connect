@@ -648,6 +648,10 @@ public static class CandidateEndpoints
             {
                 return Results.BadRequest(new { success = false, message = ex.Message });
             }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
+            }
             catch (Exception ex)
             {
                 return Results.Problem(detail: ex.Message, statusCode: 500);
@@ -655,12 +659,13 @@ public static class CandidateEndpoints
         })
         .WithName("SetCandidatePrimaryCv")
         .WithSummary("Đặt CV làm CV chính của ứng viên")
-        .WithDescription("Yêu cầu permission cv.update_own. Đặt CV chính không thay đổi CV đã được sử dụng trong các Application trước đó.")
+        .WithDescription("Yêu cầu permission cv.update_own. Chỉ CV thuộc kho cá nhân mới được đặt làm CV chính; CV do Affiliate tải lên được quản lý riêng. Thao tác không thay đổi CV đã dùng trong các Application trước đó.")
         .Produces<SetCandidatePrimaryCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict)
         .Produces(StatusCodes.Status500InternalServerError);
 
         // 8. DELETE /api/v1/candidates/cv/{cvId:guid} - Xóa hoặc gỡ CV khỏi kho CV của ứng viên
