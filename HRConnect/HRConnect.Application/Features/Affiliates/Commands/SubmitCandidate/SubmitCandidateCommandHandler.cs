@@ -275,6 +275,12 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             {
                 throw new ForbiddenException("Affiliate không được sử dụng CV riêng của ứng viên hoặc CV do Affiliate khác tải lên.");
             }
+            if (!string.Equals(cv.AffiliateReuseStatus, "ALLOWED", StringComparison.Ordinal))
+            {
+                throw new ForbiddenException(
+                    "Candidate chưa cho phép Affiliate tái sử dụng CV này cho lần nộp mới.",
+                    "CV_REUSE_NOT_ALLOWED");
+            }
             if (cv.Status != "ACTIVE" || string.IsNullOrWhiteSpace(cv.SourceFileUrl))
             {
                 throw new BadRequestException("CV được chọn hiện không khả dụng.");
