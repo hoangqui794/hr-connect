@@ -7,6 +7,7 @@ public sealed class RespondSubmissionConsentCommand : IRequest<RespondSubmission
 {
     public string Token { get; set; } = string.Empty;
     public string Decision { get; set; } = string.Empty;
+    public bool? AllowFutureReuse { get; set; }
     [JsonIgnore] public Guid? SubmissionId { get; set; }
     [JsonIgnore] public Guid? RequesterUserId { get; set; }
     [JsonIgnore] public string? IpAddress { get; set; }
@@ -21,4 +22,6 @@ public sealed class RespondSubmissionConsentResponse
     public string SubmissionStatus { get; set; } = null!;
     public Guid? ApplicationId { get; set; }
     public string AiStatus { get; set; } = "NOT_QUEUED";
+    public string? AffiliateReuseStatus { get; set; }
+    public Guid? ReuseConcurrencyToken { get; set; }
 }

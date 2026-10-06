@@ -133,6 +133,30 @@ public class CloudflareR2StorageServiceTests
     }
 
     [Fact]
+    public async Task CopyAsync_CreatesIndependentObjectWithPreservedPdfContentType()
+    {
+        const string sourceKey = "candidates/123/cvs/source.pdf";
+        const string destinationKey = "candidates/123/cvs/personal-copy.pdf";
+        _s3Mock.Setup(client => client.CopyObjectAsync(
+                It.IsAny<CopyObjectRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CopyObjectResponse { HttpStatusCode = HttpStatusCode.OK });
+
+        var result = await _service.CopyAsync(
+            sourceKey, destinationKey, "application/pdf");
+
+        result.Should().Be(destinationKey);
+        _s3Mock.Verify(client => client.CopyObjectAsync(
+            It.Is<CopyObjectRequest>(request =>
+                request.SourceBucket == _settings.BucketName &&
+                request.SourceKey == sourceKey &&
+                request.DestinationBucket == _settings.BucketName &&
+                request.DestinationKey == destinationKey &&
+                request.ContentType == "application/pdf" &&
+                request.MetadataDirective == S3MetadataDirective.REPLACE),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task DeleteAsync_WhenEmptyKey_DoesNotCallS3()
     {
         // Act

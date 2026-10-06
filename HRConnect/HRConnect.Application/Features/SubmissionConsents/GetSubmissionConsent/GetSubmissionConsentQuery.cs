@@ -24,4 +24,6 @@ public sealed class SubmissionConsentReviewData
     public string CvFileName { get; set; } = null!;
     public string? CvDownloadUrl { get; set; }
     public DateTime? CvUrlExpiresAt { get; set; }
+    public string? AffiliateReuseStatus { get; set; }
+    public Guid? ReuseConcurrencyToken { get; set; }
 }

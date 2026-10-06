@@ -138,6 +138,7 @@ public class SubmissionRepository : ISubmissionRepository
                     cv.CreationMethod == "AFFILIATE_UPLOAD" &&
                     cv.UploadedByUserId == userId &&
                     cv.Status == "ACTIVE" &&
+                    cv.AffiliateReuseStatus == "ALLOWED" &&
                     cv.Submissions.Any(submission =>
                         submission.SubmittedBy == userId && submission.Status == "ACCEPTED")));
 
@@ -161,6 +162,7 @@ public class SubmissionRepository : ISubmissionRepository
                 cv.CreationMethod == "AFFILIATE_UPLOAD" &&
                 cv.UploadedByUserId == userId &&
                 cv.Status == "ACTIVE" &&
+                cv.AffiliateReuseStatus == "ALLOWED" &&
                 cv.Submissions.Any(submission =>
                     submission.SubmittedBy == userId && submission.Status == "ACCEPTED")),
             AcceptedSubmissionCount = candidate.Submissions.Count(submission =>
@@ -213,6 +215,7 @@ public class SubmissionRepository : ISubmissionRepository
                     cv.CreationMethod == "AFFILIATE_UPLOAD" &&
                     cv.UploadedByUserId == userId &&
                     cv.Status == "ACTIVE" &&
+                    cv.AffiliateReuseStatus == "ALLOWED" &&
                     cv.Submissions.Any(submission =>
                         submission.SubmittedBy == userId && submission.Status == "ACCEPTED")))
             .Select(candidate => new
@@ -237,6 +240,7 @@ public class SubmissionRepository : ISubmissionRepository
                 cv.CreationMethod == "AFFILIATE_UPLOAD" &&
                 cv.UploadedByUserId == userId &&
                 cv.Status == "ACTIVE" &&
+                cv.AffiliateReuseStatus == "ALLOWED" &&
                 cv.Submissions.Any(submission =>
                     submission.SubmittedBy == userId && submission.Status == "ACCEPTED"))
             .OrderByDescending(cv => cv.UpdatedAt)
@@ -297,6 +301,7 @@ public class SubmissionRepository : ISubmissionRepository
                 cv.CreationMethod == "AFFILIATE_UPLOAD" &&
                 cv.UploadedByUserId == userId &&
                 cv.Status == "ACTIVE" &&
+                cv.AffiliateReuseStatus == "ALLOWED" &&
                 cv.Submissions.Any(submission =>
                     submission.SubmittedBy == userId && submission.Status == "ACCEPTED"))
             .Select(cv => new AffiliateCandidateCvAccessRecord(
@@ -304,5 +309,189 @@ public class SubmissionRepository : ISubmissionRepository
                 cv.CvId,
                 cv.FileName))
             .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<(IReadOnlyList<CandidateAffiliateCvRecord> Items, int TotalCount)> GetCandidateAffiliateCvsAsync(
+        Guid candidateId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query =
+            from cv in _context.CandidateCvs.AsNoTracking()
+            join affiliateUser in _context.AppUsers.AsNoTracking()
+                on cv.UploadedByUserId equals affiliateUser.UserId
+            where cv.CandidateId == candidateId &&
+                  cv.CreationMethod == "AFFILIATE_UPLOAD" &&
+                  cv.Status != "DELETED" &&
+                  cv.Submissions.Any()
+            select new
+            {
+                cv.CvId,
+                cv.Title,
+                cv.FileName,
+                cv.MimeType,
+                cv.FileSizeBytes,
+                DocumentStatus = cv.Status,
+                AffiliateReuseStatus = cv.AffiliateReuseStatus ?? "NOT_GRANTED",
+                ReuseConcurrencyToken = cv.AffiliateReuseConcurrencyToken,
+                AffiliateUserId = affiliateUser.UserId,
+                AffiliateDisplayName = affiliateUser.DisplayName ?? affiliateUser.Email,
+                SubmissionCount = cv.Submissions.Count,
+                PendingConsentCount = cv.Submissions.Count(submission => submission.Status == "PENDING_CONSENT"),
+                AcceptedSubmissionCount = cv.Submissions.Count(submission => submission.Status == "ACCEPTED"),
+                LastSubmittedAt = cv.Submissions.Select(submission => (DateTime?)submission.SubmittedAt).Max(),
+                cv.CreatedAt
+            };
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var rows = await query
+            .OrderByDescending(item => item.LastSubmittedAt)
+            .ThenByDescending(item => item.CreatedAt)
+            .ThenBy(item => item.CvId)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (rows.Select(item => new CandidateAffiliateCvRecord(
+            item.CvId,
+            item.Title,
+            item.FileName,
+            item.MimeType,
+            item.FileSizeBytes,
+            item.DocumentStatus,
+            item.AffiliateReuseStatus,
+            item.ReuseConcurrencyToken,
+            item.AffiliateUserId,
+            item.AffiliateDisplayName,
+            item.SubmissionCount,
+            item.PendingConsentCount,
+            item.AcceptedSubmissionCount,
+            item.LastSubmittedAt,
+            item.CreatedAt)).ToList(), totalCount);
+    }
+
+    public async Task<CandidateAffiliateCvDetailRecord?> GetCandidateAffiliateCvDetailAsync(
+        Guid candidateId,
+        Guid cvId,
+        CancellationToken cancellationToken = default)
+    {
+        return await (
+            from cv in _context.CandidateCvs.AsNoTracking()
+            join affiliateUser in _context.AppUsers.AsNoTracking()
+                on cv.UploadedByUserId equals affiliateUser.UserId
+            where cv.CvId == cvId &&
+                  cv.CandidateId == candidateId &&
+                  cv.CreationMethod == "AFFILIATE_UPLOAD" &&
+                  cv.Status != "DELETED" &&
+                  cv.Submissions.Any()
+            select new CandidateAffiliateCvDetailRecord(
+                cv.CvId,
+                cv.Title,
+                cv.FileName,
+                cv.MimeType,
+                cv.FileSizeBytes,
+                cv.Status,
+                cv.AffiliateReuseStatus ?? "NOT_GRANTED",
+                cv.AffiliateReuseConcurrencyToken,
+                cv.AffiliateReuseChangedAt,
+                affiliateUser.UserId,
+                affiliateUser.DisplayName ?? affiliateUser.Email,
+                cv.Submissions.Count,
+                cv.Submissions.Count(submission => submission.Status == "PENDING_CONSENT"),
+                cv.Submissions.Count(submission => submission.Status == "ACCEPTED"),
+                cv.Submissions.Count(submission => submission.Status == "CONSENT_REJECTED"),
+                cv.Submissions.Count(submission => submission.Status == "CONSENT_EXPIRED"),
+                cv.Submissions.Select(submission => (DateTime?)submission.SubmittedAt).Max(),
+                cv.CreatedAt,
+                cv.UpdatedAt))
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<(IReadOnlyList<CandidateAffiliateCvUsageRecord> Items, int TotalCount)> GetCandidateAffiliateCvUsagesAsync(
+        Guid candidateId,
+        Guid cvId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Submissions
+            .AsNoTracking()
+            .Where(submission =>
+                submission.CandidateId == candidateId &&
+                submission.CvId == cvId &&
+                submission.Source == "AFFILIATE" &&
+                submission.CandidateCv.CreationMethod == "AFFILIATE_UPLOAD");
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var rows = await query
+            .OrderByDescending(submission => submission.SubmittedAt)
+            .ThenByDescending(submission => submission.SubmissionId)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(submission => new
+            {
+                submission.SubmissionId,
+                submission.JobId,
+                JobTitle = submission.Job.Title,
+                submission.Job.CompanyId,
+                submission.Job.Company.CompanyName,
+                AffiliateUserId = submission.SubmittedBy,
+                AffiliateDisplayName = submission.SubmittedByNavigation.DisplayName ?? submission.SubmittedByNavigation.Email,
+                SubmissionStatus = submission.Status,
+                submission.SubmittedAt,
+                ConsentStatus = submission.Consent == null ? null : submission.Consent.Status,
+                ConsentRequestedAt = submission.Consent == null ? (DateTime?)null : submission.Consent.RequestedAt,
+                ConsentExpiresAt = submission.Consent == null ? (DateTime?)null : submission.Consent.ExpiresAt,
+                ConsentRespondedAt = submission.Consent == null ? null : submission.Consent.RespondedAt,
+                Application = submission.Applications
+                    .OrderByDescending(application => application.AppliedAt)
+                    .Select(application => new
+                    {
+                        application.ApplicationId,
+                        ApplicationStatus = application.Status,
+                        ApplicationCurrentStage = application.CurrentStage,
+                        AiStatus = application.AiMatchResults
+                            .OrderByDescending(result => result.AttemptNo)
+                            .Select(result => result.Status)
+                            .FirstOrDefault(),
+                        AiMatchScore = application.AiMatchResults
+                            .OrderByDescending(result => result.AttemptNo)
+                            .Select(result => result.MatchScore)
+                            .FirstOrDefault(),
+                        AiMatchTier = application.AiMatchResults
+                            .OrderByDescending(result => result.AttemptNo)
+                            .Select(result => result.MatchTier)
+                            .FirstOrDefault(),
+                        AiCompletedAt = application.AiMatchResults
+                            .OrderByDescending(result => result.AttemptNo)
+                            .Select(result => result.CompletedAt)
+                            .FirstOrDefault()
+                    })
+                    .FirstOrDefault()
+            })
+            .ToListAsync(cancellationToken);
+
+        return (rows.Select(row => new CandidateAffiliateCvUsageRecord(
+            row.SubmissionId,
+            row.JobId,
+            row.JobTitle,
+            row.CompanyId,
+            row.CompanyName,
+            row.AffiliateUserId,
+            row.AffiliateDisplayName,
+            row.SubmissionStatus,
+            row.SubmittedAt,
+            row.ConsentStatus,
+            row.ConsentRequestedAt,
+            row.ConsentExpiresAt,
+            row.ConsentRespondedAt,
+            row.Application?.ApplicationId,
+            row.Application?.ApplicationStatus,
+            row.Application?.ApplicationCurrentStage,
+            row.Application?.AiStatus,
+            row.Application?.AiMatchScore,
+            row.Application?.AiMatchTier,
+            row.Application?.AiCompletedAt)).ToList(), totalCount);
     }
 }

@@ -75,6 +75,56 @@ public class CloudflareR2StorageService : IFileStorageService
         }
     }
 
+    public async Task<string> CopyAsync(
+        string sourceObjectKey,
+        string destinationObjectKey,
+        string contentType,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateConfiguration();
+        if (string.IsNullOrWhiteSpace(sourceObjectKey))
+            throw new ArgumentException("Mã khóa tệp nguồn không được để trống.", nameof(sourceObjectKey));
+        if (string.IsNullOrWhiteSpace(destinationObjectKey))
+            throw new ArgumentException("Mã khóa tệp đích không được để trống.", nameof(destinationObjectKey));
+
+        try
+        {
+            var request = new CopyObjectRequest
+            {
+                SourceBucket = _settings.BucketName,
+                SourceKey = sourceObjectKey,
+                DestinationBucket = _settings.BucketName,
+                DestinationKey = destinationObjectKey,
+                MetadataDirective = S3MetadataDirective.REPLACE,
+                ContentType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType
+            };
+            await _s3Client.CopyObjectAsync(request, cancellationToken);
+            _logger.LogInformation(
+                "Sao chép tệp R2 thành công: Source={SourceKey}, Destination={DestinationKey}",
+                sourceObjectKey,
+                destinationObjectKey);
+            return destinationObjectKey;
+        }
+        catch (AmazonS3Exception ex)
+        {
+            _logger.LogError(
+                "Lỗi AWS S3 khi sao chép tệp R2: Source={SourceKey}, Destination={DestinationKey}, StatusCode={StatusCode}, ErrorCode={ErrorCode}",
+                sourceObjectKey,
+                destinationObjectKey,
+                ex.StatusCode,
+                ex.ErrorCode);
+            throw new InvalidOperationException("Không thể sao chép CV trên hệ thống lưu trữ đám mây.", ex);
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException && ex is not ArgumentException)
+        {
+            _logger.LogError(ex,
+                "Ngoại lệ khi sao chép tệp R2: Source={SourceKey}, Destination={DestinationKey}",
+                sourceObjectKey,
+                destinationObjectKey);
+            throw new InvalidOperationException("Không thể sao chép CV trên hệ thống lưu trữ đám mây.", ex);
+        }
+    }
+
     public async Task DeleteAsync(
         string objectKey,
         CancellationToken cancellationToken = default)

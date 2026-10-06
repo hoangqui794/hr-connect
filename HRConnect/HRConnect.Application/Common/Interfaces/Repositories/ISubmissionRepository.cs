@@ -46,7 +46,85 @@ public interface ISubmissionRepository
         Guid candidateId,
         Guid cvId,
         CancellationToken cancellationToken = default);
+
+    Task<(IReadOnlyList<CandidateAffiliateCvRecord> Items, int TotalCount)> GetCandidateAffiliateCvsAsync(
+        Guid candidateId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
+    Task<CandidateAffiliateCvDetailRecord?> GetCandidateAffiliateCvDetailAsync(
+        Guid candidateId,
+        Guid cvId,
+        CancellationToken cancellationToken = default);
+
+    Task<(IReadOnlyList<CandidateAffiliateCvUsageRecord> Items, int TotalCount)> GetCandidateAffiliateCvUsagesAsync(
+        Guid candidateId,
+        Guid cvId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 }
+
+public sealed record CandidateAffiliateCvRecord(
+    Guid CvId,
+    string Title,
+    string? FileName,
+    string? MimeType,
+    long? FileSizeBytes,
+    string DocumentStatus,
+    string AffiliateReuseStatus,
+    Guid ReuseConcurrencyToken,
+    Guid AffiliateUserId,
+    string AffiliateDisplayName,
+    int SubmissionCount,
+    int PendingConsentCount,
+    int AcceptedSubmissionCount,
+    DateTime? LastSubmittedAt,
+    DateTime CreatedAt);
+
+public sealed record CandidateAffiliateCvDetailRecord(
+    Guid CvId,
+    string Title,
+    string? FileName,
+    string? MimeType,
+    long? FileSizeBytes,
+    string DocumentStatus,
+    string AffiliateReuseStatus,
+    Guid ReuseConcurrencyToken,
+    DateTime? ReuseChangedAt,
+    Guid AffiliateUserId,
+    string AffiliateDisplayName,
+    int SubmissionCount,
+    int PendingConsentCount,
+    int AcceptedSubmissionCount,
+    int DeclinedSubmissionCount,
+    int ExpiredSubmissionCount,
+    DateTime? LastSubmittedAt,
+    DateTime CreatedAt,
+    DateTime UpdatedAt);
+
+public sealed record CandidateAffiliateCvUsageRecord(
+    Guid SubmissionId,
+    Guid JobId,
+    string JobTitle,
+    Guid CompanyId,
+    string CompanyName,
+    Guid AffiliateUserId,
+    string AffiliateDisplayName,
+    string SubmissionStatus,
+    DateTime SubmittedAt,
+    string? ConsentStatus,
+    DateTime? ConsentRequestedAt,
+    DateTime? ConsentExpiresAt,
+    DateTime? ConsentRespondedAt,
+    Guid? ApplicationId,
+    string? ApplicationStatus,
+    string? ApplicationCurrentStage,
+    string? AiStatus,
+    decimal? AiMatchScore,
+    string? AiMatchTier,
+    DateTime? AiCompletedAt);
 
 public sealed record AffiliateCandidateLibraryRecord(
     Guid CandidateId,

@@ -18,6 +18,24 @@ public partial class CandidateCv
 
     public Guid? UploadedByUserId { get; set; }
 
+    /// <summary>
+    /// Original Affiliate-uploaded document copied into the Candidate's personal CV library.
+    /// Null for regular uploads and for the immutable Affiliate submission document itself.
+    /// </summary>
+    public Guid? AdoptedFromCvId { get; set; }
+
+    /// <summary>
+    /// Controls whether the original Affiliate may use this document to initiate
+    /// a new, job-specific consent request. Null for Candidate-owned CVs.
+    /// </summary>
+    public string? AffiliateReuseStatus { get; set; }
+
+    public DateTime? AffiliateReuseChangedAt { get; set; }
+
+    public Guid? AffiliateReuseChangedByUserId { get; set; }
+
+    public Guid AffiliateReuseConcurrencyToken { get; set; } = Guid.NewGuid();
+
     public Guid? CvTemplateId { get; set; }
 
     public string? StructuredContent { get; set; }

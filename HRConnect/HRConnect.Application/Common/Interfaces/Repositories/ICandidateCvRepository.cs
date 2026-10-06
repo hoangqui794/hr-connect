@@ -12,6 +12,8 @@ public interface ICandidateCvRepository
 
     Task<List<CandidateCv>> GetByCandidateIdAsync(Guid candidateId, CancellationToken cancellationToken = default);
 
+    Task<CandidateCv?> GetAdoptedBySourceCvIdAsync(Guid candidateId, Guid sourceCvId, CancellationToken cancellationToken = default);
+
     Task AddAsync(CandidateCv candidateCv, CancellationToken cancellationToken = default);
 
     void Update(CandidateCv candidateCv);
