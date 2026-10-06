@@ -1,13 +1,16 @@
+using HRConnect.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace HRConnect.Infrastructure.Migrations;
 
+[DbContext(typeof(ApplicationDbContext))]
+[Migration("20261005090000_RestrictInternalHrRecruitmentMutations")]
 public partial class RestrictInternalHrRecruitmentMutations : Migration
 {
     private const string InternalHrMutationPermissions = """
-        'application.screen',
         'application.decide_backup',
         'interview.manage',
         'interview.record_result',

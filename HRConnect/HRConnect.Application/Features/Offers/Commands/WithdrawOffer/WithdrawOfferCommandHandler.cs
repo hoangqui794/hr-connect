@@ -72,7 +72,7 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
                 throw new ForbiddenException("Bạn không có quyền thu hồi offer của doanh nghiệp khác.");
             }
         }
-        else if (!request.IsInternalHrOrAdmin)
+        else
         {
             _logger.LogWarning("User {UserId} không có quyền thu hồi offer.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền thu hồi offer.");

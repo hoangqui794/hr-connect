@@ -39,6 +39,7 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
     private readonly IApplicationRepository _applicationRepository;
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IServiceTypeRepository _serviceTypeRepository;
+    private readonly INotificationRepository _notificationRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
     private readonly ILogger<UpdateApplicationScreeningStatusCommandHandler> _logger;
@@ -47,6 +48,7 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
         IApplicationRepository applicationRepository,
         ICompanyUserRepository companyUserRepository,
         IServiceTypeRepository serviceTypeRepository,
+        INotificationRepository notificationRepository,
         IUnitOfWork unitOfWork,
         IAuditLogService auditLogService,
         ILogger<UpdateApplicationScreeningStatusCommandHandler> logger)
@@ -54,6 +56,7 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
         _serviceTypeRepository = serviceTypeRepository;
+        _notificationRepository = notificationRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
         _logger = logger;
@@ -114,6 +117,22 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
         }
 
         var currentStatus = application.Status.Trim().ToUpperInvariant();
+
+        // Internal HR performs only the initial pre-screen for agency services.
+        // Building or deciding the backup pool remains a Client Company decision.
+        if (request.Actor == ScreeningActor.InternalHr)
+        {
+            if (currentStatus is not (ApplicationStates.Submitted or ApplicationStates.Screening))
+            {
+                throw new ForbiddenException("Internal HR chỉ được tiền sàng lọc hồ sơ ở trạng thái SUBMITTED hoặc SCREENING.");
+            }
+
+            if (targetStatus == ApplicationStates.Backup)
+            {
+                throw new ForbiddenException("Internal HR không được đưa hồ sơ vào danh sách dự bị.");
+            }
+        }
+
         if (!AllowedTransitions.TryGetValue(currentStatus, out var allowedTargets) || !allowedTargets.Contains(targetStatus))
         {
             throw new BadRequestException(
@@ -188,6 +207,12 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
             OldValues = new { status = currentStatus },
             NewValues = new { status = targetStatus, sourceAction = AuditActions.ApplicationScreened }
         }, cancellationToken);
+
+        if (targetStatus is ApplicationStates.Shortlisted or ApplicationStates.Rejected)
+        {
+            await AddScreeningNotificationsAsync(application, targetStatus, now, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new UpdateApplicationScreeningStatusResponse
@@ -203,5 +228,40 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
                 UpdatedAt = now
             }
         };
+    }
+
+    private async Task AddScreeningNotificationsAsync(
+        HRConnect.Domain.Entities.Application application,
+        string targetStatus,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var candidateUserId = application.Candidate?.UserId;
+        if (candidateUserId.HasValue
+            && !await _notificationRepository.ExistsAsync(
+                candidateUserId.Value,
+                ApplicationScreeningNotificationFactory.NotificationType,
+                "APPLICATION",
+                application.ApplicationId,
+                cancellationToken))
+        {
+            await _notificationRepository.AddAsync(
+                ApplicationScreeningNotificationFactory.CreateCandidate(application, targetStatus, now), cancellationToken);
+        }
+
+        if (application.Attribution?.Affiliate?.UserId is not Guid affiliateUserId
+            || affiliateUserId == candidateUserId
+            || await _notificationRepository.ExistsAsync(
+                affiliateUserId,
+                ApplicationScreeningNotificationFactory.NotificationType,
+                "APPLICATION",
+                application.ApplicationId,
+                cancellationToken))
+        {
+            return;
+        }
+
+        await _notificationRepository.AddAsync(
+            ApplicationScreeningNotificationFactory.CreateAffiliate(application, targetStatus, now), cancellationToken);
     }
 }

@@ -81,7 +81,7 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
                 throw new ForbiddenException("Bạn không có quyền hủy lịch phỏng vấn của doanh nghiệp khác.");
             }
         }
-        else if (!request.IsInternalHrOrAdmin)
+        else
         {
             _logger.LogWarning("User {UserId} không có quyền hủy lịch phỏng vấn.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền hủy lịch phỏng vấn.");

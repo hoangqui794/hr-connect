@@ -42,7 +42,7 @@ HR Connect là nền tảng tuyển dụng kết nối Candidate, Affiliate Recr
 | Candidate | Quản lý profile/CV, trực tiếp ứng tuyển, xem Application và consent do Affiliate tạo. |
 | Affiliate Recruiter | Quản lý profile, Candidate library, submit Candidate/CV, theo dõi submission, attribution và hoa hồng của mình. |
 | Client Company User | Quản lý company/profile, tạo/quản lý Job và theo dõi Candidate/Application thuộc Job công ty. |
-| Internal HR | Review Job, xem AI score/CV theo quyền, xử lý screening/interview/offer/placement. |
+| Internal HR | Review Job và AI score/CV; tiền sàng lọc `HEADHUNT_COD`/`CV_SOURCING`, không xử lý Interview, Offer hoặc Placement. |
 | Admin | Quản lý user, approval, service type, commission rule/milestone, audit log và cấu hình nghiệp vụ. |
 | MF03 service | Gọi Internal API bằng service token để nhận/sử dụng dữ liệu chấm điểm AI. |
 
@@ -151,8 +151,11 @@ flowchart LR
   G --> J[Candidate consent]
   J -->|Đồng ý| I
   I --> K[MF03 AI scoring]
-  K --> L[Internal HR / Client review]
-  L --> M[Interview]
+  K --> L[Screening theo Service Type]
+  L --> L1[Client: CV_APPLICATION]
+  L --> L2[Internal HR: HEADHUNT_COD/CV_SOURCING]
+  L1 --> M[Interview]
+  L2 --> M
   M --> N[Offer]
   N --> O[Placement / Probation / Warranty]
   O --> P[Commission, Payout hoặc Dispute]

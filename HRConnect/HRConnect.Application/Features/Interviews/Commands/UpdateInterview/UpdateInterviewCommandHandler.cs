@@ -76,7 +76,7 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
                 throw new ForbiddenException("Bạn không có quyền cập nhật lịch phỏng vấn của doanh nghiệp khác.");
             }
         }
-        else if (!request.IsInternalHrOrAdmin)
+        else
         {
             _logger.LogWarning("User {UserId} không có quyền cập nhật lịch phỏng vấn.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền cập nhật lịch phỏng vấn.");

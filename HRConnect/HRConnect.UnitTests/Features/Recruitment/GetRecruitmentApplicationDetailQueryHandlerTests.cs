@@ -5,7 +5,10 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -163,6 +166,74 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenInternalHrViewsHeadhuntSubmitted_ShouldExposeOnlyScreeningActions()
+    {
+        var appId = Guid.NewGuid();
+        var app = CreateSampleApplication(
+            appId,
+            Guid.NewGuid(),
+            "SUBMITTED",
+            ServiceTypeCodes.HeadhuntCod);
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        var result = await CreateHandler().Handle(new GetRecruitmentApplicationDetailQuery(
+            appId, Guid.NewGuid(), false, true, ScreeningActor.InternalHr), CancellationToken.None);
+
+        result.Data.AllowedActions.Should().BeEquivalentTo(
+            new[] { "START_SCREENING", "SHORTLIST", "REJECT" });
+    }
+
+    [Fact]
+    public async Task Handle_WhenClientViewsHeadhuntSubmitted_ShouldThrowNotFoundException()
+    {
+        var appId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var app = CreateSampleApplication(
+            appId,
+            companyId,
+            "SUBMITTED",
+            ServiceTypeCodes.HeadhuntCod);
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+
+        var act = () => CreateHandler().Handle(new GetRecruitmentApplicationDetailQuery(
+            appId, userId, true, false), CancellationToken.None);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_WhenClientViewsHeadhuntShortlisted_ShouldNotExposeScreeningActions()
+    {
+        var appId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var app = CreateSampleApplication(
+            appId,
+            companyId,
+            ApplicationStates.Shortlisted,
+            ServiceTypeCodes.HeadhuntCod);
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+
+        var result = await CreateHandler().Handle(new GetRecruitmentApplicationDetailQuery(
+            appId, userId, true, false), CancellationToken.None);
+
+        result.Data.AllowedActions.Should().NotContain(["START_SCREENING", "SHORTLIST", "REJECT", "MARK_BACKUP"]);
+    }
+
+    [Fact]
     public async Task Handle_ProjectsSafeAiDiagnosticsAndSurvivesMalformedLegacyJson()
     {
         var appId = Guid.NewGuid();
@@ -272,10 +343,21 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
         result.Data.AllowedActions.Should().Contain("CREATE_OFFER");
     }
 
-    private static Domain.Entities.Application CreateSampleApplication(Guid applicationId, Guid companyId, string status)
+    private static Domain.Entities.Application CreateSampleApplication(
+        Guid applicationId,
+        Guid companyId,
+        string status,
+        string serviceTypeCode = ServiceTypeCodes.CvApplication)
     {
         var company = new Company { CompanyId = companyId, CompanyName = "Tech Corp" };
-        var job = new Job { JobId = Guid.NewGuid(), Title = "Backend Lead", CompanyId = companyId, Company = company };
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(),
+            Title = "Backend Lead",
+            CompanyId = companyId,
+            Company = company,
+            ServiceType = new ServiceType { ServiceTypeId = Guid.NewGuid(), Code = serviceTypeCode }
+        };
         var candidate = new Candidate
         {
             CandidateId = Guid.NewGuid(),

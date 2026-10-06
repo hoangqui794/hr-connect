@@ -58,7 +58,9 @@ public class GetRecruitmentApplicationsQueryHandler : IRequestHandler<GetRecruit
             request.ToDate,
             page,
             pageSize,
-            cancellationToken);
+            cancellationToken,
+            sortBy: request.SortBy,
+            sortDirection: request.SortDirection);
 
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
