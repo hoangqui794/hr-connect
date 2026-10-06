@@ -301,6 +301,7 @@ public class SubmissionRepository : ISubmissionRepository
                 cv.CreationMethod == "AFFILIATE_UPLOAD" &&
                 cv.UploadedByUserId == userId &&
                 cv.Status == "ACTIVE" &&
+                cv.AffiliateReuseStatus == "ALLOWED" &&
                 cv.Submissions.Any(submission =>
                     submission.SubmittedBy == userId && submission.Status == "ACCEPTED"))
             .Select(cv => new AffiliateCandidateCvAccessRecord(

@@ -72,6 +72,27 @@ public sealed class AffiliateCandidateLibraryRepositoryTests
         detail.Should().BeNull();
     }
 
+    [Theory]
+    [InlineData("ALLOWED", true)]
+    [InlineData("REVOKED", false)]
+    [InlineData("NOT_GRANTED", false)]
+    public async Task GetCvAccess_RequiresExplicitAllowedReuseStatus(
+        string reuseStatus,
+        bool expectedAccessible)
+    {
+        await using var context = CreateContext();
+        var affiliateUserId = AddAffiliate(context);
+        var candidate = Candidate("Candidate");
+        context.Candidates.Add(candidate);
+        var cv = AddAcceptedAffiliateCv(context, candidate, affiliateUserId, reuseStatus);
+        await context.SaveChangesAsync();
+
+        var access = await new SubmissionRepository(context).GetAffiliateCandidateCvAccessAsync(
+            affiliateUserId, candidate.CandidateId, cv.CvId);
+
+        (access is not null).Should().Be(expectedAccessible);
+    }
+
     private static ApplicationDbContext CreateContext() => new(
         new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
