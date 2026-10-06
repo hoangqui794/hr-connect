@@ -9,6 +9,7 @@ using HRConnect.Application.Features.Candidates.Commands.UpdateProfileVisibility
 using HRConnect.Application.Features.Candidates.Commands.UploadCv;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateCvs;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateAffiliateCvs;
+using HRConnect.Application.Features.Candidates.Queries.GetCandidateAffiliateCvDetail;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using HRConnect.Application.Features.Candidates.Queries.GetCvDownloadUrl;
 using MediatR;
@@ -212,6 +213,40 @@ public static class CandidateEndpoints
         .WithSummary("Candidate xem danh sách CV do Affiliate đã nộp thay")
         .WithDescription("Yêu cầu permission cv.view_own. Trả riêng tài liệu do Affiliate tải lên, trạng thái consent tổng hợp và trạng thái cho phép tái sử dụng; không trộn vào kho CV cá nhân.")
         .Produces<GetCandidateAffiliateCvsResponse>()
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
+        affiliateCvGroup.MapGet("/{cvId:guid}", async (
+            Guid cvId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "cv.view_own"))
+                return PermissionAuthorization.Forbidden("cv.view_own");
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            try
+            {
+                return Results.Ok(await sender.Send(
+                    new GetCandidateAffiliateCvDetailQuery(userId.Value, cvId), cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetCandidateAffiliateCvDetail")
+        .WithSummary("Candidate xem chi tiết CV do Affiliate đã nộp thay")
+        .WithDescription("Yêu cầu permission cv.view_own. Chỉ trả CV thuộc đúng Candidate đang đăng nhập và có lịch sử Affiliate nộp; không trả URL tải tệp tại API metadata này.")
+        .Produces<GetCandidateAffiliateCvDetailResponse>()
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)

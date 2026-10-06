@@ -331,7 +331,7 @@ public class SubmissionRepository : ISubmissionRepository
                 AffiliateReuseStatus = cv.AffiliateReuseStatus ?? "NOT_GRANTED",
                 ReuseConcurrencyToken = cv.AffiliateReuseConcurrencyToken,
                 AffiliateUserId = affiliateUser.UserId,
-                AffiliateDisplayName = affiliateUser.DisplayName,
+                AffiliateDisplayName = affiliateUser.DisplayName ?? affiliateUser.Email,
                 SubmissionCount = cv.Submissions.Count,
                 PendingConsentCount = cv.Submissions.Count(submission => submission.Status == "PENDING_CONSENT"),
                 AcceptedSubmissionCount = cv.Submissions.Count(submission => submission.Status == "ACCEPTED"),
@@ -364,5 +364,42 @@ public class SubmissionRepository : ISubmissionRepository
             item.AcceptedSubmissionCount,
             item.LastSubmittedAt,
             item.CreatedAt)).ToList(), totalCount);
+    }
+
+    public async Task<CandidateAffiliateCvDetailRecord?> GetCandidateAffiliateCvDetailAsync(
+        Guid candidateId,
+        Guid cvId,
+        CancellationToken cancellationToken = default)
+    {
+        return await (
+            from cv in _context.CandidateCvs.AsNoTracking()
+            join affiliateUser in _context.AppUsers.AsNoTracking()
+                on cv.UploadedByUserId equals affiliateUser.UserId
+            where cv.CvId == cvId &&
+                  cv.CandidateId == candidateId &&
+                  cv.CreationMethod == "AFFILIATE_UPLOAD" &&
+                  cv.Status != "DELETED" &&
+                  cv.Submissions.Any()
+            select new CandidateAffiliateCvDetailRecord(
+                cv.CvId,
+                cv.Title,
+                cv.FileName,
+                cv.MimeType,
+                cv.FileSizeBytes,
+                cv.Status,
+                cv.AffiliateReuseStatus ?? "NOT_GRANTED",
+                cv.AffiliateReuseConcurrencyToken,
+                cv.AffiliateReuseChangedAt,
+                affiliateUser.UserId,
+                affiliateUser.DisplayName ?? affiliateUser.Email,
+                cv.Submissions.Count,
+                cv.Submissions.Count(submission => submission.Status == "PENDING_CONSENT"),
+                cv.Submissions.Count(submission => submission.Status == "ACCEPTED"),
+                cv.Submissions.Count(submission => submission.Status == "CONSENT_REJECTED"),
+                cv.Submissions.Count(submission => submission.Status == "CONSENT_EXPIRED"),
+                cv.Submissions.Select(submission => (DateTime?)submission.SubmittedAt).Max(),
+                cv.CreatedAt,
+                cv.UpdatedAt))
+            .SingleOrDefaultAsync(cancellationToken);
     }
 }
