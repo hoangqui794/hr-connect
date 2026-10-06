@@ -218,4 +218,44 @@ public class DeleteCandidateCvCommandHandlerTests
         await act.Should().ThrowAsync<NotFoundException>()
             .WithMessage("*Không tìm thấy thông tin ứng viên*");
     }
+
+    [Fact]
+    public async Task Handle_WhenCvWasUploadedByAffiliate_ThrowsConflictWithoutDeletingOrMutatingData()
+    {
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var cvId = Guid.NewGuid();
+        var affiliateCv = new CandidateCv
+        {
+            CvId = cvId,
+            CandidateId = candidateId,
+            Title = "Affiliate CV",
+            CreationMethod = "AFFILIATE_UPLOAD",
+            IsPrimary = false,
+            Status = "ACTIVE"
+        };
+
+        _candidateRepositoryMock.Setup(repository => repository.GetByUserIdAsync(
+                userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate { CandidateId = candidateId, UserId = userId });
+        _candidateCvRepositoryMock.Setup(repository => repository.GetByIdAsync(
+                cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(affiliateCv);
+
+        var act = () => _handler.Handle(
+            new DeleteCandidateCvCommand(cvId, userId), CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<ConflictException>();
+        exception.Which.ErrorCode.Should().Be("AFFILIATE_CV_MANAGED_SEPARATELY");
+        affiliateCv.Status.Should().Be("ACTIVE");
+        _candidateCvRepositoryMock.Verify(repository => repository.IsCvInUseAsync(
+            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _candidateCvRepositoryMock.Verify(repository => repository.Update(It.IsAny<CandidateCv>()), Times.Never);
+        _cvStorageServiceMock.Verify(service => service.DeleteCvAsync(
+            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _auditLogServiceMock.Verify(service => service.AddAsync(
+            It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(unitOfWork => unitOfWork.SaveChangesAsync(
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

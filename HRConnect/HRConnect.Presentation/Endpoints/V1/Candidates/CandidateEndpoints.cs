@@ -705,6 +705,10 @@ public static class CandidateEndpoints
             {
                 return Results.BadRequest(new { success = false, message = ex.Message });
             }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
+            }
             catch (Exception ex)
             {
                 return Results.Problem(detail: ex.Message, statusCode: 500);
@@ -712,12 +716,13 @@ public static class CandidateEndpoints
         })
         .WithName("DeleteCandidateCv")
         .WithSummary("Xóa hoặc gỡ CV khỏi kho CV của ứng viên")
-        .WithDescription("Yêu cầu permission cv.delete_own. CV đã được Application sử dụng không bị hard delete và tệp PDF vẫn được giữ để bảo toàn lịch sử. CV chưa sử dụng được xóa khỏi DB trước, sau đó hệ thống dọn tệp PDF an toàn.")
+        .WithDescription("Yêu cầu permission cv.delete_own. Chỉ xử lý CV thuộc kho cá nhân; CV do Affiliate tải lên được quản lý riêng và Candidate có thể thu hồi quyền tái sử dụng. CV đã được Application sử dụng không bị hard delete và tệp PDF vẫn được giữ để bảo toàn lịch sử. CV chưa sử dụng được xóa khỏi DB trước, sau đó hệ thống dọn tệp PDF an toàn.")
         .Produces<DeleteCandidateCvResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict)
         .Produces(StatusCodes.Status500InternalServerError);
 
         // ==============================================================================
