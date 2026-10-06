@@ -54,6 +54,13 @@ public class ConfirmPlannedStartDateCommandHandler : IRequestHandler<ConfirmPlan
             throw new ConflictException("Dữ liệu hồ sơ đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
 
+        if (application.Status != ApplicationStates.OfferAccepted)
+        {
+            _logger.LogWarning("Hồ sơ {ApplicationId} đang ở trạng thái {Status}, không thể cập nhật ngày nhận việc.",
+                application.ApplicationId, application.Status);
+            throw new BadRequestException($"Chỉ có thể cập nhật ngày nhận việc sau khi ứng viên chấp nhận offer ({ApplicationStates.OfferAccepted}). Trạng thái hiện tại: {application.Status}.");
+        }
+
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
@@ -74,13 +81,6 @@ public class ConfirmPlannedStartDateCommandHandler : IRequestHandler<ConfirmPlan
         {
             _logger.LogWarning("User {UserId} không có quyền cập nhật ngày nhận việc.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền cập nhật ngày nhận việc.");
-        }
-
-        if (application.Status != ApplicationStates.OfferAccepted)
-        {
-            _logger.LogWarning("Hồ sơ {ApplicationId} đang ở trạng thái {Status}, không thể cập nhật ngày nhận việc.",
-                application.ApplicationId, application.Status);
-            throw new BadRequestException($"Chỉ có thể cập nhật ngày nhận việc sau khi ứng viên chấp nhận offer ({ApplicationStates.OfferAccepted}). Trạng thái hiện tại: {application.Status}.");
         }
 
         var now = DateTime.UtcNow;

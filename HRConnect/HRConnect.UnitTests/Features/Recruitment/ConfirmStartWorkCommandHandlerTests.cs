@@ -128,6 +128,7 @@ public class ConfirmStartWorkCommandHandlerTests
     {
         // Arrange
         var appId = Guid.NewGuid();
+        var offerId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var application = new Domain.Entities.Application
@@ -141,13 +142,17 @@ public class ConfirmStartWorkCommandHandlerTests
             .Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(application);
 
+        _offerRepositoryMock
+            .Setup(r => r.GetByIdAsync(offerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Offer { OfferId = offerId, ApplicationId = appId, Status = "ACCEPTED" });
+
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((CompanyUser?)null);
 
         var command = new ConfirmStartWorkCommand(
             ApplicationId: appId,
-            OfferId: Guid.NewGuid(),
+            OfferId: offerId,
             ActualStartDate: today,
             ConfirmationNote: null,
             Position: null,
@@ -170,6 +175,7 @@ public class ConfirmStartWorkCommandHandlerTests
     {
         // Arrange
         var appId = Guid.NewGuid();
+        var offerId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var jobCompanyId = Guid.NewGuid();
         var userCompanyId = Guid.NewGuid();
@@ -187,13 +193,17 @@ public class ConfirmStartWorkCommandHandlerTests
             .Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(application);
 
+        _offerRepositoryMock
+            .Setup(r => r.GetByIdAsync(offerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Offer { OfferId = offerId, ApplicationId = appId, Status = "ACCEPTED" });
+
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId });
 
         var command = new ConfirmStartWorkCommand(
             ApplicationId: appId,
-            OfferId: Guid.NewGuid(),
+            OfferId: offerId,
             ActualStartDate: today,
             ConfirmationNote: null,
             Position: null,

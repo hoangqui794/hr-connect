@@ -57,28 +57,6 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
             throw new ConflictException("Dữ liệu hồ sơ đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
 
-        if (request.IsClientCompanyUser)
-        {
-            var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (companyUser == null)
-            {
-                _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
-                throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
-            }
-
-            if (application.Job?.CompanyId != companyUser.CompanyId)
-            {
-                _logger.LogWarning("User {UserId} thuộc công ty {CompanyId} cố đánh dấu không nhận việc cho hồ sơ của công ty {JobCompanyId}.",
-                    request.CurrentUserId, companyUser.CompanyId, application.Job?.CompanyId);
-                throw new ForbiddenException("Bạn không có quyền đánh dấu không nhận việc cho ứng viên của doanh nghiệp khác.");
-            }
-        }
-        else
-        {
-            _logger.LogWarning("User {UserId} không có quyền đánh dấu ứng viên không nhận việc.", request.CurrentUserId);
-            throw new ForbiddenException("Bạn không có quyền đánh dấu ứng viên không nhận việc.");
-        }
-
         if (string.Equals(application.Status, ApplicationStates.NotStarted, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning("Hồ sơ {ApplicationId} đã ở trạng thái NOT_STARTED.", application.ApplicationId);
@@ -101,6 +79,28 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
         if (placement != null)
         {
             throw new ConflictException("Hồ sơ đã có Placement; không thể chuyển ngược sang NOT_STARTED.");
+        }
+
+        if (request.IsClientCompanyUser)
+        {
+            var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
+            if (companyUser == null)
+            {
+                _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
+                throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+            }
+
+            if (application.Job?.CompanyId != companyUser.CompanyId)
+            {
+                _logger.LogWarning("User {UserId} thuộc công ty {CompanyId} cố đánh dấu không nhận việc cho hồ sơ của công ty {JobCompanyId}.",
+                    request.CurrentUserId, companyUser.CompanyId, application.Job?.CompanyId);
+                throw new ForbiddenException("Bạn không có quyền đánh dấu không nhận việc cho ứng viên của doanh nghiệp khác.");
+            }
+        }
+        else
+        {
+            _logger.LogWarning("User {UserId} không có quyền đánh dấu ứng viên không nhận việc.", request.CurrentUserId);
+            throw new ForbiddenException("Bạn không có quyền đánh dấu ứng viên không nhận việc.");
         }
 
         application.Status = ApplicationStates.NotStarted;

@@ -69,28 +69,6 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
             throw new ConflictException("Dữ liệu hồ sơ đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
 
-        if (request.IsClientCompanyUser)
-        {
-            var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (companyUser == null)
-            {
-                _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
-                throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
-            }
-
-            if (application.Job?.CompanyId != companyUser.CompanyId)
-            {
-                _logger.LogWarning("User {UserId} thuộc công ty {CompanyId} cố tạo offer cho job của công ty {JobCompanyId}.",
-                    request.CurrentUserId, companyUser.CompanyId, application.Job?.CompanyId);
-                throw new ForbiddenException("Bạn không có quyền tạo offer cho ứng viên của doanh nghiệp khác.");
-            }
-        }
-        else
-        {
-            _logger.LogWarning("User {UserId} không có quyền tạo offer.", request.CurrentUserId);
-            throw new ForbiddenException("Bạn không có quyền tạo offer.");
-        }
-
         if (application.Status != ApplicationStates.OfferPending)
         {
             _logger.LogWarning("Hồ sơ {ApplicationId} đang ở trạng thái {Status}, không thể tạo offer.",
@@ -113,6 +91,28 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
         if (existingOffers.Any(o => o.Status == OfferStates.Accepted))
         {
             throw new BadRequestException("Ứng viên đã chấp nhận offer trước đó.");
+        }
+
+        if (request.IsClientCompanyUser)
+        {
+            var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
+            if (companyUser == null)
+            {
+                _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
+                throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+            }
+
+            if (application.Job?.CompanyId != companyUser.CompanyId)
+            {
+                _logger.LogWarning("User {UserId} thuộc công ty {CompanyId} cố tạo offer cho job của công ty {JobCompanyId}.",
+                    request.CurrentUserId, companyUser.CompanyId, application.Job?.CompanyId);
+                throw new ForbiddenException("Bạn không có quyền tạo offer cho ứng viên của doanh nghiệp khác.");
+            }
+        }
+        else
+        {
+            _logger.LogWarning("User {UserId} không có quyền tạo offer.", request.CurrentUserId);
+            throw new ForbiddenException("Bạn không có quyền tạo offer.");
         }
 
         var maxVersion = existingOffers.Count > 0 ? existingOffers.Max(o => o.OfferVersion) : 0;

@@ -62,28 +62,6 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
             throw new ConflictException("Dữ liệu hồ sơ đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
 
-        if (request.IsClientCompanyUser)
-        {
-            var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (companyUser == null)
-            {
-                _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
-                throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
-            }
-
-            if (application.Job?.CompanyId != companyUser.CompanyId)
-            {
-                _logger.LogWarning("User {UserId} thuộc công ty {CompanyId} cố xác nhận đi làm cho hồ sơ của công ty {JobCompanyId}.",
-                    request.CurrentUserId, companyUser.CompanyId, application.Job?.CompanyId);
-                throw new ForbiddenException("Bạn không có quyền xác nhận đi làm cho ứng viên của doanh nghiệp khác.");
-            }
-        }
-        else
-        {
-            _logger.LogWarning("User {UserId} không có quyền xác nhận bắt đầu làm việc.", request.CurrentUserId);
-            throw new ForbiddenException("Bạn không có quyền xác nhận ứng viên bắt đầu làm việc.");
-        }
-
         if (application.Status != ApplicationStates.OfferAccepted)
         {
             _logger.LogWarning("Hồ sơ {ApplicationId} đang ở trạng thái {Status}, không thể xác nhận đi làm.",
@@ -112,6 +90,28 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
             _logger.LogWarning("Thư mời nhận việc {OfferId} chưa được chấp thuận (Status: {Status}).",
                 offer.OfferId, offer.Status);
             throw new BadRequestException($"Chỉ có thể xác nhận bắt đầu làm việc khi thư mời nhận việc đã được chấp nhận (ACCEPTED). Trạng thái hiện tại: {offer.Status}.");
+        }
+
+        if (request.IsClientCompanyUser)
+        {
+            var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
+            if (companyUser == null)
+            {
+                _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
+                throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+            }
+
+            if (application.Job?.CompanyId != companyUser.CompanyId)
+            {
+                _logger.LogWarning("User {UserId} thuộc công ty {CompanyId} cố xác nhận đi làm cho hồ sơ của công ty {JobCompanyId}.",
+                    request.CurrentUserId, companyUser.CompanyId, application.Job?.CompanyId);
+                throw new ForbiddenException("Bạn không có quyền xác nhận đi làm cho ứng viên của doanh nghiệp khác.");
+            }
+        }
+        else
+        {
+            _logger.LogWarning("User {UserId} không có quyền xác nhận bắt đầu làm việc.", request.CurrentUserId);
+            throw new ForbiddenException("Bạn không có quyền xác nhận ứng viên bắt đầu làm việc.");
         }
 
         var now = DateTime.UtcNow;

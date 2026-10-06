@@ -81,6 +81,24 @@ public class DecideBackupApplicationCommandHandler : IRequestHandler<DecideBacku
             throw new NotFoundException("Không tìm thấy hồ sơ ứng tuyển.");
         }
 
+        var isBackup = string.Equals(application.Status, ApplicationStates.Backup, StringComparison.OrdinalIgnoreCase);
+
+        if (!isBackup)
+        {
+            _logger.LogWarning("Hồ sơ {ApplicationId} đang ở trạng thái {Status}, không phải là ứng viên dự phòng.",
+                application.ApplicationId, application.Status);
+            throw new BadRequestException($"Hồ sơ ứng tuyển đang ở trạng thái {application.Status}, không phải là hồ sơ dự phòng (BACKUP).");
+        }
+
+        if (request.ConcurrencyToken.HasValue &&
+            application.ConcurrencyToken != Guid.Empty &&
+            request.ConcurrencyToken.Value != application.ConcurrencyToken)
+        {
+            _logger.LogWarning("Xung đột phiên bản cho hồ sơ {ApplicationId}. Token gửi lên: {ClientToken}, Token hiện tại: {DbToken}.",
+                application.ApplicationId, request.ConcurrencyToken.Value, application.ConcurrencyToken);
+            throw new ConflictException("Dữ liệu hồ sơ ứng tuyển đã bị thay đổi bởi người dùng khác. Vui lòng tải lại trang.");
+        }
+
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
@@ -101,24 +119,6 @@ public class DecideBackupApplicationCommandHandler : IRequestHandler<DecideBacku
         {
             _logger.LogWarning("User {UserId} không có quyền quyết định ứng viên dự phòng.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền quyết định ứng viên dự phòng.");
-        }
-
-        var isBackup = string.Equals(application.Status, ApplicationStates.Backup, StringComparison.OrdinalIgnoreCase);
-
-        if (!isBackup)
-        {
-            _logger.LogWarning("Hồ sơ {ApplicationId} đang ở trạng thái {Status}, không phải là ứng viên dự phòng.",
-                application.ApplicationId, application.Status);
-            throw new BadRequestException($"Hồ sơ ứng tuyển đang ở trạng thái {application.Status}, không phải là hồ sơ dự phòng (BACKUP).");
-        }
-
-        if (request.ConcurrencyToken.HasValue &&
-            application.ConcurrencyToken != Guid.Empty &&
-            request.ConcurrencyToken.Value != application.ConcurrencyToken)
-        {
-            _logger.LogWarning("Xung đột phiên bản cho hồ sơ {ApplicationId}. Token gửi lên: {ClientToken}, Token hiện tại: {DbToken}.",
-                application.ApplicationId, request.ConcurrencyToken.Value, application.ConcurrencyToken);
-            throw new ConflictException("Dữ liệu hồ sơ ứng tuyển đã bị thay đổi bởi người dùng khác. Vui lòng tải lại trang.");
         }
 
         var now = DateTime.UtcNow;

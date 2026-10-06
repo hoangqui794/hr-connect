@@ -60,6 +60,12 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
             throw new ConflictException("Dữ liệu phỏng vấn đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
 
+        if (request.DurationMinutes.HasValue &&
+            (request.DurationMinutes.Value <= 0 || request.DurationMinutes.Value > 480))
+        {
+            throw new BadRequestException("Thời lượng phỏng vấn phải từ 1 đến 480 phút.");
+        }
+
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
