@@ -66,6 +66,7 @@ dist/
 dist-ssr/
 *.local
 
+**/swagger.json
 ## Local MF-03 E2E runtime
 .e2e/
 

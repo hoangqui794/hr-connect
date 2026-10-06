@@ -1,5 +1,15 @@
-import React, { useState } from 'react';
-import { Form, Input, Button, Typography, message } from 'antd';
+/**
+ * @file LoginPage.tsx
+ * @description Modern, secure Login Page for HR Connect.
+ * Implements Swagger OpenAPI auth flow:
+ *   1. POST /api/v1/auth/login -> retrieves JWT accessToken & refreshToken
+ *   2. GET /api/v1/auth/me -> retrieves CurrentUserDto with verified roles & permissions
+ *   3. Synchronizes session into authStore and redirects to RBAC portal dashboard.
+ *   4. Includes Forgot / Reset Password flow via Modal (POST /auth/forgot-password, /auth/reset-password).
+ */
+
+import React, { useState, useEffect } from 'react';
+import { Form, Input, Button, Typography, message, Alert, Modal } from 'antd';
 import {
   LockOutlined,
   MailOutlined,
@@ -7,17 +17,18 @@ import {
   ThunderboltOutlined,
   CheckCircleFilled,
   BankOutlined,
-  ShareAltOutlined,
   SafetyCertificateOutlined,
   CrownOutlined,
   UserOutlined,
+  KeyOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore, type UserProfile } from '@/stores/authStore';
-import { useCandidateStore } from '@/stores/candidateStore';
-import { UserRole, ROLE_LABELS } from '@/types/roles';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useAuthStore, type UserProfile, getInitials } from '@/stores/authStore';
+import { UserRole, ROLE_LABELS, mapApiRoleToUserRole } from '@/types/roles';
 import { getDashboardRouteForRole } from '@/routes/AppRoutes';
-import { findRegisteredAccountByEmail } from '@/services/accountService';
+import { authService, type LoginResponse, type CurrentUserResponse } from '@/services/authService';
+import { getApiErrorMessage } from '@/services/apiClient';
 
 const { Text } = Typography;
 
@@ -26,6 +37,7 @@ interface DemoAccount {
   title: string;
   roleTag: string;
   email: string;
+  defaultPassword?: string;
   workspaceName: string;
   targetRoute: string;
   icon: React.ReactNode;
@@ -36,53 +48,46 @@ interface DemoAccount {
 const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: UserRole.CLIENT,
-    title: 'Doanh nghiệp',
-    roleTag: 'Client',
-    email: 'tuyendung5@gmail.com',
-    workspaceName: 'TechCorp Portal',
+    title: 'Doanh nghiệp tuyển dụng',
+    roleTag: 'Client / Employer',
+    email: 'client@hrconnect.vn',
+    defaultPassword: 'Password@123',
+    workspaceName: 'HR Hiring Hub',
     targetRoute: '/client/dashboard',
     icon: <BankOutlined />,
-    accentColor: '#38bdf8', // sky-400
-    badgeBg: 'rgba(56, 189, 248, 0.12)',
+    accentColor: '#0284c7', // sky-600
+    badgeBg: 'rgba(2, 132, 199, 0.12)',
   },
   {
     role: UserRole.AFFILIATE,
-    title: 'Cộng tác viên',
-    roleTag: 'Headhunter',
-    email: 'cvt5@gmail.com',
-    workspaceName: 'OPR Hub',
+    title: 'Cộng tác viên tuyển dụng',
+    roleTag: 'Affiliate Recruiter',
+    email: 'affiliate@hrconnect.vn',
+    defaultPassword: 'Password@123',
+    workspaceName: 'OPR Referral Portal',
     targetRoute: '/affiliate/dashboard',
-    icon: <ShareAltOutlined />,
+    icon: <CrownOutlined />,
     accentColor: '#f59e0b', // amber-500
     badgeBg: 'rgba(245, 158, 11, 0.12)',
   },
   {
     role: UserRole.INTERNAL_HR,
-    title: 'HR Vận hành',
-    roleTag: 'Internal HR',
-    email: 'myhr@hrconnect.io',
-    workspaceName: 'ATS Screening',
+    title: 'Chuyên viên Nhân sự (HR)',
+    roleTag: 'HR Operations',
+    email: 'hr@hrconnect.vn',
+    defaultPassword: 'Password@123',
+    workspaceName: 'HR Backoffice',
     targetRoute: '/hr/dashboard',
     icon: <SafetyCertificateOutlined />,
-    accentColor: '#34d399', // emerald-400
-    badgeBg: 'rgba(52, 211, 153, 0.12)',
-  },
-  {
-    role: UserRole.ADMIN,
-    title: 'Quản trị viên',
-    roleTag: 'Platform Admin',
-    email: 'myadmin@hrconnect.io',
-    workspaceName: 'Admin Control',
-    targetRoute: '/admin/dashboard',
-    icon: <CrownOutlined />,
-    accentColor: '#f43f5e', // rose-500
-    badgeBg: 'rgba(244, 63, 94, 0.12)',
+    accentColor: '#10b981', // emerald-500
+    badgeBg: 'rgba(16, 185, 129, 0.12)',
   },
   {
     role: UserRole.CANDIDATE,
-    title: 'Ứng viên',
-    roleTag: 'Candidate',
-    email: 'ungvien5@gmail.com',
+    title: 'Ứng viên tìm việc',
+    roleTag: 'Talent & Candidate',
+    email: 'candidate@hrconnect.vn',
+    defaultPassword: 'Password@123',
     workspaceName: 'Talent Profile',
     targetRoute: '/',
     icon: <UserOutlined />,
@@ -93,98 +98,207 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuthStore();
+  const location = useLocation();
+  const { login, setAuthSession } = useAuthStore();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [verifiedSuccessNotice, setVerifiedSuccessNotice] = useState<string | null>(null);
 
-  // Authenticate and redirect based on role
-  const performLogin = async (role: UserRole, customUser?: Partial<UserProfile>, targetRoute?: string) => {
-    setSubmitting(true);
-    const normalizedRole = ((customUser?.role || role || UserRole.CANDIDATE) as string).toUpperCase() as UserRole;
-    login(normalizedRole, customUser);
-    await new Promise((r) => setTimeout(r, 200));
-    setSubmitting(false);
+  // Forgot password modal state
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+  const [forgotStep, setForgotStep] = useState<'REQUEST_OTP' | 'RESET_PASSWORD'>('REQUEST_OTP');
+  const [forgotForm] = Form.useForm();
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotCooldown, setForgotCooldown] = useState(0);
 
-    const destination = normalizedRole === UserRole.CANDIDATE ? '/' : (targetRoute || getDashboardRouteForRole(normalizedRole));
-    void message.success({
-      content: `Đăng nhập thành công với vai trò: ${ROLE_LABELS[normalizedRole] || normalizedRole}`,
-      icon: <CheckCircleFilled style={{ color: '#10b981' }} />,
-    });
-    navigate(destination);
-  };
+  // Cooldown countdown for resending forgot password OTP
+  useEffect(() => {
+    if (forgotCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setForgotCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [forgotCooldown]);
 
-  // Standard form submission
+  // Auto pre-fill email if passed via query param (e.g. after OTP verification)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const emailParam = params.get('email');
+    const isVerifiedParam = params.get('verified') === 'true';
+
+    if (emailParam) {
+      form.setFieldsValue({ email: emailParam.trim() });
+    }
+
+    if (isVerifiedParam) {
+      setVerifiedSuccessNotice(
+        'Tài khoản của bạn đã được kích hoạt thành công! Vui lòng nhập mật khẩu để đăng nhập.'
+      );
+    }
+  }, [location.search, form]);
+
+  // Real API Authentication via authService conforming to swagger.json
   const handleFormSubmit = async (values: { email: string; password?: string }) => {
-    const emailLower = values.email.toLowerCase().trim();
+    setErrorMessage(null);
+    setSubmitting(true);
 
-    // 1. Look up user account by email in persistent account repository
-    const account = findRegisteredAccountByEmail(emailLower);
-
-    if (!account) {
-      message.error({
-        content: 'Tài khoản chưa tồn tại trên hệ thống. Vui lòng kiểm tra lại email hoặc đăng ký tài khoản mới!',
-        duration: 4,
+    try {
+      // 1. POST /api/v1/auth/login
+      const response: LoginResponse = await authService.login({
+        email: values.email.trim(),
+        password: values.password || '',
       });
-      return;
-    }
 
-    // 2. Validate password (if set)
-    if (account.password && values.password && account.password !== values.password) {
-      message.error({
-        content: 'Mật khẩu không chính xác. Vui lòng kiểm tra lại!',
-        duration: 3,
+      if (!response.success || !response.data) {
+        const msg =
+          response.message || 'Đăng nhập không thành công. Vui lòng kiểm tra lại thông tin tài khoản!';
+        setErrorMessage(msg);
+        message.error({ content: msg, duration: 4 });
+        return;
+      }
+
+      const loginData = response.data;
+      const accessToken = loginData.accessToken || '';
+      const refreshToken = loginData.refreshToken || undefined;
+
+      let resolvedRole: UserRole = UserRole.CANDIDATE;
+      let userProfile: UserProfile;
+
+      // 2. GET /api/v1/auth/me to retrieve official roles and profile from server
+      try {
+        const meRes: CurrentUserResponse = await authService.getCurrentUser();
+        if (meRes.success && meRes.data) {
+          const userDto = meRes.data;
+          resolvedRole = mapApiRoleToUserRole(userDto.roles);
+
+          // Update store with official backend session
+          setAuthSession(userDto, accessToken, refreshToken);
+
+          userProfile = {
+            id: userDto.userId,
+            name: userDto.displayName || values.email.split('@')[0],
+            email: userDto.email || values.email,
+            role: resolvedRole,
+            avatar: userDto.avatarUrl || getInitials(userDto.displayName || values.email),
+          };
+        } else {
+          throw new Error('Fallback to LoginData user');
+        }
+      } catch {
+        // Fallback to loginData.user if /auth/me is temporarily unreachable
+        const apiUser = loginData.user;
+        resolvedRole = mapApiRoleToUserRole(apiUser?.roles);
+
+        userProfile = {
+          id: apiUser?.userId || `usr-${Date.now()}`,
+          name: apiUser?.displayName || values.email.split('@')[0],
+          email: apiUser?.email || values.email,
+          role: resolvedRole,
+          avatar: getInitials(apiUser?.displayName || values.email),
+        };
+
+        login(resolvedRole, userProfile);
+      }
+
+      message.success({
+        content: `Đăng nhập thành công với vai trò: ${ROLE_LABELS[resolvedRole] || resolvedRole}`,
+        icon: <CheckCircleFilled style={{ color: '#10b981' }} />,
       });
-      return;
+
+      // Redirect user based on authenticated role or previous route
+      const redirectFrom = (location.state as { from?: string } | undefined)?.from;
+      const destination =
+        redirectFrom && redirectFrom !== '/login'
+          ? redirectFrom
+          : resolvedRole === UserRole.CANDIDATE
+          ? '/'
+          : getDashboardRouteForRole(resolvedRole);
+
+      navigate(destination, { replace: true });
+    } catch (err: unknown) {
+      const formattedError = getApiErrorMessage(err);
+      setErrorMessage(formattedError);
+      message.error({ content: formattedError, duration: 5 });
+    } finally {
+      setSubmitting(false);
     }
-
-    // 3. Extract exact registered role and profile details
-    const resolvedRole = account.role;
-    const customUser: Partial<UserProfile> = {
-      id: account.id,
-      name: account.fullName,
-      email: account.email,
-      role: resolvedRole,
-      phone: account.phone,
-      company: resolvedRole === UserRole.CLIENT ? (account.companyName || `${account.fullName} Co.`) : undefined,
-      companySize: resolvedRole === UserRole.CLIENT ? account.companySize : undefined,
-    };
-
-    // 4. Authenticate and redirect based on the account's permanent role
-    await performLogin(resolvedRole, customUser);
   };
 
-  // Quick-fill demo account click
-  const handleQuickFill = async (demo: DemoAccount) => {
+  // Quick-fill credentials for testing directly with real API
+  const handleQuickFill = (demo: DemoAccount) => {
+    setErrorMessage(null);
     form.setFieldsValue({
       email: demo.email,
-      password: '123456',
+      password: demo.defaultPassword || 'Password@123',
     });
-    const account = findRegisteredAccountByEmail(demo.email.toLowerCase());
-    if (demo.role === UserRole.CANDIDATE) {
-      if (demo.email === 'minh.nguyen@gmail.com') {
-        useCandidateStore.getState().loadDemoData();
-      } else {
-        useCandidateStore.getState().initCandidateFromUser({
-          name: account?.fullName || 'Ứng viên',
-          email: demo.email,
-        });
-      }
+    form.submit();
+  };
+
+  // ─── FORGOT & RESET PASSWORD HANDLERS (Swagger OpenAPI) ───
+  const handleRequestForgotOtp = async (values: { email: string }) => {
+    setForgotSubmitting(true);
+    try {
+      // POST /api/v1/auth/forgot-password
+      const res = await authService.forgotPassword(values.email.trim());
+      message.success(
+        res.message || `Mã OTP đặt lại mật khẩu đã được gửi tới email ${values.email.trim()}`
+      );
+      setForgotEmail(values.email.trim());
+      setForgotStep('RESET_PASSWORD');
+      setForgotCooldown(60);
+    } catch (err) {
+      message.error(getApiErrorMessage(err, 'Không thể gửi yêu cầu đặt lại mật khẩu lúc này!'));
+    } finally {
+      setForgotSubmitting(false);
     }
-    const customUser: Partial<UserProfile> | undefined = account
-      ? {
-          id: account.id,
-          name: account.fullName,
-          email: account.email,
-          role: account.role,
-          company: account.role === UserRole.CLIENT ? (account.companyName || 'Công ty TNHH Tuyển Dụng 5') : undefined,
-        }
-      : undefined;
-    await performLogin(demo.role, customUser, demo.targetRoute);
+  };
+
+  const handleResendForgotOtp = async () => {
+    if (!forgotEmail || forgotCooldown > 0) return;
+    try {
+      // POST /api/v1/auth/forgot-password/resend
+      const res = await authService.resendForgotPasswordOtp(forgotEmail);
+      message.success(res.message || 'Đã gửi lại mã OTP mới!');
+      setForgotCooldown(60);
+    } catch (err) {
+      message.error(getApiErrorMessage(err, 'Không thể gửi lại mã OTP!'));
+    }
+  };
+
+  const handleResetPassword = async (values: {
+    otp: string;
+    newPassword: string;
+    confirmPassword?: string;
+  }) => {
+    setForgotSubmitting(true);
+    try {
+      // POST /api/v1/auth/reset-password
+      const res = await authService.resetPassword({
+        email: forgotEmail,
+        otp: values.otp.trim(),
+        newPassword: values.newPassword,
+        confirmPassword: values.confirmPassword,
+      });
+
+      message.success(
+        res.message || 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập với mật khẩu mới.'
+      );
+      setIsForgotModalOpen(false);
+      setForgotStep('REQUEST_OTP');
+      forgotForm.resetFields();
+      form.setFieldsValue({ email: forgotEmail, password: '' });
+    } catch (err) {
+      message.error(getApiErrorMessage(err, 'Không thể đặt lại mật khẩu. Vui lòng kiểm tra lại OTP!'));
+    } finally {
+      setForgotSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background ambient mesh (Modern Light SaaS) */}
+      {/* Background ambient mesh */}
       <div className="absolute top-0 left-0 right-0 h-96 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100/60 via-indigo-50/40 to-transparent pointer-events-none" />
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-blue-400/15 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-10 left-10 w-[300px] h-[300px] bg-indigo-300/15 rounded-full blur-[90px] pointer-events-none" />
@@ -208,15 +322,50 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {/* Login Panel */}
-        <div className="bg-white/85 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-[0_4px_25px_-5px_rgba(0,0,0,0.06)]">
-          <div className="mb-6">
+        <div className="bg-white/90 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-[0_4px_25px_-5px_rgba(0,0,0,0.06)]">
+          <div className="mb-5">
             <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-1">
-              Đăng nhập hệ thống
+              Đăng nhập tài khoản
             </h3>
-            <p className="text-xs text-slate-500">
-              Nhập thông tin tài khoản hoặc kích hoạt 1-chạm vào các tài khoản thử nghiệm bên dưới.
-            </p>
+            <Text className="text-xs text-slate-500">
+              Nhập email và mật khẩu của bạn để truy cập hệ thống
+            </Text>
           </div>
+
+          {/* Account Activated Success Banner */}
+          {verifiedSuccessNotice && (
+            <Alert
+              message={verifiedSuccessNotice}
+              type="success"
+              showIcon
+              closable
+              onClose={() => setVerifiedSuccessNotice(null)}
+              className="mb-4 text-xs rounded-xl"
+            />
+          )}
+
+          {/* Pending Approval Notice */}
+          {errorMessage && (errorMessage.includes('pending Admin approval') || errorMessage.includes('chờ Admin duyệt') || errorMessage.includes('chờ Ban quản trị')) ? (
+            <Alert
+              message="Tài khoản đang chờ Admin xét duyệt"
+              description="Hồ sơ đăng ký của bạn đã được xác thực email thành công và đang chờ Ban quản trị (Admin) kiểm duyệt. Bạn sẽ nhận được email thông báo ngay sau khi tài khoản được kích hoạt."
+              type="warning"
+              showIcon
+              closable
+              onClose={() => setErrorMessage(null)}
+              className="mb-4 text-xs rounded-xl border border-amber-300 bg-amber-50"
+            />
+          ) : errorMessage ? (
+            /* Error Alert */
+            <Alert
+              message={errorMessage}
+              type="error"
+              showIcon
+              closable
+              onClose={() => setErrorMessage(null)}
+              className="mb-4 text-xs rounded-xl"
+            />
+          ) : null}
 
           {/* Form */}
           <Form
@@ -232,24 +381,44 @@ export const LoginPage: React.FC = () => {
                 { required: true, message: 'Vui lòng nhập địa chỉ email!' },
                 { type: 'email', message: 'Địa chỉ email không đúng định dạng!' },
               ]}
-              style={{ marginBottom: 16 }}
+              style={{ marginBottom: 14 }}
             >
               <Input
+                size="large"
                 prefix={<MailOutlined className="text-slate-400 mr-1" />}
                 placeholder="ten@doanhnghiep.com"
+                disabled={submitting}
                 className="bg-slate-50/70 border-slate-200 text-slate-900 rounded-xl h-11 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500"
               />
             </Form.Item>
 
             <Form.Item
-              label={<span className="text-xs font-semibold text-slate-700">Mật khẩu</span>}
+              label={
+                <div className="w-full flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-700">Mật khẩu</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotModalOpen(true);
+                      setForgotStep('REQUEST_OTP');
+                      const currentEmail = form.getFieldValue('email');
+                      if (currentEmail) forgotForm.setFieldsValue({ email: currentEmail });
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium bg-transparent border-none p-0 cursor-pointer"
+                  >
+                    Quên mật khẩu?
+                  </button>
+                </div>
+              }
               name="password"
               rules={[{ required: true, message: 'Vui lòng nhập mật khẩu!' }]}
               style={{ marginBottom: 20 }}
             >
               <Input.Password
+                size="large"
                 prefix={<LockOutlined className="text-slate-400 mr-1" />}
                 placeholder="••••••••"
+                disabled={submitting}
                 className="bg-slate-50/70 border-slate-200 text-slate-900 rounded-xl h-11 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500"
               />
             </Form.Item>
@@ -258,23 +427,25 @@ export const LoginPage: React.FC = () => {
               type="primary"
               htmlType="submit"
               block
+              size="large"
               loading={submitting}
+              disabled={submitting}
               icon={<ArrowRightOutlined />}
               iconPosition="end"
-              className="h-11 rounded-xl font-semibold text-sm bg-blue-600 hover:bg-blue-700 border-none shadow-sm transition-all duration-200"
+              className="h-11 rounded-xl font-semibold text-sm bg-blue-600 hover:bg-blue-700 border-none shadow-md shadow-blue-500/20 transition-all duration-200 cursor-pointer"
             >
-              Đăng nhập tài khoản
+              {submitting ? 'Đang xác thực tài khoản...' : 'Đăng nhập tài khoản'}
             </Button>
           </Form>
 
-          {/* Role Switcher Demo Cards */}
+          {/* Quick Fill Test Accounts */}
           <div className="mt-6 pt-5 border-t border-slate-100">
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
                 <ThunderboltOutlined className="text-amber-500" />
-                <span>Tài khoản Demo (1-Chạm vào Dashboard)</span>
+                <span>Tài khoản thử nghiệm (Điền & Gọi API)</span>
               </div>
-              <span className="text-[10px] text-slate-400 font-mono">Password: 123456</span>
+              <span className="text-[10px] text-slate-400 font-mono">Password@123</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
@@ -282,8 +453,9 @@ export const LoginPage: React.FC = () => {
                 <button
                   key={demo.role}
                   type="button"
-                  onClick={() => void handleQuickFill(demo)}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-blue-50/50 hover:border-blue-300 transition-all duration-150 text-left group cursor-pointer"
+                  disabled={submitting}
+                  onClick={() => handleQuickFill(demo)}
+                  className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-blue-50/50 hover:border-blue-300 transition-all duration-150 text-left group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition-transform group-hover:scale-105"
@@ -312,26 +484,180 @@ export const LoginPage: React.FC = () => {
           <div className="mt-6 pt-4 border-t border-slate-100 text-center space-y-1.5">
             <div className="text-xs text-slate-500">
               Chưa có tài khoản?{' '}
-              <button
-                type="button"
-                onClick={() => navigate('/register')}
-                className="text-blue-600 hover:text-blue-700 font-semibold underline bg-transparent border-none p-0 cursor-pointer"
+              <Link
+                to="/register"
+                className="text-blue-600 hover:text-blue-700 font-semibold underline"
               >
                 Đăng ký ngay
-              </button>
+              </Link>
             </div>
             <div>
-              <button
-                type="button"
-                onClick={() => navigate('/')}
-                className="text-xs text-slate-400 hover:text-slate-600 font-medium bg-transparent border-none p-0 cursor-pointer"
+              <Link
+                to="/"
+                className="text-xs text-slate-400 hover:text-slate-600 font-medium"
               >
                 ← Quay lại trang chủ
-              </button>
+              </Link>
             </div>
           </div>
         </div>
       </div>
+
+      {/* ─── FORGOT & RESET PASSWORD MODAL ─── */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-base font-bold text-slate-900">
+            <KeyOutlined className="text-blue-600" />
+            <span>
+              {forgotStep === 'REQUEST_OTP'
+                ? 'Quên mật khẩu tài khoản'
+                : 'Đặt lại mật khẩu với OTP'}
+            </span>
+          </div>
+        }
+        open={isForgotModalOpen}
+        onCancel={() => {
+          setIsForgotModalOpen(false);
+          setForgotStep('REQUEST_OTP');
+          forgotForm.resetFields();
+        }}
+        footer={null}
+        destroyOnClose
+        centered
+        className="rounded-2xl"
+      >
+        <div className="py-2">
+          {forgotStep === 'REQUEST_OTP' ? (
+            <Form
+              form={forgotForm}
+              layout="vertical"
+              onFinish={handleRequestForgotOtp}
+              requiredMark={false}
+            >
+              <p className="text-xs text-slate-500 mb-4">
+                Nhập địa chỉ email đăng ký tài khoản của bạn. Hệ thống sẽ gửi mã OTP xác nhận gồm 6 chữ số để đặt lại mật khẩu mới.
+              </p>
+              <Form.Item
+                name="email"
+                label={<span className="text-xs font-semibold text-slate-700">Email tài khoản</span>}
+                rules={[
+                  { required: true, message: 'Vui lòng nhập email!' },
+                  { type: 'email', message: 'Email không đúng định dạng!' },
+                ]}
+              >
+                <Input
+                  size="large"
+                  prefix={<MailOutlined className="text-slate-400" />}
+                  placeholder="name@example.com"
+                  className="rounded-xl"
+                />
+              </Form.Item>
+
+              <Button
+                type="primary"
+                htmlType="submit"
+                block
+                size="large"
+                loading={forgotSubmitting}
+                className="rounded-xl bg-blue-600 font-semibold mt-2"
+              >
+                Gửi mã xác thực OTP
+              </Button>
+            </Form>
+          ) : (
+            <Form
+              form={forgotForm}
+              layout="vertical"
+              onFinish={handleResetPassword}
+              requiredMark={false}
+            >
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 mb-4 text-xs text-slate-600 flex items-center justify-between">
+                <span>
+                  Gửi tới: <strong>{forgotEmail}</strong>
+                </span>
+                {forgotCooldown > 0 ? (
+                  <span className="text-slate-400">Gửi lại sau {forgotCooldown}s</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendForgotOtp}
+                    className="text-blue-600 hover:underline bg-transparent border-none p-0 cursor-pointer font-medium flex items-center gap-1"
+                  >
+                    <ReloadOutlined /> Gửi lại mã
+                  </button>
+                )}
+              </div>
+
+              <Form.Item
+                name="otp"
+                label={<span className="text-xs font-semibold text-slate-700">Mã OTP (6 chữ số)</span>}
+                rules={[
+                  { required: true, message: 'Vui lòng nhập mã OTP!' },
+                  { len: 6, message: 'Mã OTP gồm đúng 6 chữ số!' },
+                ]}
+              >
+                <Input
+                  size="large"
+                  maxLength={6}
+                  placeholder="123456"
+                  className="rounded-xl text-center tracking-widest font-mono font-bold text-lg"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="newPassword"
+                label={<span className="text-xs font-semibold text-slate-700">Mật khẩu mới</span>}
+                rules={[
+                  { required: true, message: 'Vui lòng nhập mật khẩu mới!' },
+                  { min: 6, message: 'Mật khẩu tối thiểu 6 ký tự!' },
+                ]}
+              >
+                <Input.Password
+                  size="large"
+                  placeholder="Mật khẩu mới"
+                  className="rounded-xl"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="confirmPassword"
+                dependencies={['newPassword']}
+                label={<span className="text-xs font-semibold text-slate-700">Xác nhận mật khẩu mới</span>}
+                rules={[
+                  { required: true, message: 'Vui lòng xác nhận lại mật khẩu!' },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue('newPassword') === value) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error('Mật khẩu xác nhận không khớp!'));
+                    },
+                  }),
+                ]}
+              >
+                <Input.Password
+                  size="large"
+                  placeholder="Nhập lại mật khẩu mới"
+                  className="rounded-xl"
+                />
+              </Form.Item>
+
+              <Button
+                type="primary"
+                htmlType="submit"
+                block
+                size="large"
+                loading={forgotSubmitting}
+                className="rounded-xl bg-blue-600 font-semibold mt-2"
+              >
+                Lưu mật khẩu mới & Đăng nhập
+              </Button>
+            </Form>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };
+
+export default LoginPage;
