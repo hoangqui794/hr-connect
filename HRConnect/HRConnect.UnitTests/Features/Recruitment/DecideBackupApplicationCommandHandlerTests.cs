@@ -275,12 +275,14 @@ public class DecideBackupApplicationCommandHandlerTests
         // Arrange
         var appId = Guid.NewGuid();
         var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
         var initialToken = Guid.NewGuid();
 
         var application = new Domain.Entities.Application
         {
             ApplicationId = appId,
             Status = "BACKUP",
+            Job = new Job { CompanyId = companyId },
             ConcurrencyToken = initialToken,
             ApplicationStatusHistories = new List<ApplicationStatusHistory>()
         };
@@ -288,6 +290,9 @@ public class DecideBackupApplicationCommandHandlerTests
         _applicationRepositoryMock
             .Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(application);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
 
         var command = new DecideBackupApplicationCommand(
             ApplicationId: appId,
@@ -296,7 +301,7 @@ public class DecideBackupApplicationCommandHandlerTests
             Note: "Kích hoạt phỏng vấn tiếp theo.",
             ConcurrencyToken: initialToken,
             CurrentUserId: userId,
-            IsInternalHrOrAdmin: true
+            IsClientCompanyUser: true
         );
 
         // Act
@@ -331,17 +336,22 @@ public class DecideBackupApplicationCommandHandlerTests
         // Arrange
         var appId = Guid.NewGuid();
         var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
 
         var application = new Domain.Entities.Application
         {
             ApplicationId = appId,
             Status = "BACKUP",
+            Job = new Job { CompanyId = companyId },
             ApplicationStatusHistories = new List<ApplicationStatusHistory>()
         };
 
         _applicationRepositoryMock
             .Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(application);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
 
         var command = new DecideBackupApplicationCommand(
             ApplicationId: appId,
@@ -350,7 +360,7 @@ public class DecideBackupApplicationCommandHandlerTests
             Note: null,
             ConcurrencyToken: null,
             CurrentUserId: userId,
-            IsInternalHrOrAdmin: true
+            IsClientCompanyUser: true
         );
 
         // Act
@@ -372,17 +382,22 @@ public class DecideBackupApplicationCommandHandlerTests
         // Arrange
         var appId = Guid.NewGuid();
         var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
 
         var application = new Domain.Entities.Application
         {
             ApplicationId = appId,
             Status = "BACKUP",
+            Job = new Job { CompanyId = companyId },
             ApplicationStatusHistories = new List<ApplicationStatusHistory>()
         };
 
         _applicationRepositoryMock
             .Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(application);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
 
         var command = new DecideBackupApplicationCommand(
             ApplicationId: appId,
@@ -391,7 +406,7 @@ public class DecideBackupApplicationCommandHandlerTests
             Note: null,
             ConcurrencyToken: null,
             CurrentUserId: userId,
-            IsInternalHrOrAdmin: true
+            IsClientCompanyUser: true
         );
 
         // Act

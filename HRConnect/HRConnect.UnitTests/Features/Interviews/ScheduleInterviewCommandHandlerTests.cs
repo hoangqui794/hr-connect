@@ -277,12 +277,9 @@ public class ScheduleInterviewCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenUserIsInternalHrOrAdmin_ShouldScheduleSuccessfully()
+    public async Task Handle_WhenUserIsInternalHrOrAdmin_ShouldThrowForbiddenException()
     {
-        // Arrange
         var applicationId = Guid.NewGuid();
-        var adminId = Guid.NewGuid();
-
         var application = new HRConnect.Domain.Entities.Application
         {
             ApplicationId = applicationId,
@@ -295,10 +292,6 @@ public class ScheduleInterviewCommandHandlerTests
             .Setup(r => r.GetByIdAsync(applicationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(application);
 
-        _unitOfWorkMock
-            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-
         var command = new ScheduleInterviewCommand(
             ApplicationId: applicationId,
             ScheduledAt: DateTime.UtcNow.AddDays(3),
@@ -308,17 +301,13 @@ public class ScheduleInterviewCommandHandlerTests
             Location: "Tầng 5, Tòa nhà Bitexco",
             MeetingLink: null,
             Participants: null,
-            CurrentUserId: adminId,
+            CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true
         );
 
-        // Act
-        var result = await CreateHandler().Handle(command, CancellationToken.None);
+        Func<Task> act = async () => await CreateHandler().Handle(command, CancellationToken.None);
 
-        // Assert
-        result.Should().NotBeNull();
-        result.Success.Should().BeTrue();
-        result.Data.InterviewRound.Should().Be(2); // Auto incremented from 1 existing
-        result.Data.InterviewType.Should().Be("OFFLINE");
+        await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("*không có quyền tạo lịch phỏng vấn*");
     }
 }
