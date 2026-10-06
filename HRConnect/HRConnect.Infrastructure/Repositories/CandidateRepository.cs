@@ -68,6 +68,14 @@ public class CandidateRepository : ICandidateRepository
             .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken);
     }
 
+    public Task<Candidate?> GetByUserIdWithSkillsForUpdateAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default) =>
+        _context.Candidates
+            .Include(candidate => candidate.CandidateSkills)
+                .ThenInclude(candidateSkill => candidateSkill.Skill)
+            .FirstOrDefaultAsync(candidate => candidate.UserId == userId, cancellationToken);
+
     public async Task<Candidate?> GetByIdAsync(Guid candidateId, CancellationToken cancellationToken = default)
     {
         return await _context.Candidates

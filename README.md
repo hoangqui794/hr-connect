@@ -47,7 +47,7 @@ HR Connect là nền tảng tuyển dụng hiện đại dành cho Agency, kết
 | Mã dịch vụ | Tên dịch vụ | Mô tả hoạt động |
 |---|---|---|
 | `HEADHUNT_COD` | **Tuyển dụng theo phí hoa hồng (Contingency)** | Thu phí khi ứng viên nhận việc và vượt qua thời gian bảo hành (Probation period). |
-| `CV_SOURCING` | **Tìm kiếm & Cung cấp hồ sơ** | Agency và Affiliate lọc danh sách ứng viên đạt chuẩn gửi cho Doanh nghiệp phỏng vấn. |
+| `CV_SOURCING` | **Tìm kiếm & Cung cấp hồ sơ** | Agency và Affiliate tìm ứng viên; Internal HR tiền sàng lọc hồ sơ đạt chuẩn trước khi chuyển Company phỏng vấn. |
 | `CV_APPLICATION` | **Tiếp nhận hồ sơ ứng tuyển trực tiếp** | Đăng tin Job công khai, tiếp nhận CV ứng viên nộp qua cổng thông tin. |
 
 ---
@@ -59,8 +59,8 @@ Hệ thống quản lý 5 nhóm vai trò (`Role`) chuẩn hóa:
 | Role Code | Tên vai trò | Mô tả quyền hạn |
 |---|---|---|
 | `PLATFORM_ADMIN` | **Quản trị viên nền tảng** | Toàn quyền kiểm soát tài khoản, phê duyệt hồ sơ Doanh nghiệp/Affiliate, cấu hình hệ thống và giám sát giao dịch. |
-| `INTERNAL_HR` | **Chuyên viên tuyển dụng Agency** | Tiếp nhận yêu cầu tuyển dụng từ Doanh nghiệp, điều phối phỏng vấn, kiểm duyệt hồ sơ và duyệt hoa hồng cho Affiliate. |
-| `CLIENT_COMPANY_USER` | **Khách hàng Doanh nghiệp** | Tạo yêu cầu Job tuyển dụng, xem hồ sơ ứng viên do Agency gửi tới, phản hồi kết quả phỏng vấn và duyệt offer. |
+| `INTERNAL_HR` | **Chuyên viên tuyển dụng Agency** | Tiền sàng lọc hồ sơ `HEADHUNT_COD` và `CV_SOURCING` bằng dữ liệu AI; không điều phối Interview, Offer hoặc Placement. |
+| `CLIENT_COMPANY_USER` | **Khách hàng Doanh nghiệp** | Sàng lọc `CV_APPLICATION`; từ `SHORTLISTED` trở đi thực hiện phỏng vấn, Offer và xác nhận đi làm cho mọi Service Type. |
 | `AFFILIATE_RECRUITER` | **Cộng tác viên tuyển dụng** | Giới thiệu ứng viên, theo dõi trạng thái tuyển dụng tổng quát của referral do mình giới thiệu và nhận hoa hồng theo điều kiện áp dụng. Không xem lịch phỏng vấn, feedback, offer hoặc dữ liệu nội bộ. |
 | `CANDIDATE` | **Ứng viên** | Quản lý hồ sơ cá nhân, CV, tìm kiếm và nộp đơn ứng tuyển các Job công khai, theo dõi tiến độ ứng tuyển. |
 

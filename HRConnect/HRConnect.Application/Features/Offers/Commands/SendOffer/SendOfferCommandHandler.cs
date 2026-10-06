@@ -66,7 +66,7 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
                 throw new ForbiddenException("Bạn không có quyền gửi offer của doanh nghiệp khác.");
             }
         }
-        else if (!request.IsInternalHrOrAdmin)
+        else
         {
             _logger.LogWarning("User {UserId} không có quyền gửi offer.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền gửi offer.");

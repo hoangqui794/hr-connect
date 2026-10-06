@@ -62,7 +62,7 @@ public class RecordInterviewNoShowCommandHandler : IRequestHandler<RecordIntervi
                 throw new ForbiddenException("Bạn không có quyền ghi nhận vắng mặt cho lịch phỏng vấn của doanh nghiệp khác.");
             }
         }
-        else if (!request.IsInternalHrOrAdmin)
+        else
         {
             throw new ForbiddenException("Bạn không có quyền ghi nhận ứng viên vắng mặt.");
         }

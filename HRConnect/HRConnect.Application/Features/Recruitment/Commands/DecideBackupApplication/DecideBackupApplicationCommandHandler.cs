@@ -97,7 +97,7 @@ public class DecideBackupApplicationCommandHandler : IRequestHandler<DecideBacku
                 throw new ForbiddenException("Bạn không có quyền quyết định hồ sơ dự phòng cho doanh nghiệp khác.");
             }
         }
-        else if (!request.IsInternalHrOrAdmin)
+        else
         {
             _logger.LogWarning("User {UserId} không có quyền quyết định ứng viên dự phòng.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền quyết định ứng viên dự phòng.");

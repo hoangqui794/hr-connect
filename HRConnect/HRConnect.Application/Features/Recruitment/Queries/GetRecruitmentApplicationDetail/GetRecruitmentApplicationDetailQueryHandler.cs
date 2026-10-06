@@ -239,7 +239,10 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
 
             actions.Add("SHORTLIST");
             actions.Add("REJECT");
-            actions.Add("MARK_BACKUP");
+            if (screeningActor == ScreeningActor.ClientCompany)
+            {
+                actions.Add("MARK_BACKUP");
+            }
         }
 
         if (!isClientCompanyUser)

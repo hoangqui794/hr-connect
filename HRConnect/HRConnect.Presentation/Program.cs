@@ -304,6 +304,7 @@ app.MapControllers();
 // Minimal API Endpoints:
 app.MapAuthEndpoints();
 app.MapCandidateEndpoints();
+app.MapCandidateSkillEndpoints();
 app.MapAffiliateEndpoints();
 app.MapAdminApprovalEndpoints();
 app.MapAdminProfileEndpoints();

@@ -85,7 +85,7 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
                 throw new ForbiddenException("Bạn không có quyền tạo offer cho ứng viên của doanh nghiệp khác.");
             }
         }
-        else if (!request.IsInternalHrOrAdmin)
+        else
         {
             _logger.LogWarning("User {UserId} không có quyền tạo offer.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền tạo offer.");

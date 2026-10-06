@@ -90,7 +90,7 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
                 throw new ForbiddenException("Bạn không có quyền dời lịch phỏng vấn của doanh nghiệp khác.");
             }
         }
-        else if (!request.IsInternalHrOrAdmin)
+        else
         {
             _logger.LogWarning("User {UserId} không có quyền dời lịch phỏng vấn.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền dời lịch phỏng vấn.");

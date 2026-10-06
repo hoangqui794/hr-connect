@@ -17,6 +17,7 @@ public sealed class UpdateApplicationScreeningStatusCommandHandlerTests
     private readonly Mock<IApplicationRepository> _applicationRepository = new();
     private readonly Mock<ICompanyUserRepository> _companyUserRepository = new();
     private readonly Mock<IServiceTypeRepository> _serviceTypeRepository = new();
+    private readonly Mock<INotificationRepository> _notificationRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IAuditLogService> _auditLogService = new();
     private readonly Mock<ILogger<UpdateApplicationScreeningStatusCommandHandler>> _logger = new();
@@ -25,6 +26,7 @@ public sealed class UpdateApplicationScreeningStatusCommandHandlerTests
         _applicationRepository.Object,
         _companyUserRepository.Object,
         _serviceTypeRepository.Object,
+        _notificationRepository.Object,
         _unitOfWork.Object,
         _auditLogService.Object,
         _logger.Object);
@@ -97,6 +99,19 @@ public sealed class UpdateApplicationScreeningStatusCommandHandlerTests
             CancellationToken.None);
 
         await act.Should().ThrowAsync<ForbiddenException>().WithMessage("*CV_APPLICATION*Client Company*");
+        application.Status.Should().Be(ApplicationStates.Submitted);
+    }
+
+    [Fact]
+    public async Task Handle_WhenInternalHrMarksAgencyApplicationAsBackup_ShouldForbid()
+    {
+        var application = SetupApplication(Guid.NewGuid(), ApplicationStates.Submitted, "HEADHUNT_COD");
+
+        var act = () => CreateHandler().Handle(Command(
+            application, ApplicationStates.Backup, null, Guid.NewGuid(), ScreeningActor.InternalHr),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenException>().WithMessage("*danh sách dự bị*");
         application.Status.Should().Be(ApplicationStates.Submitted);
     }
 
@@ -179,6 +194,31 @@ public sealed class UpdateApplicationScreeningStatusCommandHandlerTests
         application.StatusReason.Should().BeNull();
         application.ApplicationStatusHistories.Should().ContainSingle(h =>
             h.ReasonCode == ApplicationReasonCodes.SkillMismatch && h.Reason == null);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidateAndAffiliateExist_ShouldNotifyBothForShortlist()
+    {
+        var application = SetupApplication(Guid.NewGuid(), ApplicationStates.Submitted, "HEADHUNT_COD");
+        application.Candidate = new Candidate { CandidateId = application.CandidateId, UserId = Guid.NewGuid(), FullName = "Nguyen Van A" };
+        application.Attribution = new Attribution
+        {
+            Affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = Guid.NewGuid() }
+        };
+        _notificationRepository.Setup(r => r.ExistsAsync(
+                It.IsAny<Guid>(), It.IsAny<string>(), "APPLICATION", application.ApplicationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        await CreateHandler().Handle(Command(
+            application, ApplicationStates.Shortlisted, null, Guid.NewGuid(), ScreeningActor.InternalHr),
+            CancellationToken.None);
+
+        _notificationRepository.Verify(r => r.AddAsync(
+            It.Is<Notification>(n => n.UserId == application.Candidate.UserId && n.RelatedEntityId == application.ApplicationId),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _notificationRepository.Verify(r => r.AddAsync(
+            It.Is<Notification>(n => n.UserId == application.Attribution.Affiliate.UserId && n.RelatedEntityId == application.ApplicationId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
