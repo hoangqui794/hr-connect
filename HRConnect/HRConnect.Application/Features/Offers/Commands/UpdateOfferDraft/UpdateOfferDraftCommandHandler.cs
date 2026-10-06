@@ -63,6 +63,13 @@ public class UpdateOfferDraftCommandHandler : IRequestHandler<UpdateOfferDraftCo
             throw new ConflictException("Dữ liệu offer đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
 
+        if (offer.Status != "DRAFT")
+        {
+            _logger.LogWarning("Offer {OfferId} đang ở trạng thái {Status}, không thể chỉnh sửa.",
+                offer.OfferId, offer.Status);
+            throw new BadRequestException($"Chỉ có thể chỉnh sửa offer khi đang ở trạng thái DRAFT. Trạng thái hiện tại: {offer.Status}.");
+        }
+
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
@@ -83,13 +90,6 @@ public class UpdateOfferDraftCommandHandler : IRequestHandler<UpdateOfferDraftCo
         {
             _logger.LogWarning("User {UserId} không có quyền chỉnh sửa offer.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền chỉnh sửa offer.");
-        }
-
-        if (offer.Status != "DRAFT")
-        {
-            _logger.LogWarning("Offer {OfferId} đang ở trạng thái {Status}, không thể chỉnh sửa.",
-                offer.OfferId, offer.Status);
-            throw new BadRequestException($"Chỉ có thể chỉnh sửa offer khi đang ở trạng thái DRAFT. Trạng thái hiện tại: {offer.Status}.");
         }
 
         var oldValues = new

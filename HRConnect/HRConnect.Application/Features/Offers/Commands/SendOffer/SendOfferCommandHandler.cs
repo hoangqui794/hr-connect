@@ -50,6 +50,19 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
             throw new ConflictException("Dữ liệu offer đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
 
+        if (offer.Status != "DRAFT")
+        {
+            _logger.LogWarning("Offer {OfferId} đang ở trạng thái {Status}, không thể gửi.",
+                offer.OfferId, offer.Status);
+            throw new BadRequestException($"Chỉ có thể gửi offer khi đang ở trạng thái DRAFT. Trạng thái hiện tại: {offer.Status}.");
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (offer.ExpiryDate.HasValue && offer.ExpiryDate.Value < today)
+        {
+            throw new BadRequestException("Offer đã quá hạn phản hồi, không thể gửi. Vui lòng cập nhật hạn phản hồi trước khi gửi.");
+        }
+
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
@@ -70,19 +83,6 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
         {
             _logger.LogWarning("User {UserId} không có quyền gửi offer.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền gửi offer.");
-        }
-
-        if (offer.Status != "DRAFT")
-        {
-            _logger.LogWarning("Offer {OfferId} đang ở trạng thái {Status}, không thể gửi.",
-                offer.OfferId, offer.Status);
-            throw new BadRequestException($"Chỉ có thể gửi offer khi đang ở trạng thái DRAFT. Trạng thái hiện tại: {offer.Status}.");
-        }
-
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        if (offer.ExpiryDate.HasValue && offer.ExpiryDate.Value < today)
-        {
-            throw new BadRequestException("Offer đã quá hạn phản hồi, không thể gửi. Vui lòng cập nhật hạn phản hồi trước khi gửi.");
         }
 
         var oldStatus = offer.Status;

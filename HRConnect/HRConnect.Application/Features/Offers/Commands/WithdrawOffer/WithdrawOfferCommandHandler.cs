@@ -56,6 +56,19 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
             throw new ConflictException("Dữ liệu offer đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
 
+        if (offer.Status == "ACCEPTED")
+        {
+            _logger.LogWarning("Offer {OfferId} đã được chấp nhận, không thể thu hồi.", offer.OfferId);
+            throw new BadRequestException("Không thể thu hồi offer đã được ứng viên chấp nhận.");
+        }
+
+        if (offer.Status is "WITHDRAWN" or "DECLINED")
+        {
+            _logger.LogWarning("Offer {OfferId} đang ở trạng thái {Status}, không thể thu hồi.",
+                offer.OfferId, offer.Status);
+            throw new BadRequestException($"Không thể thu hồi offer đang ở trạng thái {offer.Status}.");
+        }
+
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
@@ -76,19 +89,6 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
         {
             _logger.LogWarning("User {UserId} không có quyền thu hồi offer.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền thu hồi offer.");
-        }
-
-        if (offer.Status == "ACCEPTED")
-        {
-            _logger.LogWarning("Offer {OfferId} đã được chấp nhận, không thể thu hồi.", offer.OfferId);
-            throw new BadRequestException("Không thể thu hồi offer đã được ứng viên chấp nhận.");
-        }
-
-        if (offer.Status is "WITHDRAWN" or "DECLINED")
-        {
-            _logger.LogWarning("Offer {OfferId} đang ở trạng thái {Status}, không thể thu hồi.",
-                offer.OfferId, offer.Status);
-            throw new BadRequestException($"Không thể thu hồi offer đang ở trạng thái {offer.Status}.");
         }
 
         var oldOfferStatus = offer.Status;
