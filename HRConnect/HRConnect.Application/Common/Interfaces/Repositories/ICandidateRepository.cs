@@ -24,6 +24,12 @@ public interface ICandidateRepository
     /// </summary>
     Task<Candidate?> GetByUserIdWithDetailsAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Lấy Candidate đang được EF theo dõi cùng danh sách kỹ năng để thay đổi
+    /// candidate_skill trong cùng một transaction.
+    /// </summary>
+    Task<Candidate?> GetByUserIdWithSkillsForUpdateAsync(Guid userId, CancellationToken cancellationToken = default);
+
     Task<Candidate?> GetByIdAsync(Guid candidateId, CancellationToken cancellationToken = default);
 
     Task<Candidate?> GetByNormalizedEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default);
