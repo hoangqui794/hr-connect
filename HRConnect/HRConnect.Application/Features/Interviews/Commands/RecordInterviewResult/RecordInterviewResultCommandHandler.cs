@@ -100,7 +100,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
                 throw new ForbiddenException("Bạn không có quyền ghi nhận kết quả phỏng vấn của doanh nghiệp khác.");
             }
         }
-        else if (!request.IsInternalHrOrAdmin)
+        else
         {
             _logger.LogWarning("User {UserId} không có quyền ghi nhận kết quả phỏng vấn.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền ghi nhận kết quả phỏng vấn.");

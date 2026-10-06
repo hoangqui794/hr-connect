@@ -78,7 +78,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
                 throw new ForbiddenException("Bạn không có quyền xác nhận đi làm cho ứng viên của doanh nghiệp khác.");
             }
         }
-        else if (!request.IsInternalHrOrAdmin)
+        else
         {
             _logger.LogWarning("User {UserId} không có quyền xác nhận bắt đầu làm việc.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền xác nhận ứng viên bắt đầu làm việc.");

@@ -93,7 +93,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
                 throw new ForbiddenException("Bạn không có quyền tạo lịch phỏng vấn cho ứng viên của doanh nghiệp khác.");
             }
         }
-        else if (!request.IsInternalHrOrAdmin)
+        else
         {
             _logger.LogWarning("User {UserId} không có quyền tạo lịch phỏng vấn.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền tạo lịch phỏng vấn.");

@@ -73,7 +73,7 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
                 throw new ForbiddenException("Bạn không có quyền đánh dấu không nhận việc cho ứng viên của doanh nghiệp khác.");
             }
         }
-        else if (!request.IsInternalHrOrAdmin)
+        else
         {
             _logger.LogWarning("User {UserId} không có quyền đánh dấu ứng viên không nhận việc.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền đánh dấu ứng viên không nhận việc.");

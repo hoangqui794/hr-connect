@@ -79,7 +79,7 @@ public class UpdateOfferDraftCommandHandler : IRequestHandler<UpdateOfferDraftCo
                 throw new ForbiddenException("Bạn không có quyền chỉnh sửa offer của doanh nghiệp khác.");
             }
         }
-        else if (!request.IsInternalHrOrAdmin)
+        else
         {
             _logger.LogWarning("User {UserId} không có quyền chỉnh sửa offer.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền chỉnh sửa offer.");
