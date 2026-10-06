@@ -47,9 +47,19 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             throw new ForbiddenException("Doanh nghiệp phải được xác thực trước khi tạo công việc.");
         }
 
-        if (!await _jobRepository.IsServiceTypeActiveAsync(request.ServiceTypeId, cancellationToken))
+        var serviceTypeCode = await _jobRepository.GetActiveServiceTypeCodeAsync(
+            request.ServiceTypeId, cancellationToken);
+        if (serviceTypeCode == null)
         {
             throw new BadRequestException("Loại dịch vụ không tồn tại hoặc đã ngừng hoạt động.");
+        }
+
+        JobHandlerGuards.RequireVisibilityAllowed(serviceTypeCode, request.Visibility);
+
+        var skillIds = request.Skills.Select(x => x.SkillId).Distinct().ToList();
+        if (skillIds.Count > 0 && !await _jobRepository.AreSkillsActiveAsync(skillIds, cancellationToken))
+        {
+            throw new BadRequestException("Một hoặc nhiều kỹ năng không tồn tại hoặc đã ngừng hoạt động.");
         }
 
         var now = DateTime.UtcNow;
@@ -62,10 +72,16 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             CreatedBy = request.UserId,
             Title = request.Title?.Trim() ?? string.Empty,
             Description = NormalizeOptional(request.Description),
+            Benefits = NormalizeOptional(request.Benefits),
             Location = NormalizeOptional(request.Location),
+            WorkingTime = NormalizeOptional(request.WorkingTime),
             EmploymentType = NormalizeOptional(request.EmploymentType)?.ToUpperInvariant(),
             SalaryMin = request.SalaryMin,
             SalaryMax = request.SalaryMax,
+            SalaryNegotiable = request.SalaryNegotiable,
+            SalaryNote = NormalizeOptional(request.SalaryNote),
+            MinExperienceYears = request.MinExperienceYears,
+            MaxExperienceYears = request.MaxExperienceYears,
             CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(),
             Quantity = request.Quantity,
             Status = JobStatuses.Draft,
@@ -73,6 +89,7 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             ClosedAt = null,
             CreatedAt = now,
             UpdatedAt = now,
+            ConcurrencyToken = Guid.NewGuid(),
             Visibility = request.Visibility.Trim().ToUpperInvariant(),
             StatusReason = null
         };
@@ -92,6 +109,18 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             });
         }
 
+
+        foreach (var skill in request.Skills)
+        {
+            job.JobSkills.Add(new JobSkill
+            {
+                JobId = jobId,
+                SkillId = skill.SkillId,
+                IsMandatory = skill.IsMandatory,
+                Weight = skill.Weight
+            });
+        }
+
         job.JobStatusHistories.Add(new JobStatusHistory
         {
             JobStatusHistoryId = Guid.NewGuid(),
@@ -99,7 +128,8 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             OldStatus = null,
             NewStatus = JobStatuses.Draft,
             ChangedBy = request.UserId,
-            Reason = "Job draft created",
+            ReasonCode = JobReasonCodes.DraftCreated,
+            ReasonText = null,
             ChangedAt = now
         });
 
@@ -120,10 +150,18 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
                 CompanyId = job.CompanyId,
                 ServiceTypeId = job.ServiceTypeId,
                 Title = job.Title,
+                Benefits = job.Benefits,
+                WorkingTime = job.WorkingTime,
+                SalaryNegotiable = job.SalaryNegotiable,
+                SalaryNote = job.SalaryNote,
+                MinExperienceYears = job.MinExperienceYears,
+                MaxExperienceYears = job.MaxExperienceYears,
                 Status = job.Status,
                 Visibility = job.Visibility,
                 RequirementCount = job.JobRequirements.Count,
-                CreatedAt = job.CreatedAt
+                SkillCount = job.JobSkills.Count,
+                CreatedAt = job.CreatedAt,
+                ConcurrencyToken = job.ConcurrencyToken
             }
         };
     }

@@ -50,8 +50,7 @@ desktop.ini
 .env
 .env.*
 !.env.example
-
-
+!.env.e2e.example
 
 ## Node / Frontend
 node_modules/
@@ -68,3 +67,19 @@ dist-ssr/
 *.local
 
 **/swagger.json
+## Local MF-03 E2E runtime
+.e2e/
+
+## GitNexus & AI Assistant Local Config
+.gitnexus/
+.claude/
+GITNEXUS_GUIDE.md
+AGENTS.md
+CLAUDE.md
+UI-UX-SKILLS-GUIDE.md
+
+## Temporary Files
+tmp/
+.tmp/
+.dotnet/
+

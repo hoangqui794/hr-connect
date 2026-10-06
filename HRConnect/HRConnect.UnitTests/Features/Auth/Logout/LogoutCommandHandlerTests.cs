@@ -2,6 +2,7 @@ using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Auth.Commands.Logout;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -14,6 +15,7 @@ public class LogoutCommandHandlerTests
     private readonly Mock<IRefreshTokenRepository> _refreshTokenRepositoryMock;
     private readonly Mock<IOtpService> _otpServiceMock;
     private readonly Mock<ICurrentUserService> _currentUserServiceMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<ILogger<LogoutCommandHandler>> _loggerMock;
 
@@ -24,6 +26,7 @@ public class LogoutCommandHandlerTests
         _refreshTokenRepositoryMock = new Mock<IRefreshTokenRepository>();
         _otpServiceMock = new Mock<IOtpService>();
         _currentUserServiceMock = new Mock<ICurrentUserService>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _loggerMock = new Mock<ILogger<LogoutCommandHandler>>();
 
@@ -31,6 +34,7 @@ public class LogoutCommandHandlerTests
             _refreshTokenRepositoryMock.Object,
             _otpServiceMock.Object,
             _currentUserServiceMock.Object,
+            _auditLogServiceMock.Object,
             _unitOfWorkMock.Object,
             _loggerMock.Object);
     }
@@ -71,6 +75,15 @@ public class LogoutCommandHandlerTests
 
         _refreshTokenRepositoryMock.Verify(x => x.Update(existingToken), Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+
+        // Audit SESSION_REVOKED recorded
+        _auditLogServiceMock.Verify(x => x.AddAsync(
+            It.Is<AuditEntry>(a =>
+                a.Action == AuditActions.SessionRevoked &&
+                a.EntityType == "REFRESH_TOKEN" &&
+                a.EntityId == existingToken.RefreshTokenId &&
+                a.ActorUserId == userId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -87,7 +100,7 @@ public class LogoutCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<UnauthorizedException>()
-            .WithMessage("User is not authenticated.");
+            .WithMessage("Bạn chưa đăng nhập hoặc phiên đăng nhập không hợp lệ.");
 
         _refreshTokenRepositoryMock.Verify(x => x.GetByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -129,6 +142,9 @@ public class LogoutCommandHandlerTests
         victimToken.RevokeReason.Should().BeNull();
         _refreshTokenRepositoryMock.Verify(x => x.Update(It.IsAny<HRConnect.Domain.Entities.RefreshToken>()), Times.Never);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+
+        // No audit should be logged for cross-user attempt
+        _auditLogServiceMock.Verify(x => x.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -165,6 +181,9 @@ public class LogoutCommandHandlerTests
 
         _refreshTokenRepositoryMock.Verify(x => x.Update(It.IsAny<HRConnect.Domain.Entities.RefreshToken>()), Times.Never);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+
+        // No audit for already-revoked token (idempotent)
+        _auditLogServiceMock.Verify(x => x.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -191,6 +210,9 @@ public class LogoutCommandHandlerTests
 
         _refreshTokenRepositoryMock.Verify(x => x.Update(It.IsAny<HRConnect.Domain.Entities.RefreshToken>()), Times.Never);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+
+        // No audit when token not found (idempotent)
+        _auditLogServiceMock.Verify(x => x.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -228,5 +250,10 @@ public class LogoutCommandHandlerTests
 
         _refreshTokenRepositoryMock.Verify(x => x.Update(existingToken), Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+
+        // Audit SESSION_REVOKED recorded
+        _auditLogServiceMock.Verify(x => x.AddAsync(
+            It.Is<AuditEntry>(a => a.Action == AuditActions.SessionRevoked),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 }

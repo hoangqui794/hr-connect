@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -10,17 +11,20 @@ public class LogoutAllCommandHandler : IRequestHandler<LogoutAllCommand, LogoutA
 {
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<LogoutAllCommandHandler> _logger;
 
     public LogoutAllCommandHandler(
         IRefreshTokenRepository refreshTokenRepository,
         ICurrentUserService currentUserService,
+        IAuditLogService auditLogService,
         IUnitOfWork unitOfWork,
         ILogger<LogoutAllCommandHandler> logger)
     {
         _refreshTokenRepository = refreshTokenRepository;
         _currentUserService = currentUserService;
+        _auditLogService = auditLogService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -31,10 +35,23 @@ public class LogoutAllCommandHandler : IRequestHandler<LogoutAllCommand, LogoutA
         if (userId == null || userId == Guid.Empty)
         {
             _logger.LogWarning("Đăng xuất tất cả thiết bị thất bại: Không tìm thấy định danh người dùng đã xác thực.");
-            throw new UnauthorizedException("User is not authenticated.");
+            throw new UnauthorizedException("Bạn chưa đăng nhập hoặc phiên đăng nhập không hợp lệ.");
         }
 
         await _refreshTokenRepository.RevokeAllByUserIdAsync(userId.Value, "LOGOUT_ALL", cancellationToken);
+
+        // Ghi audit ALL_SESSIONS_REVOKED cùng SaveChanges
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.AllSessionsRevoked,
+            EntityType = "APP_USER",
+            EntityId = userId.Value,
+            ActorUserId = userId.Value,
+            ActorType = AuditActorTypes.User,
+            NewValues = new { userId = userId.Value, reason = "LOGOUT_ALL" },
+            Source = AuditSources.Api
+        }, cancellationToken);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Người dùng {UserId} đã đăng xuất thành công khỏi tất cả các thiết bị.", userId.Value);

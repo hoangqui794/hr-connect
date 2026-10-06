@@ -13,6 +13,8 @@ public partial class AuditLog
 
     public Guid? ActorUserId { get; set; }
 
+    public string ActorType { get; set; } = "SYSTEM";
+
     public string Action { get; set; } = null!;
 
     public string? EntityType { get; set; }
@@ -24,6 +26,12 @@ public partial class AuditLog
     public string? NewValues { get; set; }
 
     public Guid? CorrelationId { get; set; }
+
+    public string Source { get; set; } = "APPLICATION";
+
+    public string? ServiceName { get; set; }
+
+    public int EventVersion { get; set; } = 1;
 
     public IPAddress? IpAddress { get; set; }
 

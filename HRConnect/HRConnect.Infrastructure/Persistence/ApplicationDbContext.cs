@@ -68,6 +68,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Interview> Interviews { get; set; }
 
+    public virtual DbSet<InterviewParticipant> InterviewParticipants { get; set; }
+
     public virtual DbSet<InterviewStatusHistory> InterviewStatusHistories { get; set; }
 
     public virtual DbSet<Job> Jobs { get; set; }
@@ -102,9 +104,13 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<ServiceType> ServiceTypes { get; set; }
 
+    public virtual DbSet<ServiceTypeAllowedRole> ServiceTypeAllowedRoles { get; set; }
+
     public virtual DbSet<Skill> Skills { get; set; }
 
     public virtual DbSet<Submission> Submissions { get; set; }
+
+    public virtual DbSet<SubmissionConsent> SubmissionConsents { get; set; }
 
     public virtual DbSet<UserRole> UserRoles { get; set; }
 
@@ -332,11 +338,20 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.MatchResultId).HasName("ai_match_result_pkey");
 
-            entity.ToTable("ai_match_result", "public", tb => tb.HasComment("Post-application AI screening support. Match Score/Tier/Highlight support human review; AI does not auto-reject/shortlist/hire."));
+            entity.ToTable("ai_match_result", "public", table =>
+            {
+                table.HasComment("Post-application AI screening support. Match Score/Tier/Highlight support human review; AI does not auto-reject/shortlist/hire.");
+                table.HasCheckConstraint(
+                    "ai_match_result_status_check",
+                    "status IN ('PENDING','PROCESSING','COMPLETED','FAILED','UNAVAILABLE')");
+            });
 
             entity.HasIndex(e => new { e.ApplicationId, e.AttemptNo }, "ai_match_result_application_id_attempt_no_key").IsUnique();
 
             entity.HasIndex(e => new { e.ApplicationId, e.AttemptNo }, "idx_ai_match_application").IsDescending(false, true);
+
+            entity.HasIndex(e => new { e.Status, e.NextAttemptAt }, "idx_ai_match_result_pending_dispatch")
+                .HasFilter("status = 'PENDING'");
 
             entity.Property(e => e.MatchResultId)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -349,7 +364,13 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnType("jsonb")
                 .HasColumnName("candidate_highlight");
             entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
+            entity.Property(e => e.DispatchCount)
+                .HasDefaultValue(0)
+                .HasColumnName("dispatch_count");
             entity.Property(e => e.ErrorMessage).HasColumnName("error_message");
+            entity.Property(e => e.FailureCode)
+                .HasMaxLength(100)
+                .HasColumnName("failure_code");
             entity.Property(e => e.ExternalReference)
                 .HasMaxLength(255)
                 .HasColumnName("external_reference");
@@ -360,6 +381,9 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(30)
                 .HasComment("Semantic tier (for example HIGH/MEDIUM_HIGH/MEDIUM/LOW). UI color comes from match_tier_config; AI does not make the final hiring decision.")
                 .HasColumnName("match_tier");
+            entity.Property(e => e.ModelVersion)
+                .HasMaxLength(255)
+                .HasColumnName("model_version");
             entity.Property(e => e.MustHaveResult)
                 .HasColumnType("jsonb")
                 .HasColumnName("must_have_result");
@@ -369,6 +393,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.RequestedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("requested_at");
+            entity.Property(e => e.ProcessingStartedAt).HasColumnName("processing_started_at");
+            entity.Property(e => e.LastDispatchedAt).HasColumnName("last_dispatched_at");
+            entity.Property(e => e.NextAttemptAt).HasColumnName("next_attempt_at");
             entity.Property(e => e.ShouldHaveResult)
                 .HasColumnType("jsonb")
                 .HasColumnName("should_have_result");
@@ -412,7 +439,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("email");
             entity.Property(e => e.EmailVerifiedAt).HasColumnName("email_verified_at");
+            entity.Property(e => e.FailedLoginAttempts)
+                .HasDefaultValue(0)
+                .HasColumnName("failed_login_attempts");
             entity.Property(e => e.LastLoginAt).HasColumnName("last_login_at");
+            entity.Property(e => e.LockoutEndAt).HasColumnName("lockout_end_at");
             entity.Property(e => e.NormalizedPhone)
                 .HasMaxLength(30)
                 .HasColumnName("normalized_phone");
@@ -435,7 +466,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.ApplicationId).HasName("application_pkey");
 
-            entity.ToTable("application", "public", t => 
+            entity.ToTable("application", "public", t =>
             {
                 t.HasCheckConstraint("ck_application_status", "status IN ('SUBMITTED','SCREENING','SHORTLISTED','REJECTED','INTERVIEW','BACKUP','BACKUP_NOT_SELECTED','INTERVIEW_FAILED','OFFER_PENDING','OFFER_ACCEPTED','OFFER_DECLINED','NOT_STARTED','WITHDRAWN','PLACED','CLOSED')");
             });
@@ -464,6 +495,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasComment("Allowed Application states. Exact transition graph is enforced by application service until Business Rule state machine is formally baselined.")
                 .HasColumnName("status");
             entity.Property(e => e.StatusReason).HasColumnName("status_reason");
+            entity.Property(e => e.PlannedStartDate).HasColumnName("planned_start_date");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
@@ -571,11 +607,29 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.AuditLogId).HasName("audit_log_pkey");
 
-            entity.ToTable("audit_log", "public", tb => tb.HasComment("Append-only audit trail. Set hr_connect.current_user_id in the application transaction when actor identity is available."));
+            entity.ToTable("audit_log", "public", tb =>
+            {
+                tb.HasComment("Append-only audit trail with actor and source context.");
+                tb.HasCheckConstraint("audit_log_actor_type_check", "actor_type IN ('USER', 'ANONYMOUS', 'SYSTEM', 'SERVICE', 'DATABASE_TRIGGER')");
+                tb.HasCheckConstraint("audit_log_actor_identity_check", "(actor_user_id IS NULL AND actor_type <> 'USER') OR (actor_user_id IS NOT NULL AND actor_type = 'USER')");
+                tb.HasCheckConstraint("audit_log_source_check", "source IN ('API', 'APPLICATION', 'BACKGROUND_WORKER', 'INTEGRATION', 'DATABASE_TRIGGER')");
+                tb.HasCheckConstraint("audit_log_event_version_check", "event_version >= 1");
+                tb.HasCheckConstraint("audit_log_service_actor_check", "actor_type <> 'SERVICE' OR service_name IS NOT NULL");
+            });
 
             entity.HasIndex(e => new { e.ActorUserId, e.CreatedAt }, "idx_audit_log_actor").IsDescending(false, true);
 
             entity.HasIndex(e => new { e.EntityType, e.EntityId, e.CreatedAt }, "idx_audit_log_entity").IsDescending(false, false, true);
+
+            entity.HasIndex(e => new { e.CorrelationId, e.CreatedAt }, "idx_audit_log_correlation").IsDescending(false, true);
+
+            entity.HasIndex(e => new { e.ActorType, e.CreatedAt }, "idx_audit_log_actor_type").IsDescending(false, true);
+
+            entity.HasIndex(e => new { e.Source, e.CreatedAt }, "idx_audit_log_source").IsDescending(false, true);
+
+            entity.HasIndex(e => new { e.ServiceName, e.CreatedAt }, "idx_audit_log_service")
+                .IsDescending(false, true)
+                .HasFilter("service_name IS NOT NULL");
 
             entity.Property(e => e.AuditLogId)
                 .HasDefaultValueSql("nextval('audit_log_audit_log_id_seq'::regclass)")
@@ -584,6 +638,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(120)
                 .HasColumnName("action");
             entity.Property(e => e.ActorUserId).HasColumnName("actor_user_id");
+            entity.Property(e => e.ActorType)
+                .HasMaxLength(30)
+                .HasDefaultValue("SYSTEM")
+                .HasColumnName("actor_type");
             entity.Property(e => e.CorrelationId).HasColumnName("correlation_id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
@@ -593,17 +651,27 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(80)
                 .HasColumnName("entity_type");
             entity.Property(e => e.IpAddress).HasColumnName("ip_address");
+            entity.Property(e => e.EventVersion)
+                .HasDefaultValue(1)
+                .HasColumnName("event_version");
             entity.Property(e => e.NewValues)
                 .HasColumnType("jsonb")
                 .HasColumnName("new_values");
             entity.Property(e => e.OldValues)
                 .HasColumnType("jsonb")
                 .HasColumnName("old_values");
+            entity.Property(e => e.ServiceName)
+                .HasMaxLength(80)
+                .HasColumnName("service_name");
+            entity.Property(e => e.Source)
+                .HasMaxLength(30)
+                .HasDefaultValue("APPLICATION")
+                .HasColumnName("source");
             entity.Property(e => e.UserAgent).HasColumnName("user_agent");
 
             entity.HasOne(d => d.ActorUser).WithMany(p => p.AuditLogs)
                 .HasForeignKey(d => d.ActorUserId)
-                .OnDelete(DeleteBehavior.SetNull)
+                .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("audit_log_actor_user_id_fkey");
         });
 
@@ -689,11 +757,30 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CvId).HasName("candidate_cv_pkey");
 
-            entity.ToTable("candidate_cv", "public", tb => tb.HasComment("Supports PLATFORM_BUILDER, TEMPLATE_FORM and FILE_UPLOAD CV creation methods."));
+            entity.ToTable("candidate_cv", "public", table =>
+            {
+                table.HasComment("Supports CVs created by candidates and submission-scoped CVs uploaded by Affiliates.");
+                table.HasCheckConstraint(
+                    "candidate_cv_creation_method_check",
+                    "creation_method IN ('PLATFORM_BUILDER','TEMPLATE_FORM','FILE_UPLOAD','AFFILIATE_UPLOAD')");
+                table.HasCheckConstraint(
+                    "candidate_cv_status_check",
+                    "status IN ('DRAFT','PENDING_CONSENT','ACTIVE','ARCHIVED','DELETED')");
+                table.HasCheckConstraint(
+                    "ck_candidate_cv_creation_method",
+                    "((creation_method = 'PLATFORM_BUILDER' AND structured_content IS NOT NULL) OR " +
+                    "(creation_method = 'TEMPLATE_FORM' AND structured_content IS NOT NULL AND cv_template_id IS NOT NULL) OR " +
+                    "(creation_method IN ('FILE_UPLOAD','AFFILIATE_UPLOAD') AND source_file_url IS NOT NULL))");
+                table.HasCheckConstraint(
+                    "ck_candidate_cv_affiliate_uploader",
+                    "creation_method <> 'AFFILIATE_UPLOAD' OR uploaded_by_user_id IS NOT NULL");
+            });
 
             entity.HasIndex(e => new { e.CandidateId, e.CreatedAt }, "idx_candidate_cv_candidate").IsDescending(false, true);
 
             entity.HasIndex(e => new { e.CreationMethod, e.Status }, "idx_candidate_cv_creation_method");
+
+            entity.HasIndex(e => e.UploadedByUserId, "idx_candidate_cv_uploaded_by");
 
             entity.HasIndex(e => new { e.CandidateId, e.CvId }, "uq_candidate_cv_owner").IsUnique();
 
@@ -711,6 +798,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CreationMethod)
                 .HasMaxLength(40)
                 .HasColumnName("creation_method");
+            entity.Property(e => e.UploadedByUserId).HasColumnName("uploaded_by_user_id");
             entity.Property(e => e.CvTemplateId).HasColumnName("cv_template_id");
             entity.Property(e => e.FileName)
                 .HasMaxLength(255)
@@ -741,8 +829,8 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
 
-            entity.HasOne(d => d.Candidate).WithOne(p => p.CandidateCv)
-                .HasForeignKey<CandidateCv>(d => d.CandidateId)
+            entity.HasOne(d => d.Candidate).WithMany(p => p.CandidateCvs)
+                .HasForeignKey(d => d.CandidateId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("candidate_cv_candidate_id_fkey");
 
@@ -750,6 +838,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.CvTemplateId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("candidate_cv_cv_template_id_fkey");
+
+            entity.HasOne<AppUser>().WithMany()
+                .HasForeignKey(d => d.UploadedByUserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("candidate_cv_uploaded_by_user_id_fkey");
         });
 
         modelBuilder.Entity<CandidateJobMatch>(entity =>
@@ -1350,7 +1443,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.InterviewId).HasName("interview_pkey");
 
-            entity.ToTable("interview", "public", t => 
+            entity.ToTable("interview", "public", t =>
             {
                 t.HasCheckConstraint("ck_interview_round_positive", "interview_round > 0");
                 t.HasCheckConstraint("ck_interview_duration_positive", "duration_minutes IS NULL OR duration_minutes > 0");
@@ -1386,6 +1479,12 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(30)
                 .HasDefaultValueSql("'SCHEDULED'::character varying")
                 .HasColumnName("status");
+            entity.Property(e => e.RecordedBy).HasColumnName("recorded_by");
+            entity.Property(e => e.RecordedAt).HasColumnName("recorded_at");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
@@ -1399,6 +1498,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("interview_created_by_fkey");
+
+            entity.HasOne(d => d.RecordedByNavigation).WithMany(p => p.InterviewRecordedByNavigations)
+                .HasForeignKey(d => d.RecordedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("interview_recorded_by_fkey");
         });
 
         modelBuilder.Entity<InterviewStatusHistory>(entity =>
@@ -1438,11 +1542,46 @@ public partial class ApplicationDbContext : DbContext
                 .HasConstraintName("interview_status_history_changed_by_fkey");
         });
 
+        modelBuilder.Entity<InterviewParticipant>(entity =>
+        {
+            entity.HasKey(e => e.InterviewParticipantId).HasName("interview_participant_pkey");
+
+            entity.ToTable("interview_participant", "public");
+
+            entity.HasIndex(e => new { e.InterviewId, e.UserId }, "uq_interview_participant_interview_user").IsUnique();
+
+            entity.Property(e => e.InterviewParticipantId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("interview_participant_id");
+            entity.Property(e => e.InterviewId).HasColumnName("interview_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Role)
+                .HasMaxLength(50)
+                .HasDefaultValueSql("'INTERVIEWER'::character varying")
+                .HasColumnName("role");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.Interview).WithMany(p => p.InterviewParticipants)
+                .HasForeignKey(d => d.InterviewId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("interview_participant_interview_id_fkey");
+
+            entity.HasOne(d => d.User).WithMany(p => p.InterviewParticipants)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("interview_participant_user_id_fkey");
+        });
+
         modelBuilder.Entity<Job>(entity =>
         {
             entity.HasKey(e => e.JobId).HasName("job_pkey");
 
-            entity.ToTable("job", "public");
+            entity.ToTable("job", "public", table =>
+                table.HasCheckConstraint(
+                    "ck_job_visibility",
+                    "visibility IN ('PUBLIC','PARTNER_ONLY','INTERNAL_ONLY')"));
 
             entity.HasIndex(e => new { e.CompanyId, e.ServiceTypeId, e.PostedAt }, "idx_job_active")
                 .IsDescending(false, false, true)
@@ -1463,11 +1602,16 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
             entity.Property(e => e.CurrencyCode)
                 .HasMaxLength(3)
                 .HasDefaultValueSql("'VND'::bpchar")
                 .IsFixedLength()
                 .HasColumnName("currency_code");
+            entity.Property(e => e.Benefits).HasColumnName("benefits");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.EmploymentType)
                 .HasMaxLength(50)
@@ -1475,6 +1619,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Location)
                 .HasMaxLength(255)
                 .HasColumnName("location");
+            entity.Property(e => e.WorkingTime)
+                .HasMaxLength(2000)
+                .HasColumnName("working_time");
             entity.Property(e => e.PostedAt).HasColumnName("posted_at");
             entity.Property(e => e.Quantity)
                 .HasDefaultValue(1)
@@ -1485,6 +1632,16 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.SalaryMin)
                 .HasPrecision(18, 2)
                 .HasColumnName("salary_min");
+            entity.Property(e => e.SalaryNegotiable)
+                .HasDefaultValue(false)
+                .HasColumnName("salary_negotiable");
+            entity.Property(e => e.SalaryNote)
+                .HasMaxLength(1000)
+                .HasColumnName("salary_note");
+            entity.Property(e => e.MinExperienceYears)
+                .HasColumnName("min_experience_years");
+            entity.Property(e => e.MaxExperienceYears)
+                .HasColumnName("max_experience_years");
             entity.Property(e => e.ServiceTypeId).HasColumnName("service_type_id");
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
@@ -1599,7 +1756,8 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.OldStatus)
                 .HasMaxLength(30)
                 .HasColumnName("old_status");
-            entity.Property(e => e.Reason).HasColumnName("reason");
+            entity.Property(e => e.ReasonCode).HasMaxLength(100).HasColumnName("reason_code");
+            entity.Property(e => e.ReasonText).HasMaxLength(2000).HasColumnName("reason_text");
 
             entity.HasOne(d => d.ChangedByNavigation).WithMany(p => p.JobStatusHistories)
                 .HasForeignKey(d => d.ChangedBy)
@@ -1649,7 +1807,13 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.NotificationId).HasName("notification_pkey");
 
-            entity.ToTable("notification", "public", tb => tb.HasComment("In-app notification store. JOB_FIT notifications may reference a Job through related_entity_type/related_entity_id."));
+            entity.ToTable("notification", "public", tb =>
+            {
+                tb.HasComment("In-app notification store. JOB_FIT notifications may reference a Job through related_entity_type/related_entity_id.");
+                tb.HasCheckConstraint(
+                    "ck_notification_type",
+                    "notification_type IN ('ACCOUNT','COMPANY','JOB','SUBMISSION','SUBMISSION_CONSENT_RESULT','JOB_FIT','APPLICATION_STATUS','INTERVIEW','OFFER','AFFILIATE','COMMISSION','PAYOUT','SYSTEM')");
+            });
 
             entity.HasIndex(e => new { e.UserId, e.CreatedAt }, "idx_notification_unread")
                 .IsDescending(false, true)
@@ -1694,11 +1858,10 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.OfferId).HasName("offer_pkey");
 
-            entity.ToTable("offer", "public", t => 
+            entity.ToTable("offer", "public", t =>
             {
                 t.HasCheckConstraint("ck_offer_version_positive", "offer_version > 0");
                 t.HasCheckConstraint("ck_offer_salary_positive", "salary IS NULL OR salary >= 0");
-                t.HasCheckConstraint("ck_offer_date_range", "expiry_date IS NULL OR start_date IS NULL OR expiry_date >= start_date");
                 t.HasCheckConstraint("ck_offer_response_time", "responded_at IS NULL OR sent_at IS NULL OR responded_at >= sent_at");
                 t.HasCheckConstraint("ck_offer_declined_response", "status <> 'DECLINED' OR responded_at IS NOT NULL");
             });
@@ -1711,6 +1874,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("offer_id");
             entity.Property(e => e.ApplicationId).HasColumnName("application_id");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
@@ -2084,6 +2251,32 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("updated_at");
         });
 
+        modelBuilder.Entity<ServiceTypeAllowedRole>(entity =>
+        {
+            entity.HasKey(e => new { e.ServiceTypeId, e.RoleId })
+                .HasName("service_type_allowed_role_pkey");
+
+            entity.ToTable("service_type_allowed_role", "public");
+
+            entity.HasIndex(e => new { e.RoleId, e.CanView }, "idx_service_type_allowed_role_view");
+
+            entity.Property(e => e.ServiceTypeId).HasColumnName("service_type_id");
+            entity.Property(e => e.RoleId).HasColumnName("role_id");
+            entity.Property(e => e.CanView).HasDefaultValue(false).HasColumnName("can_view");
+            entity.Property(e => e.CanSubmit).HasDefaultValue(false).HasColumnName("can_submit");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+            entity.HasOne(d => d.ServiceType).WithMany(p => p.AllowedRoles)
+                .HasForeignKey(d => d.ServiceTypeId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("service_type_allowed_role_service_type_id_fkey");
+
+            entity.HasOne(d => d.Role).WithMany(p => p.ServiceTypeAllowedRoles)
+                .HasForeignKey(d => d.RoleId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("service_type_allowed_role_role_id_fkey");
+        });
+
         modelBuilder.Entity<Skill>(entity =>
         {
             entity.HasKey(e => e.SkillId).HasName("skill_pkey");
@@ -2116,7 +2309,13 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.SubmissionId).HasName("submission_pkey");
 
-            entity.ToTable("submission", "public", tb => tb.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed."));
+            entity.ToTable("submission", "public", table =>
+            {
+                table.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed.");
+                table.HasCheckConstraint(
+                    "submission_status_check",
+                    "status IN ('RECEIVED','PENDING_CONSENT','ACCEPTED','BLOCKED_DUPLICATE','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
+            });
 
             entity.HasIndex(e => new { e.JobId, e.CandidateId, e.SubmittedAt }, "idx_submission_job_candidate");
 
@@ -2127,6 +2326,10 @@ public partial class ApplicationDbContext : DbContext
             entity.HasIndex(e => new { e.JobId, e.CandidateId }, "uq_submission_one_accepted")
                 .IsUnique()
                 .HasFilter("((status)::text = 'ACCEPTED'::text)");
+
+            entity.HasIndex(e => new { e.JobId, e.CandidateId }, "uq_submission_one_pending_consent")
+                .IsUnique()
+                .HasFilter("((status)::text = 'PENDING_CONSENT'::text)");
 
             entity.Property(e => e.SubmissionId)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -2176,6 +2379,46 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => new { d.CandidateId, d.CvId })
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_submission_cv_owner");
+        });
+
+        modelBuilder.Entity<SubmissionConsent>(entity =>
+        {
+            entity.HasKey(e => e.ConsentId).HasName("submission_consent_pkey");
+            entity.ToTable("submission_consent", "public", table =>
+            {
+                table.HasCheckConstraint("ck_submission_consent_status", "status IN ('PENDING','CONFIRMED','DECLINED','EXPIRED','CANCELLED')");
+                table.HasCheckConstraint("ck_submission_consent_expiry", "expires_at > requested_at");
+            });
+
+            entity.HasIndex(e => e.SubmissionId, "uq_submission_consent_submission").IsUnique();
+            entity.HasIndex(e => e.TokenHash, "uq_submission_consent_token_hash").IsUnique();
+            entity.HasIndex(e => new { e.Status, e.ExpiresAt }, "idx_submission_consent_pending_expiry")
+                .HasFilter("status = 'PENDING'");
+
+            entity.Property(e => e.ConsentId).HasDefaultValueSql("gen_random_uuid()").HasColumnName("consent_id");
+            entity.Property(e => e.SubmissionId).HasColumnName("submission_id");
+            entity.Property(e => e.RecipientEmail).HasMaxLength(255).HasColumnName("recipient_email");
+            entity.Property(e => e.TokenHash).HasMaxLength(64).HasColumnName("token_hash");
+            entity.Property(e => e.Status).HasMaxLength(20).HasColumnName("status");
+            entity.Property(e => e.RequestedAt).HasColumnName("requested_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.RespondedAt).HasColumnName("responded_at");
+            entity.Property(e => e.ResponseIp).HasMaxLength(64).HasColumnName("response_ip");
+            entity.Property(e => e.ResponseUserAgent).HasMaxLength(512).HasColumnName("response_user_agent");
+            entity.Property(e => e.EmailSendCount).HasDefaultValue(0).HasColumnName("email_send_count");
+            entity.Property(e => e.EmailSentAt).HasColumnName("email_sent_at");
+            entity.Property(e => e.LastEmailError).HasMaxLength(1000).HasColumnName("last_email_error");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
+
+            entity.HasOne(e => e.Submission).WithOne(s => s.Consent)
+                .HasForeignKey<SubmissionConsent>(e => e.SubmissionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("submission_consent_submission_id_fkey");
         });
 
         modelBuilder.Entity<UserRole>(entity =>

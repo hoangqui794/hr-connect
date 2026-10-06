@@ -23,4 +23,13 @@ public interface ICandidateRepository
     /// Lấy thông tin chi tiết ứng viên theo UserId, kèm Skills và CV.
     /// </summary>
     Task<Candidate?> GetByUserIdWithDetailsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    Task<Candidate?> GetByIdAsync(Guid candidateId, CancellationToken cancellationToken = default);
+
+    Task<Candidate?> GetByNormalizedEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default);
+
+    Task<Candidate?> GetByNormalizedPhoneAsync(string normalizedPhone, CancellationToken cancellationToken = default);
+
+    /// <summary>Atomically claim an unlinked candidate after ownership of its email has been verified.</summary>
+    Task<bool> TryLinkByVerifiedEmailAsync(Guid candidateId, string normalizedEmail, Guid userId, CancellationToken cancellationToken = default);
 }

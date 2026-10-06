@@ -14,11 +14,11 @@ HR Connect là nền tảng tuyển dụng hiện đại dành cho Agency, kết
 
 | STT | Thành viên | Mã sinh viên | Vai trò | Trách nhiệm chính |
 |:---:|---|:---:|:---:|---|
-| 1 | **Trương Hoàng Quí** | SE184355 | **Leader** | Quản lý dự án, Thiết kế kiến trúc Backend, AI Integration |
-| 2 | **Lê Thị Trà Mi** | SE184379 | **Member** | Phân tích nghiệp vụ, Frontend Developer |
-| 3 | **Cao Hữu Trí** | SE184047 | **Member** | Backend Developer, Database, DevOps & CI/CD |
-| 4 | **Khúc Ngọc Sơn** | SE184040 | **Member** | Frontend Developer, UI/UX Designer |
-| 5 | **Nguyễn Văn Sang** | SE183276 | **Member** | Fullstack Developer, QA & Testing |
+| 1 | **Trương Hoàng Quí** | SE184355 | **Leader** | Quản lý dự án, Phân tích nghiệp vụ, Database, AI Integration |
+| 2 | **Lê Thị Trà Mi** | SE184379 | **Member** | Phân tích nghiệp vụ, Backend Developer, Frontend Developer |
+| 3 | **Cao Hữu Trí** | SE184047 | **Member** | Phân tích nghiệp vụ, Backend Developer, Thiết kế kiến trúc Backend, Database, DevOps & CI/CD |
+| 4 | **Khúc Ngọc Sơn** | SE184040 | **Member** | Phân tích nghiệp vụ, Backend Developer, Frontend Developer |
+| 5 | **Nguyễn Văn Sang** | SE183276 | **Member** | Frontend Develope, UI/UX Designer |
 
 ---
 
@@ -61,7 +61,7 @@ Hệ thống quản lý 5 nhóm vai trò (`Role`) chuẩn hóa:
 | `PLATFORM_ADMIN` | **Quản trị viên nền tảng** | Toàn quyền kiểm soát tài khoản, phê duyệt hồ sơ Doanh nghiệp/Affiliate, cấu hình hệ thống và giám sát giao dịch. |
 | `INTERNAL_HR` | **Chuyên viên tuyển dụng Agency** | Tiếp nhận yêu cầu tuyển dụng từ Doanh nghiệp, điều phối phỏng vấn, kiểm duyệt hồ sơ và duyệt hoa hồng cho Affiliate. |
 | `CLIENT_COMPANY_USER` | **Khách hàng Doanh nghiệp** | Tạo yêu cầu Job tuyển dụng, xem hồ sơ ứng viên do Agency gửi tới, phản hồi kết quả phỏng vấn và duyệt offer. |
-| `AFFILIATE_RECRUITER` | **Cộng tác viên tuyển dụng** | Giới thiệu ứng viên (nộp CV qua link affiliate/portal), theo dõi trạng thái ứng viên và nhận hoa hồng khi thành công. |
+| `AFFILIATE_RECRUITER` | **Cộng tác viên tuyển dụng** | Giới thiệu ứng viên, theo dõi trạng thái tuyển dụng tổng quát của referral do mình giới thiệu và nhận hoa hồng theo điều kiện áp dụng. Không xem lịch phỏng vấn, feedback, offer hoặc dữ liệu nội bộ. |
 | `CANDIDATE` | **Ứng viên** | Quản lý hồ sơ cá nhân, CV, tìm kiếm và nộp đơn ứng tuyển các Job công khai, theo dõi tiến độ ứng tuyển. |
 
 ---
@@ -102,7 +102,7 @@ d:/Ki_9/HRConnect/
 ├── .env.example                      # Template cấu hình biến môi trường
 ├── .gitignore                        # Cấu hình bỏ qua các file nhạy cảm và build rác
 ├── README.md                         # Tài liệu hướng dẫn chuẩn cho Team & AI
-│
+│__ HRConnect-FE
 └── HRConnect/
     ├── Dockerfile                    # Multi-stage Dockerfile cho .NET 8 (Non-root user)
     ├── .dockerignore                 # Tối ưu hóa dung lượng build Docker

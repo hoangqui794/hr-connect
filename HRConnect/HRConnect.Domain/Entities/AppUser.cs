@@ -28,6 +28,10 @@ public partial class AppUser
 
     public DateTime? LastLoginAt { get; set; }
 
+    public int FailedLoginAttempts { get; set; }
+
+    public DateTime? LockoutEndAt { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
@@ -65,6 +69,10 @@ public partial class AppUser
     public virtual InternalHrProfile? InternalHrProfile { get; set; }
 
     public virtual ICollection<Interview> Interviews { get; set; } = new List<Interview>();
+
+    public virtual ICollection<Interview> InterviewRecordedByNavigations { get; set; } = new List<Interview>();
+
+    public virtual ICollection<InterviewParticipant> InterviewParticipants { get; set; } = new List<InterviewParticipant>();
 
     public virtual ICollection<InterviewStatusHistory> InterviewStatusHistories { get; set; } = new List<InterviewStatusHistory>();
 

@@ -13,6 +13,7 @@ public sealed class GetMyJobsQueryHandler : IRequestHandler<GetMyJobsQuery, IRea
     {
         var member = await _members.GetByUserIdAsync(request.UserId, ct) ?? throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
         var jobs = await _jobs.GetByCompanyIdAsync(member.CompanyId, ct);
-        return jobs.Where(x => string.IsNullOrWhiteSpace(request.Status) || x.Status.Equals(request.Status, StringComparison.OrdinalIgnoreCase)).Select(JobDto.From).ToList();
+        return jobs.Where(x => string.IsNullOrWhiteSpace(request.Status) || x.Status.Equals(request.Status, StringComparison.OrdinalIgnoreCase))
+            .Select(x => JobDto.From(x)).ToList();
     }
 }

@@ -8,6 +8,9 @@ using HRConnect.Infrastructure.Services.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Authentication;
+using HRConnect.Infrastructure.Authentication;
+using HRConnect.Infrastructure.Services.Audit;
 
 namespace HRConnect.Infrastructure;
 
@@ -18,16 +21,25 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(connectionString, o => 
+            options.UseNpgsql(connectionString, o =>
                 o.MigrationsHistoryTable("__EFMigrationsHistory", "public")));
 
         // 1. Dịch vụ Email (Resend)
         services.Configure<ResendSettings>(configuration.GetSection(ResendSettings.SectionName));
+        services.Configure<SubmissionConsentSettings>(configuration.GetSection(SubmissionConsentSettings.SectionName));
+        services.PostConfigure<SubmissionConsentSettings>(settings =>
+        {
+            settings.ConfirmationUrlBase = configuration["SUBMISSION_CONSENT_URL_BASE"] ?? settings.ConfirmationUrlBase;
+            if (int.TryParse(configuration["SUBMISSION_CONSENT_EXPIRATION_HOURS"], out var hours) && hours > 0)
+                settings.ExpirationHours = hours;
+        });
 
         services.AddHttpClient<IEmailService, ResendEmailService>(client =>
         {
             client.BaseAddress = new Uri("https://api.resend.com/");
         });
+        // Registration OTP is sent once by the registration request. Further delivery
+        // happens only through the explicit resend endpoint; never replay stale outbox rows.
 
         // 2. Cấu hình Authentication, OTP & JWT
         services.Configure<AuthenticationSettings>(
@@ -44,26 +56,132 @@ public static class DependencyInjection
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IRequestContext, HttpRequestContext>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
+        services.AddScoped<IClaimsTransformation, ActiveAuthorizationClaimsTransformation>();
 
         // 4. Repositories & UnitOfWork
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAdminUserRepository, AdminUserRepository>();
         services.AddScoped<ICandidateRepository, CandidateRepository>();
+        services.AddScoped<ICandidateCvRepository, CandidateCvRepository>();
         services.AddScoped<IAffiliateApplicationRepository, AffiliateApplicationRepository>();
         services.AddScoped<IAffiliateProfileRepository, AffiliateProfileRepository>();
         services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<ICompanyUserRepository, CompanyUserRepository>();
         services.AddScoped<ICompanyVerificationRequestRepository, CompanyVerificationRequestRepository>();
+        services.AddScoped<IInternalHrProfileRepository, InternalHrProfileRepository>();
+        services.AddScoped<IAdminProfileRepository, AdminProfileRepository>();
         services.AddScoped<IApprovalRepository, ApprovalRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();
         services.AddScoped<IUserTokenRepository, UserTokenRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailOutboxRepository, EmailOutboxRepository>();
         services.AddScoped<IServiceTypeRepository, ServiceTypeRepository>();
+        services.AddScoped<ICommissionMilestoneRepository, CommissionMilestoneRepository>();
+        services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
         services.AddScoped<IJobRepository, JobRepository>();
+        services.AddScoped<ISubmissionRepository, SubmissionRepository>();
+        services.AddScoped<ISubmissionConsentRepository, SubmissionConsentRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IApplicationRepository, ApplicationRepository>();
+        services.AddScoped<IInterviewRepository, InterviewRepository>();
+        services.AddScoped<IOfferRepository, OfferRepository>();
+        services.AddScoped<IPlacementRepository, PlacementRepository>();
+        services.AddScoped<IAttributionRepository, AttributionRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAdminApprovalService, HRConnect.Infrastructure.Services.Admin.AdminApprovalService>();
+        services.AddScoped<IMf03ScoringTrigger, HRConnect.Infrastructure.Services.Integration.Mf03ScoringTrigger>();
+
+        services.Configure<Mf03IntegrationSettings>(configuration.GetSection(Mf03IntegrationSettings.SectionName));
+        services.PostConfigure<Mf03IntegrationSettings>(settings =>
+        {
+            settings.BaseUrl = configuration["MF03_BASE_URL"] ?? settings.BaseUrl;
+            settings.ServiceToken = configuration["HRCONNECT_SERVICE_TOKEN"] ?? settings.ServiceToken;
+        });
+        services.AddHttpClient("Mf03AiService", (provider, client) =>
+        {
+            var settings = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Mf03IntegrationSettings>>().Value;
+            client.BaseAddress = new Uri(settings.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(15);
+            if (!string.IsNullOrWhiteSpace(settings.ServiceToken))
+                client.DefaultRequestHeaders.Add("X-Service-Token", settings.ServiceToken);
+        });
+        services.AddHostedService<HRConnect.Infrastructure.Services.Integration.Mf03ScoringDispatcher>();
+        services.AddHostedService<HRConnect.Infrastructure.Services.SubmissionConsents.SubmissionConsentExpiryWorker>();
+        services.AddHostedService<AccountLifecycleEmailOutboxWorker>();
+        services.AddHostedService<HRConnect.Infrastructure.Services.Offers.OfferExpiryWorker>();
+
+        // 5. Cloudflare R2 Object Storage & CV Storage
+        var r2Settings = new R2Settings();
+        configuration.GetSection(R2Settings.SectionName).Bind(r2Settings);
+
+        if (string.IsNullOrWhiteSpace(r2Settings.AccountId))
+            r2Settings.AccountId = configuration["R2_ACCOUNT_ID"] ?? "ea997660e8c1f6c92b939eb22891843c";
+
+        if (string.IsNullOrWhiteSpace(r2Settings.AccessKeyId))
+            r2Settings.AccessKeyId = configuration["R2_ACCESS_KEY_ID"] ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(r2Settings.SecretAccessKey))
+            r2Settings.SecretAccessKey = configuration["R2_SECRET_ACCESS_KEY"] ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(r2Settings.BucketName))
+            r2Settings.BucketName = configuration["R2_BUCKET_NAME"] ?? "hrconnect-candidate-cvs";
+
+        if (string.IsNullOrWhiteSpace(r2Settings.Endpoint))
+            r2Settings.Endpoint = configuration["R2_ENDPOINT"] ?? "https://ea997660e8c1f6c92b939eb22891843c.r2.cloudflarestorage.com";
+
+        if (int.TryParse(configuration["MAX_CV_FILE_SIZE_MB"], out var maxMb) && maxMb > 0)
+            r2Settings.MaxCvFileSizeMb = maxMb;
+
+        if (int.TryParse(configuration["MAX_PRESIGNED_URL_EXPIRY_MINUTES"], out var maxExpiryMinutes) && maxExpiryMinutes > 0)
+            r2Settings.MaxPresignedUrlExpiryMinutes = maxExpiryMinutes;
+
+        services.AddSingleton(Microsoft.Extensions.Options.Options.Create(r2Settings));
+
+        services.AddSingleton<Amazon.S3.IAmazonS3>(sp =>
+        {
+            var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<R2Settings>>().Value;
+            var s3Config = new Amazon.S3.AmazonS3Config
+            {
+                ServiceURL = string.IsNullOrWhiteSpace(options.Endpoint)
+                    ? "https://ea997660e8c1f6c92b939eb22891843c.r2.cloudflarestorage.com"
+                    : options.Endpoint,
+                ForcePathStyle = true
+            };
+            var accessKey = !string.IsNullOrWhiteSpace(options.AccessKeyId) ? options.AccessKeyId : "dummy";
+            var secretKey = !string.IsNullOrWhiteSpace(options.SecretAccessKey) ? options.SecretAccessKey : "dummy";
+            var credentials = new Amazon.Runtime.BasicAWSCredentials(accessKey, secretKey);
+            return new Amazon.S3.AmazonS3Client(credentials, s3Config);
+        });
+
+        services.AddScoped<IFileStorageService, HRConnect.Infrastructure.Services.Storage.CloudflareR2StorageService>();
+        services.AddScoped<ICvStorageService, HRConnect.Infrastructure.Services.Storage.CvStorageService>();
+
+        // 6. Dịch vụ AI & HRConnect Client (MF-03 Integration)
+        var clientOptions = new HRConnectClientOptions();
+        configuration.GetSection(HRConnectClientOptions.SectionName).Bind(clientOptions);
+
+        if (!string.IsNullOrWhiteSpace(configuration["HRCONNECT_BASE_URL"]))
+            clientOptions.BaseUrl = configuration["HRCONNECT_BASE_URL"]!;
+
+        if (!string.IsNullOrWhiteSpace(configuration["HRCONNECT_SERVICE_TOKEN"]))
+            clientOptions.ServiceToken = configuration["HRCONNECT_SERVICE_TOKEN"]!;
+
+        services.AddSingleton(Microsoft.Extensions.Options.Options.Create(clientOptions));
+
+        services.AddHttpClient<IHRConnectClient, HRConnect.Infrastructure.Services.Integration.HRConnectClient>((sp, client) =>
+        {
+            var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<HRConnectClientOptions>>().Value;
+            if (!string.IsNullOrWhiteSpace(opts.BaseUrl))
+            {
+                client.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
+            }
+        });
 
         return services;
+
     }
 }

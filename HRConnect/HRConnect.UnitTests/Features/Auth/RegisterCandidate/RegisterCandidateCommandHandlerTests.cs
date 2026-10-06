@@ -19,6 +19,7 @@ public class RegisterCandidateCommandHandlerTests
     private readonly Mock<IUserRoleRepository> _userRoleRepositoryMock;
     private readonly Mock<IUserTokenRepository> _userTokenRepositoryMock;
     private readonly Mock<IEmailOutboxRepository> _emailOutboxRepositoryMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IPasswordHasher> _passwordHasherMock;
     private readonly Mock<IOtpService> _otpServiceMock;
@@ -38,6 +39,7 @@ public class RegisterCandidateCommandHandlerTests
         _userRoleRepositoryMock = new Mock<IUserRoleRepository>();
         _userTokenRepositoryMock = new Mock<IUserTokenRepository>();
         _emailOutboxRepositoryMock = new Mock<IEmailOutboxRepository>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _passwordHasherMock = new Mock<IPasswordHasher>();
         _otpServiceMock = new Mock<IOtpService>();
@@ -62,6 +64,7 @@ public class RegisterCandidateCommandHandlerTests
             _userRoleRepositoryMock.Object,
             _userTokenRepositoryMock.Object,
             _emailOutboxRepositoryMock.Object,
+            _auditLogServiceMock.Object,
             _unitOfWorkMock.Object,
             _passwordHasherMock.Object,
             _otpServiceMock.Object,
@@ -96,6 +99,28 @@ public class RegisterCandidateCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenEmailIsPendingVerification_ReturnsRecoverableConflictWithoutSending()
+    {
+        const string email = "pending@example.com";
+        var command = new RegisterCandidateCommand(email, "Password@123", "Pending Candidate");
+        _emailNormalizerMock.Setup(x => x.Normalize(email)).Returns(email);
+        _userRepositoryMock.Setup(x => x.ExistsByEmailAsync(email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _userRepositoryMock.Setup(x => x.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AppUser
+            {
+                UserId = Guid.NewGuid(), Email = email, PasswordHash = "hash", Status = "PENDING"
+            });
+
+        var action = () => _handler.Handle(command, CancellationToken.None);
+
+        var exception = await action.Should().ThrowAsync<ConflictException>();
+        exception.Which.ErrorCode.Should().Be("EMAIL_PENDING_VERIFICATION");
+        _emailServiceMock.Verify(service => service.SendEmailAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Handle_ShouldThrowConflictException_WhenCandidateProfileAlreadyLinkedToAnotherAccount()
     {
         // Arrange
@@ -121,7 +146,7 @@ public class RegisterCandidateCommandHandlerTests
             UserId = Guid.NewGuid() // Already linked!
         };
 
-        _candidateRepositoryMock.Setup(x => x.FindByIdentityAsync("candidate@example.com", "0901234567", It.IsAny<CancellationToken>()))
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedEmailAsync("candidate@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingCandidate);
 
         // Act
@@ -132,8 +157,10 @@ public class RegisterCandidateCommandHandlerTests
             .WithMessage("*đã được liên kết với một tài khoản khác*");
     }
 
-    [Fact]
-    public async Task Handle_ShouldSuccessfullyRegisterAndLinkCandidate_WhenCandidateExistsWithoutUserId()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Handle_ShouldRegisterWithoutClaimingExistingCandidateBeforeOtp(bool candidateExists)
     {
         // Arrange
         var command = new RegisterCandidateCommand(
@@ -156,8 +183,8 @@ public class RegisterCandidateCommandHandlerTests
             UserId = null // Unlinked candidate record!
         };
 
-        _candidateRepositoryMock.Setup(x => x.FindByIdentityAsync("candidate@example.com", "0901234567", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(unlinkedCandidate);
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedEmailAsync("candidate@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidateExists ? unlinkedCandidate : null);
 
         var candidateRole = new Role
         {
@@ -178,6 +205,10 @@ public class RegisterCandidateCommandHandlerTests
         _emailServiceMock.Setup(x => x.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(EmailResult.Success("msg_123"));
 
+        EmailOutbox? capturedOutbox = null;
+        _emailOutboxRepositoryMock.Setup(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailOutbox, CancellationToken>((outbox, _) => capturedOutbox = outbox);
+
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -187,9 +218,11 @@ public class RegisterCandidateCommandHandlerTests
         result.Data!.Email.Should().Be("candidate@example.com");
         result.Data.Status.Should().Be("PENDING");
 
-        // Verify Candidate link was updated
-        unlinkedCandidate.UserId.Should().NotBeNull();
-        _candidateRepositoryMock.Verify(x => x.Update(unlinkedCandidate), Times.Once);
+        // Existing recruitment data must remain unclaimed until email verification succeeds.
+        unlinkedCandidate.UserId.Should().BeNull();
+        _candidateRepositoryMock.Verify(x => x.Update(It.IsAny<Candidate>()), Times.Never);
+        _candidateRepositoryMock.Verify(x => x.TryLinkByVerifiedEmailAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _candidateRepositoryMock.Verify(x => x.AddAsync(It.Is<Candidate>(c => c.UserId == result.Data.UserId), It.IsAny<CancellationToken>()), candidateExists ? Times.Never() : Times.Once());
 
         // Verify user added and transaction committed
         _userRepositoryMock.Verify(x => x.AddAsync(It.IsAny<AppUser>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -197,5 +230,9 @@ public class RegisterCandidateCommandHandlerTests
         _userTokenRepositoryMock.Verify(x => x.AddAsync(It.IsAny<UserToken>(), It.IsAny<CancellationToken>()), Times.Once);
         _emailOutboxRepositoryMock.Verify(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        capturedOutbox!.Status.Should().Be("SENT");
+        capturedOutbox.SentAt.Should().NotBeNull();
+        capturedOutbox.Payload.Should().NotContain("123456");
     }
 }

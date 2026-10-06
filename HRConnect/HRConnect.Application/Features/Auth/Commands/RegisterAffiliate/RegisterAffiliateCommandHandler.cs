@@ -16,6 +16,7 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
     private readonly IAffiliateApplicationRepository _affiliateApplicationRepository;
     private readonly IUserTokenRepository _userTokenRepository;
     private readonly IEmailOutboxRepository _emailOutboxRepository;
+    private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IOtpService _otpService;
@@ -30,6 +31,7 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
         IAffiliateApplicationRepository affiliateApplicationRepository,
         IUserTokenRepository userTokenRepository,
         IEmailOutboxRepository emailOutboxRepository,
+        IAuditLogService auditLogService,
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         IOtpService otpService,
@@ -43,6 +45,7 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
         _affiliateApplicationRepository = affiliateApplicationRepository;
         _userTokenRepository = userTokenRepository;
         _emailOutboxRepository = emailOutboxRepository;
+        _auditLogService = auditLogService;
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _otpService = otpService;
@@ -68,6 +71,16 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
         var userExists = await _userRepository.ExistsByEmailAsync(normalizedEmail, cancellationToken);
         if (userExists)
         {
+            var existingUser = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+            if (existingUser != null &&
+                existingUser.EmailVerifiedAt == null &&
+                string.Equals(existingUser.Status, "PENDING", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ConflictException(
+                    "Email đang chờ xác thực. Vui lòng quay lại màn hình nhập OTP và bấm gửi lại mã nếu mã cũ đã hết hạn.",
+                    "EMAIL_PENDING_VERIFICATION");
+            }
+
             _logger.LogWarning("Đăng ký Affiliate thất bại: Email {Email} đã tồn tại trong hệ thống.", normalizedEmail);
             throw new ConflictException("Email này đã được sử dụng bởi một tài khoản khác.");
         }
@@ -120,10 +133,6 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
             var rawOtp = _otpService.GenerateNumericOtp(otpLength);
             var otpHash = _otpService.HashOtp(rawOtp);
 
-            _logger.LogInformation("===============================================================================");
-            _logger.LogInformation("===> [DEV OTP] MÃ XÁC THỰC OTP CHO AFFILIATE {Email} LÀ: {Otp} <===", normalizedEmail, rawOtp);
-            _logger.LogInformation("===============================================================================");
-
             // 7. Tạo bản ghi UserToken (loại EMAIL_OTP, lưu hash, không lưu raw OTP)
             var userToken = new UserToken
             {
@@ -162,44 +171,69 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
 
             await _emailOutboxRepository.AddAsync(emailOutbox, cancellationToken);
 
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.AffiliateRegistered,
+                EntityType = "AFFILIATE_APPLICATION",
+                EntityId = affiliateApp.AffiliateApplicationId,
+                NewValues = new { userId = newUser.UserId, status = "PENDING", accountType = "AFFILIATE" },
+                Source = AuditSources.Api
+            }, cancellationToken);
+
             // 9. Commit Transaction
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
             _logger.LogInformation("Đăng ký thành công tài khoản Affiliate UserId {UserId}, Email {Email}. Trạng thái: PENDING.",
                 newUser.UserId, newUser.Email);
 
-            // 10. Gửi email chứa raw OTP đến Affiliate sau khi commit
-            _ = Task.Run(async () =>
+            // 10. Chờ nhà cung cấp email phản hồi để không làm mất tác vụ khi request kết thúc.
+            // Raw OTP chỉ tồn tại trong bộ nhớ và không được ghi vào log/outbox.
+            try
             {
+                var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates.RegistrationOtp(
+                    request.FullName, rawOtp, expirationMinutes, "Đối tác tuyển dụng", true);
+                var emailResult = await _emailService.SendEmailAsync(
+                    newUser.Email, email.Subject, email.HtmlBody, CancellationToken.None);
+
+                if (emailResult.IsSuccess)
+                {
+                    emailOutbox.Status = "SENT";
+                    emailOutbox.SentAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    emailOutbox.Status = "FAILED";
+                    emailOutbox.RetryCount += 1;
+                    emailOutbox.LastError = emailResult.ErrorMessage;
+                    _logger.LogError("Lỗi gửi email xác thực OTP Affiliate cho UserId {UserId}: {Error}",
+                        newUser.UserId, emailResult.ErrorMessage);
+                }
+
+                await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                emailOutbox.Status = "FAILED";
+                emailOutbox.RetryCount += 1;
+                emailOutbox.LastError = ex.Message;
                 try
                 {
-                    var subject = "Mã xác thực đăng ký Đối tác tuyển dụng - HR Connect";
-                    var bodyHtml = $@"
-                        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                            <h2 style='color: #4F46E5; margin-top: 0;'>HR Connect - Đối tác tuyển dụng</h2>
-                            <p>Xin chào <strong>{request.FullName.Trim()}</strong>,</p>
-                            <p>Cảm ơn bạn đã đăng ký trở thành Đối tác tuyển dụng (Affiliate Recruiter) của HR Connect. Vui lòng sử dụng mã xác thực (OTP) dưới đây để xác nhận địa chỉ email của bạn:</p>
-                            <div style='background-color: #F3F4F6; padding: 16px; border-radius: 6px; text-align: center; margin: 24px 0;'>
-                                <span style='font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1F2937;'>{rawOtp}</span>
-                            </div>
-                            <p style='color: #4B5563; font-size: 14px;'>Mã xác thực này có hiệu lực trong vòng <strong>{expirationMinutes} phút</strong>. Sau khi xác thực email, hồ sơ của bạn sẽ được chuyển đến Ban quản trị xem xét phê duyệt.</p>
-                            <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                            <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
-                        </div>";
-
-                    await _emailService.SendEmailAsync(newUser.Email, subject, bodyHtml, CancellationToken.None);
+                    await _unitOfWork.SaveChangesAsync(CancellationToken.None);
                 }
-                catch (Exception ex)
+                catch (Exception saveException)
                 {
-                    _logger.LogError(ex, "Lỗi gửi email xác thực OTP tới {Email}", newUser.Email);
+                    _logger.LogError(saveException,
+                        "Không thể cập nhật trạng thái email_outbox {OutboxId}", emailOutbox.EmailOutboxId);
                 }
-            }, CancellationToken.None);
+
+                _logger.LogError(ex, "Lỗi gửi email xác thực OTP Affiliate cho UserId {UserId}", newUser.UserId);
+            }
 
             // 11. Trả về kết quả HTTP 201 Created
             return new RegisterAffiliateResponse
             {
                 Success = true,
-                Message = "Registration successful. Please verify your email.",
+                Message = "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.",
                 Data = new RegisterAffiliateData
                 {
                     UserId = newUser.UserId,

@@ -31,10 +31,15 @@ public static class AdminApprovalEndpoints
             [FromQuery] string sortBy = "submittedAt",
             [FromQuery] string sortDirection = "desc",
             [FromServices] ISender sender = null!,
+            [FromServices] IValidator<GetApprovalListQuery> validator = null!,
             ClaimsPrincipal user = null!,
             CancellationToken cancellationToken = default) =>
         {
-            if (!HasAdminAccess(user))
+            var isPlatformAdmin = user.IsInRole("PLATFORM_ADMIN");
+            var canVerifyAffiliate = isPlatformAdmin || user.HasClaim("permission", "affiliate.verify");
+            var canVerifyCompany = isPlatformAdmin || user.HasClaim("permission", "company.verify");
+
+            if (!canVerifyAffiliate && !canVerifyCompany)
             {
                 return Results.Json(new
                 {
@@ -43,14 +48,46 @@ public static class AdminApprovalEndpoints
                 }, statusCode: StatusCodes.Status403Forbidden);
             }
 
-            var query = new GetApprovalListQuery(type, status, search, page, pageSize, sortBy, sortDirection);
+            var requestedType = string.IsNullOrWhiteSpace(type)
+                ? null
+                : type.Trim().ToUpperInvariant();
+
+            if (requestedType is not null and not "AFFILIATE" and not "CLIENT")
+            {
+                return Results.BadRequest(new { success = false, message = "type chỉ nhận AFFILIATE hoặc CLIENT." });
+            }
+
+            if (requestedType == "AFFILIATE" && !canVerifyAffiliate ||
+                requestedType == "CLIENT" && !canVerifyCompany)
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Bạn không có quyền xem loại hồ sơ phê duyệt này."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            // Quyền một phía chỉ được xem đúng hàng đợi mình phụ trách. Platform Admin
+            // hoặc người có cả hai quyền mới được xem danh sách hợp nhất.
+            var effectiveType = requestedType
+                ?? (canVerifyAffiliate && !canVerifyCompany ? "AFFILIATE" : null)
+                ?? (!canVerifyAffiliate && canVerifyCompany ? "CLIENT" : null);
+
+            var query = new GetApprovalListQuery(effectiveType, status, search, page, pageSize, sortBy, sortDirection);
+            var validation = await validator.ValidateAsync(query, cancellationToken);
+            if (!validation.IsValid)
+            {
+                return Results.ValidationProblem(validation.ToDictionary());
+            }
+
             var result = await sender.Send(query, cancellationToken);
             return Results.Ok(result);
         })
         .WithName("GetApprovalList")
         .WithSummary("Lấy danh sách yêu cầu phê duyệt hợp nhất (Affiliate & Client)")
-        .WithDescription("Hỗ trợ lọc theo type (AFFILIATE, CLIENT), status (PENDING, APPROVED, REJECTED), search không phân biệt hoa thường, phân trang và sắp xếp.")
+        .WithDescription("Hỗ trợ lọc theo type (AFFILIATE, CLIENT), status (UNDER_REVIEW, APPROVED, REJECTED), search không phân biệt hoa thường, phân trang và sắp xếp. UNDER_REVIEW là hồ sơ đã xác thực OTP và đang chờ Admin xử lý; hồ sơ PENDING chưa xác thực OTP không xuất hiện trong API này.")
         .Produces<GetApprovalListResponse>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden);
 
@@ -376,7 +413,7 @@ public static class AdminApprovalEndpoints
 
     private static Guid? GetCurrentUserId(ClaimsPrincipal user)
     {
-        var idString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+        var idString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
                     ?? user.FindFirst("sub")?.Value;
 
         return Guid.TryParse(idString, out var guid) ? guid : null;

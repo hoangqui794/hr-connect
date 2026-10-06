@@ -21,11 +21,22 @@ public class CreateJobCommandValidator : AbstractValidator<CreateJobCommand>
             RuleFor(x => x.Location)
                 .MaximumLength(255).WithMessage("Địa điểm không được vượt quá 255 ký tự.");
         });
+        When(x => !string.IsNullOrWhiteSpace(x.WorkingTime), () => RuleFor(x => x.WorkingTime)
+            .MaximumLength(2000).WithMessage("Thời gian làm việc không được vượt quá 2000 ký tự."));
 
         When(x => !string.IsNullOrWhiteSpace(x.EmploymentType), () =>
         {
             RuleFor(x => x.EmploymentType)
                 .MaximumLength(50).WithMessage("Loại hình làm việc không được vượt quá 50 ký tự.");
+            RuleFor(x => x.EmploymentType)
+                .Must(value => EmploymentTypes.All.Contains(value.Trim().ToUpperInvariant()))
+                .WithMessage("Loại hình làm việc phải là FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP hoặc FREELANCE.");
+        });
+
+        When(x => !string.IsNullOrWhiteSpace(x.Benefits), () =>
+        {
+            RuleFor(x => x.Benefits)
+                .MaximumLength(10000).WithMessage("Quyền lợi công việc không được vượt quá 10000 ký tự.");
         });
 
         RuleFor(x => x.CurrencyCode)
@@ -54,15 +65,61 @@ public class CreateJobCommandValidator : AbstractValidator<CreateJobCommand>
                 .WithMessage("Mức lương tối đa phải lớn hơn hoặc bằng mức lương tối thiểu.");
         });
 
+        When(x => !string.IsNullOrWhiteSpace(x.SalaryNote), () =>
+        {
+            RuleFor(x => x.SalaryNote)
+                .MaximumLength(1000).WithMessage("Ghi chú lương không được vượt quá 1000 ký tự.");
+        });
+
+        When(x => x.MinExperienceYears.HasValue, () =>
+        {
+            RuleFor(x => x.MinExperienceYears)
+                .InclusiveBetween(0, 50).WithMessage("Số năm kinh nghiệm tối thiểu phải từ 0 đến 50 năm.");
+        });
+
+        When(x => x.MaxExperienceYears.HasValue, () =>
+        {
+            RuleFor(x => x.MaxExperienceYears)
+                .InclusiveBetween(0, 50).WithMessage("Số năm kinh nghiệm tối đa phải từ 0 đến 50 năm.");
+        });
+
+        When(x => x.MinExperienceYears.HasValue && x.MaxExperienceYears.HasValue, () =>
+        {
+            RuleFor(x => x.MaxExperienceYears)
+                .GreaterThanOrEqualTo(x => x.MinExperienceYears)
+                .WithMessage("Số năm kinh nghiệm tối đa phải lớn hơn hoặc bằng số năm kinh nghiệm tối thiểu.");
+        });
+
         RuleFor(x => x.Visibility)
             .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage("Chế độ hiển thị không được để trống.")
             .Must(value => JobVisibilities.All.Contains(value.Trim().ToUpperInvariant()))
-            .WithMessage("Chế độ hiển thị phải là PUBLIC hoặc PRIVATE.");
+            .WithMessage("Chế độ hiển thị phải là PUBLIC, PARTNER_ONLY hoặc INTERNAL_ONLY.");
 
         RuleForEach(x => x.Requirements)
             .NotNull().WithMessage("Yêu cầu công việc không được là null.")
             .SetValidator(new CreateJobRequirementRequestValidator());
+
+        RuleFor(x => x.Skills)
+            .Must(skills => skills.Select(skill => skill.SkillId).Distinct().Count() == skills.Count)
+            .WithMessage("Danh sách kỹ năng không được chứa SkillId trùng nhau.");
+
+        RuleForEach(x => x.Skills)
+            .NotNull().WithMessage("Kỹ năng công việc không được là null.")
+            .SetValidator(new JobSkillRequestValidator());
+    }
+}
+
+public class JobSkillRequestValidator : AbstractValidator<JobSkillRequest>
+{
+    public JobSkillRequestValidator()
+    {
+        RuleFor(x => x.SkillId).NotEmpty().WithMessage("Kỹ năng không được để trống.");
+        When(x => x.Weight.HasValue, () =>
+        {
+            RuleFor(x => x.Weight)
+                .InclusiveBetween(0, 1).WithMessage("Trọng số kỹ năng phải nằm trong khoảng từ 0 đến 1.");
+        });
     }
 }
 

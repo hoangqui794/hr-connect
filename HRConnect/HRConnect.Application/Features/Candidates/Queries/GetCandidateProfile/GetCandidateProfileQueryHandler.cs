@@ -28,6 +28,7 @@ public class GetCandidateProfileQueryHandler : IRequestHandler<GetCandidateProfi
             throw new NotFoundException("Không tìm thấy hồ sơ ứng viên tương ứng với tài khoản này.");
         }
 
+        var primaryCv = candidate.CandidateCvs.SingleOrDefault();
         var response = new CandidateProfileResponse
         {
             Success = true,
@@ -58,17 +59,17 @@ public class GetCandidateProfileQueryHandler : IRequestHandler<GetCandidateProfi
                     ProficiencyLevel = cs.ProficiencyLevel,
                     YearsOfExperience = cs.YearsOfExperience
                 }).ToList() ?? new List<CandidateSkillItemDto>(),
-                PrimaryCv = candidate.CandidateCv != null ? new CandidateCvItemDto
+                PrimaryCv = primaryCv != null ? new CandidateCvItemDto
                 {
-                    CvId = candidate.CandidateCv.CvId,
-                    Title = candidate.CandidateCv.Title,
-                    CreationMethod = candidate.CandidateCv.CreationMethod,
-                    SourceFileUrl = candidate.CandidateCv.SourceFileUrl,
-                    RenderedFileUrl = candidate.CandidateCv.RenderedFileUrl,
-                    FileName = candidate.CandidateCv.FileName,
-                    FileSizeBytes = candidate.CandidateCv.FileSizeBytes,
-                    IsPrimary = candidate.CandidateCv.IsPrimary,
-                    UpdatedAt = candidate.CandidateCv.UpdatedAt
+                    CvId = primaryCv.CvId,
+                    Title = primaryCv.Title,
+                    CreationMethod = primaryCv.CreationMethod,
+                    SourceFileUrl = primaryCv.SourceFileUrl,
+                    RenderedFileUrl = primaryCv.RenderedFileUrl,
+                    FileName = primaryCv.FileName,
+                    FileSizeBytes = primaryCv.FileSizeBytes,
+                    IsPrimary = primaryCv.IsPrimary,
+                    UpdatedAt = primaryCv.UpdatedAt
                 } : null
             }
         };

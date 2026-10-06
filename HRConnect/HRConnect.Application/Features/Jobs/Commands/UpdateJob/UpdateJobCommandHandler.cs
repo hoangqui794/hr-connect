@@ -15,22 +15,97 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
     public async Task<JobActionResponse> Handle(UpdateJobCommand request, CancellationToken ct)
     {
         var job = await JobHandlerGuards.GetOwnedJobAsync(_jobs, _members, request.JobId, request.UserId, ct);
+        JobTransitions.RequireCurrentToken(job, request.ConcurrencyToken);
         JobHandlerGuards.RequireStatus(job, JobStatuses.Draft, JobStatuses.Rejected);
-        if (!await _jobs.IsServiceTypeActiveAsync(request.ServiceTypeId, ct))
+
+        var isChangingServiceType = job.ServiceTypeId != request.ServiceTypeId;
+        if (isChangingServiceType)
+        {
+            if (!string.Equals(job.Status, JobStatuses.Draft, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ConflictException(
+                    "Chỉ được thay đổi loại dịch vụ khi Job đang ở trạng thái DRAFT.");
+            }
+
+            if (await _jobs.HasSubmissionsOrApplicationsAsync(job.JobId, ct))
+            {
+                throw new ConflictException(
+                    "Không thể thay đổi loại dịch vụ vì Job đã có hồ sơ ứng tuyển hoặc lượt giới thiệu.");
+            }
+        }
+
+        var serviceTypeCode = await _jobs.GetActiveServiceTypeCodeAsync(request.ServiceTypeId, ct);
+        if (serviceTypeCode == null)
             throw new BadRequestException("Loại dịch vụ không tồn tại hoặc đã ngừng hoạt động.");
+        JobHandlerGuards.RequireVisibilityAllowed(serviceTypeCode, request.Visibility);
+        var skillIds = request.Skills.Select(x => x.SkillId).Distinct().ToList();
+        if (skillIds.Count > 0 && !await _jobs.AreSkillsActiveAsync(skillIds, ct))
+            throw new BadRequestException("Một hoặc nhiều kỹ năng không tồn tại hoặc đã ngừng hoạt động.");
         var now = DateTime.UtcNow;
         job.ServiceTypeId = request.ServiceTypeId; job.Title = request.Title?.Trim() ?? string.Empty;
-        job.Description = Normalize(request.Description); job.Location = Normalize(request.Location);
+        job.Description = Normalize(request.Description); job.Benefits = Normalize(request.Benefits); job.Location = Normalize(request.Location); job.WorkingTime = Normalize(request.WorkingTime);
         job.EmploymentType = Normalize(request.EmploymentType)?.ToUpperInvariant();
         job.SalaryMin = request.SalaryMin; job.SalaryMax = request.SalaryMax;
+        job.SalaryNegotiable = request.SalaryNegotiable; job.SalaryNote = Normalize(request.SalaryNote);
+        job.MinExperienceYears = request.MinExperienceYears; job.MaxExperienceYears = request.MaxExperienceYears;
         job.CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(); job.Quantity = request.Quantity;
-        job.Visibility = request.Visibility.Trim().ToUpperInvariant(); job.UpdatedAt = now; job.StatusReason = null;
-        job.JobRequirements.Clear();
-        foreach (var item in request.Requirements)
-            job.JobRequirements.Add(new JobRequirement { RequirementId = Guid.NewGuid(), JobId = job.JobId,
-                RequirementType = item.RequirementType.Trim().ToUpperInvariant(), Category = Normalize(item.Category),
-                Content = item.Content.Trim(), Weight = item.Weight, CreatedAt = now, UpdatedAt = now });
-        _jobs.Update(job); await _uow.SaveChangesAsync(ct);
+        job.Visibility = request.Visibility.Trim().ToUpperInvariant(); job.UpdatedAt = now; job.ConcurrencyToken = Guid.NewGuid(); job.StatusReason = null;
+        var existingRequirements = job.JobRequirements.OrderBy(item => item.CreatedAt).ToList();
+        for (var index = 0; index < request.Requirements.Count; index++)
+        {
+            var item = request.Requirements[index];
+            if (index < existingRequirements.Count)
+            {
+                var existing = existingRequirements[index];
+                existing.RequirementType = item.RequirementType.Trim().ToUpperInvariant();
+                existing.Category = Normalize(item.Category);
+                existing.Content = item.Content.Trim();
+                existing.Weight = item.Weight;
+                existing.UpdatedAt = now;
+                continue;
+            }
+
+            job.JobRequirements.Add(new JobRequirement
+            {
+                RequirementId = Guid.NewGuid(),
+                JobId = job.JobId,
+                RequirementType = item.RequirementType.Trim().ToUpperInvariant(),
+                Category = Normalize(item.Category),
+                Content = item.Content.Trim(),
+                Weight = item.Weight,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        foreach (var removedRequirement in existingRequirements.Skip(request.Requirements.Count))
+            job.JobRequirements.Remove(removedRequirement);
+        var requestedSkills = request.Skills.ToDictionary(item => item.SkillId);
+        var removedSkills = job.JobSkills
+            .Where(existing => !requestedSkills.ContainsKey(existing.SkillId))
+            .ToList();
+        foreach (var removedSkill in removedSkills)
+            job.JobSkills.Remove(removedSkill);
+
+        foreach (var item in request.Skills)
+        {
+            var existingSkill = job.JobSkills.FirstOrDefault(existing => existing.SkillId == item.SkillId);
+            if (existingSkill != null)
+            {
+                existingSkill.IsMandatory = item.IsMandatory;
+                existingSkill.Weight = item.Weight;
+                continue;
+            }
+
+            job.JobSkills.Add(new JobSkill
+            {
+                JobId = job.JobId,
+                SkillId = item.SkillId,
+                IsMandatory = item.IsMandatory,
+                Weight = item.Weight
+            });
+        }
+        await _uow.SaveChangesAsync(ct);
         return new(true, "Cập nhật công việc thành công.", JobDto.From(job));
     }
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

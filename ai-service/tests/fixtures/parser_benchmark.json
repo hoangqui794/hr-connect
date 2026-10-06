@@ -1,0 +1,62 @@
+[
+  {
+    "id": "sales-date-company-role",
+    "text": "ANON CANDIDATE\nWORK EXPERIENCE\n02/2022 - 08/2023\nNorthstar Trading Ltd\nSales Executive\nEDUCATION\nBachelor of Business Administration\nSKILLS\nCommunication, Microsoft Excel",
+    "expected": {"contact": false, "skills": true, "education": true, "experience": true, "experienceCount": 1}
+  },
+  {
+    "id": "hr-inline-role-date",
+    "text": "ANON CANDIDATE\nWORK EXPERIENCES\nHR Specialist // Mar 2021 - Jul 2023\nPeople First Ltd\nEDUCATION\nBachelor of Human Resources\nSKILLS\nCommunication, Microsoft Excel",
+    "expected": {"contact": false, "skills": true, "education": true, "experience": true, "experienceCount": 1}
+  },
+  {
+    "id": "software-company-role-date",
+    "text": "ANON CANDIDATE\nWORK EXPERIENCE\nBlue Harbor Systems\nSoftware Engineer\nJan 2020 - Dec 2022\nEDUCATION\nBachelor of Computer Science\nSKILLS\nPython, Docker, PostgreSQL",
+    "expected": {"contact": false, "skills": true, "education": true, "experience": true, "experienceCount": 1}
+  },
+  {
+    "id": "healthcare-company-date-header",
+    "text": "ANON CANDIDATE\nWORKING EXPERIENCE\nCommunity Health Center (03/2020 - Present)\nRegistered Nurse\nEDUCATION\nBachelor of Nursing\nSKILLS\nCommunication, Microsoft Excel",
+    "expected": {"contact": false, "skills": true, "education": true, "experience": true, "experienceCount": 1}
+  },
+  {
+    "id": "education-inline-timeline",
+    "text": "ANON CANDIDATE\nWORKING HISTORY\n2020 - 2024 — Bright Path Academy — Mathematics Teacher\nEDUCATION\nBachelor of Mathematics Education\nSKILLS\nCommunication, Microsoft Excel",
+    "expected": {"contact": false, "skills": true, "education": true, "experience": true, "experienceCount": 1}
+  },
+  {
+    "id": "architecture-delimited-role-company",
+    "text": "ANON CANDIDATE\nWORK EXPERIENCE\nArchitect - Studio Meridian | 06/2019 - 06/2023\nEDUCATION\nBachelor of Architecture\nSKILLS\nAutoCAD, Revit, SketchUp",
+    "expected": {"contact": false, "skills": true, "education": true, "experience": true, "experienceCount": 1}
+  },
+  {
+    "id": "finance-company-date-header",
+    "text": "ANON CANDIDATE\nWORK EXPERIENCE\nLedger Partners (01/2021 - 12/2023)\nFinance Officer\nEDUCATION\nBachelor of Finance\nSKILLS\nMicrosoft Excel, SQL",
+    "expected": {"contact": false, "skills": true, "education": true, "experience": true, "experienceCount": 1}
+  },
+  {
+    "id": "logistics-inline-timeline",
+    "text": "ANON CANDIDATE\nWORK HISTORY\n2021 - 2024 — Transit Network — Logistics Coordinator\nEDUCATION\nBachelor of Supply Chain Management\nSKILLS\nCommunication, Microsoft Excel",
+    "expected": {"contact": false, "skills": true, "education": true, "experience": true, "experienceCount": 1}
+  },
+  {
+    "id": "software-summary-and-detail-records",
+    "text": "ANON CANDIDATE\nWORKING HISTORY\n2022 - now — Northwind Systems — Senior Software Engineer\n2020 - 2022 — Harbor Labs — Software Engineer\nWORKING EXPERIENCE\nNorthwind Systems (2022 - now)\nSenior Software Engineer\nHarbor Labs (2020 - 2022)\nSoftware Engineer\nEDUCATION\nBachelor of Computer Science\nSKILLS\nPython, Docker, PostgreSQL",
+    "expected": {"contact": false, "skills": true, "education": true, "experience": true, "experienceCount": 2}
+  },
+  {
+    "id": "manufacturing-role-date-without-company",
+    "text": "ANON CANDIDATE\nWORK EXPERIENCE\nProduction Technician\n02/2022 - 08/2023\nOperated assembly equipment safely.\nSKILLS\nMicrosoft Excel",
+    "expected": {"contact": false, "skills": true, "education": false, "experience": false, "experienceCount": 0, "manualReview": true}
+  },
+  {
+    "id": "student-project-date-is-not-employment",
+    "text": "ANON CANDIDATE\nPROJECTS\nCampus Design Project | 01/2023 - 06/2023\nDesigned an energy-efficient study space.\nEDUCATION\nBachelor of Interior Design\nSKILLS\nSketchUp, V-Ray",
+    "expected": {"contact": false, "skills": true, "education": true, "experience": false, "experienceCount": 0, "manualReview": false}
+  },
+  {
+    "id": "ambiguous-experience-requires-review",
+    "text": "ANON CANDIDATE\nWORK EXPERIENCE\nSales Executive\n02/2022 - 08/2023\nManaged enterprise customers.",
+    "expected": {"contact": false, "skills": false, "education": false, "experience": false, "experienceCount": 0, "manualReview": true}
+  }
+]

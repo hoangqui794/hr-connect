@@ -19,4 +19,18 @@ public class RoleRepository : IRoleRepository
         return await _context.Roles
             .FirstOrDefaultAsync(r => r.Code == code, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Role>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> roleIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (roleIds.Count == 0)
+        {
+            return Array.Empty<Role>();
+        }
+
+        return await _context.Roles
+            .Where(role => roleIds.Contains(role.RoleId))
+            .ToListAsync(cancellationToken);
+    }
 }

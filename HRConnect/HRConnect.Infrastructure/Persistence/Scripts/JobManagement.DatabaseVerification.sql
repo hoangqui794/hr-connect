@@ -1,5 +1,5 @@
 -- Thay test_run_id bằng giá trị @testRunId trong JobManagement.DatabaseTests.http.
--- Ví dụ: DBTEST-20260919-01
+-- Ví dụ: DBTEST-20260921-MF01-01
 
 -- 0. Kiểm tra hệ thống đã có tài khoản INTERNAL_HR để chạy TC-06/TC-07 hay chưa.
 SELECT u.user_id, u.email, u.status, r.code AS role_code, ur.status AS role_status
@@ -12,6 +12,7 @@ WHERE r.code = 'INTERNAL_HR';
 SELECT
     j.job_id,
     j.title,
+    j.benefits,
     j.status,
     j.status_reason,
     j.visibility,
@@ -30,7 +31,7 @@ FROM public.job j
 JOIN public.company c ON c.company_id = j.company_id
 JOIN public.service_type st ON st.service_type_id = j.service_type_id
 JOIN public.app_user u ON u.user_id = j.created_by
-WHERE j.title LIKE 'DBTEST-20260919-01%'
+WHERE j.title LIKE 'DBTEST-20260921-MF01-01%'
 ORDER BY j.created_at DESC;
 
 -- 2. Xem Requirements đã được lưu/thay thế sau Update Job.
@@ -45,7 +46,7 @@ SELECT
     r.created_at
 FROM public.job j
 JOIN public.job_requirement r ON r.job_id = j.job_id
-WHERE j.title LIKE 'DBTEST-20260919-01%'
+WHERE j.title LIKE 'DBTEST-20260921-MF01-01%'
 ORDER BY j.created_at DESC, r.requirement_type, r.created_at;
 
 -- 3. Xem toàn bộ state transition theo đúng thứ tự thời gian.
@@ -60,7 +61,7 @@ SELECT
 FROM public.job j
 JOIN public.job_status_history h ON h.job_id = j.job_id
 LEFT JOIN public.app_user changer ON changer.user_id = h.changed_by
-WHERE j.title LIKE 'DBTEST-20260919-01%'
+WHERE j.title LIKE 'DBTEST-20260921-MF01-01%'
 ORDER BY j.created_at DESC, h.changed_at;
 
 -- 4. Tổng hợp nhanh số lượng history/requirement của mỗi Job test.
@@ -73,14 +74,108 @@ SELECT
 FROM public.job j
 LEFT JOIN public.job_requirement r ON r.job_id = j.job_id
 LEFT JOIN public.job_status_history h ON h.job_id = j.job_id
-WHERE j.title LIKE 'DBTEST-20260919-01%'
+WHERE j.title LIKE 'DBTEST-20260921-MF01-01%'
 GROUP BY j.job_id, j.title, j.status
 ORDER BY MAX(j.created_at) DESC;
+
+-- 5. Kiểm tra Skills tạo thành JD chuẩn hóa cho MF-03.
+SELECT j.job_id, j.title, s.skill_id, s.skill_name, js.is_mandatory, js.weight
+FROM public.job j
+JOIN public.job_skill js ON js.job_id = j.job_id
+JOIN public.skill s ON s.skill_id = js.skill_id
+WHERE j.title LIKE 'DBTEST-20260921-MF01-01%'
+ORDER BY j.created_at DESC, s.skill_name;
+
+-- 6. Kiểm tra ma trận quyền mặc định của ba Service Type.
+SELECT st.code AS service_type_code, r.code AS role_code, mapping.can_view, mapping.can_submit
+FROM public.service_type_allowed_role mapping
+JOIN public.service_type st ON st.service_type_id = mapping.service_type_id
+JOIN public.role r ON r.role_id = mapping.role_id
+WHERE st.code IN ('HEADHUNT_COD', 'CV_APPLICATION', 'CV_SOURCING')
+  AND r.code IN ('CANDIDATE', 'AFFILIATE_RECRUITER')
+ORDER BY st.code, r.code;
+
+-- 7. Kiểm tra dữ liệu Job chỉ còn ba visibility hợp lệ sau migration.
+SELECT visibility, COUNT(*) AS job_count
+FROM public.job
+GROUP BY visibility
+ORDER BY visibility;
+
+-- Kết quả mong đợi: chỉ PUBLIC, PARTNER_ONLY, INTERNAL_ONLY; PRIVATE phải bằng 0.
+SELECT COUNT(*) AS legacy_private_job_count
+FROM public.job
+WHERE visibility = 'PRIVATE';
+
+-- 8. Persistent visibility test data created through the real API on 2026-10-01.
+SELECT job_id, title, status, visibility, company_id, service_type_id, benefits, created_at, posted_at
+FROM public.job
+WHERE job_id IN (
+    'a3e88ec0-deb0-4f4f-a258-28a3c5135c53',
+    'a36f8ff6-fee1-411c-8b1a-feb16575da7b'
+)
+ORDER BY visibility;
+
+SELECT j.job_id, j.visibility, r.requirement_type, r.category, r.content, r.weight
+FROM public.job j
+JOIN public.job_requirement r ON r.job_id = j.job_id
+WHERE j.job_id IN (
+    'a3e88ec0-deb0-4f4f-a258-28a3c5135c53',
+    'a36f8ff6-fee1-411c-8b1a-feb16575da7b'
+)
+ORDER BY j.visibility, r.created_at;
+
+SELECT j.job_id, j.visibility, s.skill_name, js.is_mandatory, js.weight
+FROM public.job j
+JOIN public.job_skill js ON js.job_id = j.job_id
+JOIN public.skill s ON s.skill_id = js.skill_id
+WHERE j.job_id IN (
+    'a3e88ec0-deb0-4f4f-a258-28a3c5135c53',
+    'a36f8ff6-fee1-411c-8b1a-feb16575da7b'
+)
+ORDER BY j.visibility, s.skill_name;
+
+SELECT j.job_id, j.visibility, h.old_status, h.new_status, h.reason, h.changed_at
+FROM public.job j
+JOIN public.job_status_history h ON h.job_id = j.job_id
+WHERE j.job_id IN (
+    'a3e88ec0-deb0-4f4f-a258-28a3c5135c53',
+    'a36f8ff6-fee1-411c-8b1a-feb16575da7b'
+)
+ORDER BY j.visibility, h.changed_at;
+
+-- 9. Persistent Job access policy + Service Type/Visibility matrix rows (2026-10-02).
+SELECT j.job_id, j.title, j.status, j.visibility, st.code AS service_type_code,
+       j.company_id, j.created_by, j.created_at
+FROM public.job j
+JOIN public.service_type st ON st.service_type_id = j.service_type_id
+WHERE j.job_id IN (
+    'eeb9ef37-d05f-4553-ac62-6146d4a68a10',
+    '59bbb1ff-b959-4490-a52d-b6eba702356b'
+)
+ORDER BY j.visibility;
+
+-- Expected:
+-- eeb9ef37... = CV_SOURCING + PARTNER_ONLY
+-- 59bbb1ff... = CV_APPLICATION + INTERNAL_ONLY
+-- The rejected CV_APPLICATION + PARTNER_ONLY request returned HTTP 400 and created no row.
+
+-- Cleanup for these two rows (DO NOT run automatically).
+-- BEGIN;
+-- DELETE FROM public.job_status_history WHERE job_id IN (
+--     'eeb9ef37-d05f-4553-ac62-6146d4a68a10',
+--     '59bbb1ff-b959-4490-a52d-b6eba702356b'
+-- );
+-- DELETE FROM public.job WHERE job_id IN (
+--     'eeb9ef37-d05f-4553-ac62-6146d4a68a10',
+--     '59bbb1ff-b959-4490-a52d-b6eba702356b'
+-- );
+-- COMMIT;
 
 -- Cleanup có chủ đích (KHÔNG tự động chạy).
 -- Chỉ bỏ comment sau khi đã kiểm tra đúng job_id cần xóa.
 -- BEGIN;
 -- DELETE FROM public.job_status_history WHERE job_id = 'PUT-JOB-ID-HERE';
 -- DELETE FROM public.job_requirement WHERE job_id = 'PUT-JOB-ID-HERE';
+-- DELETE FROM public.job_skill WHERE job_id = 'PUT-JOB-ID-HERE';
 -- DELETE FROM public.job WHERE job_id = 'PUT-JOB-ID-HERE';
 -- COMMIT;

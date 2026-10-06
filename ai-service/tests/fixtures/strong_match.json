@@ -1,0 +1,25 @@
+{
+  "requestId": "STRONG-001",
+  "applicationId": "APP-001",
+  "attemptNo": 1,
+  "candidate": {
+    "summary": "Strong backend developer",
+    "yearsOfExperience": 4,
+    "highestEducation": "Bachelor",
+    "skills": [
+      {"name": "ASP NET Core", "yearsOfExperience": 4},
+      {"name": "PostgreSQL", "yearsOfExperience": 3},
+      {"name": "Docker", "yearsOfExperience": 2}
+    ],
+    "cvText": "Built REST APIs using ASP.NET Core, PostgreSQL and Docker."
+  },
+  "job": {
+    "title": ".NET Backend Developer",
+    "description": "Develop REST backend services using .NET and PostgreSQL.",
+    "requirements": [
+      {"type": "MUST_HAVE", "category": "SKILL", "content": "ASP.NET Core"},
+      {"type": "MUST_HAVE", "category": "SKILL", "content": "PostgreSQL"},
+      {"type": "SHOULD_HAVE", "category": "SKILL", "content": "Docker"}
+    ]
+  }
+}

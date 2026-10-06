@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace HRConnect.Domain.Entities;
@@ -17,13 +17,25 @@ public partial class Job
 
     public string? Description { get; set; }
 
+    public string? Benefits { get; set; }
+
     public string? Location { get; set; }
+
+    public string? WorkingTime { get; set; }
 
     public string? EmploymentType { get; set; }
 
     public decimal? SalaryMin { get; set; }
 
     public decimal? SalaryMax { get; set; }
+
+    public bool SalaryNegotiable { get; set; }
+
+    public string? SalaryNote { get; set; }
+
+    public int? MinExperienceYears { get; set; }
+
+    public int? MaxExperienceYears { get; set; }
 
     public string CurrencyCode { get; set; } = null!;
 
@@ -41,6 +53,8 @@ public partial class Job
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
+
+    public Guid ConcurrencyToken { get; set; }
 
     /// <summary>
     /// D07-ready job visibility. Exact actor permissions remain a business-rule/authorization concern.

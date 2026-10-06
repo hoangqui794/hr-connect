@@ -20,8 +20,8 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     }
 
     public (string Token, DateTime ExpiresAt) GenerateAccessToken(
-        AppUser user, 
-        IEnumerable<string> roles, 
+        AppUser user,
+        IEnumerable<string> roles,
         IEnumerable<string> permissions)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -58,7 +58,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
             Issuer = _jwtSettings.Issuer,
             Audience = _jwtSettings.Audience,
             SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(key), 
+                new SymmetricSecurityKey(key),
                 SecurityAlgorithms.HmacSha256Signature)
         };
 

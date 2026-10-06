@@ -18,7 +18,7 @@ public class LoginData
     public string TokenType { get; set; } = "Bearer";
 
     public DateTime ExpiresAt { get; set; }
- 
+
     public DateTime AccessTokenExpiresAt => ExpiresAt;
 
     public DateTime RefreshTokenExpiresAt { get; set; }

@@ -68,6 +68,11 @@ VALUES
      'view_own',
      'View own job applications'),
 
+    ('application.withdraw_own',
+     'application',
+     'withdraw_own',
+     'Withdraw own job application'),
+
     ('interview.view_own',
      'interview',
      'view_own',
@@ -110,6 +115,31 @@ VALUES
      'submission',
      'view_own',
      'View own submissions'),
+
+    ('referral.progress.view_own',
+     'affiliate_referral',
+     'view_own',
+     'View high-level progress of own referrals'),
+
+    ('submission.consent.resend_own',
+     'submission_consent',
+     'resend_own',
+     'Resend consent request for own submission'),
+
+    ('candidate_library.view_own',
+     'affiliate_candidate_library',
+     'view_own',
+     'View candidates and CV metadata in own affiliate library'),
+
+    ('candidate_library.download_cv',
+     'affiliate_candidate_library',
+     'download_cv',
+     'Download CV from own affiliate candidate library'),
+
+    ('attribution.view_own',
+     'attribution',
+     'view_own',
+     'View own affiliate attribution'),
 
     ('dispute.create',
      'dispute',
@@ -204,6 +234,36 @@ VALUES
      'view_company',
      'View offers for own company jobs'),
 
+    ('interview.record_result',
+     'interview',
+     'record_result',
+     'Record interview result'),
+
+    ('application.decide_backup',
+     'application',
+     'decide_backup',
+     'Decide backup candidate selection'),
+
+    ('offer.send',
+     'offer',
+     'send',
+     'Send offer to candidate'),
+
+    ('offer.withdraw',
+     'offer',
+     'withdraw',
+     'Withdraw job offer'),
+
+    ('placement.confirm',
+     'placement',
+     'confirm',
+     'Confirm candidate placement and start work'),
+
+    ('application.mark_not_started',
+     'application',
+     'mark_not_started',
+     'Mark placed candidate as not started'),
+
     -- ========================================================
     -- INTERNAL HR
     -- ========================================================
@@ -236,6 +296,11 @@ VALUES
      'application',
      'screen',
      'Screen applications'),
+
+    ('application.retry_ai_scoring',
+     'application',
+     'retry_ai_scoring',
+     'Retry failed AI scoring'),
 
     ('submission.view',
      'submission',
@@ -396,6 +461,7 @@ JOIN public.permission p
 
         'application.create',
         'application.view_own',
+        'application.withdraw_own',
 
         'interview.view_own',
 
@@ -425,6 +491,11 @@ JOIN public.permission p
 
         'submission.create',
         'submission.view_own',
+        'referral.progress.view_own',
+        'submission.consent.resend_own',
+        'candidate_library.view_own',
+        'candidate_library.download_cv',
+        'attribution.view_own',
 
         'dispute.create',
         'dispute.view_own',
@@ -465,7 +536,14 @@ JOIN public.permission p
 
         'offer.create',
         'offer.update',
-        'offer.view_company'
+        'offer.view_company',
+
+        'interview.record_result',
+        'application.decide_backup',
+        'offer.send',
+        'offer.withdraw',
+        'placement.confirm',
+        'application.mark_not_started'
     )
 WHERE r.code = 'CLIENT_COMPANY_USER'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
@@ -491,14 +569,11 @@ JOIN public.permission p
         'candidate.view',
 
         'application.view',
-        'application.screen',
+        'application.retry_ai_scoring',
 
         'submission.view',
         'attribution.view',
 
-        'interview.manage',
-        'offer.manage',
-        'placement.manage',
         'probation.manage',
         'warranty.manage',
 
@@ -519,6 +594,8 @@ FROM public.role r
 JOIN public.permission p
     ON p.code IN (
         'job.view',
+        'job.review',
+        'job.publish',
         'notification.view_own',
 
         'user.view',
@@ -543,7 +620,16 @@ JOIN public.permission p
         'system_config.manage',
 
         'report.view',
-        'audit.view'
+        'audit.view',
+
+        'application.retry_ai_scoring',
+
+        'interview.record_result',
+        'application.decide_backup',
+        'offer.send',
+        'offer.withdraw',
+        'placement.confirm',
+        'application.mark_not_started'
     )
 WHERE r.code = 'PLATFORM_ADMIN'
 ON CONFLICT (role_id, permission_id) DO NOTHING;

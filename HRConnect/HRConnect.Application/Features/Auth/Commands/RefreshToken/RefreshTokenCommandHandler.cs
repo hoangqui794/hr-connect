@@ -16,6 +16,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
     private readonly IUserRepository _userRepository;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IOtpService _otpService;
+    private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly JwtSettings _jwtSettings;
     private readonly ILogger<RefreshTokenCommandHandler> _logger;
@@ -25,6 +26,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         IUserRepository userRepository,
         IJwtTokenGenerator jwtTokenGenerator,
         IOtpService otpService,
+        IAuditLogService auditLogService,
         IUnitOfWork unitOfWork,
         IOptions<JwtSettings> jwtOptions,
         ILogger<RefreshTokenCommandHandler> logger)
@@ -33,6 +35,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         _userRepository = userRepository;
         _jwtTokenGenerator = jwtTokenGenerator;
         _otpService = otpService;
+        _auditLogService = auditLogService;
         _unitOfWork = unitOfWork;
         _jwtSettings = jwtOptions.Value;
         _logger = logger;
@@ -48,6 +51,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         var incomingTokenHash = _otpService.HashOtp(request.RefreshToken.Trim());
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        var transactionCommitted = false;
 
         try
         {
@@ -67,8 +71,21 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
                     existingToken.UserId);
 
                 await _refreshTokenRepository.RevokeAllByUserIdAsync(existingToken.UserId, "TOKEN_REUSE_DETECTED", cancellationToken);
+
+                // Ghi audit REFRESH_TOKEN_REUSE_DETECTED trước commit cùng transaction
+                await _auditLogService.AddAsync(new AuditEntry
+                {
+                    Action = AuditActions.RefreshTokenReuseDetected,
+                    EntityType = "REFRESH_TOKEN",
+                    EntityId = existingToken.RefreshTokenId,
+                    ActorType = AuditActorTypes.System,
+                    NewValues = new { affectedUserId = existingToken.UserId, allSessionsRevoked = true },
+                    Source = AuditSources.Api
+                }, cancellationToken);
+
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
                 await _unitOfWork.CommitTransactionAsync(cancellationToken);
+                transactionCommitted = true;
 
                 throw new BadRequestException("Token làm mới không hợp lệ hoặc đã hết hạn.");
             }
@@ -76,7 +93,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             // 3. Kiểm tra thời hạn hết hạn
             if (existingToken.ExpiresAt <= DateTime.UtcNow)
             {
-                _logger.LogWarning("Refresh token của UserId {UserId} đã hết hạn vào {ExpiresAt}", 
+                _logger.LogWarning("Refresh token của UserId {UserId} đã hết hạn vào {ExpiresAt}",
                     existingToken.UserId, existingToken.ExpiresAt);
                 throw new BadRequestException("Token làm mới không hợp lệ hoặc đã hết hạn.");
             }
@@ -110,13 +127,13 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
                 if (user.EmailVerifiedAt == null)
                 {
                     _logger.LogWarning("Từ chối refresh token: Tài khoản Affiliate {Email} chưa xác thực email.", user.Email);
-                    throw new ForbiddenException("Please verify your email before continuing.");
+                    throw new ForbiddenException("Vui lòng xác thực email trước khi tiếp tục.");
                 }
 
                 if (string.Equals(user.AffiliateApplicationUser.Status, "REJECTED", StringComparison.OrdinalIgnoreCase))
                 {
                     _logger.LogWarning("Từ chối refresh token: Đơn Affiliate của {Email} đã bị từ chối.", user.Email);
-                    throw new ForbiddenException("Your registration was rejected.");
+                    throw new ForbiddenException("Hồ sơ đăng ký của bạn đã bị từ chối.");
                 }
             }
 
@@ -129,7 +146,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
                 if (user.EmailVerifiedAt == null)
                 {
                     _logger.LogWarning("Từ chối refresh token: Tài khoản Client {Email} chưa xác thực email.", user.Email);
-                    throw new ForbiddenException("Please verify your email before continuing.");
+                    throw new ForbiddenException("Vui lòng xác thực email trước khi tiếp tục.");
                 }
 
                 var isRequestRejected = clientRequest != null && string.Equals(clientRequest.Status, "REJECTED", StringComparison.OrdinalIgnoreCase);
@@ -138,12 +155,13 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
                 if (isRequestRejected || isCompanyRejected)
                 {
                     _logger.LogWarning("Từ chối refresh token: Đăng ký doanh nghiệp của {Email} đã bị từ chối.", user.Email);
-                    throw new ForbiddenException("Your registration was rejected.");
+                    throw new ForbiddenException("Hồ sơ đăng ký của bạn đã bị từ chối.");
                 }
             }
 
             var activeRoles = user.UserRoleUsers
-                .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+                .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
+                             ur.Role.IsActive)
                 .Select(ur => ur.Role.Code)
                 .Distinct()
                 .ToList();
@@ -155,8 +173,10 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             }
 
             var activePermissions = user.UserRoleUsers
-                .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+                .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
+                             ur.Role.IsActive)
                 .SelectMany(ur => ur.Role.RolePermissions)
+                .Where(rp => rp.Permission.IsActive)
                 .Select(rp => rp.Permission.Code)
                 .Distinct()
                 .OrderBy(p => p)
@@ -191,6 +211,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            transactionCommitted = true;
 
             _logger.LogInformation("Xoay vòng refresh token thành công cho UserId {UserId} ({Email}).", user.UserId, user.Email);
 
@@ -219,7 +240,13 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         }
         catch
         {
-            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            // Reuse detection deliberately returns 400 after its revocation/audit transaction
+            // has committed. Do not roll back or clear that completed unit of work.
+            if (!transactionCommitted)
+            {
+                await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+            }
+
             throw;
         }
     }

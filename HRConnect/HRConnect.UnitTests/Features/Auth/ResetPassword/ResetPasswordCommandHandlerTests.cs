@@ -2,6 +2,7 @@ using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Auth.Commands.ResetPassword;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -17,6 +18,7 @@ public class ResetPasswordCommandHandlerTests
     private readonly Mock<IPasswordHasher> _passwordHasherMock;
     private readonly Mock<IOtpService> _otpServiceMock;
     private readonly Mock<IEmailNormalizer> _emailNormalizerMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<ILogger<ResetPasswordCommandHandler>> _loggerMock;
 
@@ -30,6 +32,7 @@ public class ResetPasswordCommandHandlerTests
         _passwordHasherMock = new Mock<IPasswordHasher>();
         _otpServiceMock = new Mock<IOtpService>();
         _emailNormalizerMock = new Mock<IEmailNormalizer>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _loggerMock = new Mock<ILogger<ResetPasswordCommandHandler>>();
 
@@ -44,6 +47,7 @@ public class ResetPasswordCommandHandlerTests
             _passwordHasherMock.Object,
             _otpServiceMock.Object,
             _emailNormalizerMock.Object,
+            _auditLogServiceMock.Object,
             _unitOfWorkMock.Object,
             _loggerMock.Object);
     }
@@ -272,7 +276,7 @@ public class ResetPasswordCommandHandlerTests
         // Assert
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Message.Should().Be("Password has been reset successfully.");
+        result.Message.Should().Be("Đặt lại mật khẩu thành công.");
 
         // User password updated
         user.PasswordHash.Should().Be("newly_hashed_password_abc");
@@ -288,9 +292,52 @@ public class ResetPasswordCommandHandlerTests
         // All refresh tokens revoked
         _refreshTokenRepositoryMock.Verify(x => x.RevokeAllByUserIdAsync(user.UserId, "PASSWORD_RESET", It.IsAny<CancellationToken>()), Times.Once);
 
+        // Audit PASSWORD_RESET recorded
+        _auditLogServiceMock.Verify(x => x.AddAsync(
+            It.Is<AuditEntry>(a =>
+                a.Action == AuditActions.PasswordReset &&
+                a.EntityType == "APP_USER" &&
+                a.EntityId == user.UserId &&
+                a.ActorUserId == user.UserId),
+            It.IsAny<CancellationToken>()), Times.Once);
+
         // Transaction lifecycle verified
         _unitOfWorkMock.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotAudit_WhenOtpIsInvalid()
+    {
+        // Arrange
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "user@example.com",
+            PasswordHash = "hash",
+            Status = "ACTIVE"
+        };
+        var token = new UserToken
+        {
+            TokenId = Guid.NewGuid(),
+            UserId = user.UserId,
+            TokenType = "PASSWORD_RESET",
+            TokenHash = "hash_correct",
+            ExpiresAt = DateTime.UtcNow.AddMinutes(10),
+            AttemptCount = 0
+        };
+        var command = new ResetPasswordCommand("user@example.com", "000000", "NewPass@123");
+
+        _userRepositoryMock.Setup(x => x.GetByEmailAsync("user@example.com", It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _userTokenRepositoryMock.Setup(x => x.GetLatestActiveOtpAsync(user.UserId, "PASSWORD_RESET", It.IsAny<CancellationToken>())).ReturnsAsync(token);
+        _otpServiceMock.Setup(x => x.VerifyOtp("000000", "hash_correct")).Returns(false);
+
+        // Act
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BadRequestException>();
+        _auditLogServiceMock.Verify(x => x.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

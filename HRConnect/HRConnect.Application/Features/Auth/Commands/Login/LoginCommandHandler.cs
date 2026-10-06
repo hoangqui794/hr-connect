@@ -11,6 +11,8 @@ namespace HRConnect.Application.Features.Auth.Commands.Login;
 
 public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 {
+    private const int MaxFailedLoginAttempts = 5;
+    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IPasswordHasher _passwordHasher;
@@ -60,13 +62,38 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             throw new UnauthorizedException("Email hoặc mật khẩu không chính xác.");
         }
 
+        var now = DateTime.UtcNow;
+        if (user.LockoutEndAt.HasValue && user.LockoutEndAt.Value > now)
+        {
+            _logger.LogWarning("Đăng nhập bị giới hạn tạm thời cho tài khoản {Email}", normalizedEmail);
+            throw new UnauthorizedException("Tài khoản tạm thời bị khóa do đăng nhập sai nhiều lần. Vui lòng thử lại sau.");
+        }
+
+        if (user.LockoutEndAt.HasValue && user.LockoutEndAt.Value <= now)
+        {
+            user.LockoutEndAt = null;
+            user.FailedLoginAttempts = 0;
+        }
+
         // 3. Xác thực mật khẩu
         var isPasswordValid = _passwordHasher.Verify(request.Password, user.PasswordHash);
         if (!isPasswordValid)
         {
+            user.FailedLoginAttempts++;
+            if (user.FailedLoginAttempts >= MaxFailedLoginAttempts)
+            {
+                user.LockoutEndAt = now.Add(LockoutDuration);
+                user.FailedLoginAttempts = 0;
+            }
+            user.UpdatedAt = now;
+            _userRepository.Update(user);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
             _logger.LogWarning("Đăng nhập thất bại: Sai mật khẩu cho tài khoản {Email}", normalizedEmail);
             throw new UnauthorizedException("Email hoặc mật khẩu không chính xác.");
         }
+
+        user.FailedLoginAttempts = 0;
+        user.LockoutEndAt = null;
 
         // 4. Kiểm tra các ràng buộc đặc thù cho Affiliate Recruiter và Client Company User
         if (user.AffiliateApplicationUser != null)
@@ -74,20 +101,20 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             if (user.EmailVerifiedAt == null)
             {
                 _logger.LogWarning("Đăng nhập từ chối: Tài khoản Affiliate {Email} chưa xác thực email.", normalizedEmail);
-                throw new ForbiddenException("Please verify your email before continuing.");
+                throw new ForbiddenException("Vui lòng xác thực email trước khi tiếp tục.");
             }
 
             if (string.Equals(user.AffiliateApplicationUser.Status, "REJECTED", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogWarning("Đăng nhập từ chối: Đơn đăng ký Affiliate của {Email} đã bị từ chối.", normalizedEmail);
-                throw new ForbiddenException("Your registration was rejected.");
+                throw new ForbiddenException("Hồ sơ đăng ký của bạn đã bị từ chối.");
             }
 
             if (string.Equals(user.AffiliateApplicationUser.Status, "PENDING", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(user.AffiliateApplicationUser.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogWarning("Đăng nhập từ chối: Đơn đăng ký Affiliate của {Email} đang chờ Admin duyệt.", normalizedEmail);
-                throw new ForbiddenException("Your registration is pending Admin approval.");
+                throw new ForbiddenException("Hồ sơ đăng ký của bạn đang chờ Ban quản trị phê duyệt.");
             }
         }
 
@@ -100,7 +127,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             if (user.EmailVerifiedAt == null)
             {
                 _logger.LogWarning("Đăng nhập từ chối: Tài khoản Client {Email} chưa xác thực email.", normalizedEmail);
-                throw new ForbiddenException("Please verify your email before continuing.");
+                throw new ForbiddenException("Vui lòng xác thực email trước khi tiếp tục.");
             }
 
             var isRequestRejected = clientRequest != null && string.Equals(clientRequest.Status, "REJECTED", StringComparison.OrdinalIgnoreCase);
@@ -109,7 +136,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             if (isRequestRejected || isCompanyRejected)
             {
                 _logger.LogWarning("Đăng nhập từ chối: Đăng ký doanh nghiệp của {Email} đã bị từ chối.", normalizedEmail);
-                throw new ForbiddenException("Your registration was rejected.");
+                throw new ForbiddenException("Hồ sơ đăng ký của bạn đã bị từ chối.");
             }
 
             var isRequestPending = clientRequest != null && (string.Equals(clientRequest.Status, "PENDING", StringComparison.OrdinalIgnoreCase) || string.Equals(clientRequest.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase));
@@ -118,7 +145,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             if (isRequestPending || isCompanyPending)
             {
                 _logger.LogWarning("Đăng nhập từ chối: Đăng ký doanh nghiệp của {Email} đang chờ Admin duyệt.", normalizedEmail);
-                throw new ForbiddenException("Your registration is pending Admin approval.");
+                throw new ForbiddenException("Hồ sơ đăng ký của bạn đang chờ Ban quản trị phê duyệt.");
             }
         }
 
@@ -136,7 +163,8 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         }
 
         var activeRoles = user.UserRoleUsers
-            .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+            .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
+                         ur.Role.IsActive)
             .Select(ur => ur.Role.Code)
             .Distinct()
             .ToList();
@@ -148,8 +176,10 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         }
 
         var activePermissions = user.UserRoleUsers
-            .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+            .Where(ur => string.Equals(ur.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
+                         ur.Role.IsActive)
             .SelectMany(ur => ur.Role.RolePermissions)
+            .Where(rp => rp.Permission.IsActive)
             .Select(rp => rp.Permission.Code)
             .Distinct()
             .OrderBy(p => p)
@@ -162,8 +192,6 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         var rawRefreshToken = _jwtTokenGenerator.GenerateRefreshToken();
         var refreshTokenHash = _otpService.HashOtp(rawRefreshToken);
         var refreshExpiryDays = _jwtSettings.RefreshTokenExpiryDays > 0 ? _jwtSettings.RefreshTokenExpiryDays : 7;
-        var now = DateTime.UtcNow;
-
         var refreshTokenEntity = new HRConnect.Domain.Entities.RefreshToken
         {
             RefreshTokenId = Guid.NewGuid(),
@@ -182,7 +210,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Người dùng {Email} (UserId: {UserId}) đăng nhập thành công với các quyền: [{Roles}]", 
+        _logger.LogInformation("Người dùng {Email} (UserId: {UserId}) đăng nhập thành công với các quyền: [{Roles}]",
             user.Email, user.UserId, string.Join(", ", activeRoles));
 
         return new LoginResponse

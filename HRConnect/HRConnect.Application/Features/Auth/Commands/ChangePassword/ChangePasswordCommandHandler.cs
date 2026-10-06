@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -12,6 +13,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ChangePasswordCommandHandler> _logger;
 
@@ -20,6 +22,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
         IRefreshTokenRepository refreshTokenRepository,
         IPasswordHasher passwordHasher,
         ICurrentUserService currentUserService,
+        IAuditLogService auditLogService,
         IUnitOfWork unitOfWork,
         ILogger<ChangePasswordCommandHandler> logger)
     {
@@ -27,6 +30,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
         _refreshTokenRepository = refreshTokenRepository;
         _passwordHasher = passwordHasher;
         _currentUserService = currentUserService;
+        _auditLogService = auditLogService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -38,7 +42,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
         if (userId == null || userId == Guid.Empty)
         {
             _logger.LogWarning("Đổi mật khẩu thất bại: Không tìm thấy định danh người dùng đã xác thực.");
-            throw new UnauthorizedException("User is not authenticated.");
+            throw new UnauthorizedException("Bạn chưa đăng nhập hoặc phiên đăng nhập không hợp lệ.");
         }
 
         // 2. Tìm người dùng
@@ -46,7 +50,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
         if (user == null)
         {
             _logger.LogWarning("Đổi mật khẩu thất bại: Không tìm thấy người dùng UserId {UserId}", userId.Value);
-            throw new NotFoundException("User not found.");
+            throw new NotFoundException("Không tìm thấy tài khoản.");
         }
 
         // 3. Kiểm tra tài khoản có hỗ trợ mật khẩu cục bộ không (chặn tài khoản Google-only)
@@ -56,7 +60,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
         if (isGoogleOnly)
         {
             _logger.LogWarning("Đổi mật khẩu thất bại: Tài khoản Google UserId {UserId} không hỗ trợ đổi mật khẩu cục bộ.", userId.Value);
-            throw new BadRequestException("Password change is not available for this account.");
+            throw new BadRequestException("Tài khoản này không hỗ trợ đổi mật khẩu bằng mật khẩu hiện tại.");
         }
 
         // 4. Kiểm tra mật khẩu hiện tại
@@ -64,14 +68,14 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
         if (!isCurrentPasswordValid)
         {
             _logger.LogWarning("Đổi mật khẩu thất bại: Mật khẩu hiện tại không chính xác cho UserId {UserId}", userId.Value);
-            throw new BadRequestException("Current password is incorrect.");
+            throw new BadRequestException("Mật khẩu hiện tại không chính xác.");
         }
 
         // 5. Kiểm tra mật khẩu mới không được trùng với mật khẩu hiện tại
         if (_passwordHasher.Verify(request.NewPassword, user.PasswordHash))
         {
             _logger.LogWarning("Đổi mật khẩu thất bại: Mật khẩu mới trùng mật khẩu hiện tại cho UserId {UserId}", userId.Value);
-            throw new BadRequestException("New password must be different from the current password.");
+            throw new BadRequestException("Mật khẩu mới phải khác mật khẩu hiện tại.");
         }
 
         // 6. Thực hiện đổi mật khẩu trong Transaction nguyên tử (Atomic Transaction)
@@ -87,6 +91,18 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
 
             // Thu hồi các phiên đăng nhập khác / Refresh Token hiện tại
             await _refreshTokenRepository.RevokeAllByUserIdAsync(user.UserId, "PASSWORD_CHANGE", cancellationToken);
+
+            // Ghi audit PASSWORD_CHANGED cùng transaction
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.PasswordChanged,
+                EntityType = "APP_USER",
+                EntityId = user.UserId,
+                ActorUserId = user.UserId,
+                ActorType = AuditActorTypes.User,
+                NewValues = new { userId = user.UserId, sessionsRevoked = true },
+                Source = AuditSources.Api
+            }, cancellationToken);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             await _unitOfWork.CommitTransactionAsync(cancellationToken);

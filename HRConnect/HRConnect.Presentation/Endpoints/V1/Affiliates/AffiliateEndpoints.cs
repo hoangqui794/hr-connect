@@ -6,8 +6,10 @@ using HRConnect.Application.Features.Affiliates.Commands.UpdateAffiliateProfile;
 using HRConnect.Application.Features.Affiliates.Queries.GetAffiliateBankAccount;
 using HRConnect.Application.Features.Affiliates.Queries.GetAffiliatePerformance;
 using HRConnect.Application.Features.Affiliates.Queries.GetAffiliateProfile;
+using HRConnect.Application.Features.Affiliates.Queries.GetAffiliateReferralProgress;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using HRConnect.Presentation.Authorization;
 
 namespace HRConnect.Presentation.Endpoints.V1.Affiliates;
 
@@ -229,12 +231,401 @@ public static class AffiliateEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
+        var candidateLibraryGroup = app.MapGroup("/api/v1/affiliates/candidates")
+            .WithTags("Affiliate Candidate Library")
+            .RequireAuthorization();
+
+        candidateLibraryGroup.MapGet("/", async (
+            ClaimsPrincipal user,
+            [FromQuery] string? search,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
+            [FromQuery] string? sortBy,
+            [FromQuery] string? sortDirection,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null) return Results.Unauthorized();
+            if (!PermissionAuthorization.HasPermission(user, "candidate_library.view_own"))
+                return PermissionAuthorization.Forbidden("candidate_library.view_own");
+
+            try
+            {
+                var result = await sender.Send(
+                    new HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateLibrary.GetAffiliateCandidateLibraryQuery(
+                        userId.Value,
+                        search,
+                        page ?? 1,
+                        pageSize ?? 20,
+                        sortBy ?? "lastSubmittedAt",
+                        sortDirection ?? "desc"),
+                    cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetAffiliateCandidateLibrary")
+        .WithSummary("Lấy kho Candidate/CV của Affiliate")
+        .WithDescription("Yêu cầu permission candidate_library.view_own. Chỉ trả Candidate có CV ACTIVE do chính Affiliate tải và đã từng được Candidate xác nhận trong một Submission ACCEPTED.")
+        .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateLibrary.GetAffiliateCandidateLibraryResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden);
+
+        candidateLibraryGroup.MapGet("/{candidateId:guid}", async (
+            Guid candidateId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null) return Results.Unauthorized();
+            if (!PermissionAuthorization.HasPermission(user, "candidate_library.view_own"))
+                return PermissionAuthorization.Forbidden("candidate_library.view_own");
+
+            try
+            {
+                var result = await sender.Send(
+                    new HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateLibraryDetail.GetAffiliateCandidateLibraryDetailQuery(
+                        userId.Value, candidateId),
+                    cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetAffiliateCandidateLibraryDetail")
+        .WithSummary("Xem Candidate và các CV trong kho của Affiliate")
+        .WithDescription("Yêu cầu permission candidate_library.view_own. Chỉ trả CV ACTIVE do chính Affiliate tải và đã được Candidate xác nhận. Không trả URL lưu trữ hoặc signed URL trong response này.")
+        .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateLibraryDetail.GetAffiliateCandidateLibraryDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
+        candidateLibraryGroup.MapGet("/{candidateId:guid}/cvs/{cvId:guid}/download-url", async (
+            Guid candidateId,
+            Guid cvId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null) return Results.Unauthorized();
+            if (!PermissionAuthorization.HasPermission(user, "candidate_library.download_cv"))
+                return PermissionAuthorization.Forbidden("candidate_library.download_cv");
+
+            try
+            {
+                var result = await sender.Send(
+                    new HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateCvDownloadUrl.GetAffiliateCandidateCvDownloadUrlQuery(
+                        userId.Value, candidateId, cvId),
+                    cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetAffiliateCandidateCvDownloadUrl")
+        .WithSummary("Lấy link xem CV trong kho của Affiliate")
+        .WithDescription("Yêu cầu permission candidate_library.download_cv. CV phải ACTIVE, thuộc Candidate đã chọn, do chính Affiliate tải và đã được Candidate xác nhận. Signed URL có thời hạn cố định 5 phút.")
+        .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateCandidateCvDownloadUrl.GetAffiliateCandidateCvDownloadUrlResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
+        var submissionsGroup = app.MapGroup("/api/v1/affiliates/submissions")
+                                  .WithTags("Affiliate Submissions")
+                                  .RequireAuthorization();
+
+        var referralsGroup = app.MapGroup("/api/v1/affiliates/referrals")
+            .WithTags("Affiliate Referral Progress")
+            .RequireAuthorization();
+
+        // This intentionally exposes only a coarse status; detailed recruitment records stay private.
+        referralsGroup.MapGet("/", async (
+            ClaimsPrincipal user,
+            [FromQuery] Guid? jobId,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null) return Results.Unauthorized();
+            if (!PermissionAuthorization.HasPermission(user, "referral.progress.view_own"))
+                return PermissionAuthorization.Forbidden("referral.progress.view_own");
+
+            try
+            {
+                var result = await sender.Send(new GetAffiliateReferralProgressQuery(
+                    userId.Value, jobId, page ?? 1, pageSize ?? 20), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+            }
+        })
+        .WithName("GetAffiliateReferralProgress")
+        .WithSummary("Xem tiến độ tuyển dụng tổng quát của referral do Affiliate giới thiệu")
+        .WithDescription("Không trả lịch phỏng vấn, meeting link, feedback, offer, lương hoặc tài liệu nội bộ.")
+        .Produces<AffiliateReferralProgressResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // POST /api/v1/affiliates/submissions/{submissionId}/consent/resend
+        submissionsGroup.MapPost("/{submissionId:guid}/consent/resend", async (
+            Guid submissionId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null) return Results.Unauthorized();
+            if (!PermissionAuthorization.HasPermission(user, "submission.consent.resend_own"))
+                return PermissionAuthorization.Forbidden("submission.consent.resend_own");
+
+            try
+            {
+                var result = await sender.Send(
+                    new HRConnect.Application.Features.Affiliates.Commands.ResendSubmissionConsent.ResendSubmissionConsentCommand(
+                        submissionId, userId.Value), cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
+            }
+        })
+        .WithName("ResendSubmissionConsent")
+        .WithSummary("Gửi lại yêu cầu Candidate xác nhận hồ sơ")
+        .WithDescription("Yêu cầu permission submission.consent.resend_own và chỉ áp dụng cho Submission của chính Affiliate đang ở PENDING_CONSENT. API có cooldown, giới hạn số lần gửi, vô hiệu hóa liên kết cũ và chống hai yêu cầu gửi lại chạy đồng thời. Xung đột đồng thời trả 409 với errorCode CONCURRENT_UPDATE.")
+        .RequireRateLimiting("submission-consent")
+        .Produces<HRConnect.Application.Features.Affiliates.Commands.ResendSubmissionConsent.ResendSubmissionConsentResponse>()
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict)
+        .Produces(StatusCodes.Status429TooManyRequests);
+
+        // ==============================================================================
+        // Affiliate Submissions Endpoints
+        // ==============================================================================
+        // GET /api/v1/affiliates/submissions - Lấy lịch sử nộp ứng viên của Affiliate
+        submissionsGroup.MapGet("/", async (
+            ClaimsPrincipal user,
+            [FromQuery] string? status,
+            [FromQuery] Guid? jobId,
+            [FromQuery] Guid? candidateId,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (!PermissionAuthorization.HasPermission(user, "submission.view_own"))
+            {
+                return PermissionAuthorization.Forbidden("submission.view_own");
+            }
+
+            try
+            {
+                var query = new HRConnect.Application.Features.Affiliates.Queries.GetAffiliateSubmissions.GetAffiliateSubmissionsQuery(
+                    userId.Value,
+                    status,
+                    jobId,
+                    candidateId,
+                    fromDate,
+                    toDate,
+                    page ?? 1,
+                    pageSize ?? 20);
+
+                var result = await sender.Send(query, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("GetAffiliateSubmissions")
+        .WithSummary("Lấy lịch sử nộp ứng viên của Affiliate")
+        .WithDescription("Yêu cầu permission submission.view_own. Lấy lịch sử các lượt nộp và thông tin consent, gồm PENDING_CONSENT, ACCEPTED, CONSENT_REJECTED, CONSENT_EXPIRED, BLOCKED_DUPLICATE và JOB_UNAVAILABLE.")
+        .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateSubmissions.AffiliateSubmissionsResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // GET /api/v1/affiliates/submissions/{submissionId} - Lấy chi tiết lượt nộp ứng viên của Affiliate
+        submissionsGroup.MapGet("/{submissionId:guid}", async (
+            Guid submissionId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (!PermissionAuthorization.HasPermission(user, "submission.view_own"))
+            {
+                return PermissionAuthorization.Forbidden("submission.view_own");
+            }
+
+            try
+            {
+                var query = new HRConnect.Application.Features.Affiliates.Queries.GetAffiliateSubmissionDetail.GetAffiliateSubmissionDetailQuery(
+                    submissionId,
+                    userId.Value);
+
+                var result = await sender.Send(query, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("GetAffiliateSubmissionDetail")
+        .WithSummary("Lấy chi tiết lượt nộp ứng viên của Affiliate")
+        .WithDescription("Yêu cầu permission submission.view_own. Xem Candidate, Job, CV, Application/Attribution nếu đã được tạo, trạng thái consent, thời điểm gửi, hạn phản hồi và thời điểm Candidate phản hồi.")
+        .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateSubmissionDetail.AffiliateSubmissionDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
+        // ==============================================================================
+        // Affiliate Attributions Endpoints
+        // ==============================================================================
+        var attributionsGroup = app.MapGroup("/api/v1/affiliates/attributions")
+                                   .WithTags("Affiliate Attributions")
+                                   .RequireAuthorization();
+
+        // GET /api/v1/affiliates/attributions - Lấy lịch sử Attribution của Affiliate
+        attributionsGroup.MapGet("/", async (
+            ClaimsPrincipal user,
+            [FromQuery] Guid? jobId,
+            [FromQuery] Guid? candidateId,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (!PermissionAuthorization.HasPermission(user, "attribution.view_own"))
+            {
+                return PermissionAuthorization.Forbidden("attribution.view_own");
+            }
+
+            try
+            {
+                var query = new HRConnect.Application.Features.Affiliates.Queries.GetAffiliateAttributions.GetAffiliateAttributionsQuery(
+                    userId.Value,
+                    jobId,
+                    candidateId,
+                    fromDate,
+                    toDate,
+                    page ?? 1,
+                    pageSize ?? 20);
+
+                var result = await sender.Send(query, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500);
+            }
+        })
+        .WithName("GetAffiliateAttributions")
+        .WithSummary("Lấy lịch sử Attribution của Affiliate")
+        .WithDescription("Yêu cầu permission attribution.view_own. Lấy danh sách các bản ghi Attribution (ghi nhận nguồn giới thiệu thành công) của Affiliate Recruiter đang đăng nhập, kèm thông tin công việc, ứng viên và thời điểm ghi nhận.")
+        .Produces<HRConnect.Application.Features.Affiliates.Queries.GetAffiliateAttributions.AffiliateAttributionsResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status500InternalServerError);
+
         return app;
     }
 
     private static Guid? GetUserIdFromClaims(ClaimsPrincipal user)
     {
-        var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+        var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
                       ?? user.FindFirst("sub")?.Value;
 
         if (Guid.TryParse(idClaim, out var userId))

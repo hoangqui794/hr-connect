@@ -2,6 +2,7 @@ using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -16,11 +17,13 @@ public class VerifyEmailOtpCommandHandlerTests
     private readonly Mock<IAffiliateApplicationRepository> _affiliateApplicationRepositoryMock;
     private readonly Mock<ICompanyVerificationRequestRepository> _companyVerificationRequestRepositoryMock;
     private readonly Mock<ICompanyRepository> _companyRepositoryMock;
-    private readonly Mock<IEmailService> _emailServiceMock;
+    private readonly Mock<IEmailOutboxRepository> _emailOutboxRepositoryMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<IEmailNormalizer> _emailNormalizerMock;
     private readonly Mock<IOtpService> _otpServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<ILogger<VerifyEmailOtpCommandHandler>> _loggerMock;
+    private readonly Mock<ICandidateRepository> _candidateRepositoryMock = new();
 
     private readonly VerifyEmailOtpCommandHandler _handler;
 
@@ -31,7 +34,8 @@ public class VerifyEmailOtpCommandHandlerTests
         _affiliateApplicationRepositoryMock = new Mock<IAffiliateApplicationRepository>();
         _companyVerificationRequestRepositoryMock = new Mock<ICompanyVerificationRequestRepository>();
         _companyRepositoryMock = new Mock<ICompanyRepository>();
-        _emailServiceMock = new Mock<IEmailService>();
+        _emailOutboxRepositoryMock = new Mock<IEmailOutboxRepository>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _emailNormalizerMock = new Mock<IEmailNormalizer>();
         _otpServiceMock = new Mock<IOtpService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
@@ -43,11 +47,38 @@ public class VerifyEmailOtpCommandHandlerTests
             _affiliateApplicationRepositoryMock.Object,
             _companyVerificationRequestRepositoryMock.Object,
             _companyRepositoryMock.Object,
-            _emailServiceMock.Object,
+            _emailOutboxRepositoryMock.Object,
+            _auditLogServiceMock.Object,
             _emailNormalizerMock.Object,
             _otpServiceMock.Object,
             _unitOfWorkMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _candidateRepositoryMock.Object);
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task Handle_MustNotActivateOrClaimCandidate_WhenOtpOrAtomicClaimFails(bool validOtp, bool claimSucceeds)
+    {
+        var user = new AppUser { UserId = Guid.NewGuid(), Email = "candidate@example.com", Status = "PENDING" };
+        var candidate = new Candidate { CandidateId = Guid.NewGuid(), NormalizedEmail = user.Email };
+        var token = new UserToken { TokenId = Guid.NewGuid(), UserId = user.UserId, TokenHash = "hash", ExpiresAt = DateTime.UtcNow.AddMinutes(5) };
+        _emailNormalizerMock.Setup(x => x.Normalize(user.Email)).Returns(user.Email);
+        _userRepositoryMock.Setup(x => x.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        _userTokenRepositoryMock.Setup(x => x.GetLatestActiveOtpAsync(user.UserId, "EMAIL_OTP", It.IsAny<CancellationToken>())).ReturnsAsync(token);
+        _otpServiceMock.Setup(x => x.VerifyOtp("123456", "hash")).Returns(validOtp);
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(candidate);
+        _candidateRepositoryMock.Setup(x => x.TryLinkByVerifiedEmailAsync(candidate.CandidateId, user.Email, user.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(claimSucceeds);
+
+        var action = () => _handler.Handle(new VerifyEmailOtpCommand(user.Email, "123456"), CancellationToken.None);
+        if (validOtp) await action.Should().ThrowAsync<ConflictException>();
+        else await action.Should().ThrowAsync<BadRequestException>();
+        user.Status.Should().Be("PENDING");
+        candidate.UserId.Should().BeNull();
+        _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()), validOtp ? Times.Once() : Times.Never());
+        _candidateRepositoryMock.Verify(x => x.TryLinkByVerifiedEmailAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), validOtp ? Times.Once() : Times.Never());
     }
 
     [Fact]
@@ -207,8 +238,10 @@ public class VerifyEmailOtpCommandHandlerTests
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    [Fact]
-    public async Task Handle_ShouldActivateUserAndMarkTokenUsed_WhenCandidateVerifiesOtp()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Handle_ShouldActivateUserAndMarkTokenUsed_WhenCandidateVerifiesOtp(bool existingUnclaimedCandidate)
     {
         var command = new VerifyEmailOtpCommand("candidate@example.com", "123456");
         var pendingUser = new AppUser
@@ -240,6 +273,10 @@ public class VerifyEmailOtpCommandHandlerTests
         _companyVerificationRequestRepositoryMock.Setup(x => x.GetByUserIdAsync(pendingUser.UserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((CompanyVerificationRequest?)null);
 
+        var candidate = new Candidate { CandidateId = Guid.NewGuid(), NormalizedEmail = command.Email, UserId = existingUnclaimedCandidate ? null : pendingUser.UserId };
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedEmailAsync(command.Email, It.IsAny<CancellationToken>())).ReturnsAsync(candidate);
+        _candidateRepositoryMock.Setup(x => x.TryLinkByVerifiedEmailAsync(candidate.CandidateId, command.Email, pendingUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.Should().NotBeNull();
@@ -253,7 +290,8 @@ public class VerifyEmailOtpCommandHandlerTests
 
         _userRepositoryMock.Verify(x => x.Update(pendingUser), Times.Once);
         _userTokenRepositoryMock.Verify(x => x.Update(token), Times.Once);
-        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _candidateRepositoryMock.Verify(x => x.TryLinkByVerifiedEmailAsync(candidate.CandidateId, command.Email, pendingUser.UserId, It.IsAny<CancellationToken>()), existingUnclaimedCandidate ? Times.Once() : Times.Never());
     }
 
     [Fact]
@@ -298,7 +336,7 @@ public class VerifyEmailOtpCommandHandlerTests
 
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Message.Should().Contain("pending Admin approval");
+        result.Message.Should().Contain("đang chờ Ban quản trị phê duyệt");
         result.Data!.Status.Should().Be("PENDING_ADMIN_APPROVAL");
 
         // QUY TẮC: User status vẫn là PENDING, đơn chuyển sang UNDER_REVIEW
@@ -309,6 +347,12 @@ public class VerifyEmailOtpCommandHandlerTests
         _affiliateApplicationRepositoryMock.Verify(x => x.Update(affiliateApp), Times.Once);
         _userRepositoryMock.Verify(x => x.Update(affiliateUser), Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _emailOutboxRepositoryMock.Verify(x => x.AddAsync(
+            It.Is<EmailOutbox>(item => item.TemplateCode == "AFFILIATE_REGISTRATION_UNDER_REVIEW" && item.Status == "PENDING"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _auditLogServiceMock.Verify(x => x.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.EmailVerified && entry.ActorUserId == affiliateUser.UserId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -363,7 +407,7 @@ public class VerifyEmailOtpCommandHandlerTests
 
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Message.Should().Contain("pending Admin approval");
+        result.Message.Should().Contain("đang chờ Ban quản trị phê duyệt");
         result.Data!.Status.Should().Be("PENDING_ADMIN_APPROVAL");
 
         // QUY TẮC: User status vẫn là PENDING, request & company chuyển sang UNDER_REVIEW
@@ -376,5 +420,11 @@ public class VerifyEmailOtpCommandHandlerTests
         _companyRepositoryMock.Verify(x => x.Update(company), Times.Once);
         _userRepositoryMock.Verify(x => x.Update(clientUser), Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _emailOutboxRepositoryMock.Verify(x => x.AddAsync(
+            It.Is<EmailOutbox>(item => item.TemplateCode == "CLIENT_REGISTRATION_UNDER_REVIEW" && item.Status == "PENDING"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _auditLogServiceMock.Verify(x => x.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.EmailVerified && entry.ActorUserId == clientUser.UserId),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 }

@@ -67,19 +67,15 @@ public class ApprovalRepository : IApprovalRepository
             query = affiliateQuery.Concat(clientQuery);
         }
 
+        // Hồ sơ PENDING chưa xác thực OTP không phải là một yêu cầu để Admin xét duyệt.
+        // Điều kiện này luôn áp dụng, kể cả khi caller không gửi status.
+        query = query.Where(x => x.Status != "PENDING");
+
         // 1. Lọc theo Status
         if (!string.IsNullOrWhiteSpace(status))
         {
             var normalizedStatus = status.Trim().ToUpperInvariant();
-            if (normalizedStatus == "PENDING")
-            {
-                // Trạng thái chờ admin duyệt gồm cả PENDING và UNDER_REVIEW
-                query = query.Where(x => x.Status == "PENDING" || x.Status == "UNDER_REVIEW");
-            }
-            else
-            {
-                query = query.Where(x => x.Status == normalizedStatus);
-            }
+            query = query.Where(x => x.Status == normalizedStatus);
         }
 
         // 2. Tìm kiếm (Search)
@@ -96,14 +92,14 @@ public class ApprovalRepository : IApprovalRepository
         var isAsc = string.Equals(sortDirection, "asc", StringComparison.OrdinalIgnoreCase);
         query = sortBy switch
         {
-            "status" => isAsc 
-                ? query.OrderBy(x => x.Status).ThenByDescending(x => x.SubmittedAt) 
+            "status" => isAsc
+                ? query.OrderBy(x => x.Status).ThenByDescending(x => x.SubmittedAt)
                 : query.OrderByDescending(x => x.Status).ThenByDescending(x => x.SubmittedAt),
-            "type" => isAsc 
-                ? query.OrderBy(x => x.Type).ThenByDescending(x => x.SubmittedAt) 
+            "type" => isAsc
+                ? query.OrderBy(x => x.Type).ThenByDescending(x => x.SubmittedAt)
                 : query.OrderByDescending(x => x.Type).ThenByDescending(x => x.SubmittedAt),
-            _ => isAsc 
-                ? query.OrderBy(x => x.SubmittedAt) 
+            _ => isAsc
+                ? query.OrderBy(x => x.SubmittedAt)
                 : query.OrderByDescending(x => x.SubmittedAt)
         };
 

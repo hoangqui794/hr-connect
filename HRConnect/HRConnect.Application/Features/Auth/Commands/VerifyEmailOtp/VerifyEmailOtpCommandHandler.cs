@@ -1,8 +1,12 @@
+using System.Text.Json;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
+using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using HRConnect.Application.Features.Auth.Common;
 
 namespace HRConnect.Application.Features.Auth.Commands.VerifyEmailOtp;
 
@@ -15,11 +19,13 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
     private readonly IAffiliateApplicationRepository _affiliateApplicationRepository;
     private readonly ICompanyVerificationRequestRepository _companyVerificationRequestRepository;
     private readonly ICompanyRepository _companyRepository;
-    private readonly IEmailService _emailService;
+    private readonly IEmailOutboxRepository _emailOutboxRepository;
+    private readonly IAuditLogService _auditLogService;
     private readonly IEmailNormalizer _emailNormalizer;
     private readonly IOtpService _otpService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<VerifyEmailOtpCommandHandler> _logger;
+    private readonly ICandidateRepository _candidateRepository;
 
     public VerifyEmailOtpCommandHandler(
         IUserRepository userRepository,
@@ -27,22 +33,26 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         IAffiliateApplicationRepository affiliateApplicationRepository,
         ICompanyVerificationRequestRepository companyVerificationRequestRepository,
         ICompanyRepository companyRepository,
-        IEmailService emailService,
+        IEmailOutboxRepository emailOutboxRepository,
+        IAuditLogService auditLogService,
         IEmailNormalizer emailNormalizer,
         IOtpService otpService,
         IUnitOfWork unitOfWork,
-        ILogger<VerifyEmailOtpCommandHandler> logger)
+        ILogger<VerifyEmailOtpCommandHandler> logger,
+        ICandidateRepository candidateRepository)
     {
         _userRepository = userRepository;
         _userTokenRepository = userTokenRepository;
         _affiliateApplicationRepository = affiliateApplicationRepository;
         _companyVerificationRequestRepository = companyVerificationRequestRepository;
         _companyRepository = companyRepository;
-        _emailService = emailService;
+        _emailOutboxRepository = emailOutboxRepository;
+        _auditLogService = auditLogService;
         _emailNormalizer = emailNormalizer;
         _otpService = otpService;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _candidateRepository = candidateRepository;
     }
 
     public async Task<VerifyEmailOtpResponse> Handle(VerifyEmailOtpCommand request, CancellationToken cancellationToken)
@@ -151,41 +161,23 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             _affiliateApplicationRepository.Update(affiliateApp);
             _userRepository.Update(user);
 
+            await QueueUnderReviewEmailAsync(
+                user,
+                "AFFILIATE_REGISTRATION_UNDER_REVIEW",
+                "Đối tác tuyển dụng",
+                now,
+                cancellationToken);
+            await AddEmailVerifiedAuditAsync(user.UserId, now, "AFFILIATE", cancellationToken);
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Xác thực email thành công cho Affiliate UserId {UserId}. Hồ sơ chuyển sang UNDER_REVIEW chờ Admin duyệt.",
                 user.UserId);
 
-            // Gửi email xác nhận tiếp nhận hồ sơ Affiliate (Stage 2)
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    var subject = "HR Connect - Đã tiếp nhận hồ sơ đăng ký Đối tác tuyển dụng";
-                    var bodyHtml = $@"
-                        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                            <h2 style='color: #4F46E5; margin-top: 0;'>HR Connect - Đối tác tuyển dụng</h2>
-                            <p>Cảm ơn bạn đã đăng ký trở thành Đối tác tuyển dụng (Affiliate Recruiter) trên hệ thống HR Connect.</p>
-                            <p>Địa chỉ email của bạn đã được xác thực thành công.</p>
-                            <p><strong>Hồ sơ đăng ký của bạn hiện đang chờ Ban quản trị hệ thống xem xét và phê duyệt.</strong></p>
-                            <p>Chúng tôi sẽ gửi email thông báo kết quả ngay sau khi hồ sơ của bạn được xử lý.</p>
-                            <p>Cảm ơn sự hợp tác và kiên nhẫn của bạn.</p>
-                            <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                            <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
-                        </div>";
-
-                    await _emailService.SendEmailAsync(user.Email, subject, bodyHtml, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Lỗi gửi email tiếp nhận hồ sơ Affiliate tới {Email}", user.Email);
-                }
-            }, CancellationToken.None);
-
             return new VerifyEmailOtpResponse
             {
                 Success = true,
-                Message = "Email verified successfully. Your Affiliate registration is pending Admin approval.",
+                Message = "Xác thực email thành công. Hồ sơ Đối tác tuyển dụng đang chờ Ban quản trị phê duyệt.",
                 Data = new VerifyEmailOtpData
                 {
                     UserId = user.UserId,
@@ -218,41 +210,22 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             }
 
             _userRepository.Update(user);
+            await QueueUnderReviewEmailAsync(
+                user,
+                "CLIENT_REGISTRATION_UNDER_REVIEW",
+                "Doanh nghiệp tuyển dụng",
+                now,
+                cancellationToken);
+            await AddEmailVerifiedAuditAsync(user.UserId, now, "CLIENT", cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Xác thực email thành công cho Client UserId {UserId}, Company {CompanyId}. Chờ Admin duyệt.",
                 user.UserId, companyVerification.CompanyId);
 
-            // Gửi email xác nhận tiếp nhận hồ sơ Doanh nghiệp (Stage 2)
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    var subject = "HR Connect - Đã tiếp nhận hồ sơ đăng ký Doanh nghiệp";
-                    var bodyHtml = $@"
-                        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                            <h2 style='color: #4F46E5; margin-top: 0;'>HR Connect - Đăng ký Doanh nghiệp</h2>
-                            <p>Cảm ơn bạn đã đăng ký tài khoản Doanh nghiệp tuyển dụng trên hệ thống HR Connect.</p>
-                            <p>Địa chỉ email của bạn đã được xác thực thành công.</p>
-                            <p><strong>Hồ sơ xác thực doanh nghiệp của bạn hiện đang chờ Ban quản trị hệ thống xem xét và phê duyệt.</strong></p>
-                            <p>Chúng tôi sẽ gửi email thông báo kết quả ngay sau khi hồ sơ được xét duyệt.</p>
-                            <p>Cảm ơn sự hợp tác và kiên nhẫn của bạn.</p>
-                            <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                            <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
-                        </div>";
-
-                    await _emailService.SendEmailAsync(user.Email, subject, bodyHtml, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Lỗi gửi email tiếp nhận hồ sơ Doanh nghiệp tới {Email}", user.Email);
-                }
-            }, CancellationToken.None);
-
             return new VerifyEmailOtpResponse
             {
                 Success = true,
-                Message = "Email verified successfully. Your company registration is pending Admin approval.",
+                Message = "Xác thực email thành công. Hồ sơ Doanh nghiệp đang chờ Ban quản trị phê duyệt.",
                 Data = new VerifyEmailOtpData
                 {
                     UserId = user.UserId,
@@ -264,10 +237,28 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         }
 
         // Case C: Tài khoản Candidate (Ứng viên)
-        user.Status = "ACTIVE";
-        _userRepository.Update(user);
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var candidate = await CandidateRegistrationIdentity.ResolveAsync(
+                _candidateRepository, normalizedEmail, user.NormalizedPhone, cancellationToken, user.UserId);
+            if (candidate == null)
+                throw new ConflictException("Không tìm thấy hồ sơ ứng viên khớp với email đã xác minh.");
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+            if (candidate.UserId == null && !await _candidateRepository.TryLinkByVerifiedEmailAsync(
+                    candidate.CandidateId, normalizedEmail, user.UserId, cancellationToken))
+                throw new ConflictException("Hồ sơ ứng viên đã thay đổi hoặc đã được liên kết với một tài khoản khác.");
+
+            user.Status = "ACTIVE";
+            _userRepository.Update(user);
+            await AddEmailVerifiedAuditAsync(user.UserId, now, "CANDIDATE", cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+            throw;
+        }
 
         _logger.LogInformation("Xác thực email thành công cho Candidate UserId {UserId}, Email {Email}. Tài khoản đã chuyển sang ACTIVE.",
             user.UserId, user.Email);
@@ -285,4 +276,44 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
             }
         };
     }
+
+    private async Task QueueUnderReviewEmailAsync(
+        AppUser user,
+        string templateCode,
+        string accountLabel,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates
+            .RegistrationUnderReview(accountLabel);
+        await _emailOutboxRepository.AddAsync(new EmailOutbox
+        {
+            EmailOutboxId = Guid.NewGuid(),
+            UserId = user.UserId,
+            RecipientEmail = user.Email,
+            TemplateCode = templateCode,
+            Subject = email.Subject,
+            Payload = JsonSerializer.Serialize(new { accountLabel }),
+            Status = "PENDING",
+            RetryCount = 0,
+            NextRetryAt = now,
+            CreatedAt = now
+        }, cancellationToken);
+    }
+
+    private Task AddEmailVerifiedAuditAsync(
+        Guid userId,
+        DateTime verifiedAt,
+        string accountType,
+        CancellationToken cancellationToken) =>
+        _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.EmailVerified,
+            EntityType = "APP_USER",
+            EntityId = userId,
+            ActorUserId = userId,
+            OldValues = new { emailVerifiedAt = (DateTime?)null },
+            NewValues = new { emailVerifiedAt = verifiedAt, accountType },
+            Source = AuditSources.Application
+        }, cancellationToken);
 }

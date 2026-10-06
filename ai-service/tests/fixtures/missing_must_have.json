@@ -1,0 +1,20 @@
+{
+  "requestId": "MISSING-001",
+  "applicationId": "APP-004",
+  "attemptNo": 1,
+  "candidate": {
+    "summary": "Backend developer without Redis",
+    "yearsOfExperience": 3,
+    "highestEducation": "Bachelor",
+    "skills": [{"name": "ASP.NET Core", "yearsOfExperience": 3}],
+    "cvText": "Built APIs with ASP.NET Core."
+  },
+  "job": {
+    "title": "Backend Developer",
+    "description": "Build services with ASP.NET Core and Redis.",
+    "requirements": [
+      {"type": "MUST_HAVE", "category": "SKILL", "content": "ASP.NET Core"},
+      {"type": "MUST_HAVE", "category": "SKILL", "content": "Redis"}
+    ]
+  }
+}

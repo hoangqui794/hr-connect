@@ -35,7 +35,23 @@ public partial class AiMatchResult
 
     public string? ErrorMessage { get; set; }
 
+    public string? FailureCode { get; set; }
+
+    public string? ModelVersion { get; set; }
+
     public DateTime RequestedAt { get; set; }
+
+    public DateTime? ProcessingStartedAt { get; set; }
+
+    public DateTime? LastDispatchedAt { get; set; }
+
+    public int DispatchCount { get; set; }
+
+    /// <summary>
+    /// Earliest UTC time at which the dispatcher may try this attempt again.
+    /// Null means the request is ready for immediate dispatch.
+    /// </summary>
+    public DateTime? NextAttemptAt { get; set; }
 
     public DateTime? CompletedAt { get; set; }
 

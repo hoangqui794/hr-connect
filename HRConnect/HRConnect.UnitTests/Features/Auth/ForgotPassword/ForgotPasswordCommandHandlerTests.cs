@@ -45,6 +45,9 @@ public class ForgotPasswordCommandHandlerTests
         _emailNormalizerMock
             .Setup(x => x.Normalize(It.IsAny<string>()))
             .Returns<string>(e => e.Trim().ToLowerInvariant());
+        _emailServiceMock
+            .Setup(x => x.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(EmailResult.Success("message-id"));
 
         _handler = new ForgotPasswordCommandHandler(
             _userRepositoryMock.Object,
@@ -72,7 +75,7 @@ public class ForgotPasswordCommandHandlerTests
         // Assert
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Message.Should().Be("If the email is registered, a password reset code has been sent.");
+        result.Message.Should().Be("Nếu email đã được đăng ký, mã đặt lại mật khẩu sẽ được gửi đến email đó.");
 
         // Must not create tokens or send emails
         _userTokenRepositoryMock.Verify(x => x.AddAsync(It.IsAny<UserToken>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -101,7 +104,7 @@ public class ForgotPasswordCommandHandlerTests
 
         // Assert
         result.Success.Should().BeTrue();
-        result.Message.Should().Be("If the email is registered, a password reset code has been sent.");
+        result.Message.Should().Be("Nếu email đã được đăng ký, mã đặt lại mật khẩu sẽ được gửi đến email đó.");
 
         // Must not create reset token
         _userTokenRepositoryMock.Verify(x => x.AddAsync(It.IsAny<UserToken>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -170,7 +173,7 @@ public class ForgotPasswordCommandHandlerTests
         // Assert
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Message.Should().Be("If the email is registered, a password reset code has been sent.");
+        result.Message.Should().Be("Nếu email đã được đăng ký, mã đặt lại mật khẩu sẽ được gửi đến email đó.");
 
         // Verify invalidation of previous PASSWORD_RESET tokens
         _userTokenRepositoryMock.Verify(x => x.InvalidateActiveTokensAsync(user.UserId, "PASSWORD_RESET", It.IsAny<CancellationToken>()), Times.Once);

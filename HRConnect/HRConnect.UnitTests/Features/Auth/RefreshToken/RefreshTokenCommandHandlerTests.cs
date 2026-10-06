@@ -17,6 +17,7 @@ public class RefreshTokenCommandHandlerTests
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IJwtTokenGenerator> _jwtTokenGeneratorMock;
     private readonly Mock<IOtpService> _otpServiceMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly IOptions<JwtSettings> _jwtOptions;
     private readonly Mock<ILogger<RefreshTokenCommandHandler>> _loggerMock;
@@ -29,6 +30,7 @@ public class RefreshTokenCommandHandlerTests
         _userRepositoryMock = new Mock<IUserRepository>();
         _jwtTokenGeneratorMock = new Mock<IJwtTokenGenerator>();
         _otpServiceMock = new Mock<IOtpService>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _loggerMock = new Mock<ILogger<RefreshTokenCommandHandler>>();
 
@@ -43,6 +45,7 @@ public class RefreshTokenCommandHandlerTests
             _userRepositoryMock.Object,
             _jwtTokenGeneratorMock.Object,
             _otpServiceMock.Object,
+            _auditLogServiceMock.Object,
             _unitOfWorkMock.Object,
             _jwtOptions,
             _loggerMock.Object);
@@ -54,9 +57,10 @@ public class RefreshTokenCommandHandlerTests
         {
             RoleId = Guid.NewGuid(),
             Code = roleCode,
+            IsActive = true,
             RolePermissions = new List<RolePermission>
             {
-                new() { Permission = new Permission { Code = permissionCode } }
+                new() { Permission = new Permission { Code = permissionCode, IsActive = true } }
             }
         };
 
@@ -144,6 +148,9 @@ public class RefreshTokenCommandHandlerTests
         // Verify transaction was committed
         _unitOfWorkMock.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+
+        // No reuse audit on normal rotation
+        _auditLogServiceMock.Verify(x => x.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -203,6 +210,20 @@ public class RefreshTokenCommandHandlerTests
             userId, "TOKEN_REUSE_DETECTED", It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+
+        // Audit REFRESH_TOKEN_REUSE_DETECTED recorded
+        _auditLogServiceMock.Verify(x => x.AddAsync(
+            It.Is<AuditEntry>(a =>
+                a.Action == AuditActions.RefreshTokenReuseDetected &&
+                a.EntityType == "REFRESH_TOKEN" &&
+                a.EntityId == revokedToken.RefreshTokenId &&
+                a.ActorUserId == null &&
+                a.ActorType == AuditActorTypes.System &&
+                a.Source == AuditSources.Api),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(
+            x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -238,6 +259,18 @@ public class RefreshTokenCommandHandlerTests
 
         _refreshTokenRepositoryMock.Verify(x => x.RevokeAllByUserIdAsync(
             userId, "TOKEN_REUSE_DETECTED", It.IsAny<CancellationToken>()), Times.Once);
+
+        // Audit REFRESH_TOKEN_REUSE_DETECTED recorded
+        _auditLogServiceMock.Verify(x => x.AddAsync(
+            It.Is<AuditEntry>(a =>
+                a.Action == AuditActions.RefreshTokenReuseDetected &&
+                a.EntityId == replacedToken.RefreshTokenId &&
+                a.ActorUserId == null &&
+                a.ActorType == AuditActorTypes.System),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(
+            x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -409,7 +442,7 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Your registration was rejected.");
+            .WithMessage("Hồ sơ đăng ký của bạn đã bị từ chối.");
     }
 
     [Fact]
@@ -452,7 +485,7 @@ public class RefreshTokenCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Your registration was rejected.");
+            .WithMessage("Hồ sơ đăng ký của bạn đã bị từ chối.");
     }
 
     [Fact]
@@ -493,6 +526,69 @@ public class RefreshTokenCommandHandlerTests
         // Assert
         await act.Should().ThrowAsync<ForbiddenException>()
             .WithMessage("Tài khoản chưa được phân quyền truy cập hệ thống.");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRejectRefresh_WhenAssignedRoleIsDisabled()
+    {
+        var rawToken = "token_disabled_role";
+        var userId = Guid.NewGuid();
+        var existingToken = new Domain.Entities.RefreshToken
+        {
+            RefreshTokenId = Guid.NewGuid(),
+            UserId = userId,
+            TokenHash = "hashed_disabled_role",
+            ExpiresAt = DateTime.UtcNow.AddDays(1)
+        };
+        var user = CreateActiveUser(userId);
+        user.UserRoleUsers.Single().Role.IsActive = false;
+
+        _otpServiceMock.Setup(x => x.HashOtp(rawToken)).Returns(existingToken.TokenHash);
+        _refreshTokenRepositoryMock.Setup(x => x.GetByHashAsync(existingToken.TokenHash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingToken);
+        _userRepositoryMock.Setup(x => x.GetByIdWithRolesAndPermissionsAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var act = () => _handler.Handle(new RefreshTokenCommand(rawToken), CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Tài khoản chưa được phân quyền truy cập hệ thống.");
+        _jwtTokenGeneratorMock.Verify(x => x.GenerateAccessToken(
+            It.IsAny<AppUser>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldExcludeDisabledPermission_WhenRefreshingToken()
+    {
+        var rawToken = "token_disabled_permission";
+        var userId = Guid.NewGuid();
+        var existingToken = new Domain.Entities.RefreshToken
+        {
+            RefreshTokenId = Guid.NewGuid(),
+            UserId = userId,
+            TokenHash = "hashed_disabled_permission",
+            ExpiresAt = DateTime.UtcNow.AddDays(1)
+        };
+        var user = CreateActiveUser(userId, permissionCode: "disabled.permission");
+        user.UserRoleUsers.Single().Role.RolePermissions.Single().Permission.IsActive = false;
+
+        _otpServiceMock.Setup(x => x.HashOtp(rawToken)).Returns(existingToken.TokenHash);
+        _otpServiceMock.Setup(x => x.HashOtp("new-refresh")).Returns("new-refresh-hash");
+        _refreshTokenRepositoryMock.Setup(x => x.GetByHashAsync(existingToken.TokenHash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingToken);
+        _userRepositoryMock.Setup(x => x.GetByIdWithRolesAndPermissionsAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _jwtTokenGeneratorMock.Setup(x => x.GenerateAccessToken(
+                user,
+                It.IsAny<IEnumerable<string>>(),
+                It.Is<IEnumerable<string>>(permissions => !permissions.Any())))
+            .Returns(("new-access", DateTime.UtcNow.AddHours(1)));
+        _jwtTokenGeneratorMock.Setup(x => x.GenerateRefreshToken()).Returns("new-refresh");
+
+        var response = await _handler.Handle(new RefreshTokenCommand(rawToken), CancellationToken.None);
+
+        response.Data!.User.Permissions.Should().BeEmpty();
+        _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

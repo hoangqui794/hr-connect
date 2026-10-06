@@ -33,8 +33,8 @@ public class RefreshTokenRepository : IRefreshTokenRepository
     }
 
     public async Task RevokeAllByUserIdAsync(
-        Guid userId, 
-        string reason, 
+        Guid userId,
+        string reason,
         CancellationToken cancellationToken = default)
     {
         var activeTokens = await _context.RefreshTokens

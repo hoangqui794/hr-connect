@@ -71,7 +71,7 @@ public class UpdateCandidateProfileCommandHandler : IRequestHandler<UpdateCandid
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Ứng viên CandidateId {CandidateId} (UserId {UserId}) đã cập nhật hồ sơ thành công.", 
+        _logger.LogInformation("Ứng viên CandidateId {CandidateId} (UserId {UserId}) đã cập nhật hồ sơ thành công.",
             candidate.CandidateId, request.UserId);
 
         return new UpdateCandidateProfileResponse

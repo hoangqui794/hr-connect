@@ -1,0 +1,24 @@
+{
+  "requestId": "MEDIUM-001",
+  "applicationId": "APP-002",
+  "attemptNo": 1,
+  "candidate": {
+    "summary": "Medium backend developer",
+    "yearsOfExperience": 2,
+    "highestEducation": "Bachelor",
+    "skills": [
+      {"name": "ASP.NET Core", "yearsOfExperience": 2},
+      {"name": "Docker", "yearsOfExperience": 1}
+    ],
+    "cvText": "Developed .NET REST services and containerized applications."
+  },
+  "job": {
+    "title": ".NET Backend Developer",
+    "description": "Develop REST backend services using .NET and PostgreSQL.",
+    "requirements": [
+      {"type": "MUST_HAVE", "category": "SKILL", "content": "ASP.NET Core"},
+      {"type": "MUST_HAVE", "category": "SKILL", "content": "PostgreSQL"},
+      {"type": "SHOULD_HAVE", "category": "SKILL", "content": "Docker"}
+    ]
+  }
+}

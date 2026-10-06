@@ -14,13 +14,25 @@ public class CreateJobCommand : IRequest<CreateJobResponse>
 
     public string? Description { get; set; }
 
+    public string? Benefits { get; set; }
+
     public string? Location { get; set; }
+
+    public string? WorkingTime { get; set; }
 
     public string? EmploymentType { get; set; }
 
     public decimal? SalaryMin { get; set; }
 
     public decimal? SalaryMax { get; set; }
+
+    public bool SalaryNegotiable { get; set; }
+
+    public string? SalaryNote { get; set; }
+
+    public int? MinExperienceYears { get; set; }
+
+    public int? MaxExperienceYears { get; set; }
 
     public string CurrencyCode { get; set; } = "VND";
 
@@ -29,6 +41,17 @@ public class CreateJobCommand : IRequest<CreateJobResponse>
     public string Visibility { get; set; } = "PUBLIC";
 
     public List<CreateJobRequirementRequest> Requirements { get; set; } = [];
+
+    public List<JobSkillRequest> Skills { get; set; } = [];
+}
+
+public class JobSkillRequest
+{
+    public Guid SkillId { get; set; }
+
+    public bool IsMandatory { get; set; }
+
+    public decimal? Weight { get; set; }
 }
 
 public class CreateJobRequirementRequest
@@ -61,11 +84,28 @@ public class CreateJobData
 
     public string Title { get; set; } = string.Empty;
 
+    public string? Benefits { get; set; }
+
+    public string? WorkingTime { get; set; }
+
+    public bool SalaryNegotiable { get; set; }
+
+    public string? SalaryNote { get; set; }
+
+    public int? MinExperienceYears { get; set; }
+
+    public int? MaxExperienceYears { get; set; }
+
     public string Status { get; set; } = string.Empty;
 
     public string Visibility { get; set; } = string.Empty;
 
     public int RequirementCount { get; set; }
 
+    public int SkillCount { get; set; }
+
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>Token phải được gửi lại khi cập nhật hoặc đổi trạng thái Job.</summary>
+    public Guid ConcurrencyToken { get; set; }
 }

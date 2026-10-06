@@ -1,5 +1,7 @@
+using System.Text.Json;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -10,23 +12,23 @@ namespace HRConnect.Infrastructure.Services.Admin;
 public class AdminApprovalService : IAdminApprovalService
 {
     private readonly ApplicationDbContext _context;
-    private readonly IEmailService _emailService;
+    private readonly IAuditLogService _auditLogService;
     private readonly ILogger<AdminApprovalService> _logger;
 
     public AdminApprovalService(
         ApplicationDbContext context,
-        IEmailService emailService,
+        IAuditLogService auditLogService,
         ILogger<AdminApprovalService> logger)
     {
         _context = context;
-        _emailService = emailService;
+        _auditLogService = auditLogService;
         _logger = logger;
     }
 
     public async Task ApproveAffiliateApplicationAsync(
-        Guid applicationId, 
-        Guid adminUserId, 
-        string? reviewNote = null, 
+        Guid applicationId,
+        Guid adminUserId,
+        string? reviewNote = null,
         CancellationToken cancellationToken = default)
     {
         var application = await _context.AffiliateApplications
@@ -38,10 +40,23 @@ public class AdminApprovalService : IAdminApprovalService
             throw new NotFoundException("Không tìm thấy đơn đăng ký Affiliate.");
         }
 
-        // Chống phê duyệt kép / kiểm tra trạng thái hợp lệ
-        if (application.Status == "APPROVED" || application.Status == "REJECTED")
+        if (application.User.EmailVerifiedAt == null)
         {
-            throw new ConflictException($"Đơn đăng ký Affiliate đã ở trạng thái {application.Status}, không thể phê duyệt lại.");
+            throw new ConflictException("Người dùng chưa xác thực email bằng OTP, không thể phê duyệt hồ sơ Affiliate.");
+        }
+
+        if (!string.Equals(application.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException($"Đơn đăng ký Affiliate đang ở trạng thái {application.Status}; chỉ hồ sơ UNDER_REVIEW mới được phê duyệt.");
+        }
+
+        var affiliateRole = await _context.Roles
+            .FirstOrDefaultAsync(
+                role => role.Code == "AFFILIATE_RECRUITER" && role.IsActive,
+                cancellationToken);
+        if (affiliateRole == null)
+        {
+            throw new ConflictException("Role AFFILIATE_RECRUITER đang thiếu hoặc đã bị tắt; chưa thể phê duyệt hồ sơ.");
         }
 
         var now = DateTime.UtcNow;
@@ -83,37 +98,49 @@ public class AdminApprovalService : IAdminApprovalService
             }
 
             // 3. Gán Role AFFILIATE_RECRUITER
-            var affiliateRole = await _context.Roles
-                .FirstOrDefaultAsync(r => r.Code == "AFFILIATE_RECRUITER", cancellationToken);
+            var existingUserRole = await _context.UserRoles
+                .FirstOrDefaultAsync(ur => ur.UserId == application.UserId && ur.RoleId == affiliateRole.RoleId, cancellationToken);
 
-            if (affiliateRole != null)
+            if (existingUserRole == null)
             {
-                var existingUserRole = await _context.UserRoles
-                    .FirstOrDefaultAsync(ur => ur.UserId == application.UserId && ur.RoleId == affiliateRole.RoleId, cancellationToken);
-
-                if (existingUserRole == null)
+                await _context.UserRoles.AddAsync(new UserRole
                 {
-                    await _context.UserRoles.AddAsync(new UserRole
-                    {
-                        UserId = application.UserId,
-                        RoleId = affiliateRole.RoleId,
-                        AssignmentSource = "AFFILIATE_APPROVAL",
-                        AssignedBy = adminUserId,
-                        AssignedAt = now,
-                        Status = "ACTIVE"
-                    }, cancellationToken);
-                }
-                else
-                {
-                    existingUserRole.Status = "ACTIVE";
-                    _context.UserRoles.Update(existingUserRole);
-                }
+                    UserId = application.UserId,
+                    RoleId = affiliateRole.RoleId,
+                    AssignmentSource = "AFFILIATE_APPROVAL",
+                    AssignedBy = adminUserId,
+                    AssignedAt = now,
+                    Status = "ACTIVE"
+                }, cancellationToken);
+            }
+            else
+            {
+                existingUserRole.Status = "ACTIVE";
+                _context.UserRoles.Update(existingUserRole);
             }
 
             // 4. Kích hoạt tài khoản AppUser
             application.User.Status = "ACTIVE";
             application.User.UpdatedAt = now;
             _context.AppUsers.Update(application.User);
+
+            await AddReviewAuditAsync(
+                AuditActions.AffiliateApproved,
+                "AFFILIATE_APPLICATION",
+                application.AffiliateApplicationId,
+                adminUserId,
+                "UNDER_REVIEW",
+                "APPROVED",
+                cancellationToken);
+            await QueueReviewEmailAsync(
+                application.UserId,
+                application.User.Email,
+                "AFFILIATE_REGISTRATION_APPROVED",
+                "Đối tác tuyển dụng",
+                approved: true,
+                reviewNote,
+                now,
+                cancellationToken);
 
             await _context.SaveChangesAsync(cancellationToken);
         };
@@ -136,35 +163,12 @@ public class AdminApprovalService : IAdminApprovalService
         _logger.LogInformation("Admin {AdminId} đã phê duyệt đơn đăng ký Affiliate {AppId} cho UserId {UserId}",
             adminUserId, applicationId, application.UserId);
 
-        // 5. Gửi email thông báo phê duyệt
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                var subject = "Chúc mừng! Hồ sơ Đối tác tuyển dụng của bạn đã được phê duyệt - HR Connect";
-                var bodyHtml = @"
-                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                        <h2 style='color: #10B981; margin-top: 0;'>Chúc mừng bạn!</h2>
-                        <p>Hồ sơ đăng ký <strong>Đối tác tuyển dụng (Affiliate Recruiter)</strong> của bạn trên hệ thống HR Connect đã được Ban quản trị phê duyệt thành công.</p>
-                        <p>Hiện tại bạn đã có thể đăng nhập vào hệ thống và bắt đầu sử dụng đầy đủ các tính năng dành cho Đối tác tuyển dụng.</p>
-                        <p>Cảm ơn bạn đã đồng hành cùng HR Connect!</p>
-                        <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                        <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
-                    </div>";
-
-                await _emailService.SendEmailAsync(application.User.Email, subject, bodyHtml, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi gửi email thông báo phê duyệt Affiliate tới {Email}", application.User.Email);
-            }
-        }, CancellationToken.None);
     }
 
     public async Task RejectAffiliateApplicationAsync(
-        Guid applicationId, 
-        Guid adminUserId, 
-        string? reviewNote = null, 
+        Guid applicationId,
+        Guid adminUserId,
+        string? reviewNote = null,
         CancellationToken cancellationToken = default)
     {
         var application = await _context.AffiliateApplications
@@ -176,10 +180,14 @@ public class AdminApprovalService : IAdminApprovalService
             throw new NotFoundException("Không tìm thấy đơn đăng ký Affiliate.");
         }
 
-        // Chống phê duyệt kép / kiểm tra trạng thái hợp lệ
-        if (application.Status == "APPROVED" || application.Status == "REJECTED")
+        if (application.User.EmailVerifiedAt == null)
         {
-            throw new ConflictException($"Đơn đăng ký Affiliate đã ở trạng thái {application.Status}, không thể từ chối lại.");
+            throw new ConflictException("Người dùng chưa xác thực email bằng OTP, không thể từ chối hồ sơ Affiliate.");
+        }
+
+        if (!string.Equals(application.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException($"Đơn đăng ký Affiliate đang ở trạng thái {application.Status}; chỉ hồ sơ UNDER_REVIEW mới được từ chối.");
         }
 
         var now = DateTime.UtcNow;
@@ -190,6 +198,24 @@ public class AdminApprovalService : IAdminApprovalService
             application.ReviewedBy = adminUserId;
             application.ReviewedAt = now;
             application.ReviewNote = reviewNote;
+
+            await AddReviewAuditAsync(
+                AuditActions.AffiliateRejected,
+                "AFFILIATE_APPLICATION",
+                application.AffiliateApplicationId,
+                adminUserId,
+                "UNDER_REVIEW",
+                "REJECTED",
+                cancellationToken);
+            await QueueReviewEmailAsync(
+                application.UserId,
+                application.User.Email,
+                "AFFILIATE_REGISTRATION_REJECTED",
+                "Đối tác tuyển dụng",
+                approved: false,
+                reviewNote,
+                now,
+                cancellationToken);
 
             await _context.SaveChangesAsync(cancellationToken);
         };
@@ -212,36 +238,12 @@ public class AdminApprovalService : IAdminApprovalService
         _logger.LogInformation("Admin {AdminId} đã từ chối đơn đăng ký Affiliate {AppId} cho UserId {UserId}",
             adminUserId, applicationId, application.UserId);
 
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                var subject = "Thông báo về hồ sơ đăng ký Đối tác tuyển dụng - HR Connect";
-                var reasonText = string.IsNullOrWhiteSpace(reviewNote) ? "" : $"<p><strong>Lý do từ chối:</strong> {reviewNote}</p>";
-                var bodyHtml = $@"
-                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                        <h2 style='color: #EF4444; margin-top: 0;'>Thông báo kết quả hồ sơ Đối tác tuyển dụng</h2>
-                        <p>Cảm ơn bạn đã quan tâm và đăng ký trở thành Đối tác tuyển dụng trên hệ thống HR Connect.</p>
-                        <p>Rất tiếc, hồ sơ đăng ký của bạn chưa được phê duyệt ở thời điểm hiện tại.</p>
-                        {reasonText}
-                        <p>Nếu bạn cần hỗ trợ thêm thông tin hoặc có thắc mắc, vui lòng liên hệ với bộ phận hỗ trợ của HR Connect.</p>
-                        <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                        <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
-                    </div>";
-
-                await _emailService.SendEmailAsync(application.User.Email, subject, bodyHtml, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi gửi email từ chối Affiliate tới {Email}", application.User.Email);
-            }
-        }, CancellationToken.None);
     }
 
     public async Task ApproveCompanyVerificationRequestAsync(
-        Guid requestId, 
-        Guid adminUserId, 
-        string? reviewNote = null, 
+        Guid requestId,
+        Guid adminUserId,
+        string? reviewNote = null,
         CancellationToken cancellationToken = default)
     {
         var request = await _context.CompanyVerificationRequests
@@ -254,10 +256,24 @@ public class AdminApprovalService : IAdminApprovalService
             throw new NotFoundException("Không tìm thấy yêu cầu xác thực doanh nghiệp.");
         }
 
-        // Chống phê duyệt kép / kiểm tra trạng thái hợp lệ
-        if (request.Status == "APPROVED" || request.Status == "REJECTED")
+        if (request.SubmittedByNavigation.EmailVerifiedAt == null)
         {
-            throw new ConflictException($"Yêu cầu xác thực doanh nghiệp đã ở trạng thái {request.Status}, không thể phê duyệt lại.");
+            throw new ConflictException("Người dùng chưa xác thực email bằng OTP, không thể phê duyệt hồ sơ doanh nghiệp.");
+        }
+
+        if (!string.Equals(request.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(request.Company.VerificationStatus, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException($"Hồ sơ doanh nghiệp chưa sẵn sàng để phê duyệt (request: {request.Status}, company: {request.Company.VerificationStatus}).");
+        }
+
+        var clientRole = await _context.Roles
+            .FirstOrDefaultAsync(
+                role => role.Code == "CLIENT_COMPANY_USER" && role.IsActive,
+                cancellationToken);
+        if (clientRole == null)
+        {
+            throw new ConflictException("Role CLIENT_COMPANY_USER đang thiếu hoặc đã bị tắt; chưa thể phê duyệt hồ sơ.");
         }
 
         var now = DateTime.UtcNow;
@@ -286,36 +302,48 @@ public class AdminApprovalService : IAdminApprovalService
             }
 
             // 4. Gán Role CLIENT_COMPANY_USER
-            var clientRole = await _context.Roles
-                .FirstOrDefaultAsync(r => r.Code == "CLIENT_COMPANY_USER", cancellationToken);
+            var existingUserRole = await _context.UserRoles
+                .FirstOrDefaultAsync(ur => ur.UserId == request.SubmittedBy && ur.RoleId == clientRole.RoleId, cancellationToken);
 
-            if (clientRole != null)
+            if (existingUserRole == null)
             {
-                var existingUserRole = await _context.UserRoles
-                    .FirstOrDefaultAsync(ur => ur.UserId == request.SubmittedBy && ur.RoleId == clientRole.RoleId, cancellationToken);
-
-                if (existingUserRole == null)
+                await _context.UserRoles.AddAsync(new UserRole
                 {
-                    await _context.UserRoles.AddAsync(new UserRole
-                    {
-                        UserId = request.SubmittedBy,
-                        RoleId = clientRole.RoleId,
-                        AssignmentSource = "COMPANY_VERIFICATION",
-                        AssignedBy = adminUserId,
-                        AssignedAt = now,
-                        Status = "ACTIVE"
-                    }, cancellationToken);
-                }
-                else
-                {
-                    existingUserRole.Status = "ACTIVE";
-                    _context.UserRoles.Update(existingUserRole);
-                }
+                    UserId = request.SubmittedBy,
+                    RoleId = clientRole.RoleId,
+                    AssignmentSource = "COMPANY_VERIFICATION",
+                    AssignedBy = adminUserId,
+                    AssignedAt = now,
+                    Status = "ACTIVE"
+                }, cancellationToken);
+            }
+            else
+            {
+                existingUserRole.Status = "ACTIVE";
+                _context.UserRoles.Update(existingUserRole);
             }
 
             // 5. Kích hoạt tài khoản AppUser
             request.SubmittedByNavigation.Status = "ACTIVE";
             request.SubmittedByNavigation.UpdatedAt = now;
+
+            await AddReviewAuditAsync(
+                AuditActions.ClientApproved,
+                "COMPANY_VERIFICATION_REQUEST",
+                request.CompanyVerificationRequestId,
+                adminUserId,
+                "UNDER_REVIEW",
+                "APPROVED",
+                cancellationToken);
+            await QueueReviewEmailAsync(
+                request.SubmittedBy,
+                request.SubmittedByNavigation.Email,
+                "CLIENT_REGISTRATION_APPROVED",
+                "Doanh nghiệp tuyển dụng",
+                approved: true,
+                reviewNote,
+                now,
+                cancellationToken);
 
             await _context.SaveChangesAsync(cancellationToken);
         };
@@ -338,35 +366,12 @@ public class AdminApprovalService : IAdminApprovalService
         _logger.LogInformation("Admin {AdminId} đã phê duyệt doanh nghiệp {CompanyId} cho UserId {UserId}",
             adminUserId, request.CompanyId, request.SubmittedBy);
 
-        // 6. Gửi email phê duyệt
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                var subject = "Chúc mừng! Hồ sơ Doanh nghiệp của bạn đã được phê duyệt - HR Connect";
-                var bodyHtml = @"
-                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                        <h2 style='color: #10B981; margin-top: 0;'>Chúc mừng bạn!</h2>
-                        <p>Hồ sơ xác thực <strong>Doanh nghiệp tuyển dụng</strong> của bạn trên hệ thống HR Connect đã được Ban quản trị phê duyệt thành công.</p>
-                        <p>Tài khoản của bạn đã được kích hoạt. Hiện tại bạn có thể đăng nhập và sử dụng toàn bộ tính năng tuyển dụng và quản trị doanh nghiệp.</p>
-                        <p>Cảm ơn bạn đã tin tưởng và đồng hành cùng HR Connect!</p>
-                        <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                        <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
-                    </div>";
-
-                await _emailService.SendEmailAsync(request.SubmittedByNavigation.Email, subject, bodyHtml, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi gửi email thông báo phê duyệt Doanh nghiệp tới {Email}", request.SubmittedByNavigation.Email);
-            }
-        }, CancellationToken.None);
     }
 
     public async Task RejectCompanyVerificationRequestAsync(
-        Guid requestId, 
-        Guid adminUserId, 
-        string? reviewNote = null, 
+        Guid requestId,
+        Guid adminUserId,
+        string? reviewNote = null,
         CancellationToken cancellationToken = default)
     {
         var request = await _context.CompanyVerificationRequests
@@ -379,10 +384,15 @@ public class AdminApprovalService : IAdminApprovalService
             throw new NotFoundException("Không tìm thấy yêu cầu xác thực doanh nghiệp.");
         }
 
-        // Chống phê duyệt kép / kiểm tra trạng thái hợp lệ
-        if (request.Status == "APPROVED" || request.Status == "REJECTED")
+        if (request.SubmittedByNavigation.EmailVerifiedAt == null)
         {
-            throw new ConflictException($"Yêu cầu xác thực doanh nghiệp đã ở trạng thái {request.Status}, không thể từ chối lại.");
+            throw new ConflictException("Người dùng chưa xác thực email bằng OTP, không thể từ chối hồ sơ doanh nghiệp.");
+        }
+
+        if (!string.Equals(request.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(request.Company.VerificationStatus, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException($"Hồ sơ doanh nghiệp chưa sẵn sàng để từ chối (request: {request.Status}, company: {request.Company.VerificationStatus}).");
         }
 
         var now = DateTime.UtcNow;
@@ -396,6 +406,24 @@ public class AdminApprovalService : IAdminApprovalService
 
             request.Company.VerificationStatus = "REJECTED";
             request.Company.UpdatedAt = now;
+
+            await AddReviewAuditAsync(
+                AuditActions.ClientRejected,
+                "COMPANY_VERIFICATION_REQUEST",
+                request.CompanyVerificationRequestId,
+                adminUserId,
+                "UNDER_REVIEW",
+                "REJECTED",
+                cancellationToken);
+            await QueueReviewEmailAsync(
+                request.SubmittedBy,
+                request.SubmittedByNavigation.Email,
+                "CLIENT_REGISTRATION_REJECTED",
+                "Doanh nghiệp tuyển dụng",
+                approved: false,
+                reviewNote,
+                now,
+                cancellationToken);
 
             await _context.SaveChangesAsync(cancellationToken);
         };
@@ -418,29 +446,53 @@ public class AdminApprovalService : IAdminApprovalService
         _logger.LogInformation("Admin {AdminId} đã từ chối xác thực doanh nghiệp {CompanyId}",
             adminUserId, request.CompanyId);
 
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                var subject = "Thông báo về hồ sơ xác thực Doanh nghiệp - HR Connect";
-                var reasonText = string.IsNullOrWhiteSpace(reviewNote) ? "" : $"<p><strong>Lý do từ chối:</strong> {reviewNote}</p>";
-                var bodyHtml = $@"
-                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;'>
-                        <h2 style='color: #EF4444; margin-top: 0;'>Thông báo kết quả xác thực Doanh nghiệp</h2>
-                        <p>Cảm ơn bạn đã đăng ký hồ sơ Doanh nghiệp trên hệ thống HR Connect.</p>
-                        <p>Rất tiếc, yêu cầu xác thực doanh nghiệp của bạn chưa được Ban quản trị phê duyệt ở thời điểm hiện tại.</p>
-                        {reasonText}
-                        <p>Nếu bạn cần hỗ trợ thêm thông tin hoặc muốn bổ sung tài liệu xác thực, vui lòng liên hệ với bộ phận hỗ trợ của HR Connect.</p>
-                        <hr style='border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;' />
-                        <p style='color: #9CA3AF; font-size: 12px;'>Thông báo tự động từ HR Connect System. Vui lòng không trả lời thư này.</p>
-                    </div>";
+    }
 
-                await _emailService.SendEmailAsync(request.SubmittedByNavigation.Email, subject, bodyHtml, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi gửi email từ chối Doanh nghiệp tới {Email}", request.SubmittedByNavigation.Email);
-            }
-        }, CancellationToken.None);
+    private async Task AddReviewAuditAsync(
+        string action,
+        string entityType,
+        Guid entityId,
+        Guid adminUserId,
+        string oldStatus,
+        string newStatus,
+        CancellationToken cancellationToken)
+    {
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId,
+            ActorUserId = adminUserId,
+            OldValues = new { status = oldStatus },
+            NewValues = new { status = newStatus },
+            Source = AuditSources.Application
+        }, cancellationToken);
+    }
+
+    private async Task QueueReviewEmailAsync(
+        Guid userId,
+        string recipientEmail,
+        string templateCode,
+        string accountLabel,
+        bool approved,
+        string? reviewNote,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var email = HRConnect.Application.Common.Email.HrConnectEmailTemplates
+            .RegistrationReviewResult(accountLabel, approved, reviewNote);
+        await _context.EmailOutboxes.AddAsync(new EmailOutbox
+        {
+            EmailOutboxId = Guid.NewGuid(),
+            UserId = userId,
+            RecipientEmail = recipientEmail,
+            TemplateCode = templateCode,
+            Subject = email.Subject,
+            Payload = JsonSerializer.Serialize(new { accountLabel, approved, reviewNote }),
+            Status = "PENDING",
+            RetryCount = 0,
+            NextRetryAt = now,
+            CreatedAt = now
+        }, cancellationToken);
     }
 }

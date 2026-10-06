@@ -52,7 +52,12 @@ public static class DatabaseSeeder
         // 2. Khởi tạo danh mục loại dịch vụ (Service Type) nếu chưa có (Idempotent seed)
         await ServiceTypeSeeder.SeedAsync(context, logger, cancellationToken);
 
-        // 3. Tự động nạp toàn bộ danh sách Permissions và Role-Permissions từ file Permission.md
+        // 3. Khởi tạo ma trận quyền xem/nộp theo Service Type và Role.
+        await ServiceTypeAllowedRoleSeeder.SeedAsync(context, logger, cancellationToken);
+
+        await CommissionMilestoneSeeder.SeedAsync(context, logger, cancellationToken);
+
+        // 4. Tự động nạp toàn bộ danh sách Permissions và Role-Permissions từ file Permission.md
         if (context.Database.IsRelational())
         {
             try
@@ -73,10 +78,11 @@ public static class DatabaseSeeder
             }
         }
 
-        // 4. Khởi tạo tài khoản phát triển / demo nếu được bật
+        // 5. Khởi tạo tài khoản phát triển / demo nếu được bật
         if (seedDemoAccounts)
         {
             await DemoAccountSeeder.SeedAsync(context, passwordHasher, emailNormalizer, phoneNormalizer, logger, cancellationToken);
+            await CandidateTestJobSeeder.SeedAsync(context, logger, cancellationToken);
         }
     }
 
@@ -117,6 +123,7 @@ public static class DatabaseSeeder
         ('cv.delete_own', 'candidate_cv', 'delete_own', 'Delete own CV'),
         ('application.create', 'application', 'create', 'Apply to a job'),
         ('application.view_own', 'application', 'view_own', 'View own job applications'),
+        ('application.withdraw_own', 'application', 'withdraw_own', 'Withdraw own job application'),
         ('interview.view_own', 'interview', 'view_own', 'View own interview schedule'),
         ('offer.view_own', 'offer', 'view_own', 'View own offers'),
         ('offer.respond', 'offer', 'respond', 'Accept or decline own offer'),
@@ -125,6 +132,11 @@ public static class DatabaseSeeder
         ('affiliate.profile.update_own', 'affiliate_profile', 'update_own', 'Update own affiliate profile'),
         ('submission.create', 'submission', 'create', 'Submit a candidate and CV for a job'),
         ('submission.view_own', 'submission', 'view_own', 'View own submissions'),
+        ('referral.progress.view_own', 'affiliate_referral', 'view_own', 'View high-level progress of own referrals'),
+        ('submission.consent.resend_own', 'submission_consent', 'resend_own', 'Resend consent request for own submission'),
+        ('candidate_library.view_own', 'affiliate_candidate_library', 'view_own', 'View candidates and CV metadata in own affiliate library'),
+        ('candidate_library.download_cv', 'affiliate_candidate_library', 'download_cv', 'Download CV from own affiliate candidate library'),
+        ('attribution.view_own', 'attribution', 'view_own', 'View own affiliate attribution'),
         ('dispute.create', 'dispute', 'create', 'Raise duplicate or attribution dispute'),
         ('dispute.view_own', 'dispute', 'view_own', 'View own disputes'),
         ('commission.view_own', 'commission', 'view_own', 'View own commissions'),
@@ -143,12 +155,19 @@ public static class DatabaseSeeder
         ('offer.create', 'offer', 'create', 'Create job offers'),
         ('offer.update', 'offer', 'update', 'Update job offers'),
         ('offer.view_company', 'offer', 'view_company', 'View offers for own company jobs'),
+        ('interview.record_result', 'interview', 'record_result', 'Record interview result'),
+        ('application.decide_backup', 'application', 'decide_backup', 'Decide backup candidate selection'),
+        ('offer.send', 'offer', 'send', 'Send offer to candidate'),
+        ('offer.withdraw', 'offer', 'withdraw', 'Withdraw job offer'),
+        ('placement.confirm', 'placement', 'confirm', 'Confirm candidate placement and start work'),
+        ('application.mark_not_started', 'application', 'mark_not_started', 'Mark placed candidate as not started'),
         ('company.view', 'company', 'view', 'View companies'),
         ('job.review', 'job', 'review', 'Review job postings'),
         ('job.publish', 'job', 'publish', 'Publish approved job postings'),
         ('candidate.view', 'candidate', 'view', 'View candidate information'),
         ('application.view', 'application', 'view', 'View applications'),
         ('application.screen', 'application', 'screen', 'Screen applications'),
+        ('application.retry_ai_scoring', 'application', 'retry_ai_scoring', 'Retry failed AI scoring'),
         ('submission.view', 'submission', 'view', 'View submissions'),
         ('attribution.view', 'attribution', 'view', 'View affiliate attribution'),
         ('interview.manage', 'interview', 'manage', 'Manage interviews'),
@@ -182,7 +201,7 @@ public static class DatabaseSeeder
     FROM public.role r
     JOIN public.permission p ON p.code IN (
         'job.view', 'notification.view_own', 'candidate.profile.view_own', 'candidate.profile.update_own',
-        'cv.create', 'cv.view_own', 'cv.update_own', 'cv.delete_own', 'application.create', 'application.view_own',
+        'cv.create', 'cv.view_own', 'cv.update_own', 'cv.delete_own', 'application.create', 'application.view_own', 'application.withdraw_own',
         'interview.view_own', 'offer.view_own', 'offer.respond', 'affiliate.apply'
     )
     WHERE r.code = 'CANDIDATE'
@@ -193,7 +212,9 @@ public static class DatabaseSeeder
     FROM public.role r
     JOIN public.permission p ON p.code IN (
         'job.view', 'notification.view_own', 'affiliate.profile.view_own', 'affiliate.profile.update_own',
-        'submission.create', 'submission.view_own', 'dispute.create', 'dispute.view_own',
+        'submission.create', 'submission.view_own', 'referral.progress.view_own', 'submission.consent.resend_own',
+        'candidate_library.view_own', 'candidate_library.download_cv',
+        'attribution.view_own', 'dispute.create', 'dispute.view_own',
         'commission.view_own', 'payout.view_own', 'affiliate.performance.view_own'
     )
     WHERE r.code = 'AFFILIATE_RECRUITER'
@@ -205,7 +226,8 @@ public static class DatabaseSeeder
     JOIN public.permission p ON p.code IN (
         'notification.view_own', 'company.profile.view_own', 'company.profile.update_own',
         'job.create', 'job.view_own', 'job.update_own', 'application.view_company', 'candidate.review_company',
-        'interview.create', 'interview.update', 'interview.view_company', 'offer.create', 'offer.update', 'offer.view_company'
+        'interview.create', 'interview.update', 'interview.view_company', 'offer.create', 'offer.update', 'offer.view_company',
+        'interview.record_result', 'application.decide_backup', 'offer.send', 'offer.withdraw', 'placement.confirm', 'application.mark_not_started'
     )
     WHERE r.code = 'CLIENT_COMPANY_USER'
     ON CONFLICT (role_id, permission_id) DO NOTHING;
@@ -215,8 +237,8 @@ public static class DatabaseSeeder
     FROM public.role r
     JOIN public.permission p ON p.code IN (
         'job.view', 'notification.view_own', 'company.view', 'job.review', 'job.publish', 'candidate.view',
-        'application.view', 'application.screen', 'submission.view', 'attribution.view',
-        'interview.manage', 'offer.manage', 'placement.manage', 'probation.manage', 'warranty.manage',
+        'application.view', 'application.retry_ai_scoring', 'submission.view', 'attribution.view',
+        'probation.manage', 'warranty.manage',
         'commission.view', 'payout.view'
     )
     WHERE r.code = 'INTERNAL_HR'
@@ -226,10 +248,11 @@ public static class DatabaseSeeder
     SELECT r.role_id, p.permission_id
     FROM public.role r
     JOIN public.permission p ON p.code IN (
-        'job.view', 'notification.view_own', 'user.view', 'user.manage', 'role.view', 'role.manage',
+        'job.view', 'job.review', 'job.publish', 'notification.view_own', 'user.view', 'user.manage', 'role.view', 'role.manage',
         'permission.view', 'permission.manage', 'company.verify', 'affiliate.verify',
         'dispute.view', 'dispute.resolve', 'commission.manage', 'payout.manage',
-        'system_config.view', 'system_config.manage', 'report.view', 'audit.view'
+        'system_config.view', 'system_config.manage', 'report.view', 'audit.view', 'application.retry_ai_scoring',
+        'interview.record_result', 'application.decide_backup', 'offer.send', 'offer.withdraw', 'placement.confirm', 'application.mark_not_started'
     )
     WHERE r.code = 'PLATFORM_ADMIN'
     ON CONFLICT (role_id, permission_id) DO NOTHING;

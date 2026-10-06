@@ -1,0 +1,566 @@
+using FluentAssertions;
+using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Candidates.Commands.ApplyJob;
+using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Domain.Entities;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Xunit;
+
+namespace HRConnect.UnitTests.Features.Candidates;
+
+public class ApplyJobCommandHandlerTests
+{
+    private readonly Mock<ICandidateRepository> _candidateRepositoryMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IJobRepository> _jobRepositoryMock;
+    private readonly Mock<ICandidateCvRepository> _candidateCvRepositoryMock;
+    private readonly Mock<ICvStorageService> _cvStorageServiceMock;
+    private readonly Mock<ISubmissionRepository> _submissionRepositoryMock;
+    private readonly Mock<IApplicationRepository> _applicationRepositoryMock;
+    private readonly Mock<IMf03ScoringTrigger> _scoringTriggerMock;
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<IAuditLogService> _auditLogServiceMock;
+    private readonly Mock<ILogger<ApplyJobCommandHandler>> _loggerMock;
+    private readonly ApplyJobCommandHandler _handler;
+
+    public ApplyJobCommandHandlerTests()
+    {
+        _candidateRepositoryMock = new Mock<ICandidateRepository>();
+        _userRepositoryMock = new Mock<IUserRepository>();
+        _jobRepositoryMock = new Mock<IJobRepository>();
+        _candidateCvRepositoryMock = new Mock<ICandidateCvRepository>();
+        _cvStorageServiceMock = new Mock<ICvStorageService>();
+        _submissionRepositoryMock = new Mock<ISubmissionRepository>();
+        _applicationRepositoryMock = new Mock<IApplicationRepository>();
+        _scoringTriggerMock = new Mock<IMf03ScoringTrigger>();
+        _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _auditLogServiceMock = new Mock<IAuditLogService>();
+        _loggerMock = new Mock<ILogger<ApplyJobCommandHandler>>();
+        _userRepositoryMock.Setup(repository => repository.GetByIdWithActiveRolesAsync(
+                It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateActiveCandidateUser());
+
+        _handler = new ApplyJobCommandHandler(
+            _candidateRepositoryMock.Object,
+            _userRepositoryMock.Object,
+            _jobRepositoryMock.Object,
+            _candidateCvRepositoryMock.Object,
+            _cvStorageServiceMock.Object,
+            _submissionRepositoryMock.Object,
+            _applicationRepositoryMock.Object,
+            _scoringTriggerMock.Object,
+            _unitOfWorkMock.Object,
+            _auditLogServiceMock.Object,
+            _loggerMock.Object);
+    }
+
+    [Fact]
+    public async Task Handle_WithValidRequest_CreatesAcceptedSubmissionAndApplication_AndTriggersMf03()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var cvId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+
+        var candidate = new Candidate { CandidateId = candidateId, UserId = userId, FullName = "Candidate One", Status = "ACTIVE" };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "candidates/1/cvs/1.pdf" };
+
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cv);
+
+        _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Submission?)null);
+
+        _applicationRepositoryMock.Setup(r => r.GetByCandidateAndJobAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((HRConnect.Domain.Entities.Application?)null);
+
+        Submission? createdSubmission = null;
+        _submissionRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Submission>(), It.IsAny<CancellationToken>()))
+            .Callback<Submission, CancellationToken>((s, ct) => createdSubmission = s)
+            .Returns(Task.CompletedTask);
+
+        HRConnect.Domain.Entities.Application? createdApp = null;
+        _applicationRepositoryMock.Setup(r => r.AddAsync(It.IsAny<HRConnect.Domain.Entities.Application>(), It.IsAny<CancellationToken>()))
+            .Callback<HRConnect.Domain.Entities.Application, CancellationToken>((a, ct) => createdApp = a)
+            .Returns(Task.CompletedTask);
+
+        var command = new ApplyJobCommand
+        {
+            JobId = jobId,
+            UserId = userId,
+            CvId = cvId,
+            RoleCodes = new[] { "CANDIDATE" }
+        };
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Success.Should().BeTrue();
+        result.Data.Should().NotBeNull();
+        result.Data!.CandidateId.Should().Be(candidateId);
+        result.Data.JobId.Should().Be(jobId);
+        result.Data.CvId.Should().Be(cvId);
+        result.Data.Status.Should().Be("ACCEPTED");
+        result.Data.AiStatus.Should().Be("PENDING");
+
+        // Verify Submission
+        createdSubmission.Should().NotBeNull();
+        createdSubmission!.CandidateId.Should().Be(candidateId);
+        createdSubmission.JobId.Should().Be(jobId);
+        createdSubmission.CvId.Should().Be(cvId);
+        createdSubmission.Source.Should().Be("CANDIDATE");
+        createdSubmission.Status.Should().Be("ACCEPTED");
+
+        // Verify Application
+        createdApp.Should().NotBeNull();
+        createdApp!.CandidateId.Should().Be(candidateId);
+        createdApp.JobId.Should().Be(jobId);
+        createdApp.AcceptedSubmissionId.Should().Be(createdSubmission.SubmissionId);
+        createdApp.Status.Should().Be("SUBMITTED");
+
+        // Verify Save & MF-03 trigger
+        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(
+            It.Is<Mf03TriggerPayload>(p => p.ApplicationId == createdApp.ApplicationId && p.CvId == cvId && p.JobId == jobId),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _auditLogServiceMock.Verify(a => a.AddAsync(
+            It.Is<AuditEntry>(entry => entry.Action == AuditActions.ApplicationSubmitted && entry.EntityId == createdApp.ApplicationId),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidateNotFoundForUserId_ThrowsNotFoundException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Candidate?)null);
+
+        var command = new ApplyJobCommand { JobId = Guid.NewGuid(), UserId = userId };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>()
+            .WithMessage("*Không tìm thấy thông tin hồ sơ ứng viên*");
+    }
+
+    [Fact]
+    public async Task Handle_WhenJobNotFound_ThrowsNotFoundException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" };
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Job?)null);
+
+        var command = new ApplyJobCommand { JobId = Guid.NewGuid(), UserId = userId };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>()
+            .WithMessage("*Không tìm thấy công việc*");
+    }
+
+    [Theory]
+    [InlineData(JobStatuses.Draft)]
+    [InlineData(JobStatuses.Closed)]
+    [InlineData(JobStatuses.Paused)]
+    [InlineData(JobStatuses.PendingReview)]
+    public async Task Handle_WhenJobNotActive_ThrowsBadRequestException(string inactiveStatus)
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" };
+        var job = new Job { JobId = Guid.NewGuid(), Status = inactiveStatus };
+
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+
+        var command = new ApplyJobCommand { JobId = job.JobId, UserId = userId };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*không ở trạng thái nhận hồ sơ ứng tuyển*");
+    }
+
+    [Fact]
+    public async Task Handle_WhenRoleNotAllowedToSubmit_ThrowsForbiddenExceptionWithSpecificErrorCode()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" };
+        var job = new Job { JobId = Guid.NewGuid(), Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid(), Visibility = JobVisibilities.Public };
+
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(job.ServiceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var command = new ApplyJobCommand { JobId = job.JobId, UserId = userId, RoleCodes = new[] { "CANDIDATE" } };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Vai trò ứng viên không được phép nộp hồ sơ cho loại dịch vụ của công việc này.");
+        ex.Which.ErrorCode.Should().Be("SERVICE_TYPE_SUBMISSION_NOT_ALLOWED");
+
+        // Verify no DB changes or MF-03 calls
+        _submissionRepositoryMock.Verify(s => s.AddAsync(It.IsAny<Submission>(), It.IsAny<CancellationToken>()), Times.Never);
+        _applicationRepositoryMock.Verify(a => a.AddAsync(It.IsAny<HRConnect.Domain.Entities.Application>(), It.IsAny<CancellationToken>()), Times.Never);
+        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(JobVisibilities.PartnerOnly)]
+    [InlineData(JobVisibilities.InternalOnly)]
+    public async Task Handle_WhenJobIsNotPublic_RejectsCandidateBeforeServiceTypeCheck(string visibility)
+    {
+        var userId = Guid.NewGuid();
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(), Status = JobStatuses.Active,
+            ServiceTypeId = Guid.NewGuid(), Visibility = visibility
+        };
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate { CandidateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+
+        var action = () => _handler.Handle(new ApplyJobCommand
+        {
+            JobId = job.JobId, UserId = userId, RoleCodes = ["CANDIDATE"]
+        }, default);
+
+        var exception = await action.Should().ThrowAsync<ForbiddenException>();
+        exception.Which.ErrorCode.Should().Be("JOB_VISIBILITY_NOT_ALLOWED");
+        _jobRepositoryMock.Verify(r => r.CanAnyRoleSubmitJobAsync(
+            It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenDuplicateSubmissionExists_CreatesBlockedDuplicateSubmission_ThrowsConflict_WithoutSecondApp()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var cvId = Guid.NewGuid();
+
+        var candidate = new Candidate { CandidateId = candidateId, UserId = userId, Status = "ACTIVE" };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid(), Visibility = JobVisibilities.Public };
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "key" };
+        var existingAcceptedSubmission = new Submission { SubmissionId = Guid.NewGuid(), CandidateId = candidateId, JobId = jobId, Status = "ACCEPTED" };
+
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(job.ServiceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cv);
+
+        // Existing submission detected!
+        _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingAcceptedSubmission);
+
+        Submission? blockedSubmission = null;
+        _submissionRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Submission>(), It.IsAny<CancellationToken>()))
+            .Callback<Submission, CancellationToken>((s, ct) => blockedSubmission = s)
+            .Returns(Task.CompletedTask);
+
+        var command = new ApplyJobCommand { JobId = jobId, UserId = userId, CvId = cvId, RoleCodes = [JobAccessPolicy.CandidateRole] };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*đã nộp hồ sơ ứng tuyển vào công việc này trước đó*");
+
+        // Verify BLOCKED_DUPLICATE recorded
+        blockedSubmission.Should().NotBeNull();
+        blockedSubmission!.Status.Should().Be("BLOCKED_DUPLICATE");
+        blockedSubmission.DuplicateOfSubmissionId.Should().Be(existingAcceptedSubmission.SubmissionId);
+
+        // Verify NO Application was added and NO MF-03 triggered
+        _applicationRepositoryMock.Verify(a => a.AddAsync(It.IsAny<HRConnect.Domain.Entities.Application>(), It.IsAny<CancellationToken>()), Times.Never);
+        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenConcurrentRaceViolatesUniqueConstraint_RollsBack_DeletesUploadedCv_AndThrowsConflict()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var cvId = Guid.NewGuid();
+
+        var candidate = new Candidate { CandidateId = candidateId, UserId = userId, Status = "ACTIVE" };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid(), Visibility = JobVisibilities.Public };
+
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(job.ServiceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // First query returns null (racing past duplicate check)
+        _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Submission?)null);
+        _applicationRepositoryMock.Setup(r => r.GetByCandidateAndJobAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((HRConnect.Domain.Entities.Application?)null);
+
+        var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+        _cvStorageServiceMock.Setup(s => s.UploadCvPdfAsync(candidateId, stream, "cv.pdf", 3, null, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UploadCvResult { CvId = cvId, CandidateId = candidateId, FileName = "cv.pdf" });
+
+        // Commit throws 23505 unique constraint violation from postgres
+        _unitOfWorkMock.Setup(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("duplicate key value violates unique constraint \"uq_submission_one_accepted\" 23505"));
+
+        var command = new ApplyJobCommand
+        {
+            JobId = jobId,
+            UserId = userId,
+            FileStream = stream,
+            FileName = "cv.pdf",
+            FileSizeBytes = 3,
+            RoleCodes = [JobAccessPolicy.CandidateRole]
+        };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*đã nộp hồ sơ ứng tuyển vào công việc này trước đó*");
+
+        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _cvStorageServiceMock.Verify(s => s.DeleteCvAsync(cvId, It.IsAny<CancellationToken>()), Times.Once);
+        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPersistentScoringEnqueueThrows_RollsBackApplication()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var cvId = Guid.NewGuid();
+
+        var candidate = new Candidate { CandidateId = candidateId, UserId = userId, Status = "ACTIVE" };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = Guid.NewGuid(), Visibility = JobVisibilities.Public };
+        var cv = new CandidateCv { CvId = cvId, CandidateId = candidateId, Status = "ACTIVE", SourceFileUrl = "path.pdf" };
+
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(job.ServiceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cv);
+
+        _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Submission?)null);
+        _applicationRepositoryMock.Setup(r => r.GetByCandidateAndJobAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((HRConnect.Domain.Entities.Application?)null);
+
+        // MF-03 fails
+        _scoringTriggerMock.Setup(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("MF-03 scoring pipeline error"));
+
+        var command = new ApplyJobCommand { JobId = jobId, UserId = userId, CvId = cvId, RoleCodes = [JobAccessPolicy.CandidateRole] };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Handle_WhenCvSourceCountIsNotExactlyOne_ThrowsBadRequest(bool provideBoth)
+    {
+        var userId = Guid.NewGuid();
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(),
+            Status = JobStatuses.Active,
+            ServiceTypeId = Guid.NewGuid(),
+            Visibility = JobVisibilities.Public
+        };
+        _candidateRepositoryMock.Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate { CandidateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
+        _jobRepositoryMock.Setup(repository => repository.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+        _jobRepositoryMock.Setup(repository => repository.CanAnyRoleSubmitJobAsync(
+                job.ServiceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var command = new ApplyJobCommand
+        {
+            JobId = job.JobId,
+            UserId = userId,
+            RoleCodes = [JobAccessPolicy.CandidateRole],
+            CvId = provideBoth ? Guid.NewGuid() : null,
+            FileStream = provideBoth ? new MemoryStream([1]) : null,
+            FileName = provideBoth ? "cv.pdf" : null,
+            FileSizeBytes = provideBoth ? 1 : null
+        };
+
+        var action = () => _handler.Handle(command, CancellationToken.None);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*đúng một nguồn CV*");
+        _cvStorageServiceMock.Verify(service => service.UploadCvPdfAsync(
+            It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<long>(),
+            It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _applicationRepositoryMock.Verify(repository => repository.AddAsync(
+            It.IsAny<HRConnect.Domain.Entities.Application>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("ARCHIVED", false)]
+    [InlineData("ACTIVE", true)]
+    public async Task Handle_WhenCandidateProfileIsNotEligible_RejectsBeforeUpload(string status, bool merged)
+    {
+        var userId = Guid.NewGuid();
+        _candidateRepositoryMock.Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate
+            {
+                CandidateId = Guid.NewGuid(),
+                UserId = userId,
+                Status = status,
+                MergedIntoCandidateId = merged ? Guid.NewGuid() : null
+            });
+
+        var action = () => _handler.Handle(new ApplyJobCommand
+        {
+            JobId = Guid.NewGuid(),
+            UserId = userId,
+            CvId = Guid.NewGuid(),
+            RoleCodes = [JobAccessPolicy.CandidateRole]
+        }, CancellationToken.None);
+
+        var exception = await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("Hồ sơ ứng viên đã bị khóa, lưu trữ hoặc hợp nhất*");
+        exception.Which.ErrorCode.Should().Be("CANDIDATE_PROFILE_NOT_ELIGIBLE");
+        _userRepositoryMock.Verify(repository => repository.GetByIdWithActiveRolesAsync(
+            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _jobRepositoryMock.Verify(repository => repository.GetByIdAsync(
+            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _cvStorageServiceMock.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("SUSPENDED", true, true)]
+    [InlineData("ACTIVE", false, true)]
+    [InlineData("ACTIVE", true, false)]
+    public async Task Handle_WhenCandidateAccountOrRoleIsNotActive_RejectsBeforeUpload(
+        string userStatus,
+        bool hasCandidateRole,
+        bool roleIsActive)
+    {
+        var userId = Guid.NewGuid();
+        _candidateRepositoryMock.Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate { CandidateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
+        _userRepositoryMock.Setup(repository => repository.GetByIdWithActiveRolesAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateActiveCandidateUser(userStatus, hasCandidateRole, roleIsActive));
+
+        var action = () => _handler.Handle(new ApplyJobCommand
+        {
+            JobId = Guid.NewGuid(),
+            UserId = userId,
+            CvId = Guid.NewGuid(),
+            RoleCodes = [JobAccessPolicy.CandidateRole]
+        }, CancellationToken.None);
+
+        var exception = await action.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Tài khoản ứng viên không còn hoạt động hoặc đã bị thu hồi quyền ứng tuyển.");
+        exception.Which.ErrorCode.Should().Be("CANDIDATE_ACCOUNT_NOT_ELIGIBLE");
+        _jobRepositoryMock.Verify(repository => repository.GetByIdAsync(
+            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _cvStorageServiceMock.VerifyNoOtherCalls();
+    }
+
+    private static AppUser CreateActiveCandidateUser(
+        string status = "ACTIVE",
+        bool hasCandidateRole = true,
+        bool roleIsActive = true)
+    {
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = "candidate@example.com",
+            PasswordHash = "hash",
+            Status = status
+        };
+        if (hasCandidateRole)
+        {
+            var role = new Role
+            {
+                RoleId = Guid.NewGuid(),
+                Code = JobAccessPolicy.CandidateRole,
+                Name = "Candidate",
+                IsActive = roleIsActive
+            };
+            user.UserRoleUsers.Add(new UserRole
+            {
+                UserId = user.UserId,
+                RoleId = role.RoleId,
+                User = user,
+                Role = role,
+                Status = "ACTIVE",
+                AssignmentSource = "SYSTEM"
+            });
+        }
+        return user;
+    }
+}

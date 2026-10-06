@@ -27,8 +27,8 @@ public class GetAffiliateBankAccountQueryHandler : IRequestHandler<GetAffiliateB
             throw new NotFoundException("Không tìm thấy thông tin đối tác tuyển dụng tương ứng với tài khoản này.");
         }
 
-        var isConfigured = !string.IsNullOrWhiteSpace(profile.BankName) 
-                        && !string.IsNullOrWhiteSpace(profile.BankAccountNumber) 
+        var isConfigured = !string.IsNullOrWhiteSpace(profile.BankName)
+                        && !string.IsNullOrWhiteSpace(profile.BankAccountNumber)
                         && !string.IsNullOrWhiteSpace(profile.BankAccountHolder);
 
         return new AffiliateBankAccountResponse

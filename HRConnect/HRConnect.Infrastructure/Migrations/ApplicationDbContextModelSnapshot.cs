@@ -386,6 +386,12 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_at");
 
+                    b.Property<int>("DispatchCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("dispatch_count");
+
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("text")
                         .HasColumnName("error_message");
@@ -394,6 +400,15 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("external_reference");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<DateTime?>("LastDispatchedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_dispatched_at");
 
                     b.Property<decimal?>("MatchScore")
                         .HasPrecision(5, 2)
@@ -406,9 +421,22 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("match_tier")
                         .HasComment("Semantic tier (for example HIGH/MEDIUM_HIGH/MEDIUM/LOW). UI color comes from match_tier_config; AI does not make the final hiring decision.");
 
+                    b.Property<string>("ModelVersion")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("model_version");
+
                     b.Property<string>("MustHaveResult")
                         .HasColumnType("jsonb")
                         .HasColumnName("must_have_result");
+
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<DateTime?>("ProcessingStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processing_started_at");
 
                     b.Property<string>("RawResponse")
                         .HasColumnType("jsonb")
@@ -443,9 +471,14 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "ApplicationId", "AttemptNo" }, "idx_ai_match_application")
                         .IsDescending(false, true);
 
+                    b.HasIndex(new[] { "Status", "NextAttemptAt" }, "idx_ai_match_result_pending_dispatch")
+                        .HasFilter("status = 'PENDING'");
+
                     b.ToTable("ai_match_result", "public", t =>
                         {
                             t.HasComment("Post-application AI screening support. Match Score/Tier/Highlight support human review; AI does not auto-reject/shortlist/hire.");
+
+                            t.HasCheckConstraint("ai_match_result_status_check", "status IN ('PENDING','PROCESSING','COMPLETED','FAILED','UNAVAILABLE')");
                         });
                 });
 
@@ -482,9 +515,19 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("email_verified_at");
 
+                    b.Property<int>("FailedLoginAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("failed_login_attempts");
+
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_login_at");
+
+                    b.Property<DateTime?>("LockoutEndAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lockout_end_at");
 
                     b.Property<string>("NormalizedPhone")
                         .HasMaxLength(30)
@@ -552,6 +595,13 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("candidate_id");
 
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<string>("CurrentStage")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -560,6 +610,10 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Property<Guid>("JobId")
                         .HasColumnType("uuid")
                         .HasColumnName("job_id");
+
+                    b.Property<DateOnly?>("PlannedStartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("planned_start_date");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -726,6 +780,14 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(120)")
                         .HasColumnName("action");
 
+                    b.Property<string>("ActorType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("SYSTEM")
+                        .HasColumnName("actor_type");
+
                     b.Property<Guid?>("ActorUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_user_id");
@@ -749,6 +811,12 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(80)")
                         .HasColumnName("entity_type");
 
+                    b.Property<int>("EventVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("event_version");
+
                     b.Property<IPAddress>("IpAddress")
                         .HasColumnType("inet")
                         .HasColumnName("ip_address");
@@ -761,6 +829,19 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("old_values");
 
+                    b.Property<string>("ServiceName")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("service_name");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("APPLICATION")
+                        .HasColumnName("source");
+
                     b.Property<string>("UserAgent")
                         .HasColumnType("text")
                         .HasColumnName("user_agent");
@@ -771,12 +852,35 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "ActorUserId", "CreatedAt" }, "idx_audit_log_actor")
                         .IsDescending(false, true);
 
+                    b.HasIndex(new[] { "ActorType", "CreatedAt" }, "idx_audit_log_actor_type")
+                        .IsDescending(false, true);
+
+                    b.HasIndex(new[] { "CorrelationId", "CreatedAt" }, "idx_audit_log_correlation")
+                        .IsDescending(false, true);
+
                     b.HasIndex(new[] { "EntityType", "EntityId", "CreatedAt" }, "idx_audit_log_entity")
                         .IsDescending(false, false, true);
 
+                    b.HasIndex(new[] { "ServiceName", "CreatedAt" }, "idx_audit_log_service")
+                        .IsDescending(false, true)
+                        .HasFilter("service_name IS NOT NULL");
+
+                    b.HasIndex(new[] { "Source", "CreatedAt" }, "idx_audit_log_source")
+                        .IsDescending(false, true);
+
                     b.ToTable("audit_log", "public", t =>
                         {
-                            t.HasComment("Append-only audit trail. Set hr_connect.current_user_id in the application transaction when actor identity is available.");
+                            t.HasComment("Append-only audit trail with actor and source context.");
+
+                            t.HasCheckConstraint("audit_log_actor_identity_check", "(actor_user_id IS NULL AND actor_type <> 'USER') OR (actor_user_id IS NOT NULL AND actor_type = 'USER')");
+
+                            t.HasCheckConstraint("audit_log_actor_type_check", "actor_type IN ('USER', 'ANONYMOUS', 'SYSTEM', 'SERVICE', 'DATABASE_TRIGGER')");
+
+                            t.HasCheckConstraint("audit_log_event_version_check", "event_version >= 1");
+
+                            t.HasCheckConstraint("audit_log_service_actor_check", "actor_type <> 'SERVICE' OR service_name IS NOT NULL");
+
+                            t.HasCheckConstraint("audit_log_source_check", "source IN ('API', 'APPLICATION', 'BACKGROUND_WORKER', 'INTEGRATION', 'DATABASE_TRIGGER')");
                         });
                 });
 
@@ -983,6 +1087,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("now()");
 
+                    b.Property<Guid?>("UploadedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by_user_id");
+
                     b.HasKey("CvId")
                         .HasName("candidate_cv_pkey");
 
@@ -993,6 +1101,8 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex(new[] { "CreationMethod", "Status" }, "idx_candidate_cv_creation_method");
 
+                    b.HasIndex(new[] { "UploadedByUserId" }, "idx_candidate_cv_uploaded_by");
+
                     b.HasIndex(new[] { "CandidateId", "CvId" }, "uq_candidate_cv_owner")
                         .IsUnique();
 
@@ -1002,7 +1112,15 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.ToTable("candidate_cv", "public", t =>
                         {
-                            t.HasComment("Supports PLATFORM_BUILDER, TEMPLATE_FORM and FILE_UPLOAD CV creation methods.");
+                            t.HasComment("Supports CVs created by candidates and submission-scoped CVs uploaded by Affiliates.");
+
+                            t.HasCheckConstraint("candidate_cv_creation_method_check", "creation_method IN ('PLATFORM_BUILDER','TEMPLATE_FORM','FILE_UPLOAD','AFFILIATE_UPLOAD')");
+
+                            t.HasCheckConstraint("candidate_cv_status_check", "status IN ('DRAFT','PENDING_CONSENT','ACTIVE','ARCHIVED','DELETED')");
+
+                            t.HasCheckConstraint("ck_candidate_cv_affiliate_uploader", "creation_method <> 'AFFILIATE_UPLOAD' OR uploaded_by_user_id IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_candidate_cv_creation_method", "((creation_method = 'PLATFORM_BUILDER' AND structured_content IS NOT NULL) OR (creation_method = 'TEMPLATE_FORM' AND structured_content IS NOT NULL AND cv_template_id IS NOT NULL) OR (creation_method IN ('FILE_UPLOAD','AFFILIATE_UPLOAD') AND source_file_url IS NOT NULL))");
                         });
                 });
 
@@ -1905,6 +2023,13 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("application_id");
 
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -1943,6 +2068,14 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("meeting_link");
 
+                    b.Property<DateTime?>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<Guid?>("RecordedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recorded_by");
+
                     b.Property<string>("Result")
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)")
@@ -1971,6 +2104,8 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex("CreatedBy");
 
+                    b.HasIndex("RecordedBy");
+
                     b.HasIndex(new[] { "ApplicationId", "InterviewRound" }, "interview_application_id_interview_round_key")
                         .IsUnique();
 
@@ -1980,6 +2115,47 @@ namespace HRConnect.Infrastructure.Migrations
 
                             t.HasCheckConstraint("ck_interview_round_positive", "interview_round > 0");
                         });
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.InterviewParticipant", b =>
+                {
+                    b.Property<Guid>("InterviewParticipantId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("interview_participant_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("InterviewId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("interview_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("role")
+                        .HasDefaultValueSql("'INTERVIEWER'::character varying");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("InterviewParticipantId")
+                        .HasName("interview_participant_pkey");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex(new[] { "InterviewId", "UserId" }, "uq_interview_participant_interview_user")
+                        .IsUnique();
+
+                    b.ToTable("interview_participant", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.InterviewStatusHistory", b =>
@@ -2046,6 +2222,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("job_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<string>("Benefits")
+                        .HasColumnType("text")
+                        .HasColumnName("benefits");
+
                     b.Property<DateTime?>("ClosedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("closed_at");
@@ -2053,6 +2233,13 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid")
                         .HasColumnName("company_id");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -2087,6 +2274,14 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("location");
 
+                    b.Property<int?>("MaxExperienceYears")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_experience_years");
+
+                    b.Property<int?>("MinExperienceYears")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_experience_years");
+
                     b.Property<DateTime?>("PostedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("posted_at");
@@ -2106,6 +2301,17 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("salary_min");
+
+                    b.Property<bool>("SalaryNegotiable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("salary_negotiable");
+
+                    b.Property<string>("SalaryNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("salary_note");
 
                     b.Property<Guid>("ServiceTypeId")
                         .HasColumnType("uuid")
@@ -2145,6 +2351,11 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasDefaultValueSql("'PUBLIC'::character varying")
                         .HasComment("D07-ready job visibility. Exact actor permissions remain a business-rule/authorization concern.");
 
+                    b.Property<string>("WorkingTime")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("working_time");
+
                     b.HasKey("JobId")
                         .HasName("job_pkey");
 
@@ -2161,7 +2372,10 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "Visibility", "Status", "PostedAt" }, "idx_job_visibility_status")
                         .IsDescending(false, false, true);
 
-                    b.ToTable("job", "public");
+                    b.ToTable("job", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_job_visibility", "visibility IN ('PUBLIC','PARTNER_ONLY','INTERNAL_ONLY')");
+                        });
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.JobRequirement", b =>
@@ -2279,9 +2493,15 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(30)")
                         .HasColumnName("old_status");
 
-                    b.Property<string>("Reason")
-                        .HasColumnType("text")
-                        .HasColumnName("reason");
+                    b.Property<string>("ReasonCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reason_code");
+
+                    b.Property<string>("ReasonText")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("reason_text");
 
                     b.HasKey("JobStatusHistoryId")
                         .HasName("job_status_history_pkey");
@@ -2426,6 +2646,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.ToTable("notification", "public", t =>
                         {
                             t.HasComment("In-app notification store. JOB_FIT notifications may reference a Job through related_entity_type/related_entity_id.");
+
+                            t.HasCheckConstraint("ck_notification_type", "notification_type IN ('ACCOUNT','COMPANY','JOB','SUBMISSION','SUBMISSION_CONSENT_RESULT','JOB_FIT','APPLICATION_STATUS','INTERVIEW','OFFER','AFFILIATE','COMMISSION','PAYOUT','SYSTEM')");
                         });
                 });
 
@@ -2440,6 +2662,13 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Property<Guid>("ApplicationId")
                         .HasColumnType("uuid")
                         .HasColumnName("application_id");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -2522,8 +2751,6 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.ToTable("offer", "public", t =>
                         {
-                            t.HasCheckConstraint("ck_offer_date_range", "expiry_date IS NULL OR start_date IS NULL OR expiry_date >= start_date");
-
                             t.HasCheckConstraint("ck_offer_declined_response", "status <> 'DECLINED' OR responded_at IS NOT NULL");
 
                             t.HasCheckConstraint("ck_offer_response_time", "responded_at IS NULL OR sent_at IS NULL OR responded_at >= sent_at");
@@ -3056,6 +3283,48 @@ namespace HRConnect.Infrastructure.Migrations
                     b.ToTable("service_type", "public");
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.ServiceTypeAllowedRole", b =>
+                {
+                    b.Property<Guid>("ServiceTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_type_id");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
+
+                    b.Property<bool>("CanSubmit")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("can_submit");
+
+                    b.Property<bool>("CanView")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("can_view");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.HasKey("ServiceTypeId", "RoleId")
+                        .HasName("service_type_allowed_role_pkey");
+
+                    b.HasIndex(new[] { "RoleId", "CanView" }, "idx_service_type_allowed_role_view");
+
+                    b.ToTable("service_type_allowed_role", "public");
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.Skill", b =>
                 {
                     b.Property<Guid>("SkillId")
@@ -3179,9 +3448,121 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("((status)::text = 'ACCEPTED'::text)");
 
+                    b.HasIndex(new[] { "JobId", "CandidateId" }, "uq_submission_one_pending_consent")
+                        .IsUnique()
+                        .HasFilter("((status)::text = 'PENDING_CONSENT'::text)");
+
                     b.ToTable("submission", "public", t =>
                         {
                             t.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed.");
+
+                            t.HasCheckConstraint("submission_status_check", "status IN ('RECEIVED','PENDING_CONSENT','ACCEPTED','BLOCKED_DUPLICATE','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
+                        });
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.SubmissionConsent", b =>
+                {
+                    b.Property<Guid>("ConsentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("consent_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int>("EmailSendCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("email_send_count");
+
+                    b.Property<DateTime?>("EmailSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("email_sent_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("LastEmailError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_email_error");
+
+                    b.Property<string>("RecipientEmail")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("recipient_email");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("responded_at");
+
+                    b.Property<string>("ResponseIp")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("response_ip");
+
+                    b.Property<string>("ResponseUserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("response_user_agent");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.HasKey("ConsentId")
+                        .HasName("submission_consent_pkey");
+
+                    b.HasIndex(new[] { "Status", "ExpiresAt" }, "idx_submission_consent_pending_expiry")
+                        .HasFilter("status = 'PENDING'");
+
+                    b.HasIndex(new[] { "SubmissionId" }, "uq_submission_consent_submission")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "TokenHash" }, "uq_submission_consent_token_hash")
+                        .IsUnique();
+
+                    b.ToTable("submission_consent", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_submission_consent_expiry", "expires_at > requested_at");
+
+                            t.HasCheckConstraint("ck_submission_consent_status", "status IN ('PENDING','CONFIRMED','DECLINED','EXPIRED','CANCELLED')");
                         });
                 });
 
@@ -3534,7 +3915,7 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasOne("HRConnect.Domain.Entities.AppUser", "ActorUser")
                         .WithMany("AuditLogs")
                         .HasForeignKey("ActorUserId")
-                        .OnDelete(DeleteBehavior.SetNull)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("audit_log_actor_user_id_fkey");
 
                     b.Navigation("ActorUser");
@@ -3562,8 +3943,8 @@ namespace HRConnect.Infrastructure.Migrations
             modelBuilder.Entity("HRConnect.Domain.Entities.CandidateCv", b =>
                 {
                     b.HasOne("HRConnect.Domain.Entities.Candidate", "Candidate")
-                        .WithOne("CandidateCv")
-                        .HasForeignKey("HRConnect.Domain.Entities.CandidateCv", "CandidateId")
+                        .WithMany("CandidateCvs")
+                        .HasForeignKey("CandidateId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("candidate_cv_candidate_id_fkey");
@@ -3573,6 +3954,12 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasForeignKey("CvTemplateId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("candidate_cv_cv_template_id_fkey");
+
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("candidate_cv_uploaded_by_user_id_fkey");
 
                     b.Navigation("Candidate");
 
@@ -3857,9 +4244,38 @@ namespace HRConnect.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("interview_created_by_fkey");
 
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "RecordedByNavigation")
+                        .WithMany("InterviewRecordedByNavigations")
+                        .HasForeignKey("RecordedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("interview_recorded_by_fkey");
+
                     b.Navigation("Application");
 
                     b.Navigation("CreatedByNavigation");
+
+                    b.Navigation("RecordedByNavigation");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.InterviewParticipant", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.Interview", "Interview")
+                        .WithMany("InterviewParticipants")
+                        .HasForeignKey("InterviewId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("interview_participant_interview_id_fkey");
+
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "User")
+                        .WithMany("InterviewParticipants")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("interview_participant_user_id_fkey");
+
+                    b.Navigation("Interview");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.InterviewStatusHistory", b =>
@@ -4130,6 +4546,27 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.ServiceTypeAllowedRole", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.Role", "Role")
+                        .WithMany("ServiceTypeAllowedRoles")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("service_type_allowed_role_role_id_fkey");
+
+                    b.HasOne("HRConnect.Domain.Entities.ServiceType", "ServiceType")
+                        .WithMany("AllowedRoles")
+                        .HasForeignKey("ServiceTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("service_type_allowed_role_service_type_id_fkey");
+
+                    b.Navigation("Role");
+
+                    b.Navigation("ServiceType");
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.Submission", b =>
                 {
                     b.HasOne("HRConnect.Domain.Entities.Candidate", "Candidate")
@@ -4176,6 +4613,18 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Job");
 
                     b.Navigation("SubmittedByNavigation");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.SubmissionConsent", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.Submission", "Submission")
+                        .WithOne("Consent")
+                        .HasForeignKey("HRConnect.Domain.Entities.SubmissionConsent", "SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("submission_consent_submission_id_fkey");
+
+                    b.Navigation("Submission");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.UserRole", b =>
@@ -4288,6 +4737,10 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.Navigation("InternalHrProfile");
 
+                    b.Navigation("InterviewParticipants");
+
+                    b.Navigation("InterviewRecordedByNavigations");
+
                     b.Navigation("InterviewStatusHistories");
 
                     b.Navigation("Interviews");
@@ -4349,7 +4802,7 @@ namespace HRConnect.Infrastructure.Migrations
                 {
                     b.Navigation("Applications");
 
-                    b.Navigation("CandidateCv");
+                    b.Navigation("CandidateCvs");
 
                     b.Navigation("CandidateJobMatches");
 
@@ -4404,6 +4857,8 @@ namespace HRConnect.Infrastructure.Migrations
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Interview", b =>
                 {
+                    b.Navigation("InterviewParticipants");
+
                     b.Navigation("InterviewStatusHistories");
                 });
 
@@ -4459,11 +4914,15 @@ namespace HRConnect.Infrastructure.Migrations
                 {
                     b.Navigation("RolePermissions");
 
+                    b.Navigation("ServiceTypeAllowedRoles");
+
                     b.Navigation("UserRoles");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.ServiceType", b =>
                 {
+                    b.Navigation("AllowedRoles");
+
                     b.Navigation("CommissionRules");
 
                     b.Navigation("Jobs");
@@ -4481,6 +4940,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Applications");
 
                     b.Navigation("Attribution");
+
+                    b.Navigation("Consent");
 
                     b.Navigation("Disputes");
 

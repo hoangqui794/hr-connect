@@ -1,0 +1,82 @@
+using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
+using MediatR;
+using Microsoft.Extensions.Logging;
+
+namespace HRConnect.Application.Features.Internal.Queries.GetInternalCvDownloadUrl;
+
+public class GetInternalCvDownloadUrlQueryHandler : IRequestHandler<GetInternalCvDownloadUrlQuery, GetInternalCvDownloadUrlResponse>
+{
+    private readonly ICvStorageService _cvStorageService;
+    private readonly ICandidateCvRepository _candidateCvRepository;
+    private readonly ILogger<GetInternalCvDownloadUrlQueryHandler> _logger;
+    private readonly IAuditLogService _audit;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public GetInternalCvDownloadUrlQueryHandler(
+        ICvStorageService cvStorageService,
+        ICandidateCvRepository candidateCvRepository,
+        ILogger<GetInternalCvDownloadUrlQueryHandler> logger,
+        IAuditLogService audit,
+        IUnitOfWork unitOfWork)
+    {
+        _cvStorageService = cvStorageService;
+        _candidateCvRepository = candidateCvRepository;
+        _logger = logger;
+        _audit = audit;
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<GetInternalCvDownloadUrlResponse> Handle(
+        GetInternalCvDownloadUrlQuery request,
+        CancellationToken cancellationToken)
+    {
+        var cv = await _candidateCvRepository.GetByIdAsync(request.CvId, cancellationToken);
+        if (cv == null)
+        {
+            _logger.LogWarning("Dịch vụ nội bộ: Không tìm thấy CV với CvId {CvId}", request.CvId);
+            throw new NotFoundException($"Không tìm thấy CV với mã {request.CvId}.");
+        }
+
+        if (request.ExpiryMinutes.HasValue && request.ExpiryMinutes.Value <= 0)
+        {
+            throw new BadRequestException("Thời hạn đường dẫn tải CV phải là số phút dương.");
+        }
+
+        TimeSpan? expiry = request.ExpiryMinutes.HasValue
+            ? TimeSpan.FromMinutes(request.ExpiryMinutes.Value)
+            : null;
+
+        var result = await _cvStorageService.GetCvDownloadUrlAsync(request.CvId, expiry, cancellationToken);
+
+        await _audit.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.InternalCvDownloadUrlIssued,
+            ActorType = AuditActorTypes.Service,
+            Source = AuditSources.Integration,
+            ServiceName = "MF03",
+            EntityType = "CANDIDATE_CV",
+            EntityId = cv.CvId,
+            NewValues = new
+            {
+                cv.CandidateId,
+                consumer = "MF03",
+                result.ExpiresAt,
+                requestedExpiryMinutes = request.ExpiryMinutes
+            }
+        }, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Dịch vụ nội bộ: Tạo presigned download URL thành công cho CvId {CvId}, hết hạn lúc {ExpiresAt}",
+            request.CvId, result.ExpiresAt);
+
+        return new GetInternalCvDownloadUrlResponse
+        {
+            Success = true,
+            Message = "Lấy đường dẫn tải xuống CV thành công.",
+            Data = result
+        };
+    }
+}
