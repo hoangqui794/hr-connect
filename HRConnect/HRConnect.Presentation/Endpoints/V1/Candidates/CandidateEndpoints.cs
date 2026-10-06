@@ -300,7 +300,7 @@ public static class CandidateEndpoints
                 var result = await sender.Send(command, cancellationToken);
                 return result.Data.AlreadyAdopted
                     ? Results.Ok(result)
-                    : Results.Created($"/api/v1/candidates/cv/{result.Data.CvId}", result);
+                    : Results.Created("/api/v1/candidates/cv", result);
             }
             catch (NotFoundException ex)
             {
