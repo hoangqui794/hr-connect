@@ -238,7 +238,7 @@ public static class DatabaseSeeder
     FROM public.role r
     JOIN public.permission p ON p.code IN (
         'job.view', 'notification.view_own', 'company.view', 'job.review', 'job.publish', 'candidate.view',
-        'application.view', 'application.retry_ai_scoring', 'submission.view', 'attribution.view',
+        'application.view', 'application.screen', 'application.retry_ai_scoring', 'submission.view', 'attribution.view',
         'probation.manage', 'warranty.manage',
         'commission.view', 'payout.view'
     )

@@ -1,16 +1,27 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * @file RegisterPage.tsx
+ * @description Modern, sleek Registration Page for HR Connect.
+ * Implements 3 distinct registration flows conforming to Swagger OpenAPI:
+ *   - Candidate: POST /api/v1/auth/register/candidate
+ *   - Client Company: POST /api/v1/auth/register/client
+ *   - Affiliate Recruiter: POST /api/v1/auth/register/affiliate
+ *
+ * Compact role selector, real-time password strength meter, password matching,
+ * defensive error handling, and redirection to OTP verification.
+ */
+
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Card,
   Form,
   Input,
-  Select,
   Button,
   Typography,
   message,
   Checkbox,
   Row,
   Col,
-  Tag,
+  Alert,
+  Progress,
 } from 'antd';
 import {
   UserOutlined,
@@ -21,85 +32,68 @@ import {
   ArrowRightOutlined,
   CheckCircleFilled,
   TeamOutlined,
-  SolutionOutlined,
   SafetyCertificateOutlined,
-  ThunderboltOutlined,
+  IdcardOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuthStore } from '@/stores/authStore';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { UserRole } from '@/types/roles';
-import { getDashboardRouteForRole } from '@/routes/AppRoutes';
+import { authService } from '@/services/authService';
+import { getApiErrorMessage } from '@/services/apiClient';
 
-const { Title, Text, Paragraph } = Typography;
-const { Option } = Select;
+const { Title, Text } = Typography;
 
-// Supported registration roles - STRICTLY NO ADMIN OR INTERNAL HR
 type RegisterableRole = UserRole.CANDIDATE | UserRole.CLIENT | UserRole.AFFILIATE;
 
 interface RoleOption {
   role: RegisterableRole;
-  badge: string;
   title: string;
-  tagline: string;
-  description: string;
+  badge: string;
+  subtitle: string;
   accentColor: string;
-  secondaryBg: string;
+  activeBg: string;
   icon: React.ReactNode;
-  highlights: string[];
 }
 
 const ROLE_OPTIONS: RoleOption[] = [
   {
     role: UserRole.CANDIDATE,
-    badge: 'Dành cho nhân tài',
     title: 'Ứng viên tìm việc',
-    tagline: 'Tech Talent & Job Seeker',
-    description: 'Tìm kiếm công việc công nghệ, tạo CV và ứng tuyển nhanh',
-    accentColor: '#8b5cf6',
-    secondaryBg: '#f5f3ff',
-    icon: <UserOutlined style={{ fontSize: 24, color: '#8b5cf6' }} />,
-    highlights: ['CV chuẩn ATS chuẩn quốc tế', 'Ứng tuyển 1-click & AI Match', 'Theo dõi trạng thái phỏng vấn'],
+    badge: 'Talent',
+    subtitle: 'Tìm việc công nghệ, tạo CV ATS & AI Match',
+    accentColor: '#8b5cf6', // purple-500
+    activeBg: 'rgba(139, 92, 246, 0.1)',
+    icon: <UserOutlined style={{ fontSize: 20, color: '#8b5cf6' }} />,
   },
   {
     role: UserRole.CLIENT,
-    badge: 'Dành cho doanh nghiệp',
-    title: 'Nhà tuyển dụng / Doanh nghiệp',
-    tagline: 'Employer & Hiring Team',
-    description: 'Đăng tin tuyển dụng qua 3 gói dịch vụ, thẩm định AI và quản lý thử việc',
-    accentColor: '#0284c7',
-    secondaryBg: '#f0f9ff',
-    icon: <BankOutlined style={{ fontSize: 24, color: '#0284c7' }} />,
-    highlights: ['3 Gói dịch vụ linh hoạt (Basic, Speed, Guaranteed)', 'AI Screen CV & Score Tier 5', 'Quản lý bảo hành thử việc 60 ngày'],
+    title: 'Doanh nghiệp',
+    badge: 'Employer',
+    subtitle: 'Đăng tin tuyển dụng, thẩm định AI & bảo hành',
+    accentColor: '#0284c7', // sky-600
+    activeBg: 'rgba(2, 132, 199, 0.1)',
+    icon: <BankOutlined style={{ fontSize: 20, color: '#0284c7' }} />,
   },
   {
     role: UserRole.AFFILIATE,
-    badge: 'Dành cho chuyên gia tuyển dụng',
-    title: 'Cộng tác viên Headhunter (OPR Hub)',
-    tagline: 'Headhunter & Talent Partner',
-    description: 'Tìm nguồn ứng viên, kiếm hoa hồng và theo dõi sổ cái minh bạch',
-    accentColor: '#f59e0b',
-    secondaryBg: '#fffbeb',
-    icon: <TeamOutlined style={{ fontSize: 24, color: '#f59e0b' }} />,
-    highlights: ['Hoa hồng minh bạch tới 45M/deal', 'OPR Ledger & Smart Wallet', 'Không lo đụng nguồn ứng viên'],
+    title: 'Cộng tác viên (Headhunter)',
+    badge: 'Partner',
+    subtitle: 'Giới thiệu ứng viên & nhận hoa hồng minh bạch',
+    accentColor: '#f59e0b', // amber-500
+    activeBg: 'rgba(245, 158, 11, 0.1)',
+    icon: <TeamOutlined style={{ fontSize: 20, color: '#f59e0b' }} />,
   },
-];
-
-const COMPANY_SIZES = [
-  { label: '1 - 10 nhân sự (Startup / Khởi nghiệp)', value: '1-10' },
-  { label: '11 - 50 nhân sự (Doanh nghiệp vừa & nhỏ - SMB)', value: '11-50' },
-  { label: '51 - 200 nhân sự (Quy mô tăng trưởng - Growth)', value: '51-200' },
-  { label: '201 - 500 nhân sự (Doanh nghiệp lớn)', value: '201-500' },
-  { label: '500+ nhân sự (Tập đoàn đa quốc gia - Enterprise)', value: '500+' },
 ];
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { register } = useAuthStore();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [passwordValue, setPasswordValue] = useState<string>('');
 
-  // Parse role from query param or default to CANDIDATE
+  // Initial role from query param (?role=candidate|client|affiliate)
   const initialRole = ((): RegisterableRole => {
     const r = searchParams.get('role')?.toUpperCase();
     if (r === 'CLIENT') return UserRole.CLIENT;
@@ -109,7 +103,6 @@ export const RegisterPage: React.FC = () => {
 
   const [selectedRole, setSelectedRole] = useState<RegisterableRole>(initialRole);
 
-  // Sync if query param changes
   useEffect(() => {
     const r = searchParams.get('role')?.toUpperCase();
     if (r === 'CLIENT') setSelectedRole(UserRole.CLIENT);
@@ -117,532 +110,459 @@ export const RegisterPage: React.FC = () => {
     else if (r === 'CANDIDATE') setSelectedRole(UserRole.CANDIDATE);
   }, [searchParams]);
 
-  const activeOption = ROLE_OPTIONS.find((opt) => opt.role === selectedRole) || ROLE_OPTIONS[0];
+  const activeOption = useMemo(
+    () => ROLE_OPTIONS.find((opt) => opt.role === selectedRole) || ROLE_OPTIONS[0],
+    [selectedRole]
+  );
 
-  const handleRoleSelect = (role: RegisterableRole) => {
-    setSelectedRole(role);
-  };
+  // Password strength calculation
+  const passwordStrength = useMemo(() => {
+    if (!passwordValue) return { score: 0, label: '', percent: 0, color: '#e2e8f0' };
+    let score = 0;
+    if (passwordValue.length >= 6) score += 1;
+    if (passwordValue.length >= 8) score += 1;
+    if (/[A-Z]/.test(passwordValue) && /[a-z]/.test(passwordValue)) score += 1;
+    if (/\d/.test(passwordValue)) score += 1;
+    if (/[^A-Za-z0-9]/.test(passwordValue)) score += 1;
 
+    if (score <= 1) return { score: 1, label: 'Rất yếu', percent: 20, color: '#ef4444' };
+    if (score === 2) return { score: 2, label: 'Yếu', percent: 40, color: '#f97316' };
+    if (score === 3) return { score: 3, label: 'Trung bình', percent: 65, color: '#f59e0b' };
+    if (score === 4) return { score: 4, label: 'Khá mạnh', percent: 85, color: '#0ea5e9' };
+    return { score: 5, label: 'Rất an toàn', percent: 100, color: '#10b981' };
+  }, [passwordValue]);
+
+  // Form submission handler routing to the exact Swagger API endpoint
   const onFinish = async (values: {
     fullName: string;
     email: string;
     phone: string;
     password: string;
+    confirmPassword?: string;
     companyName?: string;
-    companySize?: string;
+    taxCode?: string;
     terms?: boolean;
   }) => {
+    setErrorMessage(null);
     setSubmitting(true);
 
+    const emailTrimmed = values.email.trim().toLowerCase();
+    const fullNameTrimmed = values.fullName.trim();
+    const phoneTrimmed = values.phone ? values.phone.trim() : undefined;
+
     try {
-      // Simulate network request
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      let isSuccess = false;
+      let serverMessage = '';
 
-      // Register new user into store with exact input details
-      const newUser = register({
-        role: selectedRole,
-        fullName: values.fullName.trim(),
-        email: values.email.trim().toLowerCase(),
-        password: values.password,
-        phone: values.phone?.trim(),
-        companyName: selectedRole === UserRole.CLIENT ? values.companyName?.trim() : undefined,
-        companySize: selectedRole === UserRole.CLIENT ? values.companySize : undefined,
-      });
+      if (selectedRole === UserRole.CLIENT) {
+        // POST /api/v1/auth/register/client
+        const res = await authService.registerClient({
+          companyName: values.companyName?.trim(),
+          taxCode: values.taxCode?.trim(),
+          fullName: fullNameTrimmed,
+          phone: phoneTrimmed,
+          email: emailTrimmed,
+          password: values.password,
+        });
 
-      // Target dashboard redirect dynamically resolved by role
-      const destination = getDashboardRouteForRole(selectedRole);
+        if (res.success || res.data) {
+          isSuccess = true;
+          serverMessage = res.message || 'Đăng ký tài khoản doanh nghiệp thành công!';
+        } else {
+          throw new Error(res.message || 'Đăng ký doanh nghiệp không thành công.');
+        }
+      } else if (selectedRole === UserRole.AFFILIATE) {
+        // POST /api/v1/auth/register/affiliate
+        const res = await authService.registerAffiliate({
+          fullName: fullNameTrimmed,
+          phone: phoneTrimmed,
+          email: emailTrimmed,
+          password: values.password,
+        });
 
-      message.success({
-        content: `Đăng ký thành công tài khoản ${activeOption.title}! Chào mừng ${newUser.name} gia nhập HR Connect.`,
-        icon: <CheckCircleFilled style={{ color: '#10b981' }} />,
-        duration: 3,
-      });
+        if (res.success || res.data) {
+          isSuccess = true;
+          serverMessage = res.message || 'Đăng ký đối tác tuyển dụng thành công!';
+        } else {
+          throw new Error(res.message || 'Đăng ký đối tác không thành công.');
+        }
+      } else {
+        // POST /api/v1/auth/register/candidate
+        const res = await authService.registerCandidate({
+          fullName: fullNameTrimmed,
+          phone: phoneTrimmed,
+          email: emailTrimmed,
+          password: values.password,
+        });
 
-      navigate(destination, { replace: true });
-    } catch {
-      message.error('Có lỗi xảy ra khi tạo tài khoản. Vui lòng thử lại!');
+        if (res.success || res.data) {
+          isSuccess = true;
+          serverMessage = res.message || 'Đăng ký tài khoản ứng viên thành công!';
+        } else {
+          throw new Error(res.message || 'Đăng ký tài khoản không thành công.');
+        }
+      }
+
+      if (isSuccess) {
+        message.success({
+          content: 'Đăng ký thành công! Vui lòng kiểm tra email để nhập mã OTP kích hoạt tài khoản.',
+          icon: <CheckCircleFilled style={{ color: '#10b981' }} />,
+          duration: 5,
+        });
+
+        // Redirect immediately to OTP Verification page with encoded query params
+        navigate(
+          `/verify-otp?email=${encodeURIComponent(emailTrimmed)}&role=${encodeURIComponent(
+            selectedRole
+          )}`,
+          {
+            replace: true,
+            state: {
+              email: emailTrimmed,
+              role: selectedRole,
+              message: serverMessage,
+            },
+          }
+        );
+      }
+    } catch (err: unknown) {
+      const formattedError = getApiErrorMessage(
+        err,
+        'Không thể hoàn tất đăng ký. Vui lòng kiểm tra lại thông tin!'
+      );
+      setErrorMessage(formattedError);
+      message.error({ content: formattedError, duration: 5 });
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: 'radial-gradient(ellipse at top, #1e293b 0%, #0f172a 100%)',
-        padding: '40px 20px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <div style={{ width: '100%', maxWidth: 860 }}>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden">
+      {/* Subtle modern background gradient orbs */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] bg-gradient-to-b from-blue-600/15 via-indigo-600/10 to-transparent blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[350px] bg-purple-600/10 blur-[100px] pointer-events-none" />
+
+      <div className="w-full max-w-xl relative z-10">
         {/* Brand Header */}
         <div
           onClick={() => navigate('/')}
-          title="Quay về trang chủ"
-          style={{ textAlign: 'center', marginBottom: 28, cursor: 'pointer' }}
+          className="text-center mb-5 cursor-pointer select-none group"
+          title="Quay về trang chủ HR Connect"
         >
-          <div
-            style={{
-              width: 54,
-              height: 54,
-              borderRadius: 14,
-              background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              color: '#fff',
-              fontSize: 26,
-              margin: '0 auto 14px',
-              boxShadow: '0 8px 24px rgba(2,132,199,0.35)',
-              transition: 'transform 0.2s ease',
-            }}
-          >
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-extrabold text-xl mx-auto mb-2 shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform duration-200">
             H
           </div>
           <Title
-            level={2}
+            level={3}
             style={{
               color: '#ffffff',
-              margin: '0 0 6px',
+              margin: '0 0 2px',
               fontWeight: 800,
               letterSpacing: '-0.02em',
-              fontSize: '28px',
+              fontSize: '22px',
             }}
           >
             Đăng ký tài khoản HR Connect
           </Title>
-          <Text style={{ color: '#94a3b8', fontSize: '15px' }}>
-            Chọn mục tiêu tham gia của bạn để thiết lập trải nghiệm phù hợp
+          <Text style={{ color: '#94a3b8', fontSize: '13px' }}>
+            Nền tảng tuyển dụng công nghệ & quản trị bảo hành nhân tài
           </Text>
         </div>
 
-        {/* ─── 1. Role Selection Cards ─── */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ color: '#cbd5e1', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Bước 1: Chọn vai trò tài khoản của bạn
-            </span>
-            <span style={{ color: '#64748b', fontSize: 12 }}>
-              Vai trò đã chọn: <strong style={{ color: activeOption.accentColor }}>{activeOption.title}</strong>
-            </span>
-          </div>
-
-          <Row gutter={[16, 16]}>
+        {/* ─── 1. COMPACT ROLE SELECTOR (Gọn gàng, giảm chiều cao tối đa) ─── */}
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-2.5 mb-5 shadow-xl backdrop-blur-md">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {ROLE_OPTIONS.map((opt) => {
               const isSelected = selectedRole === opt.role;
-
               return (
-                <Col xs={24} sm={8} key={opt.role}>
+                <button
+                  type="button"
+                  key={opt.role}
+                  onClick={() => {
+                    setSelectedRole(opt.role);
+                    setErrorMessage(null);
+                  }}
+                  className={`relative flex items-center gap-2.5 p-2.5 rounded-xl text-left transition-all duration-200 cursor-pointer ${
+                    isSelected
+                      ? 'bg-slate-800 border-2 shadow-sm'
+                      : 'bg-slate-900/50 hover:bg-slate-800/60 border border-transparent'
+                  }`}
+                  style={{
+                    borderColor: isSelected ? opt.accentColor : 'transparent',
+                  }}
+                >
                   <div
-                    onClick={() => handleRoleSelect(opt.role)}
+                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                     style={{
-                      height: '100%',
-                      background: isSelected ? '#ffffff' : 'rgba(30, 41, 59, 0.7)',
-                      border: isSelected
-                        ? `2.5px solid ${opt.accentColor}`
-                        : '1.5px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: 16,
-                      padding: '20px 16px',
-                      cursor: 'pointer',
-                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                      boxShadow: isSelected
-                        ? `0 12px 28px -6px ${opt.accentColor}40, 0 0 0 1px ${opt.accentColor}20`
-                        : '0 4px 12px rgba(0, 0, 0, 0.15)',
-                      transform: isSelected ? 'translateY(-3px)' : 'none',
-                      position: 'relative',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
+                      background: isSelected ? `${opt.accentColor}25` : 'rgba(255,255,255,0.06)',
                     }}
                   >
-                    {/* Active Checkmark Pill */}
-                    {isSelected && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: 12,
-                          right: 12,
-                          background: opt.accentColor,
-                          color: '#fff',
-                          borderRadius: '50%',
-                          width: 22,
-                          height: 22,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 12,
-                          boxShadow: `0 2px 8px ${opt.accentColor}60`,
-                        }}
-                      >
-                        <CheckCircleFilled />
-                      </div>
-                    )}
-
-                    <div>
-                      {/* Badge / Tag */}
-                      <Tag
-                        style={{
-                          borderRadius: 20,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          padding: '2px 8px',
-                          marginBottom: 12,
-                          border: 'none',
-                          background: isSelected ? opt.secondaryBg : 'rgba(255, 255, 255, 0.08)',
-                          color: isSelected ? opt.accentColor : '#94a3b8',
-                        }}
-                      >
-                        {opt.badge}
-                      </Tag>
-
-                      {/* Icon & Title */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                        <div
-                          style={{
-                            width: 42,
-                            height: 42,
-                            borderRadius: 12,
-                            background: isSelected ? opt.secondaryBg : 'rgba(255, 255, 255, 0.06)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {opt.icon}
-                        </div>
-                        <div>
-                          <div
-                            style={{
-                              fontWeight: 800,
-                              fontSize: 15,
-                              color: isSelected ? '#0f172a' : '#f8fafc',
-                              lineHeight: 1.3,
-                            }}
-                          >
-                            {opt.title}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: isSelected ? '#64748b' : '#64748b',
-                              fontWeight: 500,
-                            }}
-                          >
-                            {opt.tagline}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Description */}
-                      <Paragraph
-                        style={{
-                          fontSize: 13,
-                          color: isSelected ? '#334155' : '#94a3b8',
-                          margin: '8px 0 14px',
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        {opt.description}
-                      </Paragraph>
-                    </div>
-
-                    {/* Highlights list */}
-                    <div
-                      style={{
-                        paddingTop: 10,
-                        borderTop: isSelected ? '1px solid #f1f5f9' : '1px solid rgba(255, 255, 255, 0.06)',
-                      }}
-                    >
-                      {opt.highlights.map((h, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            fontSize: 11,
-                            color: isSelected ? '#475569' : '#94a3b8',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            marginBottom: 4,
-                          }}
-                        >
-                          <span
-                            style={{
-                              color: opt.accentColor,
-                              fontWeight: 'bold',
-                              fontSize: 13,
-                              lineHeight: 1,
-                            }}
-                          >
-                            ✓
-                          </span>
-                          <span>{h}</span>
-                        </div>
-                      ))}
-                    </div>
+                    {opt.icon}
                   </div>
-                </Col>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`text-xs font-bold truncate ${
+                          isSelected ? 'text-white' : 'text-slate-300'
+                        }`}
+                      >
+                        {opt.title}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 block truncate">
+                      {opt.badge}
+                    </span>
+                  </div>
+
+                  {isSelected && (
+                    <div
+                      className="w-2 h-2 rounded-full absolute top-2 right-2"
+                      style={{ backgroundColor: opt.accentColor }}
+                    />
+                  )}
+                </button>
               );
             })}
-          </Row>
+          </div>
         </div>
 
-        {/* ─── 2. Dynamic Registration Form Card ─── */}
-        <Card
-          style={{
-            borderRadius: 20,
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            background: '#ffffff',
-            overflow: 'hidden',
-          }}
-          styles={{ body: { padding: '36px 32px' } }}
-        >
-          {/* Form Header */}
+        {/* ─── 2. DYNAMIC REGISTRATION FORM CONTAINER ─── */}
+        <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+          {/* Active Role Description Banner */}
           <div
+            className="flex items-center justify-between px-3.5 py-2 rounded-lg mb-5 border text-xs font-medium"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 24,
-              paddingBottom: 16,
-              borderBottom: '1px solid #f1f5f9',
-              flexWrap: 'wrap',
-              gap: 12,
+              backgroundColor: activeOption.activeBg,
+              borderColor: `${activeOption.accentColor}30`,
+              color: activeOption.accentColor,
             }}
           >
-            <div>
-              <Title level={4} style={{ margin: '0 0 4px', color: '#0f172a', fontWeight: 800 }}>
-                Thông tin tài khoản
-              </Title>
-              <Text type="secondary" style={{ fontSize: 13 }}>
-                Đang thiết lập biểu mẫu cho vai trò:{' '}
-                <strong style={{ color: activeOption.accentColor }}>{activeOption.title}</strong>
-              </Text>
-            </div>
-
-            <Tag
-              color={activeOption.accentColor}
-              style={{
-                borderRadius: 8,
-                padding: '4px 12px',
-                fontSize: 12,
-                fontWeight: 700,
-              }}
-            >
-              {activeOption.badge}
-            </Tag>
+            <span>
+              Vai trò:{' '}
+              <strong className="font-bold underline decoration-dotted ml-1">
+                {activeOption.title}
+              </strong>
+            </span>
+            <span className="text-slate-400 hidden sm:inline text-[11px]">
+              {activeOption.subtitle}
+            </span>
           </div>
+
+          {/* Backend Error Alert Box */}
+          {errorMessage && (
+            <Alert
+              message={errorMessage}
+              type="error"
+              showIcon
+              closable
+              onClose={() => setErrorMessage(null)}
+              className="mb-5 text-xs rounded-xl"
+            />
+          )}
 
           <Form
             form={form}
             layout="vertical"
-            requiredMark="optional"
             onFinish={onFinish}
-            initialValues={{
-              terms: true,
-            }}
+            requiredMark={false}
+            scrollToFirstError
           >
-            {/* Common Row 1: Full name & Phone */}
-            <Row gutter={16}>
-              <Col xs={24} md={12}>
+            {/* ── CASE A: CLIENT / DOANH NGHIỆP FIELDS ── */}
+            {selectedRole === UserRole.CLIENT && (
+              <>
+                <Row gutter={12}>
+                  <Col xs={24} sm={14}>
+                    <Form.Item
+                      name="companyName"
+                      label={<span className="text-slate-300 text-xs font-semibold">Tên Doanh Nghiệp / Công ty *</span>}
+                      rules={[
+                        { required: true, message: 'Vui lòng nhập tên pháp nhân công ty!' },
+                        { min: 3, message: 'Tên công ty tối thiểu 3 ký tự!' },
+                      ]}
+                    >
+                      <Input
+                        size="large"
+                        prefix={<BankOutlined className="text-slate-500 mr-1" />}
+                        placeholder="Công ty Cổ phần Công nghệ XYZ"
+                        className="rounded-xl !bg-slate-950 !border-slate-800 !text-slate-100 hover:!border-blue-500 focus:!border-blue-500 placeholder:!text-slate-600"
+                        disabled={submitting}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={10}>
+                    <Form.Item
+                      name="taxCode"
+                      label={<span className="text-slate-300 text-xs font-semibold">Mã số thuế (MST) *</span>}
+                      rules={[
+                        { required: true, message: 'Vui lòng nhập mã số thuế!' },
+                        {
+                          pattern: /^[0-9]{10}(-[0-9]{3})?$/,
+                          message: 'MST hợp lệ gồm 10 hoặc 13 số (ví dụ: 0312345678)!',
+                        },
+                      ]}
+                    >
+                      <Input
+                        size="large"
+                        prefix={<IdcardOutlined className="text-slate-500 mr-1" />}
+                        placeholder="0312345678"
+                        maxLength={14}
+                        className="rounded-xl !bg-slate-950 !border-slate-800 !text-slate-100 hover:!border-blue-500 focus:!border-blue-500 placeholder:!text-slate-600"
+                        disabled={submitting}
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </>
+            )}
+
+            {/* ── COMMON FIELDS: Full Name & Phone ── */}
+            <Row gutter={12}>
+              <Col xs={24} sm={13}>
                 <Form.Item
-                  label={<span style={{ fontWeight: 600, fontSize: 13 }}>Họ và tên *</span>}
                   name="fullName"
+                  label={
+                    <span className="text-slate-300 text-xs font-semibold">
+                      {selectedRole === UserRole.CLIENT
+                        ? 'Người đại diện tuyển dụng *'
+                        : 'Họ và tên *'}
+                    </span>
+                  }
                   rules={[
-                    { required: true, message: 'Vui lòng nhập họ và tên của bạn!' },
-                    { min: 2, message: 'Họ và tên tối thiểu 2 ký tự!' },
+                    { required: true, message: 'Vui lòng nhập đầy đủ họ và tên!' },
+                    { min: 2, message: 'Họ tên quá ngắn!' },
                   ]}
                 >
                   <Input
-                    prefix={<UserOutlined style={{ color: '#94a3b8' }} />}
-                    placeholder={
-                      selectedRole === UserRole.CLIENT
-                        ? 'VD: Nguyễn Thị Lan (HR Manager)'
-                        : selectedRole === UserRole.AFFILIATE
-                        ? 'VD: Trần Minh Đức (Headhunter)'
-                        : 'VD: Nguyễn Văn An'
-                    }
                     size="large"
-                    style={{ borderRadius: 10, height: 44 }}
+                    prefix={<UserOutlined className="text-slate-500 mr-1" />}
+                    placeholder={selectedRole === UserRole.CLIENT ? 'Nguyễn Văn A (HR Director)' : 'Nguyễn Văn An'}
+                    className="rounded-xl !bg-slate-950 !border-slate-800 !text-slate-100 hover:!border-blue-500 focus:!border-blue-500 placeholder:!text-slate-600"
+                    disabled={submitting}
                   />
                 </Form.Item>
               </Col>
 
-              <Col xs={24} md={12}>
+              <Col xs={24} sm={11}>
                 <Form.Item
-                  label={<span style={{ fontWeight: 600, fontSize: 13 }}>Số điện thoại *</span>}
                   name="phone"
+                  label={<span className="text-slate-300 text-xs font-semibold">Số điện thoại *</span>}
                   rules={[
                     { required: true, message: 'Vui lòng nhập số điện thoại!' },
                     {
-                      pattern: /^(0[3|5|7|8|9])[0-9]{8}$/,
-                      message: 'Số điện thoại không hợp lệ (gồm 10 số, bắt đầu bằng 03, 05, 07, 08, 09)!',
+                      pattern: /(84|0[3|5|7|8|9])+([0-9]{8})\b/,
+                      message: 'Số điện thoại Việt Nam không hợp lệ!',
                     },
                   ]}
                 >
                   <Input
-                    prefix={<PhoneOutlined style={{ color: '#94a3b8' }} />}
-                    placeholder="VD: 0912 345 678"
                     size="large"
-                    style={{ borderRadius: 10, height: 44 }}
+                    prefix={<PhoneOutlined className="text-slate-500 mr-1" />}
+                    placeholder="0912 345 678"
+                    maxLength={11}
+                    className="rounded-xl !bg-slate-950 !border-slate-800 !text-slate-100 hover:!border-blue-500 focus:!border-blue-500 placeholder:!text-slate-600"
+                    disabled={submitting}
                   />
                 </Form.Item>
               </Col>
             </Row>
 
-            {/* Common Row 2: Email */}
+            {/* ── Email Field ── */}
             <Form.Item
+              name="email"
               label={
-                <span style={{ fontWeight: 600, fontSize: 13 }}>
+                <span className="text-slate-300 text-xs font-semibold">
                   {selectedRole === UserRole.CLIENT ? 'Email doanh nghiệp *' : 'Địa chỉ Email *'}
                 </span>
               }
-              name="email"
               rules={[
                 { required: true, message: 'Vui lòng nhập địa chỉ email!' },
-                { type: 'email', message: 'Địa chỉ email không đúng định dạng!' },
+                { type: 'email', message: 'Email không đúng định dạng!' },
               ]}
-              extra={
-                selectedRole === UserRole.CLIENT ? (
-                  <span style={{ fontSize: 11, color: '#64748b' }}>
-                    Khuyên dùng email tên miền công ty (VD: hr@congty.com) để kích hoạt nhanh tính năng thẩm định hồ sơ.
-                  </span>
-                ) : undefined
-              }
             >
               <Input
-                prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
-                placeholder={
-                  selectedRole === UserRole.CLIENT
-                    ? 'tuyendung@doanhnghiep.vn'
-                    : selectedRole === UserRole.AFFILIATE
-                    ? 'recruiter@partner.vn'
-                    : 'ungvien@gmail.com'
-                }
                 size="large"
-                style={{ borderRadius: 10, height: 44 }}
+                type="email"
+                prefix={<MailOutlined className="text-slate-500 mr-1" />}
+                placeholder={selectedRole === UserRole.CLIENT ? 'tuyendung@company.com' : 'example@gmail.com'}
+                className="rounded-xl !bg-slate-950 !border-slate-800 !text-slate-100 hover:!border-blue-500 focus:!border-blue-500 placeholder:!text-slate-600"
+                disabled={submitting}
               />
             </Form.Item>
 
-            {/* ─── CLIENT SPECIFIC FIELDS: Tên công ty & Quy mô doanh nghiệp ─── */}
-            {selectedRole === UserRole.CLIENT && (
-              <div
-                style={{
-                  background: '#f8fafc',
-                  border: '1.5px dashed #bae6fd',
-                  borderRadius: 14,
-                  padding: '20px 20px 8px',
-                  marginBottom: 24,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                  <BankOutlined style={{ color: '#0284c7', fontSize: 16 }} />
-                  <span style={{ fontWeight: 700, fontSize: 13, color: '#0369a1' }}>
-                    Thông tin Pháp nhân Tuyển dụng (Bắt buộc cho Doanh nghiệp)
-                  </span>
-                </div>
-
-                <Row gutter={16}>
-                  <Col xs={24} md={14}>
-                    <Form.Item
-                      label={<span style={{ fontWeight: 600, fontSize: 13 }}>Tên công ty *</span>}
-                      name="companyName"
-                      rules={[
-                        { required: true, message: 'Vui lòng nhập tên công ty hoặc tổ chức tuyển dụng!' },
-                        { min: 3, message: 'Tên công ty cần tối thiểu 3 ký tự!' },
-                      ]}
-                    >
-                      <Input
-                        prefix={<BankOutlined style={{ color: '#94a3b8' }} />}
-                        placeholder="VD: Công ty Cổ phần Công nghệ TechVina"
-                        size="large"
-                        style={{ borderRadius: 10, height: 44, background: '#ffffff' }}
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col xs={24} md={10}>
-                    <Form.Item
-                      label={<span style={{ fontWeight: 600, fontSize: 13 }}>Quy mô doanh nghiệp *</span>}
-                      name="companySize"
-                      rules={[
-                        { required: true, message: 'Vui lòng chọn quy mô nhân sự của công ty!' },
-                      ]}
-                    >
-                      <Select
-                        placeholder="Chọn quy mô nhân sự"
-                        size="large"
-                        style={{ width: '100%', height: 44 }}
-                        dropdownStyle={{ borderRadius: 10 }}
-                      >
-                        {COMPANY_SIZES.map((size) => (
-                          <Option key={size.value} value={size.value}>
-                            {size.label}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </div>
-            )}
-
-            {/* Common Row 3: Mật khẩu & Xác nhận mật khẩu */}
-            <Row gutter={16}>
-              <Col xs={24} md={12}>
+            {/* ── Password & Confirm Password Row ── */}
+            <Row gutter={12}>
+              <Col xs={24} sm={12}>
                 <Form.Item
-                  label={<span style={{ fontWeight: 600, fontSize: 13 }}>Mật khẩu *</span>}
                   name="password"
+                  label={<span className="text-slate-300 text-xs font-semibold">Mật khẩu *</span>}
                   rules={[
                     { required: true, message: 'Vui lòng nhập mật khẩu!' },
-                    { min: 6, message: 'Mật khẩu phải chứa ít nhất 6 ký tự!' },
+                    { min: 6, message: 'Mật khẩu phải từ 6 ký tự trở lên!' },
                   ]}
-                  hasFeedback
                 >
                   <Input.Password
-                    prefix={<LockOutlined style={{ color: '#94a3b8' }} />}
-                    placeholder="Ít nhất 6 ký tự..."
                     size="large"
-                    style={{ borderRadius: 10, height: 44 }}
+                    prefix={<LockOutlined className="text-slate-500 mr-1" />}
+                    placeholder="Ít nhất 6 ký tự"
+                    onChange={(e) => setPasswordValue(e.target.value)}
+                    className="rounded-xl !bg-slate-950 !border-slate-800 !text-slate-100 hover:!border-blue-500 focus:!border-blue-500 placeholder:!text-slate-600"
+                    disabled={submitting}
                   />
                 </Form.Item>
               </Col>
 
-              <Col xs={24} md={12}>
+              <Col xs={24} sm={12}>
                 <Form.Item
-                  label={<span style={{ fontWeight: 600, fontSize: 13 }}>Xác nhận mật khẩu *</span>}
                   name="confirmPassword"
                   dependencies={['password']}
-                  hasFeedback
+                  label={<span className="text-slate-300 text-xs font-semibold">Xác nhận mật khẩu *</span>}
                   rules={[
-                    { required: true, message: 'Vui lòng xác nhận lại mật khẩu!' },
+                    { required: true, message: 'Vui lòng nhập lại mật khẩu!' },
                     ({ getFieldValue }) => ({
                       validator(_, value) {
                         if (!value || getFieldValue('password') === value) {
                           return Promise.resolve();
                         }
-                        return Promise.reject(new Error('Mật khẩu xác nhận không khớp!'));
+                        return Promise.reject(new Error('Mật khẩu xác nhận không trùng khớp!'));
                       },
                     }),
                   ]}
                 >
                   <Input.Password
-                    prefix={<LockOutlined style={{ color: '#94a3b8' }} />}
-                    placeholder="Nhập lại mật khẩu..."
                     size="large"
-                    style={{ borderRadius: 10, height: 44 }}
+                    prefix={<SafetyCertificateOutlined className="text-slate-500 mr-1" />}
+                    placeholder="Nhập lại mật khẩu"
+                    className="rounded-xl !bg-slate-950 !border-slate-800 !text-slate-100 hover:!border-blue-500 focus:!border-blue-500 placeholder:!text-slate-600"
+                    disabled={submitting}
                   />
                 </Form.Item>
               </Col>
             </Row>
 
-            {/* Terms checkbox */}
+            {/* ── Password Strength Meter (Trực quan) ── */}
+            {passwordValue && (
+              <div className="mb-4 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/60">
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="text-slate-400 text-[11px]">Độ mạnh mật khẩu:</span>
+                  <span
+                    className="font-semibold text-[11px]"
+                    style={{ color: passwordStrength.color }}
+                  >
+                    {passwordStrength.label}
+                  </span>
+                </div>
+                <Progress
+                  percent={passwordStrength.percent}
+                  strokeColor={passwordStrength.color}
+                  showInfo={false}
+                  size="small"
+                  className="m-0"
+                />
+              </div>
+            )}
+
+            {/* ── Terms and Policy ── */}
             <Form.Item
               name="terms"
               valuePropName="checked"
@@ -654,88 +574,67 @@ export const RegisterPage: React.FC = () => {
                       : Promise.reject(new Error('Vui lòng đồng ý với điều khoản sử dụng!')),
                 },
               ]}
-              style={{ marginBottom: 24 }}
+              className="mb-4"
             >
-              <Checkbox style={{ fontSize: 12, color: '#64748b' }}>
+              <Checkbox className="text-xs text-slate-400">
                 Tôi đồng ý với{' '}
-                <a href="#terms" onClick={(e) => e.preventDefault()} style={{ color: activeOption.accentColor }}>
+                <a
+                  href="#terms"
+                  onClick={(e) => e.preventDefault()}
+                  className="text-blue-400 hover:underline"
+                >
                   Điều khoản dịch vụ
                 </a>{' '}
                 và{' '}
-                <a href="#privacy" onClick={(e) => e.preventDefault()} style={{ color: activeOption.accentColor }}>
+                <a
+                  href="#privacy"
+                  onClick={(e) => e.preventDefault()}
+                  className="text-blue-400 hover:underline"
+                >
                   Chính sách bảo mật
                 </a>{' '}
                 của HR Connect.
               </Checkbox>
             </Form.Item>
 
-            {/* Submit Button */}
+            {/* ── Submit Button ── */}
             <Button
               type="primary"
               htmlType="submit"
               size="large"
-              block
               loading={submitting}
-              icon={<ArrowRightOutlined />}
-              iconPosition="end"
+              disabled={submitting}
+              className="w-full h-11 rounded-xl font-bold text-sm shadow-lg border-none flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.99]"
               style={{
-                borderRadius: 12,
-                fontWeight: 700,
-                height: 50,
-                fontSize: 16,
-                background:
-                  selectedRole === UserRole.CANDIDATE
-                    ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
-                    : selectedRole === UserRole.CLIENT
-                    ? 'linear-gradient(135deg, #0284c7, #0369a1)'
-                    : 'linear-gradient(135deg, #f59e0b, #d97706)',
-                border: 'none',
-                boxShadow: `0 4px 16px ${activeOption.accentColor}40`,
-                transition: 'all 0.3s ease',
+                backgroundColor: activeOption.accentColor,
+                boxShadow: `0 8px 20px -4px ${activeOption.accentColor}50`,
               }}
             >
-              Tạo tài khoản ngay
+              <span>Đăng ký tài khoản</span>
+              <ArrowRightOutlined />
             </Button>
           </Form>
 
-          {/* Guarantee / Security badge */}
-          <div
-            style={{
-              marginTop: 24,
-              padding: '12px 16px',
-              borderRadius: 10,
-              background: '#f8fafc',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              fontSize: 12,
-              color: '#64748b',
-            }}
-          >
-            <SafetyCertificateOutlined style={{ color: '#10b981', fontSize: 16 }} />
-            <span>Cam kết bảo mật dữ liệu theo tiêu chuẩn ISO 27001 & Mã hóa TLS 1.3</span>
+          {/* Footer Navigation */}
+          <div className="text-center mt-5 pt-4 border-t border-slate-800/80 text-xs text-slate-400">
+            <span>Đã có tài khoản trên HR Connect? </span>
+            <Link
+              to="/login"
+              className="font-semibold text-blue-400 hover:text-blue-300 ml-1 transition-colors"
+            >
+              Đăng nhập ngay
+            </Link>
           </div>
+        </div>
 
-          {/* Footer Note: Login link */}
-          <div style={{ marginTop: 20, textAlign: 'center' }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>
-              Đã có tài khoản?{' '}
-              <span
-                onClick={() => navigate('/login')}
-                style={{
-                  color: '#0284c7',
-                  cursor: 'pointer',
-                  fontWeight: 700,
-                  textDecoration: 'underline',
-                }}
-              >
-                Đăng nhập tại đây
-              </span>
-            </Text>
-          </div>
-        </Card>
+        {/* Security Assurance Badge */}
+        <div className="flex items-center justify-center gap-2 mt-4 text-[11px] text-slate-500">
+          <CheckCircleOutlined className="text-emerald-500" />
+          <span>Bảo mật chuẩn mã hóa dữ liệu SSL 256-bit & Tuân thủ Nghị định 13/2023/NĐ-CP</span>
+        </div>
       </div>
     </div>
   );
 };
+
+export default RegisterPage;

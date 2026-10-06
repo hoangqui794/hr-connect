@@ -19,6 +19,8 @@ public sealed class UpdateApplicationScreeningStatusData
 
     public string? Reason { get; init; }
 
+    public string? ReasonCode { get; init; }
+
     public Guid ConcurrencyToken { get; init; }
 
     public DateTime UpdatedAt { get; init; }

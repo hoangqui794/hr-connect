@@ -86,3 +86,17 @@ export const DEMO_USERS: Record<UserRole, UserProfile> = {
     avatar: 'AD',
   },
 };
+
+/**
+ * Maps string roles returned from backend OpenAPI schema to frontend UserRole enum
+ */
+export const mapApiRoleToUserRole = (roles?: string[] | null): UserRole => {
+  if (!roles || roles.length === 0) return UserRole.CANDIDATE;
+  const normalized = roles.map((r) => r.toUpperCase());
+  if (normalized.some((r) => r.includes('ADMIN'))) return UserRole.ADMIN;
+  if (normalized.some((r) => r.includes('CLIENT') || r.includes('EMPLOYER'))) return UserRole.CLIENT;
+  if (normalized.some((r) => r.includes('AFFILIATE') || r.includes('HEADHUNTER') || r.includes('RECRUITER'))) return UserRole.AFFILIATE;
+  if (normalized.some((r) => r.includes('INTERNAL_HR') || r.includes('HR_OPS') || r.includes('HR'))) return UserRole.INTERNAL_HR;
+  if (normalized.some((r) => r.includes('CANDIDATE') || r.includes('TALENT'))) return UserRole.CANDIDATE;
+  return UserRole.CANDIDATE;
+};

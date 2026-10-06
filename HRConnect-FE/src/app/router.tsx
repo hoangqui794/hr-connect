@@ -83,6 +83,14 @@ export const router = createBrowserRouter([
     element: <RegisterPage />,
   },
   {
+    path: '/verify-otp',
+    element: withSuspense(<AppRoutes.VerifyOtpPage />),
+  },
+  {
+    path: '/auth/verify',
+    element: withSuspense(<AppRoutes.VerifyOtpPage />),
+  },
+  {
     path: '/services',
     element: <ServicesPage />,
   },

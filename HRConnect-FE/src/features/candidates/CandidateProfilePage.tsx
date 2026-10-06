@@ -40,6 +40,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useCandidateStore, CandidateProfile, CandidateCV } from '@/stores/candidateStore';
 import { saveHRConnectUser, findHRConnectUserByEmail } from '@/services/localStorageService';
+import { candidateService } from '@/services/candidateService';
+import { useCandidateProfile } from '@/hooks/useCandidateProfile';
 import type { UploadProps } from 'antd';
 
 const { Title, Text, Paragraph } = Typography;
@@ -105,6 +107,7 @@ export const CandidateProfilePage: React.FC = () => {
     return (cvs || []).filter((c) => (c.userEmail || '').toLowerCase().trim() === currentUserEmail);
   }, [currentUserEmail, cvs]);
 
+  const { profile: apiProfile, refetch: refetchApiProfile } = useCandidateProfile();
   const [form] = Form.useForm();
   const [isSaving, setIsSaving] = useState(false);
   const savingProfile = isSaving;
@@ -138,9 +141,9 @@ export const CandidateProfilePage: React.FC = () => {
 
     // Look up the full stored record (may have more info than authStore)
     const storedUser = findHRConnectUserByEmail(user.email);
-    const resolvedName  = storedUser?.fullName  || user.name  || profile.fullName || 'Nguyễn Văn B';
-    const resolvedEmail = storedUser?.email      || user.email || profile.email    || 'ungvien5@gmail.com';
-    const resolvedPhone = storedUser?.phone      || user.phone || profile.phone    || '0912 345 678';
+    const resolvedName  = apiProfile?.fullName || storedUser?.fullName  || user.name  || profile.fullName || (user.email ? user.email.split('@')[0] : 'Ứng viên');
+    const resolvedEmail = apiProfile?.email    || storedUser?.email      || user.email || profile.email    || '';
+    const resolvedPhone = apiProfile?.phone    || storedUser?.phone      || user.phone || profile.phone    || '';
 
     // Force-init candidateStore profile with current user identity
     initCandidateFromUser({
@@ -149,19 +152,24 @@ export const CandidateProfilePage: React.FC = () => {
       phone: resolvedPhone,
     });
 
+    const resolvedExp =
+      typeof apiProfile?.yearsOfExperience === 'number' && apiProfile.yearsOfExperience > 0
+        ? `${apiProfile.yearsOfExperience} năm kinh nghiệm`
+        : (profile?.experienceYears || '');
+
     // Populate all form fields so initial values are immediately editable and valid
     form.setFieldsValue({
       fullName: resolvedName,
       email:    resolvedEmail,
       phone:    resolvedPhone,
-      location: profile.location || 'Hồ Chí Minh & Hà Nội (Hybrid / Remote)',
-      targetRole: profile.targetRole || 'Senior Fullstack Engineer / Frontend Specialist',
-      expectedSalary: profile.expectedSalary || '45.000.000 - 65.000.000 đ/tháng',
-      currentLevel: profile.currentLevel || 'Senior Level / Team Lead',
-      experienceYears: profile.experienceYears || '5+ năm kinh nghiệm',
-      foreignLanguages: profile.foreignLanguages || 'Tiếng Anh (IELTS 7.0 / Giao tiếp công việc thành thạo)',
-      availableDate: profile.availableDate || 'Sẵn sàng làm việc ngay lập tức',
-      bio: profile.bio || 'Kỹ sư phần mềm 5+ năm kinh nghiệm chuyên sâu về ReactJS, TypeScript và kiến trúc Microservices.',
+      location: apiProfile?.currentAddress || profile?.location || '',
+      targetRole: profile?.targetRole || '',
+      expectedSalary: profile?.expectedSalary || '',
+      currentLevel: apiProfile?.highestEducation || profile?.currentLevel || '',
+      experienceYears: resolvedExp,
+      foreignLanguages: profile?.foreignLanguages || '',
+      availableDate: profile?.availableDate || '',
+      bio: apiProfile?.summary || profile?.bio || '',
     });
 
     // Sync banner immediately
@@ -170,20 +178,20 @@ export const CandidateProfilePage: React.FC = () => {
       fullName: resolvedName,
       email:    resolvedEmail,
       phone:    resolvedPhone,
-      jobTitle: profile.targetRole || prev.jobTitle || 'Senior Fullstack Engineer',
-      targetRole: profile.targetRole || prev.targetRole || 'Senior Fullstack Engineer',
-      expectedSalary: profile.expectedSalary || prev.expectedSalary || '45.000.000 - 65.000.000 đ/tháng',
-      currentLevel: profile.currentLevel || prev.currentLevel || 'Senior Level / Team Lead',
-      experienceYears: profile.experienceYears || prev.experienceYears || '5+ năm kinh nghiệm',
+      jobTitle: profile?.targetRole || prev?.jobTitle || '',
+      targetRole: profile?.targetRole || prev?.targetRole || '',
+      expectedSalary: profile?.expectedSalary || prev?.expectedSalary || '',
+      currentLevel: apiProfile?.highestEducation || profile?.currentLevel || prev?.currentLevel || '',
+      experienceYears: resolvedExp || prev?.experienceYears || '',
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email]);
+  }, [user?.email, apiProfile]);
 
   // Skill tags input state
   const [skillsList, setSkillsList] = useState<string[]>(
-    profile.skills && profile.skills.length > 0
+    profile?.skills && profile.skills.length > 0
       ? profile.skills
-      : ['ReactJS', 'TypeScript', 'Node.js', 'Next.js', 'TailwindCSS', 'GraphQL', 'Microservices', 'Docker', 'PostgreSQL']
+      : []
   );
   const [newSkillInput, setNewSkillInput] = useState('');
   const [showSkillInput, setShowSkillInput] = useState(false);
@@ -212,6 +220,21 @@ export const CandidateProfilePage: React.FC = () => {
         targetRole: values.targetRole || values.jobTitle || profile.targetRole || '',
         skills: skillsList,
       });
+
+      // 1.1 Call Backend PUT /api/v1/candidates/profile/me
+      try {
+        await candidateService.updateProfile({
+          fullName: (values.fullName || user?.name || '').trim(),
+          phone: (values.phone || user?.phone || '').trim(),
+          currentAddress: (values.location || '').trim(),
+          highestEducation: (values.currentLevel || '').trim(),
+          yearsOfExperience: parseFloat(values.experienceYears) || (apiProfile?.yearsOfExperience ?? 0),
+          summary: (values.bio || '').trim(),
+        });
+        await refetchApiProfile();
+      } catch (apiErr) {
+        console.warn('Backend API updateProfile failed (continuing with local persistence):', apiErr);
+      }
 
       // 2. Persist identity changes back to hrconnect_users localStorage
       if (user) {
@@ -279,7 +302,7 @@ export const CandidateProfilePage: React.FC = () => {
       const values = await builderForm.validateFields();
       const newCv: CandidateCV = {
         id: `cv-builder-${Date.now()}`,
-        name: `CV ${values.roleTarget || profile.targetRole} (Online ATS)`,
+        name: `CV ${values.roleTarget || profile?.targetRole || 'Chuyên viên'} (Online ATS)`,
         updatedAt: 'Hôm nay',
         size: '1.9 MB',
         isDefault: myCvs.length === 0,
@@ -301,7 +324,7 @@ export const CandidateProfilePage: React.FC = () => {
     if (!selectedTemplate) return;
     const newCv: CandidateCV = {
       id: `cv-tpl-${Date.now()}`,
-      name: `CV ${profile.targetRole} (${selectedTemplate.name})`,
+      name: `CV ${profile?.targetRole || 'Chuyên viên'} (${selectedTemplate.name})`,
       updatedAt: 'Hôm nay',
       size: '2.1 MB',
       isDefault: myCvs.length === 0,
@@ -341,6 +364,25 @@ export const CandidateProfilePage: React.FC = () => {
       return false;
     },
   };
+
+  // Tính toán số năm kinh nghiệm an toàn: chỉ hiển thị khi số năm kinh nghiệm > 0
+  const experienceYearsRaw =
+    apiProfile?.yearsOfExperience !== undefined && apiProfile?.yearsOfExperience !== null
+      ? `${apiProfile.yearsOfExperience} năm kinh nghiệm`
+      : (formData?.experienceYears || profile?.experienceYears || '');
+
+  const experienceNum =
+    typeof apiProfile?.yearsOfExperience === 'number'
+      ? apiProfile.yearsOfExperience
+      : parseFloat(String(experienceYearsRaw || '').replace(/[^\d.]/g, '')) || 0;
+
+  const hasValidExperience = experienceNum > 0;
+  const displayExperience =
+    typeof experienceYearsRaw === 'string' &&
+    experienceYearsRaw.trim() &&
+    !experienceYearsRaw.trim().startsWith('0')
+      ? experienceYearsRaw.trim()
+      : `${experienceNum} năm kinh nghiệm`;
 
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto', paddingBottom: 60 }}>
@@ -383,7 +425,7 @@ export const CandidateProfilePage: React.FC = () => {
                   border: '2px solid rgba(255, 255, 255, 0.15)',
                 }}
               >
-                {getInitials(user?.name || formData.fullName)}
+                {getInitials(user?.name || formData?.fullName)}
               </Avatar>
               <div
                 style={{
@@ -412,22 +454,25 @@ export const CandidateProfilePage: React.FC = () => {
                     lineHeight: 1.2,
                   }}
                 >
-                  {user?.name || formData.fullName || 'Chưa cập nhật họ tên'}
+                  {user?.name || formData?.fullName || 'Chưa cập nhật họ tên'}
                 </h1>
-                <span
-                  style={{
-                    background: 'rgba(59, 130, 246, 0.15)',
-                    color: '#60a5fa',
-                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                    borderRadius: 9999,
-                    padding: '2px 10px',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    letterSpacing: '0.01em',
-                  }}
-                >
-                  {formData.currentLevel || profile.currentLevel || 'Ứng viên'}
-                </span>
+                {/* Badge cấp bậc: Ẩn khi chưa có dữ liệu */}
+                {(formData?.currentLevel || profile?.currentLevel || apiProfile?.highestEducation) ? (
+                  <span
+                    style={{
+                      background: 'rgba(59, 130, 246, 0.15)',
+                      color: '#60a5fa',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      borderRadius: 9999,
+                      padding: '2px 10px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      letterSpacing: '0.01em',
+                    }}
+                  >
+                    {formData?.currentLevel || profile?.currentLevel || apiProfile?.highestEducation}
+                  </span>
+                ) : null}
               </div>
 
               <div
@@ -441,11 +486,11 @@ export const CandidateProfilePage: React.FC = () => {
                   gap: 8,
                 }}
               >
-                <span>{formData.jobTitle || formData.targetRole || profile.targetRole || 'Chưa cập nhật chức danh'}</span>
-                {(formData.experienceYears || profile.experienceYears) && (
+                <span>{formData?.jobTitle || formData?.targetRole || profile?.targetRole || 'Chưa cập nhật chức danh'}</span>
+                {hasValidExperience && (
                   <>
                     <span style={{ color: '#64748b' }}>•</span>
-                    <span style={{ color: '#94a3b8' }}>{formData.experienceYears || profile.experienceYears}</span>
+                    <span style={{ color: '#94a3b8' }}>{displayExperience}</span>
                   </>
                 )}
               </div>
@@ -466,7 +511,7 @@ export const CandidateProfilePage: React.FC = () => {
                   }}
                 >
                   <MailOutlined style={{ color: '#60a5fa' }} />
-                  <span style={{ color: '#e2e8f0' }}>{user?.email || formData.email || 'Chưa có email'}</span>
+                  <span style={{ color: '#e2e8f0' }}>{user?.email || formData?.email || 'Chưa có email'}</span>
                 </div>
                 <div
                   style={{
@@ -482,7 +527,7 @@ export const CandidateProfilePage: React.FC = () => {
                   }}
                 >
                   <PhoneOutlined style={{ color: '#34d399' }} />
-                  <span style={{ color: '#e2e8f0' }}>{user?.phone || formData.phone || 'Chưa có số điện thoại'}</span>
+                  <span style={{ color: '#e2e8f0' }}>{user?.phone || formData?.phone || 'Chưa có số điện thoại'}</span>
                 </div>
               </div>
             </div>
@@ -538,7 +583,7 @@ export const CandidateProfilePage: React.FC = () => {
                   lineHeight: 1.2,
                 }}
               >
-                {formData.expectedSalary || profile.expectedSalary || 'Thỏa thuận'}
+                {formData?.expectedSalary || profile?.expectedSalary || 'Thương lượng'}
               </div>
             </div>
           </Col>

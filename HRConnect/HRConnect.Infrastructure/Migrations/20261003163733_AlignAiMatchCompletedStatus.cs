@@ -10,10 +10,10 @@ namespace HRConnect.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropCheckConstraint(
-                name: "ai_match_result_status_check",
-                schema: "public",
-                table: "ai_match_result");
+            // IF EXISTS: some local databases never had this constraint, and a plain
+            // DropCheckConstraint aborts startup on them.
+            migrationBuilder.Sql(
+                "ALTER TABLE public.ai_match_result DROP CONSTRAINT IF EXISTS ai_match_result_status_check;");
 
             migrationBuilder.Sql(
                 "UPDATE public.ai_match_result SET status = 'COMPLETED' WHERE status = 'SUCCESS';");
