@@ -8,6 +8,7 @@ public record UpdateApplicationScreeningStatusCommand(
     Guid ApplicationId,
     string TargetStatus,
     string? Reason,
+    string? ReasonCode,
     Guid? ConcurrencyToken,
     Guid CurrentUserId,
     ScreeningActor Actor

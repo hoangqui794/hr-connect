@@ -121,9 +121,15 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
         }
 
         var reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim();
-        if (targetStatus == ApplicationStates.Rejected && reason == null)
+        // Format rules live in UpdateApplicationScreeningStatusCommandValidator; this guard keeps
+        // a REJECTED decision from ever being stored without a structured reason.
+        var reasonCode = targetStatus == ApplicationStates.Rejected
+            ? ApplicationReasonCodes.Normalize(request.ReasonCode)
+            : null;
+        if (targetStatus == ApplicationStates.Rejected
+            && (reasonCode == null || !ApplicationReasonCodes.ScreeningRejectionCodes.Contains(reasonCode)))
         {
-            throw new BadRequestException("Phải nhập lý do khi loại hồ sơ.");
+            throw new BadRequestException("Phải chọn mã lý do hợp lệ khi loại hồ sơ.");
         }
 
         if (!request.ConcurrencyToken.HasValue)
@@ -141,6 +147,7 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
 
         application.Status = targetStatus;
         application.StatusReason = reason;
+        application.StatusReasonCode = reasonCode;
         application.UpdatedAt = now;
         application.ConcurrencyToken = newConcurrencyToken;
         application.ApplicationStatusHistories.Add(new ApplicationStatusHistory
@@ -151,7 +158,8 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
             NewStatus = targetStatus,
             ChangedBy = request.CurrentUserId,
             ChangedAt = now,
-            Reason = reason
+            Reason = reason,
+            ReasonCode = reasonCode
         });
 
         _applicationRepository.Update(application);
@@ -166,6 +174,7 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
             {
                 status = targetStatus,
                 hasReason = reason != null,
+                reasonCode,
                 screenedBy = request.Actor.ToString(),
                 serviceType = serviceTypeCode
             }
@@ -189,6 +198,7 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
                 PreviousStatus = currentStatus,
                 CurrentStatus = targetStatus,
                 Reason = reason,
+                ReasonCode = reasonCode,
                 ConcurrencyToken = newConcurrencyToken,
                 UpdatedAt = now
             }

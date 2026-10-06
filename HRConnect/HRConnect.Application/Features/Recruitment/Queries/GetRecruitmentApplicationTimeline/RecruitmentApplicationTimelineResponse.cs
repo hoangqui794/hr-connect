@@ -40,4 +40,7 @@ public class ApplicationTimelineEventDto
     public string? ActorName { get; set; }
 
     public string? Status { get; set; }
+
+    /// <summary>Structured reason for APPLICATION_STATUS_CHANGED events, e.g. SKILL_MISMATCH.</summary>
+    public string? ReasonCode { get; set; }
 }

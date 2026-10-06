@@ -1,5 +1,6 @@
 using System;
 using System.Security.Claims;
+using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Offers.Commands.CreateOfferDraft;
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmPlannedStartDate;
@@ -44,6 +45,7 @@ public static class RecruitmentEndpoints
             Guid applicationId,
             [FromBody] UpdateApplicationScreeningStatusRequest request,
             [FromServices] ISender sender,
+            [FromServices] IValidator<UpdateApplicationScreeningStatusCommand> validator,
             ClaimsPrincipal user,
             CancellationToken cancellationToken) =>
         {
@@ -58,16 +60,31 @@ public static class RecruitmentEndpoints
                 return PermissionAuthorization.Forbidden($"{ReviewCompanyPermission} | {ScreenApplicationPermission}");
             }
 
+            var command = new UpdateApplicationScreeningStatusCommand(
+                jobId,
+                applicationId,
+                request.TargetStatus,
+                request.Reason,
+                request.ReasonCode,
+                request.ConcurrencyToken,
+                userId.Value,
+                actor);
+            var validation = await validator.ValidateAsync(command, cancellationToken);
+            if (!validation.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu không hợp lệ.",
+                    errors = validation.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
             try
             {
-                var response = await sender.Send(new UpdateApplicationScreeningStatusCommand(
-                    jobId,
-                    applicationId,
-                    request.TargetStatus,
-                    request.Reason,
-                    request.ConcurrencyToken,
-                    userId.Value,
-                    actor), cancellationToken);
+                var response = await sender.Send(command, cancellationToken);
                 return Results.Ok(response);
             }
             catch (NotFoundException ex)
@@ -89,7 +106,7 @@ public static class RecruitmentEndpoints
         })
         .WithName("UpdateApplicationScreeningStatus")
         .WithSummary("Cập nhật trạng thái sàng lọc hồ sơ (MF-03)")
-        .WithDescription("Người sàng lọc theo loại dịch vụ: CV_APPLICATION do Client Company sở hữu Job (candidate.review_company); HEADHUNT_COD và CV_SOURCING do Internal HR (application.screen). Chuyển SUBMITTED sang SCREENING, SHORTLISTED, REJECTED hoặc BACKUP; SCREENING sang SHORTLISTED, REJECTED hoặc BACKUP; BACKUP sang SHORTLISTED hoặc BACKUP_NOT_SELECTED. REJECTED bắt buộc có reason; concurrencyToken bắt buộc.")
+        .WithDescription("Người sàng lọc theo loại dịch vụ: CV_APPLICATION do Client Company sở hữu Job (candidate.review_company); HEADHUNT_COD và CV_SOURCING do Internal HR (application.screen). Chuyển SUBMITTED sang SCREENING, SHORTLISTED, REJECTED hoặc BACKUP; SCREENING sang SHORTLISTED, REJECTED hoặc BACKUP; BACKUP sang SHORTLISTED hoặc BACKUP_NOT_SELECTED. REJECTED bắt buộc reasonCode (OTHER thì phải có reason làm ghi chú); concurrencyToken bắt buộc.")
         .Produces<UpdateApplicationScreeningStatusResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -699,7 +716,12 @@ public class DecideBackupApplicationRequest
 public class UpdateApplicationScreeningStatusRequest
 {
     public string TargetStatus { get; set; } = string.Empty;
+
+    /// <summary>Optional free-text note. Required only when reasonCode is OTHER.</summary>
     public string? Reason { get; set; }
+
+    /// <summary>Required for REJECTED: SKILL_MISMATCH, INSUFFICIENT_EXPERIENCE, SALARY_MISMATCH, LOCATION_MISMATCH, LANGUAGE_REQUIREMENT, CANDIDATE_UNREACHABLE, POSITION_FILLED, OTHER.</summary>
+    public string? ReasonCode { get; set; }
     public Guid? ConcurrencyToken { get; set; }
 }
 

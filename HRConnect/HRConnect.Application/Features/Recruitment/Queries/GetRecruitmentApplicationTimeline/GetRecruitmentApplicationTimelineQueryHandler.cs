@@ -91,7 +91,8 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                     Timestamp = h.ChangedAt,
                     ActorUserId = h.ChangedBy,
                     ActorName = h.ChangedByNavigation?.DisplayName ?? h.ChangedByNavigation?.Email,
-                    Status = h.NewStatus
+                    Status = h.NewStatus,
+                    ReasonCode = h.ReasonCode
                 });
             }
         }

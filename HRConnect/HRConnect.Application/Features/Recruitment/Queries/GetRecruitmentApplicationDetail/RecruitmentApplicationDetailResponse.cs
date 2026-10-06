@@ -48,6 +48,8 @@ public class RecruitmentApplicationDetailData
 
     public string? StatusReason { get; set; }
 
+    public string? StatusReasonCode { get; set; }
+
     public DateTime AppliedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

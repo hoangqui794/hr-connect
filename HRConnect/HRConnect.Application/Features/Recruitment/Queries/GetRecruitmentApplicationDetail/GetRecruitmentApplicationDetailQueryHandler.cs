@@ -144,6 +144,7 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             Status = app.Status,
             CurrentStage = app.CurrentStage,
             StatusReason = app.StatusReason,
+            StatusReasonCode = app.StatusReasonCode,
             AppliedAt = app.AppliedAt,
             UpdatedAt = app.UpdatedAt,
             PlannedStartDate = app.PlannedStartDate,

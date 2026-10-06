@@ -17,6 +17,8 @@ public partial class ApplicationStatusHistory
 
     public string? Reason { get; set; }
 
+    public string? ReasonCode { get; set; }
+
     public DateTime ChangedAt { get; set; }
 
     public virtual Application Application { get; set; } = null!;

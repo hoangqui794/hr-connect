@@ -141,7 +141,8 @@ public sealed class UpdateApplicationScreeningStatusCommandHandlerTests
         SetupActiveCompanyUser(userId, companyId);
 
         var act = () => CreateHandler().Handle(Command(
-            application, ApplicationStates.Rejected, "Không phù hợp.", userId, ScreeningActor.ClientCompany),
+            application, ApplicationStates.Rejected, "Không phù hợp.", userId, ScreeningActor.ClientCompany,
+            ApplicationReasonCodes.SkillMismatch),
             CancellationToken.None);
 
         await act.Should().ThrowAsync<BadRequestException>()
@@ -150,31 +151,59 @@ public sealed class UpdateApplicationScreeningStatusCommandHandlerTests
 
     [Theory]
     [InlineData(null)]
-    [InlineData("   ")]
-    public async Task Handle_WhenRejectingWithoutReason_ShouldRejectRequest(string? reason)
+    [InlineData("NOT_A_CODE")]
+    public async Task Handle_WhenRejectingWithoutValidReasonCode_ShouldRejectRequest(string? reasonCode)
     {
         var application = SetupApplication(Guid.NewGuid(), ApplicationStates.Submitted, "HEADHUNT_COD");
 
         var act = () => CreateHandler().Handle(Command(
-            application, ApplicationStates.Rejected, reason, Guid.NewGuid(), ScreeningActor.InternalHr),
+            application, ApplicationStates.Rejected, "Ghi chú", Guid.NewGuid(), ScreeningActor.InternalHr, reasonCode),
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<BadRequestException>().WithMessage("*lý do*");
+        await act.Should().ThrowAsync<BadRequestException>().WithMessage("*mã lý do*");
         application.Status.Should().Be(ApplicationStates.Submitted);
     }
 
     [Fact]
-    public async Task Handle_WhenRejectingWithReason_ShouldStoreReason()
+    public async Task Handle_WhenRejectingWithCodeAndNoNote_ShouldStoreCode()
     {
         var application = SetupApplication(Guid.NewGuid(), ApplicationStates.Submitted, "CV_SOURCING");
 
         var response = await CreateHandler().Handle(Command(
-            application, ApplicationStates.Rejected, "  Thiếu kinh nghiệm .NET.  ", Guid.NewGuid(),
-            ScreeningActor.InternalHr), CancellationToken.None);
+            application, ApplicationStates.Rejected, null, Guid.NewGuid(), ScreeningActor.InternalHr, " skill_mismatch "),
+            CancellationToken.None);
 
         response.Data.CurrentStatus.Should().Be(ApplicationStates.Rejected);
+        response.Data.ReasonCode.Should().Be(ApplicationReasonCodes.SkillMismatch);
+        application.StatusReasonCode.Should().Be(ApplicationReasonCodes.SkillMismatch);
+        application.StatusReason.Should().BeNull();
+        application.ApplicationStatusHistories.Should().ContainSingle(h =>
+            h.ReasonCode == ApplicationReasonCodes.SkillMismatch && h.Reason == null);
+    }
+
+    [Fact]
+    public async Task Handle_WhenRejectingWithCodeAndNote_ShouldStoreBoth()
+    {
+        var application = SetupApplication(Guid.NewGuid(), ApplicationStates.Submitted, "CV_SOURCING");
+
+        await CreateHandler().Handle(Command(
+            application, ApplicationStates.Rejected, "  Thiếu kinh nghiệm .NET.  ", Guid.NewGuid(),
+            ScreeningActor.InternalHr, ApplicationReasonCodes.InsufficientExperience), CancellationToken.None);
+
         application.StatusReason.Should().Be("Thiếu kinh nghiệm .NET.");
-        application.ApplicationStatusHistories.Should().ContainSingle(h => h.Reason == "Thiếu kinh nghiệm .NET.");
+        application.StatusReasonCode.Should().Be(ApplicationReasonCodes.InsufficientExperience);
+    }
+
+    [Fact]
+    public async Task Handle_WhenShortlisting_ShouldIgnoreReasonCode()
+    {
+        var application = SetupApplication(Guid.NewGuid(), ApplicationStates.Submitted, "HEADHUNT_COD");
+
+        await CreateHandler().Handle(Command(
+            application, ApplicationStates.Shortlisted, null, Guid.NewGuid(), ScreeningActor.InternalHr, "SKILL_MISMATCH"),
+            CancellationToken.None);
+
+        application.StatusReasonCode.Should().BeNull();
     }
 
     [Fact]
@@ -211,11 +240,13 @@ public sealed class UpdateApplicationScreeningStatusCommandHandlerTests
         string targetStatus,
         string? reason,
         Guid userId,
-        ScreeningActor actor) => new(
+        ScreeningActor actor,
+        string? reasonCode = null) => new(
             application.JobId,
             application.ApplicationId,
             targetStatus,
             reason,
+            reasonCode,
             application.ConcurrencyToken,
             userId,
             actor);
