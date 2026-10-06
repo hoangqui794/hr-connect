@@ -107,7 +107,7 @@ public static class RecruitmentEndpoints
         })
         .WithName("UpdateApplicationScreeningStatus")
         .WithSummary("Cập nhật trạng thái sàng lọc hồ sơ (MF-03)")
-        .WithDescription("Người sàng lọc theo loại dịch vụ: CV_APPLICATION do Client Company sở hữu Job (candidate.review_company); HEADHUNT_COD và CV_SOURCING do Internal HR (application.screen). Chuyển SUBMITTED sang SCREENING, SHORTLISTED, REJECTED hoặc BACKUP; SCREENING sang SHORTLISTED, REJECTED hoặc BACKUP; BACKUP sang SHORTLISTED hoặc BACKUP_NOT_SELECTED. REJECTED bắt buộc reasonCode (OTHER thì phải có reason làm ghi chú); concurrencyToken bắt buộc.")
+        .WithDescription("Người sàng lọc theo loại dịch vụ: CV_APPLICATION do Client Company sở hữu Job (candidate.review_company); HEADHUNT_COD và CV_SOURCING do Internal HR (application.screen). Internal HR chỉ tiền sàng lọc từ SUBMITTED hoặc SCREENING sang SCREENING, SHORTLISTED hoặc REJECTED; Client Company mới được đưa hồ sơ vào BACKUP và quyết định backup. REJECTED bắt buộc reasonCode (OTHER thì phải có reason làm ghi chú); concurrencyToken bắt buộc.")
         .Produces<UpdateApplicationScreeningStatusResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -166,6 +166,8 @@ public static class RecruitmentEndpoints
             [FromQuery] DateTime? toDate,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? sortDirection = null,
             [FromServices] ISender sender = null!,
             ClaimsPrincipal user = null!,
             CancellationToken cancellationToken = default) =>
@@ -176,8 +178,10 @@ public static class RecruitmentEndpoints
                 return Results.Unauthorized();
             }
 
-            var isClient = PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ViewAllPermission);
+            var isClient = user.IsInRole("CLIENT_COMPANY_USER")
+                && PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
+            var isInternal = user.IsInRole("INTERNAL_HR")
+                && PermissionAuthorization.HasPermission(user, ViewAllPermission);
             var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
             if (!isClient && !isInternal && !isAdmin)
@@ -197,7 +201,9 @@ public static class RecruitmentEndpoints
                     FromDate: fromDate,
                     ToDate: toDate,
                     Page: page,
-                    PageSize: pageSize
+                    PageSize: pageSize,
+                    SortBy: sortBy,
+                    SortDirection: sortDirection
                 );
 
                 var response = await sender.Send(query, cancellationToken);
@@ -214,7 +220,7 @@ public static class RecruitmentEndpoints
         })
         .WithName("GetRecruitmentApplications")
         .WithSummary("Lấy danh sách hồ sơ tuyển dụng")
-        .WithDescription("Dành cho Client Company (xem hồ sơ thuộc công ty mình qua quyền application.view_company), Internal HR và Admin (xem toàn hệ thống qua quyền application.view). Hỗ trợ lọc theo công việc, trạng thái, tên ứng viên, khoảng thời gian và phân trang.")
+        .WithDescription("Dành cho Client Company (xem hồ sơ thuộc công ty mình qua quyền application.view_company), Internal HR và Admin (xem toàn hệ thống qua quyền application.view). Hỗ trợ lọc theo công việc, trạng thái, tên ứng viên, khoảng thời gian, phân trang và sortBy=AI_MATCH_SCORE với sortDirection=ASC hoặc DESC.")
         .Produces<RecruitmentApplicationsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -233,8 +239,10 @@ public static class RecruitmentEndpoints
                 return Results.Unauthorized();
             }
 
-            var isClient = PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
-            var isInternal = PermissionAuthorization.HasPermission(user, ViewAllPermission);
+            var isClient = user.IsInRole("CLIENT_COMPANY_USER")
+                && PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
+            var isInternal = user.IsInRole("INTERNAL_HR")
+                && PermissionAuthorization.HasPermission(user, ViewAllPermission);
             var isAdmin = user.IsInRole("PLATFORM_ADMIN");
 
             if (!isClient && !isInternal && !isAdmin)
@@ -724,13 +732,16 @@ public static class RecruitmentEndpoints
     }
 
     /// <summary>
-    /// Who the caller screens as (MF-03). Internal HR wins when a user holds both permissions;
-    /// ScreeningPolicy then decides per Service Type.
+    /// Resolve a screening actor only for the corresponding operational role. Platform
+    /// administrators can monitor recruitment but cannot screen applications.
     /// </summary>
     private static ScreeningActor? ResolveScreeningActor(ClaimsPrincipal user)
     {
-        if (PermissionAuthorization.HasPermission(user, ScreenApplicationPermission)) return ScreeningActor.InternalHr;
-        if (PermissionAuthorization.HasPermission(user, ReviewCompanyPermission)) return ScreeningActor.ClientCompany;
+        if (user.IsInRole("PLATFORM_ADMIN")) return null;
+        if (user.IsInRole("INTERNAL_HR")
+            && PermissionAuthorization.HasPermission(user, ScreenApplicationPermission)) return ScreeningActor.InternalHr;
+        if (user.IsInRole("CLIENT_COMPANY_USER")
+            && PermissionAuthorization.HasPermission(user, ReviewCompanyPermission)) return ScreeningActor.ClientCompany;
         return null;
     }
 
