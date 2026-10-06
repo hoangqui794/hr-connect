@@ -5,6 +5,7 @@ import { useAuthStore, getInitials } from '@/stores/authStore';
 import { useCandidateStore } from '@/stores/candidateStore';
 import { useApplicationStore } from '@/stores/applicationStore';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
+import { useCandidateProfile } from '@/hooks/useCandidateProfile';
 
 interface CandidateUserDropdownProps {
   className?: string;
@@ -15,6 +16,7 @@ export const CandidateUserDropdown: React.FC<CandidateUserDropdownProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const { profile } = useCandidateProfile();
   const { cvs, applications: storeApps } = useCandidateStore();
   const sharedApps = useApplicationStore((s) => s.applications);
 
@@ -39,55 +41,131 @@ export const CandidateUserDropdown: React.FC<CandidateUserDropdownProps> = ({
     }));
   };
 
-  const currentUserEmail = (user?.email || '').toLowerCase().trim();
-  const userName = user?.name || 'Nguyễn Văn B';
-  const userEmail = user?.email || 'ungvien5@gmail.com';
-  const userAvatar = user?.avatar || getInitials(userName);
+  const currentUserEmail = (profile?.email || user?.email || '').toLowerCase().trim();
+  const rawUserName =
+    profile?.fullName ||
+    user?.name ||
+    (currentUserEmail ? currentUserEmail.split('@')[0] : 'Ứng viên');
+  const userName = String(rawUserName || 'Ứng viên').trim() || 'Ứng viên';
+  const userEmail = profile?.email || user?.email || '';
 
-  // Candidate ID formatted according to TopCV (UV-179008 or user-specific ID)
+  const userAvatarUrl = profile?.avatarUrl || user?.avatar;
+  const userAvatar = useMemo(() => {
+    if (
+      userAvatarUrl &&
+      typeof userAvatarUrl === 'string' &&
+      (userAvatarUrl.startsWith('http') || userAvatarUrl.startsWith('data:'))
+    ) {
+      return (
+        <img
+          src={userAvatarUrl}
+          alt={userName}
+          className="w-full h-full rounded-full object-cover"
+        />
+      );
+    }
+    return getInitials(userName);
+  }, [userAvatarUrl, userName]);
+
+  // Candidate ID formatted according to TopCV (real candidateId from API or user id)
   const candidateId = useMemo(() => {
+    if (profile?.candidateId) {
+      const clean = String(profile.candidateId).replace(/-/g, '').toUpperCase();
+      return `UV-${clean.slice(0, 6)}`;
+    }
     if (user?.id) {
-      const clean = user.id.replace('usr-candidate-', '').replace('cand-', '').toUpperCase();
+      const clean = String(user.id)
+        .replace('usr-candidate-', '')
+        .replace('cand-', '')
+        .replace(/-/g, '')
+        .toUpperCase();
       if (clean && clean !== 'UNKNOWN') {
         return clean.length > 6 ? `UV-${clean.slice(0, 6)}` : `UV-${clean}`;
       }
     }
-    return 'UV-179008';
-  }, [user?.id]);
+    return currentUserEmail ? `UV-${currentUserEmail.slice(0, 4).toUpperCase()}01` : 'UV-CANDIDATE';
+  }, [profile?.candidateId, user?.id, currentUserEmail]);
 
-  // Applications count
+  // Status mapping from Candidate Profile API
+  const accountStatus = useMemo(() => {
+    const rawStatus = String(profile?.status || '').toUpperCase();
+    if (rawStatus === 'PENDING') {
+      return {
+        label: 'Đang chờ xác thực',
+        color: 'text-amber-600',
+        icon: (
+          <svg className="w-3.5 h-3.5 text-amber-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
+          </svg>
+        ),
+      };
+    }
+    if (rawStatus === 'LOCKED' || rawStatus === 'SUSPENDED') {
+      return {
+        label: 'Tài khoản bị khóa',
+        color: 'text-rose-600',
+        icon: (
+          <svg className="w-3.5 h-3.5 text-rose-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+          </svg>
+        ),
+      };
+    }
+    return {
+      label: 'Tài khoản đã xác thực',
+      color: 'text-emerald-600',
+      icon: (
+        <svg className="w-3.5 h-3.5 text-emerald-600 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+            clipRule="evenodd"
+          />
+        </svg>
+      ),
+    };
+  }, [profile?.status]);
+
+  // Applications count (0 for new accounts, no hardcoded 2)
   const applicationsCount = useMemo(() => {
-    if (!currentUserEmail) return 2;
-    const fromShared = sharedApps.filter((a) => {
-      const email = ((a as any).candidateEmail || a.email || '').toLowerCase().trim();
+    if (!currentUserEmail) return 0;
+    const fromShared = (Array.isArray(sharedApps) ? sharedApps : []).filter((a) => {
+      if (!a) return false;
+      const email = String((a as any)?.candidateEmail || a?.email || '').toLowerCase().trim();
       return email === currentUserEmail;
     });
-    const fromStore = (storeApps || []).filter((a) => {
-      const email = (a.candidateEmail || a.applicantEmail || '').toLowerCase().trim();
+    const fromStore = (Array.isArray(storeApps) ? storeApps : []).filter((a) => {
+      if (!a) return false;
+      const email = String(a?.candidateEmail || a?.applicantEmail || '').toLowerCase().trim();
       return email === currentUserEmail;
     });
     const combined = [...fromShared, ...fromStore];
     const seen = new Set<string>();
-    const count = combined.filter((a) => {
-      const key = `${a.jobTitle}__${a.company}`;
-      if (seen.has(key)) return false;
+    return combined.filter((a) => {
+      if (!a) return false;
+      const key = `${a.jobTitle || ''}__${a.company || ''}`;
+      if (!key.trim() || seen.has(key)) return false;
       seen.add(key);
       return true;
     }).length;
-    return count > 0 ? count : 2;
   }, [currentUserEmail, sharedApps, storeApps]);
 
-  // CV count
+  // CV count: defaults to 0 for new user, counts primaryCv or user's stored CVs (no hardcoded 3)
   const cvsCount = useMemo(() => {
-    if (!currentUserEmail) return 3;
-    const count = (cvs || []).filter(
-      (c) => (c.userEmail || '').toLowerCase().trim() === currentUserEmail
-    ).length;
-    return count > 0 ? count : 3;
-  }, [currentUserEmail, cvs]);
+    let count = 0;
+    if (currentUserEmail) {
+      count = (Array.isArray(cvs) ? cvs : []).filter(
+        (c) => String(c?.userEmail || '').toLowerCase().trim() === currentUserEmail
+      ).length;
+    }
+    if (count === 0 && profile?.primaryCv) {
+      return 1;
+    }
+    return count;
+  }, [currentUserEmail, cvs, profile?.primaryCv]);
 
-  // Profile views count
-  const profileViewsCount = 14;
+  // Profile views count: default to 0 for new account, no hardcoded 14
+  const profileViewsCount = 0;
 
   const handleNavigate = (path: string) => {
     setDropdownOpen(false);
@@ -107,8 +185,8 @@ export const CandidateUserDropdown: React.FC<CandidateUserDropdownProps> = ({
       {/* ─── 1. Header Profile (Fixed at top, shrink-0) ─── */}
       <div className="shrink-0 pb-3 border-b border-slate-100">
         <div className="flex items-center gap-3">
-          {/* Avatar tròn với chữ cái đầu */}
-          <div className="w-11 h-11 rounded-full bg-emerald-600 text-white font-bold text-base flex items-center justify-center shrink-0 shadow-sm ring-2 ring-emerald-50">
+          {/* Avatar tròn với chữ cái đầu hoặc ảnh avatar */}
+          <div className="w-11 h-11 rounded-full bg-emerald-600 text-white font-bold text-base flex items-center justify-center shrink-0 shadow-sm ring-2 ring-emerald-50 overflow-hidden">
             {userAvatar}
           </div>
 
@@ -118,16 +196,12 @@ export const CandidateUserDropdown: React.FC<CandidateUserDropdownProps> = ({
               {userName}
             </div>
 
-            {/* Dòng trạng thái: Icon tích xanh + Tài khoản đã xác thực */}
+            {/* Dòng trạng thái: Icon + Trạng thái tài khoản từ API */}
             <div className="flex items-center gap-1 mt-0.5">
-              <svg className="w-3.5 h-3.5 text-emerald-600 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span className="text-xs text-emerald-600 font-medium">Tài khoản đã xác thực</span>
+              {accountStatus.icon}
+              <span className={`text-xs ${accountStatus.color} font-medium`}>
+                {accountStatus.label}
+              </span>
             </div>
 
             {/* Mã ứng viên | Email */}
@@ -197,11 +271,11 @@ export const CandidateUserDropdown: React.FC<CandidateUserDropdownProps> = ({
                   <span>Việc làm đã lưu</span>
                 </div>
                 <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-xs px-2 py-0.5 rounded-full font-bold transition-all">
-                  {savedJobIds.length}
+                  {savedJobIds?.length ?? 0}
                 </span>
               </button>
 
-              {/* Việc làm đã ứng tuyển & COD [2] */}
+              {/* Việc làm đã ứng tuyển & COD */}
               <button
                 type="button"
                 onClick={() => handleNavigate('/candidate/applications')}
@@ -266,7 +340,7 @@ export const CandidateUserDropdown: React.FC<CandidateUserDropdownProps> = ({
 
           {openSections.cvManagement && (
             <div className="pl-6 pr-1 py-1 space-y-0.5">
-              {/* CV của tôi [3] */}
+              {/* CV của tôi */}
               <button
                 type="button"
                 onClick={() => handleNavigate('/candidate/profile?tab=cv-center')}
@@ -283,7 +357,7 @@ export const CandidateUserDropdown: React.FC<CandidateUserDropdownProps> = ({
                 </span>
               </button>
 
-              {/* Nhà tuyển dụng đã xem [14] */}
+              {/* Nhà tuyển dụng đã xem */}
               <button
                 type="button"
                 onClick={() => handleNavigate('/candidate/dashboard')}
@@ -468,12 +542,12 @@ export const CandidateUserDropdown: React.FC<CandidateUserDropdownProps> = ({
       <div
         className={`flex items-center gap-2 cursor-pointer bg-white hover:bg-emerald-50/50 border border-slate-200/90 hover:border-emerald-300 px-2.5 py-1.5 rounded-full transition-all duration-150 select-none shadow-xs ${className}`}
       >
-        <div className="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+        <div className="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden">
           {userAvatar}
         </div>
         <div className="hidden sm:flex flex-col text-left leading-tight pr-0.5">
           <span className="text-xs font-semibold text-slate-800 truncate max-w-[110px]">
-            {userName.split(' ').slice(-1)[0]}
+            {(userName || 'Ứng viên').trim().split(/\s+/).slice(-1)[0] || 'Ứng viên'}
           </span>
           <span className="text-[10px] text-emerald-600 font-medium">Ứng viên</span>
         </div>
