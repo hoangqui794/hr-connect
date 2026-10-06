@@ -250,7 +250,7 @@ Code: quy tắc nằm ở `ScreeningPolicy`; sai người theo loại dịch v�
 | Đối soát placement trước khi tính phí (`HEADHUNT_COD`) | Internal HR | **[CHƯA CÓ CODE] [CẦN XÁC NHẬN]** |
 | Kiểm tra lý do khi hồ sơ bị đánh dấu không nhận việc | Internal HR | **[CHƯA CÓ CODE] [CẦN XÁC NHẬN]** |
 
-Internal HR thuộc đơn vị vận hành nền tảng, không thuộc công ty Client, nên không lên lịch phỏng vấn, không ghi kết quả và không tạo offer. Vai trò của Internal HR ở MF-04 là kiểm soát mốc phát sinh phí: xác nhận đi làm do Client tự khai, nên với `HEADHUNT_COD` cần một bước đối soát độc lập (với ứng viên hoặc Affiliate) trước khi chuyển sang tính phí ở MF-05. Trong code hiện tại Internal HR vẫn có quyền thực hiện mọi thao tác của Client ở MF-04; cần thu hẹp quyền.
+Internal HR thuộc đơn vị vận hành nền tảng, không thuộc công ty Client, nên không lên lịch phỏng vấn, không ghi kết quả và không tạo offer. Migration `20261005090000_RestrictInternalHrRecruitmentMutations` đã thu hồi các quyền thao tác MF-04 này; Internal HR chỉ giữ `application.screen` cho bước tiền sàng lọc `HEADHUNT_COD` và `CV_SOURCING`. Vai trò kiểm soát mốc phát sinh phí vẫn là bước đề xuất: với `HEADHUNT_COD` cần một bước đối soát độc lập (với ứng viên hoặc Affiliate) trước khi chuyển sang tính phí ở MF-05.
 
 **Điều kiện:** hồ sơ ứng tuyển `SHORTLISTED`.
 
@@ -428,7 +428,7 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 
 | Hạng mục | Thuộc luồng |
 |---|---|
-| Sàng lọc: chuyển hồ sơ sang `SCREENING`, `SHORTLISTED`, `REJECTED`; phân quyền sàng lọc theo loại dịch vụ | MF-03 |
+| Sàng lọc: chuyển hồ sơ sang `SCREENING`, `SHORTLISTED`, `REJECTED`; phân quyền sàng lọc theo loại dịch vụ | MF-03 — đã có code |
 | Internal HR nộp hồ sơ | MF-02 |
 | Khiếu nại và xử lý tranh chấp trùng | SF-04 |
 | Định tuyến người liên hệ theo Service Type, che thông tin liên hệ | MF-03 |
@@ -439,7 +439,7 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 | Công nợ phí dịch vụ và ghi nhận thu phí | MF-05 |
 | Đếm bảo hành, tự ghi nhận mốc, báo nghỉ việc, tuyển thay thế | MF-05 |
 | Tính, duyệt hoa hồng; ghi nhận payout; đánh giá Affiliate | MF-05 |
-| Thu hẹp quyền của Internal HR ở MF-04 (không lên lịch, không ghi kết quả, không tạo offer) | MF-04 |
+| Thu hẹp quyền của Internal HR ở MF-04 (không lên lịch, không ghi kết quả, không tạo offer) | MF-04 — đã có code |
 | Bước Internal HR đối soát placement và kiểm tra lý do không nhận việc | MF-04 |
 | Đổi mã vai trò `AFFILIATE_RECRUITER` thành `AFFILIATE` | Toàn hệ thống |
 

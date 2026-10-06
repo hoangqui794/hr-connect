@@ -57,13 +57,21 @@ PATCH /api/v1/jobs/{jobId}/applications/{applicationId}/status
 }
 ```
 
-Legal transitions are:
+The permitted screening transitions are actor-specific:
 
 ```text
-SUBMITTED -> SCREENING | SHORTLISTED | REJECTED | BACKUP
-SCREENING -> SHORTLISTED | REJECTED | BACKUP
-BACKUP -> SHORTLISTED | BACKUP_NOT_SELECTED
+CLIENT_COMPANY_USER on CV_APPLICATION:
+  SUBMITTED -> SCREENING | SHORTLISTED | REJECTED | BACKUP
+  SCREENING -> SHORTLISTED | REJECTED | BACKUP
+  BACKUP -> SHORTLISTED | BACKUP_NOT_SELECTED
+
+INTERNAL_HR on HEADHUNT_COD or CV_SOURCING:
+  SUBMITTED -> SCREENING | SHORTLISTED | REJECTED
+  SCREENING -> SHORTLISTED | REJECTED
 ```
+
+Only the Client Company can create or decide the `BACKUP` pool. Internal HR
+cannot make a `BACKUP` transition, even for the two service types it pre-screens.
 
 Creating an interview is the only action that moves `SHORTLISTED` to
 `INTERVIEW`. The Company then owns the interview result, offer and placement
