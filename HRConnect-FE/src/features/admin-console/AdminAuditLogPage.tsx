@@ -14,7 +14,9 @@ import { ReloadOutlined } from '@ant-design/icons';
 import { adminAuditApi } from '@/services/api/adminApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { AuditLogItem } from '@/types/api/admin';
-import { AdminPageHeader, StatusBadge, adminTokens, formatDateTime } from './adminTheme';
+import { adminTokens, formatDateTime } from './adminTheme';
+import { PageHero, PersonCell, Surface } from './ui';
+import { describeAuditAction } from './auditLabels';
 
 const PAGE_SIZE = 25;
 const ACTOR_TYPES: Record<string, string> = {
@@ -129,21 +131,27 @@ export const AdminAuditLogPage: React.FC = () => {
         // Second line only when it adds information (email, or the actor kind under a name).
         const sub = name ? (r.actorDisplayName && r.actorEmail ? r.actorEmail : kind) : null;
         return (
-          <div className="min-w-0">
-            <div className="truncate font-medium text-slate-900">{name || kind}</div>
-            {sub && <div className="truncate text-xs text-slate-600">{sub}</div>}
-          </div>
+          <PersonCell name={name || kind} secondary={sub ?? undefined} size={32} />
         );
       },
     },
-    { title: 'Hành động', dataIndex: 'action', render: (v: string) => <Mono>{v}</Mono> },
+    {
+      title: 'Hành động',
+      dataIndex: 'action',
+      render: (v: string) => (
+        <div className="min-w-0">
+          <div className="text-slate-900">{describeAuditAction(v)}</div>
+          <Mono>{v}</Mono>
+        </div>
+      ),
+    },
     {
       title: 'Đối tượng',
       key: 'entity',
       width: 200,
       render: (_, r) => (r.entityType ? <span className="text-slate-700">{r.entityType}</span> : <span className="text-slate-500">—</span>),
     },
-    { title: 'Nguồn', dataIndex: 'source', width: 130, render: (v: string) => <StatusBadge tone="neutral">{SOURCES[v] ?? v}</StatusBadge> },
+    { title: 'Nguồn', dataIndex: 'source', width: 130, render: (v: string) => <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{SOURCES[v] ?? v}</span> },
   ];
 
   const log = detail.data;
@@ -151,7 +159,8 @@ export const AdminAuditLogPage: React.FC = () => {
 
   return (
     <div>
-      <AdminPageHeader
+      <PageHero
+        eyebrow="Giám sát"
         title="Nhật ký hệ thống"
         description="Mọi thao tác quan trọng trên nền tảng: ai làm, làm gì, lúc nào và dữ liệu thay đổi ra sao."
         actions={
@@ -161,8 +170,8 @@ export const AdminAuditLogPage: React.FC = () => {
         }
       />
 
-      <section className="rounded-xl border border-solid border-slate-200 bg-white">
-        <div key={searchParams.toString()} className="flex flex-wrap items-center gap-3 border-b border-solid border-slate-100 p-3">
+      <Surface>
+        <div key={searchParams.toString()} className="flex flex-wrap items-center gap-3 px-5 pb-3 pt-5">
           <Input.Search
             allowClear
             defaultValue={params.action}
@@ -218,6 +227,7 @@ export const AdminAuditLogPage: React.FC = () => {
           </div>
         ) : (
           <Table<AuditLogItem>
+            className="admin-soft-table"
             rowKey="auditLogId"
             size="small"
             loading={list.isLoading}
@@ -244,7 +254,7 @@ export const AdminAuditLogPage: React.FC = () => {
             }}
           />
         )}
-      </section>
+      </Surface>
 
       <Drawer open={selectedId !== undefined} width={640} onClose={() => setSelectedId(undefined)} title="Chi tiết sự kiện" destroyOnClose>
         {detail.isLoading ? (

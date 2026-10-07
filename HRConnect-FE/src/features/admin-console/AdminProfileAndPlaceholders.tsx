@@ -5,9 +5,10 @@
  */
 import React, { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Button, Card, Descriptions, Form, Input, Skeleton } from 'antd';
+import { Alert, App as AntApp, Button, Form, Input, Skeleton } from 'antd';
 import { apiClient, getApiErrorMessage } from '@/services/apiClient';
-import { AdminPageHeader, NoApiYet, StatusBadge, adminTokens, formatDateTime } from './adminTheme';
+import { NoApiYet, formatDateTime } from './adminTheme';
+import { Initials, PageHero, StatusDot, Surface } from './ui';
 
 interface AdminProfile {
   adminProfileId: string;
@@ -56,27 +57,49 @@ export const AdminProfilePage: React.FC = () => {
     onError: (err) => message.error(getApiErrorMessage(err)),
   });
 
+  const p = profile.data;
+  const infoRows: [string, React.ReactNode][] = p
+    ? [
+        ['Email', p.email ?? '—'],
+        ['Mã nhân viên', p.employeeCode ?? '—'],
+        ['Điện thoại', p.phone || '—'],
+        ['Cập nhật', formatDateTime(p.updatedAt)],
+      ]
+    : [];
+
   return (
-    <div className="max-w-3xl">
-      <AdminPageHeader title="Hồ sơ quản trị viên" description="Thông tin hiển thị khi bạn duyệt hồ sơ và trong nhật ký hệ thống." />
+    <div>
+      <PageHero eyebrow="Tài khoản" title="Hồ sơ quản trị viên" description="Thông tin hiển thị khi bạn duyệt hồ sơ và trong nhật ký hệ thống." />
       {profile.isLoading ? (
-        <Skeleton active paragraph={{ rows: 6 }} />
-      ) : profile.isError || !profile.data ? (
+        <Surface padded>
+          <Skeleton active paragraph={{ rows: 6 }} />
+        </Surface>
+      ) : profile.isError || !p ? (
         <Alert type="error" showIcon message={getApiErrorMessage(profile.error, 'Không tải được hồ sơ.')} />
       ) : (
-        <div className="space-y-5">
-          <Card size="small">
-            <Descriptions size="small" column={{ xs: 1, sm: 2 }} labelStyle={{ color: adminTokens.textMuted }}>
-              <Descriptions.Item label="Email">{profile.data.email ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Mã nhân viên">{profile.data.employeeCode ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Trạng thái">
-                <StatusBadge tone={profile.data.status === 'ACTIVE' ? 'success' : 'neutral'}>{profile.data.status}</StatusBadge>
-              </Descriptions.Item>
-              <Descriptions.Item label="Cập nhật">{formatDateTime(profile.data.updatedAt)}</Descriptions.Item>
-            </Descriptions>
-          </Card>
-          <Card size="small" title="Chỉnh sửa">
-            <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)} validateTrigger="onBlur">
+        <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
+          <Surface padded className="self-start">
+            <div className="flex flex-col items-center text-center">
+              <Initials name={p.displayName || p.email || 'Admin'} size={72} />
+              <div className="mt-3 text-lg font-bold text-slate-900">{p.displayName || '—'}</div>
+              <div className="text-sm text-slate-600">{p.jobTitle || 'Quản trị viên nền tảng'}</div>
+              <div className="mt-3">
+                <StatusDot tone={p.status === 'ACTIVE' ? 'success' : 'neutral'}>{p.status === 'ACTIVE' ? 'Đang hoạt động' : p.status}</StatusDot>
+              </div>
+            </div>
+            <div className="mt-5">
+              {infoRows.map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-3 border-0 border-t border-solid border-slate-100 py-2.5 text-sm first:border-t-0">
+                  <span className="text-slate-600">{label}</span>
+                  <span className="min-w-0 truncate text-right font-medium text-slate-900">{value}</span>
+                </div>
+              ))}
+            </div>
+          </Surface>
+          <Surface padded>
+            <h2 className="m-0 text-base font-semibold text-slate-900">Chỉnh sửa thông tin</h2>
+            <p className="mb-5 mt-1 text-sm text-slate-600">Email và mã nhân viên do hệ thống quản lý, không sửa ở đây.</p>
+            <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)} validateTrigger="onBlur" requiredMark={false}>
               <Form.Item
                 name="displayName"
                 label="Họ và tên"
@@ -86,21 +109,23 @@ export const AdminProfilePage: React.FC = () => {
                   { max: 180, message: 'Tối đa 180 ký tự.' },
                 ]}
               >
-                <Input />
+                <Input size="large" />
               </Form.Item>
-              <Form.Item name="phone" label="Điện thoại" rules={[{ pattern: /^[0-9+() \-.]{8,20}$/, message: 'Số điện thoại không đúng định dạng.' }]}>
-                <Input />
-              </Form.Item>
-              <Form.Item name="jobTitle" label="Chức danh" rules={[{ max: 120, message: 'Tối đa 120 ký tự.' }]}>
-                <Input />
-              </Form.Item>
+              <div className="grid gap-x-4 sm:grid-cols-2">
+                <Form.Item name="phone" label="Điện thoại" rules={[{ pattern: /^[0-9+() \-.]{8,20}$/, message: 'Số điện thoại không đúng định dạng.' }]}>
+                  <Input size="large" placeholder="Ví dụ 0901 234 567" />
+                </Form.Item>
+                <Form.Item name="jobTitle" label="Chức danh" rules={[{ max: 120, message: 'Tối đa 120 ký tự.' }]}>
+                  <Input size="large" />
+                </Form.Item>
+              </div>
               <div className="flex justify-end">
-                <Button type="primary" htmlType="submit" loading={save.isPending}>
+                <Button type="primary" size="large" htmlType="submit" loading={save.isPending}>
                   Lưu thay đổi
                 </Button>
               </div>
             </Form>
-          </Card>
+          </Surface>
         </div>
       )}
     </div>
@@ -109,21 +134,21 @@ export const AdminProfilePage: React.FC = () => {
 
 export const AdminDisputesPlaceholder: React.FC = () => (
   <div>
-    <AdminPageHeader title="Tranh chấp" description="Khiếu nại về ghi nhận nguồn ứng viên và hoa hồng." />
+    <PageHero eyebrow="Chưa có API" title="Tranh chấp" description="Khiếu nại về ghi nhận nguồn ứng viên và hoa hồng." />
     <NoApiYet feature="Xử lý tranh chấp" detail="Quyền dispute.view / dispute.resolve đã có, nhưng chưa có endpoint." />
   </div>
 );
 
 export const AdminPayoutsPlaceholder: React.FC = () => (
   <div>
-    <AdminPageHeader title="Chi trả hoa hồng" description="Duyệt và theo dõi các khoản hoa hồng trả cho Cộng tác viên." />
+    <PageHero eyebrow="Chưa có API" title="Chi trả hoa hồng" description="Duyệt và theo dõi các khoản hoa hồng trả cho Cộng tác viên." />
     <NoApiYet feature="Chi trả hoa hồng" detail="Thuộc MF-05; quyền payout.manage đã có, nhưng chưa có endpoint." />
   </div>
 );
 
 export const AdminSettingsPlaceholder: React.FC = () => (
   <div>
-    <AdminPageHeader title="Cài đặt hệ thống" description="Tham số vận hành chung của nền tảng." />
+    <PageHero eyebrow="Chưa có API" title="Cài đặt hệ thống" description="Tham số vận hành chung của nền tảng." />
     <NoApiYet feature="Cài đặt hệ thống" detail="Quyền system_config.manage đã có, nhưng chưa có endpoint. Loại dịch vụ và hoa hồng đã có trang riêng." />
   </div>
 );

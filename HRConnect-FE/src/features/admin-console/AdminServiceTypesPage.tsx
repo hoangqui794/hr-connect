@@ -13,7 +13,8 @@ import { DeleteOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import { adminServiceTypesApi } from '@/services/api/adminApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { AdminServiceType, ServiceTypeAllowedRole, ServiceTypeInput } from '@/types/api/admin';
-import { AdminPageHeader, StatusBadge, adminTokens, formatDateTime } from './adminTheme';
+import { adminTokens, formatDateTime } from './adminTheme';
+import { PageHero, StatusDot, Surface } from './ui';
 import { ROLE_LABEL } from './AdminUsersPage';
 
 const Mono: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -172,7 +173,7 @@ export const AdminServiceTypesPage: React.FC = () => {
       title: 'Trạng thái',
       dataIndex: 'isActive',
       width: 140,
-      render: (v: boolean) => <StatusBadge tone={v ? 'success' : 'neutral'}>{v ? 'Đang dùng' : 'Ngừng hoạt động'}</StatusBadge>,
+      render: (v: boolean) => <StatusDot tone={v ? 'success' : 'neutral'}>{v ? 'Đang dùng' : 'Ngừng hoạt động'}</StatusDot>,
     },
     { title: 'Tạo lúc', dataIndex: 'createdAt', width: 150, render: (v: string) => <span className="tabular-nums">{formatDateTime(v)}</span> },
   ];
@@ -181,7 +182,8 @@ export const AdminServiceTypesPage: React.FC = () => {
 
   return (
     <div>
-      <AdminPageHeader
+      <PageHero
+        eyebrow="Cấu hình"
         title="Loại dịch vụ"
         description="Các gói dịch vụ tuyển dụng doanh nghiệp chọn khi đăng tin, và vai trò nào được xem hoặc nộp hồ sơ."
         actions={
@@ -196,13 +198,14 @@ export const AdminServiceTypesPage: React.FC = () => {
         }
       />
 
-      <section className="rounded-xl border border-solid border-slate-200 bg-white">
+      <Surface>
         {list.isError ? (
           <div className="p-4">
             <Alert type="error" showIcon message="Không tải được loại dịch vụ" description={getApiErrorMessage(list.error)} />
           </div>
         ) : (
           <Table<AdminServiceType>
+            className="admin-soft-table"
             rowKey="id"
             loading={list.isLoading}
             columns={columns}
@@ -221,7 +224,7 @@ export const AdminServiceTypesPage: React.FC = () => {
             })}
           />
         )}
-      </section>
+      </Surface>
 
       <Drawer
         open={Boolean(editing)}

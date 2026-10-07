@@ -17,7 +17,6 @@ import {
   Form,
   InputNumber,
   Radio,
-  Segmented,
   Select,
   Switch,
   Table,
@@ -28,7 +27,8 @@ import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { adminCommissionApi, adminServiceTypesApi } from '@/services/api/adminApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { CommissionRateType, CommissionRule } from '@/types/api/admin';
-import { AdminPageHeader, StatusBadge, adminTokens } from './adminTheme';
+import { adminTokens } from './adminTheme';
+import { FilterPills, PageHero, StatusDot, Surface } from './ui';
 
 const PAGE_SIZE = 20;
 const vnd = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
@@ -161,7 +161,7 @@ export const AdminCommissionRulesPage: React.FC = () => {
       ),
     },
     { title: 'Mức hoa hồng', key: 'rate', width: 150, align: 'right', render: (_, r) => <span className="font-semibold tabular-nums">{formatRate(r)}</span> },
-    { title: 'Cần qua bảo hành', dataIndex: 'warrantyRequired', width: 140, render: (v: boolean) => (v ? 'Có' : 'Không') },
+    { title: 'Qua bảo hành', dataIndex: 'warrantyRequired', width: 140, render: (v: boolean) => (v ? 'Có' : 'Không') },
     {
       title: 'Hiệu lực',
       key: 'period',
@@ -178,7 +178,7 @@ export const AdminCommissionRulesPage: React.FC = () => {
       width: 210,
       render: (_, r) => (
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <StatusBadge tone={r.isActive ? 'success' : 'neutral'}>{r.isActive ? 'Đang áp dụng' : 'Ngừng'}</StatusBadge>
+          <StatusDot tone={r.isActive ? 'success' : 'neutral'}>{r.isActive ? 'Đang áp dụng' : 'Ngừng'}</StatusDot>
           <Button size="small" type="link" danger={r.isActive} onClick={() => toggleActive(r)}>
             {r.isActive ? 'Ngừng' : 'Kích hoạt'}
           </Button>
@@ -192,7 +192,8 @@ export const AdminCommissionRulesPage: React.FC = () => {
 
   return (
     <div>
-      <AdminPageHeader
+      <PageHero
+        eyebrow="Cấu hình"
         title="Quy tắc hoa hồng"
         description="Mức hoa hồng Affiliate nhận theo từng loại dịch vụ và mốc (ví dụ ứng viên đi làm, qua bảo hành)."
         actions={
@@ -207,17 +208,17 @@ export const AdminCommissionRulesPage: React.FC = () => {
         }
       />
 
-      <section className="rounded-xl border border-solid border-slate-200 bg-white">
-        <div className="flex flex-wrap items-center gap-3 border-b border-solid border-slate-100 p-3">
-          <Segmented
+      <Surface>
+        <div className="flex flex-wrap items-center gap-3 px-5 pb-3 pt-5">
+          <FilterPills
+            label="Lọc theo trạng thái"
             value={activeParam ?? 'all'}
-            onChange={(v) => setParam('active', v === 'all' ? undefined : String(v))}
+            onChange={(v) => setParam('active', v === 'all' ? undefined : v)}
             options={[
               { value: 'all', label: 'Tất cả' },
               { value: 'true', label: 'Đang áp dụng' },
               { value: 'false', label: 'Ngừng' },
             ]}
-            aria-label="Lọc theo trạng thái"
           />
           <Select
             allowClear
@@ -236,6 +237,7 @@ export const AdminCommissionRulesPage: React.FC = () => {
           </div>
         ) : (
           <Table<CommissionRule>
+            className="admin-soft-table"
             rowKey="commissionRuleId"
             loading={list.isLoading}
             columns={columns}
@@ -261,7 +263,7 @@ export const AdminCommissionRulesPage: React.FC = () => {
             }}
           />
         )}
-      </section>
+      </Surface>
 
       <Drawer
         open={Boolean(editing)}

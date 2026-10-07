@@ -161,11 +161,6 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     redirectTo: '/dashboard',
   },
   {
-    path: '/admin/jobs',
-    allowedRoles: [UserRole.ADMIN],
-    redirectTo: '/dashboard',
-  },
-  {
     path: '/hr/dashboard',
     allowedRoles: [UserRole.INTERNAL_HR, UserRole.ADMIN],
     redirectTo: '/dashboard',
@@ -260,7 +255,6 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
       type: 'group',
       children: [
         { key: '/admin/approvals', label: 'Phê duyệt tài khoản', icon: 'SafetyCertificateOutlined' },
-        { key: '/admin/jobs', label: 'Duyệt tin tuyển dụng', icon: 'FileTextOutlined' },
         { key: '/admin/users', label: 'Người dùng', icon: 'TeamOutlined' },
       ],
     },

@@ -339,7 +339,6 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/admin/finance': [UserRole.ADMIN],
   '/admin/settings': [UserRole.ADMIN],
   '/admin/audit-trail': [UserRole.ADMIN],
-  '/admin/jobs': [UserRole.ADMIN],
   '/admin/approvals': [UserRole.ADMIN],
   '/admin/service-types': [UserRole.ADMIN],
   '/admin/commission-rules': [UserRole.ADMIN],

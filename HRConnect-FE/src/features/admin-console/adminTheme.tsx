@@ -91,7 +91,7 @@ export const StatusBadge: React.FC<{ tone: Tone; children: React.ReactNode }> = 
 
 /** Shown on Admin pages whose backend API does not exist yet. Never shows mock numbers. */
 export const NoApiYet: React.FC<{ feature: string; detail?: string }> = ({ feature, detail }) => (
-  <div className="rounded-xl border border-solid border-slate-200 bg-white py-16">
+  <div className="admin-surface py-16">
     <Empty
       image={Empty.PRESENTED_IMAGE_SIMPLE}
       description={

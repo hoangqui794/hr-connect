@@ -36,6 +36,7 @@ import { LoginPage } from '@/features/auth/LoginPage';
 import { RegisterPage } from '@/features/auth/RegisterPage';
 import { ServicesPage } from '@/features/services/ServicesPage';
 import { AdminScope } from '@/features/admin-console/adminTheme';
+import { AdminLayout } from '@/features/admin-console/AdminLayout';
 
 // ─── Page-level Suspense boundary ────────────────────────────────────────────
 
@@ -65,11 +66,6 @@ function protectedPage(
   return withSuspense(
     <ProtectedRoute requiredRoles={roles}>{element}</ProtectedRoute>
   );
-}
-
-/** Admin pages get the "Slate Command" palette via AdminScope. */
-function adminPage(path: string, element: React.ReactElement): React.ReactElement {
-  return protectedPage(path, <AdminScope>{element}</AdminScope>);
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -255,24 +251,38 @@ export const router = createBrowserRouter([
         path: 'cv-builder',
         element: protectedPage('/cv-builder', <AppRoutes.CVBuilder />),
       },
-      // ── Admin console ("Slate Command", backend-driven) ─────────────────────
-      { path: 'admin', element: adminPage('/admin', <AppRoutes.ConsoleOverviewPage />) },
-      { path: 'admin/dashboard', element: adminPage('/admin/dashboard', <AppRoutes.ConsoleOverviewPage />) },
-      { path: 'admin/approvals', element: adminPage('/admin/approvals', <AppRoutes.ConsoleApprovalsPage />) },
-      // Old entry points now open the unified queue pre-filtered by type.
-      { path: 'admin/companies', element: adminPage('/admin/companies', <AppRoutes.ConsoleApprovalsPage presetType="CLIENT" />) },
-      { path: 'admin/affiliates', element: adminPage('/admin/affiliates', <AppRoutes.ConsoleApprovalsPage presetType="AFFILIATE" />) },
-      { path: 'admin/jobs', element: adminPage('/admin/jobs', <AppRoutes.Mf01JobReviewPage />) },
-      { path: 'admin/users', element: adminPage('/admin/users', <AppRoutes.ConsoleUsersPage />) },
-      { path: 'admin/service-types', element: adminPage('/admin/service-types', <AppRoutes.ConsoleServiceTypesPage />) },
-      { path: 'admin/commission-rules', element: adminPage('/admin/commission-rules', <AppRoutes.ConsoleCommissionRulesPage />) },
-      { path: 'admin/audit-trail', element: adminPage('/admin/audit-trail', <AppRoutes.ConsoleAuditLogPage />) },
-      { path: 'admin/profile', element: adminPage('/admin/profile', <AppRoutes.ConsoleProfilePage />) },
+    ],
+  },
+
+  // ── Admin console: own shell (AdminLayout) with its own Suspense skeleton ────
+  {
+    path: '/admin',
+    element: (
+      <ProtectedRoute requiredRoles={ROUTE_ACCESS['/admin']}>
+        <AdminScope>
+          <AdminLayout />
+        </AdminScope>
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/admin/dashboard" replace /> },
+      { path: 'dashboard', element: <AppRoutes.ConsoleOverviewPage /> },
+      { path: 'approvals', element: <AppRoutes.ConsoleApprovalsPage /> },
+      // Old entry points open the unified queue pre-filtered by type.
+      { path: 'companies', element: <AppRoutes.ConsoleApprovalsPage presetType="CLIENT" /> },
+      { path: 'affiliates', element: <AppRoutes.ConsoleApprovalsPage presetType="AFFILIATE" /> },
+      // Job review is Internal HR's step (main-flows MF-01); old Admin links land on the overview.
+      { path: 'jobs', element: <Navigate to="/admin/dashboard" replace /> },
+      { path: 'users', element: <AppRoutes.ConsoleUsersPage /> },
+      { path: 'service-types', element: <AppRoutes.ConsoleServiceTypesPage /> },
+      { path: 'commission-rules', element: <AppRoutes.ConsoleCommissionRulesPage /> },
+      { path: 'audit-trail', element: <AppRoutes.ConsoleAuditLogPage /> },
+      { path: 'profile', element: <AppRoutes.ConsoleProfilePage /> },
       // No backend API yet: explicit empty state, no mock numbers.
-      { path: 'admin/disputes', element: adminPage('/admin/disputes', <AppRoutes.ConsoleDisputesPlaceholder />) },
-      { path: 'admin/payouts', element: adminPage('/admin/payouts', <AppRoutes.ConsolePayoutsPlaceholder />) },
-      { path: 'admin/finance', element: adminPage('/admin/finance', <AppRoutes.ConsolePayoutsPlaceholder />) },
-      { path: 'admin/settings', element: adminPage('/admin/settings', <AppRoutes.ConsoleSettingsPlaceholder />) },
+      { path: 'disputes', element: <AppRoutes.ConsoleDisputesPlaceholder /> },
+      { path: 'payouts', element: <AppRoutes.ConsolePayoutsPlaceholder /> },
+      { path: 'finance', element: <AppRoutes.ConsolePayoutsPlaceholder /> },
+      { path: 'settings', element: <AppRoutes.ConsoleSettingsPlaceholder /> },
     ],
   },
 
