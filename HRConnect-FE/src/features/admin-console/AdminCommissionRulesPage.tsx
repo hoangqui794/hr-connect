@@ -267,7 +267,7 @@ export const AdminCommissionRulesPage: React.FC = () => {
 
       <Drawer
         open={Boolean(editing)}
-        width={520}
+        width="min(520px, 100vw)"
         onClose={() => setEditing(null)}
         title={isNew ? 'Thêm quy tắc hoa hồng' : 'Sửa quy tắc hoa hồng'}
         destroyOnClose

@@ -37,6 +37,8 @@ import { RegisterPage } from '@/features/auth/RegisterPage';
 import { ServicesPage } from '@/features/services/ServicesPage';
 import { AdminScope } from '@/features/admin-console/adminTheme';
 import { AdminLayout } from '@/features/admin-console/AdminLayout';
+import { HrScope } from '@/features/hr-console/hrTheme';
+import { HrLayout } from '@/features/hr-console/HrLayout';
 
 // ─── Page-level Suspense boundary ────────────────────────────────────────────
 
@@ -183,34 +185,6 @@ export const router = createBrowserRouter([
         element: protectedPage('/affiliate/ledger', <AppRoutes.AffiliateCommissionsPage />),
       },
       {
-        path: 'hr/dashboard',
-        element: protectedPage('/hr/dashboard', <AppRoutes.HRDashboardPage />),
-      },
-      {
-        path: 'hr/jobs',
-        element: protectedPage('/hr/jobs', <AppRoutes.Mf01JobReviewPage />),
-      },
-      {
-        path: 'hr/candidates',
-        element: protectedPage('/hr/candidates', <AppRoutes.CandidateList />),
-      },
-      {
-        path: 'hr/screening',
-        element: protectedPage('/hr/screening', <AppRoutes.AIScreening />),
-      },
-      {
-        path: 'hr/interviews',
-        element: protectedPage('/hr/interviews', <AppRoutes.HRInterviewsPage />),
-      },
-      {
-        path: 'hr/offers',
-        element: protectedPage('/hr/offers', <AppRoutes.HROffersPage />),
-      },
-      {
-        path: 'hr/warranty-tracking',
-        element: protectedPage('/hr/warranty-tracking', <AppRoutes.HRWarrantyTrackingPage />),
-      },
-      {
         path: 'candidate/dashboard',
         element: protectedPage('/candidate/dashboard', <AppRoutes.CandidateDashboardPage />),
       },
@@ -283,6 +257,33 @@ export const router = createBrowserRouter([
       { path: 'payouts', element: <AppRoutes.ConsolePayoutsPlaceholder /> },
       { path: 'finance', element: <AppRoutes.ConsolePayoutsPlaceholder /> },
       { path: 'settings', element: <AppRoutes.ConsoleSettingsPlaceholder /> },
+    ],
+  },
+
+  // ── Internal HR workspace: own shell (HrLayout), light sidebar + sky accent ──
+  {
+    path: '/hr',
+    element: (
+      <ProtectedRoute requiredRoles={ROUTE_ACCESS['/hr/dashboard']}>
+        <HrScope>
+          <HrLayout />
+        </HrScope>
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/hr/dashboard" replace /> },
+      { path: 'dashboard', element: <AppRoutes.HrOverviewPage /> },
+      { path: 'jobs', element: <AppRoutes.Mf01JobReviewPage /> },
+      { path: 'screening', element: <AppRoutes.HrScreeningPage /> },
+      { path: 'pipeline', element: <AppRoutes.HrPipelinePage /> },
+      { path: 'profile', element: <AppRoutes.HrProfilePage /> },
+      // Old menu entries: "Kho hồ sơ" and AI screening were the same list; interviews/offers are now one read-only page.
+      { path: 'candidates', element: <Navigate to="/hr/screening?status=all" replace /> },
+      { path: 'interviews', element: <Navigate to="/hr/pipeline?tab=interviews" replace /> },
+      { path: 'offers', element: <Navigate to="/hr/pipeline?tab=offers" replace /> },
+      // No backend API yet: explicit empty state, no mock numbers.
+      { path: 'placement-review', element: <AppRoutes.HrPlacementReviewPlaceholder /> },
+      { path: 'warranty-tracking', element: <AppRoutes.HrWarrantyPlaceholder /> },
     ],
   },
 

@@ -157,6 +157,26 @@ const ConsoleSettingsPlaceholder = React.lazy(() =>
   import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminSettingsPlaceholder }))
 );
 
+// ── Internal HR workspace (features/hr-console), backed by the real API ─────
+const HrOverviewPage = React.lazy(() =>
+  import('@/features/hr-console/HrOverviewPage').then((m) => ({ default: m.HrOverviewPage }))
+);
+const HrScreeningPage = React.lazy(() =>
+  import('@/features/hr-console/HrScreeningPage').then((m) => ({ default: m.HrScreeningPage }))
+);
+const HrPipelinePage = React.lazy(() =>
+  import('@/features/hr-console/HrPipelinePage').then((m) => ({ default: m.HrPipelinePage }))
+);
+const HrProfilePage = React.lazy(() =>
+  import('@/features/hr-console/HrProfileAndPlaceholders').then((m) => ({ default: m.HrProfilePage }))
+);
+const HrPlacementReviewPlaceholder = React.lazy(() =>
+  import('@/features/hr-console/HrProfileAndPlaceholders').then((m) => ({ default: m.HrPlacementReviewPlaceholder }))
+);
+const HrWarrantyPlaceholder = React.lazy(() =>
+  import('@/features/hr-console/HrProfileAndPlaceholders').then((m) => ({ default: m.HrWarrantyPlaceholder }))
+);
+
 // ── MF-01 pages backed by the real API (features/jobs-mf01) ──────────────────
 const Mf01ClientJobsListPage = React.lazy(() =>
   import('@/features/jobs-mf01/ClientJobsListPage').then((m) => ({ default: m.ClientJobsListPage }))
@@ -305,6 +325,9 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/hr/interviews': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/offers': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/warranty-tracking': [UserRole.INTERNAL_HR, UserRole.ADMIN],
+  '/hr/pipeline': [UserRole.INTERNAL_HR, UserRole.ADMIN],
+  '/hr/profile': [UserRole.INTERNAL_HR, UserRole.ADMIN],
+  '/hr/placement-review': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/candidate/dashboard': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/profile': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/profile': [UserRole.CANDIDATE, UserRole.ADMIN],
@@ -406,4 +429,10 @@ export const AppRoutes = {
   ConsoleDisputesPlaceholder,
   ConsolePayoutsPlaceholder,
   ConsoleSettingsPlaceholder,
+  HrOverviewPage,
+  HrScreeningPage,
+  HrPipelinePage,
+  HrProfilePage,
+  HrPlacementReviewPlaceholder,
+  HrWarrantyPlaceholder,
 } as const;

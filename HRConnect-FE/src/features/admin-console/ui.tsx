@@ -57,7 +57,7 @@ export const PageHero: React.FC<{
 }> = ({ eyebrow, title, description, actions }) => (
   <header className="mb-7 flex flex-wrap items-end justify-between gap-4">
     <div className="max-w-2xl">
-      {eyebrow && <div className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-emerald-800">{eyebrow}</div>}
+      {eyebrow && <div className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--console-accent-strong)]">{eyebrow}</div>}
       <h1 className="m-0 text-[26px] font-bold leading-tight tracking-[-0.01em] text-slate-900">{title}</h1>
       <p className="m-0 mt-1.5 text-[14.5px] leading-relaxed text-slate-600">{description}</p>
     </div>
@@ -105,7 +105,7 @@ export const StatTile: React.FC<{
       onClick={onClick}
       aria-pressed={onClick ? Boolean(active) : undefined}
       className={`admin-surface flex w-full flex-col gap-1 border-0 p-4 text-left transition-shadow duration-200 ${
-        onClick ? 'cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700' : ''
+        onClick ? 'cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]' : ''
       } ${active ? 'admin-surface--active' : ''}`}
     >
       <span className="flex items-center gap-2 text-[12.5px] font-medium text-slate-600">
@@ -141,13 +141,13 @@ export function FilterPills<T extends string>({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(o.value)}
-            className={`cursor-pointer rounded-full border-0 px-3.5 py-1.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700 ${
+            className={`cursor-pointer rounded-full border-0 px-3.5 py-1.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
               active ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
             {o.label}
             {o.count !== undefined && (
-              <span className={`ml-1.5 tabular-nums ${active ? 'text-emerald-800' : 'text-slate-600'}`}>{o.count}</span>
+              <span className={`ml-1.5 tabular-nums ${active ? 'text-[color:var(--console-accent-strong)]' : 'text-slate-600'}`}>{o.count}</span>
             )}
           </button>
         );

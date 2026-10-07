@@ -65,7 +65,7 @@ export const AdminOverviewPage: React.FC = () => {
   const firstName = (user?.name || 'bạn').trim().split(/\s+/).slice(-1)[0];
 
   return (
-    <div className="grid gap-5 lg:grid-cols-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-4">
       {/* Hero (2 cols) */}
       <Surface className="relative overflow-hidden p-7 lg:col-span-2">
         <div

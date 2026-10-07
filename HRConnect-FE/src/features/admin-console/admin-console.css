@@ -1,3 +1,21 @@
+/* Console accent: emerald for Admin (default), sky for Internal HR (.hr-console).
+   Shared components read these variables instead of hard-coded colours. */
+:root {
+  --console-accent: #047857;        /* white text on it: 5.5:1 */
+  --console-accent-strong: #065f46; /* text on white: 7.7:1 */
+  --console-accent-soft: #ecfdf5;
+  --console-accent-bright: #34d399;
+  --console-accent-glow: rgba(52, 211, 153, 0.7);
+}
+
+.hr-console {
+  --console-accent: #0369a1;        /* white text on it: 5.9:1 */
+  --console-accent-strong: #075985; /* text on white: 7.6:1 */
+  --console-accent-soft: #f0f9ff;
+  --console-accent-bright: #38bdf8;
+  --console-accent-glow: rgba(56, 189, 248, 0.6);
+}
+
 /* Admin console surfaces and tables ("Slate Command" + soft UI).
    Imported only by Admin components. Tailwind preflight is off in this app, so borders are
    declared explicitly. */
@@ -12,8 +30,8 @@
 
 .admin-surface--active {
   box-shadow:
-    0 0 0 2px #047857,
-    0 6px 20px -6px rgba(4, 120, 87, 0.25);
+    0 0 0 2px var(--console-accent),
+    0 6px 20px -6px rgba(15, 23, 42, 0.12);
 }
 
 /* ── Tables: airy rows, quiet header, no vertical rules ─────────────────── */
@@ -54,7 +72,7 @@
 
 .admin-soft-table .ant-table-tbody > tr.ant-table-row:focus-visible > td {
   outline: none;
-  background: #ecfdf5 !important;
+  background: var(--console-accent-soft) !important;
 }
 
 .admin-soft-table .ant-pagination {
@@ -71,8 +89,8 @@
 .admin-progress-bar {
   height: 100%;
   width: 0;
-  background: linear-gradient(90deg, #059669, #34d399);
-  box-shadow: 0 0 10px rgba(52, 211, 153, 0.7), 0 0 4px rgba(5, 150, 105, 0.6);
+  background: linear-gradient(90deg, var(--console-accent), var(--console-accent-bright));
+  box-shadow: 0 0 10px var(--console-accent-glow), 0 0 4px var(--console-accent-glow);
   border-radius: 0 3px 3px 0;
   animation: admin-progress-run 8s cubic-bezier(0.08, 0.7, 0.2, 1) forwards;
 }
