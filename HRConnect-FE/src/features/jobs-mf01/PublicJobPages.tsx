@@ -46,7 +46,7 @@ export const PublicJobDetailPage: React.FC = () => {
       <Link to="/jobs" className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-emerald-700">
         <ArrowLeftOutlined aria-hidden /> Tất cả việc làm
       </Link>
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
+      <div className="rounded-xl border border-solid border-slate-200 bg-white p-6">
         {!isAuthenticated ? (
           <div className="py-10 text-center">
             <Title level={4}>Đăng nhập để xem chi tiết việc làm</Title>

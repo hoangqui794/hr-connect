@@ -181,7 +181,7 @@ const ServiceTypePicker: React.FC<{
         return (
           <label
             key={st.id}
-            className={`flex cursor-pointer flex-col gap-1 rounded-lg border p-3 transition-colors duration-200 ${
+            className={`flex cursor-pointer flex-col gap-1 rounded-lg border border-solid p-3 transition-colors duration-200 ${
               selected ? 'border-emerald-700 bg-emerald-50' : 'border-slate-200 hover:border-slate-400'
             } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
           >
@@ -290,6 +290,20 @@ export const JobFormPage: React.FC = () => {
     }
   };
 
+  const actionButtons = (
+    <>
+      <Button onClick={() => navigate('/client/jobs')} disabled={saving !== null}>
+        Hủy
+      </Button>
+      <Button onClick={() => save(false)} loading={saving === 'draft'} disabled={saving === 'submit'}>
+        Lưu nháp
+      </Button>
+      <Button type="primary" onClick={() => save(true)} loading={saving === 'submit'} disabled={saving === 'draft'}>
+        Lưu và gửi duyệt
+      </Button>
+    </>
+  );
+
   if (isEdit && existing.isLoading) {
     return <Skeleton active paragraph={{ rows: 14 }} />;
   }
@@ -303,12 +317,18 @@ export const JobFormPage: React.FC = () => {
         <Button type="link" icon={<ArrowLeftOutlined />} className="!px-0" onClick={() => navigate('/client/jobs')}>
           Tin tuyển dụng của tôi
         </Button>
-        <Title level={3} className="!mb-0">
-          {isEdit ? 'Sửa tin tuyển dụng' : 'Đăng tin tuyển dụng mới'}
-        </Title>
-        <Text type="secondary">
-          Tin được lưu dưới dạng bản nháp. Khi gửi duyệt, Internal HR sẽ kiểm tra trước khi tin được hiển thị.
-        </Text>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <Title level={3} className="!mb-0">
+              {isEdit ? 'Sửa tin tuyển dụng' : 'Đăng tin tuyển dụng mới'}
+            </Title>
+            <Text type="secondary">
+              Tin được lưu dưới dạng bản nháp. Khi gửi duyệt, Internal HR sẽ kiểm tra trước khi tin được hiển thị.
+            </Text>
+          </div>
+          {/* AppShell clips overflow, so sticky bars do not stick: keep actions reachable at the top too. */}
+          {editable && <div className="ml-auto flex flex-wrap gap-2">{actionButtons}</div>}
+        </div>
       </header>
 
       {!editable && existing.data && (
@@ -346,7 +366,6 @@ export const JobFormPage: React.FC = () => {
         initialValues={EMPTY_VALUES}
         disabled={!editable || saving !== null}
         validateTrigger="onBlur"
-        requiredMark="optional"
         scrollToFirstError
       >
         <Card title="1. Loại dịch vụ và phạm vi hiển thị" className="mb-5">
@@ -523,7 +542,7 @@ export const JobFormPage: React.FC = () => {
             {(fields, { add, remove }) => (
               <div className="space-y-3">
                 {fields.map((field, index) => (
-                  <div key={field.key} className="rounded-lg border border-slate-200 p-3">
+                  <div key={field.key} className="rounded-lg border border-solid border-slate-200 p-3">
                     <Row gutter={12} align="top">
                       <Col xs={24} md={6}>
                         <Form.Item name={[field.name, 'requirementType']} label="Mức độ" className="mb-2" rules={[{ required: true, message: 'Chọn mức độ.' }]}>
@@ -572,18 +591,8 @@ export const JobFormPage: React.FC = () => {
       </Form>
 
       {editable && (
-        <div className="sticky bottom-0 z-20 -mx-1 rounded-t-xl border border-b-0 border-slate-200 bg-white/95 shadow-[0_-4px_12px_rgba(15,23,42,0.06)] backdrop-blur">
-          <div className="flex flex-wrap items-center justify-end gap-2 px-4 py-3">
-            <Button onClick={() => navigate('/client/jobs')} disabled={saving !== null}>
-              Hủy
-            </Button>
-            <Button onClick={() => save(false)} loading={saving === 'draft'} disabled={saving === 'submit'}>
-              Lưu nháp
-            </Button>
-            <Button type="primary" onClick={() => save(true)} loading={saving === 'submit'} disabled={saving === 'draft'}>
-              Lưu và gửi duyệt
-            </Button>
-          </div>
+        <div className="flex flex-wrap items-center justify-end gap-2 rounded-xl border border-solid border-slate-200 bg-white px-4 py-3">
+          {actionButtons}
         </div>
       )}
     </div>

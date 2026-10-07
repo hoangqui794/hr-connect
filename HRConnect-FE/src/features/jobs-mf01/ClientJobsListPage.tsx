@@ -134,12 +134,12 @@ export const ClientJobsListPage: React.FC = () => {
       ),
     },
     { title: 'Mức lương', key: 'salary', width: 220, render: (_, job) => formatSalary(job) },
-    { title: 'Số lượng', dataIndex: 'quantity', width: 90, align: 'right' },
+    { title: <span className="whitespace-nowrap">Số lượng</span>, dataIndex: 'quantity', width: 110, align: 'right' },
     { title: 'Cập nhật', dataIndex: 'updatedAt', width: 120, render: (v: string) => formatDate(v) },
     {
       title: <span className="sr-only">Thao tác</span>,
       key: 'actions',
-      width: 170,
+      width: 230,
       fixed: 'right',
       render: (_, job) => {
         const can = clientActions(job.status);
@@ -221,8 +221,8 @@ export const ClientJobsListPage: React.FC = () => {
           action={<Button onClick={() => refetch()}>Thử lại</Button>}
         />
       ) : (
-        <section className="rounded-xl border border-slate-200 bg-white" aria-busy={isLoading}>
-          <div className="overflow-x-auto border-b border-slate-100 p-3">
+        <section className="rounded-xl border border-solid border-slate-200 bg-white" aria-busy={isLoading}>
+          <div className="overflow-x-auto border-b border-solid border-slate-100 p-3">
             <Segmented
               value={filter}
               onChange={(v) => setFilter(v as StatusFilter)}
@@ -254,7 +254,7 @@ export const ClientJobsListPage: React.FC = () => {
               rowKey="jobId"
               columns={columns}
               dataSource={visibleJobs}
-              scroll={{ x: 960 }}
+              scroll={{ x: 1080 }}
               pagination={{ pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
             />
           )}

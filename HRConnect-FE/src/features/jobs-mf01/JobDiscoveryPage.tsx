@@ -84,7 +84,7 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
 
   if (!isAuthenticated) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white px-6 py-14 text-center">
+      <div className="rounded-xl border border-solid border-slate-200 bg-white px-6 py-14 text-center">
         <Title level={4}>Đăng nhập để xem việc làm</Title>
         <Text type="secondary" className="block mb-5">
           Danh sách việc làm hiển thị theo vai trò của bạn: ứng viên, cộng tác viên hay doanh nghiệp.
@@ -99,7 +99,7 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
   return (
     <div className="space-y-5">
       {/* key remounts the uncontrolled inputs when the URL filters change (e.g. "Xóa bộ lọc"). */}
-      <div key={searchParams.toString()} className="rounded-xl border border-slate-200 bg-white p-4">
+      <div key={searchParams.toString()} className="rounded-xl border border-solid border-slate-200 bg-white p-4">
         <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <Input.Search
             allowClear
@@ -149,7 +149,7 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
           ))}
         </div>
       ) : !data || data.items.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white py-14">
+        <div className="rounded-xl border border-solid border-slate-200 bg-white py-14">
           <Empty description="Không tìm thấy việc làm phù hợp. Thử bỏ bớt bộ lọc.">
             {searchParams.toString() && <Button onClick={() => setSearchParams(new URLSearchParams())}>Xóa bộ lọc</Button>}
           </Empty>

@@ -24,7 +24,7 @@ const QueueItem: React.FC<{ job: Job; selected: boolean; onSelect: () => void }>
       type="button"
       onClick={onSelect}
       aria-current={selected ? 'true' : undefined}
-      className={`w-full cursor-pointer rounded-lg border px-3 py-2.5 text-left transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700 ${
+      className={`w-full cursor-pointer rounded-lg border border-solid px-3 py-2.5 text-left transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700 ${
         selected ? 'border-emerald-700 bg-emerald-50' : 'border-transparent bg-white hover:border-slate-300'
       }`}
     >
@@ -101,12 +101,12 @@ export const JobReviewPage: React.FC = () => {
       ) : queue.isLoading ? (
         <Skeleton active paragraph={{ rows: 8 }} />
       ) : jobs.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white py-16">
+        <div className="rounded-xl border border-solid border-slate-200 bg-white py-16">
           <Empty description="Không có tin nào đang chờ duyệt." />
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="rounded-xl border border-slate-200 bg-slate-50 p-2" aria-label="Hàng đợi duyệt">
+          <aside className="rounded-xl border border-solid border-slate-200 bg-slate-50 p-2" aria-label="Hàng đợi duyệt">
             <div className="flex items-center justify-between px-2 py-1.5">
               <Text strong>Chờ duyệt</Text>
               <Badge count={jobs.length} color="#0f172a" />
@@ -118,7 +118,7 @@ export const JobReviewPage: React.FC = () => {
             </ul>
           </aside>
 
-          <section className="rounded-xl border border-slate-200 bg-white" aria-live="polite" aria-busy={detail.isFetching}>
+          <section className="rounded-xl border border-solid border-slate-200 bg-white" aria-live="polite" aria-busy={detail.isFetching}>
             {detail.isError ? (
               <div className="p-6">
                 <Alert type="error" showIcon message={getApiErrorMessage(detail.error)} />
@@ -129,16 +129,22 @@ export const JobReviewPage: React.FC = () => {
               </div>
             ) : (
               <>
+                {/* Actions first, so the reviewer can decide without scrolling. */}
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-xl border-b border-solid border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
+                  <Text type="secondary" className="text-sm">
+                    Kiểm tra mô tả, yêu cầu và quyền lợi rồi quyết định.
+                  </Text>
+                  <div className="flex gap-2">
+                    <Button danger icon={<CloseOutlined />} disabled={busy} onClick={() => setRejectOpen(true)}>
+                      Từ chối
+                    </Button>
+                    <Button type="primary" icon={<CheckOutlined />} loading={approve.isPending} disabled={reject.isPending} onClick={confirmApprove}>
+                      Duyệt và công bố
+                    </Button>
+                  </div>
+                </div>
                 <div className="p-6">
                   <JobDetailPanel job={job} showHistory />
-                </div>
-                <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 rounded-b-xl border-t border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
-                  <Button danger icon={<CloseOutlined />} disabled={busy} onClick={() => setRejectOpen(true)}>
-                    Từ chối
-                  </Button>
-                  <Button type="primary" icon={<CheckOutlined />} loading={approve.isPending} disabled={reject.isPending} onClick={confirmApprove}>
-                    Duyệt và công bố
-                  </Button>
                 </div>
               </>
             )}

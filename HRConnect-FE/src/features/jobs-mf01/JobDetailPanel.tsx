@@ -91,7 +91,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory
         </Title>
         <Text type="secondary">{job.companyName ?? '—'}</Text>
         {job.status === 'REJECTED' && job.statusReason && (
-          <div role="note" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <div role="note" className="rounded-lg border border-solid border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
             <Text strong className="text-red-800">
               Lý do từ chối:{' '}
             </Text>
