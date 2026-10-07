@@ -31,6 +31,11 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     redirectTo: '/dashboard',
   },
   {
+    path: '/client/my-jobs',
+    allowedRoles: [UserRole.CLIENT, UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
     path: '/client/jobs/create',
     allowedRoles: [UserRole.CLIENT, UserRole.ADMIN],
     redirectTo: '/dashboard',
@@ -176,6 +181,11 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     redirectTo: '/dashboard',
   },
   {
+    path: '/hr/jobs/review',
+    allowedRoles: [UserRole.INTERNAL_HR, UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
     path: '/hr/candidates',
     allowedRoles: [UserRole.INTERNAL_HR, UserRole.ADMIN],
     redirectTo: '/dashboard',
@@ -238,6 +248,7 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
   ],
   [UserRole.INTERNAL_HR]: [
     { key: '/hr/dashboard', label: 'Bảng điều khiển', icon: 'DashboardOutlined' },
+    { key: '/hr/jobs/review', label: 'Hàng đợi duyệt tin', icon: 'CheckCircleOutlined' },
     { key: '/hr/jobs', label: 'Duyệt tin tuyển dụng', icon: 'FileTextOutlined' },
     { key: '/hr/candidates', label: 'Kho hồ sơ ứng viên', icon: 'TeamOutlined' },
     { key: '/hr/screening', label: 'Sàng lọc AI', icon: 'RobotOutlined' },

@@ -27,13 +27,20 @@ import {
   SaveOutlined, CheckCircleOutlined, ArrowLeftOutlined, ArrowRightOutlined,
   CloudUploadOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useJobStore } from '@/stores/jobStore';
 import { useAuthStore } from '@/stores/authStore';
 import { ServiceType, JobStatus, SERVICE_TYPE_LABELS } from '@/types/job';
 import type { JobWizardDraft, Job } from '@/types/job';
 import { saveClientJob } from '@/stores/clientJobStore';
 import { saveJobToAllJobs } from '@/services/localStorageService';
+import {
+  useCreateJobDraft,
+  useUpdateJob,
+  useSubmitJob,
+  useJobDetail,
+} from '@/services/queries/useJobs';
+import type { CreateJobCommand, CreateJobRequirementRequest } from '@/types/mf01';
 import { WizardStep1ServiceType } from './CreateJobWizard/WizardStep1ServiceType';
 import { WizardStep2TagFilters } from './CreateJobWizard/WizardStep2TagFilters';
 import { WizardStep3Objectives } from './CreateJobWizard/WizardStep3Objectives';
@@ -132,7 +139,16 @@ export const CreateJobWizard: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [publishedJobId, setPublishedJobId] = useState<string | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [searchParams] = useSearchParams();
+  const editJobId = searchParams.get('jobId') || searchParams.get('edit') || null;
+  const { data: existingJob } = useJobDetail(editJobId || '');
+
+  const createJobDraftMutation = useCreateJobDraft();
+  const updateJobMutation = useUpdateJob();
+  const submitJobMutation = useSubmitJob();
 
   // Sync form initial values from Zustand draft on mount & force start at Step 0
   useEffect(() => {
@@ -258,6 +274,56 @@ export const CreateJobWizard: React.FC = () => {
     }
   };
 
+  const buildCommand = (): CreateJobCommand => {
+    const vals = form.getFieldsValue(true);
+    const requirements: CreateJobRequirementRequest[] = [
+      ...(vals.mustHaveTags || []).map((t: string) => ({
+        requirementType: 'MUST_HAVE',
+        content: t,
+        weight: 1.0,
+      })),
+      ...(vals.shouldHaveTags || []).map((t: string) => ({
+        requirementType: 'SHOULD_HAVE',
+        content: t,
+        weight: 0.5,
+      })),
+    ];
+    return {
+      serviceTypeId: vals.serviceTypeId || vals.serviceType || 'st-001',
+      title: vals.title || 'Vị trí tuyển dụng',
+      description: vals.description || '',
+      location: vals.location || 'Hồ Chí Minh, Việt Nam',
+      employmentType: vals.remote ? 'REMOTE' : 'FULL_TIME',
+      salaryMin: Number(vals.salaryMin) || 0,
+      salaryMax: Number(vals.salaryMax) || 0,
+      currencyCode: vals.currency || 'VND',
+      quantity: Number(vals.headcount) || 1,
+      visibility: 'PUBLIC',
+      requirements,
+    };
+  };
+
+  const handleSaveDraft = async () => {
+    try {
+      setIsSavingDraft(true);
+      const command = buildCommand();
+      if (editJobId) {
+        await updateJobMutation.mutateAsync({ jobId: editJobId, command });
+        message.success('Đã cập nhật bản nháp tin tuyển dụng (PUT /api/v1/jobs/{jobId})');
+      } else {
+        const res = await createJobDraftMutation.mutateAsync(command);
+        setPublishedJobId(res.data.jobId);
+        message.success('Đã lưu bản nháp thành công! (POST /api/v1/jobs)');
+      }
+      saveDraft();
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Lưu nháp thất bại';
+      message.error(errMsg);
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
   const handleSubmit = async () => {
     try {
       await form.validateFields();
@@ -267,90 +333,27 @@ export const CreateJobWizard: React.FC = () => {
 
     setSubmitting(true);
     try {
-      const result = await mockPublishJob({ draft });
-      const newJobId = result.jobId;
-      setPublishedJobId(newJobId);
+      const command = buildCommand();
+      let targetJobId = editJobId || publishedJobId;
+      if (!targetJobId) {
+        const res = await createJobDraftMutation.mutateAsync(command);
+        targetJobId = res.data.jobId;
+        setPublishedJobId(targetJobId);
+      } else {
+        await updateJobMutation.mutateAsync({ jobId: targetJobId, command });
+      }
+
+      // POST /api/v1/jobs/{jobId}/submit
+      await submitJobMutation.mutateAsync(targetJobId);
       saveDraft();
-
-      // ─── Persist job to localStorage for HR review ───────────────────────
-      const industryLabels: Record<string, string> = {
-        IT: 'Công nghệ thông tin',
-        FINANCE: 'Tài chính – Ngân hàng',
-        MARKETING: 'Marketing – Truyền thông',
-        SALES: 'Kinh doanh – Bán hàng',
-        ENGINEERING: 'Kỹ thuật – Sản xuất',
-        HR: 'Nhân sự',
-        HEALTHCARE: 'Y tế – Dược phẩm',
-        EDUCATION: 'Giáo dục – Đào tạo',
-        LOGISTICS: 'Logistics – Vận tải',
-        LEGAL: 'Pháp lý',
-        OTHER: 'Khác',
-      };
-      const serviceType = draft.step1.serviceType || ServiceType.HEADHUNT_COD;
-      const formattedJob: Job = {
-        id: newJobId,
-        title: draft.step1.title || 'Vị trí chưa đặt tên',
-        company: draft.step1.company || user?.company || 'Công ty',
-        companyId: user?.id || 'client-unknown',
-        industryCode: draft.step1.industryCode || 'IT',
-        industryLabel: industryLabels[draft.step1.industryCode] || 'Khác',
-        serviceType,
-        status: JobStatus.PENDING,
-        location: draft.step1.location || 'Hồ Chí Minh, Việt Nam',
-        remote: draft.step1.remote || false,
-        salaryRange: {
-          min: (draft.step1.salaryMin || 25000000),
-          max: (draft.step1.salaryMax || 40000000),
-          currency: draft.step1.currency || 'VND',
-          negotiable: draft.step1.negotiable ?? true,
-        },
-        mustHaveTags: draft.step2.mustHaveTags || [],
-        shouldHaveTags: draft.step2.shouldHaveTags || [],
-        objectives: draft.step3.objectives || '',
-        description: draft.step2.description || '',
-        headcount: draft.step1.headcount || 1,
-        experienceYears: {
-          min: draft.step1.experienceMin || 0,
-          max: draft.step1.experienceMax || 5,
-        },
-        engagementTerms: {
-          timeline: draft.step4.timeline || 30,
-          commissionRate: draft.step4.commissionRate || 20.5,
-          retainerFee: draft.step4.retainerFee || 0,
-          budget: draft.step4.budget || 0,
-        },
-        requirements: draft.step2.requirements || [],
-        clientContactId: user?.id || 'client-unknown',
-        clientId: user?.id,
-        clientEmail: user?.email,
-        applicationCount: 0,
-        shortlistedCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        deadline: draft.step1.deadline || undefined,
-        servicePackage: SERVICE_TYPE_LABELS[serviceType] || 'Tuyển dụng trọn gói (COD)',
-      };
-
-      // Single Source of Truth: Save directly into hrconnect_all_jobs
-      saveJobToAllJobs(formattedJob);
-
-      // Backward-compat: also save to legacy client jobs store
-      saveClientJob({
-        ...formattedJob,
-        status: 'PENDING',
-        postedByName: user?.name || 'Client',
-        postedByEmail: user?.email,
-        clientId: user?.id,
-        clientEmail: user?.email,
-      });
-
       setSubmitted(true);
       message.success({
-        content: 'Tin tuyển dụng đã được gửi và đang chờ HR phê duyệt. Bạn sẽ nhận thông báo khi tin được kích hoạt.',
+        content: 'Tin tuyển dụng đã gửi xét duyệt thành công (POST /api/v1/jobs/{jobId}/submit) và đang chờ HR duyệt!',
         duration: 5,
       });
-    } catch {
-      message.error('Đăng tin thất bại. Vui lòng thử lại.');
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Đăng tin thất bại. Vui lòng thử lại.';
+      message.error(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -460,6 +463,16 @@ export const CreateJobWizard: React.FC = () => {
             </Text>
           </div>
           <Space>
+            <Button
+              icon={<SaveOutlined />}
+              onClick={handleSaveDraft}
+              loading={isSavingDraft || createJobDraftMutation.isPending || updateJobMutation.isPending}
+              disabled={submitting || submitJobMutation.isPending}
+              size="middle"
+              style={{ borderRadius: 8 }}
+            >
+              Lưu bản nháp
+            </Button>
             {isDirty ? (
               <Tag
                 color="warning"
@@ -556,6 +569,15 @@ export const CreateJobWizard: React.FC = () => {
           </Button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Button
+              icon={<SaveOutlined />}
+              onClick={handleSaveDraft}
+              loading={isSavingDraft || createJobDraftMutation.isPending || updateJobMutation.isPending}
+              disabled={submitting || submitJobMutation.isPending}
+              style={{ borderRadius: 8 }}
+            >
+              Lưu bản nháp
+            </Button>
             <Text type="secondary" style={{ fontSize: 12 }}>
               Bước {currentStep + 1} / {STEPS.length}
             </Text>
@@ -565,6 +587,7 @@ export const CreateJobWizard: React.FC = () => {
                 icon={<ArrowRightOutlined />}
                 iconPosition="end"
                 onClick={handleNextStep}
+                disabled={isSavingDraft || submitting}
                 style={{ borderRadius: 8, background: '#00b14f', borderColor: '#00b14f' }}
               >
                 Tiếp tục
@@ -574,7 +597,8 @@ export const CreateJobWizard: React.FC = () => {
                 type="primary"
                 icon={<CloudUploadOutlined />}
                 onClick={handleSubmit}
-                loading={submitting}
+                loading={submitting || submitJobMutation.isPending}
+                disabled={isSavingDraft}
                 style={{
                   borderRadius: 8,
                   background: '#00b14f',
@@ -583,7 +607,7 @@ export const CreateJobWizard: React.FC = () => {
                   paddingInline: 24,
                 }}
               >
-                Đăng tin tuyển dụng
+                Gửi xét duyệt
               </Button>
             )}
           </div>

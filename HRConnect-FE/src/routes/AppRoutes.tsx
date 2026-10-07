@@ -143,6 +143,12 @@ const AffiliateSubmissionsPage = React.lazy(() =>
 const AffiliateCommissionsPage = React.lazy(() =>
   import('@/pages/affiliate/AffiliateCommissionsPage').then((m: any) => ({ default: m.default || m.AffiliateCommissionsPage }))
 );
+const JobReviewQueuePage = React.lazy(() =>
+  import('@/pages/internal-hr/JobReviewQueuePage').then((m: any) => ({ default: m.default || m.JobReviewQueuePage }))
+);
+const MyJobsPage = React.lazy(() =>
+  import('@/pages/client/MyJobsPage').then((m: any) => ({ default: m.default || m.MyJobsPage }))
+);
 
 // ---------------------------------------------------------------------------
 // ProtectedRoute
@@ -236,6 +242,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/dashboard': AUTHENTICATED_ROLES,
   '/client/dashboard': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/jobs': [UserRole.CLIENT, UserRole.ADMIN],
+  '/client/my-jobs': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/jobs/create': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/post-job': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/candidates': [UserRole.CLIENT, UserRole.ADMIN],
@@ -244,6 +251,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/affiliate/dashboard': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/hr/dashboard': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/jobs': [UserRole.INTERNAL_HR, UserRole.ADMIN],
+  '/hr/jobs/review': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/candidates': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/screening': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/interviews': [UserRole.INTERNAL_HR, UserRole.ADMIN],
@@ -330,4 +338,6 @@ export const AppRoutes = {
   AffiliateCommissionsPage,
   JobDetailPage,
   JobSearchPage,
+  JobReviewQueuePage,
+  MyJobsPage,
 } as const;

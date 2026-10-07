@@ -148,6 +148,8 @@ const ServiceTypeCard: React.FC<ServiceTypeCardProps> = ({ type, isSelected, onS
   );
 };
 
+import { useServiceTypes } from '@/services/queries/useJobs';
+
 export interface WizardStep1Props {
   form: FormInstance;
   serviceType: ServiceType | null;
@@ -155,35 +157,66 @@ export interface WizardStep1Props {
 }
 
 export const WizardStep1ServiceType: React.FC<WizardStep1Props> = ({
-  form: _form,
+  form,
   serviceType,
   onServiceTypeChange,
-}) => (
-  <div style={{ maxWidth: 780 }}>
-    {/* ── Service Type ── */}
-    <Title level={5} style={{ margin: '0 0 4px', color: '#0f172a' }}>
-      Hình thức dịch vụ <span style={{ color: '#ef4444' }}>*</span>
-    </Title>
-    <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 16 }}>
-      Chọn mô hình dịch vụ phù hợp với chiến lược tuyển dụng của doanh nghiệp.
-    </Text>
-    <Row gutter={[14, 14]}>
-      {Object.values(ServiceType).map((t) => (
-        <Col xs={24} sm={8} key={t} style={{ display: 'flex' }}>
-          <ServiceTypeCard type={t} isSelected={serviceType === t} onSelect={onServiceTypeChange} />
-        </Col>
-      ))}
-    </Row>
-    {/* Invisible hidden Form.Item — receives value via form.setFieldValue so validation fires */}
-    <Form.Item
-      name="serviceType"
-      noStyle
-      rules={[{ required: true, message: 'Vui lòng chọn hình thức dịch vụ để tiếp tục.' }]}
-    >
-      <input type="hidden" aria-hidden="true" />
-    </Form.Item>
+}) => {
+  const { data: serviceTypesResponse, isLoading: isLoadingServiceTypes } = useServiceTypes({ isActive: true });
+  const apiServiceTypes = serviceTypesResponse?.data?.items || [];
 
-    <Divider style={{ margin: '24px 0' }} />
+  const handleSelectServiceType = (type: ServiceType) => {
+    onServiceTypeChange(type);
+    const matchedApiType = apiServiceTypes.find((s) => s.code === type || s.id === (type as string));
+    if (matchedApiType) {
+      form.setFieldValue('serviceTypeId', matchedApiType.id);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 780 }}>
+      {/* ── Service Type ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <Title level={5} style={{ margin: 0, color: '#0f172a' }}>
+          Hình thức dịch vụ <span style={{ color: '#ef4444' }}>*</span>
+        </Title>
+        {apiServiceTypes.length > 0 && (
+          <Select
+            placeholder="Chọn nhanh gói dịch vụ API"
+            size="small"
+            style={{ width: 260 }}
+            value={serviceType || undefined}
+            loading={isLoadingServiceTypes}
+            onChange={(val) => handleSelectServiceType(val as ServiceType)}
+            options={apiServiceTypes.map((st) => ({
+              value: (st.code as ServiceType) || st.id,
+              label: `${st.name} (${st.code || 'Gói'})`,
+            }))}
+          />
+        )}
+      </div>
+      <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 16 }}>
+        Chọn mô hình dịch vụ phù hợp với chiến lược tuyển dụng của doanh nghiệp (Dữ liệu từ API GET /api/v1/service-types).
+      </Text>
+      <Row gutter={[14, 14]}>
+        {Object.values(ServiceType).map((t) => (
+          <Col xs={24} sm={8} key={t} style={{ display: 'flex' }}>
+            <ServiceTypeCard type={t} isSelected={serviceType === t} onSelect={handleSelectServiceType} />
+          </Col>
+        ))}
+      </Row>
+      {/* Form.Item for serviceType and serviceTypeId */}
+      <Form.Item
+        name="serviceType"
+        noStyle
+        rules={[{ required: true, message: 'Vui lòng chọn hình thức dịch vụ để tiếp tục.' }]}
+      >
+        <input type="hidden" aria-hidden="true" />
+      </Form.Item>
+      <Form.Item name="serviceTypeId" noStyle>
+        <input type="hidden" aria-hidden="true" />
+      </Form.Item>
+
+      <Divider style={{ margin: '24px 0' }} />
 
     {/* ── Job Details ── */}
     <Title level={5} style={{ margin: '0 0 16px', color: '#0f172a' }}>
@@ -346,3 +379,4 @@ export const WizardStep1ServiceType: React.FC<WizardStep1Props> = ({
     </Row>
   </div>
 );
+};

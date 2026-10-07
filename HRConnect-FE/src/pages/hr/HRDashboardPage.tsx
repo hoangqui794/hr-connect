@@ -46,10 +46,10 @@ export const HRDashboardPage: React.FC = () => {
             <Button
               type="primary"
               icon={<FileTextOutlined />}
-              onClick={() => navigate('/hr/jobs')}
+              onClick={() => navigate('/hr/jobs/review')}
               className="h-10 px-4 rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
             >
-              Duyệt tin tuyển dụng ({pendingJobs.length} tin chờ)
+              Hàng đợi duyệt tin ({pendingJobs.length} tin chờ)
             </Button>
             <Button
               icon={<RobotOutlined />}
@@ -73,7 +73,7 @@ export const HRDashboardPage: React.FC = () => {
             statusType={pendingJobs.length > 0 ? 'warranty' : 'eligible'}
             icon={<ClockCircleOutlined />}
             iconColor="#f43f5e"
-            onClick={() => navigate('/hr/jobs')}
+            onClick={() => navigate('/hr/jobs/review')}
           />
         </Col>
 
@@ -192,7 +192,7 @@ export const HRDashboardPage: React.FC = () => {
                       <Button
                         type="primary"
                         size="small"
-                        onClick={() => navigate('/hr/jobs')}
+                        onClick={() => navigate('/hr/jobs/review')}
                         className="rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white border-none text-xs"
                       >
                         Xem & Duyệt

@@ -26,6 +26,7 @@ export enum JobStatus {
   PAUSED = 'PAUSED',
   CLOSED = 'CLOSED',
   FILLED = 'FILLED',
+  REJECTED = 'REJECTED',
 }
 
 export interface HardTag {

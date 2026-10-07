@@ -13,12 +13,13 @@
 import React, { useState, useMemo } from 'react';
 import {
   Table, Tag, Button, Input, Select, Card, Row, Col, Typography, Space,
-  Tooltip, Popconfirm, message, Badge,
+  Tooltip, Popconfirm, message, Badge, Modal, Alert,
 } from 'antd';
 import {
   PlusOutlined, SearchOutlined, PauseCircleOutlined,
   PlayCircleOutlined, StopOutlined, FileTextOutlined,
-  SafetyCertificateOutlined, TeamOutlined,
+  SafetyCertificateOutlined, TeamOutlined, EditOutlined,
+  SendOutlined, ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +28,14 @@ import { MOCK_JOBS } from '@/services/mockData';
 import { JobStatus, ServiceType } from '@/types/job';
 import type { Job } from '@/types/job';
 import { getJobsForClient, updateJobStatusInAllJobs } from '@/services/localStorageService';
+import {
+  useMyJobs,
+  useSubmitJob,
+  usePauseJob,
+  useResumeJob,
+  useCloseJob,
+} from '@/services/queries/useJobs';
+import type { JobDetailDto } from '@/types/mf01';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -131,17 +140,79 @@ const TECHCORP_DEFAULT_JOBS: Job[] = [
 export const ClientJobsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  // Load client jobs dynamically from Single Source of Truth: hrconnect_all_jobs
-  const jobs = useMemo(() => {
-    return getJobsForClient(user?.email, user?.company, user?.id);
-  }, [user?.email, user?.company, user?.id, refreshKey]);
-
-  // Filters
   const [search, setSearch] = useState<string>('');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+
+  // Reason Modal for Pause & Close
+  const [reasonModal, setReasonModal] = useState<{
+    isOpen: boolean;
+    type: 'PAUSE' | 'CLOSE';
+    jobId: string;
+    jobTitle: string;
+  }>({
+    isOpen: false,
+    type: 'PAUSE',
+    jobId: '',
+    jobTitle: '',
+  });
+  const [actionReason, setActionReason] = useState<string>('');
+
+  // ─── API Queries & Mutations ───────────────────────────────────────────────
+  const { data: apiJobs, isLoading: isLoadingJobs } = useMyJobs(statusFilter);
+  const submitJobMutation = useSubmitJob();
+  const pauseJobMutation = usePauseJob();
+  const resumeJobMutation = useResumeJob();
+  const closeJobMutation = useCloseJob();
+
+  const isMutating =
+    submitJobMutation.isPending ||
+    pauseJobMutation.isPending ||
+    resumeJobMutation.isPending ||
+    closeJobMutation.isPending;
+
+  // Unified jobs list: prefers API data or falls back to storage
+  const jobs: Job[] = useMemo(() => {
+    if (apiJobs && apiJobs.length > 0) {
+      return apiJobs.map((j) => ({
+        id: j.id,
+        title: j.title,
+        company: j.companyName || user?.company || 'TechCorp Việt Nam',
+        companyId: j.companyId,
+        industryCode: 'tech-software',
+        industryLabel: 'Công nghệ',
+        serviceType: (j.serviceTypeId as ServiceType) || ServiceType.HEADHUNT_COD,
+        status: (j.status as JobStatus) || JobStatus.ACTIVE,
+        location: j.location || 'Hồ Chí Minh',
+        remote: j.employmentType === 'REMOTE',
+        salaryRange: {
+          min: j.salaryMin || 0,
+          max: j.salaryMax || 0,
+          currency: (j.currencyCode as 'VND' | 'USD' | 'SGD') || 'VND',
+          negotiable: true,
+        },
+        mustHaveTags: (j.requirements || [])
+          .filter((r) => r.requirementType === 'MUST_HAVE')
+          .map((r) => r.content),
+        shouldHaveTags: (j.requirements || [])
+          .filter((r) => r.requirementType === 'SHOULD_HAVE')
+          .map((r) => r.content),
+        objectives: '',
+        engagementTerms: { timeline: 30, commissionRate: 15, retainerFee: 0, budget: 0 },
+        headcount: j.quantity || 1,
+        experienceYears: { min: 1, max: 5 },
+        description: j.description || '',
+        requirements: [],
+        createdAt: j.createdAt || new Date().toISOString(),
+        updatedAt: j.updatedAt || j.createdAt || new Date().toISOString(),
+        clientContactId: j.companyId || user?.id || 'client-001',
+        applicationCount: j.applicationCount || 0,
+        shortlistedCount: j.shortlistedCount || 0,
+        rejectionReason: j.rejectionReason,
+      }));
+    }
+    return getJobsForClient(user?.email, user?.company, user?.id);
+  }, [apiJobs, user?.email, user?.company, user?.id]);
 
   // ─── Filter Logic: Strictly Scoped by Company ─────────────────────────────
   const filteredJobs = useMemo(() => {
@@ -162,28 +233,76 @@ export const ClientJobsPage: React.FC = () => {
   const metrics = useMemo(() => {
     const total = jobs.length;
     const active = jobs.filter((j) => j.status === JobStatus.ACTIVE).length;
-    const pending = jobs.filter((j) => j.status === JobStatus.PENDING).length;
+    const pending = jobs.filter((j) => j.status === JobStatus.PENDING || (j.status as string) === 'PENDING_REVIEW').length;
     const paused = jobs.filter((j) => j.status === JobStatus.PAUSED).length;
     const totalApplications = jobs.reduce((acc, j) => acc + (j.applicationCount || 0), 0);
     return { total, active, pending, paused, totalApplications };
   }, [jobs]);
 
-  // Handlers: Persist directly into hrconnect_all_jobs
-  const handleToggleStatus = (jobId: string, currentStatus: JobStatus) => {
-    const nextStatus = currentStatus === JobStatus.ACTIVE ? JobStatus.PAUSED : JobStatus.ACTIVE;
-    updateJobStatusInAllJobs(jobId, nextStatus);
-    setRefreshKey((k) => k + 1);
-    const msg =
-      nextStatus === JobStatus.ACTIVE
-        ? 'Đã mở lại tin tuyển dụng thành công!'
-        : 'Đã tạm dừng nhận hồ sơ cho tin này!';
-    void message.success(msg);
+  // Rejection check for warning banner
+  const rejectedJobs = useMemo(() => {
+    return jobs.filter((j) => (j.status as string) === 'REJECTED');
+  }, [jobs]);
+
+  // Handlers with API Mutations
+  const handleSubmitJob = async (jobId: string) => {
+    try {
+      await submitJobMutation.mutateAsync(jobId);
+      void message.success('Gửi xét duyệt thành công! Tin đã chuyển sang trạng thái chờ HR duyệt.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gửi duyệt thất bại.';
+      void message.error(msg);
+    }
   };
 
-  const handleCloseJob = (jobId: string) => {
-    updateJobStatusInAllJobs(jobId, JobStatus.CLOSED);
-    setRefreshKey((k) => k + 1);
-    void message.info('Đã đóng tin tuyển dụng và lưu vào kho lưu trữ!');
+  const handleResumeJob = async (jobId: string) => {
+    try {
+      await resumeJobMutation.mutateAsync(jobId);
+      void message.success('Đã mở lại tin tuyển dụng thành công!');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Mở lại thất bại.';
+      void message.error(msg);
+    }
+  };
+
+  const handleOpenPauseModal = (job: Job) => {
+    setActionReason('');
+    setReasonModal({
+      isOpen: true,
+      type: 'PAUSE',
+      jobId: job.id,
+      jobTitle: job.title,
+    });
+  };
+
+  const handleOpenCloseModal = (job: Job) => {
+    setActionReason('');
+    setReasonModal({
+      isOpen: true,
+      type: 'CLOSE',
+      jobId: job.id,
+      jobTitle: job.title,
+    });
+  };
+
+  const handleConfirmReasonModal = async () => {
+    if (!actionReason.trim()) {
+      void message.warning('Vui lòng nhập lý do để tiếp tục.');
+      return;
+    }
+    try {
+      if (reasonModal.type === 'PAUSE') {
+        await pauseJobMutation.mutateAsync({ jobId: reasonModal.jobId, reason: actionReason });
+        void message.success('Đã tạm dừng tin tuyển dụng thành công!');
+      } else {
+        await closeJobMutation.mutateAsync({ jobId: reasonModal.jobId, reason: actionReason });
+        void message.info('Đã đóng tin tuyển dụng!');
+      }
+      setReasonModal({ isOpen: false, type: 'PAUSE', jobId: '', jobTitle: '' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Thao tác thất bại.';
+      void message.error(msg);
+    }
   };
 
   // Columns definition
@@ -272,9 +391,13 @@ export const ClientJobsPage: React.FC = () => {
     {
       title: 'Trạng thái tin',
       key: 'status',
-      width: 140,
+      width: 150,
       render: (_, record) => {
-        if (record.status === JobStatus.PENDING || (record.status as string) === 'PENDING') {
+        const statusStr = String(record.status).toUpperCase();
+        if (statusStr === 'DRAFT') {
+          return <Tag color="default" style={{ borderRadius: 6, fontWeight: 600 }}>Bản nháp</Tag>;
+        }
+        if (statusStr === 'PENDING' || statusStr === 'PENDING_REVIEW') {
           return (
             <Tag
               style={{
@@ -290,11 +413,21 @@ export const ClientJobsPage: React.FC = () => {
             </Tag>
           );
         }
-        if (record.status === JobStatus.ACTIVE) {
+        if (statusStr === 'ACTIVE') {
           return <Tag color="success" style={{ borderRadius: 6, fontWeight: 600 }}>Đang tuyển</Tag>;
         }
-        if (record.status === JobStatus.PAUSED) {
+        if (statusStr === 'PAUSED') {
           return <Tag color="warning" style={{ borderRadius: 6, fontWeight: 600 }}>Tạm dừng</Tag>;
+        }
+        if (statusStr === 'REJECTED') {
+          const reason = (record as any).rejectionReason || 'Chưa đáp ứng tiêu chuẩn kiểm duyệt';
+          return (
+            <Tooltip title={`Lý do từ chối: ${reason}`}>
+              <Tag color="error" style={{ borderRadius: 6, fontWeight: 700, cursor: 'help' }}>
+                ❌ Bị từ chối
+              </Tag>
+            </Tooltip>
+          );
         }
         return <Tag style={{ borderRadius: 6, color: '#94a3b8' }}>Đã đóng</Tag>;
       },
@@ -313,52 +446,122 @@ export const ClientJobsPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 230,
+      width: 250,
       fixed: 'right',
-      render: (_, record) => (
-        <Space size={6}>
-          {/* Xem ứng viên */}
-          <Tooltip title="Xem phễu ứng viên của tin này">
-            <Button
-              size="small"
-              icon={<TeamOutlined />}
-              onClick={() => navigate('/client/candidates')}
-              style={{ borderRadius: 6, fontSize: 12 }}
-            >
-              Ứng viên
-            </Button>
-          </Tooltip>
+      render: (_, record) => {
+        const statusStr = String(record.status).toUpperCase();
+        const isClosed = statusStr === 'CLOSED';
+        const isDraftOrRejected = statusStr === 'DRAFT' || statusStr === 'REJECTED';
 
-          {/* Tạm dừng hoặc Mở lại */}
-          <Tooltip title={record.status === JobStatus.ACTIVE ? 'Tạm dừng nhận hồ sơ' : 'Kích hoạt mở lại tin'}>
-            <Button
-              size="small"
-              icon={record.status === JobStatus.ACTIVE ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
-              onClick={() => handleToggleStatus(record.id, record.status)}
-              style={{
-                borderRadius: 6,
-                borderColor: record.status === JobStatus.ACTIVE ? '#f59e0b' : '#10b981',
-                color: record.status === JobStatus.ACTIVE ? '#f59e0b' : '#10b981',
-              }}
-            />
-          </Tooltip>
+        return (
+          <Space size={6}>
+            {/* Xem ứng viên */}
+            <Tooltip title="Xem phễu ứng viên của tin này">
+              <Button
+                size="small"
+                icon={<TeamOutlined />}
+                onClick={() => navigate('/client/candidates')}
+                style={{ borderRadius: 6, fontSize: 12 }}
+                disabled={isMutating}
+              >
+                Ứng viên
+              </Button>
+            </Tooltip>
 
-          {/* Đóng tin */}
-          {record.status !== JobStatus.CLOSED && (
-            <Popconfirm
-              title="Đóng tin tuyển dụng này?"
-              description="Tin tuyển dụng sẽ ngừng hiển thị trên toàn hệ thống."
-              onConfirm={() => handleCloseJob(record.id)}
-              okText="Đồng ý đóng"
-              cancelText="Hủy"
-            >
-              <Tooltip title="Đóng tin tuyển dụng">
-                <Button size="small" danger icon={<StopOutlined />} style={{ borderRadius: 6 }} />
+            {/* Sửa tin (cho DRAFT hoặc REJECTED) */}
+            {isDraftOrRejected && (
+              <Tooltip title="Chỉnh sửa tin tuyển dụng">
+                <Button
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => navigate(`/client/jobs/create?edit=${record.id}`)}
+                  style={{ borderRadius: 6, color: '#2563eb', borderColor: '#93c5fd' }}
+                  disabled={isMutating}
+                />
               </Tooltip>
-            </Popconfirm>
-          )}
-        </Space>
-      ),
+            )}
+
+            {/* Gửi duyệt (cho DRAFT hoặc REJECTED) */}
+            {isDraftOrRejected && (
+              <Popconfirm
+                title="Gửi duyệt tin tuyển dụng?"
+                description="Tin sẽ được chuyển tới Internal HR xét duyệt theo SLA."
+                onConfirm={() => handleSubmitJob(record.id)}
+                okText="Gửi duyệt"
+                cancelText="Hủy"
+                disabled={isMutating}
+              >
+                <Tooltip title="Gửi xét duyệt">
+                  <Button
+                    size="small"
+                    type="primary"
+                    icon={<SendOutlined />}
+                    loading={submitJobMutation.isPending}
+                    disabled={isMutating}
+                    style={{ borderRadius: 6, background: '#0284c7', borderColor: '#0284c7' }}
+                  />
+                </Tooltip>
+              </Popconfirm>
+            )}
+
+            {/* Tạm dừng (khi ACTIVE) */}
+            {statusStr === 'ACTIVE' && (
+              <Tooltip title="Tạm dừng nhận hồ sơ">
+                <Button
+                  size="small"
+                  icon={<PauseCircleOutlined />}
+                  onClick={() => handleOpenPauseModal(record)}
+                  disabled={isMutating}
+                  style={{
+                    borderRadius: 6,
+                    borderColor: '#f59e0b',
+                    color: '#f59e0b',
+                  }}
+                />
+              </Tooltip>
+            )}
+
+            {/* Mở lại (khi PAUSED) */}
+            {statusStr === 'PAUSED' && (
+              <Popconfirm
+                title="Mở lại tin tuyển dụng này?"
+                description="Hệ thống sẽ tiếp tục nhận hồ sơ từ ứng viên và headhunter."
+                onConfirm={() => handleResumeJob(record.id)}
+                okText="Mở lại"
+                cancelText="Hủy"
+                disabled={isMutating}
+              >
+                <Tooltip title="Kích hoạt mở lại tin">
+                  <Button
+                    size="small"
+                    icon={<PlayCircleOutlined />}
+                    disabled={isMutating}
+                    style={{
+                      borderRadius: 6,
+                      borderColor: '#10b981',
+                      color: '#10b981',
+                    }}
+                  />
+                </Tooltip>
+              </Popconfirm>
+            )}
+
+            {/* Đóng tin (khi chưa đóng) */}
+            {!isClosed && (
+              <Tooltip title="Đóng tin tuyển dụng">
+                <Button
+                  size="small"
+                  danger
+                  icon={<StopOutlined />}
+                  onClick={() => handleOpenCloseModal(record)}
+                  disabled={isMutating}
+                  style={{ borderRadius: 6 }}
+                />
+              </Tooltip>
+            )}
+          </Space>
+        );
+      },
     },
   ];
 
@@ -441,6 +644,32 @@ export const ClientJobsPage: React.FC = () => {
         ))}
       </Row>
 
+      {/* Warning banner for Rejected jobs */}
+      {rejectedJobs.length > 0 && (
+        <Alert
+          type="error"
+          showIcon
+          icon={<ExclamationCircleOutlined />}
+          style={{
+            marginBottom: 16,
+            borderRadius: 14,
+            border: '1px solid #ef4444',
+            background: 'rgba(239, 68, 68, 0.1)',
+          }}
+          message={
+            <span style={{ fontWeight: 700, color: '#fca5a5' }}>
+              Tin tuyển dụng bị từ chối phê duyệt ({rejectedJobs.length} tin)
+            </span>
+          }
+          description={
+            <div style={{ color: '#fecaca', fontSize: 13, marginTop: 4 }}>
+              Một hoặc nhiều tin tuyển dụng của bạn bị Internal HR từ chối duyệt. Nhấp nút biểu tượng bút chì{' '}
+              <strong>"Sửa"</strong> để xem lý do, điều chỉnh nội dung và bấm <strong>"Gửi duyệt lại"</strong>.
+            </div>
+          }
+        />
+      )}
+
       {jobs.length === 0 ? (
         <div style={{ borderRadius: 16, textAlign: 'center', padding: '60px 20px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(16px)', border: '1px solid rgba(51, 65, 85, 0.65)' }}>
           <FileTextOutlined style={{ fontSize: 48, color: '#475569', marginBottom: 16 }} />
@@ -498,10 +727,13 @@ export const ClientJobsPage: React.FC = () => {
                   allowClear
                   style={{ width: '100%', height: 38 }}
                   options={[
-                    { value: '', label: 'Tất cả trạng thái' },
-                    { value: JobStatus.ACTIVE, label: 'Đang tuyển (ACTIVE)' },
-                    { value: JobStatus.PAUSED, label: 'Tạm dừng (PAUSED)' },
-                    { value: JobStatus.CLOSED, label: 'Đã đóng (CLOSED)' },
+                    { value: '', label: 'Tất cả trạng thái (ALL)' },
+                    { value: 'DRAFT', label: 'Bản nháp (DRAFT)' },
+                    { value: 'PENDING_REVIEW', label: 'Chờ duyệt (PENDING_REVIEW)' },
+                    { value: 'ACTIVE', label: 'Đang tuyển (ACTIVE)' },
+                    { value: 'PAUSED', label: 'Tạm dừng (PAUSED)' },
+                    { value: 'CLOSED', label: 'Đã đóng (CLOSED)' },
+                    { value: 'REJECTED', label: 'Bị từ chối (REJECTED)' },
                   ]}
                 />
               </Col>
@@ -514,6 +746,7 @@ export const ClientJobsPage: React.FC = () => {
               columns={columns}
               dataSource={filteredJobs}
               rowKey="id"
+              loading={isLoadingJobs}
               scroll={{ x: 1300 }}
               pagination={{ pageSize: 10, showTotal: (total) => `Tổng số ${total} bài đăng` }}
               size="middle"
@@ -521,6 +754,50 @@ export const ClientJobsPage: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Reason Modal for Pause & Close */}
+      <Modal
+        title={
+          reasonModal.type === 'PAUSE' ? (
+            <span style={{ color: '#d97706', fontWeight: 700 }}>
+              <PauseCircleOutlined style={{ marginRight: 8 }} />
+              Tạm dừng tin tuyển dụng
+            </span>
+          ) : (
+            <span style={{ color: '#dc2626', fontWeight: 700 }}>
+              <StopOutlined style={{ marginRight: 8 }} />
+              Đóng tin tuyển dụng
+            </span>
+          )
+        }
+        open={reasonModal.isOpen}
+        onOk={handleConfirmReasonModal}
+        onCancel={() => setReasonModal({ isOpen: false, type: 'PAUSE', jobId: '', jobTitle: '' })}
+        confirmLoading={pauseJobMutation.isPending || closeJobMutation.isPending}
+        okText={reasonModal.type === 'PAUSE' ? 'Xác nhận tạm dừng' : 'Xác nhận đóng tin'}
+        cancelText="Hủy"
+        okButtonProps={{ danger: reasonModal.type === 'CLOSE' }}
+      >
+        <div style={{ marginTop: 12 }}>
+          <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
+            Vui lòng nhập lý do{' '}
+            {reasonModal.type === 'PAUSE' ? 'tạm dừng nhận hồ sơ' : 'đóng vĩnh viễn tin tuyển dụng'} cho vị trí:{' '}
+            <strong style={{ color: '#0f172a' }}>{reasonModal.jobTitle}</strong>
+          </p>
+          <Input.TextArea
+            rows={3}
+            value={actionReason}
+            onChange={(e) => setActionReason(e.target.value)}
+            placeholder={
+              reasonModal.type === 'PAUSE'
+                ? 'Ví dụ: Tạm dừng để sàng lọc hồ sơ vòng 1...'
+                : 'Ví dụ: Đã tuyển đủ nhân sự theo kế hoạch...'
+            }
+            maxLength={300}
+            showCount
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

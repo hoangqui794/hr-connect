@@ -113,6 +113,10 @@ export const router = createBrowserRouter([
         element: protectedPage('/client/jobs', <AppRoutes.ClientJobsPage />),
       },
       {
+        path: 'client/my-jobs',
+        element: protectedPage('/client/my-jobs', <AppRoutes.MyJobsPage />),
+      },
+      {
         path: 'client/jobs/create',
         element: protectedPage('/client/jobs/create', <AppRoutes.CreateJobWizard />),
       },
@@ -175,6 +179,10 @@ export const router = createBrowserRouter([
       {
         path: 'hr/jobs',
         element: protectedPage('/hr/jobs', <AppRoutes.JobBoard />),
+      },
+      {
+        path: 'hr/jobs/review',
+        element: protectedPage('/hr/jobs/review', <AppRoutes.JobReviewQueuePage />),
       },
       {
         path: 'hr/candidates',

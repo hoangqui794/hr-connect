@@ -28,7 +28,7 @@ import {
   EditOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useJobs } from '@/services/queries/useJobs';
+import { useJobs, useApproveJob, useRejectJob, useJobsForReview } from '@/services/queries/useJobs';
 import { ServiceType, JobStatus, SERVICE_TYPE_LABELS } from '@/types/job';
 import { useAuthStore } from '@/stores/authStore';
 import { useCandidateStore } from '@/stores/candidateStore';
@@ -75,6 +75,16 @@ export const JobListTable: React.FC = () => {
   const { role, user } = useAuthStore();
   const { isJobSaved, toggleSaveJob, applyJob, cvs } = useCandidateStore();
   const { data: jobs, isLoading } = useJobs();
+
+  // MF-01 Mutations
+  const approveJobMutation = useApproveJob();
+  const rejectJobMutation = useRejectJob();
+  const [rejectModal, setRejectModal] = useState<{ isOpen: boolean; jobId: string; jobTitle: string }>({
+    isOpen: false,
+    jobId: '',
+    jobTitle: '',
+  });
+  const [rejectReason, setRejectReason] = useState('');
 
   // Search & Filter state
   const [search, setSearch] = useState('');
@@ -271,27 +281,57 @@ export const JobListTable: React.FC = () => {
     });
   };
 
-  // HR: approve/reject job (covers both mock jobs AND client-submitted jobs)
-  const handleHRApprove = (jobId: string) => {
-    setJobStatusOverrides((prev) => ({ ...prev, [jobId]: JobStatus.ACTIVE }));
-    updateJobStatusInAllJobs(jobId, JobStatus.ACTIVE);
-    if (isClientPostedJob(jobId)) {
-      updateClientJobStatus(jobId, 'ACTIVE');
+  // HR: approve/reject job (wired to POST /api/v1/internal/jobs/{jobId}/approve and reject)
+  const handleHRApprove = async (jobId: string) => {
+    try {
+      await approveJobMutation.mutateAsync(jobId);
+      setJobStatusOverrides((prev) => ({ ...prev, [jobId]: JobStatus.ACTIVE }));
+      updateJobStatusInAllJobs(jobId, JobStatus.ACTIVE);
+      if (isClientPostedJob(jobId)) {
+        updateClientJobStatus(jobId, 'ACTIVE');
+      }
+      setClientJobRefreshKey((k) => k + 1);
+      setIsDetailModalOpen(false);
+      message.success('✅ Đã phê duyệt (POST /api/v1/internal/jobs/{jobId}/approve) — Tin tuyển dụng đã được kích hoạt trên sàn.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Phê duyệt thất bại.';
+      message.error(msg);
     }
-    setClientJobRefreshKey((k) => k + 1);
-    setIsDetailModalOpen(false);
-    message.success('✅ Đã phê duyệt — Tin tuyển dụng đã được kích hoạt trên sàn.');
+  };
+
+  const handleOpenRejectModal = (jobId: string, jobTitle?: string) => {
+    setRejectReason('');
+    setRejectModal({
+      isOpen: true,
+      jobId,
+      jobTitle: jobTitle || 'Tin tuyển dụng',
+    });
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectReason.trim()) {
+      message.warning('Vui lòng nhập lý do từ chối tin tuyển dụng.');
+      return;
+    }
+    try {
+      await rejectJobMutation.mutateAsync({ jobId: rejectModal.jobId, reason: rejectReason });
+      setJobStatusOverrides((prev) => ({ ...prev, [rejectModal.jobId]: JobStatus.CLOSED }));
+      updateJobStatusInAllJobs(rejectModal.jobId, 'REJECTED');
+      if (isClientPostedJob(rejectModal.jobId)) {
+        updateClientJobStatus(rejectModal.jobId, 'REJECTED');
+      }
+      setClientJobRefreshKey((k) => k + 1);
+      setRejectModal({ isOpen: false, jobId: '', jobTitle: '' });
+      setIsDetailModalOpen(false);
+      message.error('Đã từ chối (POST /api/v1/internal/jobs/{jobId}/reject) — Tin tuyển dụng đã bị từ chối.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Từ chối thất bại.';
+      message.error(msg);
+    }
   };
 
   const handleHRReject = (jobId: string) => {
-    setJobStatusOverrides((prev) => ({ ...prev, [jobId]: JobStatus.CLOSED }));
-    updateJobStatusInAllJobs(jobId, JobStatus.CLOSED);
-    if (isClientPostedJob(jobId)) {
-      updateClientJobStatus(jobId, 'REJECTED');
-    }
-    setClientJobRefreshKey((k) => k + 1);
-    setIsDetailModalOpen(false);
-    message.error('Đã từ chối (REJECTED) — Tin tuyển dụng bị đưa về trạng thái Đã đóng.');
+    handleOpenRejectModal(jobId);
   };
 
   const handleHRRequestEdit = () => {
@@ -692,29 +732,44 @@ export const JobListTable: React.FC = () => {
               </>
             )}
 
-            {/* HR/Admin: quick approve button for ANY PENDING jobs */}
+            {/* HR/Admin: quick approve & reject buttons for ANY PENDING jobs */}
             {isPendingJob && (role === UserRole.INTERNAL_HR || role === UserRole.ADMIN) && (
-              <Popconfirm
-                title="Phê duyệt tin tuyển dụng?"
-                description="Tin sẽ được kích hoạt và hiển thị trên sàn ngay lập tức."
-                onConfirm={() => handleHRApprove(record.id)}
-                okText="Phê duyệt"
-                cancelText="Hủy"
-              >
-                <Button
-                  type="primary"
-                  size="small"
-                  icon={<CheckCircleOutlined />}
-                  style={{
-                    borderRadius: 6,
-                    fontWeight: 700,
-                    background: 'linear-gradient(135deg, #059669, #047857)',
-                    border: 'none',
-                  }}
+              <>
+                <Popconfirm
+                  title="Phê duyệt tin tuyển dụng?"
+                  description="Tin sẽ được kích hoạt và hiển thị trên sàn ngay lập tức."
+                  onConfirm={() => handleHRApprove(record.id)}
+                  okText="Phê duyệt"
+                  cancelText="Hủy"
+                  disabled={approveJobMutation.isPending || rejectJobMutation.isPending}
                 >
-                  Duyệt
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<CheckCircleOutlined />}
+                    loading={approveJobMutation.isPending}
+                    disabled={approveJobMutation.isPending || rejectJobMutation.isPending}
+                    style={{
+                      borderRadius: 6,
+                      fontWeight: 700,
+                      background: 'linear-gradient(135deg, #059669, #047857)',
+                      border: 'none',
+                    }}
+                  >
+                    Duyệt
+                  </Button>
+                </Popconfirm>
+                <Button
+                  size="small"
+                  danger
+                  icon={<StopOutlined />}
+                  onClick={() => handleOpenRejectModal(record.id, record.title)}
+                  disabled={approveJobMutation.isPending || rejectJobMutation.isPending}
+                  style={{ borderRadius: 6 }}
+                >
+                  Từ chối
                 </Button>
-              </Popconfirm>
+              </>
             )}
           </Space>
         );
@@ -805,6 +860,24 @@ export const JobListTable: React.FC = () => {
               }}
             >
               Tạo tin tuyển dụng mới
+            </Button>
+          )}
+
+          {(role === UserRole.INTERNAL_HR || role === UserRole.ADMIN) && (
+            <Button
+              type="primary"
+              icon={<CheckCircleOutlined />}
+              onClick={() => navigate('/hr/jobs/review')}
+              style={{
+                borderRadius: 8,
+                fontWeight: 700,
+                height: 38,
+                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                border: 'none',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+              }}
+            >
+              Hàng đợi duyệt tin (Review Queue)
             </Button>
           )}
         </div>
@@ -1530,21 +1603,20 @@ export const JobListTable: React.FC = () => {
                         Yêu cầu chỉnh sửa
                       </Button>
                     </Popconfirm>
-                    <Popconfirm
-                      title="Từ chối tin tuyển dụng?"
-                      description="Tin sẽ bị đóng và doanh nghiệp sẽ nhận thông báo."
-                      onConfirm={() => handleHRReject(selectedJobForDetail.id)}
-                      okText="Từ chối"
-                      okButtonProps={{ danger: true }}
-                      cancelText="Hủy"
+                    <Button
+                      danger
+                      icon={<StopOutlined />}
+                      onClick={() => handleOpenRejectModal(selectedJobForDetail.id, selectedJobForDetail.title)}
+                      disabled={approveJobMutation.isPending || rejectJobMutation.isPending}
+                      style={{ borderRadius: 8 }}
                     >
-                      <Button danger icon={<StopOutlined />} style={{ borderRadius: 8 }}>
-                        Từ chối (REJECT)
-                      </Button>
-                    </Popconfirm>
+                      Từ chối (REJECT)
+                    </Button>
                     <Button
                       type="primary"
                       icon={<CheckCircleOutlined />}
+                      loading={approveJobMutation.isPending}
+                      disabled={approveJobMutation.isPending || rejectJobMutation.isPending}
                       onClick={() => handleHRApprove(selectedJobForDetail.id)}
                       style={{
                         borderRadius: 8,
@@ -1851,6 +1923,38 @@ export const JobListTable: React.FC = () => {
         jobId={referralJob?.id}
         jobTitle={referralJob?.title}
       />
+
+      {/* ─── Reject Reason Modal for HR (POST /api/v1/internal/jobs/{jobId}/reject) ─── */}
+      <Modal
+        title={
+          <span style={{ color: '#dc2626', fontWeight: 700 }}>
+            <StopOutlined style={{ marginRight: 8 }} />
+            Từ chối tin tuyển dụng
+          </span>
+        }
+        open={rejectModal.isOpen}
+        onOk={handleConfirmReject}
+        onCancel={() => setRejectModal({ isOpen: false, jobId: '', jobTitle: '' })}
+        confirmLoading={rejectJobMutation.isPending}
+        okText="Xác nhận từ chối"
+        cancelText="Hủy"
+        okButtonProps={{ danger: true }}
+      >
+        <div style={{ marginTop: 12 }}>
+          <p style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>
+            Nhập lý do từ chối để phản hồi cho doanh nghiệp đối với tin tuyển dụng{' '}
+            <strong style={{ color: '#0f172a' }}>{rejectModal.jobTitle}</strong>:
+          </p>
+          <Input.TextArea
+            rows={3}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Ví dụ: Thiếu tiêu chuẩn bắt buộc (Must-have tags), mức lương không phù hợp..."
+            maxLength={300}
+            showCount
+          />
+        </div>
+      </Modal>
     </div>
   );
 };
