@@ -22,6 +22,7 @@ import {
   UserOutlined,
   KeyOutlined,
   ReloadOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore, type UserProfile, getInitials } from '@/stores/authStore';
@@ -37,7 +38,6 @@ interface DemoAccount {
   title: string;
   roleTag: string;
   email: string;
-  defaultPassword?: string;
   workspaceName: string;
   targetRoute: string;
   icon: React.ReactNode;
@@ -45,13 +45,20 @@ interface DemoAccount {
   badgeBg: string;
 }
 
+/**
+ * Demo accounts seeded by HRConnect.Infrastructure/Persistence/Seed/DemoAccountSeeder.cs.
+ * They all share the seeder's InitialDemoPassword; keep both files in sync.
+ * The quick-login panel only renders in development or when VITE_SHOW_DEMO_ACCOUNTS=true.
+ */
+const DEMO_PASSWORD = '111111Aa@';
+const SHOW_DEMO_ACCOUNTS = import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO_ACCOUNTS === 'true';
+
 const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: UserRole.CLIENT,
     title: 'Doanh nghiệp tuyển dụng',
     roleTag: 'Client / Employer',
-    email: 'client@hrconnect.vn',
-    defaultPassword: 'Password@123',
+    email: 'client@gmail.com',
     workspaceName: 'HR Hiring Hub',
     targetRoute: '/client/dashboard',
     icon: <BankOutlined />,
@@ -62,8 +69,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     role: UserRole.AFFILIATE,
     title: 'Cộng tác viên tuyển dụng',
     roleTag: 'Affiliate Recruiter',
-    email: 'affiliate@hrconnect.vn',
-    defaultPassword: 'Password@123',
+    email: 'affiliate@gmail.com',
     workspaceName: 'OPR Referral Portal',
     targetRoute: '/affiliate/dashboard',
     icon: <CrownOutlined />,
@@ -74,8 +80,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     role: UserRole.INTERNAL_HR,
     title: 'Chuyên viên Nhân sự (HR)',
     roleTag: 'HR Operations',
-    email: 'hr@hrconnect.vn',
-    defaultPassword: 'Password@123',
+    email: 'internalhr@gmail.com',
     workspaceName: 'HR Backoffice',
     targetRoute: '/hr/dashboard',
     icon: <SafetyCertificateOutlined />,
@@ -86,13 +91,23 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     role: UserRole.CANDIDATE,
     title: 'Ứng viên tìm việc',
     roleTag: 'Talent & Candidate',
-    email: 'candidate@hrconnect.vn',
-    defaultPassword: 'Password@123',
+    email: 'candidate@gmail.com',
     workspaceName: 'Talent Profile',
     targetRoute: '/',
     icon: <UserOutlined />,
     accentColor: '#a78bfa', // purple-400
     badgeBg: 'rgba(167, 139, 250, 0.12)',
+  },
+  {
+    role: UserRole.ADMIN,
+    title: 'Quản trị viên nền tảng',
+    roleTag: 'Platform Admin',
+    email: 'admin@gmail.com',
+    workspaceName: 'Admin Console',
+    targetRoute: '/admin/dashboard',
+    icon: <SettingOutlined />,
+    accentColor: '#047857', // emerald-700, the Admin console primary
+    badgeBg: 'rgba(4, 120, 87, 0.12)',
   },
 ];
 
@@ -231,7 +246,7 @@ export const LoginPage: React.FC = () => {
     setErrorMessage(null);
     form.setFieldsValue({
       email: demo.email,
-      password: demo.defaultPassword || 'Password@123',
+      password: DEMO_PASSWORD,
     });
     form.submit();
   };
@@ -392,11 +407,11 @@ export const LoginPage: React.FC = () => {
               />
             </Form.Item>
 
-            <Form.Item
-              label={
-                <div className="w-full flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-700">Mật khẩu</span>
-                  <button
+            <div className="mb-2 flex items-center justify-between">
+              <label htmlFor="password" className="text-xs font-semibold text-slate-700">
+                Mật khẩu
+              </label>
+              <button
                     type="button"
                     onClick={() => {
                       setIsForgotModalOpen(true);
@@ -406,10 +421,10 @@ export const LoginPage: React.FC = () => {
                     }}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium bg-transparent border-none p-0 cursor-pointer"
                   >
-                    Quên mật khẩu?
-                  </button>
-                </div>
-              }
+                Quên mật khẩu?
+              </button>
+            </div>
+            <Form.Item
               name="password"
               rules={[{ required: true, message: 'Vui lòng nhập mật khẩu!' }]}
               style={{ marginBottom: 20 }}
@@ -438,14 +453,15 @@ export const LoginPage: React.FC = () => {
             </Button>
           </Form>
 
-          {/* Quick Fill Test Accounts */}
+          {/* Quick Fill Test Accounts (development only) */}
+          {SHOW_DEMO_ACCOUNTS && (
           <div className="mt-6 pt-5 border-t border-slate-100">
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
                 <ThunderboltOutlined className="text-amber-500" />
                 <span>Tài khoản thử nghiệm (Điền & Gọi API)</span>
               </div>
-              <span className="text-[10px] text-slate-400 font-mono">Password@123</span>
+              <span className="text-[10px] text-slate-500 font-mono">MK: {DEMO_PASSWORD}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
@@ -455,7 +471,8 @@ export const LoginPage: React.FC = () => {
                   type="button"
                   disabled={submitting}
                   onClick={() => handleQuickFill(demo)}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-blue-50/50 hover:border-blue-300 transition-all duration-150 text-left group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={demo.email}
+                  className={`${demo.role === UserRole.ADMIN ? 'col-span-2 ' : ''}flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-blue-50/50 hover:border-blue-300 transition-all duration-150 text-left group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition-transform group-hover:scale-105"
@@ -472,13 +489,14 @@ export const LoginPage: React.FC = () => {
                       {demo.title}
                     </div>
                     <div className="text-[10px] text-slate-500 truncate">
-                      {demo.roleTag}
+                      {demo.email}
                     </div>
                   </div>
                 </button>
               ))}
             </div>
           </div>
+          )}
 
           {/* Footer note */}
           <div className="mt-6 pt-4 border-t border-slate-100 text-center space-y-1.5">
