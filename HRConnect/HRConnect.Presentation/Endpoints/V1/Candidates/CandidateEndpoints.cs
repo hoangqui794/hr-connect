@@ -18,6 +18,7 @@ using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using HRConnect.Application.Features.Candidates.Queries.GetCvDownloadUrl;
 using HRConnect.Application.Features.Candidates.Identity.GetCandidateEmailIdentities;
 using HRConnect.Application.Features.Candidates.Identity.StartCandidateIdentityClaim;
+using HRConnect.Application.Features.Candidates.Identity.VerifyCandidateIdentityClaim;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using HRConnect.Presentation.Authorization;
@@ -301,6 +302,65 @@ public static class CandidateEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict)
+        .Produces(StatusCodes.Status429TooManyRequests);
+
+        app.MapPost("/api/v1/candidates/me/identity-claims/{claimId:guid}/verify", async (
+            Guid claimId,
+            [FromBody] VerifyCandidateIdentityClaimRequest request,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<VerifyCandidateIdentityClaimCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "candidate.identity.manage_own"))
+                return PermissionAuthorization.Forbidden("candidate.identity.manage_own");
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            var command = new VerifyCandidateIdentityClaimCommand(
+                userId.Value, claimId, request.Otp, request.ConcurrencyToken);
+            var validation = await validator.ValidateAsync(command, cancellationToken);
+            if (!validation.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu xác minh OTP không hợp lệ.",
+                    errors = validation.Errors.GroupBy(error => error.PropertyName)
+                        .ToDictionary(group => group.Key,
+                            group => group.Select(error => error.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                return Results.Ok(await sender.Send(command, cancellationToken));
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new
+                {
+                    success = false,
+                    message = ex.Message,
+                    errorCode = ex.ErrorCode
+                });
+            }
+        })
+        .WithTags("Candidate Identity")
+        .RequireAuthorization()
+        .RequireRateLimiting("candidate-identity")
+        .WithName("VerifyCandidateIdentityClaim")
+        .WithSummary("Candidate xác minh OTP để liên kết email và hồ sơ cũ")
+        .WithDescription("Yêu cầu permission candidate.identity.manage_own. OTP đúng sẽ thêm email phụ đã xác minh. Hồ sơ cũ chỉ được gắn tự động khi hồ sơ Candidate hiện tại còn trống; mọi xung đột được chuyển sang chờ Admin xem xét.")
+        .Produces<VerifyCandidateIdentityClaimResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status409Conflict)
         .Produces(StatusCodes.Status429TooManyRequests);
 

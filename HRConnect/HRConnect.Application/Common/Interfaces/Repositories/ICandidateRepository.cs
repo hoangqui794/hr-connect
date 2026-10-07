@@ -38,4 +38,13 @@ public interface ICandidateRepository
 
     /// <summary>Atomically claim an unlinked candidate after ownership of its email has been verified.</summary>
     Task<bool> TryLinkByVerifiedEmailAsync(Guid candidateId, string normalizedEmail, Guid userId, CancellationToken cancellationToken = default);
+
+    Task<bool> HasIdentityBusinessDataAsync(Guid candidateId, CancellationToken cancellationToken = default);
+
+    Task<bool> TrySwapIdentityCandidateAsync(
+        Guid placeholderCandidateId,
+        Guid targetCandidateId,
+        Guid userId,
+        string normalizedEmail,
+        CancellationToken cancellationToken = default);
 }
