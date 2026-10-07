@@ -245,37 +245,47 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
     { key: '/hr/offers', label: 'Quản lý Offer & Onboarding', icon: 'SolutionOutlined' },
     { key: '/hr/warranty-tracking', label: 'Theo dõi Bảo hành & Milestone', icon: 'SafetyCertificateOutlined' },
   ],
+  // Admin console ("Slate Command"): pages map to backend endpoints; groups marked
+  // "Chưa có API" open an explicit empty state instead of mock numbers.
   [UserRole.ADMIN]: [
     {
-      label: 'Bảng điều khiển',
+      label: 'Tổng quan',
       type: 'group',
       children: [
-        { key: '/admin/dashboard', label: 'Bảng điều khiển', icon: 'DashboardOutlined' },
+        { key: '/admin/dashboard', label: 'Việc cần xử lý', icon: 'DashboardOutlined' },
       ],
     },
     {
-      label: 'Quản lý tài khoản & Đối tác',
+      label: 'Vận hành',
       type: 'group',
       children: [
-        { key: '/admin/users', label: 'Quản lý người dùng & phân quyền', icon: 'TeamOutlined' },
-        { key: '/admin/companies', label: 'Doanh nghiệp tuyển dụng', icon: 'BankOutlined' },
-        { key: '/admin/affiliates', label: 'Mạng lưới CTV & Headhunter', icon: 'ApartmentOutlined' },
+        { key: '/admin/approvals', label: 'Phê duyệt tài khoản', icon: 'SafetyCertificateOutlined' },
+        { key: '/admin/jobs', label: 'Duyệt tin tuyển dụng', icon: 'FileTextOutlined' },
+        { key: '/admin/users', label: 'Người dùng', icon: 'TeamOutlined' },
       ],
     },
     {
-      label: 'Vận hành & Tranh chấp',
+      label: 'Cấu hình',
       type: 'group',
       children: [
-        { key: '/admin/disputes', label: 'Xử lý tranh chấp hồ sơ', icon: 'SafetyCertificateOutlined' },
-        { key: '/admin/payouts', label: 'Duyệt chi trả hoa hồng', icon: 'DollarOutlined' },
+        { key: '/admin/service-types', label: 'Loại dịch vụ', icon: 'AppstoreOutlined' },
+        { key: '/admin/commission-rules', label: 'Quy tắc hoa hồng', icon: 'DollarOutlined' },
       ],
     },
     {
-      label: 'Cấu hình hệ thống & Audit',
+      label: 'Giám sát',
       type: 'group',
       children: [
-        { key: '/admin/settings', label: 'Cấu hình hệ thống & hoa hồng', icon: 'SettingOutlined' },
-        { key: '/admin/audit-trail', label: 'Nhật ký kiểm toán hệ thống', icon: 'AuditOutlined' },
+        { key: '/admin/audit-trail', label: 'Nhật ký hệ thống', icon: 'AuditOutlined' },
+      ],
+    },
+    {
+      label: 'Chưa có API',
+      type: 'group',
+      children: [
+        { key: '/admin/disputes', label: 'Tranh chấp', icon: 'SolutionOutlined' },
+        { key: '/admin/payouts', label: 'Chi trả hoa hồng', icon: 'BankOutlined' },
+        { key: '/admin/settings', label: 'Cài đặt hệ thống', icon: 'SettingOutlined' },
       ],
     },
   ],

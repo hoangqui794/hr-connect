@@ -125,6 +125,38 @@ const HRWarrantyTrackingPage = React.lazy(() =>
 const ClientLayout = React.lazy(() =>
   import('@/components/layout/ClientLayout').then((m: any) => ({ default: m.default || m.ClientLayout }))
 );
+// ── Admin console pages backed by the real API (features/admin-console) ──────
+const ConsoleOverviewPage = React.lazy(() =>
+  import('@/features/admin-console/AdminOverviewPage').then((m) => ({ default: m.AdminOverviewPage }))
+);
+const ConsoleApprovalsPage = React.lazy(() =>
+  import('@/features/admin-console/AdminApprovalsPage').then((m) => ({ default: m.AdminApprovalsPage }))
+);
+const ConsoleUsersPage = React.lazy(() =>
+  import('@/features/admin-console/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage }))
+);
+const ConsoleServiceTypesPage = React.lazy(() =>
+  import('@/features/admin-console/AdminServiceTypesPage').then((m) => ({ default: m.AdminServiceTypesPage }))
+);
+const ConsoleCommissionRulesPage = React.lazy(() =>
+  import('@/features/admin-console/AdminCommissionRulesPage').then((m) => ({ default: m.AdminCommissionRulesPage }))
+);
+const ConsoleAuditLogPage = React.lazy(() =>
+  import('@/features/admin-console/AdminAuditLogPage').then((m) => ({ default: m.AdminAuditLogPage }))
+);
+const ConsoleProfilePage = React.lazy(() =>
+  import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminProfilePage }))
+);
+const ConsoleDisputesPlaceholder = React.lazy(() =>
+  import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminDisputesPlaceholder }))
+);
+const ConsolePayoutsPlaceholder = React.lazy(() =>
+  import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminPayoutsPlaceholder }))
+);
+const ConsoleSettingsPlaceholder = React.lazy(() =>
+  import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminSettingsPlaceholder }))
+);
+
 // ── MF-01 pages backed by the real API (features/jobs-mf01) ──────────────────
 const Mf01ClientJobsListPage = React.lazy(() =>
   import('@/features/jobs-mf01/ClientJobsListPage').then((m) => ({ default: m.ClientJobsListPage }))
@@ -308,6 +340,10 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/admin/settings': [UserRole.ADMIN],
   '/admin/audit-trail': [UserRole.ADMIN],
   '/admin/jobs': [UserRole.ADMIN],
+  '/admin/approvals': [UserRole.ADMIN],
+  '/admin/service-types': [UserRole.ADMIN],
+  '/admin/commission-rules': [UserRole.ADMIN],
+  '/admin/profile': [UserRole.ADMIN],
 };
 
 /**
@@ -361,4 +397,14 @@ export const AppRoutes = {
   Mf01InAppJobDiscoveryPage,
   Mf01PublicJobSearchPage,
   Mf01PublicJobDetailPage,
+  ConsoleOverviewPage,
+  ConsoleApprovalsPage,
+  ConsoleUsersPage,
+  ConsoleServiceTypesPage,
+  ConsoleCommissionRulesPage,
+  ConsoleAuditLogPage,
+  ConsoleProfilePage,
+  ConsoleDisputesPlaceholder,
+  ConsolePayoutsPlaceholder,
+  ConsoleSettingsPlaceholder,
 } as const;

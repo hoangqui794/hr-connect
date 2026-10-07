@@ -157,6 +157,29 @@ body {
   font-weight: 600 !important;
 }
 
+/* ─── Admin console sidebar ("Slate Command") ──────────────
+   Scoped to .admin-console-sider (Admin role only). Higher specificity than the
+   light-sidebar rules above. Contrast: #CBD5E1 on #0F172A 12.0:1, white on #047857 5.5:1. */
+.admin-console-sider.ant-layout-sider {
+  background: #0f172a !important;
+  border-right: 1px solid rgba(148, 163, 184, 0.16) !important;
+}
+
+.admin-console-sider .ant-menu .ant-menu-item {
+  color: #cbd5e1 !important;
+}
+
+.admin-console-sider .ant-menu .ant-menu-item:hover {
+  background: rgba(148, 163, 184, 0.14) !important;
+  color: #ffffff !important;
+}
+
+.admin-console-sider .ant-menu .ant-menu-item-selected {
+  background: #047857 !important;
+  color: #ffffff !important;
+  border-left: 2px solid #6ee7b7 !important;
+}
+
 /* ─── High-End Modern Light SaaS Surfaces ────────────────── */
 .b2b-card {
   background: rgba(255, 255, 255, 0.85);

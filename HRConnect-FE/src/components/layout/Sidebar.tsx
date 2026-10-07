@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout, Menu, Tooltip, Avatar } from 'antd';
+import { Layout, Menu, Tooltip, Avatar, ConfigProvider } from 'antd';
 import {
   DashboardOutlined, FileTextOutlined, TeamOutlined, RobotOutlined,
   DollarOutlined, UserAddOutlined, AppstoreOutlined, SearchOutlined,
@@ -11,6 +11,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { SIDEBAR_MENU_ITEMS, SidebarMenuItem } from '@/constants/rbac';
+import { UserRole } from '@/types/roles';
 
 const { Sider } = Layout;
 
@@ -50,6 +51,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
 
   const menuItems = SIDEBAR_MENU_ITEMS[role] ?? [];
 
+  // Admin uses the navy "Slate Command" sidebar so the control area is never mistaken for
+  // a customer area; every other role keeps the light sidebar. Pairs meet WCAG AA.
+  const isAdminConsole = role === UserRole.ADMIN;
+  const pal = isAdminConsole
+    ? { bg: '#0F172A', border: 'rgba(148, 163, 184, 0.16)', title: '#F8FAFC', group: '#94A3B8', name: '#F8FAFC', email: '#94A3B8', trigger: '#94A3B8', triggerHover: '#F8FAFC', logo: '#047857' }
+    : { bg: '#ffffff', border: 'rgba(226, 232, 240, 0.85)', title: '#0f172a', group: '#94a3b8', name: '#0f172a', email: '#64748b', trigger: '#94a3b8', triggerHover: '#0f172a', logo: 'linear-gradient(135deg, #2563eb, #3b82f6)' };
+
   const transformMenuItem = (item: SidebarMenuItem): any => {
     if (item.type === 'group') {
       return {
@@ -61,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
               fontSize: 11,
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
-              color: '#94a3b8',
+              color: pal.group,
               fontWeight: 700,
             }}
           >
@@ -91,10 +99,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
       width={240}
       collapsedWidth={64}
       trigger={null}
-      theme="light"
+      theme={isAdminConsole ? 'dark' : 'light'}
+      className={isAdminConsole ? 'admin-console-sider' : undefined}
       style={{
-        background: '#ffffff',
-        borderRight: '1px solid rgba(226, 232, 240, 0.85)',
+        background: pal.bg,
+        borderRight: `1px solid ${pal.border}`,
       }}
     >
       {/* Logo */}
@@ -107,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'flex-start',
           padding: collapsed ? 0 : '0 20px',
-          borderBottom: '1px solid rgba(226, 232, 240, 0.85)',
+          borderBottom: `1px solid ${pal.border}`,
           gap: 10,
           transition: 'all 0.3s',
           cursor: 'pointer',
@@ -119,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
             width: 32,
             height: 32,
             borderRadius: 8,
-            background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+            background: pal.logo,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -136,7 +145,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
         {!collapsed && (
           <span
             style={{
-              color: '#0f172a',
+              color: pal.title,
               fontWeight: 700,
               fontSize: 16,
               letterSpacing: '-0.3px',
@@ -150,19 +159,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
 
       {/* Navigation Menu */}
       <div style={{ padding: '8px 0', flex: 1 }}>
-        <Menu
-          theme="light"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={antdMenuItems}
-          style={{ background: 'transparent', border: 'none' }}
-        />
+        <ConfigProvider
+          theme={{
+            components: {
+              Menu: {
+                darkItemBg: '#0F172A',
+                darkItemColor: '#CBD5E1',
+                darkItemHoverColor: '#FFFFFF',
+                darkItemHoverBg: 'rgba(148, 163, 184, 0.12)',
+                darkItemSelectedBg: '#047857',
+                darkItemSelectedColor: '#FFFFFF',
+                darkGroupTitleColor: '#94A3B8',
+              },
+            },
+          }}
+        >
+          <Menu
+            theme={isAdminConsole ? 'dark' : 'light'}
+            mode="inline"
+            selectedKeys={[location.pathname]}
+            items={antdMenuItems}
+            style={{ background: 'transparent', border: 'none' }}
+          />
+        </ConfigProvider>
       </div>
 
       {/* User Profile Footer */}
       <div
         style={{
-          borderTop: '1px solid rgba(226, 232, 240, 0.85)',
+          borderTop: `1px solid ${pal.border}`,
           padding: collapsed ? '12px 0' : '12px 16px',
           display: 'flex',
           alignItems: 'center',
@@ -174,7 +199,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
           <Avatar
             size={32}
             style={{
-              background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+              background: pal.logo,
               fontSize: 12,
               fontWeight: 700,
               cursor: 'pointer',
@@ -188,7 +213,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
           <div style={{ overflow: 'hidden' }}>
             <div
               style={{
-                color: '#0f172a',
+                color: pal.name,
                 fontWeight: 600,
                 fontSize: 13,
                 whiteSpace: 'nowrap',
@@ -200,7 +225,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
             </div>
             <div
               style={{
-                color: '#64748b',
+                color: pal.email,
                 fontSize: 11,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -221,12 +246,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
           display: 'flex',
           justifyContent: collapsed ? 'center' : 'flex-end',
           cursor: 'pointer',
-          color: '#94a3b8',
-          borderTop: '1px solid rgba(226, 232, 240, 0.85)',
+          color: pal.trigger,
+          borderTop: `1px solid ${pal.border}`,
           transition: 'color 0.2s',
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = '#0f172a')}
-        onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+        onMouseEnter={(e) => (e.currentTarget.style.color = pal.triggerHover)}
+        onMouseLeave={(e) => (e.currentTarget.style.color = pal.trigger)}
       >
         {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
       </div>
