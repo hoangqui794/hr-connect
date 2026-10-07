@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
-import { Row, Col, Typography, Button, Table, Empty } from 'antd';
+import React, { useMemo, useState } from 'react';
+import { Row, Col, Typography, Button, Table, Empty, Tag } from 'antd';
 import {
   FileTextOutlined, TeamOutlined, TrophyOutlined, ClockCircleOutlined,
-  PlusCircleOutlined, RightOutlined,
+  PlusCircleOutlined, RightOutlined, ShopOutlined, CheckCircleOutlined, SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -15,11 +15,16 @@ import { ScoreTierTag } from '@/components/common/ScoreTierTag';
 import { CandidateHighlightPills } from '@/components/common/CandidateHighlightPills';
 import { PageHeaderB2B } from '@/components/common/PageHeaderB2B';
 import { FintechMetricCard } from '@/components/common/FintechMetricCard';
+import { useCompanyProfile } from '@/services/queries/useProfiles';
+import { CompanyProfileModal } from '@/features/client/CompanyProfileModal';
 
 export const ClientDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, role } = useAuthStore();
   const applications = useApplicationStore((s) => s.applications);
+
+  const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+  const { data: company } = useCompanyProfile();
 
   // Dynamic jobs for this client (matches email, company, or demo accounts)
   const clientJobs = useMemo(() => {
@@ -36,6 +41,8 @@ export const ClientDashboardPage: React.FC = () => {
   const totalApplicants = clientJobs.reduce((acc, j) => acc + (j.applicationCount || 0), clientApps.length);
   const totalShortlisted = clientJobs.reduce((acc, j) => acc + (j.shortlistedCount || 0), 0);
 
+  const isVerified = company?.verificationStatus === 'VERIFIED';
+
   return (
     <div className="space-y-6">
       {/* ─── Minimalist B2B Header ────────────────────────────────────────── */}
@@ -44,11 +51,20 @@ export const ClientDashboardPage: React.FC = () => {
         badge={
           <div className="flex items-center gap-2">
             <RoleBadge role={role || UserRole.CLIENT} size="small" />
-            {user?.company && (
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                🏢 {user.company}
-              </span>
-            )}
+            <span
+              className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors"
+              onClick={() => setIsCompanyModalOpen(true)}
+              title="Xem và chỉnh sửa hồ sơ doanh nghiệp"
+            >
+              🏢 {company?.companyName || user?.company || 'Doanh nghiệp'}
+            </span>
+            <Tag
+              color={isVerified ? 'success' : 'warning'}
+              icon={isVerified ? <CheckCircleOutlined /> : <SafetyCertificateOutlined />}
+              style={{ borderRadius: 6, margin: 0, fontWeight: 600, fontSize: 11 }}
+            >
+              {isVerified ? 'Đã xác thực' : 'Chờ xác thực'}
+            </Tag>
           </div>
         }
         subtitle={
@@ -72,6 +88,13 @@ export const ClientDashboardPage: React.FC = () => {
               className="h-10 px-4 rounded-xl font-semibold bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm"
             >
               Quản lý việc làm ({clientJobs.length})
+            </Button>
+            <Button
+              icon={<ShopOutlined />}
+              onClick={() => setIsCompanyModalOpen(true)}
+              className="h-10 px-4 rounded-xl font-semibold bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm"
+            >
+              Hồ sơ công ty
             </Button>
           </>
         }
@@ -290,6 +313,12 @@ export const ClientDashboardPage: React.FC = () => {
           </div>
         </Col>
       </Row>
+
+      {/* Company Profile Modal */}
+      <CompanyProfileModal
+        open={isCompanyModalOpen}
+        onClose={() => setIsCompanyModalOpen(false)}
+      />
     </div>
   );
 };

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   Table, Card, Typography, Space, Tag, Button, Modal,
-  Row, Col, Badge, Avatar, message, Popconfirm, Descriptions, Statistic,
+  Row, Col, Badge, Avatar, message, Popconfirm, Descriptions, Statistic, Alert,
 } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import {
   ApartmentOutlined, CheckCircleOutlined,
   StopOutlined, CrownOutlined, IdcardOutlined,
@@ -183,6 +184,7 @@ function loadAffiliatesFromStorage(): AffiliateRecord[] {
 }
 
 export const AdminAffiliatesPage: React.FC = () => {
+  const navigate = useNavigate();
   const [affiliates, setAffiliates] = useState<AffiliateRecord[]>(loadAffiliatesFromStorage);
   const [selectedAffiliate, setSelectedAffiliate] = useState<AffiliateRecord | null>(null);
   const [kycModalOpen, setKycModalOpen] = useState(false);
@@ -386,6 +388,29 @@ export const AdminAffiliatesPage: React.FC = () => {
           Giám sát hiệu suất tuyển dụng, xét duyệt hồ sơ định danh đối tác (KYC) và kiểm tra chất lượng bảo hành ứng viên.
         </Text>
       </div>
+
+      {/* Approvals Hub Link Banner */}
+      <Alert
+        type="info"
+        showIcon
+        message={<span style={{ fontWeight: 600 }}>Trung tâm Phê duyệt Tập trung (Admin Approvals Hub)</span>}
+        description={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+            <span>
+              Xem và phê duyệt đơn đăng ký đối tác tuyển dụng (Affiliate Recruiter Applications) với quy trình đối soát KYC, MST và phản hồi lý do từ chối chính xác.
+            </span>
+            <Button
+              type="primary"
+              size="small"
+              onClick={() => navigate('/admin/approvals')}
+              style={{ background: '#2563eb', borderRadius: 6, fontWeight: 600 }}
+            >
+              Mở Approvals Hub &rarr;
+            </Button>
+          </div>
+        }
+        style={{ marginBottom: 20, borderRadius: 12, border: '1px solid #bfdbfe' }}
+      />
 
       {/* KPI Stats */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>

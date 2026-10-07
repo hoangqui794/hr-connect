@@ -36,6 +36,7 @@ import { useApplicationStore } from '@/stores/applicationStore';
 import type { AffiliateCommissionDTO, CommissionPayoutStatus } from '@/types/affiliate';
 import { FintechMetricCard } from '@/components/common/FintechMetricCard';
 import { PageHeaderB2B } from '@/components/common/PageHeaderB2B';
+import { AffiliateProfileSettingsModal } from '@/features/affiliate/AffiliateProfileSettingsModal';
 
 const { Title, Text } = Typography;
 
@@ -114,6 +115,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const rawApplications = useApplicationStore((state) => state.applications);
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
 
   const userEmail = (user?.email || '').toLowerCase().trim();
   const isDemoAffiliate = user?.id === 'aff-001' || userEmail.includes('david.tran') || userEmail.includes('affiliate');
@@ -850,6 +852,16 @@ export const AffiliateCommissionsPage: React.FC = () => {
           </span>
         }
         subtitle="Giám sát dòng tiền hoa hồng theo các mốc 60 ngày bảo hành thử việc (COD), đối soát lệnh chi trả và xuất chứng từ UNC ngân hàng."
+        actions={
+          <Button
+            type="primary"
+            icon={<BankOutlined />}
+            onClick={() => setIsBankModalOpen(true)}
+            className="h-10 px-4 rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-sm"
+          >
+            Cài đặt tài khoản ngân hàng
+          </Button>
+        }
       />
 
       {/* ─── FINANCIAL LOGIC SEPARATION & GUIDANCE ALERT (REQUIREMENT 2) ─────── */}
@@ -1117,6 +1129,13 @@ export const AffiliateCommissionsPage: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      {/* Affiliate Bank Account Settings Modal */}
+      <AffiliateProfileSettingsModal
+        open={isBankModalOpen}
+        onClose={() => setIsBankModalOpen(false)}
+        defaultTab="bank"
+      />
     </div>
   );
 };

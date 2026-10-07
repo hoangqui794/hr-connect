@@ -166,6 +166,16 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     redirectTo: '/dashboard',
   },
   {
+    path: '/admin/approvals',
+    allowedRoles: [UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/admin/service-types',
+    allowedRoles: [UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
     path: '/admin/jobs',
     allowedRoles: [UserRole.ADMIN],
     redirectTo: '/dashboard',
@@ -268,6 +278,7 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
       label: 'Quản lý tài khoản & Đối tác',
       type: 'group',
       children: [
+        { key: '/admin/approvals', label: 'Trung tâm phê duyệt', icon: 'SafetyCertificateOutlined' },
         { key: '/admin/users', label: 'Quản lý người dùng & phân quyền', icon: 'TeamOutlined' },
         { key: '/admin/companies', label: 'Doanh nghiệp tuyển dụng', icon: 'BankOutlined' },
         { key: '/admin/affiliates', label: 'Mạng lưới CTV & Headhunter', icon: 'ApartmentOutlined' },
@@ -285,6 +296,7 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
       label: 'Cấu hình hệ thống & Audit',
       type: 'group',
       children: [
+        { key: '/admin/service-types', label: 'Loại dịch vụ tuyển dụng', icon: 'AppstoreOutlined' },
         { key: '/admin/settings', label: 'Cấu hình hệ thống & hoa hồng', icon: 'SettingOutlined' },
         { key: '/admin/audit-trail', label: 'Nhật ký kiểm toán hệ thống', icon: 'AuditOutlined' },
       ],

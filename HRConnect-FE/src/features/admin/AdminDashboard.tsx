@@ -7,11 +7,12 @@ import {
   SettingOutlined, ExclamationCircleOutlined, CheckCircleOutlined,
   DollarOutlined, ClockCircleOutlined, TeamOutlined,
   BankOutlined, ApartmentOutlined, AuditOutlined, ArrowRightOutlined,
-  SafetyCertificateOutlined,
+  SafetyCertificateOutlined, AppstoreOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { KNOWN_DUPLICATES } from '@/services/mockData';
 import { useCommissions } from '@/services/queries/useFinancials';
+import { useAdminApprovals } from '@/services/queries/useAdminApprovals';
 import { PayoutStatusBadge } from '@/components/common/StatusBadge';
 import { PayoutStatus } from '@/types/affiliate';
 import type { Commission } from '@/types/affiliate';
@@ -30,6 +31,9 @@ export const AdminDashboard: React.FC = () => {
   const disputes = isDemoAdmin ? KNOWN_DUPLICATES : [];
 
   const { data: commissions } = useCommissions();
+  const { data: approvalsData } = useAdminApprovals({ status: 'PENDING', pageSize: 20 });
+  const pendingApprovals = approvalsData?.data?.items ?? [];
+
   const [resolveOpen, setResolveOpen] = useState(false);
   const [resolution, setResolution] = useState('');
 
@@ -219,39 +223,59 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         <Row gutter={[16, 16]}>
-          <Col xs={24} md={12} lg={6}>
+          <Col xs={24} md={12} lg={4}>
             <div
-              onClick={() => navigate('/admin/users')}
-              className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:border-slate-300 hover:bg-white transition-all duration-150 cursor-pointer group"
+              onClick={() => navigate('/admin/approvals')}
+              className="p-4 rounded-xl bg-blue-50/50 border border-blue-200/80 hover:border-blue-300 transition-all duration-150 cursor-pointer group"
             >
               <div className="flex items-center gap-2 mb-2">
-                <TeamOutlined className="text-blue-600 text-base" />
-                <span className="font-bold text-sm text-slate-900 group-hover:text-blue-600">
-                  Người dùng & Phân quyền
+                <SafetyCertificateOutlined className="text-blue-600 text-base" />
+                <span className="font-bold text-sm text-blue-900 group-hover:text-blue-700">
+                  Trung tâm Phê duyệt
                 </span>
               </div>
               <p className="text-xs text-slate-600 mb-3 leading-relaxed">
-                Quản lý danh sách tài khoản, khóa/mở khóa tài khoản và phân quyền vai trò.
+                Thẩm định hồ sơ CTV & xác thực doanh nghiệp tập trung.
               </p>
               <div className="text-xs text-blue-600 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                Truy cập ngay <ArrowRightOutlined />
+                Xem {pendingApprovals.length} đơn chờ <ArrowRightOutlined />
               </div>
             </div>
           </Col>
 
-          <Col xs={24} md={12} lg={6}>
+          <Col xs={24} md={12} lg={4}>
+            <div
+              onClick={() => navigate('/admin/service-types')}
+              className="p-4 rounded-xl bg-purple-50/50 border border-purple-200/80 hover:border-purple-300 transition-all duration-150 cursor-pointer group"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <AppstoreOutlined className="text-purple-600 text-base" />
+                <span className="font-bold text-sm text-purple-900 group-hover:text-purple-700">
+                  Loại Dịch Vụ
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+                Cấu hình gói COD, CV Sourcing và Đăng tin ứng tuyển mở.
+              </p>
+              <div className="text-xs text-purple-600 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                Quản lý gói <ArrowRightOutlined />
+              </div>
+            </div>
+          </Col>
+
+          <Col xs={24} md={12} lg={4}>
             <div
               onClick={() => navigate('/admin/disputes')}
               className="p-4 rounded-xl bg-rose-50/50 border border-rose-200/80 hover:border-rose-300 transition-all duration-150 cursor-pointer group"
             >
               <div className="flex items-center gap-2 mb-2">
-                <SafetyCertificateOutlined className="text-rose-600 text-base" />
+                <ExclamationCircleOutlined className="text-rose-600 text-base" />
                 <span className="font-bold text-sm text-rose-900 group-hover:text-rose-700">
-                  Xử lý Tranh chấp Hồ sơ
+                  Xử lý Tranh chấp
                 </span>
               </div>
               <p className="text-xs text-slate-600 mb-3 leading-relaxed">
-                Giải quyết tranh chấp trùng lặp ứng viên dựa trên First-Submission Timestamp.
+                Giải quyết tranh chấp trùng lặp dựa trên First-Submission.
               </p>
               <div className="text-xs text-rose-600 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                 Xem {disputes.length} vụ việc <ArrowRightOutlined />
@@ -259,7 +283,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </Col>
 
-          <Col xs={24} md={12} lg={6}>
+          <Col xs={24} md={12} lg={4}>
             <div
               onClick={() => navigate('/admin/payouts')}
               className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200/80 hover:border-emerald-300 transition-all duration-150 cursor-pointer group"
@@ -267,11 +291,11 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center gap-2 mb-2">
                 <DollarOutlined className="text-emerald-600 text-base" />
                 <span className="font-bold text-sm text-emerald-900 group-hover:text-emerald-700">
-                  Duyệt Chi trả Payout
+                  Duyệt Payout
                 </span>
               </div>
               <p className="text-xs text-slate-600 mb-3 leading-relaxed">
-                Giám sát doanh thu sàn và duyệt lệnh chi trả hoa hồng hết 60 ngày bảo hành.
+                Giám sát doanh thu sàn và duyệt lệnh chi trả hoa hồng.
               </p>
               <div className="text-xs text-emerald-600 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                 Duyệt Payout <ArrowRightOutlined />
@@ -279,7 +303,27 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </Col>
 
-          <Col xs={24} md={12} lg={6}>
+          <Col xs={24} md={12} lg={4}>
+            <div
+              onClick={() => navigate('/admin/users')}
+              className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:border-slate-300 hover:bg-white transition-all duration-150 cursor-pointer group"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <TeamOutlined className="text-blue-600 text-base" />
+                <span className="font-bold text-sm text-slate-900 group-hover:text-blue-600">
+                  Người dùng & Quyền
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+                Quản lý tài khoản, khóa/mở khóa tài khoản và phân quyền.
+              </p>
+              <div className="text-xs text-blue-600 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                Truy cập ngay <ArrowRightOutlined />
+              </div>
+            </div>
+          </Col>
+
+          <Col xs={24} md={12} lg={4}>
             <div
               onClick={() => navigate('/admin/audit-trail')}
               className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-200/80 hover:border-indigo-300 transition-all duration-150 cursor-pointer group"
@@ -287,11 +331,11 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center gap-2 mb-2">
                 <AuditOutlined className="text-indigo-600 text-base" />
                 <span className="font-bold text-sm text-indigo-900 group-hover:text-indigo-700">
-                  Nhật ký Kiểm toán
+                  Nhật ký Audit
                 </span>
               </div>
               <p className="text-xs text-slate-600 mb-3 leading-relaxed">
-                Lưu vết kiểm tra bất biến đối soát toàn bộ hành động bảo mật và tài chính.
+                Lưu vết kiểm tra bất biến đối soát toàn bộ hành động bảo mật.
               </p>
               <div className="text-xs text-indigo-600 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                 Xem Audit Trail <ArrowRightOutlined />
@@ -301,10 +345,112 @@ export const AdminDashboard: React.FC = () => {
         </Row>
       </div>
 
-      {/* ─── Operational Tabs: Disputes & Payouts ──────────────────── */}
+      {/* ─── Operational Tabs: Approvals, Disputes & Payouts ──────────────────── */}
       <Tabs
-        defaultActiveKey="disputes"
+        defaultActiveKey="approvals"
         items={[
+          {
+            key: 'approvals',
+            label: (
+              <Space>
+                <SafetyCertificateOutlined className="text-blue-600" />
+                <span className="text-slate-800 font-semibold">Phê duyệt đối tác & Doanh nghiệp</span>
+                <Badge count={pendingApprovals.length} style={{ background: '#2563eb' }} />
+              </Space>
+            ),
+            children: (
+              <div className="b2b-card p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 m-0">
+                      Hàng đợi thẩm định hồ sơ chờ xử lý (Pending Verification Queue)
+                    </h4>
+                    <p className="text-xs text-slate-500 m-0">
+                      Hiển thị danh sách các đơn đăng ký CTV và doanh nghiệp nộp gần đây cần kiểm định pháp lý.
+                    </p>
+                  </div>
+                  <Button
+                    type="primary"
+                    size="small"
+                    onClick={() => navigate('/admin/approvals')}
+                    className="bg-blue-600 hover:bg-blue-700 text-xs rounded-lg font-semibold"
+                  >
+                    Xem tất cả trong Trung tâm Phê duyệt &rarr;
+                  </Button>
+                </div>
+                {pendingApprovals.length === 0 ? (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={<span className="text-xs text-slate-500">Tất cả hồ sơ đã được xử lý xong.</span>}
+                    className="py-6"
+                  />
+                ) : (
+                  <Table
+                    dataSource={pendingApprovals}
+                    rowKey="approvalId"
+                    pagination={false}
+                    size="small"
+                    className="bg-transparent"
+                    columns={[
+                      {
+                        title: 'LOẠI',
+                        dataIndex: 'type',
+                        key: 'type',
+                        width: 140,
+                        render: (t: string) => (
+                          <Tag color={t === 'AFFILIATE' ? 'purple' : 'blue'} className="text-xs font-semibold rounded-full">
+                            {t === 'AFFILIATE' ? 'Affiliate CTV' : 'Doanh nghiệp'}
+                          </Tag>
+                        ),
+                      },
+                      {
+                        title: 'ĐỐI TÁC / ĐẠI DIỆN',
+                        dataIndex: 'displayName',
+                        key: 'displayName',
+                        render: (name: string, r) => (
+                          <div>
+                            <div className="font-semibold text-slate-900 text-xs">{name || 'Chưa cập nhật'}</div>
+                            <div className="text-[11px] text-slate-500 font-mono">{r.email}</div>
+                          </div>
+                        ),
+                      },
+                      {
+                        title: 'DOANH NGHIỆP',
+                        dataIndex: 'companyName',
+                        key: 'companyName',
+                        render: (c: string) => <span className="text-xs text-slate-700">{c || 'Cá nhân tự do'}</span>,
+                      },
+                      {
+                        title: 'NGÀY NỘP',
+                        dataIndex: 'submittedAt',
+                        key: 'submittedAt',
+                        render: (d: string) => (
+                          <span className="text-xs font-mono text-slate-500">
+                            {d ? new Date(d).toLocaleDateString('vi-VN') : 'N/A'}
+                          </span>
+                        ),
+                      },
+                      {
+                        title: 'THAO TÁC',
+                        key: 'action',
+                        align: 'right',
+                        render: (_, record) => (
+                          <Button
+                            size="small"
+                            type="link"
+                            onClick={() => navigate('/admin/approvals')}
+                            className="text-xs font-semibold text-blue-600 p-0"
+                          >
+                            Xử lý ngay &rarr;
+                          </Button>
+                        ),
+                      },
+                    ]}
+                  />
+                )}
+              </div>
+            ),
+          },
           {
             key: 'disputes',
             label: (

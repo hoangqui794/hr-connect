@@ -19,6 +19,9 @@ import {
   Typography,
   Divider,
   Empty,
+  Switch,
+  InputNumber,
+  Spin,
 } from 'antd';
 import {
   UserOutlined,
@@ -40,6 +43,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useCandidateStore, CandidateProfile, CandidateCV } from '@/stores/candidateStore';
 import { saveHRConnectUser, findHRConnectUserByEmail } from '@/services/localStorageService';
+import {
+  useCandidateProfile,
+  useUpdateCandidateProfile,
+  useUpdateCandidateVisibility,
+} from '@/services/queries/useProfiles';
+import type { UpdateCandidateProfileCommand } from '@/types/profile';
 import type { UploadProps } from 'antd';
 
 const { Title, Text, Paragraph } = Typography;
@@ -107,7 +116,28 @@ export const CandidateProfilePage: React.FC = () => {
 
   const [form] = Form.useForm();
   const [isSaving, setIsSaving] = useState(false);
-  const savingProfile = isSaving;
+
+  // ─── React Query Hooks ──────────────────────────────────────────────────
+  const { data: serverProfile, isLoading: isProfileLoading } = useCandidateProfile();
+  const updateCandidateMutation = useUpdateCandidateProfile();
+  const updateVisibilityMutation = useUpdateCandidateVisibility();
+
+  const isPublic = (serverProfile?.profileVisibility || 'PUBLIC') === 'PUBLIC';
+
+  // Toggle Visibility Switch: PATCH /api/v1/candidates/profile/me/visibility
+  const handleToggleVisibility = async (checked: boolean) => {
+    const visibility = checked ? 'PUBLIC' : 'PRIVATE';
+    try {
+      await updateVisibilityMutation.mutateAsync({ visibility });
+      message.success(
+        checked
+          ? 'Đã bật chế độ Tìm việc Công khai (Nhà tuyển dụng có thể tìm thấy bạn)!'
+          : 'Đã chuyển sang chế độ Tìm việc Riêng tư (Chỉ hiển thị khi bạn chủ động ứng tuyển)!'
+      );
+    } catch {
+      message.error('Không thể cập nhật chế độ hiển thị. Vui lòng thử lại!');
+    }
+  };
 
   // --- Form & Banner state: always reflects the logged-in account & latest saved values ---
   const [formData, setFormData] = useState(() => {
@@ -132,15 +162,21 @@ export const CandidateProfilePage: React.FC = () => {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  // ALWAYS sync identity fields and profile values into the form
+  // ALWAYS sync identity fields and profile values into the form from API / Store
   React.useEffect(() => {
-    if (!user) return;
+    if (!user && !serverProfile) return;
 
     // Look up the full stored record (may have more info than authStore)
-    const storedUser = findHRConnectUserByEmail(user.email);
-    const resolvedName  = storedUser?.fullName  || user.name  || profile.fullName || 'Nguyễn Văn B';
-    const resolvedEmail = storedUser?.email      || user.email || profile.email    || 'ungvien5@gmail.com';
-    const resolvedPhone = storedUser?.phone      || user.phone || profile.phone    || '0912 345 678';
+    const storedUser = user ? findHRConnectUserByEmail(user.email) : null;
+    const resolvedName  = serverProfile?.fullName || storedUser?.fullName  || user?.name  || profile.fullName || 'Nguyễn Văn B';
+    const resolvedEmail = serverProfile?.email    || storedUser?.email      || user?.email || profile.email    || 'ungvien5@gmail.com';
+    const resolvedPhone = serverProfile?.phone    || storedUser?.phone      || user?.phone || profile.phone    || '0912 345 678';
+    const resolvedDob   = serverProfile?.dateOfBirth || '1995-08-15';
+    const resolvedGender = serverProfile?.gender || 'Nam';
+    const resolvedAddress = serverProfile?.currentAddress || profile.location || 'Quận 1, TP. Hồ Chí Minh';
+    const resolvedEdu   = serverProfile?.highestEducation || 'Đại học Bách Khoa TP.HCM - Kỹ sư CNTT';
+    const resolvedYears = serverProfile?.yearsOfExperience ?? 5.5;
+    const resolvedSummary = serverProfile?.summary || profile.bio || 'Kỹ sư phần mềm 5+ năm kinh nghiệm chuyên sâu về ReactJS, TypeScript và kiến trúc Microservices.';
 
     // Force-init candidateStore profile with current user identity
     initCandidateFromUser({
@@ -154,15 +190,28 @@ export const CandidateProfilePage: React.FC = () => {
       fullName: resolvedName,
       email:    resolvedEmail,
       phone:    resolvedPhone,
-      location: profile.location || 'Hồ Chí Minh & Hà Nội (Hybrid / Remote)',
+      dateOfBirth: resolvedDob,
+      gender:   resolvedGender,
+      currentAddress: resolvedAddress,
+      location: resolvedAddress,
+      highestEducation: resolvedEdu,
+      yearsOfExperience: resolvedYears,
+      experienceYears: `${resolvedYears} năm kinh nghiệm`,
+      summary:  resolvedSummary,
+      bio:      resolvedSummary,
       targetRole: profile.targetRole || 'Senior Fullstack Engineer / Frontend Specialist',
       expectedSalary: profile.expectedSalary || '45.000.000 - 65.000.000 đ/tháng',
       currentLevel: profile.currentLevel || 'Senior Level / Team Lead',
-      experienceYears: profile.experienceYears || '5+ năm kinh nghiệm',
       foreignLanguages: profile.foreignLanguages || 'Tiếng Anh (IELTS 7.0 / Giao tiếp công việc thành thạo)',
       availableDate: profile.availableDate || 'Sẵn sàng làm việc ngay lập tức',
-      bio: profile.bio || 'Kỹ sư phần mềm 5+ năm kinh nghiệm chuyên sâu về ReactJS, TypeScript và kiến trúc Microservices.',
     });
+
+    if (serverProfile?.skills && serverProfile.skills.length > 0) {
+      const skillsFromApi = serverProfile.skills.map((s) => s.skillName || '').filter(Boolean);
+      if (skillsFromApi.length > 0) {
+        setSkillsList(skillsFromApi);
+      }
+    }
 
     // Sync banner immediately
     setFormData((prev) => ({
@@ -174,10 +223,10 @@ export const CandidateProfilePage: React.FC = () => {
       targetRole: profile.targetRole || prev.targetRole || 'Senior Fullstack Engineer',
       expectedSalary: profile.expectedSalary || prev.expectedSalary || '45.000.000 - 65.000.000 đ/tháng',
       currentLevel: profile.currentLevel || prev.currentLevel || 'Senior Level / Team Lead',
-      experienceYears: profile.experienceYears || prev.experienceYears || '5+ năm kinh nghiệm',
+      experienceYears: `${resolvedYears} năm kinh nghiệm`,
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email]);
+  }, [user?.email, serverProfile]);
 
   // Skill tags input state
   const [skillsList, setSkillsList] = useState<string[]>(
@@ -199,59 +248,74 @@ export const CandidateProfilePage: React.FC = () => {
   // Modal 3: File Upload
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  // Handle Profile Update — saves to candidateStore + hrconnect_users + authStore + formData
+  // Handle Profile Update — saves to Backend API (PUT /api/v1/candidates/profile/me) + local stores
   const handleSaveProfile = async (values: any) => {
     setIsSaving(true);
     try {
-      // 1. Update candidateStore (local UI state + persist)
+      // 1. Call real API mutation
+      const command: UpdateCandidateProfileCommand = {
+        fullName: (values.fullName || user?.name || '').trim(),
+        phone: (values.phone || user?.phone || '').trim(),
+        dateOfBirth: values.dateOfBirth?.trim() || undefined,
+        gender: values.gender || undefined,
+        currentAddress: (values.currentAddress || values.location || '').trim() || undefined,
+        highestEducation: values.highestEducation?.trim() || undefined,
+        yearsOfExperience: values.yearsOfExperience !== undefined ? Number(values.yearsOfExperience) : undefined,
+        summary: (values.summary || values.bio || '').trim() || undefined,
+      };
+
+      await updateCandidateMutation.mutateAsync(command);
+
+      // 2. Update candidateStore (local UI state + persist)
       updateProfile({
         ...values,
-        fullName: (values.fullName || user?.name || '').trim(),
-        email: (values.email || user?.email || '').toLowerCase().trim(),
-        phone: (values.phone || user?.phone || '').trim(),
+        fullName: command.fullName || '',
+        phone: command.phone || '',
+        location: command.currentAddress || values.location,
+        bio: command.summary || values.bio,
         targetRole: values.targetRole || values.jobTitle || profile.targetRole || '',
         skills: skillsList,
       });
 
-      // 2. Persist identity changes back to hrconnect_users localStorage
+      // 3. Persist identity changes back to hrconnect_users localStorage
       if (user) {
         const storedUser = findHRConnectUserByEmail(user.email);
         saveHRConnectUser({
           id: storedUser?.id || user.id,
           email: (values.email || user.email).toLowerCase().trim(),
           role: user.role,
-          fullName: (values.fullName || user.name).trim(),
-          phone: values.phone?.trim() || storedUser?.phone,
+          fullName: (command.fullName || user.name).trim(),
+          phone: command.phone?.trim() || storedUser?.phone,
           password: storedUser?.password || '123456',
           companyName: storedUser?.companyName,
           companySize: storedUser?.companySize,
         });
 
-        // 3. Sync name + phone into authStore in-memory user object
+        // 4. Sync name + phone into authStore in-memory user object
         useAuthStore.setState((state) => ({
           user: state.user
             ? {
                 ...state.user,
-                name: (values.fullName || state.user.name).trim(),
+                name: (command.fullName || state.user.name).trim(),
                 phone: values.phone?.trim() || state.user.phone,
               }
             : null,
         }));
       }
 
-      // 4. Update banner immediately so it reflects new values without reload
+      // 5. Update banner immediately so it reflects new values without reload
       setFormData({
-        fullName:       (values.fullName || user?.name || '').trim(),
+        fullName:       (command.fullName || user?.name || '').trim(),
         email:          (values.email    || user?.email || '').toLowerCase().trim(),
-        phone:          (values.phone    || user?.phone || '').trim(),
+        phone:          (command.phone    || user?.phone || '').trim(),
         jobTitle:       values.targetRole || values.jobTitle || '',
         targetRole:     values.targetRole || values.jobTitle || '',
         expectedSalary: values.expectedSalary || '',
         currentLevel:   values.currentLevel   || '',
-        experienceYears:values.experienceYears || '',
+        experienceYears:values.yearsOfExperience ? `${values.yearsOfExperience} năm` : values.experienceYears || '',
       });
 
-      message.success('Lưu thông tin hồ sơ thành công!');
+      message.success('Cập nhật hồ sơ ứng viên thành công!');
     } catch (error) {
       console.error('Lỗi khi lưu thông tin hồ sơ:', error);
       message.error('Có lỗi xảy ra khi lưu thông tin hồ sơ. Vui lòng thử lại!');
@@ -545,6 +609,68 @@ export const CandidateProfilePage: React.FC = () => {
         </Row>
       </div>
 
+      {/* ─── Profile Visibility Switch Banner (PATCH /api/v1/candidates/profile/me/visibility) ─── */}
+      <div
+        style={{
+          background: isPublic ? 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)' : '#f8fafc',
+          border: isPublic ? '1px solid #86efac' : '1px solid #cbd5e1',
+          borderRadius: 16,
+          padding: '16px 20px',
+          marginBottom: 20,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 16,
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: '50%',
+              background: isPublic ? '#dcfce7' : '#f1f5f9',
+              color: isPublic ? '#16a34a' : '#64748b',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 20,
+            }}
+          >
+            {isPublic ? <EyeOutlined /> : <SafetyCertificateOutlined />}
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
+                Chế độ hiển thị hồ sơ tìm việc
+              </span>
+              <Tag color={isPublic ? 'success' : 'default'} style={{ borderRadius: 6, fontWeight: 700, fontSize: 11 }}>
+                {isPublic ? '🟢 CÔNG KHAI (PUBLIC)' : '🔒 RIÊNG TƯ (PRIVATE)'}
+              </Tag>
+            </div>
+            <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 2 }}>
+              {isPublic
+                ? 'Hồ sơ đang ở chế độ Công khai: Các nhà tuyển dụng và Chuyên viên Headhunter có thể tìm kiếm và chủ động gửi lời mời ứng tuyển đến bạn.'
+                : 'Hồ sơ đang ở chế độ Riêng tư: Nhà tuyển dụng chỉ xem được hồ sơ khi bạn chủ động nộp đơn ứng tuyển vào vị trí của họ.'}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+            {isPublic ? 'Đang bật tìm việc' : 'Đang tắt tìm việc'}
+          </span>
+          <Switch
+            checked={isPublic}
+            onChange={handleToggleVisibility}
+            loading={updateVisibilityMutation.isPending}
+            style={{ background: isPublic ? '#16a34a' : '#94a3b8' }}
+          />
+        </div>
+      </div>
+
       {/* Main Tabs Container */}
       <Card
         bordered={false}
@@ -640,7 +766,7 @@ export const CandidateProfilePage: React.FC = () => {
                           </Form.Item>
                         </Col>
 
-                        <Col xs={24} md={12}>
+                        <Col xs={24} md={8}>
                           <Form.Item
                             name="phone"
                             label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Số điện thoại liên hệ <span style={{ color: '#ef4444' }}>*</span></span>}
@@ -653,12 +779,34 @@ export const CandidateProfilePage: React.FC = () => {
                           </Form.Item>
                         </Col>
 
-                        <Col xs={24} md={12}>
+                        <Col xs={24} md={8}>
                           <Form.Item
-                            name="location"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Địa điểm &amp; Hình thức làm việc</span>}
+                            name="dateOfBirth"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Ngày sinh (YYYY-MM-DD)</span>}
                           >
-                            <Input size="large" placeholder="VD: Hà Nội, TP.HCM, Hybrid / Remote..." style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                            <Input size="large" placeholder="VD: 1995-08-15" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} md={8}>
+                          <Form.Item
+                            name="gender"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Giới tính</span>}
+                          >
+                            <Select size="large" style={{ borderRadius: 12 }}>
+                              <Option value="Nam">Nam</Option>
+                              <Option value="Nữ">Nữ</Option>
+                              <Option value="Khác">Khác</Option>
+                            </Select>
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24}>
+                          <Form.Item
+                            name="currentAddress"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Địa chỉ hiện tại / Nơi cư trú</span>}
+                          >
+                            <Input size="large" placeholder="VD: Quận 1, TP. Hồ Chí Minh" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -738,10 +886,26 @@ export const CandidateProfilePage: React.FC = () => {
 
                         <Col xs={24} md={12}>
                           <Form.Item
-                            name="experienceYears"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Số năm kinh nghiệm tích lũy</span>}
+                            name="highestEducation"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Trình độ học vấn cao nhất</span>}
                           >
-                            <Input size="large" placeholder="VD: 5+ năm kinh nghiệm" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                            <Input size="large" placeholder="VD: Đại học Bách Khoa TP.HCM - Kỹ sư CNTT" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="yearsOfExperience"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Số năm kinh nghiệm (Năm)</span>}
+                          >
+                            <InputNumber
+                              size="large"
+                              min={0}
+                              max={40}
+                              step={0.5}
+                              placeholder="VD: 5.5"
+                              style={{ width: '100%', borderRadius: 12, border: '1px solid #cbd5e1' }}
+                            />
                           </Form.Item>
                         </Col>
 
@@ -869,8 +1033,8 @@ export const CandidateProfilePage: React.FC = () => {
 
                         <Col xs={24}>
                           <Form.Item
-                            name="bio"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Tóm tắt kinh nghiệm & Mục tiêu nghề nghiệp</span>}
+                            name="summary"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Tóm tắt kinh nghiệm &amp; Mục tiêu nghề nghiệp (Summary)</span>}
                           >
                             <Input.TextArea
                               rows={4}
@@ -888,7 +1052,7 @@ export const CandidateProfilePage: React.FC = () => {
                         size="large"
                         htmlType="submit"
                         onClick={() => form.submit()}
-                        loading={isSaving || savingProfile}
+                        loading={isSaving || updateCandidateMutation.isPending}
                         style={{
                           borderRadius: 9999,
                           fontWeight: 700,

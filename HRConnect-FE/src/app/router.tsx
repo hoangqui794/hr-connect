@@ -137,6 +137,14 @@ export const router = createBrowserRouter([
         element: protectedPage('/client/warranty', <AppRoutes.ClientWarrantyPage />),
       },
       {
+        path: 'client/settings',
+        element: protectedPage('/client/settings', <AppRoutes.CompanyProfileSettingsPage />),
+      },
+      {
+        path: 'client/profile',
+        element: protectedPage('/client/profile', <AppRoutes.CompanyProfileSettingsPage />),
+      },
+      {
         path: 'affiliate/dashboard',
         element: protectedPage('/affiliate/dashboard', <AppRoutes.AffiliateDashboardPage />),
       },
@@ -171,6 +179,14 @@ export const router = createBrowserRouter([
       {
         path: 'affiliate/ledger',
         element: protectedPage('/affiliate/ledger', <AppRoutes.AffiliateCommissionsPage />),
+      },
+      {
+        path: 'affiliate/settings',
+        element: protectedPage('/affiliate/settings', <AppRoutes.AffiliateProfileSettingsPage />),
+      },
+      {
+        path: 'affiliate/profile',
+        element: protectedPage('/affiliate/profile', <AppRoutes.AffiliateProfileSettingsPage />),
       },
       {
         path: 'hr/dashboard',
@@ -284,6 +300,14 @@ export const router = createBrowserRouter([
       {
         path: 'admin/audit-trail',
         element: protectedPage('/admin/audit-trail', <AppRoutes.AdminAuditTrailPage />),
+      },
+      {
+        path: 'admin/approvals',
+        element: protectedPage('/admin/approvals', <AppRoutes.AdminApprovalsHub />),
+      },
+      {
+        path: 'admin/service-types',
+        element: protectedPage('/admin/service-types', <AppRoutes.AdminServiceTypesManagement />),
       },
       {
         path: 'admin/jobs',

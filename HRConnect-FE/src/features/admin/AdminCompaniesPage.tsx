@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   Table, Card, Typography, Space, Tag, Button, Modal,
-  Row, Col, Badge, Avatar, message, Popconfirm, Descriptions, Statistic,
+  Row, Col, Badge, Avatar, message, Popconfirm, Descriptions, Statistic, Alert,
 } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import {
   BankOutlined, CheckCircleOutlined, CloseCircleOutlined,
   EyeOutlined, StopOutlined, FileProtectOutlined,
@@ -157,6 +158,7 @@ function loadCompaniesFromStorage(): CompanyRecord[] {
 }
 
 export const AdminCompaniesPage: React.FC = () => {
+  const navigate = useNavigate();
   const [companies, setCompanies] = useState<CompanyRecord[]>(loadCompaniesFromStorage);
   const [selectedCompany, setSelectedCompany] = useState<CompanyRecord | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -336,6 +338,29 @@ export const AdminCompaniesPage: React.FC = () => {
           Xét duyệt hồ sơ pháp nhân, giấy phép kinh doanh, giám sát hạn mức đăng tin và thanh toán của các đối tác doanh nghiệp.
         </Text>
       </div>
+
+      {/* Approvals Hub Link Banner */}
+      <Alert
+        type="info"
+        showIcon
+        message={<span style={{ fontWeight: 600 }}>Trung tâm Phê duyệt Tập trung (Admin Approvals Hub)</span>}
+        description={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+            <span>
+              Xem và xử lý toàn bộ các yêu cầu xác thực pháp nhân doanh nghiệp (Client Verification) với đầy đủ dữ liệu nộp kèm và lý do từ chối chuẩn backend API.
+            </span>
+            <Button
+              type="primary"
+              size="small"
+              onClick={() => navigate('/admin/approvals')}
+              style={{ background: '#2563eb', borderRadius: 6, fontWeight: 600 }}
+            >
+              Mở Approvals Hub &rarr;
+            </Button>
+          </div>
+        }
+        style={{ marginBottom: 20, borderRadius: 12, border: '1px solid #bfdbfe' }}
+      />
 
       {/* KPI Stats */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>

@@ -172,7 +172,7 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
       key: 'settings',
       icon: <SettingOutlined />,
       label: 'Cài đặt tài khoản & Công ty',
-      onClick: () => navigate('/client/dashboard'),
+      onClick: () => navigate('/client/settings'),
     },
     {
       key: 'warranty-quick',

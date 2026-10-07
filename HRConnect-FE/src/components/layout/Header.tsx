@@ -5,7 +5,7 @@ import {
 } from 'antd';
 import {
   SearchOutlined, BellOutlined, LogoutOutlined,
-  ThunderboltOutlined,
+  ThunderboltOutlined, UserOutlined, SettingOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -137,6 +137,42 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
       ),
       disabled: true,
     },
+    { type: 'divider' },
+    ...(role === 'AFFILIATE'
+      ? [
+          {
+            key: 'affiliate-settings',
+            icon: <SettingOutlined />,
+            label: 'Hồ sơ đối tác & Ngân hàng',
+            onClick: () => navigate('/affiliate/settings'),
+          },
+        ]
+      : role === 'CLIENT'
+      ? [
+          {
+            key: 'client-settings',
+            icon: <SettingOutlined />,
+            label: 'Hồ sơ doanh nghiệp',
+            onClick: () => navigate('/client/settings'),
+          },
+        ]
+      : role === 'CANDIDATE'
+      ? [
+          {
+            key: 'candidate-profile',
+            icon: <UserOutlined />,
+            label: 'Hồ sơ cá nhân & Tìm việc',
+            onClick: () => navigate('/candidate/profile'),
+          },
+        ]
+      : [
+          {
+            key: 'admin-settings',
+            icon: <SettingOutlined />,
+            label: 'Cấu hình hệ thống',
+            onClick: () => navigate('/admin/settings'),
+          },
+        ]),
     { type: 'divider' },
     {
       key: 'logout',

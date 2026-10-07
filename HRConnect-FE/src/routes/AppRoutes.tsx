@@ -110,6 +110,12 @@ const AdminSettingsPage = React.lazy(() =>
 const AdminAuditTrailPage = React.lazy(() =>
   import('@/features/admin/AdminAuditTrailPage').then((m: any) => ({ default: m.default || m.AdminAuditTrailPage }))
 );
+const AdminApprovalsHub = React.lazy(() =>
+  import('@/features/admin/AdminApprovalsHub').then((m: any) => ({ default: m.default || m.AdminApprovalsHub }))
+);
+const AdminServiceTypesManagement = React.lazy(() =>
+  import('@/features/admin/AdminServiceTypesManagement').then((m: any) => ({ default: m.default || m.AdminServiceTypesManagement }))
+);
 const HRInterviewsPage = React.lazy(() =>
   import('@/features/hr/HRInterviewsPage').then((m: any) => ({ default: m.default || m.HRInterviewsPage }))
 );
@@ -148,6 +154,12 @@ const JobReviewQueuePage = React.lazy(() =>
 );
 const MyJobsPage = React.lazy(() =>
   import('@/pages/client/MyJobsPage').then((m: any) => ({ default: m.default || m.MyJobsPage }))
+);
+const AffiliateProfileSettingsPage = React.lazy(() =>
+  import('@/pages/affiliate/AffiliateProfileSettingsPage').then((m: any) => ({ default: m.default || m.AffiliateProfileSettingsPage }))
+);
+const CompanyProfileSettingsPage = React.lazy(() =>
+  import('@/pages/client/CompanyProfileSettingsPage').then((m: any) => ({ default: m.default || m.CompanyProfileSettingsPage }))
 );
 
 // ---------------------------------------------------------------------------
@@ -278,6 +290,10 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/affiliate/candidates': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/commissions': [UserRole.AFFILIATE, UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/affiliate/ledger': [UserRole.AFFILIATE, UserRole.INTERNAL_HR, UserRole.ADMIN],
+  '/affiliate/settings': [UserRole.AFFILIATE, UserRole.ADMIN],
+  '/affiliate/profile': [UserRole.AFFILIATE, UserRole.ADMIN],
+  '/client/settings': [UserRole.CLIENT, UserRole.ADMIN],
+  '/client/profile': [UserRole.CLIENT, UserRole.ADMIN],
   '/screening': [UserRole.INTERNAL_HR, UserRole.ADMIN, UserRole.CLIENT],
   '/candidates': [UserRole.INTERNAL_HR, UserRole.ADMIN, UserRole.CLIENT],
   '/cv-builder': [UserRole.CANDIDATE, UserRole.ADMIN],
@@ -291,6 +307,8 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/admin/finance': [UserRole.ADMIN],
   '/admin/settings': [UserRole.ADMIN],
   '/admin/audit-trail': [UserRole.ADMIN],
+  '/admin/approvals': [UserRole.ADMIN],
+  '/admin/service-types': [UserRole.ADMIN],
   '/admin/jobs': [UserRole.ADMIN],
 };
 
@@ -325,6 +343,8 @@ export const AppRoutes = {
   AdminPayoutsPage,
   AdminSettingsPage,
   AdminAuditTrailPage,
+  AdminApprovalsHub,
+  AdminServiceTypesManagement,
   HRInterviewsPage,
   HROffersPage,
   HRWarrantyTrackingPage,
@@ -340,4 +360,6 @@ export const AppRoutes = {
   JobSearchPage,
   JobReviewQueuePage,
   MyJobsPage,
+  AffiliateProfileSettingsPage,
+  CompanyProfileSettingsPage,
 } as const;

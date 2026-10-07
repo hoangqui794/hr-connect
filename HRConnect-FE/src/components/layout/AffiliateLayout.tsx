@@ -144,13 +144,13 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
         key: 'payout-accounts',
         icon: <BankOutlined />,
         label: 'Tài khoản nhận hoa hồng',
-        onClick: () => navigate('/affiliate/commissions'),
+        onClick: () => navigate('/affiliate/settings?tab=bank'),
       },
       {
         key: 'settings',
         icon: <SettingOutlined />,
-        label: 'Cài đặt tài khoản',
-        onClick: () => message.info('Cài đặt tài khoản Headhunter'),
+        label: 'Cài đặt tài khoản & Hồ sơ',
+        onClick: () => navigate('/affiliate/settings'),
       },
       { type: 'divider' },
       {
