@@ -17,4 +17,5 @@ public sealed record StartCandidateIdentityClaimData(
     Guid ClaimId,
     string MaskedDestination,
     DateTime ExpiresAt,
-    DateTime ResendAfter);
+    DateTime ResendAfter,
+    Guid ConcurrencyToken);

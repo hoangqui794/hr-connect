@@ -100,7 +100,8 @@ public sealed class StartCandidateIdentityClaimCommandHandlerTests
             "Nếu email hợp lệ, HR Connect đã gửi mã xác minh. Vui lòng kiểm tra hộp thư.");
         response.Data.MaskedDestination.Should().Be("ol***@example.com");
         capturedClaim.Should().NotBeNull();
-        capturedClaim!.Status.Should().Be("PENDING_VERIFICATION");
+        response.Data.ConcurrencyToken.Should().Be(capturedClaim!.ConcurrencyToken);
+        capturedClaim.Status.Should().Be("PENDING_VERIFICATION");
         capturedClaim.TargetCandidateId.Should().Be(target?.CandidateId);
         capturedClaim.TokenHash.Should().Be("otp-hash");
         capturedOutbox.Should().NotBeNull();

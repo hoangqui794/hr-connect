@@ -276,7 +276,8 @@ public sealed class StartCandidateIdentityClaimCommandHandler
                 claim.ClaimId,
                 MaskEmail(claim.NormalizedEmail),
                 claim.ExpiresAt,
-                resendAfter));
+                resendAfter,
+                claim.ConcurrencyToken));
     }
 
     private static string MaskEmail(string email)
