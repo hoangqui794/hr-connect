@@ -38,6 +38,11 @@ VALUES
      'update_own',
      'Update own candidate profile'),
 
+    ('candidate.identity.manage_own',
+     'candidate_identity',
+     'manage_own',
+     'Manage own verified email identities'),
+
     ('cv.create',
      'candidate_cv',
      'create',
@@ -458,6 +463,7 @@ JOIN public.permission p
 
         'candidate.profile.view_own',
         'candidate.profile.update_own',
+        'candidate.identity.manage_own',
 
         'cv.create',
         'cv.view_own',

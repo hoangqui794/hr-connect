@@ -28,6 +28,23 @@ public class PermissionSeederTests
         AssertAffiliateAttributionPermission(File.ReadAllText(permissionFile!));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void PermissionSeed_AssignsCandidateIdentityManagementToCandidate(bool embedded)
+    {
+        var sql = embedded
+            ? GetEmbeddedSeedSql()
+            : File.ReadAllText(FindPermissionFile()!);
+
+        sql.Should().Contain("('candidate.identity.manage_own'");
+        var roleEnd = sql.IndexOf("WHERE r.code = 'CANDIDATE'", StringComparison.Ordinal);
+        roleEnd.Should().BeGreaterThan(0);
+        var roleStart = sql.LastIndexOf("JOIN public.permission p", roleEnd, StringComparison.Ordinal);
+        roleStart.Should().BeGreaterThanOrEqualTo(0);
+        sql[roleStart..roleEnd].Should().Contain("'candidate.identity.manage_own'");
+    }
+
     private static void AssertAffiliateAttributionPermission(string sql)
     {
         sql.Should().Contain("('attribution.view_own'");
@@ -38,6 +55,15 @@ public class PermissionSeederTests
         roleStart.Should().BeGreaterThanOrEqualTo(0);
 
         sql[roleStart..roleEnd].Should().Contain("'attribution.view_own'");
+    }
+
+    private static string GetEmbeddedSeedSql()
+    {
+        var field = typeof(DatabaseSeeder).GetField(
+            "EmbeddedPermissionSeedSql",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        field.Should().NotBeNull();
+        return field!.GetRawConstantValue().Should().BeOfType<string>().Subject;
     }
 
     private static string? FindPermissionFile()

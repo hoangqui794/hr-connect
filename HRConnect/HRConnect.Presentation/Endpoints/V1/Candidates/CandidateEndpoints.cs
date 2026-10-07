@@ -16,6 +16,7 @@ using HRConnect.Application.Features.Candidates.Commands.UpdateCandidateAffiliat
 using HRConnect.Application.Features.Candidates.Commands.AdoptCandidateAffiliateCv;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using HRConnect.Application.Features.Candidates.Queries.GetCvDownloadUrl;
+using HRConnect.Application.Features.Candidates.Identity.GetCandidateEmailIdentities;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using HRConnect.Presentation.Authorization;
@@ -186,6 +187,49 @@ public static class CandidateEndpoints
         var affiliateCvGroup = app.MapGroup("/api/v1/candidates/me/affiliate-cvs")
             .WithTags("Candidate Affiliate CVs")
             .RequireAuthorization();
+
+        var identityGroup = app.MapGroup("/api/v1/candidates/me/email-identities")
+            .WithTags("Candidate Identity")
+            .RequireAuthorization();
+
+        identityGroup.MapGet("", async (
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "candidate.identity.manage_own"))
+                return PermissionAuthorization.Forbidden("candidate.identity.manage_own");
+
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            try
+            {
+                return Results.Ok(await sender.Send(
+                    new GetCandidateEmailIdentitiesQuery(userId.Value), cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new
+                {
+                    success = false,
+                    message = ex.Message,
+                    errorCode = ex.ErrorCode
+                });
+            }
+        })
+        .WithName("GetCandidateEmailIdentities")
+        .WithSummary("Candidate xem các email đã liên kết với tài khoản")
+        .WithDescription("Yêu cầu permission candidate.identity.manage_own. Trả email đăng nhập chính và các email phụ đã xác minh của chính Candidate; email phụ không thể dùng để đăng nhập hoặc khôi phục mật khẩu.")
+        .Produces<GetCandidateEmailIdentitiesResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
 
         affiliateCvGroup.MapGet("", async (
             ClaimsPrincipal user,
