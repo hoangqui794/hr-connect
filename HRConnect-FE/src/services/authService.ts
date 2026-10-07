@@ -6,6 +6,7 @@
  */
 
 import { apiClient, getApiErrorMessage } from './apiClient';
+import { AUTH_STORAGE_KEYS, authTokenStorage } from './authTokenStorage';
 
 // ─── TYPES & INTERFACES (From swagger.json) ───────────────────────────────────
 
@@ -251,12 +252,8 @@ export interface UnifiedRegisterPayload {
 
 // ─── STORAGE KEYS ─────────────────────────────────────────────────────────────
 
-export const AUTH_STORAGE_KEYS = {
-  ACCESS_TOKEN: 'access_token',
-  REFRESH_TOKEN: 'refresh_token',
-  USER_INFO: 'user_info',
-  AUTH_TOKEN: 'auth_token',
-} as const;
+// Defined in authTokenStorage; re-exported so existing imports from authService keep working.
+export { AUTH_STORAGE_KEYS };
 
 // ─── SERVICE IMPLEMENTATION ───────────────────────────────────────────────────
 
@@ -265,44 +262,28 @@ export class AuthService {
    * Save authentication payload to localStorage
    */
   public saveAuthTokens(data: LoginData | RefreshTokenData): void {
-    if (data.accessToken) {
-      localStorage.setItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN, data.accessToken);
-      localStorage.setItem(AUTH_STORAGE_KEYS.AUTH_TOKEN, data.accessToken);
-    }
-    if (data.refreshToken) {
-      localStorage.setItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN, data.refreshToken);
-    }
-    if (data.user) {
-      localStorage.setItem(AUTH_STORAGE_KEYS.USER_INFO, JSON.stringify(data.user));
-    }
+    authTokenStorage.save(data);
   }
 
   /**
-   * Clear all auth session data from localStorage and sessionStorage
+   * Clear all auth session data from localStorage
    */
   public clearAuthTokens(): void {
-    localStorage.removeItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN);
-    localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
-    localStorage.removeItem(AUTH_STORAGE_KEYS.USER_INFO);
-    localStorage.removeItem(AUTH_STORAGE_KEYS.AUTH_TOKEN);
-    localStorage.removeItem('token');
+    authTokenStorage.clear();
   }
 
   /**
    * Get current stored access token
    */
   public getAccessToken(): string | null {
-    return (
-      localStorage.getItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN) ||
-      localStorage.getItem(AUTH_STORAGE_KEYS.AUTH_TOKEN)
-    );
+    return authTokenStorage.getAccessToken();
   }
 
   /**
    * Get current stored refresh token
    */
   public getRefreshToken(): string | null {
-    return localStorage.getItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
+    return authTokenStorage.getRefreshToken();
   }
 
   /**
@@ -453,20 +434,6 @@ export class AuthService {
       );
       return { status: response.status, data: response.data };
     } catch (err: any) {
-      // Fallback endpoint variations if gateway re-routes
-      if (err?.response?.status === 404) {
-        try {
-          const fallback = await apiClient.post<VerifyEmailOtpResponse>(
-            '/auth/verify-email',
-            { email: cleanEmail, otp: cleanOtp, code: cleanOtp }
-          );
-          return { status: fallback.status, data: fallback.data };
-        } catch (inner: any) {
-          if (inner?.response) {
-            return { status: inner.response.status, data: inner.response.data };
-          }
-        }
-      }
       if (err?.response) {
         return { status: err.response.status, data: err.response.data };
       }
@@ -475,28 +442,15 @@ export class AuthService {
   }
 
   /**
-   * Resend OTP verification code for email activation
+   * POST /api/v1/auth/verify-email-otp/resend
+   * Resends the registration (email activation) OTP — not the password-reset OTP.
    */
-  public async resendVerificationOtp(email: string): Promise<any> {
-    const cleanEmail = email.trim().toLowerCase();
-    try {
-      const res = await apiClient.post('/auth/resend-email-otp', { email: cleanEmail });
-      return res.data;
-    } catch (err: any) {
-      if (err?.response?.status === 404) {
-        try {
-          const fallback = await apiClient.post('/auth/resend-otp', { email: cleanEmail });
-          return fallback.data;
-        } catch (fbErr: any) {
-          if (fbErr?.response?.status === 404) {
-            const fallback2 = await apiClient.post('/auth/forgot-password/resend', { email: cleanEmail });
-            return fallback2.data;
-          }
-          throw fbErr;
-        }
-      }
-      throw err;
-    }
+  public async resendVerificationOtp(email: string): Promise<{ success: boolean; message?: string | null }> {
+    const res = await apiClient.post<{ success: boolean; message?: string | null }>(
+      '/auth/verify-email-otp/resend',
+      { email: email.trim().toLowerCase() }
+    );
+    return res.data;
   }
 
   // Backwards compatibility alias
