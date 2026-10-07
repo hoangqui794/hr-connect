@@ -14,6 +14,7 @@ namespace HRConnect.UnitTests.Features.Auth.RegisterAffiliate;
 public class RegisterAffiliateCommandHandlerTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IUserEmailIdentityRepository> _userEmailIdentityRepositoryMock;
     private readonly Mock<IAffiliateApplicationRepository> _affiliateApplicationRepositoryMock;
     private readonly Mock<IUserTokenRepository> _userTokenRepositoryMock;
     private readonly Mock<IEmailOutboxRepository> _emailOutboxRepositoryMock;
@@ -32,6 +33,7 @@ public class RegisterAffiliateCommandHandlerTests
     public RegisterAffiliateCommandHandlerTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
+        _userEmailIdentityRepositoryMock = new Mock<IUserEmailIdentityRepository>();
         _affiliateApplicationRepositoryMock = new Mock<IAffiliateApplicationRepository>();
         _userTokenRepositoryMock = new Mock<IUserTokenRepository>();
         _emailOutboxRepositoryMock = new Mock<IEmailOutboxRepository>();
@@ -55,6 +57,7 @@ public class RegisterAffiliateCommandHandlerTests
 
         _handler = new RegisterAffiliateCommandHandler(
             _userRepositoryMock.Object,
+            _userEmailIdentityRepositoryMock.Object,
             _affiliateApplicationRepositoryMock.Object,
             _userTokenRepositoryMock.Object,
             _emailOutboxRepositoryMock.Object,
@@ -90,6 +93,29 @@ public class RegisterAffiliateCommandHandlerTests
         // Assert
         await act.Should().ThrowAsync<ConflictException>()
             .WithMessage("*Email này đã được sử dụng*");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRejectRegistration_WhenEmailBelongsToAnotherActiveIdentity()
+    {
+        var command = new RegisterAffiliateCommand(
+            "alias@example.com", "Password@123", "Nguyen Van Affiliate", "0901234567");
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns("alias@example.com");
+        _userRepositoryMock
+            .Setup(x => x.ExistsByEmailAsync("alias@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _userEmailIdentityRepositoryMock
+            .Setup(x => x.ExistsActiveByNormalizedEmailAsync("alias@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var action = () => _handler.Handle(command, CancellationToken.None);
+
+        await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*đã được sử dụng bởi một tài khoản khác*");
+        _userRepositoryMock.Verify(
+            x => x.AddAsync(It.IsAny<AppUser>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(
+            x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -182,6 +208,13 @@ public class RegisterAffiliateCommandHandlerTests
         capturedUser!.Status.Should().Be("PENDING");
         capturedUser.EmailVerifiedAt.Should().BeNull();
         capturedUser.PasswordHash.Should().Be("hashed_secret_password");
+        _userEmailIdentityRepositoryMock.Verify(x => x.AddAsync(
+            It.Is<UserEmailIdentity>(identity =>
+                identity.UserId == capturedUser.UserId &&
+                identity.NormalizedEmail == "newaffiliate@example.com" &&
+                identity.Kind == "PRIMARY" &&
+                identity.Status == "PENDING"),
+            It.IsAny<CancellationToken>()), Times.Once);
 
         capturedApp.Should().NotBeNull();
         capturedApp!.UserId.Should().Be(capturedUser.UserId);

@@ -15,6 +15,7 @@ namespace HRConnect.Application.Features.Auth.Commands.RegisterCandidate;
 public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidateCommand, RegisterCandidateResponse>
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserEmailIdentityRepository _userEmailIdentityRepository;
     private readonly ICandidateRepository _candidateRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly IUserRoleRepository _userRoleRepository;
@@ -32,6 +33,7 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
 
     public RegisterCandidateCommandHandler(
         IUserRepository userRepository,
+        IUserEmailIdentityRepository userEmailIdentityRepository,
         ICandidateRepository candidateRepository,
         IRoleRepository roleRepository,
         IUserRoleRepository userRoleRepository,
@@ -48,6 +50,7 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
         ILogger<RegisterCandidateCommandHandler> logger)
     {
         _userRepository = userRepository;
+        _userEmailIdentityRepository = userEmailIdentityRepository;
         _candidateRepository = candidateRepository;
         _roleRepository = roleRepository;
         _userRoleRepository = userRoleRepository;
@@ -93,6 +96,12 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
             throw new ConflictException("Email này đã được sử dụng bởi một tài khoản khác.");
         }
 
+        if (await _userEmailIdentityRepository.ExistsActiveByNormalizedEmailAsync(normalizedEmail, cancellationToken))
+        {
+            _logger.LogWarning("Đăng ký thất bại: Email đã thuộc một danh tính tài khoản đang hoạt động.");
+            throw new ConflictException("Email này đã được sử dụng bởi một tài khoản khác.");
+        }
+
         // 3. Kiểm tra danh tính Candidate hiện hữu (theo normalized_email hoặc normalized_phone)
         var existingCandidate = await CandidateRegistrationIdentity.ResolveAsync(
             _candidateRepository,
@@ -131,6 +140,19 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
             };
 
             await _userRepository.AddAsync(newUser, cancellationToken);
+            await _userEmailIdentityRepository.AddAsync(new UserEmailIdentity
+            {
+                EmailIdentityId = Guid.NewGuid(),
+                UserId = newUser.UserId,
+                Email = newUser.Email,
+                NormalizedEmail = normalizedEmail,
+                Kind = "PRIMARY",
+                Status = "PENDING",
+                VerificationSource = "REGISTRATION",
+                CreatedAt = now,
+                UpdatedAt = now,
+                ConcurrencyToken = Guid.NewGuid()
+            }, cancellationToken);
 
             // 6. Tìm role có code = CANDIDATE
             var candidateRole = await _roleRepository.GetByCodeAsync("CANDIDATE", cancellationToken);
