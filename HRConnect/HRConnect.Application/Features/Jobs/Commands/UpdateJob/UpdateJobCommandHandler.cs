@@ -65,9 +65,11 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
                 continue;
             }
 
+            // RequirementId is left unset on purpose: the key is database-generated, and a
+            // preset key on a child added to a tracked Job makes EF issue UPDATE instead of
+            // INSERT, which fails with a concurrency conflict.
             job.JobRequirements.Add(new JobRequirement
             {
-                RequirementId = Guid.NewGuid(),
                 JobId = job.JobId,
                 RequirementType = item.RequirementType.Trim().ToUpperInvariant(),
                 Category = Normalize(item.Category),
