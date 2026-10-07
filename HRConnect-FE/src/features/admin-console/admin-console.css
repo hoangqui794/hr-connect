@@ -1,0 +1,138 @@
+/* Admin console surfaces and tables ("Slate Command" + soft UI).
+   Imported only by Admin components. Tailwind preflight is off in this app, so borders are
+   declared explicitly. */
+
+.admin-surface {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 6px 20px -6px rgba(15, 23, 42, 0.08);
+}
+
+.admin-surface--active {
+  box-shadow:
+    0 0 0 2px #047857,
+    0 6px 20px -6px rgba(4, 120, 87, 0.25);
+}
+
+/* ── Tables: airy rows, quiet header, no vertical rules ─────────────────── */
+.admin-soft-table .ant-table {
+  background: transparent;
+}
+
+.admin-soft-table .ant-table-thead > tr > th {
+  background: #ffffff !important;
+  color: #475569 !important;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #eef2f6 !important;
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+}
+
+.admin-soft-table .ant-table-thead > tr > th::before {
+  display: none; /* remove column separators */
+}
+
+.admin-soft-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #f1f5f9 !important;
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+  transition: background-color 150ms ease;
+}
+
+.admin-soft-table .ant-table-tbody > tr:last-child > td {
+  border-bottom: none !important;
+}
+
+.admin-soft-table .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: #f8fafc !important;
+}
+
+.admin-soft-table .ant-table-tbody > tr.ant-table-row:focus-visible > td {
+  outline: none;
+  background: #ecfdf5 !important;
+}
+
+.admin-soft-table .ant-pagination {
+  padding: 0 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-soft-table .ant-table-tbody > tr > td {
+    transition: none;
+  }
+}
+
+/* ── Page change: progress bar, skeleton, enter motion ──────────────────── */
+.admin-progress-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #059669, #34d399);
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.7), 0 0 4px rgba(5, 150, 105, 0.6);
+  border-radius: 0 3px 3px 0;
+  animation: admin-progress-run 8s cubic-bezier(0.08, 0.7, 0.2, 1) forwards;
+}
+
+.admin-progress-bar--done {
+  width: 100%;
+  animation: admin-progress-done 260ms ease-out forwards;
+}
+
+@keyframes admin-progress-run {
+  0% { width: 0; }
+  10% { width: 35%; }
+  100% { width: 88%; }
+}
+
+@keyframes admin-progress-done {
+  0% { opacity: 1; }
+  60% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.admin-skeleton {
+  border-radius: 8px;
+  background: linear-gradient(90deg, #eef2f6 25%, #f8fafc 50%, #eef2f6 75%);
+  background-size: 200% 100%;
+  animation: admin-shimmer 1.3s ease-in-out infinite;
+}
+
+@keyframes admin-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Skeleton stays invisible for fast chunk loads, so it never flashes. */
+.admin-skeleton-wrap {
+  animation: admin-fade-in 200ms ease-out 150ms both;
+}
+
+@keyframes admin-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.admin-page-enter {
+  animation: admin-page-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes admin-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-page-enter,
+  .admin-skeleton-wrap,
+  .admin-skeleton {
+    animation: none;
+  }
+  .admin-progress-bar {
+    animation: none;
+    width: 88%;
+  }
+}
