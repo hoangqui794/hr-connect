@@ -125,6 +125,26 @@ const HRWarrantyTrackingPage = React.lazy(() =>
 const ClientLayout = React.lazy(() =>
   import('@/components/layout/ClientLayout').then((m: any) => ({ default: m.default || m.ClientLayout }))
 );
+// ── MF-01 pages backed by the real API (features/jobs-mf01) ──────────────────
+const Mf01ClientJobsListPage = React.lazy(() =>
+  import('@/features/jobs-mf01/ClientJobsListPage').then((m) => ({ default: m.ClientJobsListPage }))
+);
+const Mf01JobFormPage = React.lazy(() =>
+  import('@/features/jobs-mf01/JobFormPage').then((m) => ({ default: m.JobFormPage }))
+);
+const Mf01JobReviewPage = React.lazy(() =>
+  import('@/features/jobs-mf01/JobReviewPage').then((m) => ({ default: m.JobReviewPage }))
+);
+const Mf01InAppJobDiscoveryPage = React.lazy(() =>
+  import('@/features/jobs-mf01/PublicJobPages').then((m) => ({ default: m.InAppJobDiscoveryPage }))
+);
+const Mf01PublicJobSearchPage = React.lazy(() =>
+  import('@/features/jobs-mf01/PublicJobPages').then((m) => ({ default: m.PublicJobSearchPage }))
+);
+const Mf01PublicJobDetailPage = React.lazy(() =>
+  import('@/features/jobs-mf01/PublicJobPages').then((m) => ({ default: m.PublicJobDetailPage }))
+);
+
 const ClientJobsPage = React.lazy(() =>
   import('@/features/jobs/ClientJobsPage').then((m: any) => ({ default: m.default || m.ClientJobsPage }))
 );
@@ -240,6 +260,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/client/dashboard': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/jobs': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/jobs/create': [UserRole.CLIENT, UserRole.ADMIN],
+  '/client/jobs/:id/edit': [UserRole.CLIENT],
   '/client/post-job': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/candidates': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/interviews-offers': [UserRole.CLIENT, UserRole.ADMIN],
@@ -334,4 +355,10 @@ export const AppRoutes = {
   JobDetailPage,
   JobSearchPage,
   VerifyOtpPage,
+  Mf01ClientJobsListPage,
+  Mf01JobFormPage,
+  Mf01JobReviewPage,
+  Mf01InAppJobDiscoveryPage,
+  Mf01PublicJobSearchPage,
+  Mf01PublicJobDetailPage,
 } as const;

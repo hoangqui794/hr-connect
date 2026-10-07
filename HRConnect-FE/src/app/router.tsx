@@ -96,11 +96,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/jobs',
-    element: withSuspense(<AppRoutes.JobSearchPage />),
+    element: withSuspense(<AppRoutes.Mf01PublicJobSearchPage />),
   },
   {
     path: '/jobs/:id',
-    element: withSuspense(<AppRoutes.JobDetailPage />),
+    element: withSuspense(<AppRoutes.Mf01PublicJobDetailPage />),
   },
 
   // ── Protected routes (inside AppShell) ────────────────────────────────────
@@ -118,15 +118,19 @@ export const router = createBrowserRouter([
       },
       {
         path: 'client/jobs',
-        element: protectedPage('/client/jobs', <AppRoutes.ClientJobsPage />),
+        element: protectedPage('/client/jobs', <AppRoutes.Mf01ClientJobsListPage />),
       },
       {
         path: 'client/jobs/create',
-        element: protectedPage('/client/jobs/create', <AppRoutes.CreateJobWizard />),
+        element: protectedPage('/client/jobs/create', <AppRoutes.Mf01JobFormPage />),
+      },
+      {
+        path: 'client/jobs/:id/edit',
+        element: protectedPage('/client/jobs/:id/edit', <AppRoutes.Mf01JobFormPage />),
       },
       {
         path: 'client/post-job',
-        element: protectedPage('/client/post-job', <AppRoutes.CreateJobWizard />),
+        element: protectedPage('/client/post-job', <AppRoutes.Mf01JobFormPage />),
       },
       {
         path: 'client/candidates',
@@ -146,7 +150,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'affiliate/jobs',
-        element: protectedPage('/affiliate/jobs', <AppRoutes.JobBoard />),
+        element: protectedPage('/affiliate/jobs', <AppRoutes.Mf01InAppJobDiscoveryPage />),
       },
       {
         path: 'affiliate/submissions',
@@ -182,7 +186,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'hr/jobs',
-        element: protectedPage('/hr/jobs', <AppRoutes.JobBoard />),
+        element: protectedPage('/hr/jobs', <AppRoutes.Mf01JobReviewPage />),
       },
       {
         path: 'hr/candidates',
@@ -226,12 +230,12 @@ export const router = createBrowserRouter([
       },
       {
         path: 'jobs',
-        element: protectedPage('/jobs', <AppRoutes.JobBoard />),
+        element: protectedPage('/jobs', <AppRoutes.Mf01InAppJobDiscoveryPage />),
       },
       {
         // CreateJobWizard (MF-01 | SCR-CLI-01) — production wizard
         path: 'jobs/create',
-        element: protectedPage('/jobs/create', <AppRoutes.CreateJobWizard />),
+        element: protectedPage('/jobs/create', <AppRoutes.Mf01JobFormPage />),
       },
       {
         path: 'screening',
@@ -287,7 +291,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'admin/jobs',
-        element: protectedPage('/admin/jobs', <AppRoutes.JobBoard />),
+        element: protectedPage('/admin/jobs', <AppRoutes.Mf01InAppJobDiscoveryPage />),
       },
     ],
   },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ConfigProvider } from 'antd';
+import { App as AntApp, ConfigProvider } from 'antd';
 import viVN from 'antd/locale/vi_VN';
 import enUS from 'antd/locale/en_US';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -26,7 +26,10 @@ const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ConfigProvider theme={antdTheme} locale={antdLocale}>
-        <RouterProvider router={router} />
+        {/* AntApp gives message/modal/notification the theme via App.useApp(). */}
+        <AntApp>
+          <RouterProvider router={router} />
+        </AntApp>
       </ConfigProvider>
     </QueryClientProvider>
   );
