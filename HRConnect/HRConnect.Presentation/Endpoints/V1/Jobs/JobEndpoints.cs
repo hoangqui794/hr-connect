@@ -79,13 +79,13 @@ public static class JobEndpoints
         }
         ).WithName("GetMyJobs").WithSummary("Lấy danh sách Job của doanh nghiệp hiện tại");
         jobs.MapGet("", async (ClaimsPrincipal user, string? search, string? location, string? employmentType,
-            Guid? serviceTypeId, decimal? salaryMin, decimal? salaryMax, int page, int pageSize, ISender sender, CancellationToken ct) =>
+            Guid? serviceTypeId, decimal? salaryMin, decimal? salaryMax, int? page, int? pageSize, ISender sender, CancellationToken ct) =>
         {
             if (!user.HasClaim("permission", "job.view")) return Forbidden();
             var internalAccess = ReviewerCan(user, "job.review");
             return await Run(async () => Results.Ok(await sender.Send(new GetPublicJobsQuery(
                 RoleCodes(user), internalAccess, search, location, employmentType, serviceTypeId, salaryMin, salaryMax,
-                page <= 0 ? 1 : page, pageSize <= 0 ? 20 : pageSize), ct)));
+                page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : 20), ct)));
         }).WithName("GetPublicJobs").WithSummary("Tìm Job đang hoạt động theo quyền xem của Service Type")
         .WithDescription("Filters MF01: search, location, employmentType, serviceTypeId, salaryMin, salaryMax. page mặc định 1; pageSize mặc định 20 và tối đa 100.");
         jobs.MapGet("/{jobId:guid}", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
