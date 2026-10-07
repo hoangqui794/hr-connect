@@ -18,6 +18,7 @@ using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using HRConnect.Application.Features.Candidates.Queries.GetCvDownloadUrl;
 using HRConnect.Application.Features.Candidates.Identity.GetCandidateEmailIdentities;
 using HRConnect.Application.Features.Candidates.Identity.StartCandidateIdentityClaim;
+using HRConnect.Application.Features.Candidates.Identity.ResendCandidateIdentityClaimOtp;
 using HRConnect.Application.Features.Candidates.Identity.VerifyCandidateIdentityClaim;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -298,6 +299,76 @@ public static class CandidateEndpoints
         .WithSummary("Candidate bắt đầu xác minh email cũ để liên kết hồ sơ")
         .WithDescription("Yêu cầu permission candidate.identity.manage_own. Hệ thống gửi OTP một lần đến email cần chứng minh. Phản hồi được làm giống nhau khi không tìm thấy hồ sơ cũ để tránh lộ dữ liệu Candidate.")
         .Produces<StartCandidateIdentityClaimResponse>(StatusCodes.Status202Accepted)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict)
+        .Produces(StatusCodes.Status429TooManyRequests);
+
+        app.MapPost("/api/v1/candidates/me/identity-claims/{claimId:guid}/resend", async (
+            Guid claimId,
+            [FromBody] ResendCandidateIdentityClaimOtpRequest request,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<ResendCandidateIdentityClaimOtpCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "candidate.identity.manage_own"))
+                return PermissionAuthorization.Forbidden("candidate.identity.manage_own");
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            var command = new ResendCandidateIdentityClaimOtpCommand(
+                userId.Value, claimId, request.ConcurrencyToken);
+            var validation = await validator.ValidateAsync(command, cancellationToken);
+            if (!validation.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu gửi lại OTP không hợp lệ.",
+                    errors = validation.Errors.GroupBy(error => error.PropertyName)
+                        .ToDictionary(group => group.Key,
+                            group => group.Select(error => error.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                return Results.Accepted(value: await sender.Send(command, cancellationToken));
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(
+                    new { success = false, message = ex.Message, errorCode = ex.ErrorCode },
+                    statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new
+                {
+                    success = false,
+                    message = ex.Message,
+                    errorCode = ex.ErrorCode
+                });
+            }
+        })
+        .WithTags("Candidate Identity")
+        .RequireAuthorization()
+        .RequireRateLimiting("candidate-identity")
+        .WithName("ResendCandidateIdentityClaimOtp")
+        .WithSummary("Candidate gửi lại OTP xác minh email cũ")
+        .WithDescription("Yêu cầu permission candidate.identity.manage_own. Chỉ yêu cầu còn hiệu lực mới được gửi lại; mỗi lần gửi cách nhau tối thiểu 60 giây và tối đa 5 lần. OTP cũ mất hiệu lực ngay khi yêu cầu mới được chấp nhận.")
+        .Produces<ResendCandidateIdentityClaimOtpResponse>(StatusCodes.Status202Accepted)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)

@@ -80,6 +80,34 @@ public sealed class CandidateIdentityClaimRepository(ApplicationDbContext contex
                 .SetProperty(claim => claim.UpdatedAt, updatedAt)
                 .SetProperty(claim => claim.ConcurrencyToken, newConcurrencyToken), cancellationToken));
 
+    public Task<bool> TryRotateOtpAsync(
+        Guid claimId,
+        Guid requesterUserId,
+        Guid expectedConcurrencyToken,
+        Guid newConcurrencyToken,
+        string newTokenHash,
+        DateTime now,
+        DateTime expiresAt,
+        DateTime cooldownCutoff,
+        int maxResends,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAndCheckAsync(context.CandidateIdentityClaims
+            .Where(claim => claim.ClaimId == claimId &&
+                            claim.RequesterUserId == requesterUserId &&
+                            claim.Status == "PENDING_VERIFICATION" &&
+                            claim.ExpiresAt > now &&
+                            claim.ResendCount < maxResends &&
+                            (claim.LastSentAt == null || claim.LastSentAt <= cooldownCutoff) &&
+                            claim.ConcurrencyToken == expectedConcurrencyToken)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(claim => claim.TokenHash, newTokenHash)
+                .SetProperty(claim => claim.ExpiresAt, expiresAt)
+                .SetProperty(claim => claim.AttemptCount, 0)
+                .SetProperty(claim => claim.ResendCount, claim => claim.ResendCount + 1)
+                .SetProperty(claim => claim.LastSentAt, now)
+                .SetProperty(claim => claim.UpdatedAt, now)
+                .SetProperty(claim => claim.ConcurrencyToken, newConcurrencyToken), cancellationToken));
+
     public Task<bool> TryCompleteAsync(
         Guid claimId,
         Guid requesterUserId,

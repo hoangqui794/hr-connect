@@ -36,6 +36,18 @@ public interface ICandidateIdentityClaimRepository
         DateTime updatedAt,
         CancellationToken cancellationToken = default);
 
+    Task<bool> TryRotateOtpAsync(
+        Guid claimId,
+        Guid requesterUserId,
+        Guid expectedConcurrencyToken,
+        Guid newConcurrencyToken,
+        string newTokenHash,
+        DateTime now,
+        DateTime expiresAt,
+        DateTime cooldownCutoff,
+        int maxResends,
+        CancellationToken cancellationToken = default);
+
     Task<bool> TryCompleteAsync(
         Guid claimId,
         Guid requesterUserId,
