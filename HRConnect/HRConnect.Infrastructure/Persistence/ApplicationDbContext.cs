@@ -38,6 +38,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Candidate> Candidates { get; set; }
 
+    public virtual DbSet<CandidateIdentityClaim> CandidateIdentityClaims { get; set; }
+
     public virtual DbSet<CandidateCv> CandidateCvs { get; set; }
 
     public virtual DbSet<CandidateJobMatch> CandidateJobMatches { get; set; }
@@ -113,6 +115,8 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<SubmissionConsent> SubmissionConsents { get; set; }
 
     public virtual DbSet<UserRole> UserRoles { get; set; }
+
+    public virtual DbSet<UserEmailIdentity> UserEmailIdentities { get; set; }
 
     public virtual DbSet<UserToken> UserTokens { get; set; }
 
@@ -757,6 +761,60 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey<Candidate>(d => d.UserId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("candidate_user_id_fkey");
+        });
+
+        modelBuilder.Entity<CandidateIdentityClaim>(entity =>
+        {
+            entity.HasKey(e => e.ClaimId).HasName("candidate_identity_claim_pkey");
+            entity.ToTable("candidate_identity_claim", "public", table =>
+            {
+                table.HasCheckConstraint("ck_candidate_identity_claim_status", "status IN ('PENDING_VERIFICATION','VERIFIED','COMPLETED','PENDING_ADMIN_REVIEW','REJECTED','EXPIRED','CANCELLED')");
+                table.HasCheckConstraint("ck_candidate_identity_claim_expiry", "expires_at > created_at");
+                table.HasCheckConstraint("ck_candidate_identity_claim_attempts", "attempt_count >= 0 AND resend_count >= 0");
+            });
+
+            entity.HasIndex(e => e.TokenHash, "uq_candidate_identity_claim_token_hash").IsUnique();
+            entity.HasIndex(e => new { e.RequesterUserId, e.NormalizedEmail }, "uq_candidate_identity_claim_active_requester_email")
+                .IsUnique()
+                .HasFilter("status IN ('PENDING_VERIFICATION','VERIFIED','PENDING_ADMIN_REVIEW')");
+            entity.HasIndex(e => e.TargetCandidateId, "uq_candidate_identity_claim_active_target")
+                .IsUnique()
+                .HasFilter("target_candidate_id IS NOT NULL AND status IN ('VERIFIED','PENDING_ADMIN_REVIEW')");
+            entity.HasIndex(e => new { e.Status, e.ExpiresAt }, "idx_candidate_identity_claim_status_expiry");
+
+            entity.Property(e => e.ClaimId).HasDefaultValueSql("gen_random_uuid()").HasColumnName("claim_id");
+            entity.Property(e => e.RequesterUserId).HasColumnName("requester_user_id");
+            entity.Property(e => e.RequesterCandidateId).HasColumnName("requester_candidate_id");
+            entity.Property(e => e.TargetCandidateId).HasColumnName("target_candidate_id");
+            entity.Property(e => e.AssertedEmail).HasMaxLength(255).HasColumnName("asserted_email");
+            entity.Property(e => e.NormalizedEmail).HasMaxLength(255).HasColumnName("normalized_email");
+            entity.Property(e => e.TokenHash).HasMaxLength(255).HasColumnName("token_hash");
+            entity.Property(e => e.Status).HasMaxLength(40).HasColumnName("status");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.AttemptCount).HasDefaultValue(0).HasColumnName("attempt_count");
+            entity.Property(e => e.ResendCount).HasDefaultValue(0).HasColumnName("resend_count");
+            entity.Property(e => e.LastSentAt).HasColumnName("last_sent_at");
+            entity.Property(e => e.VerifiedAt).HasColumnName("verified_at");
+            entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
+            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
+            entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(e => e.ReviewReason).HasMaxLength(1000).HasColumnName("review_reason");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+            entity.Property(e => e.ConcurrencyToken).IsConcurrencyToken().HasDefaultValueSql("gen_random_uuid()").HasColumnName("concurrency_token");
+
+            entity.HasOne(e => e.RequesterUser).WithMany(e => e.CandidateIdentityClaimRequesterUsers)
+                .HasForeignKey(e => e.RequesterUserId).OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("candidate_identity_claim_requester_user_id_fkey");
+            entity.HasOne(e => e.RequesterCandidate).WithMany(e => e.CandidateIdentityClaimRequesterCandidates)
+                .HasForeignKey(e => e.RequesterCandidateId).OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("candidate_identity_claim_requester_candidate_id_fkey");
+            entity.HasOne(e => e.TargetCandidate).WithMany(e => e.CandidateIdentityClaimTargetCandidates)
+                .HasForeignKey(e => e.TargetCandidateId).OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("candidate_identity_claim_target_candidate_id_fkey");
+            entity.HasOne(e => e.ReviewedByNavigation).WithMany(e => e.CandidateIdentityClaimReviewedByNavigations)
+                .HasForeignKey(e => e.ReviewedBy).OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("candidate_identity_claim_reviewed_by_fkey");
         });
 
         modelBuilder.Entity<CandidateCv>(entity =>
@@ -2509,6 +2567,43 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.UserRoleUsers)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("user_role_user_id_fkey");
+        });
+
+        modelBuilder.Entity<UserEmailIdentity>(entity =>
+        {
+            entity.HasKey(e => e.EmailIdentityId).HasName("user_email_identity_pkey");
+            entity.ToTable("user_email_identity", "public", table =>
+            {
+                table.HasCheckConstraint("ck_user_email_identity_kind", "kind IN ('PRIMARY','ALIAS')");
+                table.HasCheckConstraint("ck_user_email_identity_status", "status IN ('PENDING','VERIFIED','REVOKED')");
+                table.HasCheckConstraint("ck_user_email_identity_verified_at", "status <> 'VERIFIED' OR verified_at IS NOT NULL");
+                table.HasCheckConstraint("ck_user_email_identity_revoked_at", "status <> 'REVOKED' OR revoked_at IS NOT NULL");
+            });
+
+            entity.HasIndex(e => e.NormalizedEmail, "uq_user_email_identity_active_email")
+                .IsUnique()
+                .HasFilter("status <> 'REVOKED'");
+            entity.HasIndex(e => new { e.UserId, e.Kind }, "uq_user_email_identity_primary_user")
+                .IsUnique()
+                .HasFilter("kind = 'PRIMARY' AND status <> 'REVOKED'");
+            entity.HasIndex(e => new { e.UserId, e.Status }, "idx_user_email_identity_user_status");
+
+            entity.Property(e => e.EmailIdentityId).HasDefaultValueSql("gen_random_uuid()").HasColumnName("email_identity_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Email).HasMaxLength(255).HasColumnName("email");
+            entity.Property(e => e.NormalizedEmail).HasMaxLength(255).HasColumnName("normalized_email");
+            entity.Property(e => e.Kind).HasMaxLength(20).HasColumnName("kind");
+            entity.Property(e => e.Status).HasMaxLength(20).HasColumnName("status");
+            entity.Property(e => e.VerificationSource).HasMaxLength(40).HasColumnName("verification_source");
+            entity.Property(e => e.VerifiedAt).HasColumnName("verified_at");
+            entity.Property(e => e.RevokedAt).HasColumnName("revoked_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+            entity.Property(e => e.ConcurrencyToken).IsConcurrencyToken().HasDefaultValueSql("gen_random_uuid()").HasColumnName("concurrency_token");
+
+            entity.HasOne(e => e.User).WithMany(e => e.UserEmailIdentities)
+                .HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("user_email_identity_user_id_fkey");
         });
 
         modelBuilder.Entity<UserToken>(entity =>
