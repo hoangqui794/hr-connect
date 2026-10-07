@@ -143,6 +143,16 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0,
             AutoReplenishment = true
         }));
+
+    options.AddPolicy("candidate-identity", context => RateLimitPartition.GetFixedWindowLimiter(
+        RateLimitIdentity.UserAndIp(context),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromHours(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
 });
 
 // Cấu hình CORS (Cho phép Frontend kết nối API)

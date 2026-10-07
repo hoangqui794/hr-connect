@@ -17,6 +17,7 @@ using HRConnect.Application.Features.Candidates.Commands.AdoptCandidateAffiliate
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using HRConnect.Application.Features.Candidates.Queries.GetCvDownloadUrl;
 using HRConnect.Application.Features.Candidates.Identity.GetCandidateEmailIdentities;
+using HRConnect.Application.Features.Candidates.Identity.StartCandidateIdentityClaim;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using HRConnect.Presentation.Authorization;
@@ -230,6 +231,78 @@ public static class CandidateEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
+
+        app.MapPost("/api/v1/candidates/me/identity-claims", async (
+            [FromBody] StartCandidateIdentityClaimRequest request,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<StartCandidateIdentityClaimCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "candidate.identity.manage_own"))
+                return PermissionAuthorization.Forbidden("candidate.identity.manage_own");
+
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            var command = new StartCandidateIdentityClaimCommand(userId.Value, request.Email);
+            var validation = await validator.ValidateAsync(command, cancellationToken);
+            if (!validation.IsValid)
+            {
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    message = "Dữ liệu yêu cầu liên kết email không hợp lệ.",
+                    errors = validation.Errors
+                        .GroupBy(error => error.PropertyName)
+                        .ToDictionary(
+                            group => group.Key,
+                            group => group.Select(error => error.ErrorMessage).ToArray())
+                });
+            }
+
+            try
+            {
+                var response = await sender.Send(command, cancellationToken);
+                return Results.Accepted(value: response);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(
+                    new { success = false, message = ex.Message, errorCode = ex.ErrorCode },
+                    statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new
+                {
+                    success = false,
+                    message = ex.Message,
+                    errorCode = ex.ErrorCode
+                });
+            }
+        })
+        .WithTags("Candidate Identity")
+        .RequireAuthorization()
+        .RequireRateLimiting("candidate-identity")
+        .WithName("StartCandidateIdentityClaim")
+        .WithSummary("Candidate bắt đầu xác minh email cũ để liên kết hồ sơ")
+        .WithDescription("Yêu cầu permission candidate.identity.manage_own. Hệ thống gửi OTP một lần đến email cần chứng minh. Phản hồi được làm giống nhau khi không tìm thấy hồ sơ cũ để tránh lộ dữ liệu Candidate.")
+        .Produces<StartCandidateIdentityClaimResponse>(StatusCodes.Status202Accepted)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict)
+        .Produces(StatusCodes.Status429TooManyRequests);
 
         affiliateCvGroup.MapGet("", async (
             ClaimsPrincipal user,

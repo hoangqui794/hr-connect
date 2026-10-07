@@ -63,6 +63,7 @@ public static class DependencyInjection
         // 4. Repositories & UnitOfWork
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserEmailIdentityRepository, UserEmailIdentityRepository>();
+        services.AddScoped<ICandidateIdentityClaimRepository, CandidateIdentityClaimRepository>();
         services.AddScoped<IAdminUserRepository, AdminUserRepository>();
         services.AddScoped<ICandidateRepository, CandidateRepository>();
         services.AddScoped<ISkillRepository, SkillRepository>();
