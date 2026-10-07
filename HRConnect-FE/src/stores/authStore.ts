@@ -254,3 +254,13 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+// apiClient fires this when a request is still 401 after one token refresh attempt:
+// the session is gone, so drop to GUEST (route guards then send the user to /login).
+if (typeof window !== 'undefined') {
+  window.addEventListener('hrconnect:unauthorized', () => {
+    if (useAuthStore.getState().isAuthenticated) {
+      useAuthStore.getState().logout();
+    }
+  });
+}
