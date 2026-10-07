@@ -317,7 +317,7 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
 
       <Drawer
         open={Boolean(selected)}
-        width={540}
+        width="min(540px, 100vw)"
         onClose={() => setSelected(null)}
         title="Hồ sơ đăng ký"
         destroyOnClose

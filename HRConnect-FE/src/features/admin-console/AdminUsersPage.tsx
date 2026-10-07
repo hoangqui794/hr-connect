@@ -238,7 +238,7 @@ export const AdminUsersPage: React.FC = () => {
 
       <Drawer
         open={Boolean(selectedId)}
-        width={480}
+        width="min(480px, 100vw)"
         onClose={() => setSelectedId(undefined)}
         title={null}
         closable

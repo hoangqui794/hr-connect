@@ -228,7 +228,7 @@ export const AdminServiceTypesPage: React.FC = () => {
 
       <Drawer
         open={Boolean(editing)}
-        width={560}
+        width="min(560px, 100vw)"
         onClose={() => setEditing(null)}
         title={editing === 'new' ? 'Thêm loại dịch vụ' : `Sửa: ${current?.name ?? ''}`}
         destroyOnClose

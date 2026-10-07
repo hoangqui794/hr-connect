@@ -232,13 +232,13 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
     { key: '/affiliate/commissions', label: 'Sổ cái hoa hồng & Payout', icon: 'DollarOutlined' },
   ],
   [UserRole.INTERNAL_HR]: [
-    { key: '/hr/dashboard', label: 'Bảng điều khiển', icon: 'DashboardOutlined' },
+    // Mirrors HrLayout (the HR workspace renders its own sidebar).
+    { key: '/hr/dashboard', label: 'Việc cần làm', icon: 'DashboardOutlined' },
     { key: '/hr/jobs', label: 'Duyệt tin tuyển dụng', icon: 'FileTextOutlined' },
-    { key: '/hr/candidates', label: 'Kho hồ sơ ứng viên', icon: 'TeamOutlined' },
-    { key: '/hr/screening', label: 'Sàng lọc AI', icon: 'RobotOutlined' },
-    { key: '/hr/interviews', label: 'Lịch phỏng vấn', icon: 'CalendarOutlined' },
-    { key: '/hr/offers', label: 'Quản lý Offer & Onboarding', icon: 'SolutionOutlined' },
-    { key: '/hr/warranty-tracking', label: 'Theo dõi Bảo hành & Milestone', icon: 'SafetyCertificateOutlined' },
+    { key: '/hr/screening', label: 'Sàng lọc hồ sơ', icon: 'TeamOutlined' },
+    { key: '/hr/pipeline', label: 'Tiến độ tuyển dụng', icon: 'CalendarOutlined' },
+    { key: '/hr/placement-review', label: 'Đối soát nhận việc', icon: 'AuditOutlined' },
+    { key: '/hr/warranty-tracking', label: 'Bảo hành & thử việc', icon: 'SafetyCertificateOutlined' },
   ],
   // Admin console ("Slate Command"): pages map to backend endpoints; groups marked
   // "Chưa có API" open an explicit empty state instead of mock numbers.

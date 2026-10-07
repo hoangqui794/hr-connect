@@ -6,6 +6,8 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, App as AntApp, Badge, Button, Empty, Skeleton, Tag, Typography } from 'antd';
+import { PageHero } from '@/features/admin-console/ui';
+import '@/features/admin-console/admin-console.css';
 import { CheckOutlined, CloseOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { Job, JobRejectReasonCode } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -14,7 +16,7 @@ import { JobDetailPanel } from './JobDetailPanel';
 import { ReasonModal } from './ReasonModal';
 import { REJECT_REASONS, SERVICE_TYPE_LABEL, formatDateTime } from './jobDisplay';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const waitingSince = (job: Job) => job.updatedAt;
 
@@ -24,8 +26,10 @@ const QueueItem: React.FC<{ job: Job; selected: boolean; onSelect: () => void }>
       type="button"
       onClick={onSelect}
       aria-current={selected ? 'true' : undefined}
-      className={`w-full cursor-pointer rounded-lg border border-solid px-3 py-2.5 text-left transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700 ${
-        selected ? 'border-emerald-700 bg-emerald-50' : 'border-transparent bg-white hover:border-slate-300'
+      className={`w-full cursor-pointer rounded-lg border border-solid px-3 py-2.5 text-left transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
+        selected
+          ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)]'
+          : 'border-transparent bg-white hover:border-slate-300'
       }`}
     >
       <div className="font-semibold text-slate-900 line-clamp-2">{job.title || 'Vị trí chưa đặt tên'}</div>
@@ -77,18 +81,17 @@ export const JobReviewPage: React.FC = () => {
     });
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <Title level={3} className="!mb-1">
-            Duyệt tin tuyển dụng
-          </Title>
-          <Text type="secondary">Kiểm tra mô tả và yêu cầu trước khi tin được công bố. Tin gửi lâu nhất ở đầu danh sách.</Text>
-        </div>
-        <Button icon={<ReloadOutlined />} loading={queue.isFetching && !queue.isLoading} onClick={() => queue.refetch()}>
-          Tải lại
-        </Button>
-      </header>
+    <div>
+      <PageHero
+        eyebrow="Vận hành"
+        title="Duyệt tin tuyển dụng"
+        description="Kiểm tra mô tả và yêu cầu trước khi tin được công bố. Tin gửi lâu nhất ở đầu danh sách."
+        actions={
+          <Button size="large" icon={<ReloadOutlined />} loading={queue.isFetching && !queue.isLoading} onClick={() => queue.refetch()}>
+            Tải lại
+          </Button>
+        }
+      />
 
       {queue.isError ? (
         <Alert
@@ -101,12 +104,12 @@ export const JobReviewPage: React.FC = () => {
       ) : queue.isLoading ? (
         <Skeleton active paragraph={{ rows: 8 }} />
       ) : jobs.length === 0 ? (
-        <div className="rounded-xl border border-solid border-slate-200 bg-white py-16">
+        <div className="admin-surface py-16">
           <Empty description="Không có tin nào đang chờ duyệt." />
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="rounded-xl border border-solid border-slate-200 bg-slate-50 p-2" aria-label="Hàng đợi duyệt">
+          <aside className="admin-surface p-2" aria-label="Hàng đợi duyệt">
             <div className="flex items-center justify-between px-2 py-1.5">
               <Text strong>Chờ duyệt</Text>
               <Badge count={jobs.length} color="#0f172a" />
@@ -118,7 +121,7 @@ export const JobReviewPage: React.FC = () => {
             </ul>
           </aside>
 
-          <section className="rounded-xl border border-solid border-slate-200 bg-white" aria-live="polite" aria-busy={detail.isFetching}>
+          <section className="admin-surface" aria-live="polite" aria-busy={detail.isFetching}>
             {detail.isError ? (
               <div className="p-6">
                 <Alert type="error" showIcon message={getApiErrorMessage(detail.error)} />
@@ -130,8 +133,8 @@ export const JobReviewPage: React.FC = () => {
             ) : (
               <>
                 {/* Actions first, so the reviewer can decide without scrolling. */}
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-xl border-b border-solid border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
-                  <Text type="secondary" className="text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-2xl border-0 border-b border-solid border-slate-100 bg-white/95 px-6 py-3 backdrop-blur">
+                  <Text className="text-sm text-slate-600">
                     Kiểm tra mô tả, yêu cầu và quyền lợi rồi quyết định.
                   </Text>
                   <div className="flex gap-2">

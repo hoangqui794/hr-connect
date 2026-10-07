@@ -1,33 +1,32 @@
 /**
- * @file AdminLayout.tsx
- * @description Dedicated Admin shell ("Slate Command" + soft UI): navy sidebar built from plain
- * links (no antd Layout/Menu, so the global light-sidebar CSS cannot leak in), a top bar with
- * breadcrumb and account menu, and a soft canvas. Every other role keeps AppShell.
+ * @file HrLayout.tsx
+ * @description Internal HR workspace shell: light sidebar with a sky accent (distinct from the
+ * navy Admin console), sticky top bar with breadcrumb and account menu. Pages reuse the Admin
+ * soft-UI kit; the `.hr-console` class switches its accent variables to sky.
+ * Menu follows the backend: MF-01 job review, MF-03 screening, MF-04 read-only progress.
  */
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Dropdown, Tooltip } from 'antd';
 import {
-  AppstoreOutlined,
   AuditOutlined,
-  BankOutlined,
+  CalendarOutlined,
   DashboardOutlined,
-  DollarOutlined,
+  FileSearchOutlined,
+  FileTextOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuOutlined,
   MenuUnfoldOutlined,
   SafetyCertificateOutlined,
-  SettingOutlined,
-  SolutionOutlined,
-  TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
-import { useCompactLayout } from './useCompactLayout';
-import { Initials } from './ui';
-import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from './AdminRouteProgress';
+import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
+import { Initials } from '@/features/admin-console/ui';
+import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
+import '@/features/admin-console/admin-console.css';
 
 interface NavItem {
   to: string;
@@ -37,35 +36,27 @@ interface NavItem {
 }
 
 const NAV: { group: string; items: NavItem[] }[] = [
-  { group: 'Tổng quan', items: [{ to: '/admin/dashboard', label: 'Việc cần xử lý', icon: <DashboardOutlined /> }] },
+  { group: 'Tổng quan', items: [{ to: '/hr/dashboard', label: 'Việc cần làm', icon: <DashboardOutlined /> }] },
   {
     group: 'Vận hành',
     items: [
-      { to: '/admin/approvals', label: 'Phê duyệt tài khoản', icon: <SafetyCertificateOutlined /> },
-      { to: '/admin/users', label: 'Người dùng', icon: <TeamOutlined /> },
+      { to: '/hr/jobs', label: 'Duyệt tin tuyển dụng', icon: <FileTextOutlined /> },
+      { to: '/hr/screening', label: 'Sàng lọc hồ sơ', icon: <FileSearchOutlined /> },
     ],
   },
-  {
-    group: 'Cấu hình',
-    items: [
-      { to: '/admin/service-types', label: 'Loại dịch vụ', icon: <AppstoreOutlined /> },
-      { to: '/admin/commission-rules', label: 'Quy tắc hoa hồng', icon: <DollarOutlined /> },
-    ],
-  },
-  { group: 'Giám sát', items: [{ to: '/admin/audit-trail', label: 'Nhật ký hệ thống', icon: <AuditOutlined /> }] },
+  { group: 'Theo dõi', items: [{ to: '/hr/pipeline', label: 'Tiến độ tuyển dụng', icon: <CalendarOutlined /> }] },
   {
     group: 'Chưa có API',
     items: [
-      { to: '/admin/disputes', label: 'Tranh chấp', icon: <SolutionOutlined />, muted: true },
-      { to: '/admin/payouts', label: 'Chi trả hoa hồng', icon: <BankOutlined />, muted: true },
-      { to: '/admin/settings', label: 'Cài đặt hệ thống', icon: <SettingOutlined />, muted: true },
+      { to: '/hr/placement-review', label: 'Đối soát nhận việc', icon: <AuditOutlined />, muted: true },
+      { to: '/hr/warranty-tracking', label: 'Bảo hành & thử việc', icon: <SafetyCertificateOutlined />, muted: true },
     ],
   },
 ];
 
 const ALL_ITEMS = NAV.flatMap((g) => g.items.map((i) => ({ ...i, group: g.group })));
 
-export const AdminLayout: React.FC = () => {
+export const HrLayout: React.FC = () => {
   const [collapsedPref, setCollapsed] = useState(false);
   const compact = useCompactLayout();
   const collapsed = collapsedPref && !compact;
@@ -84,7 +75,9 @@ export const AdminLayout: React.FC = () => {
   }, [menuOpen]);
 
   const current = useMemo(
-    () => ALL_ITEMS.find((i) => location.pathname.startsWith(i.to)) ?? (location.pathname === '/admin/profile' ? { label: 'Hồ sơ', group: 'Tài khoản' } : null),
+    () =>
+      ALL_ITEMS.find((i) => location.pathname.startsWith(i.to)) ??
+      (location.pathname === '/hr/profile' ? { label: 'Hồ sơ', group: 'Tài khoản' } : null),
     [location.pathname]
   );
 
@@ -97,32 +90,32 @@ export const AdminLayout: React.FC = () => {
     }
   };
 
-  const name = user?.name || 'Quản trị viên';
-  const width = collapsed ? 76 : 260;
+  const name = user?.name || 'Chuyên viên nhân sự';
+  const width = collapsed ? 76 : 256;
 
   return (
-    <div className="min-h-screen bg-[#F4F6FA] text-slate-900">
-      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+    <div className="hr-console min-h-screen bg-[#F4F7FB] text-slate-900">
+      {/* ── Sidebar (light) ─────────────────────────────────────────────── */}
       {compact && menuOpen && (
         <div className="fixed inset-0 z-[25] bg-slate-900/40" onClick={() => setMenuOpen(false)} aria-hidden />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex flex-col bg-[#0F172A] transition-[width,transform] duration-200${compact && menuOpen ? ' shadow-2xl' : ''}`}
+        className={`fixed inset-y-0 left-0 z-30 flex flex-col border-0 border-r border-solid border-slate-200 bg-white transition-[width,transform] duration-200${compact && menuOpen ? ' shadow-2xl' : ''}`}
         style={{
           width: compact ? 272 : width,
           transform: compact && !menuOpen ? 'translateX(-100%)' : undefined,
           visibility: compact && !menuOpen ? 'hidden' : undefined,
         }}
-        aria-label="Điều hướng quản trị"
+        aria-label="Điều hướng Internal HR"
       >
         <div className="flex h-16 items-center gap-3 px-5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#047857] text-base font-extrabold text-white">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0369A1] text-base font-extrabold text-white">
             H
           </span>
           {!collapsed && (
             <div className="min-w-0 leading-tight">
-              <div className="truncate text-[15px] font-bold text-white">HR Connect</div>
-              <div className="text-[11px] font-medium tracking-wide text-slate-400">Bảng quản trị</div>
+              <div className="truncate text-[15px] font-bold text-slate-900">HR Connect</div>
+              <div className="text-[11px] font-medium tracking-wide text-sky-800">Không gian Internal HR</div>
             </div>
           )}
         </div>
@@ -131,7 +124,7 @@ export const AdminLayout: React.FC = () => {
           {NAV.map((g) => (
             <div key={g.group} className="mt-5 first:mt-2">
               {!collapsed && (
-                <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{g.group}</div>
+                <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">{g.group}</div>
               )}
               <ul className="m-0 list-none space-y-0.5 p-0">
                 {g.items.map((item) => (
@@ -141,14 +134,14 @@ export const AdminLayout: React.FC = () => {
                         to={item.to}
                         className={({ isActive }) =>
                           [
-                            'group flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium no-underline transition-colors duration-150',
-                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-emerald-400',
+                            'flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium no-underline transition-colors duration-150',
+                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-sky-700',
                             collapsed ? 'justify-center' : '',
                             isActive
-                              ? 'bg-white/[0.08] text-white shadow-[inset_3px_0_0_#34D399]'
+                              ? 'bg-sky-50 font-semibold text-sky-900 shadow-[inset_3px_0_0_#0369A1]'
                               : item.muted
-                                ? 'text-slate-400 font-normal hover:bg-white/[0.04] hover:text-slate-200'
-                                : 'text-slate-300 hover:bg-white/[0.05] hover:text-white',
+                                ? 'font-normal text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                                : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900',
                           ].join(' ')
                         }
                       >
@@ -169,7 +162,7 @@ export const AdminLayout: React.FC = () => {
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="flex h-11 cursor-pointer items-center gap-2 border-0 border-t border-solid border-white/10 bg-transparent px-5 text-slate-400 transition-colors hover:text-white"
+          className="flex h-11 cursor-pointer items-center gap-2 border-0 border-t border-solid border-slate-200 bg-transparent px-5 text-slate-500 transition-colors hover:text-slate-900"
           aria-label={collapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
         >
           {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
@@ -194,7 +187,7 @@ export const AdminLayout: React.FC = () => {
               </button>
             )}
           <nav aria-label="Vị trí hiện tại" className="flex min-w-0 items-center gap-2 text-sm">
-            <span className="hidden text-slate-500 sm:inline">{current?.group ?? 'Quản trị'}</span>
+            <span className="hidden text-slate-500 sm:inline">{current?.group ?? 'Internal HR'}</span>
             {current && (
               <>
                 <span className="hidden text-slate-300 sm:inline" aria-hidden>/</span>
@@ -211,12 +204,12 @@ export const AdminLayout: React.FC = () => {
                 { type: 'divider' },
                 { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
               ],
-              onClick: ({ key }) => (key === 'logout' ? signOut() : navigate('/admin/profile')),
+              onClick: ({ key }) => (key === 'logout' ? signOut() : navigate('/hr/profile')),
             }}
           >
             <button
               type="button"
-              className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"
+              className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700"
               aria-label="Tài khoản"
             >
               <Initials name={name} size={34} />
@@ -241,4 +234,4 @@ export const AdminLayout: React.FC = () => {
   );
 };
 
-export default AdminLayout;
+export default HrLayout;
