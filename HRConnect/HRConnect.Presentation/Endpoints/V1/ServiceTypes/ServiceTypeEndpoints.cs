@@ -156,7 +156,7 @@ public static class ServiceTypeEndpoints
                 return Results.Json(new
                 {
                     success = false,
-                    message = "Ban khong co quyen thuc hien thao tac nay. Yeu cau quyen quan tri vien."
+                    message = "Bạn không có quyền thực hiện thao tác này. Yêu cầu quyền quản trị viên."
                 }, statusCode: StatusCodes.Status403Forbidden);
             }
 

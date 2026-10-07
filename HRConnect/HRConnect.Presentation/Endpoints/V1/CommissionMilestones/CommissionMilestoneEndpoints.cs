@@ -24,7 +24,7 @@ public static class CommissionMilestoneEndpoints
                 return Results.Json(new
                 {
                     success = false,
-                    message = "Ban khong co quyen thuc hien thao tac nay. Yeu cau quyen quan tri vien."
+                    message = "Bạn không có quyền thực hiện thao tác này. Yêu cầu quyền quản trị viên."
                 }, statusCode: StatusCodes.Status403Forbidden);
             }
 
@@ -40,8 +40,9 @@ public static class CommissionMilestoneEndpoints
         return app;
     }
 
+    // commission.manage is the permission seeded for managing commission rules (DatabaseSeeder).
     private static bool HasAdminAccess(ClaimsPrincipal user) =>
         user.IsInRole("PLATFORM_ADMIN") ||
-        user.HasClaim("permission", "service_type.manage") ||
+        user.HasClaim("permission", "commission.manage") ||
         user.HasClaim("permission", "system_config.manage");
 }

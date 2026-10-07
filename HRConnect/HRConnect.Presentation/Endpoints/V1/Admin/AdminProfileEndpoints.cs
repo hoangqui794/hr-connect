@@ -14,7 +14,7 @@ public static class AdminProfileEndpoints
     {
         var group = app.MapGroup("/api/v1/admin/profile")
                        .WithTags("Admin Profile")
-                       .RequireAuthorization();
+                       .RequireAuthorization(policy => policy.RequireRole("PLATFORM_ADMIN"));
 
         // 1. GET /api/v1/admin/profile/me - Xem hồ sơ Quản trị viên nền tảng
         group.MapGet("/me", async (
@@ -47,6 +47,7 @@ public static class AdminProfileEndpoints
         .WithDescription("Lấy toàn bộ thông tin chi tiết hồ sơ cá nhân của Quản trị viên nền tảng (Platform Admin) đang đăng nhập dựa trên JWT Bearer Token (bao gồm Mã nhân viên, Chức danh, Email, Số điện thoại, Trạng thái tài khoản).")
         .Produces<AdminProfileResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
