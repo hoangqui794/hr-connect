@@ -54,6 +54,7 @@ const PHRASES: Record<string, string> = {
   AI_SCORING_RETRY_REQUESTED: 'đã yêu cầu AI chấm lại',
   AI_SCORING_COMPLETED: 'đã chấm điểm xong một hồ sơ',
   AI_SCORING_FAILED: 'chấm điểm AI thất bại',
+  APPLICATION_CV_DOWNLOAD_URL_ISSUED: 'đã mở xem CV của một hồ sơ',
   INSERT: 'đã tạo dữ liệu',
   UPDATE: 'đã cập nhật dữ liệu',
   DELETE: 'đã xóa dữ liệu',

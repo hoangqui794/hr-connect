@@ -96,7 +96,13 @@ const EMPTY: Record<Tab, string> = {
   placements: 'Chưa có ứng viên nào đi làm.',
 };
 
-export const HrPipelinePage: React.FC = () => {
+/** Shared by Internal HR (read-only) and the Client, which opens an application to act on it. */
+export const HrPipelinePage: React.FC<{
+  eyebrow?: string;
+  description?: string;
+  onOpenApplication?: (applicationId: string) => void;
+  emptyHints?: Partial<Record<Tab, string>>;
+}> = ({ eyebrow = 'Theo dõi', description, onOpenApplication, emptyHints }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = (TABS as string[]).includes(searchParams.get('tab') ?? '') ? (searchParams.get('tab') as Tab) : 'interviews';
   const page = Number(searchParams.get('page')) || 1;
@@ -125,15 +131,27 @@ export const HrPipelinePage: React.FC = () => {
     showSizeChanger: false,
     onChange: (p: number) => go({ page: p }),
   };
-  const empty = { emptyText: <div className="py-10 text-slate-600">{EMPTY[tab]}</div> };
+  const empty = { emptyText: <div className="py-10 text-slate-600">{emptyHints?.[tab] ?? EMPTY[tab]}</div> };
+  const rowProps = (r: { applicationId: string }) =>
+    onOpenApplication
+      ? {
+          onClick: () => onOpenApplication(r.applicationId),
+          onKeyDown: (e: React.KeyboardEvent) => e.key === 'Enter' && onOpenApplication(r.applicationId),
+          tabIndex: 0,
+          className: 'cursor-pointer',
+        }
+      : {};
   const items = (list.data?.items ?? []) as never[];
 
   return (
     <div>
       <PageHero
-        eyebrow="Theo dõi"
-        title="Tiến độ tuyển dụng"
-        description="Client là bên phỏng vấn, gửi offer và xác nhận ứng viên đi làm. Internal HR theo dõi để hỗ trợ, trang này chỉ để xem."
+        eyebrow={eyebrow}
+        title={onOpenApplication ? 'Phỏng vấn & Offer' : 'Tiến độ tuyển dụng'}
+        description={
+          description ??
+          'Client là bên phỏng vấn, gửi offer và xác nhận ứng viên đi làm. Internal HR theo dõi để hỗ trợ, trang này chỉ để xem.'
+        }
       />
       <Surface>
         <div className="px-5 pb-3 pt-5">
@@ -154,13 +172,13 @@ export const HrPipelinePage: React.FC = () => {
           </div>
         ) : tab === 'interviews' ? (
           <Table<InterviewItem> className="admin-soft-table"
-            scroll={{ x: 'max-content' }} rowKey="interviewId" columns={interviewColumns} dataSource={items} loading={list.isFetching} pagination={pagination} locale={empty} />
+            scroll={{ x: 'max-content' }} rowKey="interviewId" columns={interviewColumns} dataSource={items} loading={list.isFetching} pagination={pagination} locale={empty} onRow={rowProps} />
         ) : tab === 'offers' ? (
           <Table<OfferItem> className="admin-soft-table"
-            scroll={{ x: 'max-content' }} rowKey="offerId" columns={offerColumns} dataSource={items} loading={list.isFetching} pagination={pagination} locale={empty} />
+            scroll={{ x: 'max-content' }} rowKey="offerId" columns={offerColumns} dataSource={items} loading={list.isFetching} pagination={pagination} locale={empty} onRow={rowProps} />
         ) : (
           <Table<PlacementItem> className="admin-soft-table"
-            scroll={{ x: 'max-content' }} rowKey="placementId" columns={placementColumns} dataSource={items} loading={list.isFetching} pagination={pagination} locale={empty} />
+            scroll={{ x: 'max-content' }} rowKey="placementId" columns={placementColumns} dataSource={items} loading={list.isFetching} pagination={pagination} locale={empty} onRow={rowProps} />
         )}
       </Surface>
     </div>

@@ -39,6 +39,8 @@ import { AdminScope } from '@/features/admin-console/adminTheme';
 import { AdminLayout } from '@/features/admin-console/AdminLayout';
 import { HrScope } from '@/features/hr-console/hrTheme';
 import { HrLayout } from '@/features/hr-console/HrLayout';
+import { ClientScope } from '@/features/client-console/clientTheme';
+import { ClientShell } from '@/features/client-console/ClientShell';
 
 // ─── Page-level Suspense boundary ────────────────────────────────────────────
 
@@ -115,38 +117,6 @@ export const router = createBrowserRouter([
       {
         path: 'dashboard',
         element: protectedPage('/dashboard', <AppRoutes.Dashboard />),
-      },
-      {
-        path: 'client/dashboard',
-        element: protectedPage('/client/dashboard', <AppRoutes.ClientDashboardPage />),
-      },
-      {
-        path: 'client/jobs',
-        element: protectedPage('/client/jobs', <AppRoutes.Mf01ClientJobsListPage />),
-      },
-      {
-        path: 'client/jobs/create',
-        element: protectedPage('/client/jobs/create', <AppRoutes.Mf01JobFormPage />),
-      },
-      {
-        path: 'client/jobs/:id/edit',
-        element: protectedPage('/client/jobs/:id/edit', <AppRoutes.Mf01JobFormPage />),
-      },
-      {
-        path: 'client/post-job',
-        element: protectedPage('/client/post-job', <AppRoutes.Mf01JobFormPage />),
-      },
-      {
-        path: 'client/candidates',
-        element: protectedPage('/client/candidates', <AppRoutes.ClientCandidatePoolPage />),
-      },
-      {
-        path: 'client/interviews-offers',
-        element: protectedPage('/client/interviews-offers', <AppRoutes.ClientInterviewsOffersPage />),
-      },
-      {
-        path: 'client/warranty',
-        element: protectedPage('/client/warranty', <AppRoutes.ClientWarrantyPage />),
       },
       {
         path: 'affiliate/dashboard',
@@ -257,6 +227,38 @@ export const router = createBrowserRouter([
       { path: 'payouts', element: <AppRoutes.ConsolePayoutsPlaceholder /> },
       { path: 'finance', element: <AppRoutes.ConsolePayoutsPlaceholder /> },
       { path: 'settings', element: <AppRoutes.ConsoleSettingsPlaceholder /> },
+    ],
+  },
+
+  // ── Client Company workspace: own shell (ClientShell), top navigation + indigo accent ──
+  {
+    path: '/client',
+    element: (
+      <ProtectedRoute requiredRoles={ROUTE_ACCESS['/client/dashboard']}>
+        <ClientScope>
+          <ClientShell />
+        </ClientScope>
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/client/dashboard" replace /> },
+      { path: 'dashboard', element: <AppRoutes.ClientOverviewPage /> },
+      { path: 'jobs', element: <AppRoutes.Mf01ClientJobsListPage /> },
+      { path: 'jobs/create', element: <AppRoutes.Mf01JobFormPage /> },
+      {
+        path: 'jobs/:id/edit',
+        element: (
+          <ProtectedRoute requiredRoles={ROUTE_ACCESS['/client/jobs/:id/edit']}>
+            <AppRoutes.Mf01JobFormPage />
+          </ProtectedRoute>
+        ),
+      },
+      { path: 'post-job', element: <Navigate to="/client/jobs/create" replace /> },
+      { path: 'candidates', element: <AppRoutes.ClientCandidatesPage /> },
+      { path: 'interviews-offers', element: <AppRoutes.ClientWorkspaceInterviewsOffersPage /> },
+      { path: 'company', element: <AppRoutes.ClientCompanyPage /> },
+      // MF-05 warranty has no backend API yet: explicit empty state, no mock numbers.
+      { path: 'warranty', element: <AppRoutes.ClientWarrantyPlaceholder /> },
     ],
   },
 

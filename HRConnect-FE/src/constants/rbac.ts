@@ -212,12 +212,13 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
     { key: '/register', label: 'Đăng ký', icon: 'UserAddOutlined' },
   ],
   [UserRole.CLIENT]: [
-    { key: '/client/dashboard', label: 'Bảng điều khiển', icon: 'DashboardOutlined' },
-    { key: '/client/jobs', label: 'Tin tuyển dụng của tôi', icon: 'FileTextOutlined' },
-    { key: '/client/jobs/create', label: 'Đăng tin tuyển dụng mới', icon: 'PlusCircleOutlined' },
-    { key: '/client/candidates', label: 'Phễu quản lý Ứng viên', icon: 'TeamOutlined' },
-    { key: '/client/interviews-offers', label: 'Lịch phỏng vấn & Offer', icon: 'CalendarOutlined' },
-    { key: '/client/warranty', label: 'Theo dõi Bảo hành 60 ngày', icon: 'SafetyCertificateOutlined' },
+    // Mirrors ClientShell (the Client workspace renders its own top navigation).
+    { key: '/client/dashboard', label: 'Tổng quan', icon: 'DashboardOutlined' },
+    { key: '/client/jobs', label: 'Tin tuyển dụng', icon: 'FileTextOutlined' },
+    { key: '/client/jobs/create', label: 'Đăng tin', icon: 'PlusCircleOutlined' },
+    { key: '/client/candidates', label: 'Hồ sơ ứng viên', icon: 'TeamOutlined' },
+    { key: '/client/interviews-offers', label: 'Phỏng vấn & Offer', icon: 'CalendarOutlined' },
+    { key: '/client/warranty', label: 'Bảo hành', icon: 'SafetyCertificateOutlined' },
   ],
   [UserRole.CANDIDATE]: [
     { key: '/dashboard', label: 'Bảng điều khiển', icon: 'DashboardOutlined' },

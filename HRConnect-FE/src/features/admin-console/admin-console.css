@@ -1,4 +1,4 @@
-/* Console accent: emerald for Admin (default), sky for Internal HR (.hr-console).
+/* Console accent: emerald for Admin (default), sky for Internal HR (.hr-console), indigo for Client (.client-console).
    Shared components read these variables instead of hard-coded colours. */
 :root {
   --console-accent: #047857;        /* white text on it: 5.5:1 */
@@ -6,6 +6,66 @@
   --console-accent-soft: #ecfdf5;
   --console-accent-bright: #34d399;
   --console-accent-glow: rgba(52, 211, 153, 0.7);
+}
+
+.client-console {
+  --console-accent: #2563eb;        /* white text on it: 5.2:1 */
+  --console-accent-strong: #1d4ed8; /* text on white: 6.7:1 */
+  --console-accent-soft: #eff4ff;
+  --console-accent-bright: #60a5fa;
+  --console-accent-glow: rgba(96, 165, 250, 0.6);
+  --client-cta: #c2410c;            /* white text on it: 5.2:1 */
+  --client-cta-hover: #9a3412;
+  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;
+}
+
+/* ── Client "Soft UI": larger radius, layered soft shadows, hairline border ── */
+.client-console .admin-surface {
+  border-radius: 20px;
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.04),
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px -8px rgba(30, 64, 175, 0.12);
+}
+
+.client-console .admin-surface--active {
+  box-shadow:
+    0 0 0 2px var(--console-accent),
+    0 8px 24px -8px rgba(37, 99, 235, 0.3);
+}
+
+.client-console .ant-table {
+  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', sans-serif !important;
+}
+
+/* Burnt-orange call to action (white text 5.2:1). */
+.client-console .ant-btn.client-cta {
+  background: var(--client-cta);
+  border-color: var(--client-cta);
+}
+
+.client-console .ant-btn.client-cta:not(:disabled):hover {
+  background: var(--client-cta-hover) !important;
+  border-color: var(--client-cta-hover) !important;
+}
+
+.client-soft-card {
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 220ms ease;
+}
+
+.client-soft-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(37, 99, 235, 0.18),
+    0 14px 32px -12px rgba(30, 64, 175, 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-soft-card,
+  .client-soft-card:hover {
+    transition: none;
+    transform: none;
+  }
 }
 
 .hr-console {
