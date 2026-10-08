@@ -111,6 +111,22 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   },
 ];
 
+const WORKSPACE_PREFIX: Partial<Record<UserRole, string>> = {
+  [UserRole.ADMIN]: '/admin',
+  [UserRole.CLIENT]: '/client',
+  [UserRole.INTERNAL_HR]: '/hr',
+  [UserRole.AFFILIATE]: '/affiliate',
+  [UserRole.CANDIDATE]: '/candidate',
+};
+
+/** True when `path` is inside the role's own workspace, or is a shared page (job search, profile…). */
+const belongsToRoleWorkspace = (role: UserRole, path: string): boolean => {
+  const own = WORKSPACE_PREFIX[role];
+  const isUnder = (prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
+  if (own && isUnder(own)) return true;
+  return !Object.values(WORKSPACE_PREFIX).some((prefix) => prefix && isUnder(prefix));
+};
+
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -223,9 +239,12 @@ export const LoginPage: React.FC = () => {
       });
 
       // Redirect user based on authenticated role or previous route
+      // Resume the page that asked for login only when it belongs to this role's own workspace.
+      // After a logout the remembered page is the previous user's (e.g. /client/...), and an Admin
+      // may technically open it, but should land in the Admin console instead.
       const redirectFrom = (location.state as { from?: string } | undefined)?.from;
       const destination =
-        redirectFrom && redirectFrom !== '/login'
+        redirectFrom && redirectFrom !== '/login' && belongsToRoleWorkspace(resolvedRole, redirectFrom)
           ? redirectFrom
           : resolvedRole === UserRole.CANDIDATE
           ? '/'
