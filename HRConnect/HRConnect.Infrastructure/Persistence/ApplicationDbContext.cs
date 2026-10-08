@@ -1493,6 +1493,10 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => new { e.ApplicationId, e.InterviewRound }, "interview_application_id_interview_round_key").IsUnique();
 
+            entity.HasIndex(e => e.ApplicationId, "ux_interview_one_scheduled_per_application")
+                .IsUnique()
+                .HasFilter("status = 'SCHEDULED'");
+
             entity.Property(e => e.InterviewId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("interview_id");

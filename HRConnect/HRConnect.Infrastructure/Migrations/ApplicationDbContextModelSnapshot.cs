@@ -2155,6 +2155,10 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "ApplicationId", "InterviewRound" }, "interview_application_id_interview_round_key")
                         .IsUnique();
 
+                    b.HasIndex(new[] { "ApplicationId" }, "ux_interview_one_scheduled_per_application")
+                        .IsUnique()
+                        .HasFilter("status = 'SCHEDULED'");
+
                     b.ToTable("interview", "public", t =>
                         {
                             t.HasCheckConstraint("ck_interview_duration_positive", "duration_minutes IS NULL OR duration_minutes > 0");
