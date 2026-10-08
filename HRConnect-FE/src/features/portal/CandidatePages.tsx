@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Button, Popconfirm, Skeleton, Tooltip, Upload } from 'antd';
+import { Alert, App as AntApp, Button, DatePicker, Pagination, Popconfirm, Select, Skeleton, Tooltip, Upload } from 'antd';
 import {
   CheckCircleFilled,
   DeleteOutlined,
@@ -26,7 +26,7 @@ import { candidateApplicationsApi, candidateCvApi } from '@/services/api/mf02Api
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { CandidateApplication } from '@/types/api/mf02';
-import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { CANDIDATE_STEPS, MAX_CV_MB, candidateStage, cvFileError, fileSize } from './mf02Labels';
 
 dayjs.extend(relativeTimePlugin);
@@ -40,7 +40,7 @@ export const candidateKeys = {
 
 export const useCandidateCvs = () => useQuery({ queryKey: candidateKeys.cvs, queryFn: () => candidateCvApi.list() });
 const useMyApplications = () =>
-  useQuery({ queryKey: candidateKeys.applications, queryFn: () => candidateApplicationsApi.list({ page: 1, pageSize: 50 }) });
+  useQuery({ queryKey: [...candidateKeys.applications, 'overview'], queryFn: () => candidateApplicationsApi.list({ page: 1, pageSize: 50 }) });
 
 /** Opens a signed CV link in a new tab (tab opened first so popup blockers allow it). */
 export const useOpenSignedUrl = () => {
@@ -158,7 +158,7 @@ export const CandidateHomePage: React.FC = () => {
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-3">
         {[
           { label: 'Đơn đã nộp', value: items.length, to: '/candidate/applications' },
-          { label: 'Đang xử lý', value: active.length, to: '/candidate/applications?group=active' },
+          { label: 'Đang xử lý', value: active.length, to: '/candidate/applications' },
           { label: 'CV trong kho', value: cvs.data?.length ?? 0, to: '/candidate/cvs' },
         ].map((k) => (
           <button
@@ -207,11 +207,28 @@ export const CandidateHomePage: React.FC = () => {
 export const CandidateApplicationsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const group = (searchParams.get('group') as 'all' | 'active' | 'closed') || 'all';
-  const apps = useMyApplications();
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const status = searchParams.get('status') || undefined;
+  const jobId = searchParams.get('jobId') || undefined;
+  const fromDate = searchParams.get('fromDate') || undefined;
+  const toDate = searchParams.get('toDate') || undefined;
+  const filters = { status, jobId, fromDate, toDate, page, pageSize: 10 };
+  const apps = useQuery({
+    queryKey: [...candidateKeys.applications, filters],
+    queryFn: () => candidateApplicationsApi.list(filters),
+    placeholderData: (previous) => previous,
+  });
   const items = apps.data?.items ?? [];
-  const activeItems = items.filter((a) => !candidateStage(a.status).closed);
-  const shown = group === 'active' ? activeItems : group === 'closed' ? items.filter((a) => candidateStage(a.status).closed) : items;
+
+  const updateFilters = (updates: Record<string, string | undefined>) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    });
+    if (!Object.prototype.hasOwnProperty.call(updates, 'page')) next.delete('page');
+    setSearchParams(next);
+  };
 
   return (
     <div>
@@ -225,26 +242,47 @@ export const CandidateApplicationsPage: React.FC = () => {
           </Button>
         }
       />
-      <div className="mb-4">
-        <FilterPills
-          label="Lọc đơn"
-          value={group}
-          onChange={(v) => setSearchParams(v === 'all' ? {} : { group: v })}
+      <div className="mb-4 flex flex-wrap gap-3">
+        <Select
+          aria-label="Lọc theo trạng thái"
+          allowClear
+          placeholder="Tất cả trạng thái"
+          value={status}
+          onChange={(value) => updateFilters({ status: value })}
+          className="min-w-52"
           options={[
-            { value: 'all', label: 'Tất cả', count: items.length },
-            { value: 'active', label: 'Đang xử lý', count: activeItems.length },
-            { value: 'closed', label: 'Đã kết thúc', count: items.length - activeItems.length },
-          ]}
+            ['SUBMITTED', 'Đã nộp'],
+            ['SCREENING', 'Đang được xem'],
+            ['SHORTLISTED', 'Được chọn'],
+            ['INTERVIEW', 'Phỏng vấn'],
+            ['OFFER_PENDING', 'Đang chuẩn bị offer'],
+            ['OFFER_ACCEPTED', 'Đã nhận offer'],
+            ['PLACED', 'Đã đi làm'],
+            ['REJECTED', 'Chưa phù hợp'],
+            ['WITHDRAWN', 'Đã rút đơn'],
+          ].map(([value, label]) => ({ value, label }))}
         />
+        <DatePicker.RangePicker
+          aria-label="Lọc theo ngày ứng tuyển"
+          format="DD/MM/YYYY"
+          value={fromDate && toDate ? [dayjs(fromDate), dayjs(toDate)] : null}
+          onChange={(dates) =>
+            updateFilters({
+              fromDate: dates?.[0]?.startOf('day').toISOString(),
+              toDate: dates?.[1]?.endOf('day').toISOString(),
+            })
+          }
+        />
+        {(status || fromDate || toDate || jobId) && <Button onClick={() => setSearchParams({})}>Xóa bộ lọc</Button>}
       </div>
       {apps.isLoading ? (
         <Skeleton active paragraph={{ rows: 6 }} />
       ) : apps.isError ? (
         <Alert type="error" showIcon message="Không tải được đơn ứng tuyển" description={getApiErrorMessage(apps.error)} />
-      ) : shown.length === 0 ? (
+      ) : items.length === 0 ? (
         <Surface className="p-10 text-center">
-          <p className="m-0 text-sm text-slate-600">{items.length === 0 ? 'Bạn chưa ứng tuyển công việc nào.' : 'Không có đơn nào trong nhóm này.'}</p>
-          {items.length === 0 && (
+          <p className="m-0 text-sm text-slate-600">{status || fromDate || toDate || jobId ? 'Không có đơn nào phù hợp bộ lọc.' : 'Bạn chưa ứng tuyển công việc nào.'}</p>
+          {!status && !fromDate && !toDate && !jobId && (
             <Button type="primary" className="mt-3" icon={<SearchOutlined />} onClick={() => navigate('/jobs')}>
               Tìm việc làm
             </Button>
@@ -252,9 +290,20 @@ export const CandidateApplicationsPage: React.FC = () => {
         </Surface>
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-          {shown.map((a) => (
+          {items.map((a) => (
             <ApplicationCard key={a.applicationId} a={a} />
           ))}
+        </div>
+      )}
+      {(apps.data?.totalPages ?? 0) > 1 && (
+        <div className="mt-6 flex justify-center">
+          <Pagination
+            current={page}
+            pageSize={10}
+            total={apps.data?.total ?? 0}
+            showSizeChanger={false}
+            onChange={(nextPage) => updateFilters({ page: String(nextPage) })}
+          />
         </div>
       )}
     </div>

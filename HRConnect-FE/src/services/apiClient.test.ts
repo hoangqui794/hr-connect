@@ -1,7 +1,7 @@
 import { AxiosError, AxiosHeaders, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
 import { apiClient, getApiError, getApiErrorMessage } from './apiClient';
-import { candidateCvApi } from './api/mf02Api';
+import { candidateApplicationsApi, candidateCvApi } from './api/mf02Api';
 
 describe('API client foundation', () => {
   afterEach(() => {
@@ -53,5 +53,38 @@ describe('API client foundation', () => {
     // and its generated boundary. The application must never hard-code a
     // boundary-less multipart content type.
     expect(capturedConfig?.headers.get('Content-Type')).not.toBe('multipart/form-data');
+  });
+
+  it('sends candidate application filters to the backend list endpoint', async () => {
+    let capturedConfig: InternalAxiosRequestConfig | undefined;
+    apiClient.defaults.adapter = async (config) => {
+      capturedConfig = config;
+      return {
+        data: { success: true, data: { items: [], page: 2, pageSize: 10, total: 0, totalPages: 0 } },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      };
+    };
+
+    await candidateApplicationsApi.list({
+      status: 'SCREENING',
+      jobId: 'job-1',
+      fromDate: '2026-10-01T00:00:00.000Z',
+      toDate: '2026-10-08T23:59:59.999Z',
+      page: 2,
+      pageSize: 10,
+    });
+
+    expect(capturedConfig?.url).toBe('/candidates/applications');
+    expect(capturedConfig?.params).toEqual({
+      status: 'SCREENING',
+      jobId: 'job-1',
+      fromDate: '2026-10-01T00:00:00.000Z',
+      toDate: '2026-10-08T23:59:59.999Z',
+      page: 2,
+      pageSize: 10,
+    });
   });
 });
