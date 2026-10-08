@@ -208,7 +208,6 @@ export const CandidateApplicationsPage: React.FC = () => {
   const currentTab = searchParams.get('tab') === 'consents' ? 'consents' : 'applications';
   const group = (searchParams.get('group') as 'all' | 'active' | 'closed') || 'all';
   const submissionId = searchParams.get('submissionId');
-
   const apps = useMyApplications();
   const items = apps.data?.items ?? [];
   const activeItems = items.filter((a) => !candidateStage(a.status).closed);
@@ -217,7 +216,6 @@ export const CandidateApplicationsPage: React.FC = () => {
   const handleTabChange = (key: string) => {
     setSearchParams(key === 'consents' ? { tab: 'consents' } : {});
   };
-
   return (
     <div>
       <PageHero
@@ -230,7 +228,6 @@ export const CandidateApplicationsPage: React.FC = () => {
           </Button>
         }
       />
-
       <Tabs
         activeKey={currentTab}
         onChange={handleTabChange}
@@ -348,7 +345,6 @@ export const CandidateCvsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = searchParams.get('tab') === 'affiliate' ? 'affiliate' : 'personal';
-
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
   const cvs = useCandidateCvs();
@@ -483,4 +479,3 @@ export const CandidateCvsPage: React.FC = () => {
     </div>
   );
 };
-

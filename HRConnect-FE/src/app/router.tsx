@@ -126,94 +126,6 @@ export const router = createBrowserRouter([
         element: protectedPage('/dashboard', <AppRoutes.Dashboard />),
       },
       {
-        path: 'client/dashboard',
-        element: protectedPage('/client/dashboard', <AppRoutes.ClientDashboardPage />),
-      },
-      {
-        path: 'client/jobs',
-        element: protectedPage('/client/jobs', <AppRoutes.Mf01ClientJobsListPage />),
-      },
-      {
-        path: 'client/jobs/create',
-        element: protectedPage('/client/jobs/create', <AppRoutes.Mf01JobFormPage />),
-      },
-      {
-        path: 'client/jobs/:id/edit',
-        element: protectedPage('/client/jobs/:id/edit', <AppRoutes.Mf01JobFormPage />),
-      },
-      {
-        path: 'client/post-job',
-        element: protectedPage('/client/post-job', <AppRoutes.Mf01JobFormPage />),
-      },
-      {
-        path: 'client/candidates',
-        element: protectedPage('/client/candidates', <AppRoutes.ClientCandidatePoolPage />),
-      },
-      {
-        path: 'client/interviews-offers',
-        element: protectedPage('/client/interviews-offers', <AppRoutes.ClientInterviewsOffersPage />),
-      },
-      {
-        path: 'client/warranty',
-        element: protectedPage('/client/warranty', <AppRoutes.ClientWarrantyPage />),
-      },
-      {
-        path: 'affiliate/dashboard',
-        element: protectedPage('/affiliate/dashboard', <AppRoutes.AffiliateDashboardPage />),
-      },
-      {
-        path: 'affiliate/jobs',
-        element: protectedPage('/affiliate/jobs', <AppRoutes.Mf01InAppJobDiscoveryPage />),
-      },
-      {
-        path: 'affiliate/submissions',
-        element: protectedPage('/affiliate/submissions', <AppRoutes.AffiliateSubmissionsPage />),
-      },
-      {
-        path: 'affiliate/candidates',
-        element: protectedPage('/affiliate/candidates', <AppRoutes.AffiliateSubmissionsPage />),
-      },
-      {
-        path: 'affiliate/submit-candidate',
-        element: protectedPage('/affiliate/submit-candidate', <AppRoutes.ReferralForm />),
-      },
-      {
-        path: 'affiliate/referral',
-        element: protectedPage('/affiliate/referral', <AppRoutes.ReferralForm />),
-      },
-      {
-        path: 'affiliate/refer',
-        element: protectedPage('/affiliate/refer', <AppRoutes.ReferralForm />),
-      },
-      {
-        path: 'affiliate/commissions',
-        element: protectedPage('/affiliate/commissions', <AppRoutes.AffiliateCommissionsPage />),
-      },
-      {
-        path: 'affiliate/ledger',
-        element: protectedPage('/affiliate/ledger', <AppRoutes.AffiliateCommissionsPage />),
-      },
-      {
-        path: 'candidate/dashboard',
-        element: protectedPage('/candidate/dashboard', <AppRoutes.CandidateDashboardPage />),
-      },
-      {
-        path: 'profile',
-        element: protectedPage('/profile', <AppRoutes.CandidateProfilePage />),
-      },
-      {
-        path: 'candidate/profile',
-        element: protectedPage('/candidate/profile', <AppRoutes.CandidateProfilePage />),
-      },
-      {
-        path: 'candidate/applications',
-        element: protectedPage('/candidate/applications', <AppRoutes.CandidateApplicationsPage />),
-      },
-      {
-        path: 'candidate/saved-jobs',
-        element: protectedPage('/candidate/saved-jobs', <AppRoutes.CandidateSavedJobsPage />),
-      },
-      {
         path: 'jobs',
         element: protectedPage('/jobs', <AppRoutes.Mf01InAppJobDiscoveryPage />),
       },
@@ -229,10 +141,6 @@ export const router = createBrowserRouter([
       {
         path: 'candidates',
         element: protectedPage('/candidates', <AppRoutes.CandidateList />),
-      },
-      {
-        path: 'cv-builder',
-        element: protectedPage('/cv-builder', <AppRoutes.CVBuilder />),
       },
     ],
   },
@@ -353,6 +261,7 @@ export const router = createBrowserRouter([
       { path: 'warranty', element: <AppRoutes.ClientWarrantyPlaceholder /> },
     ],
   },
+
   // ── Internal HR workspace: own shell (HrLayout), light sidebar + sky accent ──
   {
     path: '/hr',

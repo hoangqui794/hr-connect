@@ -7,6 +7,7 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
 import { antdTheme } from '@/styles/antd-theme';
 import { useI18nStore } from '@/i18n';
+import { useAuthStore } from '@/stores/authStore';
 import '@/styles/index.css';
 
 const queryClient = new QueryClient({
@@ -17,6 +18,17 @@ const queryClient = new QueryClient({
       staleTime: 30000,
     },
   },
+});
+
+// Cached queries are keyed by page, not by user: drop them whenever the signed-in account changes
+// (logout, or logging in as someone else) so one user never sees another user's data.
+let lastAccount = useAuthStore.getState().user?.email ?? null;
+useAuthStore.subscribe((state) => {
+  const account = state.isAuthenticated ? state.user?.email ?? null : null;
+  if (account !== lastAccount) {
+    lastAccount = account;
+    queryClient.clear();
+  }
 });
 
 const App: React.FC = () => {

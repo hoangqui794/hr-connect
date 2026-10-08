@@ -198,6 +198,7 @@ const ClientCompanyPage = React.lazy(() =>
 const ClientWarrantyPlaceholder = React.lazy(() =>
   import('@/features/client-console/ClientMorePages').then((m) => ({ default: m.ClientWarrantyPlaceholder }))
 );
+
 // ── Internal HR workspace (features/hr-console), backed by the real API ─────
 const HrOverviewPage = React.lazy(() =>
   import('@/features/hr-console/HrOverviewPage').then((m) => ({ default: m.HrOverviewPage }))
@@ -358,6 +359,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/client/candidates': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/interviews-offers': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/warranty': [UserRole.CLIENT, UserRole.ADMIN],
+  '/client/company': [UserRole.CLIENT],
   '/affiliate/dashboard': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/hr/dashboard': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/jobs': [UserRole.INTERNAL_HR, UserRole.ADMIN],

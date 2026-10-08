@@ -178,7 +178,6 @@ export const CandidateShell: React.FC = () => {
           </Suspense>
         </AdminPageEnter>
       </main>
-
       <ChangePasswordModal
         open={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}

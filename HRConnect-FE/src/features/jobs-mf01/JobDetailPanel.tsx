@@ -26,10 +26,22 @@ import {
 
 const { Paragraph, Text, Title } = Typography;
 
+// Fixed colours (text on tinted bg ≥ 4.5:1) so the tag reads the same under every console theme.
+const STATUS_TAG_CLASS: Record<Job['status'], string> = {
+  DRAFT: 'border-slate-200 bg-slate-50 text-slate-700',
+  PENDING_REVIEW: 'border-sky-200 bg-sky-50 text-sky-800',
+  PENDING_APPROVAL: 'border-amber-200 bg-amber-50 text-amber-800',
+  REJECTED: 'border-red-200 bg-red-50 text-red-800',
+  ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  PAUSED: 'border-amber-200 bg-amber-50 text-amber-800',
+  CLOSED: 'border-slate-200 bg-slate-100 text-slate-600',
+};
+
 export const JobStatusTag: React.FC<{ status?: Job['status'] }> = ({ status }) => {
   const config = status ? JOB_STATUS[status] : undefined;
+  const tagClass = status && STATUS_TAG_CLASS[status] ? STATUS_TAG_CLASS[status] : 'border-slate-200 bg-slate-50 text-slate-700';
   return (
-    <Tag color={config?.color ?? 'default'} className="m-0 font-medium">
+    <Tag className={`m-0 border border-solid font-medium ${tagClass}`}>
       {config?.label ?? status ?? '—'}
     </Tag>
   );

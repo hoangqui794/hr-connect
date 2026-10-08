@@ -5,7 +5,8 @@
  * resume (PAUSED), close (ACTIVE/PAUSED). Every write sends the job's latest concurrencyToken.
  */
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useQueries } from '@tanstack/react-query';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert,
   App as AntApp,
@@ -13,22 +14,27 @@ import {
   Drawer,
   Dropdown,
   Empty,
-  Segmented,
   Skeleton,
   Table,
   Tooltip,
-  Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
+  AppstoreOutlined,
   EditOutlined,
+  EnvironmentOutlined,
   EyeOutlined,
+  TeamOutlined,
+  UnorderedListOutlined,
   MoreOutlined,
   PlusOutlined,
   ReloadOutlined,
   SendOutlined,
 } from '@ant-design/icons';
 import type { Job, JobCloseReasonCode, JobStatus } from '@/types/api/jobs';
+import { FilterPills, PageHero, Surface } from '@/features/admin-console/ui';
+import { screeningApi } from '@/services/api/hrApi';
+import '@/features/admin-console/admin-console.css';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useJobDetail, useJobMutations, useMyJobs } from './useJobQueries';
 import { JobDetailPanel, JobStatusTag } from './JobDetailPanel';
@@ -44,7 +50,6 @@ import {
   formatSalary,
 } from './jobDisplay';
 
-const { Title, Text } = Typography;
 
 type StatusFilter = 'ALL' | JobStatus;
 const FILTER_ORDER: JobStatus[] = ['DRAFT', 'PENDING_REVIEW', 'REJECTED', 'ACTIVE', 'PAUSED', 'CLOSED'];
@@ -54,7 +59,23 @@ type PendingAction = { kind: 'pause' | 'close'; job: Job } | null;
 export const ClientJobsListPage: React.FC = () => {
   const navigate = useNavigate();
   const { message, modal } = AntApp.useApp();
-  const [filter, setFilter] = useState<StatusFilter>('ALL');
+  // The status filter lives in the URL so overview tiles can deep-link (e.g. ?status=ACTIVE).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawStatus = searchParams.get('status');
+  const filter: StatusFilter = rawStatus && (FILTER_ORDER as string[]).includes(rawStatus) ? (rawStatus as JobStatus) : 'ALL';
+  const view: 'grid' | 'table' = searchParams.get('view') === 'table' ? 'table' : 'grid';
+  const setView = (v: 'grid' | 'table') => {
+    const next = new URLSearchParams(searchParams);
+    if (v === 'grid') next.delete('view');
+    else next.set('view', v);
+    setSearchParams(next, { replace: true });
+  };
+  const setFilter = (v: StatusFilter) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === 'ALL') next.delete('status');
+    else next.set('status', v);
+    setSearchParams(next, { replace: true });
+  };
   const [detailJobId, setDetailJobId] = useState<string>();
   const [pending, setPending] = useState<PendingAction>(null);
 
@@ -81,6 +102,20 @@ export const ClientJobsListPage: React.FC = () => {
 
   const notifyError = (err: unknown) => message.error(getApiErrorMessage(err));
 
+  // Application count per published job (jobs never published cannot have applications).
+  const countable = visibleJobs.filter((j) => j.status === 'ACTIVE' || j.status === 'PAUSED' || j.status === 'CLOSED');
+  const countQueries = useQueries({
+    queries: countable.map((j) => ({
+      queryKey: ['client-candidates', 'job-count', j.jobId],
+      queryFn: async () => (await screeningApi.list({ jobId: j.jobId, page: 1, pageSize: 1 })).total,
+      staleTime: 60_000,
+    })),
+  });
+  const applicationsOf = (jobId: string) => {
+    const i = countable.findIndex((j) => j.jobId === jobId);
+    return i < 0 ? undefined : countQueries[i];
+  };
+
   const confirmSubmit = (job: Job) =>
     modal.confirm({
       title: 'Gửi tin tuyển dụng đi duyệt?',
@@ -100,6 +135,51 @@ export const ClientJobsListPage: React.FC = () => {
       .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken })
       .then((res) => message.success(res.message))
       .catch(notifyError);
+
+  const renderActions = (job: Job) => {
+        const can = clientActions(job.status);
+        const busy =
+          (mutations.submit.isPending && mutations.submit.variables?.jobId === job.jobId) ||
+          (mutations.resume.isPending && mutations.resume.variables?.jobId === job.jobId);
+        const more = [
+          { key: 'view', icon: <EyeOutlined />, label: 'Xem chi tiết' },
+          ...(can.canPause ? [{ key: 'pause', label: 'Tạm dừng tuyển' }] : []),
+          ...(can.canResume ? [{ key: 'resume', label: 'Mở lại tuyển' }] : []),
+          ...(can.canClose ? [{ key: 'close', label: 'Đóng tin', danger: true }] : []),
+        ];
+        return (
+          <div className="flex items-center justify-end gap-1">
+            {can.canSubmit && (
+              <Button size="small" type="primary" icon={<SendOutlined />} loading={busy} onClick={() => confirmSubmit(job)}>
+                Gửi duyệt
+              </Button>
+            )}
+            {can.canEdit && (
+              <Tooltip title="Sửa tin">
+                <Button
+                  size="small"
+                  icon={<EditOutlined />}
+                  aria-label={`Sửa tin ${job.title}`}
+                  onClick={() => navigate(`/client/jobs/${job.jobId}/edit`)}
+                />
+              </Tooltip>
+            )}
+            <Dropdown
+              trigger={['click']}
+              menu={{
+                items: more,
+                onClick: ({ key }) => {
+                  if (key === 'view') setDetailJobId(job.jobId);
+                  if (key === 'resume') resume(job);
+                  if (key === 'pause' || key === 'close') setPending({ kind: key, job });
+                },
+              }}
+            >
+              <Button size="small" icon={<MoreOutlined />} aria-label={`Thao tác khác cho ${job.title}`} loading={busy && !can.canSubmit} />
+            </Dropdown>
+          </div>
+        );
+      };
 
   const columns: ColumnsType<Job> = [
     {
@@ -146,76 +226,32 @@ export const ClientJobsListPage: React.FC = () => {
       key: 'actions',
       width: 230,
       fixed: 'right',
-      render: (_, job) => {
-        const can = clientActions(job.status);
-        const busy =
-          (mutations.submit.isPending && mutations.submit.variables?.jobId === job.jobId) ||
-          (mutations.resume.isPending && mutations.resume.variables?.jobId === job.jobId);
-        const more = [
-          { key: 'view', icon: <EyeOutlined />, label: 'Xem chi tiết' },
-          ...(can.canPause ? [{ key: 'pause', label: 'Tạm dừng tuyển' }] : []),
-          ...(can.canResume ? [{ key: 'resume', label: 'Mở lại tuyển' }] : []),
-          ...(can.canClose ? [{ key: 'close', label: 'Đóng tin', danger: true }] : []),
-        ];
-        return (
-          <div className="flex items-center justify-end gap-1">
-            {can.canSubmit && (
-              <Button size="small" type="primary" icon={<SendOutlined />} loading={busy} onClick={() => confirmSubmit(job)}>
-                Gửi duyệt
-              </Button>
-            )}
-            {can.canEdit && (
-              <Tooltip title="Sửa tin">
-                <Button
-                  size="small"
-                  icon={<EditOutlined />}
-                  aria-label={`Sửa tin ${job.title}`}
-                  onClick={() => navigate(`/client/jobs/${job.jobId}/edit`)}
-                />
-              </Tooltip>
-            )}
-            <Dropdown
-              trigger={['click']}
-              menu={{
-                items: more,
-                onClick: ({ key }) => {
-                  if (key === 'view') setDetailJobId(job.jobId);
-                  if (key === 'resume') resume(job);
-                  if (key === 'pause' || key === 'close') setPending({ kind: key, job });
-                },
-              }}
-            >
-              <Button size="small" icon={<MoreOutlined />} aria-label={`Thao tác khác cho ${job.title}`} loading={busy && !can.canSubmit} />
-            </Dropdown>
-          </div>
-        );
-      },
+      render: (_, job) => renderActions(job),
     },
   ];
 
-  const segmentOptions = [
-    { value: 'ALL', label: `Tất cả (${jobs.length})` },
-    ...FILTER_ORDER.map((s) => ({ value: s, label: `${JOB_STATUS[s]?.label ?? s} (${counts[s] ?? 0})` })),
+  const filterOptions: { value: StatusFilter; label: string; count?: number }[] = [
+    { value: 'ALL', label: 'Tất cả', count: jobs?.length ?? 0 },
+    ...FILTER_ORDER.map((s) => ({ value: s as StatusFilter, label: JOB_STATUS[s]?.label ?? s, count: counts[s] ?? 0 })),
   ];
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <Title level={3} className="!mb-1">
-            Tin tuyển dụng của tôi
-          </Title>
-          <Text type="secondary">Tạo tin, gửi Internal HR duyệt và quản lý trạng thái tuyển dụng.</Text>
-        </div>
-        <div className="flex gap-2">
-          <Tooltip title="Tải lại">
-            <Button icon={<ReloadOutlined />} aria-label="Tải lại danh sách" loading={isFetching && !isLoading} onClick={() => refetch()} />
-          </Tooltip>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/client/jobs/create')}>
-            Đăng tin mới
-          </Button>
-        </div>
-      </header>
+    <div>
+      <PageHero
+        eyebrow="Tuyển dụng"
+        title="Tin tuyển dụng của tôi"
+        description="Tạo tin, gửi HR Connect duyệt và quản lý trạng thái tuyển dụng."
+        actions={
+          <>
+            <Tooltip title="Tải lại">
+              <Button size="large" icon={<ReloadOutlined />} aria-label="Tải lại danh sách" loading={isFetching && !isLoading} onClick={() => refetch()} />
+            </Tooltip>
+            <Button size="large" type="primary" icon={<PlusOutlined />} className="client-cta" onClick={() => navigate('/client/jobs/create')}>
+              Đăng tin mới
+            </Button>
+          </>
+        }
+      />
 
       {isError ? (
         <Alert
@@ -226,14 +262,34 @@ export const ClientJobsListPage: React.FC = () => {
           action={<Button onClick={() => refetch()}>Thử lại</Button>}
         />
       ) : (
-        <section className="rounded-xl border border-solid border-slate-200 bg-white" aria-busy={isLoading}>
-          <div className="overflow-x-auto border-b border-solid border-slate-100 p-3">
-            <Segmented
-              value={filter}
-              onChange={(v) => setFilter(v as StatusFilter)}
-              options={segmentOptions}
-              aria-label="Lọc theo trạng thái"
-            />
+        <Surface>
+          <div className="px-5 pb-3 pt-5" aria-busy={isLoading}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <FilterPills label="Lọc theo trạng thái" value={filter} onChange={setFilter} options={filterOptions} />
+              <div role="radiogroup" aria-label="Kiểu hiển thị" className="inline-flex rounded-full bg-slate-100 p-1">
+                {(
+                  [
+                    ['grid', <AppstoreOutlined key="g" />, 'Dạng thẻ'],
+                    ['table', <UnorderedListOutlined key="t" />, 'Dạng bảng'],
+                  ] as const
+                ).map(([v, icon, label]) => (
+                  <Tooltip key={v} title={label}>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={view === v}
+                      aria-label={label}
+                      onClick={() => setView(v)}
+                      className={`flex h-8 w-9 cursor-pointer items-center justify-center rounded-full border-0 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
+                        view === v ? 'bg-white text-[color:var(--console-accent-strong)] shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      {icon}
+                    </button>
+                  </Tooltip>
+                ))}
+              </div>
+            </div>
           </div>
           {isLoading ? (
             <div className="p-5">
@@ -254,8 +310,59 @@ export const ClientJobsListPage: React.FC = () => {
                 </Button>
               )}
             </Empty>
+          ) : view === 'grid' ? (
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 p-5 pt-2 sm:grid-cols-2 xl:grid-cols-3">
+              {visibleJobs.map((job) => {
+                const count = applicationsOf(job.jobId);
+                return (
+                  <article key={job.jobId} className="client-soft-card flex flex-col gap-3 rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+                    <div className="flex items-start justify-between gap-3">
+                      <Tooltip title={JOB_STATUS[job.status]?.hint ?? DEFAULT_STATUS_CONFIG.hint}>
+                        <span>
+                          <JobStatusTag status={job.status} />
+                        </span>
+                      </Tooltip>
+                      <span className="text-xs text-slate-500">{formatDate(job.updatedAt)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDetailJobId(job.jobId)}
+                      className="cursor-pointer rounded border-0 bg-transparent p-0 text-left text-[16px] font-semibold leading-snug text-slate-900 hover:text-[color:var(--console-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+                    >
+                      {job.title || 'Vị trí chưa đặt tên'}
+                    </button>
+                    <div className="space-y-1 text-[13px] text-slate-600">
+                      <div className="font-semibold text-[color:var(--console-accent-strong)]">{formatSalary(job)}</div>
+                      <div className="flex items-center gap-1.5">
+                        <EnvironmentOutlined aria-hidden /> {job.location ?? 'Chưa có địa điểm'}
+                      </div>
+                      <div>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'}</div>
+                    </div>
+                    {job.status === 'REJECTED' && job.statusReason && (
+                      <div className="line-clamp-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-800">Lý do từ chối: {job.statusReason}</div>
+                    )}
+                    <div className="mt-auto flex items-center justify-between gap-2 border-0 border-t border-solid border-slate-100 pt-3">
+                      {count ? (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/client/candidates?job=${job.jobId}`)}
+                          className="flex cursor-pointer items-center gap-1.5 rounded-full border-0 bg-[color:var(--console-accent-soft)] px-3 py-1 text-[13px] font-medium text-[color:var(--console-accent-strong)] hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+                        >
+                          <TeamOutlined aria-hidden />
+                          <span className="tabular-nums">{count.isLoading ? '…' : count.data ?? 0}</span> hồ sơ
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-500">Cần {job.quantity} người</span>
+                      )}
+                      {renderActions(job)}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
           ) : (
             <Table<Job>
+              className="admin-soft-table"
               rowKey="jobId"
               columns={columns}
               dataSource={visibleJobs}
@@ -263,13 +370,13 @@ export const ClientJobsListPage: React.FC = () => {
               pagination={{ pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
             />
           )}
-        </section>
+        </Surface>
       )}
 
       <Drawer
         open={Boolean(detailJobId)}
         onClose={() => setDetailJobId(undefined)}
-        width={640}
+        width="min(640px, 100vw)"
         title="Chi tiết tin tuyển dụng"
         destroyOnClose
       >

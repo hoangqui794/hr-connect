@@ -247,7 +247,6 @@ export const AffiliateShell: React.FC = () => {
           </AdminPageEnter>
         </main>
       </div>
-
       <ChangePasswordModal
         open={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}

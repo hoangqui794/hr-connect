@@ -116,7 +116,6 @@ export interface UpdateAffiliateBankAccountInput {
   bankAccountHolder: string;
   bankBranch?: string | null;
 }
-
 export const affiliateApi = {
   async profile(): Promise<AffiliateProfile> {
     return (await apiClient.get<ApiEnvelope<AffiliateProfile>>('/affiliates/profile/me')).data.data;
@@ -307,5 +306,6 @@ export const submissionConsentsApi = {
     return (await apiClient.post(`/candidates/me/submission-consents/${submissionId}/respond`, data)).data;
   },
 };
+
 
 
