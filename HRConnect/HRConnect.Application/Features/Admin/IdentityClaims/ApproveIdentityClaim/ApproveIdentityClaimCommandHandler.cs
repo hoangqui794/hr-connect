@@ -141,7 +141,7 @@ public sealed class ApproveIdentityClaimCommandHandler(
             {
                 NotificationId = Guid.NewGuid(),
                 UserId = claim.RequesterUserId,
-                NotificationType = "CANDIDATE_IDENTITY",
+                NotificationType = "ACCOUNT",
                 Title = "Hồ sơ Candidate đã được liên kết",
                 Message = "HR Connect đã phê duyệt yêu cầu và liên kết dữ liệu hồ sơ trước đây với tài khoản của bạn.",
                 RelatedEntityType = "CANDIDATE_IDENTITY_CLAIM",

@@ -47,6 +47,7 @@ public sealed class ApproveIdentityClaimCommandHandlerTests
         result.ConcurrencyToken.Should().NotBeEmpty();
         _notifications.Verify(x => x.AddAsync(It.Is<Notification>(notification =>
             notification.UserId == claim.RequesterUserId &&
+            notification.NotificationType == "ACCOUNT" &&
             notification.RelatedEntityId == claim.ClaimId), It.IsAny<CancellationToken>()), Times.Once);
         _audit.Verify(x => x.AddAsync(It.Is<AuditEntry>(entry =>
             entry.Action == AuditActions.IdentityClaimReviewed &&

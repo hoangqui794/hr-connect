@@ -37,6 +37,7 @@ public sealed class RejectIdentityClaimCommandHandlerTests
         response.ConcurrencyToken.Should().NotBeEmpty();
         _notifications.Verify(x => x.AddAsync(It.Is<Notification>(notification =>
             notification.UserId == claim.RequesterUserId &&
+            notification.NotificationType == "ACCOUNT" &&
             notification.RelatedEntityId == claim.ClaimId &&
             notification.Message.Contains("Không đủ bằng chứng.")),
             It.IsAny<CancellationToken>()), Times.Once);

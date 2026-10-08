@@ -69,7 +69,7 @@ public sealed class RejectIdentityClaimCommandHandler(
             {
                 NotificationId = Guid.NewGuid(),
                 UserId = claim.RequesterUserId,
-                NotificationType = "CANDIDATE_IDENTITY",
+                NotificationType = "ACCOUNT",
                 Title = "Yêu cầu liên kết hồ sơ chưa được chấp thuận",
                 Message = $"HR Connect chưa thể liên kết hồ sơ Candidate trước đây. Lý do: {reason}",
                 RelatedEntityType = "CANDIDATE_IDENTITY_CLAIM",
