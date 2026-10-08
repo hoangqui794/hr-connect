@@ -173,7 +173,15 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "HRConnect API",
         Version = "v1",
-        Description = "Hệ thống quản lý nhân sự HRConnect - API Documentation"
+        Description = """
+            API HR Connect được sắp xếp theo hành trình nghiệp vụ và vai trò sử dụng.
+
+            Cách test nhanh:
+            1. Mở nhóm Auth, gọi POST /api/v1/auth/login và chọn tài khoản demo phù hợp.
+            2. Sao chép accessToken, bấm Authorize và dán trực tiếp token; Swagger tự thêm tiền tố Bearer.
+            3. Test API trong nhóm Candidate, Affiliate, Client Company, Internal HR hoặc Platform Admin tương ứng.
+            4. Nhóm Internal dùng X-Service-Token riêng và chỉ dành cho giao tiếp giữa HR Connect với MF03.
+            """
     });
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -292,6 +300,9 @@ if (app.Environment.IsDevelopment())
         c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
         c.EnableFilter();
         c.DisplayRequestDuration();
+        c.DisplayOperationId();
+        c.EnableTryItOutByDefault();
+        c.DefaultModelsExpandDepth(-1);
     });
 }
 
