@@ -265,6 +265,46 @@ public sealed class CandidateIdentityClaimRepository(ApplicationDbContext contex
                 .SetProperty(claim => claim.UpdatedAt, completedAt)
                 .SetProperty(claim => claim.ConcurrencyToken, newConcurrencyToken), cancellationToken));
 
+    public Task<bool> TryAdminResolveAsync(
+        Guid claimId,
+        Guid expectedConcurrencyToken,
+        Guid newConcurrencyToken,
+        Guid reviewedBy,
+        string status,
+        DateTime reviewedAt,
+        string? reviewReason,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAndCheckAsync(context.CandidateIdentityClaims
+            .Where(claim => claim.ClaimId == claimId &&
+                            claim.Status == "PENDING_ADMIN_REVIEW" &&
+                            claim.ConcurrencyToken == expectedConcurrencyToken &&
+                            (status != "COMPLETED" ||
+                             context.UserEmailIdentities.Any(identity =>
+                                 identity.NormalizedEmail == claim.NormalizedEmail &&
+                                 identity.UserId == claim.RequesterUserId &&
+                                 identity.Status == "VERIFIED") &&
+                             (claim.TargetCandidateId.HasValue &&
+                              claim.TargetCandidateId != claim.RequesterCandidateId
+                                 ? claim.TargetCandidate != null &&
+                                   claim.TargetCandidate.UserId == claim.RequesterUserId &&
+                                   claim.TargetCandidate.Status == "ACTIVE" &&
+                                   claim.TargetCandidate.MergedIntoCandidateId == null &&
+                                   claim.TargetCandidate.NormalizedEmail == claim.NormalizedEmail &&
+                                   claim.RequesterCandidate.UserId == null &&
+                                   claim.RequesterCandidate.Status == "ARCHIVED" &&
+                                   claim.RequesterCandidate.MergedIntoCandidateId == claim.TargetCandidateId
+                                 : claim.RequesterCandidate.UserId == claim.RequesterUserId &&
+                                   claim.RequesterCandidate.Status == "ACTIVE" &&
+                                   claim.RequesterCandidate.MergedIntoCandidateId == null)))
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(claim => claim.Status, status)
+                .SetProperty(claim => claim.ReviewedBy, reviewedBy)
+                .SetProperty(claim => claim.ReviewedAt, reviewedAt)
+                .SetProperty(claim => claim.CompletedAt, reviewedAt)
+                .SetProperty(claim => claim.ReviewReason, reviewReason)
+                .SetProperty(claim => claim.UpdatedAt, reviewedAt)
+                .SetProperty(claim => claim.ConcurrencyToken, newConcurrencyToken), cancellationToken));
+
     private static async Task<bool> ExecuteAndCheckAsync(Task<int> update) =>
         await update == 1;
 }

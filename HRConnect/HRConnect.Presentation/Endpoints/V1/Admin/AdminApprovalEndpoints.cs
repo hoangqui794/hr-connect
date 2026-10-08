@@ -10,6 +10,7 @@ using HRConnect.Application.Features.Admin.Approvals.RejectAffiliate;
 using HRConnect.Application.Features.Admin.Approvals.RejectCompany;
 using HRConnect.Application.Features.Admin.IdentityClaims.GetIdentityClaimList;
 using HRConnect.Application.Features.Admin.IdentityClaims.GetIdentityClaimDetail;
+using HRConnect.Application.Features.Admin.IdentityClaims.ApproveIdentityClaim;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -92,6 +93,65 @@ public static class AdminApprovalEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("/candidate-identity-claims/{claimId:guid}/approve", async (
+            Guid claimId,
+            [FromBody] ApproveIdentityClaimRequest body,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<ApproveIdentityClaimCommand> validator,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            if (!HasIdentityClaimReviewPermission(user))
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Bạn không có quyền phê duyệt yêu cầu liên kết danh tính Candidate."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var adminUserId = GetCurrentUserId(user);
+            if (!adminUserId.HasValue) return Results.Unauthorized();
+
+            var command = new ApproveIdentityClaimCommand(
+                claimId, adminUserId.Value, body.ConcurrencyToken, body.Note);
+            var validation = await validator.ValidateAsync(command, cancellationToken);
+            if (!validation.IsValid)
+                return Results.ValidationProblem(validation.ToDictionary());
+
+            try
+            {
+                return Results.Ok(await sender.Send(command, cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message },
+                    statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new
+                {
+                    success = false,
+                    message = ex.Message,
+                    errorCode = ex.ErrorCode
+                });
+            }
+        })
+        .WithName("ApproveCandidateIdentityClaim")
+        .WithSummary("Admin phê duyệt yêu cầu liên kết danh tính Candidate")
+        .WithDescription("Yêu cầu permission candidate.identity.review. API kiểm tra lại quyền Admin, quyền sở hữu email, trạng thái hai hồ sơ và concurrency token trong transaction. Chỉ liên kết tự động khi hồ sơ Candidate hiện tại chưa có dữ liệu nghiệp vụ; không tự gộp hai hồ sơ đã có lịch sử.")
+        .Produces<ApproveIdentityClaimResponse>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
 
         // 1. Danh sách phê duyệt hợp nhất (Unified Approval List)
         group.MapGet("/approvals", async (

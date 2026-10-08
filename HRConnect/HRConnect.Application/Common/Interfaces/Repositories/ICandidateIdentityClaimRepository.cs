@@ -133,4 +133,14 @@ public interface ICandidateIdentityClaimRepository
         DateTime completedAt,
         string? reviewReason,
         CancellationToken cancellationToken = default);
+
+    Task<bool> TryAdminResolveAsync(
+        Guid claimId,
+        Guid expectedConcurrencyToken,
+        Guid newConcurrencyToken,
+        Guid reviewedBy,
+        string status,
+        DateTime reviewedAt,
+        string? reviewReason,
+        CancellationToken cancellationToken = default);
 }
