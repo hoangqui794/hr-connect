@@ -157,6 +157,25 @@ const ConsoleSettingsPlaceholder = React.lazy(() =>
   import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminSettingsPlaceholder }))
 );
 
+// ── Candidate & Affiliate workspaces (features/portal), MF-02 on the real API ──
+const CandidateHomePage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateHomePage })));
+const CandidateMyApplicationsPage = React.lazy(() =>
+  import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateApplicationsPage }))
+);
+const CandidateCvsPage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateCvsPage })));
+const AffiliateHomePage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateHomePage })));
+const AffiliateSubmitPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmitPage })));
+const AffiliateMySubmissionsPage = React.lazy(() =>
+  import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmissionsPage }))
+);
+const AffiliateCandidatesPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateCandidatesPage })));
+const AffiliateAttributionsPage = React.lazy(() =>
+  import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateAttributionsPage }))
+);
+const AffiliateCommissionsPlaceholder = React.lazy(() =>
+  import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateCommissionsPlaceholder }))
+);
+
 // ── Client Company workspace (features/client-console), backed by the real API ──
 const ClientOverviewPage = React.lazy(() =>
   import('@/features/client-console/ClientOverviewPage').then((m) => ({ default: m.ClientOverviewPage }))
@@ -351,6 +370,8 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/candidate/profile': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/applications': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/saved-jobs': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/affiliate/attributions': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/jobs': [
     UserRole.CLIENT,
     UserRole.AFFILIATE,
@@ -447,6 +468,15 @@ export const AppRoutes = {
   ConsoleDisputesPlaceholder,
   ConsolePayoutsPlaceholder,
   ConsoleSettingsPlaceholder,
+  CandidateHomePage,
+  CandidateMyApplicationsPage,
+  CandidateCvsPage,
+  AffiliateHomePage,
+  AffiliateSubmitPage,
+  AffiliateMySubmissionsPage,
+  AffiliateCandidatesPage,
+  AffiliateAttributionsPage,
+  AffiliateCommissionsPlaceholder,
   ClientOverviewPage,
   ClientCandidatesPage,
   ClientWorkspaceInterviewsOffersPage,
