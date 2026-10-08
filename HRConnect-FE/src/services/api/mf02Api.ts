@@ -81,17 +81,25 @@ export const applyApi = {
 
 // ─── Branch B: affiliate ─────────────────────────────────────────────────────
 
-export interface SubmitCandidateInput {
-  /** Candidate from the affiliate's library … */
-  candidateId?: string;
-  cvId?: string;
-  /** … or a new candidate with a PDF. */
-  fullName?: string;
-  email?: string;
-  phone?: string;
-  file?: File;
-  note?: string;
-}
+export type SubmitCandidateInput =
+  | {
+      candidateId: string;
+      cvId: string;
+      fullName?: never;
+      email?: never;
+      phone?: never;
+      file?: never;
+      note?: string;
+    }
+  | {
+      candidateId?: never;
+      cvId?: never;
+      fullName: string;
+      email: string;
+      phone?: string;
+      file: File;
+      note?: string;
+    };
 
 export const affiliateApi = {
   async profile(): Promise<AffiliateProfile> {
@@ -101,15 +109,9 @@ export const affiliateApi = {
     return (await apiClient.get<ApiEnvelope<AffiliatePerformance>>('/affiliates/profile/me/performance')).data.data;
   },
   async submit(jobId: string, input: SubmitCandidateInput) {
-    const body = form({
-      candidateId: input.candidateId,
-      cvId: input.cvId,
-      fullName: input.fullName,
-      email: input.email,
-      phone: input.phone,
-      note: input.note,
-      file: input.file,
-    });
+    const body = 'candidateId' in input
+      ? form({ candidateId: input.candidateId, cvId: input.cvId, note: input.note })
+      : form({ fullName: input.fullName, email: input.email, phone: input.phone, note: input.note, file: input.file });
     return (await apiClient.post<{ success: boolean; message: string; data: SubmitCandidateResult }>(`/jobs/${jobId}/candidate-submissions`, body)).data;
   },
   async submissions(params: { status?: string; jobId?: string; page: number; pageSize: number }): Promise<TotalCountPage<AffiliateSubmission>> {

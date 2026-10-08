@@ -168,6 +168,7 @@ export const AffiliateSubmitPage: React.FC = () => {
   const [form] = Form.useForm<SubmitForm>();
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [presetCvRejected, setPresetCvRejected] = useState(false);
   const [librarySearch, setLibrarySearch] = useState('');
   const mode = Form.useWatch('mode', form) ?? 'new';
   const candidateId = Form.useWatch('candidateId', form);
@@ -188,12 +189,25 @@ export const AffiliateSubmitPage: React.FC = () => {
   useEffect(() => {
     const presetJob = searchParams.get('job');
     const presetCandidate = searchParams.get('candidate');
+    const presetCv = searchParams.get('cv');
     form.setFieldsValue({
       mode: presetCandidate ? 'library' : 'new',
       ...(presetJob ? { jobId: presetJob } : {}),
       ...(presetCandidate ? { candidateId: presetCandidate } : {}),
+      ...(presetCv ? { cvId: presetCv } : {}),
     });
   }, [searchParams, form]);
+
+  useEffect(() => {
+    const presetCv = searchParams.get('cv');
+    if (!presetCv || !libraryDetail.data) return;
+    const selectedCv = libraryDetail.data.cvs.find((cv) => cv.cvId === presetCv && cv.status === 'ACTIVE');
+    if (selectedCv) form.setFieldValue('cvId', presetCv);
+    else {
+      form.setFieldValue('cvId', undefined);
+      setPresetCvRejected(true);
+    }
+  }, [searchParams, libraryDetail.data, form]);
 
   const selectedJob = useMemo(() => jobs.data?.items.find((j) => j.jobId === jobId), [jobs.data, jobId]);
 
@@ -211,7 +225,7 @@ export const AffiliateSubmitPage: React.FC = () => {
       affiliateApi.submit(
         v.jobId,
         v.mode === 'library'
-          ? { candidateId: v.candidateId, cvId: v.cvId, note: v.note?.trim() || undefined }
+          ? { candidateId: v.candidateId!, cvId: v.cvId!, note: v.note?.trim() || undefined }
           : { fullName: v.fullName!.trim(), email: v.email!.trim(), phone: v.phone?.trim() || undefined, file: file!, note: v.note?.trim() || undefined }
       ),
     onSuccess: () => {
@@ -227,8 +241,8 @@ export const AffiliateSubmitPage: React.FC = () => {
         <Result
           status="success"
           icon={<MailOutlined className="!text-[color:var(--console-accent)]" />}
-          title="Đã gửi email xác nhận cho ứng viên"
-          subTitle={`Ứng viên cần đồng ý${d.consentExpiresAt ? ` trước ${fmt(d.consentExpiresAt)}` : ' trong 48 giờ'}. Attribution được ghi cho bạn ngay khi ứng viên đồng ý.`}
+          title={d.emailDeliveryStatus === 'FAILED' ? 'Đã lưu hồ sơ, đang chờ gửi lại email' : 'Đã gửi hồ sơ và đang chờ Candidate xác nhận'}
+          subTitle={`Submission đang ở trạng thái chờ xác nhận${d.consentExpiresAt ? ` đến ${fmt(d.consentExpiresAt)}` : ''}. Application, Attribution và AI chưa được tạo cho đến khi Candidate đồng ý.`}
           extra={[
             <Button key="list" type="primary" onClick={() => navigate('/affiliate/submissions')}>
               Xem lượt giới thiệu
@@ -245,6 +259,15 @@ export const AffiliateSubmitPage: React.FC = () => {
             </Button>,
           ]}
         />
+        {d.emailDeliveryStatus === 'FAILED' && (
+          <Alert
+            type="warning"
+            showIcon
+            message="Hồ sơ đã được lưu nhưng email chưa gửi được"
+            description="Không nộp lại hồ sơ. Vào Lượt giới thiệu để gửi lại yêu cầu xác nhận."
+            action={<Button onClick={() => navigate('/affiliate/submissions?status=PENDING_CONSENT')}>Gửi lại email</Button>}
+          />
+        )}
       </Surface>
     );
   }
@@ -254,7 +277,7 @@ export const AffiliateSubmitPage: React.FC = () => {
       <PageHero
         eyebrow="Giới thiệu"
         title="Giới thiệu ứng viên"
-        description="Ứng viên nhận email và có 48 giờ để đồng ý. Hệ thống kiểm tra trùng ngay khi bạn gửi: một ứng viên chỉ có một hồ sơ trong mỗi tin."
+        description="Candidate sẽ nhận yêu cầu xác nhận. Application, Attribution và chấm điểm AI chỉ bắt đầu sau khi Candidate đồng ý."
       />
       <Form<SubmitForm>
         form={form}
@@ -281,6 +304,16 @@ export const AffiliateSubmitPage: React.FC = () => {
                 onClose={() => setPresetRejected(false)}
                 message="Tin bạn chọn không nhận giới thiệu từ Affiliate"
                 description="Loại dịch vụ của tin này chỉ nhận ứng viên tự nộp. Hãy chọn một tin trong danh sách bên dưới."
+              />
+            )}
+            {presetCvRejected && (
+              <Alert
+                type="warning"
+                showIcon
+                closable
+                onClose={() => setPresetCvRejected(false)}
+                message="CV đã chọn không còn được phép tái sử dụng"
+                description="Hãy chọn một CV ACTIVE khác trong kho của Candidate."
               />
             )}
 
@@ -415,7 +448,7 @@ export const AffiliateSubmitPage: React.FC = () => {
                 <p className="m-0 mt-2 text-sm text-slate-500">Chưa chọn tin.</p>
               )}
               <ul className="m-0 mt-4 space-y-1.5 pl-4 text-[13px] text-slate-600">
-                <li>Ứng viên nhận email xác nhận, hiệu lực 48 giờ.</li>
+                <li>Candidate nhận yêu cầu xác nhận theo thời hạn backend trả về.</li>
                 <li>Attribution ghi cho bạn khi ứng viên đồng ý.</li>
                 <li>Ứng viên đã có hồ sơ trong tin này sẽ bị chặn trùng.</li>
               </ul>
@@ -637,6 +670,15 @@ export const AffiliateCandidatesPage: React.FC = () => {
                     <Button size="small" icon={<EyeOutlined />} onClick={() => openSigned(() => affiliateApi.libraryCvUrl(detail.data!.candidateId, cv.cvId))}>
                       Xem
                     </Button>
+                    {cv.status === 'ACTIVE' && (
+                      <Button
+                        size="small"
+                        type="primary"
+                        onClick={() => navigate(`/affiliate/submit-candidate?candidate=${detail.data!.candidateId}&cv=${cv.cvId}`)}
+                      >
+                        Dùng CV này
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -137,11 +137,14 @@ export interface LibraryCandidateDetail {
 
 export interface SubmitCandidateResult {
   applicationId: string | null;
+  attributionId: string | null;
+  affiliateId: string;
   submissionId: string;
   candidateId: string;
   jobId: string;
   cvId: string;
   status: SubmissionStatus;
+  aiStatus: string;
   consentExpiresAt: string | null;
   emailDeliveryStatus: string;
   submittedAt: string;

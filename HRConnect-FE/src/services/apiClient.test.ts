@@ -1,7 +1,7 @@
 import { AxiosError, AxiosHeaders, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
 import { apiClient, getApiError, getApiErrorMessage } from './apiClient';
-import { candidateApplicationsApi, candidateCvApi } from './api/mf02Api';
+import { affiliateApi, candidateApplicationsApi, candidateCvApi } from './api/mf02Api';
 
 describe('API client foundation', () => {
   afterEach(() => {
@@ -86,5 +86,29 @@ describe('API client foundation', () => {
       page: 2,
       pageSize: 10,
     });
+  });
+
+  it('keeps new-candidate and library submission fields mutually exclusive', async () => {
+    const bodies: FormData[] = [];
+    apiClient.defaults.adapter = async (config) => {
+      bodies.push(config.data as FormData);
+      return {
+        data: { success: true, data: {} },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      };
+    };
+
+    await affiliateApi.submit('job-1', {
+      fullName: 'Nguyễn Văn A',
+      email: 'candidate@example.com',
+      file: new File(['pdf'], 'cv.pdf', { type: 'application/pdf' }),
+    });
+    await affiliateApi.submit('job-2', { candidateId: 'candidate-1', cvId: 'cv-1' });
+
+    expect([...bodies[0].keys()].sort()).toEqual(['email', 'file', 'fullName']);
+    expect([...bodies[1].keys()].sort()).toEqual(['candidateId', 'cvId']);
   });
 });
