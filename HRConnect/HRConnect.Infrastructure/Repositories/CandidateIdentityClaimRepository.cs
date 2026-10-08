@@ -95,6 +95,79 @@ public sealed class CandidateIdentityClaimRepository(ApplicationDbContext contex
         return (items, totalCount);
     }
 
+    public async Task<AdminIdentityClaimDetailRecord?> GetAdminDetailAsync(
+        Guid claimId,
+        CancellationToken cancellationToken = default)
+    {
+        var detail = await context.CandidateIdentityClaims.AsNoTracking()
+            .Where(claim => claim.ClaimId == claimId)
+            .Select(claim => new AdminIdentityClaimDetailRecord(
+                claim.ClaimId,
+                claim.RequesterUserId,
+                claim.RequesterUser.DisplayName ?? claim.RequesterUser.Email,
+                claim.RequesterUser.Email,
+                claim.RequesterUser.Status,
+                claim.AssertedEmail,
+                claim.NormalizedEmail,
+                claim.Status,
+                claim.ReviewReason,
+                claim.ExpiresAt,
+                claim.AttemptCount,
+                claim.ResendCount,
+                claim.LastSentAt,
+                claim.VerifiedAt,
+                claim.CompletedAt,
+                claim.ReviewedBy,
+                claim.ReviewedAt,
+                claim.CreatedAt,
+                claim.UpdatedAt,
+                claim.ConcurrencyToken,
+                new AdminIdentityClaimCandidateRecord(
+                    claim.RequesterCandidate.CandidateId,
+                    claim.RequesterCandidate.UserId,
+                    claim.RequesterCandidate.FullName,
+                    claim.RequesterCandidate.Email,
+                    claim.RequesterCandidate.Phone,
+                    claim.RequesterCandidate.Status,
+                    claim.RequesterCandidate.MergedIntoCandidateId,
+                    claim.RequesterCandidate.CandidateCvs.Count,
+                    claim.RequesterCandidate.Submissions.Count,
+                    claim.RequesterCandidate.Applications.Count,
+                    claim.RequesterCandidate.CandidateJobMatches.Count),
+                claim.TargetCandidate == null
+                    ? null
+                    : new AdminIdentityClaimCandidateRecord(
+                        claim.TargetCandidate.CandidateId,
+                        claim.TargetCandidate.UserId,
+                        claim.TargetCandidate.FullName,
+                        claim.TargetCandidate.Email,
+                        claim.TargetCandidate.Phone,
+                        claim.TargetCandidate.Status,
+                        claim.TargetCandidate.MergedIntoCandidateId,
+                        claim.TargetCandidate.CandidateCvs.Count,
+                        claim.TargetCandidate.Submissions.Count,
+                        claim.TargetCandidate.Applications.Count,
+                        claim.TargetCandidate.CandidateJobMatches.Count),
+                null))
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (detail == null) return null;
+
+        var owner = await context.UserEmailIdentities.AsNoTracking()
+            .Where(identity => identity.NormalizedEmail == detail.NormalizedEmail &&
+                               identity.Status == "VERIFIED")
+            .Select(identity => new AdminIdentityClaimEmailOwnerRecord(
+                identity.EmailIdentityId,
+                identity.UserId,
+                identity.User.Email,
+                identity.User.DisplayName ?? identity.User.Email,
+                identity.Kind,
+                identity.Status))
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return detail with { CurrentEmailOwner = owner };
+    }
+
     public Task AddAsync(
         CandidateIdentityClaim claim,
         CancellationToken cancellationToken = default) =>

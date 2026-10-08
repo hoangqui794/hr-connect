@@ -9,6 +9,7 @@ using HRConnect.Application.Features.Admin.Approvals.GetCompanyVerificationDetai
 using HRConnect.Application.Features.Admin.Approvals.RejectAffiliate;
 using HRConnect.Application.Features.Admin.Approvals.RejectCompany;
 using HRConnect.Application.Features.Admin.IdentityClaims.GetIdentityClaimList;
+using HRConnect.Application.Features.Admin.IdentityClaims.GetIdentityClaimDetail;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -58,6 +59,39 @@ public static class AdminApprovalEndpoints
         .ProducesValidationProblem(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden);
+
+        group.MapGet("/candidate-identity-claims/{claimId:guid}", async (
+            Guid claimId,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            if (!HasIdentityClaimReviewPermission(user))
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Bạn không có quyền xem chi tiết xác minh danh tính Candidate."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            try
+            {
+                return Results.Ok(await sender.Send(
+                    new GetIdentityClaimDetailQuery(claimId), cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetCandidateIdentityClaimDetail")
+        .WithSummary("Admin xem chi tiết yêu cầu liên kết danh tính Candidate")
+        .WithDescription("Yêu cầu permission candidate.identity.review. Trả bằng chứng của Candidate hiện tại, Candidate cũ, chủ sở hữu email và số lượng dữ liệu nghiệp vụ để Admin đánh giá trước khi approve hoặc reject.")
+        .Produces<GetIdentityClaimDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
 
         // 1. Danh sách phê duyệt hợp nhất (Unified Approval List)
         group.MapGet("/approvals", async (

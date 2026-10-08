@@ -19,6 +19,52 @@ public sealed record AdminIdentityClaimListRecord(
     DateTime? ReviewedAt,
     Guid? ReviewedBy);
 
+public sealed record AdminIdentityClaimCandidateRecord(
+    Guid CandidateId,
+    Guid? UserId,
+    string FullName,
+    string? Email,
+    string? Phone,
+    string Status,
+    Guid? MergedIntoCandidateId,
+    int CvCount,
+    int SubmissionCount,
+    int ApplicationCount,
+    int MatchCount);
+
+public sealed record AdminIdentityClaimEmailOwnerRecord(
+    Guid EmailIdentityId,
+    Guid UserId,
+    string PrimaryEmail,
+    string DisplayName,
+    string Kind,
+    string Status);
+
+public sealed record AdminIdentityClaimDetailRecord(
+    Guid ClaimId,
+    Guid RequesterUserId,
+    string RequesterDisplayName,
+    string RequesterPrimaryEmail,
+    string RequesterUserStatus,
+    string AssertedEmail,
+    string NormalizedEmail,
+    string Status,
+    string? ReviewReason,
+    DateTime ExpiresAt,
+    int AttemptCount,
+    int ResendCount,
+    DateTime? LastSentAt,
+    DateTime? VerifiedAt,
+    DateTime? CompletedAt,
+    Guid? ReviewedBy,
+    DateTime? ReviewedAt,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    Guid ConcurrencyToken,
+    AdminIdentityClaimCandidateRecord RequesterCandidate,
+    AdminIdentityClaimCandidateRecord? TargetCandidate,
+    AdminIdentityClaimEmailOwnerRecord? CurrentEmailOwner);
+
 public interface ICandidateIdentityClaimRepository
 {
     Task<CandidateIdentityClaim?> GetByIdAsync(
@@ -37,6 +83,10 @@ public interface ICandidateIdentityClaimRepository
         int pageSize,
         string sortBy,
         bool descending,
+        CancellationToken cancellationToken = default);
+
+    Task<AdminIdentityClaimDetailRecord?> GetAdminDetailAsync(
+        Guid claimId,
         CancellationToken cancellationToken = default);
 
     Task AddAsync(
