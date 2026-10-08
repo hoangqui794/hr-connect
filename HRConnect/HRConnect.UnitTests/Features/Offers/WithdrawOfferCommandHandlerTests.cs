@@ -120,7 +120,7 @@ public class WithdrawOfferCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { CompanyId = companyB });
+            .ReturnsAsync(new CompanyUser { CompanyId = companyB, Status = "ACTIVE" });
 
         var command = new WithdrawOfferCommand(
             OfferId: offerId,
@@ -190,6 +190,35 @@ public class WithdrawOfferCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenOfferIsExpired_ShouldPreserveExpiredStatus()
+    {
+        var offerId = Guid.NewGuid();
+        var offer = new Offer
+        {
+            OfferId = offerId,
+            Status = "EXPIRED"
+        };
+
+        _offerRepositoryMock
+            .Setup(repository => repository.GetByIdWithApplicationAsync(offerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(offer);
+
+        var command = new WithdrawOfferCommand(
+            OfferId: offerId,
+            Reason: "Thu hồi offer đã hết hạn",
+            ConcurrencyToken: offer.ConcurrencyToken,
+            CurrentUserId: Guid.NewGuid(),
+            IsClientCompanyUser: true);
+
+        Func<Task> act = () => CreateHandler().Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*Không thể thu hồi offer đang ở trạng thái EXPIRED*");
+        offer.Status.Should().Be("EXPIRED");
+        _offerRepositoryMock.Verify(repository => repository.Update(It.IsAny<Offer>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Handle_WhenSuccessful_ShouldSetStatusToWithdrawn_AndSave()
     {
         var offerId = Guid.NewGuid();
@@ -219,7 +248,7 @@ public class WithdrawOfferCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { CompanyId = companyId, Status = "ACTIVE" });
 
         _unitOfWorkMock
             .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))

@@ -29,7 +29,7 @@ public class GetRecruitmentApplicationsQueryHandlerTests
         // Arrange
         var userId = Guid.NewGuid();
         var companyId = Guid.NewGuid();
-        var member = new CompanyUser { UserId = userId, CompanyId = companyId };
+        var member = new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" };
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))

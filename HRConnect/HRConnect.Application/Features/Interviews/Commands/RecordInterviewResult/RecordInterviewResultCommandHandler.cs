@@ -51,6 +51,8 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
             throw new BadRequestException("Kết quả phỏng vấn không hợp lệ. Giá trị cho phép: PASS, FAIL, BACKUP.");
         }
 
+        var normalizedNextAction = Mf04InputPolicy.NormalizeInterviewNextAction(normalizedResult, request.NextAction);
+
         var interview = await _interviewRepository.GetByIdForUpdateAsync(request.InterviewId, cancellationToken);
         if (interview == null)
         {
@@ -83,7 +85,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (companyUser == null)
+            if (!HRConnect.Application.Features.Recruitment.Common.CompanyMembershipPolicy.IsActive(companyUser))
             {
                 _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
                 throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
@@ -141,14 +143,14 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
 
             if (normalizedResult == InterviewResults.Fail)
             {
-                if (request.IsFinalRound || string.Equals(request.NextAction, "REJECT", StringComparison.OrdinalIgnoreCase))
+                if (request.IsFinalRound || normalizedNextAction == "REJECT")
                 {
                     targetApplicationStatus = ApplicationStates.InterviewFailed;
                 }
             }
             else if (normalizedResult == InterviewResults.Pass)
             {
-                if (request.IsFinalRound || string.Equals(request.NextAction, "MAKE_OFFER", StringComparison.OrdinalIgnoreCase))
+                if (request.IsFinalRound || normalizedNextAction == "MAKE_OFFER")
                 {
                     targetApplicationStatus = ApplicationStates.OfferPending;
                 }
@@ -191,7 +193,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
                 status = interview.Status,
                 result = interview.Result,
                 isFinalRound = request.IsFinalRound,
-                nextAction = request.NextAction
+                nextAction = normalizedNextAction
             }
         }, cancellationToken);
         if (oldApplicationStatus != null && oldApplicationStatus != interview.Application?.Status)

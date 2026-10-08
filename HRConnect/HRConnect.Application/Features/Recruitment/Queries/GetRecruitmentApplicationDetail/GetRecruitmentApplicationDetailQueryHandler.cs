@@ -47,7 +47,7 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
         if (request.IsClientCompanyUser)
         {
             var member = await _companyUserRepository.GetByUserIdAsync(request.UserId, cancellationToken);
-            if (member == null || member.CompanyId != app.Job?.CompanyId)
+            if (!CompanyMembershipPolicy.IsActive(member) || member.CompanyId != app.Job?.CompanyId)
             {
                 _logger.LogWarning("Tài khoản {UserId} không có quyền xem hồ sơ thuộc công ty {CompanyId}", request.UserId, app.Job?.CompanyId);
                 throw new ForbiddenException("Bạn không có quyền truy cập hồ sơ ứng tuyển của công ty khác.");
@@ -289,7 +289,7 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
 
         if (status == ApplicationStates.OfferPending)
         {
-            if (latestOffer == null || latestOffer.Status is OfferStates.Declined or OfferStates.Withdrawn)
+            if (latestOffer == null || latestOffer.Status is OfferStates.Declined or OfferStates.Withdrawn or OfferStates.Expired)
             {
                 actions.Add("CREATE_OFFER");
             }

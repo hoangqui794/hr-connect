@@ -279,7 +279,7 @@ public static class RecruitmentEndpoints
         })
         .WithName("GetRecruitmentApplicationDetail")
         .WithSummary("Lấy chi tiết hồ sơ tuyển dụng")
-        .WithDescription("Dành cho Client Company (chỉ xem hồ sơ của công ty mình qua quyền application.view_company), Internal HR và Admin (xem qua quyền application.view). Trả về đầy đủ thông tin ứng viên, CV, tóm tắt phỏng vấn, offer, thông tin tiếp nhận việc và các hành động được phép (allowedActions).")
+        .WithDescription("Dành cho Client Company (chỉ xem hồ sơ của công ty mình qua quyền application.view_company), Internal HR và Admin (xem qua quyền application.view). Trả về thông tin ứng viên, CV, tóm tắt phỏng vấn, offer, thông tin tiếp nhận việc và allowedActions theo đúng phạm vi actor; dữ liệu liên hệ/CV của HEADHUNT_COD và CV_SOURCING được che theo chính sách hiển thị.")
         .Produces<RecruitmentApplicationDetailResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)

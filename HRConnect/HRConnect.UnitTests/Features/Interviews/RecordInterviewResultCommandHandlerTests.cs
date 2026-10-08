@@ -57,6 +57,33 @@ public class RecordInterviewResultCommandHandlerTests
         await act.Should().ThrowAsync<BadRequestException>();
     }
 
+    [Theory]
+    [InlineData("PASS", "REJECT")]
+    [InlineData("FAIL", "MAKE_OFFER")]
+    [InlineData("BACKUP", "MAKE_OFFER")]
+    public async Task Handle_WhenNextActionDoesNotMatchResult_ShouldThrowBadRequestException(
+        string result,
+        string nextAction)
+    {
+        var command = new RecordInterviewResultCommand(
+            InterviewId: Guid.NewGuid(),
+            Result: result,
+            Feedback: null,
+            IsFinalRound: false,
+            NextAction: nextAction,
+            ConcurrencyToken: null,
+            CurrentUserId: Guid.NewGuid(),
+            IsClientCompanyUser: true);
+
+        Func<Task> act = () => CreateHandler().Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*không phù hợp với kết quả phỏng vấn*");
+        _interviewRepositoryMock.Verify(
+            repository => repository.GetByIdForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     [Fact]
     public async Task Handle_WhenInterviewNotFound_ShouldThrowNotFoundException()
     {
@@ -216,7 +243,7 @@ public class RecordInterviewResultCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId, Status = "ACTIVE" });
 
         var command = new RecordInterviewResultCommand(
             InterviewId: interviewId,
@@ -269,7 +296,7 @@ public class RecordInterviewResultCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
 
         _unitOfWorkMock
             .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
@@ -342,7 +369,7 @@ public class RecordInterviewResultCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = clientUserId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = clientUserId, CompanyId = companyId, Status = "ACTIVE" });
 
         _unitOfWorkMock
             .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))

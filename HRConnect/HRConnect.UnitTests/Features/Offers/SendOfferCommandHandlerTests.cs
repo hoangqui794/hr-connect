@@ -102,7 +102,7 @@ public class SendOfferCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { CompanyId = companyB });
+            .ReturnsAsync(new CompanyUser { CompanyId = companyB, Status = "ACTIVE" });
 
         var command = new SendOfferCommand(
             OfferId: offerId,
@@ -204,7 +204,7 @@ public class SendOfferCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { CompanyId = companyId, Status = "ACTIVE" });
 
         _unitOfWorkMock
             .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))

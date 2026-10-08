@@ -84,6 +84,35 @@ public class ScheduleInterviewCommandHandlerTests
             .WithMessage("*480 phút*");
     }
 
+    [Theory]
+    [InlineData(51, 0, "*Hình thức phỏng vấn không được vượt quá 50 ký tự*")]
+    [InlineData(6, 256, "*Địa điểm phỏng vấn không được vượt quá 255 ký tự*")]
+    public async Task Handle_WhenInterviewTextExceedsDatabaseLimit_ShouldThrowBadRequestException(
+        int interviewTypeLength,
+        int locationLength,
+        string expectedMessage)
+    {
+        var command = new ScheduleInterviewCommand(
+            ApplicationId: Guid.NewGuid(),
+            ScheduledAt: DateTime.UtcNow.AddDays(1),
+            DurationMinutes: 60,
+            InterviewRound: 1,
+            InterviewType: new string('T', interviewTypeLength),
+            Location: locationLength == 0 ? null : new string('L', locationLength),
+            MeetingLink: null,
+            Participants: null,
+            CurrentUserId: Guid.NewGuid(),
+            IsClientCompanyUser: true);
+
+        Func<Task> act = () => CreateHandler().Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage(expectedMessage);
+        _applicationRepositoryMock.Verify(
+            repository => repository.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     [Fact]
     public async Task Handle_WhenApplicationNotFound_ShouldThrowNotFoundException()
     {
@@ -173,7 +202,7 @@ public class ScheduleInterviewCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId, Status = "ACTIVE" });
 
         var command = new ScheduleInterviewCommand(
             ApplicationId: applicationId,
@@ -195,6 +224,47 @@ public class ScheduleInterviewCommandHandlerTests
         // Assert
         await act.Should().ThrowAsync<ForbiddenException>()
             .WithMessage("*doanh nghiệp khác*");
+    }
+
+    [Fact]
+    public async Task Handle_WhenCompanyMembershipIsInactive_ShouldThrowForbiddenException()
+    {
+        var applicationId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var application = new HRConnect.Domain.Entities.Application
+        {
+            ApplicationId = applicationId,
+            Status = "SHORTLISTED",
+            Job = new Job { CompanyId = companyId }
+        };
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetByIdAsync(applicationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(application);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "INACTIVE" });
+
+        var command = new ScheduleInterviewCommand(
+            ApplicationId: applicationId,
+            ScheduledAt: DateTime.UtcNow.AddDays(1),
+            DurationMinutes: 60,
+            InterviewRound: 1,
+            InterviewType: "ONLINE",
+            Location: null,
+            MeetingLink: null,
+            Participants: null,
+            CurrentUserId: userId,
+            IsClientCompanyUser: true,
+            ApplicationConcurrencyToken: application.ConcurrencyToken);
+
+        var act = () => CreateHandler().Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenException>();
+        _interviewRepositoryMock.Verify(
+            r => r.AddAsync(It.IsAny<Interview>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -220,7 +290,7 @@ public class ScheduleInterviewCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
         _companyUserRepositoryMock
             .Setup(r => r.GetActiveByUserIdsAsync(
                 companyId,
@@ -309,7 +379,7 @@ public class ScheduleInterviewCommandHandlerTests
             .ReturnsAsync(application);
         _companyUserRepositoryMock
             .Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
         _companyUserRepositoryMock
             .Setup(repository => repository.GetActiveByUserIdsAsync(
                 companyId,

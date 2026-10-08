@@ -39,7 +39,7 @@ public class GetInterviewDetailQueryHandler : IRequestHandler<GetInterviewDetail
         if (request.IsClientCompanyUser)
         {
             var member = await _companyUserRepository.GetByUserIdAsync(request.UserId, cancellationToken);
-            if (member == null || member.CompanyId != interview.Application?.Job?.CompanyId)
+            if (!CompanyMembershipPolicy.IsActive(member) || member.CompanyId != interview.Application?.Job?.CompanyId)
             {
                 _logger.LogWarning("Tài khoản Client {UserId} không có quyền xem phỏng vấn thuộc công ty {CompanyId}", request.UserId, interview.Application?.Job?.CompanyId);
                 throw new ForbiddenException("Bạn không có quyền xem thông tin lịch phỏng vấn của công ty khác.");

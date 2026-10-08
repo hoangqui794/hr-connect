@@ -52,10 +52,13 @@ public class RecordInterviewNoShowCommandHandler : IRequestHandler<RecordIntervi
 
         if (request.IsClientCompanyUser)
         {
-            var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken)
-                ?? throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+            var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
+            if (!CompanyMembershipPolicy.IsActive(companyUser))
+            {
+                throw new ForbiddenException("Tài khoản doanh nghiệp không tồn tại hoặc không hoạt động.");
+            }
 
-            if (interview.Application?.Job?.CompanyId != companyUser.CompanyId)
+            if (interview.Application?.Job?.CompanyId != companyUser!.CompanyId)
             {
                 throw new ForbiddenException("Bạn không có quyền ghi nhận vắng mặt cho lịch phỏng vấn của doanh nghiệp khác.");
             }

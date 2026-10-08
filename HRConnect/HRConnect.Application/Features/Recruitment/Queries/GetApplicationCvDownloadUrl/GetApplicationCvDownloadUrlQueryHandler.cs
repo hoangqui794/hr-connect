@@ -50,7 +50,7 @@ public class GetApplicationCvDownloadUrlQueryHandler
         if (request.IsClientCompanyUser)
         {
             var member = await _companyUserRepository.GetByUserIdAsync(request.UserId, cancellationToken);
-            if (member == null || member.CompanyId != app.Job?.CompanyId)
+            if (!CompanyMembershipPolicy.IsActive(member) || member.CompanyId != app.Job?.CompanyId)
             {
                 _logger.LogWarning("Tài khoản {UserId} xin xem CV của hồ sơ thuộc công ty khác {CompanyId}", request.UserId, app.Job?.CompanyId);
                 throw new ForbiddenException("Bạn không có quyền xem CV của hồ sơ thuộc công ty khác.");

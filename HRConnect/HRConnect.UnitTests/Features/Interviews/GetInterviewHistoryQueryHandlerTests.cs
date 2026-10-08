@@ -69,7 +69,7 @@ public class GetInterviewHistoryQueryHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId, Status = "ACTIVE" });
 
         var query = new GetInterviewHistoryQuery(interviewId, userId, IsClientCompanyUser: true);
 
@@ -128,7 +128,7 @@ public class GetInterviewHistoryQueryHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
 
         var query = new GetInterviewHistoryQuery(interviewId, userId, IsClientCompanyUser: true);
 

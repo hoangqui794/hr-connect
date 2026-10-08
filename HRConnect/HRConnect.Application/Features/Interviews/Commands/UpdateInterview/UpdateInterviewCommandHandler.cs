@@ -63,10 +63,19 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
             throw new BadRequestException("Thời lượng phỏng vấn phải từ 1 đến 480 phút.");
         }
 
+        var interviewType = Mf04InputPolicy.NormalizeOptionalText(
+            request.InterviewType,
+            Mf04InputPolicy.InterviewTypeMaxLength,
+            "Hình thức phỏng vấn");
+        var location = Mf04InputPolicy.NormalizeOptionalText(
+            request.Location,
+            Mf04InputPolicy.InterviewLocationMaxLength,
+            "Địa điểm phỏng vấn");
+
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (companyUser == null)
+            if (!HRConnect.Application.Features.Recruitment.Common.CompanyMembershipPolicy.IsActive(companyUser))
             {
                 _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
                 throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
@@ -95,21 +104,17 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
 
         if (request.DurationMinutes.HasValue)
         {
-            if (request.DurationMinutes.Value <= 0 || request.DurationMinutes.Value > 480)
-            {
-                throw new BadRequestException("Thời lượng phỏng vấn phải từ 1 đến 480 phút.");
-            }
             interview.DurationMinutes = request.DurationMinutes.Value;
         }
 
-        if (!string.IsNullOrWhiteSpace(request.InterviewType))
+        if (interviewType != null)
         {
-            interview.InterviewType = request.InterviewType.Trim().ToUpperInvariant();
+            interview.InterviewType = interviewType.ToUpperInvariant();
         }
 
         if (request.Location != null)
         {
-            interview.Location = request.Location;
+            interview.Location = location;
         }
 
         if (request.MeetingLink != null)

@@ -33,7 +33,7 @@ public class GetPlacementsQueryHandler : IRequestHandler<GetPlacementsQuery, Get
         if (request.IsClientCompanyUser)
         {
             var member = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (member == null)
+            if (!HRConnect.Application.Features.Recruitment.Common.CompanyMembershipPolicy.IsActive(member))
             {
                 _logger.LogWarning("Tài khoản Client Company {UserId} không gắn với doanh nghiệp nào.", request.CurrentUserId);
                 throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");

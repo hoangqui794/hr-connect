@@ -269,7 +269,7 @@ public static class OfferEndpoints
         })
         .WithName("SendOffer")
         .WithSummary("Gửi thư mời nhận việc cho ứng viên (Send Offer)")
-        .WithDescription("Chỉ Client Company sở hữu Job với quyền offer.send được gửi offer. API chuyển offer từ DRAFT sang SENT và gửi thông báo tới ứng viên.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền offer.send được gửi offer. API chuyển offer từ DRAFT sang SENT; việc phát thông báo tới ứng viên được xử lý ở hạng mục notification riêng.")
         .Produces<SendOfferResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)

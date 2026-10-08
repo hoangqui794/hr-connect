@@ -63,7 +63,7 @@ public class GetRecruitmentApplicationTimelineQueryHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyB });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyB, Status = "ACTIVE" });
 
         var query = new GetRecruitmentApplicationTimelineQuery(
             ApplicationId: appId,
@@ -134,7 +134,7 @@ public class GetRecruitmentApplicationTimelineQueryHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyA });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyA, Status = "ACTIVE" });
 
         var query = new GetRecruitmentApplicationTimelineQuery(
             ApplicationId: appId,

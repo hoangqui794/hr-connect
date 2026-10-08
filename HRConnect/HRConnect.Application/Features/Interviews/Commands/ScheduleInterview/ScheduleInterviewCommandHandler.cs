@@ -60,6 +60,16 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             throw new BadRequestException("Thời lượng phỏng vấn không được vượt quá 480 phút.");
         }
 
+        var interviewType = Mf04InputPolicy.NormalizeOptionalText(
+                request.InterviewType,
+                Mf04InputPolicy.InterviewTypeMaxLength,
+                "Hình thức phỏng vấn")
+            ?.ToUpperInvariant() ?? "ONLINE";
+        var location = Mf04InputPolicy.NormalizeOptionalText(
+            request.Location,
+            Mf04InputPolicy.InterviewLocationMaxLength,
+            "Địa điểm phỏng vấn");
+
         var application = await _applicationRepository.GetByIdAsync(request.ApplicationId, cancellationToken);
         if (application == null)
         {
@@ -82,7 +92,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (companyUser == null)
+            if (!HRConnect.Application.Features.Recruitment.Common.CompanyMembershipPolicy.IsActive(companyUser))
             {
                 _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
                 throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
@@ -115,10 +125,6 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             throw new ConflictException($"Vòng phỏng vấn {interviewRound} đã tồn tại.");
         }
 
-        var interviewType = string.IsNullOrWhiteSpace(request.InterviewType)
-            ? "ONLINE"
-            : request.InterviewType.Trim().ToUpperInvariant();
-
         var interviewId = Guid.NewGuid();
         var concurrencyToken = Guid.NewGuid();
 
@@ -130,7 +136,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             InterviewType = interviewType,
             ScheduledAt = request.ScheduledAt,
             DurationMinutes = durationMinutes,
-            Location = request.Location,
+            Location = location,
             MeetingLink = request.MeetingLink,
             Status = InterviewStates.Scheduled,
             CreatedBy = request.CurrentUserId,
@@ -238,7 +244,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
                 InterviewType = interviewType,
                 ScheduledAt = request.ScheduledAt,
                 DurationMinutes = durationMinutes,
-                Location = request.Location,
+                Location = location,
                 MeetingLink = request.MeetingLink,
                 Status = InterviewStates.Scheduled,
                 ConcurrencyToken = concurrencyToken,

@@ -35,7 +35,7 @@ public class GetInterviewsQueryHandler : IRequestHandler<GetInterviewsQuery, Get
         if (request.IsClientCompanyUser)
         {
             var member = await _companyUserRepository.GetByUserIdAsync(request.UserId, cancellationToken);
-            if (member == null)
+            if (!CompanyMembershipPolicy.IsActive(member))
             {
                 _logger.LogWarning("Tài khoản Client Company {UserId} không gắn với doanh nghiệp nào.", request.UserId);
                 throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");

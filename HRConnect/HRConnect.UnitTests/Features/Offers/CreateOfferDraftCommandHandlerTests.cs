@@ -179,7 +179,7 @@ public class CreateOfferDraftCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { CompanyId = companyB });
+            .ReturnsAsync(new CompanyUser { CompanyId = companyB, Status = "ACTIVE" });
 
         var command = new CreateOfferDraftCommand(
             ApplicationId: appId,
@@ -330,7 +330,7 @@ public class CreateOfferDraftCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { CompanyId = companyId, Status = "ACTIVE" });
 
         var existingOffers = new List<Offer>
         {

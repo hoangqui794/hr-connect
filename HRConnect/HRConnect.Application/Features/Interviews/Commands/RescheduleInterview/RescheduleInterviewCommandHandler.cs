@@ -54,6 +54,11 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
             throw new BadRequestException("Thời lượng phỏng vấn phải từ 1 đến 480 phút.");
         }
 
+        var location = Mf04InputPolicy.NormalizeOptionalText(
+            request.Location,
+            Mf04InputPolicy.InterviewLocationMaxLength,
+            "Địa điểm phỏng vấn");
+
         var interview = await _interviewRepository.GetByIdForUpdateAsync(request.InterviewId, cancellationToken);
         if (interview == null)
         {
@@ -73,7 +78,7 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (companyUser == null)
+            if (!HRConnect.Application.Features.Recruitment.Common.CompanyMembershipPolicy.IsActive(companyUser))
             {
                 _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
                 throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
@@ -105,7 +110,7 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
 
         if (request.Location != null)
         {
-            interview.Location = request.Location;
+            interview.Location = location;
         }
 
         if (request.MeetingLink != null)

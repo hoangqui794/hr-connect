@@ -43,7 +43,7 @@ public class RecordInterviewNoShowCommandHandlerTests
         _interviewRepository.Setup(r => r.GetByIdForUpdateAsync(interview.InterviewId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(interview);
         _companyUserRepository.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
         _unitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         var result = await CreateHandler().Handle(new RecordInterviewNoShowCommand(
