@@ -224,7 +224,7 @@ public class RecordInterviewResultCommandHandlerTests
             Feedback: null,
             IsFinalRound: false,
             NextAction: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: interview.ConcurrencyToken,
             CurrentUserId: userId,
             IsClientCompanyUser: true
         );
@@ -354,7 +354,7 @@ public class RecordInterviewResultCommandHandlerTests
             Feedback: "Không đạt yêu cầu chuyên môn",
             IsFinalRound: true,
             NextAction: "REJECT",
-            ConcurrencyToken: null,
+            ConcurrencyToken: interview.ConcurrencyToken,
             CurrentUserId: clientUserId,
             IsClientCompanyUser: true
         );

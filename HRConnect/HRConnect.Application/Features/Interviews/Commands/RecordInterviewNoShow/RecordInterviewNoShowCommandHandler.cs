@@ -2,6 +2,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -47,10 +48,7 @@ public class RecordInterviewNoShowCommandHandler : IRequestHandler<RecordIntervi
             throw new BadRequestException("Chỉ có thể ghi nhận vắng mặt sau thời gian phỏng vấn.");
         }
 
-        if (request.ConcurrencyToken.HasValue && request.ConcurrencyToken.Value != interview.ConcurrencyToken)
-        {
-            throw new ConflictException("Dữ liệu phỏng vấn đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
-        }
+        Mf04ConcurrencyGuard.EnsureMatches(request.ConcurrencyToken, interview.ConcurrencyToken, "phỏng vấn");
 
         if (request.IsClientCompanyUser)
         {

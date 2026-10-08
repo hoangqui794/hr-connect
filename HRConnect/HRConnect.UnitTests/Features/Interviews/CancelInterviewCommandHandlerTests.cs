@@ -203,7 +203,7 @@ public class CancelInterviewCommandHandlerTests
         var command = new CancelInterviewCommand(
             InterviewId: interviewId,
             Reason: "Hủy phỏng vấn",
-            ConcurrencyToken: null,
+            ConcurrencyToken: interview.ConcurrencyToken,
             CurrentUserId: userId,
             IsClientCompanyUser: true
         );

@@ -215,7 +215,7 @@ public class RescheduleInterviewCommandHandlerTests
             DurationMinutes: null,
             Location: null,
             MeetingLink: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: interview.ConcurrencyToken,
             CurrentUserId: userId,
             IsClientCompanyUser: true
         );

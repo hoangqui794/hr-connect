@@ -82,7 +82,7 @@ public class UpdateInterviewCommandHandlerTests
             Location: null,
             MeetingLink: null,
             Participants: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: interview.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true
         );
@@ -168,7 +168,7 @@ public class UpdateInterviewCommandHandlerTests
             Location: null,
             MeetingLink: null,
             Participants: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: interview.ConcurrencyToken,
             CurrentUserId: userId,
             IsClientCompanyUser: true
         );
@@ -189,6 +189,7 @@ public class UpdateInterviewCommandHandlerTests
         var userId = Guid.NewGuid();
         var companyId = Guid.NewGuid();
         var oldToken = Guid.NewGuid();
+        var participantUserId = Guid.NewGuid();
 
         var interview = new Interview
         {
@@ -211,6 +212,15 @@ public class UpdateInterviewCommandHandlerTests
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+        _companyUserRepositoryMock
+            .Setup(r => r.GetActiveByUserIdsAsync(
+                companyId,
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { participantUserId })),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<CompanyUser>
+            {
+                new() { UserId = participantUserId, CompanyId = companyId, Status = "ACTIVE" }
+            });
 
         _unitOfWorkMock
             .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
@@ -224,7 +234,7 @@ public class UpdateInterviewCommandHandlerTests
             MeetingLink: null,
             Participants: new List<ScheduleInterviewParticipantDto>
             {
-                new(Guid.NewGuid(), "INTERVIEWER")
+                new(participantUserId, "INTERVIEWER")
             },
             ConcurrencyToken: oldToken,
             CurrentUserId: userId,
@@ -269,7 +279,7 @@ public class UpdateInterviewCommandHandlerTests
             Location: null,
             MeetingLink: null,
             Participants: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: interview.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true
         );

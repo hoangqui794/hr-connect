@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -67,12 +68,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
             throw new BadRequestException("Buổi phỏng vấn này đã được ghi nhận kết quả trước đó.");
         }
 
-        if (request.ConcurrencyToken.HasValue && request.ConcurrencyToken.Value != interview.ConcurrencyToken)
-        {
-            _logger.LogWarning("Xung đột concurrency trên Interview {InterviewId}. Token yêu cầu {ReqToken} khác với token hiện tại {CurToken}.",
-                interview.InterviewId, request.ConcurrencyToken.Value, interview.ConcurrencyToken);
-            throw new ConflictException("Dữ liệu phỏng vấn đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
-        }
+        Mf04ConcurrencyGuard.EnsureMatches(request.ConcurrencyToken, interview.ConcurrencyToken, "phỏng vấn");
 
         if (interview.Status != InterviewStates.Scheduled)
         {
