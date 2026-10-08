@@ -78,8 +78,8 @@ export const ClientCompanyPage: React.FC = () => {
         address: v.address?.trim() || null,
         description: v.description?.trim() || null,
       }),
-    onSuccess: (res) => {
-      message.success(res.message || 'Đã lưu hồ sơ doanh nghiệp.');
+    onSuccess: (res: any) => {
+      message.success(res?.message || 'Đã lưu hồ sơ doanh nghiệp.');
       queryClient.invalidateQueries({ queryKey: ['client-company'] });
     },
     onError: (err) => message.error(getApiErrorMessage(err)),

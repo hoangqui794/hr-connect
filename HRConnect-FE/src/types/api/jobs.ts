@@ -5,7 +5,14 @@
  * camelCase JSON the API returns — the backend is the source of truth.
  */
 
-export type JobStatus = 'DRAFT' | 'PENDING_REVIEW' | 'REJECTED' | 'ACTIVE' | 'PAUSED' | 'CLOSED';
+export type JobStatus =
+  | 'DRAFT'
+  | 'PENDING_REVIEW'
+  | 'PENDING_APPROVAL'
+  | 'REJECTED'
+  | 'ACTIVE'
+  | 'PAUSED'
+  | 'CLOSED';
 export type JobVisibility = 'PUBLIC' | 'PARTNER_ONLY' | 'INTERNAL_ONLY';
 export type EmploymentType = 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'INTERNSHIP' | 'FREELANCE';
 export type JobRequirementType = 'MUST_HAVE' | 'SHOULD_HAVE';

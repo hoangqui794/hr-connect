@@ -9,10 +9,11 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Dropdown } from 'antd';
-import { BankOutlined, CloseOutlined, LogoutOutlined, MenuOutlined, PlusOutlined } from '@ant-design/icons';
+import { BankOutlined, CloseOutlined, LogoutOutlined, MenuOutlined, PlusOutlined, KeyOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
 import { Initials } from '@/features/admin-console/ui';
+import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import '@/features/admin-console/admin-console.css';
@@ -42,6 +43,7 @@ export const ClientShell: React.FC = () => {
   const compact = useCompactLayout();
   const { user, logout } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => setMenuOpen(false), [location.pathname, compact]);
   useEffect(() => {
@@ -111,10 +113,15 @@ export const ClientShell: React.FC = () => {
               menu={{
                 items: [
                   { key: 'company', icon: <BankOutlined />, label: 'Hồ sơ doanh nghiệp' },
+                  { key: 'password', icon: <KeyOutlined />, label: 'Đổi mật khẩu' },
                   { type: 'divider' },
                   { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
                 ],
-                onClick: ({ key }) => (key === 'logout' ? signOut() : navigate('/client/company')),
+                onClick: ({ key }) => {
+                  if (key === 'logout') signOut();
+                  else if (key === 'password') setShowPasswordModal(true);
+                  else navigate('/client/company');
+                },
               }}
             >
               <button
@@ -122,7 +129,15 @@ export const ClientShell: React.FC = () => {
                 aria-label="Tài khoản"
                 className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-2 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] sm:pr-3"
               >
-                <Initials name={name} size={34} />
+                {user?.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={name}
+                    className="h-[34px] w-[34px] rounded-full object-cover border border-solid border-slate-200"
+                  />
+                ) : (
+                  <Initials name={name} size={34} />
+                )}
                 <span className="hidden text-left leading-tight md:block">
                   <span className="block max-w-[160px] truncate text-sm font-semibold text-slate-900">{name}</span>
                   <span className="block max-w-[160px] truncate text-xs text-slate-500">{user?.email}</span>
@@ -172,6 +187,10 @@ export const ClientShell: React.FC = () => {
           </Suspense>
         </AdminPageEnter>
       </main>
+      <ChangePasswordModal
+        open={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+      />
     </div>
   );
 };

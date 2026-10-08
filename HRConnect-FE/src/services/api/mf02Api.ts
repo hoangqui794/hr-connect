@@ -52,6 +52,9 @@ export const candidateCvApi = {
   async remove(cvId: string) {
     return (await apiClient.delete<{ message?: string }>(`/candidates/cv/${cvId}`)).data;
   },
+  async updateTitle(cvId: string, title: string) {
+    return (await apiClient.patch<{ message?: string }>(`/candidates/cv/${cvId}`, { title })).data;
+  },
   async downloadUrl(cvId: string): Promise<{ downloadUrl: string }> {
     return (await apiClient.get<ApiEnvelope<{ downloadUrl: string }>>(`/candidates/cv/${cvId}/download-url`)).data.data;
   },
@@ -60,6 +63,9 @@ export const candidateCvApi = {
 export const candidateApplicationsApi = {
   async list(params: { status?: string; page: number; pageSize: number }): Promise<PagedItems<CandidateApplication>> {
     return (await apiClient.get<ApiEnvelope<PagedItems<CandidateApplication>>>('/candidates/applications', { params: clean(params) })).data.data;
+  },
+  async get(applicationId: string): Promise<CandidateApplication> {
+    return (await apiClient.get<ApiEnvelope<CandidateApplication>>(`/candidates/applications/${applicationId}`)).data.data;
   },
 };
 
@@ -85,12 +91,46 @@ export interface SubmitCandidateInput {
   note?: string;
 }
 
+export interface UpdateAffiliateProfileInput {
+  displayName: string;
+  contactPerson?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  taxInformation?: string | null;
+}
+
+export interface AffiliateBankAccountData {
+  affiliateId: string;
+  displayName?: string | null;
+  bankName?: string | null;
+  bankAccountNumber?: string | null;
+  bankAccountHolder?: string | null;
+  bankBranch?: string | null;
+  isConfigured: boolean;
+  updatedAt: string;
+}
+
+export interface UpdateAffiliateBankAccountInput {
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountHolder: string;
+  bankBranch?: string | null;
+}
 export const affiliateApi = {
   async profile(): Promise<AffiliateProfile> {
     return (await apiClient.get<ApiEnvelope<AffiliateProfile>>('/affiliates/profile/me')).data.data;
   },
+  async updateProfile(input: UpdateAffiliateProfileInput) {
+    return (await apiClient.put<{ success: boolean; message: string; data?: unknown }>('/affiliates/profile/me', input)).data;
+  },
   async performance(): Promise<AffiliatePerformance> {
     return (await apiClient.get<ApiEnvelope<AffiliatePerformance>>('/affiliates/profile/me/performance')).data.data;
+  },
+  async getBankAccount(): Promise<AffiliateBankAccountData> {
+    return (await apiClient.get<{ success: boolean; message: string; data: AffiliateBankAccountData }>('/affiliates/profile/me/bank-account')).data.data;
+  },
+  async updateBankAccount(input: UpdateAffiliateBankAccountInput) {
+    return (await apiClient.put<{ success: boolean; message: string; data: AffiliateBankAccountData }>('/affiliates/profile/me/bank-account', input)).data;
   },
   async submit(jobId: string, input: SubmitCandidateInput) {
     const body = form({
@@ -106,6 +146,9 @@ export const affiliateApi = {
   },
   async submissions(params: { status?: string; jobId?: string; page: number; pageSize: number }): Promise<TotalCountPage<AffiliateSubmission>> {
     return (await apiClient.get<TotalCountPage<AffiliateSubmission>>('/affiliates/submissions', { params: clean(params) })).data;
+  },
+  async submissionDetail(submissionId: string): Promise<AffiliateSubmission> {
+    return (await apiClient.get<{ success: boolean; message: string; data: AffiliateSubmission }>(`/affiliates/submissions/${submissionId}`)).data.data;
   },
   async resendConsent(submissionId: string) {
     return (
@@ -133,3 +176,136 @@ export const affiliateApi = {
     return (await apiClient.get<ApiEnvelope<{ downloadUrl: string }>>(`/affiliates/candidates/${candidateId}/cvs/${cvId}/download-url`)).data.data;
   },
 };
+
+// ─── Branch C: candidate affiliate CV management ─────────────────────────────
+
+export interface CandidateAffiliateCvItem {
+  cvId: string;
+  title: string;
+  fileName: string;
+  mimeType?: string;
+  fileSizeBytes: number;
+  documentStatus?: string;
+  affiliateReuseStatus: 'ALLOWED' | 'REVOKED' | string;
+  reuseConcurrencyToken: string;
+  affiliateUserId?: string;
+  affiliateDisplayName?: string;
+  submissionCount: number;
+  pendingConsentCount: number;
+  acceptedSubmissionCount: number;
+  lastSubmittedAt?: string;
+  createdAt: string;
+  alreadyAdopted?: boolean;
+}
+
+export interface CandidateAffiliateCvUsageItem {
+  submissionId: string;
+  jobId: string;
+  jobTitle: string;
+  companyId: string;
+  companyName: string;
+  affiliateUserId: string;
+  affiliateDisplayName: string;
+  submissionStatus: string;
+  submittedAt: string;
+  consentStatus: 'PENDING' | 'CONFIRMED' | 'DECLINED' | 'EXPIRED' | string;
+  consentRequestedAt?: string;
+  consentExpiresAt?: string;
+  consentRespondedAt?: string;
+  applicationId?: string;
+  applicationStatus?: string;
+  applicationCurrentStage?: string;
+  aiStatus?: string;
+  aiMatchScore?: number | null;
+  aiMatchTier?: string | null;
+  aiCompletedAt?: string;
+}
+
+export const candidateAffiliateCvsApi = {
+  async list(params?: { page?: number; pageSize?: number }): Promise<{
+    success: boolean;
+    data: {
+      items: CandidateAffiliateCvItem[];
+      pagination: { page: number; pageSize: number; totalCount: number; totalPages: number };
+    };
+  }> {
+    return (await apiClient.get('/candidates/me/affiliate-cvs', { params: clean(params || {}) })).data;
+  },
+  async get(cvId: string): Promise<any> {
+    return (await apiClient.get(`/candidates/me/affiliate-cvs/${cvId}`)).data;
+  },
+  async usages(cvId: string, params?: { page?: number; pageSize?: number }): Promise<{
+    success: boolean;
+    data: {
+      cvId: string;
+      items: CandidateAffiliateCvUsageItem[];
+      pagination: { page: number; pageSize: number; totalCount: number; totalPages: number };
+    };
+  }> {
+    return (await apiClient.get(`/candidates/me/affiliate-cvs/${cvId}/usages`, { params: clean(params || {}) })).data;
+  },
+  async downloadUrl(cvId: string): Promise<{ downloadUrl: string }> {
+    return (await apiClient.get<ApiEnvelope<{ downloadUrl: string }>>(`/candidates/me/affiliate-cvs/${cvId}/download-url`)).data.data;
+  },
+  async updateReuse(cvId: string, allowed: boolean, concurrencyToken?: string): Promise<{
+    success: boolean;
+    message?: string;
+    data?: any;
+  }> {
+    return (await apiClient.patch(`/candidates/me/affiliate-cvs/${cvId}/reuse`, { allowed, concurrencyToken })).data;
+  },
+  async adopt(cvId: string, title?: string): Promise<{
+    success: boolean;
+    message?: string;
+    data?: { cvId: string; alreadyAdopted: boolean; title: string };
+  }> {
+    return (await apiClient.post(`/candidates/me/affiliate-cvs/${cvId}/adopt`, { title })).data;
+  },
+};
+
+// ─── Branch D: submission consents (confirmation flow) ──────────────────────
+
+export interface SubmissionConsentReviewData {
+  submissionId: string;
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+  cvFileName: string;
+  cvDownloadUrl?: string;
+  cvUrlExpiresAt?: string;
+  expiresAt: string;
+  status: 'PENDING' | 'CONFIRMED' | 'DECLINED' | 'EXPIRED' | string;
+  affiliateName?: string;
+  affiliateReuseStatus?: string;
+  reuseConcurrencyToken?: string;
+}
+
+export const submissionConsentsApi = {
+  /** Unregistered candidate reviews consent via email token */
+  async reviewPublic(token: string): Promise<{ success?: boolean; data: SubmissionConsentReviewData }> {
+    return (await apiClient.post('/submission-consents/review', { token })).data;
+  },
+  /** Unregistered candidate responds to consent via email token */
+  async respondPublic(data: { token: string; decision: 'CONFIRM' | 'DECLINE'; allowFutureReuse?: boolean }): Promise<{
+    success?: boolean;
+    message?: string;
+    data?: any;
+  }> {
+    return (await apiClient.post('/submission-consents/respond', data)).data;
+  },
+  /** Logged-in candidate reviews consent by submissionId */
+  async reviewAuth(submissionId: string): Promise<{ success?: boolean; data: SubmissionConsentReviewData }> {
+    return (await apiClient.get(`/candidates/me/submission-consents/${submissionId}`)).data;
+  },
+  /** Logged-in candidate responds to consent by submissionId */
+  async respondAuth(submissionId: string, data: { decision: 'CONFIRM' | 'DECLINE'; allowFutureReuse?: boolean }): Promise<{
+    success?: boolean;
+    message?: string;
+    data?: any;
+  }> {
+    return (await apiClient.post(`/candidates/me/submission-consents/${submissionId}/respond`, data)).data;
+  },
+};
+
+
+

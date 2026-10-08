@@ -163,6 +163,9 @@ const CandidateMyApplicationsPage = React.lazy(() =>
   import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateApplicationsPage }))
 );
 const CandidateCvsPage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateCvsPage })));
+const SubmissionConsentPage = React.lazy(() =>
+  import('@/features/portal/SubmissionConsentPublicPage').then((m) => ({ default: m.SubmissionConsentPublicPage }))
+);
 const AffiliateHomePage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateHomePage })));
 const AffiliateSubmitPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmitPage })));
 const AffiliateMySubmissionsPage = React.lazy(() =>
@@ -171,6 +174,9 @@ const AffiliateMySubmissionsPage = React.lazy(() =>
 const AffiliateCandidatesPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateCandidatesPage })));
 const AffiliateAttributionsPage = React.lazy(() =>
   import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateAttributionsPage }))
+);
+const AffiliateProfilePage = React.lazy(() =>
+  import('@/features/portal/AffiliateProfilePage').then((m) => ({ default: m.AffiliateProfilePage }))
 );
 const AffiliateCommissionsPlaceholder = React.lazy(() =>
   import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateCommissionsPlaceholder }))
@@ -372,6 +378,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/candidate/saved-jobs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/affiliate/attributions': [UserRole.AFFILIATE, UserRole.ADMIN],
+  '/affiliate/profile': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/jobs': [
     UserRole.CLIENT,
     UserRole.AFFILIATE,
@@ -471,11 +478,13 @@ export const AppRoutes = {
   CandidateHomePage,
   CandidateMyApplicationsPage,
   CandidateCvsPage,
+  SubmissionConsentPage,
   AffiliateHomePage,
   AffiliateSubmitPage,
   AffiliateMySubmissionsPage,
   AffiliateCandidatesPage,
   AffiliateAttributionsPage,
+  AffiliateProfilePage,
   AffiliateCommissionsPlaceholder,
   ClientOverviewPage,
   ClientCandidatesPage,

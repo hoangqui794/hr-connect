@@ -587,6 +587,30 @@ export class AuthService {
     });
     return response.data;
   }
+
+  /**
+   * PUT /api/v1/auth/change-password
+   * Change password for currently authenticated user.
+   */
+  public async changePassword(payload: ChangePasswordCommand): Promise<ChangePasswordResponse> {
+    const response = await apiClient.put<ChangePasswordResponse>('/auth/change-password', {
+      currentPassword: payload.currentPassword,
+      newPassword: payload.newPassword,
+      confirmPassword: payload.confirmPassword ?? payload.newPassword,
+    });
+    return response.data;
+  }
+}
+
+export interface ChangePasswordCommand {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword?: string;
+}
+
+export interface ChangePasswordResponse {
+  success: boolean;
+  message?: string | null;
 }
 
 export const authService = new AuthService();

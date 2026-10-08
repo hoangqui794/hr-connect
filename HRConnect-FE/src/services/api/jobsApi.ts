@@ -114,10 +114,12 @@ export const jobsApi = {
     jobId: string,
     concurrencyToken: string,
     reasonCode: JobRejectReasonCode,
-    reasonText: string
+    reasonText: string,
+    reason?: string
   ): Promise<JobActionResponse> {
     const res = await apiClient.post<JobActionResponse>(`/internal/jobs/${jobId}/reject`, {
       concurrencyToken,
+      reason: reason || reasonText || reasonCode,
       reasonCode,
       reasonText,
     });

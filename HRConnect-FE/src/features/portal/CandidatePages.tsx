@@ -7,14 +7,16 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Button, Popconfirm, Skeleton, Tooltip, Upload } from 'antd';
+import { Alert, App as AntApp, Button, Popconfirm, Skeleton, Tabs, Tooltip, Upload } from 'antd';
 import {
   CheckCircleFilled,
   DeleteOutlined,
   EyeOutlined,
   FilePdfOutlined,
   InboxOutlined,
+  SafetyCertificateOutlined,
   SearchOutlined,
+  ShareAltOutlined,
   StarFilled,
   StarOutlined,
 } from '@ant-design/icons';
@@ -27,6 +29,10 @@ import { useAuthStore } from '@/stores/authStore';
 import type { CandidateApplication } from '@/types/api/mf02';
 import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { CANDIDATE_STEPS, MAX_CV_MB, candidateStage, cvFileError, fileSize } from './mf02Labels';
+import { CandidateAffiliateCvsTab } from './CandidateAffiliateCvsTab';
+import { CandidateSubmissionConsentsTab } from './CandidateSubmissionConsentsTab';
+
+export { CandidateAffiliateCvsTab, CandidateSubmissionConsentsTab };
 
 dayjs.extend(relativeTimePlugin);
 dayjs.locale('vi');
@@ -199,56 +205,100 @@ export const CandidateHomePage: React.FC = () => {
 export const CandidateApplicationsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const currentTab = searchParams.get('tab') === 'consents' ? 'consents' : 'applications';
   const group = (searchParams.get('group') as 'all' | 'active' | 'closed') || 'all';
+  const submissionId = searchParams.get('submissionId');
   const apps = useMyApplications();
   const items = apps.data?.items ?? [];
   const activeItems = items.filter((a) => !candidateStage(a.status).closed);
   const shown = group === 'active' ? activeItems : group === 'closed' ? items.filter((a) => candidateStage(a.status).closed) : items;
 
+  const handleTabChange = (key: string) => {
+    setSearchParams(key === 'consents' ? { tab: 'consents' } : {});
+  };
   return (
     <div>
       <PageHero
         eyebrow="Ứng tuyển"
-        title="Đơn ứng tuyển của tôi"
-        description="Theo dõi từng đơn từ lúc nộp đến khi nhận việc. Trạng thái được cập nhật ngay khi nhà tuyển dụng xử lý."
+        title="Quản lý đơn & Giới thiệu việc làm"
+        description="Theo dõi toàn bộ các đơn tự ứng tuyển cũng như các yêu cầu giới thiệu việc làm từ đối tác Affiliate."
         actions={
           <Button type="primary" size="large" icon={<SearchOutlined />} onClick={() => navigate('/jobs')}>
             Tìm việc làm
           </Button>
         }
       />
-      <div className="mb-4">
-        <FilterPills
-          label="Lọc đơn"
-          value={group}
-          onChange={(v) => setSearchParams(v === 'all' ? {} : { group: v })}
-          options={[
-            { value: 'all', label: 'Tất cả', count: items.length },
-            { value: 'active', label: 'Đang xử lý', count: activeItems.length },
-            { value: 'closed', label: 'Đã kết thúc', count: items.length - activeItems.length },
-          ]}
-        />
-      </div>
-      {apps.isLoading ? (
-        <Skeleton active paragraph={{ rows: 6 }} />
-      ) : apps.isError ? (
-        <Alert type="error" showIcon message="Không tải được đơn ứng tuyển" description={getApiErrorMessage(apps.error)} />
-      ) : shown.length === 0 ? (
-        <Surface className="p-10 text-center">
-          <p className="m-0 text-sm text-slate-600">{items.length === 0 ? 'Bạn chưa ứng tuyển công việc nào.' : 'Không có đơn nào trong nhóm này.'}</p>
-          {items.length === 0 && (
-            <Button type="primary" className="mt-3" icon={<SearchOutlined />} onClick={() => navigate('/jobs')}>
-              Tìm việc làm
-            </Button>
-          )}
-        </Surface>
-      ) : (
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-          {shown.map((a) => (
-            <ApplicationCard key={a.applicationId} a={a} />
-          ))}
-        </div>
-      )}
+      <Tabs
+        activeKey={currentTab}
+        onChange={handleTabChange}
+        size="large"
+        className="!mb-6"
+        items={[
+          {
+            key: 'applications',
+            label: (
+              <span className="flex items-center gap-2">
+                <SearchOutlined /> Đơn tự ứng tuyển
+                <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                  {items.length}
+                </span>
+              </span>
+            ),
+            children: (
+              <div>
+                <div className="mb-4">
+                  <FilterPills
+                    label="Lọc đơn"
+                    value={group}
+                    onChange={(v) => setSearchParams(v === 'all' ? {} : { group: v })}
+                    options={[
+                      { value: 'all', label: 'Tất cả', count: items.length },
+                      { value: 'active', label: 'Đang xử lý', count: activeItems.length },
+                      { value: 'closed', label: 'Đã kết thúc', count: items.length - activeItems.length },
+                    ]}
+                  />
+                </div>
+                {apps.isLoading ? (
+                  <Skeleton active paragraph={{ rows: 6 }} />
+                ) : apps.isError ? (
+                  <Alert type="error" showIcon message="Không tải được đơn ứng tuyển" description={getApiErrorMessage(apps.error)} />
+                ) : shown.length === 0 ? (
+                  <Surface className="p-10 text-center">
+                    <p className="m-0 text-sm text-slate-600">
+                      {items.length === 0 ? 'Bạn chưa ứng tuyển công việc nào.' : 'Không có đơn nào trong nhóm này.'}
+                    </p>
+                    {items.length === 0 && (
+                      <Button type="primary" className="mt-3" icon={<SearchOutlined />} onClick={() => navigate('/jobs')}>
+                        Tìm việc làm
+                      </Button>
+                    )}
+                  </Surface>
+                ) : (
+                  <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
+                    {shown.map((a) => (
+                      <ApplicationCard key={a.applicationId} a={a} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ),
+          },
+          {
+            key: 'consents',
+            label: (
+              <span className="flex items-center gap-2">
+                <SafetyCertificateOutlined /> Yêu cầu giới thiệu từ Affiliate
+              </span>
+            ),
+            children: (
+              <CandidateSubmissionConsentsTab
+                initialSubmissionId={submissionId}
+                onClearInitialSubmissionId={() => setSearchParams({ tab: 'consents' })}
+              />
+            ),
+          },
+        ]}
+      />
     </div>
   );
 };
@@ -292,6 +342,9 @@ export const CvUploader: React.FC<{ onUploaded?: () => void; compact?: boolean }
 };
 
 export const CandidateCvsPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentTab = searchParams.get('tab') === 'affiliate' ? 'affiliate' : 'personal';
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
   const cvs = useCandidateCvs();
@@ -315,73 +368,114 @@ export const CandidateCvsPage: React.FC = () => {
 
   return (
     <div>
-      <PageHero eyebrow="Hồ sơ" title="Kho CV" description="CV bạn tải lên được dùng để ứng tuyển. CV chính được chọn sẵn khi bạn bấm Ứng tuyển." />
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-3">
-          {cvs.isLoading ? (
-            <Skeleton active paragraph={{ rows: 5 }} />
-          ) : cvs.isError ? (
-            <Alert type="error" showIcon message={getApiErrorMessage(cvs.error)} />
-          ) : list.length === 0 ? (
-            <Surface className="p-10 text-center text-sm text-slate-600">Chưa có CV nào. Tải CV đầu tiên ở khung bên cạnh.</Surface>
-          ) : (
-            list.map((cv) => (
-              <article key={cv.cvId} className="admin-surface flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl text-red-700" aria-hidden>
-                  <FilePdfOutlined />
+      <PageHero
+        eyebrow="Hồ sơ"
+        title="Quản lý Kho CV"
+        description="Quản lý các bản CV cá nhân dùng để ứng tuyển và kiểm soát các bản CV do đối tác Affiliate nộp thay."
+      />
+
+      <Tabs
+        activeKey={currentTab}
+        onChange={(k) => setSearchParams(k === 'affiliate' ? { tab: 'affiliate' } : {})}
+        size="large"
+        className="!mb-6"
+        items={[
+          {
+            key: 'personal',
+            label: (
+              <span className="flex items-center gap-2">
+                <FilePdfOutlined /> Kho CV cá nhân
+                <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                  {list.length}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-semibold text-slate-900">{cv.title || cv.fileName || 'CV'}</span>
-                    {cv.isPrimary && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[color:var(--console-accent-soft)] px-2 py-0.5 text-xs font-medium text-[color:var(--console-accent-strong)]">
-                        <CheckCircleFilled aria-hidden /> CV chính
-                      </span>
-                    )}
-                  </div>
-                  <div className="truncate text-xs text-slate-500">
-                    {cv.fileName} · {fileSize(cv.fileSizeBytes)} · cập nhật {dayjs(cv.updatedAt).format('DD/MM/YYYY')}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Tooltip title="Xem CV">
-                    <Button icon={<EyeOutlined />} aria-label={`Xem ${cv.title ?? 'CV'}`} onClick={() => openSigned(() => candidateCvApi.downloadUrl(cv.cvId))} />
-                  </Tooltip>
-                  {!cv.isPrimary && (
-                    <Tooltip title="Đặt làm CV chính">
-                      <Button
-                        icon={busyId === cv.cvId ? undefined : <StarOutlined />}
-                        loading={busyId === cv.cvId}
-                        aria-label="Đặt làm CV chính"
-                        onClick={() => act(cv.cvId, () => candidateCvApi.setPrimary(cv.cvId), 'Đã đặt làm CV chính.')}
-                      />
-                    </Tooltip>
+              </span>
+            ),
+            children: (
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+                <div className="space-y-3">
+                  {cvs.isLoading ? (
+                    <Skeleton active paragraph={{ rows: 5 }} />
+                  ) : cvs.isError ? (
+                    <Alert type="error" showIcon message={getApiErrorMessage(cvs.error)} />
+                  ) : list.length === 0 ? (
+                    <Surface className="p-10 text-center text-sm text-slate-600">
+                      Chưa có CV nào. Tải CV đầu tiên ở khung bên cạnh.
+                    </Surface>
+                  ) : (
+                    list.map((cv) => (
+                      <article key={cv.cvId} className="admin-surface flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap">
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl text-red-700" aria-hidden>
+                          <FilePdfOutlined />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate font-semibold text-slate-900">{cv.title || cv.fileName || 'CV'}</span>
+                            {cv.isPrimary && (
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[color:var(--console-accent-soft)] px-2 py-0.5 text-xs font-medium text-[color:var(--console-accent-strong)]">
+                                <CheckCircleFilled aria-hidden /> CV chính
+                              </span>
+                            )}
+                          </div>
+                          <div className="truncate text-xs text-slate-500">
+                            {cv.fileName} · {fileSize(cv.fileSizeBytes)} · cập nhật {dayjs(cv.updatedAt).format('DD/MM/YYYY')}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Tooltip title="Xem CV">
+                            <Button icon={<EyeOutlined />} aria-label={`Xem ${cv.title ?? 'CV'}`} onClick={() => openSigned(() => candidateCvApi.downloadUrl(cv.cvId))} />
+                          </Tooltip>
+                          {!cv.isPrimary && (
+                            <Tooltip title="Đặt làm CV chính">
+                              <Button
+                                icon={busyId === cv.cvId ? undefined : <StarOutlined />}
+                                loading={busyId === cv.cvId}
+                                aria-label="Đặt làm CV chính"
+                                onClick={() => act(cv.cvId, () => candidateCvApi.setPrimary(cv.cvId), 'Đã đặt làm CV chính.')}
+                              />
+                            </Tooltip>
+                          )}
+                          {cv.isPrimary && (
+                            <Button icon={<StarFilled />} disabled aria-label="CV chính" className="!text-amber-600" />
+                          )}
+                          <Popconfirm
+                            title="Xóa CV này?"
+                            description="CV đã dùng trong đơn ứng tuyển vẫn được giữ cho nhà tuyển dụng."
+                            okText="Xóa"
+                            okButtonProps={{ danger: true }}
+                            cancelText="Hủy"
+                            onConfirm={() => act(cv.cvId, () => candidateCvApi.remove(cv.cvId), 'Đã xóa CV.')}
+                          >
+                            <Button danger icon={<DeleteOutlined />} aria-label={`Xóa ${cv.title ?? 'CV'}`} />
+                          </Popconfirm>
+                        </div>
+                      </article>
+                    ))
                   )}
-                  {cv.isPrimary && (
-                    <Button icon={<StarFilled />} disabled aria-label="CV chính" className="!text-amber-600" />
-                  )}
-                  <Popconfirm
-                    title="Xóa CV này?"
-                    description="CV đã dùng trong đơn ứng tuyển vẫn được giữ cho nhà tuyển dụng."
-                    okText="Xóa"
-                    okButtonProps={{ danger: true }}
-                    cancelText="Hủy"
-                    onConfirm={() => act(cv.cvId, () => candidateCvApi.remove(cv.cvId), 'Đã xóa CV.')}
-                  >
-                    <Button danger icon={<DeleteOutlined />} aria-label={`Xóa ${cv.title ?? 'CV'}`} />
-                  </Popconfirm>
                 </div>
-              </article>
-            ))
-          )}
-        </div>
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <Surface className="p-5">
-            <h2 className="m-0 mb-3 text-base font-semibold text-slate-900">Tải CV mới</h2>
-            <CvUploader />
-          </Surface>
-        </aside>
-      </div>
+                <aside className="lg:sticky lg:top-24 lg:self-start">
+                  <Surface className="p-5">
+                    <h2 className="m-0 mb-3 text-base font-semibold text-slate-900">Tải CV mới</h2>
+                    <CvUploader />
+                  </Surface>
+                </aside>
+              </div>
+            ),
+          },
+          {
+            key: 'affiliate',
+            label: (
+              <span className="flex items-center gap-2">
+                <ShareAltOutlined /> CV do Affiliate nộp thay
+              </span>
+            ),
+            children: (
+              <CandidateAffiliateCvsTab
+                onOpenConsentModal={(sid) => navigate(`/candidate/applications?tab=consents&submissionId=${sid}`)}
+              />
+            ),
+          },
+        ]}
+      />
     </div>
   );
 };
