@@ -59,13 +59,15 @@ public class GetInterviewDetailQueryHandler : IRequestHandler<GetInterviewDetail
             throw new ForbiddenException("Bạn không có quyền xem chi tiết lịch phỏng vấn.");
         }
 
-        var participants = (interview.InterviewParticipants ?? new List<Domain.Entities.InterviewParticipant>())
-            .Select(p => new InterviewParticipantDetailDto
-            {
-                UserId = p.UserId,
-                Name = p.User?.DisplayName ?? p.User?.Email,
-                Role = p.Role
-            }).ToList();
+        var participants = request.IsCandidate
+            ? new List<InterviewParticipantDetailDto>()
+            : (interview.InterviewParticipants ?? new List<Domain.Entities.InterviewParticipant>())
+                .Select(p => new InterviewParticipantDetailDto
+                {
+                    UserId = p.UserId,
+                    Name = p.User?.DisplayName ?? p.User?.Email,
+                    Role = p.Role
+                }).ToList();
 
         var histories = (interview.InterviewStatusHistories ?? new List<Domain.Entities.InterviewStatusHistory>())
             .OrderByDescending(h => h.ChangedAt)
@@ -76,9 +78,9 @@ public class GetInterviewDetailQueryHandler : IRequestHandler<GetInterviewDetail
                 NewStatus = h.NewStatus,
                 OldScheduledAt = h.OldScheduledAt,
                 NewScheduledAt = h.NewScheduledAt,
-                ChangedBy = h.ChangedBy,
-                ChangedByName = h.ChangedByNavigation?.DisplayName ?? h.ChangedByNavigation?.Email,
-                Reason = h.Reason,
+                ChangedBy = request.IsCandidate ? null : h.ChangedBy,
+                ChangedByName = request.IsCandidate ? null : h.ChangedByNavigation?.DisplayName ?? h.ChangedByNavigation?.Email,
+                Reason = request.IsCandidate ? null : h.Reason,
                 ChangedAt = h.ChangedAt
             }).ToList();
 
@@ -101,16 +103,16 @@ public class GetInterviewDetailQueryHandler : IRequestHandler<GetInterviewDetail
             Location = interview.Location,
             MeetingLink = interview.MeetingLink,
             Status = interview.Status,
-            Result = interview.Result,
-            Feedback = interview.Feedback,
-            CreatedBy = interview.CreatedBy,
-            CreatedByName = interview.CreatedByNavigation?.DisplayName ?? interview.CreatedByNavigation?.Email,
-            RecordedBy = interview.RecordedBy,
-            RecordedByName = interview.RecordedByNavigation?.DisplayName ?? interview.RecordedByNavigation?.Email,
-            RecordedAt = interview.RecordedAt,
+            Result = request.IsCandidate ? null : interview.Result,
+            Feedback = request.IsCandidate ? null : interview.Feedback,
+            CreatedBy = request.IsCandidate ? null : interview.CreatedBy,
+            CreatedByName = request.IsCandidate ? null : interview.CreatedByNavigation?.DisplayName ?? interview.CreatedByNavigation?.Email,
+            RecordedBy = request.IsCandidate ? null : interview.RecordedBy,
+            RecordedByName = request.IsCandidate ? null : interview.RecordedByNavigation?.DisplayName ?? interview.RecordedByNavigation?.Email,
+            RecordedAt = request.IsCandidate ? null : interview.RecordedAt,
             CreatedAt = interview.CreatedAt,
             UpdatedAt = interview.UpdatedAt,
-            ConcurrencyToken = interview.ConcurrencyToken,
+            ConcurrencyToken = request.IsCandidate ? null : interview.ConcurrencyToken,
             Participants = participants,
             StatusHistories = histories
         };

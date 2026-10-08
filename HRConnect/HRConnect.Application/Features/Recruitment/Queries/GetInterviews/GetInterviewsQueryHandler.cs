@@ -73,13 +73,15 @@ public class GetInterviewsQueryHandler : IRequestHandler<GetInterviewsQuery, Get
 
         var dtos = items.Select(i =>
         {
-            var participants = (i.InterviewParticipants ?? new List<Domain.Entities.InterviewParticipant>())
-                .Select(p => new InterviewParticipantDto
-                {
-                    UserId = p.UserId,
-                    Name = p.User?.DisplayName ?? p.User?.Email,
-                    Role = p.Role
-                }).ToList();
+            var participants = request.IsCandidate
+                ? new List<InterviewParticipantDto>()
+                : (i.InterviewParticipants ?? new List<Domain.Entities.InterviewParticipant>())
+                    .Select(p => new InterviewParticipantDto
+                    {
+                        UserId = p.UserId,
+                        Name = p.User?.DisplayName ?? p.User?.Email,
+                        Role = p.Role
+                    }).ToList();
 
             return new InterviewItemDto
             {
@@ -100,11 +102,11 @@ public class GetInterviewsQueryHandler : IRequestHandler<GetInterviewsQuery, Get
                 Location = i.Location,
                 MeetingLink = i.MeetingLink,
                 Status = i.Status,
-                Result = i.Result,
-                Feedback = i.Feedback,
+                Result = request.IsCandidate ? null : i.Result,
+                Feedback = request.IsCandidate ? null : i.Feedback,
                 Participants = participants,
                 CreatedAt = i.CreatedAt,
-                ConcurrencyToken = i.ConcurrencyToken
+                ConcurrencyToken = request.IsCandidate ? null : i.ConcurrencyToken
             };
         }).ToList();
 

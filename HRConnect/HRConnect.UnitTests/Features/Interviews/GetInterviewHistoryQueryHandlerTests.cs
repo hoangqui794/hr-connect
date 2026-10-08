@@ -184,6 +184,9 @@ public class GetInterviewHistoryQueryHandlerTests
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
         result.Data.Should().HaveCount(1);
+        result.Data[0].Reason.Should().BeNull();
+        result.Data[0].ChangedBy.Should().BeNull();
+        result.Data[0].ChangedByName.Should().BeNull();
     }
 
     [Fact]

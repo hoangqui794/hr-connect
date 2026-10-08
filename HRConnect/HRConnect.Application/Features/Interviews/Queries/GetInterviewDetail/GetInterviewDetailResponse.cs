@@ -66,7 +66,7 @@ public class InterviewDetailData
 
     public DateTime UpdatedAt { get; set; }
 
-    public Guid ConcurrencyToken { get; set; }
+    public Guid? ConcurrencyToken { get; set; }
 
     public List<InterviewParticipantDetailDto> Participants { get; set; } = new();
 

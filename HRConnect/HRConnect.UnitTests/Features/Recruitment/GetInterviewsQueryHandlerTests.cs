@@ -138,6 +138,14 @@ public class GetInterviewsQueryHandlerTests
         // Arrange
         var candidateUserId = Guid.NewGuid();
         var interview = CreateSampleInterview(Guid.NewGuid(), "SCHEDULED");
+        interview.Result = "PASS";
+        interview.Feedback = "Internal feedback";
+        interview.InterviewParticipants.Add(new InterviewParticipant
+        {
+            InterviewId = interview.InterviewId,
+            UserId = Guid.NewGuid(),
+            Role = "INTERVIEWER"
+        });
 
         _interviewRepositoryMock
             .Setup(r => r.GetInterviewsAsync(
@@ -167,6 +175,11 @@ public class GetInterviewsQueryHandlerTests
 
         // Assert
         result.Success.Should().BeTrue();
+        result.Data.Items.Should().ContainSingle();
+        result.Data.Items[0].Result.Should().BeNull();
+        result.Data.Items[0].Feedback.Should().BeNull();
+        result.Data.Items[0].ConcurrencyToken.Should().BeNull();
+        result.Data.Items[0].Participants.Should().BeEmpty();
         _interviewRepositoryMock.Verify(r => r.GetInterviewsAsync(
             null, candidateUserId, null, null, null, null, null, null, null, 1, 10, It.IsAny<CancellationToken>()), Times.Once);
     }

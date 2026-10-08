@@ -75,9 +75,9 @@ public class GetInterviewHistoryQueryHandler : IRequestHandler<GetInterviewHisto
                 NewStatus = h.NewStatus,
                 OldScheduledAt = h.OldScheduledAt,
                 NewScheduledAt = h.NewScheduledAt,
-                Reason = h.Reason,
-                ChangedBy = h.ChangedBy,
-                ChangedByName = h.ChangedByNavigation?.DisplayName,
+                Reason = request.IsCandidate ? null : h.Reason,
+                ChangedBy = request.IsCandidate ? null : h.ChangedBy,
+                ChangedByName = request.IsCandidate ? null : h.ChangedByNavigation?.DisplayName,
                 ChangedAt = h.ChangedAt
             }).ToList();
 
