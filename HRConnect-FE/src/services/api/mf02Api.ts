@@ -15,6 +15,7 @@ import type {
   AffiliateSubmission,
   ApplyJobResult,
   CandidateApplication,
+  CandidateApplicationDetail,
   CandidateCv,
   LibraryCandidate,
   LibraryCandidateDetail,
@@ -57,6 +58,9 @@ export const candidateCvApi = {
 export const candidateApplicationsApi = {
   async list(params: { status?: string; page: number; pageSize: number }): Promise<PagedItems<CandidateApplication>> {
     return (await apiClient.get<ApiEnvelope<PagedItems<CandidateApplication>>>('/candidates/applications', { params: clean(params) })).data.data;
+  },
+  async detail(applicationId: string): Promise<CandidateApplicationDetail> {
+    return (await apiClient.get<CandidateApplicationDetail>(`/candidates/applications/${applicationId}`)).data;
   },
 };
 

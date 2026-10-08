@@ -5,7 +5,7 @@
  * Applying itself happens on the job page through <ApplyButton />.
  */
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Popconfirm, Skeleton, Tooltip, Upload } from 'antd';
 import {
@@ -15,6 +15,7 @@ import {
   FilePdfOutlined,
   InboxOutlined,
   SearchOutlined,
+  ArrowLeftOutlined,
   StarFilled,
   StarOutlined,
 } from '@ant-design/icons';
@@ -34,6 +35,7 @@ dayjs.locale('vi');
 export const candidateKeys = {
   cvs: ['candidate-cvs'] as const,
   applications: ['candidate-applications'] as const,
+  applicationDetail: (applicationId: string) => ['candidate-applications', applicationId] as const,
 };
 
 export const useCandidateCvs = () => useQuery({ queryKey: candidateKeys.cvs, queryFn: () => candidateCvApi.list() });
@@ -78,6 +80,7 @@ const StageTracker: React.FC<{ status: string }> = ({ status }) => {
 };
 
 const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
+  const navigate = useNavigate();
   const st = candidateStage(a.status);
   return (
     <article className="admin-surface flex flex-col gap-3 p-5">
@@ -96,6 +99,11 @@ const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
             <FilePdfOutlined aria-hidden /> {a.cvTitle}
           </span>
         )}
+      </div>
+      <div>
+        <Button type="link" className="!h-auto !p-0" onClick={() => navigate(`/candidate/applications/${a.applicationId}`)}>
+          Xem chi tiết
+        </Button>
       </div>
     </article>
   );
@@ -249,6 +257,81 @@ export const CandidateApplicationsPage: React.FC = () => {
           ))}
         </div>
       )}
+    </div>
+  );
+};
+
+export const CandidateApplicationDetailPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { applicationId = '' } = useParams();
+  const detail = useQuery({
+    queryKey: candidateKeys.applicationDetail(applicationId),
+    queryFn: () => candidateApplicationsApi.detail(applicationId),
+    enabled: Boolean(applicationId),
+  });
+
+  if (detail.isLoading) return <Skeleton active paragraph={{ rows: 8 }} />;
+
+  if (detail.isError || !detail.data) {
+    return (
+      <Surface className="p-6">
+        <Alert
+          type="error"
+          showIcon
+          message="Không tải được chi tiết đơn ứng tuyển"
+          description={getApiErrorMessage(detail.error)}
+          action={<Button onClick={() => navigate('/candidate/applications')}>Về danh sách</Button>}
+        />
+      </Surface>
+    );
+  }
+
+  const application = detail.data;
+  const stage = candidateStage(application.status);
+
+  return (
+    <div className="space-y-5">
+      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/candidate/applications')}>
+        Đơn ứng tuyển
+      </Button>
+      <PageHero
+        eyebrow="Chi tiết ứng tuyển"
+        title={application.jobTitle}
+        description={application.companyName}
+        actions={<StatusDot tone={stage.tone}>{stage.label}</StatusDot>}
+      />
+      <Surface className="space-y-5 p-6">
+        <StageTracker status={application.status} />
+        <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-slate-500">CV đã nộp</dt>
+            <dd className="m-0 mt-1 font-medium text-slate-900">{application.cvTitle || application.cvFileName || 'Không có tên CV'}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Nguồn hồ sơ</dt>
+            <dd className="m-0 mt-1 font-medium text-slate-900">
+              {application.submissionSource === 'AFFILIATE' ? 'Affiliate giới thiệu' : 'Candidate tự ứng tuyển'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Ngày ứng tuyển</dt>
+            <dd className="m-0 mt-1 font-medium text-slate-900">{dayjs(application.appliedAt).format('HH:mm DD/MM/YYYY')}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Cập nhật gần nhất</dt>
+            <dd className="m-0 mt-1 font-medium text-slate-900">{dayjs(application.updatedAt).format('HH:mm DD/MM/YYYY')}</dd>
+          </div>
+        </dl>
+        {application.statusReason && <Alert type="info" showIcon message="Thông tin trạng thái" description={application.statusReason} />}
+      </Surface>
+      <Surface className="p-6">
+        <h2 className="m-0 text-base font-bold text-slate-900">Kết quả AI</h2>
+        <div className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+          <div><span className="text-slate-500">Trạng thái</span><strong className="mt-1 block text-slate-900">{application.aiStatus || 'Chưa có kết quả'}</strong></div>
+          <div><span className="text-slate-500">Điểm phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchScore == null ? '—' : `${application.aiMatchScore}%`}</strong></div>
+          <div><span className="text-slate-500">Mức phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchTier || '—'}</strong></div>
+        </div>
+      </Surface>
     </div>
   );
 };

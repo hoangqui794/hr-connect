@@ -30,6 +30,18 @@ export interface CandidateApplication {
   appliedAt: string;
 }
 
+export interface CandidateApplicationDetail extends CandidateApplication {
+  candidateId: string;
+  companyId: string | null;
+  cvFileName: string | null;
+  currentStage: string | null;
+  statusReason: string | null;
+  submissionSource: string | null;
+  updatedAt: string;
+  aiMatchScore: number | null;
+  aiMatchTier: string | null;
+}
+
 export interface ApplyJobResult {
   applicationId: string;
   submissionId: string;

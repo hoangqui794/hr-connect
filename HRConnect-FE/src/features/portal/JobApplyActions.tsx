@@ -83,8 +83,8 @@ const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void }> = (
           title="Đã nộp đơn ứng tuyển"
           subTitle={`Đơn vào vị trí “${job.title}” đã được tạo với trạng thái ${apply.data.data.status}. Yêu cầu chấm điểm hiện ở trạng thái ${apply.data.data.aiStatus}.`}
           extra={[
-            <Button key="go" type="primary" onClick={() => navigate('/candidate/applications')}>
-              Xem đơn của tôi
+            <Button key="go" type="primary" onClick={() => navigate(`/candidate/applications/${apply.data.data.applicationId}`)}>
+              Xem đơn vừa nộp
             </Button>,
             <Button key="close" onClick={close}>
               Đóng
