@@ -114,7 +114,15 @@ export const affiliateApi = {
       : form({ fullName: input.fullName, email: input.email, phone: input.phone, note: input.note, file: input.file });
     return (await apiClient.post<{ success: boolean; message: string; data: SubmitCandidateResult }>(`/jobs/${jobId}/candidate-submissions`, body)).data;
   },
-  async submissions(params: { status?: string; jobId?: string; page: number; pageSize: number }): Promise<TotalCountPage<AffiliateSubmission>> {
+  async submissions(params: {
+    status?: string;
+    jobId?: string;
+    candidateId?: string;
+    fromDate?: string;
+    toDate?: string;
+    page: number;
+    pageSize: number;
+  }): Promise<TotalCountPage<AffiliateSubmission>> {
     return (await apiClient.get<TotalCountPage<AffiliateSubmission>>('/affiliates/submissions', { params: clean(params) })).data;
   },
   async resendConsent(submissionId: string) {

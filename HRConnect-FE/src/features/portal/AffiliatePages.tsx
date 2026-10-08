@@ -12,6 +12,7 @@ import {
   Alert,
   App as AntApp,
   Button,
+  DatePicker,
   Drawer,
   Form,
   Input,
@@ -465,24 +466,30 @@ export const AffiliateSubmitPage: React.FC = () => {
 
 // ─── Submissions ────────────────────────────────────────────────────────────
 
-const STATUSES = ['all', 'PENDING_CONSENT', 'ACCEPTED', 'CONSENT_REJECTED', 'CONSENT_EXPIRED', 'BLOCKED_DUPLICATE'] as const;
+const STATUSES = ['all', 'PENDING_CONSENT', 'ACCEPTED', 'CONSENT_REJECTED', 'CONSENT_EXPIRED', 'BLOCKED_DUPLICATE', 'JOB_UNAVAILABLE'] as const;
 
 export const AffiliateSubmissionsPage: React.FC = () => {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const status = (STATUSES as readonly string[]).includes(searchParams.get('status') ?? '') ? (searchParams.get('status') as (typeof STATUSES)[number]) : 'all';
-  const page = Number(searchParams.get('page')) || 1;
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const jobId = searchParams.get('jobId') || undefined;
+  const candidateId = searchParams.get('candidateId') || undefined;
+  const fromDate = searchParams.get('fromDate') || undefined;
+  const toDate = searchParams.get('toDate') || undefined;
+  const jobs = useQuery({ queryKey: ['aff-jobs', 'submission-filter'], queryFn: () => jobsApi.search({ page: 1, pageSize: 100 }) });
+  const commonFilters = { jobId, candidateId, fromDate, toDate };
 
   const counts = useQueries({
     queries: STATUSES.map((s) => ({
-      queryKey: [...keys.submissions, 'count', s],
-      queryFn: async () => (await affiliateApi.submissions({ status: s === 'all' ? undefined : s, page: 1, pageSize: 1 })).totalCount,
+      queryKey: [...keys.submissions, 'count', s, jobId, candidateId, fromDate, toDate],
+      queryFn: async () => (await affiliateApi.submissions({ ...commonFilters, status: s === 'all' ? undefined : s, page: 1, pageSize: 1 })).totalCount,
     })),
   });
   const list = useQuery({
-    queryKey: [...keys.submissions, 'list', status, page],
-    queryFn: () => affiliateApi.submissions({ status: status === 'all' ? undefined : status, page, pageSize: 10 }),
+    queryKey: [...keys.submissions, 'list', status, jobId, candidateId, fromDate, toDate, page],
+    queryFn: () => affiliateApi.submissions({ ...commonFilters, status: status === 'all' ? undefined : status, page, pageSize: 10 }),
     placeholderData: (prev) => prev,
   });
   // Hiring progress of accepted referrals, keyed by submission.
@@ -543,7 +550,17 @@ export const AffiliateSubmissionsPage: React.FC = () => {
     },
   ];
 
-  const setStatus = (v: string) => setSearchParams(v === 'all' ? {} : { status: v });
+  const updateFilters = (updates: Record<string, string | undefined>) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    });
+    if (!Object.prototype.hasOwnProperty.call(updates, 'page')) next.delete('page');
+    setSearchParams(next);
+  };
+
+  const setStatus = (value: string) => updateFilters({ status: value === 'all' ? undefined : value });
 
   return (
     <div>
@@ -565,6 +582,32 @@ export const AffiliateSubmissionsPage: React.FC = () => {
             onChange={setStatus}
             options={STATUSES.map((s, i) => ({ value: s, label: s === 'all' ? 'Tất cả' : submissionStatus(s).label, count: counts[i].data }))}
           />
+          <div className="mt-3 flex flex-wrap gap-3">
+            <Select
+              aria-label="Lọc theo việc làm"
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              loading={jobs.isLoading}
+              placeholder="Tất cả việc làm"
+              value={jobId}
+              className="min-w-64"
+              onChange={(value) => updateFilters({ jobId: value })}
+              options={(jobs.data?.items ?? []).map((job) => ({ value: job.jobId, label: `${job.title} — ${job.companyName ?? ''}` }))}
+            />
+            <DatePicker.RangePicker
+              aria-label="Lọc theo ngày gửi"
+              format="DD/MM/YYYY"
+              value={fromDate && toDate ? [dayjs(fromDate), dayjs(toDate)] : null}
+              onChange={(dates) => updateFilters({
+                fromDate: dates?.[0]?.startOf('day').toISOString(),
+                toDate: dates?.[1]?.endOf('day').toISOString(),
+              })}
+            />
+            {(jobId || candidateId || fromDate || toDate) && (
+              <Button onClick={() => setSearchParams(status === 'all' ? {} : { status })}>Xóa bộ lọc</Button>
+            )}
+          </div>
         </div>
         {list.isError ? (
           <div className="p-5">
@@ -583,7 +626,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               pageSize: 10,
               total: list.data?.totalCount ?? 0,
               showSizeChanger: false,
-              onChange: (p) => setSearchParams({ ...(status === 'all' ? {} : { status }), page: String(p) }),
+              onChange: (nextPage) => updateFilters({ page: String(nextPage) }),
             }}
             locale={{ emptyText: <div className="py-10 text-slate-600">Chưa có lượt giới thiệu nào.</div> }}
           />

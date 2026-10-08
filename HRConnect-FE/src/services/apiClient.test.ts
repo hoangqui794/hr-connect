@@ -111,4 +111,38 @@ describe('API client foundation', () => {
     expect([...bodies[0].keys()].sort()).toEqual(['email', 'file', 'fullName']);
     expect([...bodies[1].keys()].sort()).toEqual(['candidateId', 'cvId']);
   });
+
+  it('sends every affiliate submission history filter to the backend', async () => {
+    let capturedConfig: InternalAxiosRequestConfig | undefined;
+    apiClient.defaults.adapter = async (config) => {
+      capturedConfig = config;
+      return {
+        data: { items: [], totalCount: 0, page: 3, pageSize: 10, totalPages: 0 },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      };
+    };
+
+    await affiliateApi.submissions({
+      status: 'PENDING_CONSENT',
+      jobId: 'job-1',
+      candidateId: 'candidate-1',
+      fromDate: '2026-10-01T00:00:00.000Z',
+      toDate: '2026-10-08T23:59:59.999Z',
+      page: 3,
+      pageSize: 10,
+    });
+
+    expect(capturedConfig?.params).toEqual({
+      status: 'PENDING_CONSENT',
+      jobId: 'job-1',
+      candidateId: 'candidate-1',
+      fromDate: '2026-10-01T00:00:00.000Z',
+      toDate: '2026-10-08T23:59:59.999Z',
+      page: 3,
+      pageSize: 10,
+    });
+  });
 });
