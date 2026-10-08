@@ -51,6 +51,23 @@ public static class HrConnectEmailTemplates
                 $"Mã xác thực mới có hiệu lực trong {expirationMinutes} phút."));
     }
 
+    public static HrConnectEmail CandidateIdentityClaimOtp(
+        string recipientName,
+        string otp,
+        int expirationMinutes)
+    {
+        return new HrConnectEmail(
+            "Xác minh email liên kết hồ sơ HR Connect",
+            Render(
+                "Xác minh email cũ của bạn",
+                Greeting(recipientName) +
+                "<p style=\"margin:0 0 16px\">Một tài khoản Candidate đang yêu cầu xác minh địa chỉ email này để liên kết lại hồ sơ, CV và lịch sử ứng tuyển trước đây.</p>" +
+                OtpBox(otp) +
+                $"<p style=\"margin:0 0 16px\">Mã có hiệu lực trong <strong>{expirationMinutes} phút</strong> và chỉ dùng được cho yêu cầu này.</p>" +
+                SecurityNote("Nếu bạn không thực hiện yêu cầu này, hãy bỏ qua email. Hồ sơ sẽ không được liên kết nếu chưa xác minh đúng mã."),
+                $"Mã xác minh email có hiệu lực trong {expirationMinutes} phút."));
+    }
+
     public static HrConnectEmail PasswordResetOtp(
         string recipientName,
         string otp,
