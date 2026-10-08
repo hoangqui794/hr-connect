@@ -2,6 +2,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -31,10 +32,7 @@ public class WithdrawApplicationCommandHandler : IRequestHandler<WithdrawApplica
             throw new ForbiddenException("Bạn chỉ có thể rút hồ sơ ứng tuyển của chính mình.");
         }
 
-        if (request.ConcurrencyToken.HasValue && request.ConcurrencyToken.Value != application.ConcurrencyToken)
-        {
-            throw new ConflictException("Dữ liệu hồ sơ đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
-        }
+        Mf04ConcurrencyGuard.EnsureMatches(request.ConcurrencyToken, application.ConcurrencyToken, "hồ sơ");
 
         if (application.Status is ApplicationStates.Rejected or ApplicationStates.InterviewFailed or ApplicationStates.BackupNotSelected
             or ApplicationStates.OfferDeclined or ApplicationStates.NotStarted or ApplicationStates.Withdrawn

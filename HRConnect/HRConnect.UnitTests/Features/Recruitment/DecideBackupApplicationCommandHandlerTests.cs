@@ -108,7 +108,7 @@ public class DecideBackupApplicationCommandHandlerTests
             Decision: "SELECT",
             Reason: null,
             Note: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: application.ConcurrencyToken,
             CurrentUserId: userId,
             IsClientCompanyUser: true
         );
@@ -150,7 +150,7 @@ public class DecideBackupApplicationCommandHandlerTests
             Decision: "SELECT",
             Reason: null,
             Note: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: application.ConcurrencyToken,
             CurrentUserId: userId,
             IsClientCompanyUser: true
         );
@@ -184,7 +184,7 @@ public class DecideBackupApplicationCommandHandlerTests
             Decision: "SELECT",
             Reason: null,
             Note: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: application.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsClientCompanyUser: false,
             IsInternalHrOrAdmin: false
@@ -358,7 +358,7 @@ public class DecideBackupApplicationCommandHandlerTests
             Decision: "REJECT",
             Reason: "Không đáp ứng yêu cầu vòng phỏng vấn phụ.",
             Note: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: application.ConcurrencyToken,
             CurrentUserId: userId,
             IsClientCompanyUser: true
         );
@@ -404,7 +404,7 @@ public class DecideBackupApplicationCommandHandlerTests
             Decision: "KEEP_ON_HOLD",
             Reason: "Chờ kết quả phản hồi của ứng viên chính đợt 1.",
             Note: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: application.ConcurrencyToken,
             CurrentUserId: userId,
             IsClientCompanyUser: true
         );

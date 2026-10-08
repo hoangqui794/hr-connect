@@ -6,6 +6,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -90,14 +91,7 @@ public class DecideBackupApplicationCommandHandler : IRequestHandler<DecideBacku
             throw new BadRequestException($"Hồ sơ ứng tuyển đang ở trạng thái {application.Status}, không phải là hồ sơ dự phòng (BACKUP).");
         }
 
-        if (request.ConcurrencyToken.HasValue &&
-            application.ConcurrencyToken != Guid.Empty &&
-            request.ConcurrencyToken.Value != application.ConcurrencyToken)
-        {
-            _logger.LogWarning("Xung đột phiên bản cho hồ sơ {ApplicationId}. Token gửi lên: {ClientToken}, Token hiện tại: {DbToken}.",
-                application.ApplicationId, request.ConcurrencyToken.Value, application.ConcurrencyToken);
-            throw new ConflictException("Dữ liệu hồ sơ ứng tuyển đã bị thay đổi bởi người dùng khác. Vui lòng tải lại trang.");
-        }
+        Mf04ConcurrencyGuard.EnsureMatches(request.ConcurrencyToken, application.ConcurrencyToken, "hồ sơ ứng tuyển");
 
         if (request.IsClientCompanyUser)
         {

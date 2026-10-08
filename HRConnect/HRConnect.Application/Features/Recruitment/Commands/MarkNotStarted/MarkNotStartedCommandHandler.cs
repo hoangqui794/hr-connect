@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -51,11 +52,7 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
             throw new NotFoundException("Không tìm thấy hồ sơ ứng tuyển.");
         }
 
-        if (request.ConcurrencyToken.HasValue && request.ConcurrencyToken.Value != application.ConcurrencyToken)
-        {
-            _logger.LogWarning("Xung đột phiên bản cho hồ sơ {ApplicationId}.", request.ApplicationId);
-            throw new ConflictException("Dữ liệu hồ sơ đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
-        }
+        Mf04ConcurrencyGuard.EnsureMatches(request.ConcurrencyToken, application.ConcurrencyToken, "hồ sơ");
 
         if (string.Equals(application.Status, ApplicationStates.NotStarted, StringComparison.OrdinalIgnoreCase))
         {
