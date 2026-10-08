@@ -77,7 +77,7 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
             : placement.ConfirmedByNavigation?.Email;
 
         var allowedActions = new List<string> { "VIEW_PLACEMENT" };
-        if (request.IsClientCompanyUser || request.IsInternalHrOrAdmin)
+        if (request.IsClientCompanyUser)
         {
             allowedActions.Add("MANAGE_PLACEMENT");
             if (placement.Status == "STARTED")

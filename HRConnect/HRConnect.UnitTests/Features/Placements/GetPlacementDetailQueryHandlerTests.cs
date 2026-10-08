@@ -266,4 +266,30 @@ public class GetPlacementDetailQueryHandlerTests
         result.AllowedActions.Should().Contain("VIEW_PROBATION");
         result.AllowedActions.Should().Contain("VIEW_WARRANTY");
     }
+
+    [Fact]
+    public async Task Handle_WhenInternalHrReadsPlacement_ShouldReturnReadOnlyActions()
+    {
+        var placementId = Guid.NewGuid();
+        _placementRepositoryMock
+            .Setup(r => r.GetByIdWithDetailsAsync(placementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Placement
+            {
+                PlacementId = placementId,
+                Status = "STARTED",
+                Application = new HRConnect.Domain.Entities.Application
+                {
+                    Candidate = new Candidate(),
+                    Job = new Job { Company = new Company() }
+                },
+                Offer = new Offer()
+            });
+
+        var result = await CreateHandler().Handle(new GetPlacementDetailQuery(
+            placementId,
+            Guid.NewGuid(),
+            IsInternalHrOrAdmin: true), CancellationToken.None);
+
+        result.AllowedActions.Should().ContainSingle().Which.Should().Be("VIEW_PLACEMENT");
+    }
 }
