@@ -13,6 +13,7 @@ namespace HRConnect.Application.Features.Auth.Commands.RegisterAffiliate;
 public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliateCommand, RegisterAffiliateResponse>
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserEmailIdentityRepository _userEmailIdentityRepository;
     private readonly IAffiliateApplicationRepository _affiliateApplicationRepository;
     private readonly IUserTokenRepository _userTokenRepository;
     private readonly IEmailOutboxRepository _emailOutboxRepository;
@@ -28,6 +29,7 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
 
     public RegisterAffiliateCommandHandler(
         IUserRepository userRepository,
+        IUserEmailIdentityRepository userEmailIdentityRepository,
         IAffiliateApplicationRepository affiliateApplicationRepository,
         IUserTokenRepository userTokenRepository,
         IEmailOutboxRepository emailOutboxRepository,
@@ -42,6 +44,7 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
         ILogger<RegisterAffiliateCommandHandler> logger)
     {
         _userRepository = userRepository;
+        _userEmailIdentityRepository = userEmailIdentityRepository;
         _affiliateApplicationRepository = affiliateApplicationRepository;
         _userTokenRepository = userTokenRepository;
         _emailOutboxRepository = emailOutboxRepository;
@@ -85,6 +88,12 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
             throw new ConflictException("Email này đã được sử dụng bởi một tài khoản khác.");
         }
 
+        if (await _userEmailIdentityRepository.ExistsActiveByNormalizedEmailAsync(normalizedEmail, cancellationToken))
+        {
+            _logger.LogWarning("Đăng ký Affiliate thất bại: Email đã thuộc một danh tính tài khoản đang hoạt động.");
+            throw new ConflictException("Email này đã được sử dụng bởi một tài khoản khác.");
+        }
+
         // 3. Bắt đầu Database Transaction nguyên tử
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
@@ -109,6 +118,19 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
             };
 
             await _userRepository.AddAsync(newUser, cancellationToken);
+            await _userEmailIdentityRepository.AddAsync(new UserEmailIdentity
+            {
+                EmailIdentityId = Guid.NewGuid(),
+                UserId = newUser.UserId,
+                Email = newUser.Email,
+                NormalizedEmail = normalizedEmail,
+                Kind = "PRIMARY",
+                Status = "PENDING",
+                VerificationSource = "REGISTRATION",
+                CreatedAt = now,
+                UpdatedAt = now,
+                ConcurrencyToken = Guid.NewGuid()
+            }, cancellationToken);
 
             // 5. Tạo đơn đăng ký Affiliate (affiliate_application)
             // Trạng thái DB tuân thủ CHECK constraint: 'PENDING'

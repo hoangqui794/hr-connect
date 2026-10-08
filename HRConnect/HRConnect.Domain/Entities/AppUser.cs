@@ -48,6 +48,10 @@ public partial class AppUser
 
     public virtual ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
 
+    public virtual ICollection<CandidateIdentityClaim> CandidateIdentityClaimRequesterUsers { get; set; } = new List<CandidateIdentityClaim>();
+
+    public virtual ICollection<CandidateIdentityClaim> CandidateIdentityClaimReviewedByNavigations { get; set; } = new List<CandidateIdentityClaim>();
+
     public virtual Candidate? Candidate { get; set; }
 
     public virtual ICollection<CommissionAdjustment> CommissionAdjustments { get; set; } = new List<CommissionAdjustment>();
@@ -103,6 +107,8 @@ public partial class AppUser
     public virtual ICollection<UserRole> UserRoleUsers { get; set; } = new List<UserRole>();
 
     public virtual ICollection<UserToken> UserTokens { get; set; } = new List<UserToken>();
+
+    public virtual ICollection<UserEmailIdentity> UserEmailIdentities { get; set; } = new List<UserEmailIdentity>();
 
     public virtual ICollection<Warranty> Warranties { get; set; } = new List<Warranty>();
 }

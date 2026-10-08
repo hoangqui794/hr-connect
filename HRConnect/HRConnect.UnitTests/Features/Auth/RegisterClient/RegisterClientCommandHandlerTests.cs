@@ -14,6 +14,7 @@ namespace HRConnect.UnitTests.Features.Auth.RegisterClient;
 public class RegisterClientCommandHandlerTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IUserEmailIdentityRepository> _userEmailIdentityRepositoryMock;
     private readonly Mock<ICompanyRepository> _companyRepositoryMock;
     private readonly Mock<ICompanyUserRepository> _companyUserRepositoryMock;
     private readonly Mock<ICompanyVerificationRequestRepository> _companyVerificationRequestRepositoryMock;
@@ -34,6 +35,7 @@ public class RegisterClientCommandHandlerTests
     public RegisterClientCommandHandlerTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
+        _userEmailIdentityRepositoryMock = new Mock<IUserEmailIdentityRepository>();
         _companyRepositoryMock = new Mock<ICompanyRepository>();
         _companyUserRepositoryMock = new Mock<ICompanyUserRepository>();
         _companyVerificationRequestRepositoryMock = new Mock<ICompanyVerificationRequestRepository>();
@@ -59,6 +61,7 @@ public class RegisterClientCommandHandlerTests
 
         _handler = new RegisterClientCommandHandler(
             _userRepositoryMock.Object,
+            _userEmailIdentityRepositoryMock.Object,
             _companyRepositoryMock.Object,
             _companyUserRepositoryMock.Object,
             _companyVerificationRequestRepositoryMock.Object,
@@ -94,6 +97,29 @@ public class RegisterClientCommandHandlerTests
 
         await act.Should().ThrowAsync<ConflictException>()
             .WithMessage("*Email này đã được sử dụng*");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRejectRegistration_WhenEmailBelongsToAnotherActiveIdentity()
+    {
+        var command = new RegisterClientCommand(
+            "alias@example.com", "Password@123", "Tran Thi Client", "0912345678", "ABC Technology");
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns("alias@example.com");
+        _userRepositoryMock
+            .Setup(x => x.ExistsByEmailAsync("alias@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _userEmailIdentityRepositoryMock
+            .Setup(x => x.ExistsActiveByNormalizedEmailAsync("alias@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var action = () => _handler.Handle(command, CancellationToken.None);
+
+        await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*đã được sử dụng bởi một tài khoản khác*");
+        _userRepositoryMock.Verify(
+            x => x.AddAsync(It.IsAny<AppUser>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(
+            x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -206,6 +232,13 @@ public class RegisterClientCommandHandlerTests
         capturedUser.Should().NotBeNull();
         capturedUser!.Status.Should().Be("PENDING");
         capturedUser.EmailVerifiedAt.Should().BeNull();
+        _userEmailIdentityRepositoryMock.Verify(x => x.AddAsync(
+            It.Is<UserEmailIdentity>(identity =>
+                identity.UserId == capturedUser.UserId &&
+                identity.NormalizedEmail == "hr@abctech.vn" &&
+                identity.Kind == "PRIMARY" &&
+                identity.Status == "PENDING"),
+            It.IsAny<CancellationToken>()), Times.Once);
 
         capturedCompany.Should().NotBeNull();
         capturedCompany!.CompanyName.Should().Be("ABC Technology");

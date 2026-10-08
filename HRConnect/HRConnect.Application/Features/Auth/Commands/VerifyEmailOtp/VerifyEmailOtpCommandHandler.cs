@@ -15,6 +15,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
     private const int MaxFailedAttempts = 5;
 
     private readonly IUserRepository _userRepository;
+    private readonly IUserEmailIdentityRepository _userEmailIdentityRepository;
     private readonly IUserTokenRepository _userTokenRepository;
     private readonly IAffiliateApplicationRepository _affiliateApplicationRepository;
     private readonly ICompanyVerificationRequestRepository _companyVerificationRequestRepository;
@@ -29,6 +30,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
 
     public VerifyEmailOtpCommandHandler(
         IUserRepository userRepository,
+        IUserEmailIdentityRepository userEmailIdentityRepository,
         IUserTokenRepository userTokenRepository,
         IAffiliateApplicationRepository affiliateApplicationRepository,
         ICompanyVerificationRequestRepository companyVerificationRequestRepository,
@@ -42,6 +44,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         ICandidateRepository candidateRepository)
     {
         _userRepository = userRepository;
+        _userEmailIdentityRepository = userEmailIdentityRepository;
         _userTokenRepository = userTokenRepository;
         _affiliateApplicationRepository = affiliateApplicationRepository;
         _companyVerificationRequestRepository = companyVerificationRequestRepository;
@@ -146,6 +149,16 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
 
         user.EmailVerifiedAt = now;
         user.UpdatedAt = now;
+
+        var primaryEmailIdentity = await _userEmailIdentityRepository.GetPrimaryByUserIdAsync(
+            user.UserId, cancellationToken)
+            ?? throw new ConflictException("Không tìm thấy danh tính email chính của tài khoản.");
+
+        primaryEmailIdentity.Status = "VERIFIED";
+        primaryEmailIdentity.VerifiedAt = now;
+        primaryEmailIdentity.UpdatedAt = now;
+        primaryEmailIdentity.ConcurrencyToken = Guid.NewGuid();
+        _userEmailIdentityRepository.Update(primaryEmailIdentity);
 
         // 9. Nhận diện loại tài khoản để áp dụng nghiệp vụ tương ứng:
         // Case A: Người dùng đăng ký Affiliate Recruiter
