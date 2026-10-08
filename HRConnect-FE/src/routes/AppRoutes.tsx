@@ -157,6 +157,23 @@ const ConsoleSettingsPlaceholder = React.lazy(() =>
   import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminSettingsPlaceholder }))
 );
 
+// ── Client Company workspace (features/client-console), backed by the real API ──
+const ClientOverviewPage = React.lazy(() =>
+  import('@/features/client-console/ClientOverviewPage').then((m) => ({ default: m.ClientOverviewPage }))
+);
+const ClientCandidatesPage = React.lazy(() =>
+  import('@/features/client-console/ClientCandidatesPage').then((m) => ({ default: m.ClientCandidatesPage }))
+);
+const ClientWorkspaceInterviewsOffersPage = React.lazy(() =>
+  import('@/features/client-console/ClientMorePages').then((m) => ({ default: m.ClientInterviewsOffersPage }))
+);
+const ClientCompanyPage = React.lazy(() =>
+  import('@/features/client-console/ClientMorePages').then((m) => ({ default: m.ClientCompanyPage }))
+);
+const ClientWarrantyPlaceholder = React.lazy(() =>
+  import('@/features/client-console/ClientMorePages').then((m) => ({ default: m.ClientWarrantyPlaceholder }))
+);
+
 // ── Internal HR workspace (features/hr-console), backed by the real API ─────
 const HrOverviewPage = React.lazy(() =>
   import('@/features/hr-console/HrOverviewPage').then((m) => ({ default: m.HrOverviewPage }))
@@ -317,6 +334,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/client/candidates': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/interviews-offers': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/warranty': [UserRole.CLIENT, UserRole.ADMIN],
+  '/client/company': [UserRole.CLIENT],
   '/affiliate/dashboard': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/hr/dashboard': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/jobs': [UserRole.INTERNAL_HR, UserRole.ADMIN],
@@ -429,6 +447,11 @@ export const AppRoutes = {
   ConsoleDisputesPlaceholder,
   ConsolePayoutsPlaceholder,
   ConsoleSettingsPlaceholder,
+  ClientOverviewPage,
+  ClientCandidatesPage,
+  ClientWorkspaceInterviewsOffersPage,
+  ClientCompanyPage,
+  ClientWarrantyPlaceholder,
   HrOverviewPage,
   HrScreeningPage,
   HrPipelinePage,

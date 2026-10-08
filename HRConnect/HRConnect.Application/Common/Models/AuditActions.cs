@@ -57,4 +57,5 @@ public static class AuditActions
     public const string CandidateAffiliateCvAdopted = "CANDIDATE_AFFILIATE_CV_ADOPTED";
     public const string InternalCvDownloadUrlIssued = "INTERNAL_CV_DOWNLOAD_URL_ISSUED";
     public const string SubmissionConsentCvDownloadUrlIssued = "SUBMISSION_CONSENT_CV_DOWNLOAD_URL_ISSUED";
+    public const string ApplicationCvDownloadUrlIssued = "APPLICATION_CV_DOWNLOAD_URL_ISSUED";
 }

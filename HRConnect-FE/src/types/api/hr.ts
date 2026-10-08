@@ -100,11 +100,52 @@ export interface RecruitmentApplicationDetail {
   concurrencyToken: string;
   cv: { cvId: string; title: string | null; fileName: string | null; fileSizeBytes: number | null; createdAt: string } | null;
   aiMatch: RecruitmentAiMatch | null;
+  interviews: ApplicationInterview[];
+  offers: ApplicationOffer[];
+  placement: ApplicationPlacement | null;
   allowedActions: string[];
   serviceTypeCode: string | null;
   /** ClientCompany or InternalHr — who contacts the candidate after screening (MF-03). */
   contactOwner: string;
   isContactMasked: boolean;
+}
+
+export interface ApplicationInterview {
+  interviewId: string;
+  interviewRound: number;
+  interviewType: string | null;
+  scheduledAt: string | null;
+  durationMinutes: number | null;
+  location: string | null;
+  meetingLink: string | null;
+  status: string;
+  result: string | null;
+  feedback: string | null;
+  concurrencyToken: string;
+}
+
+export interface ApplicationOffer {
+  offerId: string;
+  offerVersion: number;
+  salary: number | null;
+  currencyCode: string;
+  startDate: string | null;
+  expiryDate: string | null;
+  status: string;
+  sentAt: string | null;
+  respondedAt: string | null;
+  declineReason: string | null;
+  concurrencyToken: string;
+}
+
+export interface ApplicationPlacement {
+  placementId: string;
+  actualStartDate: string;
+  position: string | null;
+  department: string | null;
+  status: string;
+  confirmedAt: string;
+  confirmationNote: string | null;
 }
 
 export interface ApplicationTimelineEvent {
