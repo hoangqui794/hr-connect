@@ -268,6 +268,9 @@ interface ProtectedRouteProps {
    * Defaults: /login for guests, /dashboard?reason=forbidden for wrong role.
    */
   redirectTo?: string;
+  /** Backend permission claims required by this screen. */
+  requiredPermissions?: string[];
+  permissionMode?: 'all' | 'any';
 }
 
 /**
@@ -307,8 +310,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRoles,
   children,
   redirectTo,
+  requiredPermissions = [],
+  permissionMode = 'all',
 }) => {
-  const { role, isAuthenticated, user } = useAuthStore();
+  const { role, isAuthenticated, user, hasAnyRole } = useAuthStore();
   const location = useLocation();
 
   // Unauthenticated user trying to access any protected route
@@ -318,7 +323,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Authenticated but wrong role
-  if (!requiredRoles.includes(role)) {
+  if (!hasAnyRole(requiredRoles)) {
+    const target = redirectTo ?? getDashboardRouteForRole(role);
+    return <Navigate to={target} replace />;
+  }
+
+  const permissions = user.permissions ?? [];
+  const hasRequiredPermissions =
+    requiredPermissions.length === 0 ||
+    (permissionMode === 'any'
+      ? requiredPermissions.some((permission) => permissions.includes(permission))
+      : requiredPermissions.every((permission) => permissions.includes(permission)));
+
+  if (!hasRequiredPermissions) {
     const target = redirectTo ?? getDashboardRouteForRole(role);
     return <Navigate to={target} replace />;
   }

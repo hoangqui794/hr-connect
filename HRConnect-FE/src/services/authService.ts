@@ -116,6 +116,7 @@ export interface UserInfoData {
   status?: string | null;
   roles?: string[] | null;
   permissions?: string[] | null;
+  emailVerified?: boolean;
 }
 
 /**

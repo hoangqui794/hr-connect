@@ -25,9 +25,6 @@ import type {
 const clean = <T extends object>(params: T): Partial<T> =>
   Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')) as Partial<T>;
 
-/** apiClient defaults to JSON; axios 1.x would turn FormData into JSON under that header. */
-const MULTIPART = { headers: { 'Content-Type': 'multipart/form-data' } };
-
 const form = (fields: Record<string, string | Blob | undefined | null>) => {
   const fd = new FormData();
   Object.entries(fields).forEach(([k, v]) => {
@@ -44,7 +41,7 @@ export const candidateCvApi = {
   },
   async upload(file: File, title?: string, isPrimary?: boolean) {
     const body = form({ file, title, isPrimary: isPrimary ? 'true' : undefined });
-    return (await apiClient.post<ApiEnvelope<unknown> & { message?: string }>('/candidates/cv', body, MULTIPART)).data;
+    return (await apiClient.post<ApiEnvelope<unknown> & { message?: string }>('/candidates/cv', body)).data;
   },
   async setPrimary(cvId: string) {
     return (await apiClient.patch<{ message?: string }>(`/candidates/cv/${cvId}/primary`)).data;
@@ -67,7 +64,7 @@ export const applyApi = {
   /** POST /jobs/{id}/apply — exactly one CV source: an existing cvId or a new PDF. */
   async apply(jobId: string, source: { cvId: string } | { file: File }) {
     const body = 'cvId' in source ? form({ cvId: source.cvId }) : form({ file: source.file });
-    return (await apiClient.post<{ success: boolean; message: string; data: ApplyJobResult }>(`/jobs/${jobId}/apply`, body, MULTIPART)).data;
+    return (await apiClient.post<{ success: boolean; message: string; data: ApplyJobResult }>(`/jobs/${jobId}/apply`, body)).data;
   },
 };
 
@@ -102,7 +99,7 @@ export const affiliateApi = {
       note: input.note,
       file: input.file,
     });
-    return (await apiClient.post<{ success: boolean; message: string; data: SubmitCandidateResult }>(`/jobs/${jobId}/candidate-submissions`, body, MULTIPART)).data;
+    return (await apiClient.post<{ success: boolean; message: string; data: SubmitCandidateResult }>(`/jobs/${jobId}/candidate-submissions`, body)).data;
   },
   async submissions(params: { status?: string; jobId?: string; page: number; pageSize: number }): Promise<TotalCountPage<AffiliateSubmission>> {
     return (await apiClient.get<TotalCountPage<AffiliateSubmission>>('/affiliates/submissions', { params: clean(params) })).data;
