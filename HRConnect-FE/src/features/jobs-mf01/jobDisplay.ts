@@ -14,15 +14,24 @@ import type {
   ServiceTypeCode,
 } from '@/types/api/jobs';
 
+export const DEFAULT_STATUS_CONFIG: { label: string; color: string; hint: string } = {
+  label: 'Không xác định',
+  color: 'default',
+  hint: '',
+};
+
 /** Ant Design Tag colors; each status also carries a text label so color is never the only signal. */
 export const JOB_STATUS: Record<JobStatus, { label: string; color: string; hint: string }> = {
   DRAFT: { label: 'Bản nháp', color: 'default', hint: 'Chưa gửi duyệt. Bạn có thể chỉnh sửa.' },
   PENDING_REVIEW: { label: 'Chờ duyệt', color: 'processing', hint: 'Internal HR đang xét duyệt.' },
+  PENDING_APPROVAL: { label: 'Chờ duyệt', color: 'warning', hint: 'Tin đang chờ HR duyệt' },
   REJECTED: { label: 'Bị từ chối', color: 'error', hint: 'Sửa theo lý do rồi gửi duyệt lại.' },
   ACTIVE: { label: 'Đang tuyển', color: 'success', hint: 'Đang hiển thị và nhận hồ sơ.' },
   PAUSED: { label: 'Tạm dừng', color: 'warning', hint: 'Tạm ngừng nhận hồ sơ.' },
   CLOSED: { label: 'Đã đóng', color: 'default', hint: 'Không còn nhận hồ sơ.' },
 };
+
+export const STATUS_CONFIG = JOB_STATUS;
 
 export const EMPLOYMENT_TYPE_LABEL: Record<EmploymentType, string> = {
   FULL_TIME: 'Toàn thời gian',
@@ -95,7 +104,8 @@ export const clientActions = (status: JobStatus) => ({
 const moneyFormatter = (currency: string) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency, maximumFractionDigits: 0 });
 
-export const formatSalary = (job: Pick<Job, 'salaryMin' | 'salaryMax' | 'salaryNegotiable' | 'currencyCode'>): string => {
+export const formatSalary = (job?: Partial<Pick<Job, 'salaryMin' | 'salaryMax' | 'salaryNegotiable' | 'currencyCode'>> | null): string => {
+  if (!job) return 'Chưa công bố';
   const fmt = moneyFormatter(job.currencyCode || 'VND');
   const { salaryMin: min, salaryMax: max } = job;
   if (min != null && max != null) return `${fmt.format(min)} – ${fmt.format(max)}`;

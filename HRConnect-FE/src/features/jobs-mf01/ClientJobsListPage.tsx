@@ -35,7 +35,9 @@ import { JobDetailPanel, JobStatusTag } from './JobDetailPanel';
 import { ReasonModal } from './ReasonModal';
 import {
   CLOSE_REASONS,
+  DEFAULT_STATUS_CONFIG,
   JOB_STATUS,
+  STATUS_CONFIG,
   SERVICE_TYPE_LABEL,
   clientActions,
   formatDate,
@@ -64,7 +66,7 @@ export const ClientJobsListPage: React.FC = () => {
   const counts = useMemo(() => {
     const byStatus = Object.fromEntries(FILTER_ORDER.map((s) => [s, 0])) as Record<JobStatus, number>;
     jobs.forEach((j) => {
-      byStatus[j.status] += 1;
+      byStatus[j.status] = (byStatus[j.status] || 0) + 1;
     });
     return byStatus;
   }, [jobs]);
@@ -125,13 +127,16 @@ export const ClientJobsListPage: React.FC = () => {
       title: 'Trạng thái',
       dataIndex: 'status',
       width: 130,
-      render: (status: JobStatus) => (
-        <Tooltip title={JOB_STATUS[status].hint}>
-          <span>
-            <JobStatusTag status={status} />
-          </span>
-        </Tooltip>
-      ),
+      render: (status: JobStatus) => {
+        const statusConfig = JOB_STATUS[status] || DEFAULT_STATUS_CONFIG;
+        return (
+          <Tooltip title={statusConfig?.hint || ''}>
+            <span>
+              <JobStatusTag status={status} />
+            </span>
+          </Tooltip>
+        );
+      },
     },
     { title: 'Mức lương', key: 'salary', width: 220, render: (_, job) => formatSalary(job) },
     { title: <span className="whitespace-nowrap">Số lượng</span>, dataIndex: 'quantity', width: 110, align: 'right' },
@@ -190,7 +195,7 @@ export const ClientJobsListPage: React.FC = () => {
 
   const segmentOptions = [
     { value: 'ALL', label: `Tất cả (${jobs.length})` },
-    ...FILTER_ORDER.map((s) => ({ value: s, label: `${JOB_STATUS[s].label} (${counts[s]})` })),
+    ...FILTER_ORDER.map((s) => ({ value: s, label: `${JOB_STATUS[s]?.label ?? s} (${counts[s] ?? 0})` })),
   ];
 
   return (
@@ -240,7 +245,7 @@ export const ClientJobsListPage: React.FC = () => {
               description={
                 filter === 'ALL'
                   ? 'Bạn chưa có tin tuyển dụng nào.'
-                  : `Không có tin ở trạng thái "${JOB_STATUS[filter].label}".`
+                  : `Không có tin ở trạng thái "${JOB_STATUS[filter]?.label ?? filter}".`
               }
             >
               {filter === 'ALL' && (

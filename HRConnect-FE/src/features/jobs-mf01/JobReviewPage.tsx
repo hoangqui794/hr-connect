@@ -173,6 +173,7 @@ export const JobReviewPage: React.FC = () => {
               token: job.concurrencyToken,
               reasonCode: reasonCode as JobRejectReasonCode,
               reasonText,
+              reason: reasonText || (reasonCode as string),
             })
             .then((res) => {
               message.success(res.message);

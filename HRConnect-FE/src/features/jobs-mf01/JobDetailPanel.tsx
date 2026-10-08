@@ -11,7 +11,7 @@ import {
   EnvironmentOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import type { Job, JobRequirement } from '@/types/api/jobs';
+import type { Job, JobRequirement, JobSkill, JobStatus, JobStatusHistory } from '@/types/api/jobs';
 import {
   EMPLOYMENT_TYPE_LABEL,
   JOB_STATUS,
@@ -26,71 +26,105 @@ import {
 
 const { Paragraph, Text, Title } = Typography;
 
-export const JobStatusTag: React.FC<{ status: Job['status'] }> = ({ status }) => (
-  <Tag color={JOB_STATUS[status].color} className="m-0 font-medium">
-    {JOB_STATUS[status].label}
-  </Tag>
-);
+export const JobStatusTag: React.FC<{ status?: Job['status'] }> = ({ status }) => {
+  const config = status ? JOB_STATUS[status] : undefined;
+  return (
+    <Tag color={config?.color ?? 'default'} className="m-0 font-medium">
+      {config?.label ?? status ?? '—'}
+    </Tag>
+  );
+};
 
-const RequirementList: React.FC<{ title: string; items: JobRequirement[]; emptyText: string }> = ({
+const RequirementList: React.FC<{ title: string; items?: JobRequirement[] | null; emptyText: string }> = ({
   title,
   items,
   emptyText,
-}) => (
-  <section aria-label={title}>
-    <Text strong className="block mb-2">
-      {title}
-    </Text>
-    {items.length === 0 ? (
-      <Text type="secondary">{emptyText}</Text>
-    ) : (
-      <ul className="m-0 pl-0 list-none space-y-1.5">
-        {items.map((req) => (
-          <li key={req.requirementId} className="flex gap-2 items-start">
-            <CheckCircleOutlined className="text-emerald-700 mt-1 shrink-0" aria-hidden />
-            <span>
-              {req.content}
-              {req.category && <Text type="secondary"> · {req.category}</Text>}
-            </span>
-          </li>
-        ))}
-      </ul>
-    )}
-  </section>
-);
+}) => {
+  const safeItems = (items || []) as JobRequirement[];
+  return (
+    <section aria-label={title}>
+      <Text strong className="block mb-2">
+        {title}
+      </Text>
+      {(safeItems?.length ?? 0) === 0 ? (
+        <Text type="secondary">{emptyText}</Text>
+      ) : (
+        <ul className="m-0 pl-0 list-none space-y-1.5">
+          {(safeItems || []).map((req, idx) => (
+            <li key={req?.requirementId || idx} className="flex gap-2 items-start">
+              <CheckCircleOutlined className="text-emerald-700 mt-1 shrink-0" aria-hidden />
+              <span>
+                {req?.content}
+                {req?.category && <Text type="secondary"> · {req.category}</Text>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+};
 
 /** Multi-line backend text, rendered as plain paragraphs (never as HTML). */
-const LongText: React.FC<{ value: string | null; emptyText: string }> = ({ value, emptyText }) =>
-  value ? (
-    <Paragraph className="whitespace-pre-line mb-0">{value}</Paragraph>
-  ) : (
-    <Text type="secondary">{emptyText}</Text>
-  );
+const LongText: React.FC<{ value: string | string[] | null | undefined; emptyText: string }> = ({ value, emptyText }) => {
+  if (!value) {
+    return <Text type="secondary">{emptyText}</Text>;
+  }
+  if (Array.isArray(value)) {
+    if ((value?.length ?? 0) === 0) return <Text type="secondary">{emptyText}</Text>;
+    return (
+      <ul className="m-0 pl-4 list-disc space-y-1">
+        {(value || []).map((item, idx) => (
+          <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item)}</li>
+        ))}
+      </ul>
+    );
+  }
+  return <Paragraph className="whitespace-pre-line mb-0">{value}</Paragraph>;
+};
 
 interface JobDetailPanelProps {
-  job: Job;
+  job?: Job | null;
   /** Status history is only useful to the owner and reviewers. */
   showHistory?: boolean;
 }
 
 export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory = false }) => {
-  const mustHave = job.requirements.filter((r) => r.requirementType === 'MUST_HAVE');
-  const shouldHave = job.requirements.filter((r) => r.requirementType === 'SHOULD_HAVE');
-  const service = job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode] : null;
+  if (!job) {
+    return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu tin tuyển dụng." />;
+  }
+
+  const rawRequirements = (job?.requirements || (job as any)?.jobRequirements || []) as JobRequirement[];
+  const requirements = Array.isArray(rawRequirements) ? rawRequirements : [];
+  const mustHave = (requirements || []).filter((r) => r?.requirementType === 'MUST_HAVE');
+  const shouldHave = (requirements || []).filter((r) => r?.requirementType === 'SHOULD_HAVE');
+
+  const rawSkills = (job?.skills || []) as JobSkill[];
+  const skills = Array.isArray(rawSkills) ? rawSkills : [];
+
+  const rawHistory = (job?.statusHistories || (job as any)?.statusHistory || []) as JobStatusHistory[];
+  const statusHistories = Array.isArray(rawHistory) ? rawHistory : [];
+
+  const service = job?.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode] : null;
+  const visibilityConfig = job?.visibility ? VISIBILITY_LABEL[job.visibility] : null;
 
   return (
     <div className="space-y-6">
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <JobStatusTag status={job.status} />
+          {job?.status && <JobStatusTag status={job.status} />}
           {service && <Tag className="m-0">{service.label}</Tag>}
-          <Tag className="m-0">{VISIBILITY_LABEL[job.visibility].label}</Tag>
+          {visibilityConfig ? (
+            <Tag className="m-0">{visibilityConfig.label}</Tag>
+          ) : job?.visibility ? (
+            <Tag className="m-0">{job.visibility}</Tag>
+          ) : null}
         </div>
         <Title level={4} className="!mb-0">
-          {job.title || 'Vị trí chưa đặt tên'}
+          {job?.title || 'Vị trí chưa đặt tên'}
         </Title>
-        <Text type="secondary">{job.companyName ?? '—'}</Text>
-        {job.status === 'REJECTED' && job.statusReason && (
+        <Text type="secondary">{job?.companyName ?? '—'}</Text>
+        {job?.status === 'REJECTED' && job?.statusReason && (
           <div role="note" className="rounded-lg border border-solid border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
             <Text strong className="text-red-800">
               Lý do từ chối:{' '}
@@ -103,44 +137,44 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory
       <Descriptions size="small" column={{ xs: 1, sm: 2 }} colon={false} labelStyle={{ color: '#475569' }}>
         <Descriptions.Item label="Mức lương">{formatSalary(job)}</Descriptions.Item>
         <Descriptions.Item label="Kinh nghiệm">
-          {formatExperience(job.minExperienceYears, job.maxExperienceYears)}
+          {formatExperience(job?.minExperienceYears ?? null, job?.maxExperienceYears ?? null)}
         </Descriptions.Item>
         <Descriptions.Item label="Hình thức">
-          {job.employmentType ? EMPLOYMENT_TYPE_LABEL[job.employmentType] : '—'}
+          {job?.employmentType ? EMPLOYMENT_TYPE_LABEL[job.employmentType] ?? job.employmentType : '—'}
         </Descriptions.Item>
         <Descriptions.Item label="Số lượng">
           <TeamOutlined aria-hidden className="mr-1" />
-          {job.quantity} người
+          {job?.quantity != null ? `${job.quantity} người` : '—'}
         </Descriptions.Item>
         <Descriptions.Item label="Địa điểm">
           <EnvironmentOutlined aria-hidden className="mr-1" />
-          {job.location ?? '—'}
+          {job?.location ?? '—'}
         </Descriptions.Item>
-        <Descriptions.Item label="Thời gian làm việc">{job.workingTime ?? '—'}</Descriptions.Item>
-        {job.salaryNote && <Descriptions.Item label="Ghi chú lương">{job.salaryNote}</Descriptions.Item>}
-        <Descriptions.Item label="Ngày đăng">{formatDate(job.postedAt)}</Descriptions.Item>
+        <Descriptions.Item label="Thời gian làm việc">{job?.workingTime ?? '—'}</Descriptions.Item>
+        {job?.salaryNote && <Descriptions.Item label="Ghi chú lương">{job.salaryNote}</Descriptions.Item>}
+        <Descriptions.Item label="Ngày đăng">{formatDate(job?.postedAt)}</Descriptions.Item>
       </Descriptions>
 
       <section aria-label="Mô tả công việc">
         <Text strong className="block mb-2">
           Mô tả công việc
         </Text>
-        <LongText value={job.description} emptyText="Chưa có mô tả." />
+        <LongText value={job?.description} emptyText="Chưa có mô tả." />
       </section>
 
       <RequirementList title="Yêu cầu bắt buộc" items={mustHave} emptyText="Chưa có yêu cầu bắt buộc." />
       <RequirementList title="Yêu cầu ưu tiên" items={shouldHave} emptyText="Không có yêu cầu ưu tiên." />
 
-      {job.skills.length > 0 && (
+      {(skills?.length ?? 0) > 0 && (
         <section aria-label="Kỹ năng">
           <Text strong className="block mb-2">
             Kỹ năng
           </Text>
           <div className="flex flex-wrap gap-1.5">
-            {job.skills.map((s) => (
-              <Tag key={s.skillId} color={s.isMandatory ? 'green' : undefined} className="m-0">
-                {s.skillName ?? s.skillId}
-                {s.isMandatory ? ' · bắt buộc' : ''}
+            {(skills || []).map((s, idx) => (
+              <Tag key={s?.skillId || idx} color={s?.isMandatory ? 'green' : undefined} className="m-0">
+                {s?.skillName ?? s?.skillId}
+                {s?.isMandatory ? ' · bắt buộc' : ''}
               </Tag>
             ))}
           </div>
@@ -151,7 +185,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory
         <Text strong className="block mb-2">
           Quyền lợi
         </Text>
-        <LongText value={job.benefits} emptyText="Chưa cập nhật quyền lợi." />
+        <LongText value={job?.benefits} emptyText="Chưa cập nhật quyền lợi." />
       </section>
 
       {showHistory && (
@@ -159,15 +193,15 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory
           <Text strong className="block mb-3">
             Lịch sử trạng thái
           </Text>
-          {job.statusHistories.length === 0 ? (
+          {(statusHistories?.length ?? 0) === 0 ? (
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có lịch sử." />
           ) : (
             <Timeline
-              items={job.statusHistories.map((h) => ({
+              items={(statusHistories || []).map((h) => ({
                 dot: <ClockCircleOutlined aria-hidden />,
                 children: (
                   <div>
-                    <Text strong>{JOB_STATUS[h.newStatus]?.label ?? h.newStatus}</Text>
+                    <Text strong>{JOB_STATUS[h.newStatus as JobStatus]?.label ?? h.newStatus}</Text>
                     <Text type="secondary"> · {formatDateTime(h.changedAt)}</Text>
                     {(h.reasonCode || h.reasonText) && (
                       <div className="text-sm text-slate-600">

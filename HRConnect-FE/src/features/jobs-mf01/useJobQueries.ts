@@ -85,8 +85,13 @@ export const useJobMutations = () => {
       onSuccess: refresh,
     }),
     reject: useMutation({
-      mutationFn: (v: { jobId: string; token: string; reasonCode: JobRejectReasonCode; reasonText: string }) =>
-        jobsApi.reject(v.jobId, v.token, v.reasonCode, v.reasonText),
+      mutationFn: (v: {
+        jobId: string;
+        token: string;
+        reasonCode: JobRejectReasonCode;
+        reasonText: string;
+        reason?: string;
+      }) => jobsApi.reject(v.jobId, v.token, v.reasonCode, v.reasonText, v.reason),
       onSuccess: refresh,
     }),
   };
