@@ -190,7 +190,7 @@ public class RespondToOfferCommandHandlerTests
             OfferId: offerId,
             Response: "ACCEPTED",
             DeclineReason: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: offer.ConcurrencyToken,
             CurrentUserId: candidateUserId);
 
         Func<Task> act = async () => await CreateHandler().Handle(command, CancellationToken.None);
@@ -225,7 +225,7 @@ public class RespondToOfferCommandHandlerTests
             OfferId: offerId,
             Response: "ACCEPTED",
             DeclineReason: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: offer.ConcurrencyToken,
             CurrentUserId: candidateUserId);
 
         Func<Task> act = async () => await CreateHandler().Handle(command, CancellationToken.None);

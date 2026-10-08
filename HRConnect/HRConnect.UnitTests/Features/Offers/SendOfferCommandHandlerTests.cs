@@ -106,7 +106,7 @@ public class SendOfferCommandHandlerTests
 
         var command = new SendOfferCommand(
             OfferId: offerId,
-            ConcurrencyToken: null,
+            ConcurrencyToken: offer.ConcurrencyToken,
             CurrentUserId: clientUserId,
             IsClientCompanyUser: true);
 
@@ -132,7 +132,7 @@ public class SendOfferCommandHandlerTests
 
         var command = new SendOfferCommand(
             OfferId: offerId,
-            ConcurrencyToken: null,
+            ConcurrencyToken: offer.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true);
 
@@ -160,7 +160,7 @@ public class SendOfferCommandHandlerTests
 
         var command = new SendOfferCommand(
             OfferId: offerId,
-            ConcurrencyToken: null,
+            ConcurrencyToken: offer.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true);
 

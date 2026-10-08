@@ -125,7 +125,7 @@ public class WithdrawOfferCommandHandlerTests
         var command = new WithdrawOfferCommand(
             OfferId: offerId,
             Reason: "Thu hồi",
-            ConcurrencyToken: null,
+            ConcurrencyToken: offer.ConcurrencyToken,
             CurrentUserId: clientUserId,
             IsClientCompanyUser: true);
 
@@ -152,7 +152,7 @@ public class WithdrawOfferCommandHandlerTests
         var command = new WithdrawOfferCommand(
             OfferId: offerId,
             Reason: "Thu hồi",
-            ConcurrencyToken: null,
+            ConcurrencyToken: offer.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true);
 
@@ -179,7 +179,7 @@ public class WithdrawOfferCommandHandlerTests
         var command = new WithdrawOfferCommand(
             OfferId: offerId,
             Reason: "Thu hồi lại",
-            ConcurrencyToken: null,
+            ConcurrencyToken: offer.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true);
 

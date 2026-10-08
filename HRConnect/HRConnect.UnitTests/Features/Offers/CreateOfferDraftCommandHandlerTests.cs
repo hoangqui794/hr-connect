@@ -188,7 +188,7 @@ public class CreateOfferDraftCommandHandlerTests
             StartDate: null,
             ExpiryDate: null,
             OfferDocumentUrl: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: app.ConcurrencyToken,
             CurrentUserId: clientUserId,
             IsClientCompanyUser: true);
 
@@ -219,7 +219,7 @@ public class CreateOfferDraftCommandHandlerTests
             StartDate: null,
             ExpiryDate: null,
             OfferDocumentUrl: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: app.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true);
 
@@ -259,7 +259,7 @@ public class CreateOfferDraftCommandHandlerTests
             StartDate: null,
             ExpiryDate: null,
             OfferDocumentUrl: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: app.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true);
 
@@ -299,7 +299,7 @@ public class CreateOfferDraftCommandHandlerTests
             StartDate: null,
             ExpiryDate: null,
             OfferDocumentUrl: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: app.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true);
 

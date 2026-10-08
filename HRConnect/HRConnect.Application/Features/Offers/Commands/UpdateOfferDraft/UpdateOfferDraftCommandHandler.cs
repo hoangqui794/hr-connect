@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Recruitment.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -57,11 +58,7 @@ public class UpdateOfferDraftCommandHandler : IRequestHandler<UpdateOfferDraftCo
             throw new NotFoundException("Không tìm thấy lời mời nhận việc.");
         }
 
-        if (request.ConcurrencyToken.HasValue && request.ConcurrencyToken.Value != offer.ConcurrencyToken)
-        {
-            _logger.LogWarning("Xung đột phiên bản cho offer {OfferId}.", request.OfferId);
-            throw new ConflictException("Dữ liệu offer đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
-        }
+        Mf04ConcurrencyGuard.EnsureMatches(request.ConcurrencyToken, offer.ConcurrencyToken, "offer");
 
         if (offer.Status != "DRAFT")
         {

@@ -184,7 +184,7 @@ public class UpdateOfferDraftCommandHandlerTests
             StartDate: null,
             ExpiryDate: null,
             OfferDocumentUrl: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: offer.ConcurrencyToken,
             CurrentUserId: clientUserId,
             IsClientCompanyUser: true);
 
@@ -215,7 +215,7 @@ public class UpdateOfferDraftCommandHandlerTests
             StartDate: null,
             ExpiryDate: null,
             OfferDocumentUrl: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: offer.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true);
 
