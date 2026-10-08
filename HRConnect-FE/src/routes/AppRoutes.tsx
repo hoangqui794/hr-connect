@@ -157,6 +157,47 @@ const ConsoleSettingsPlaceholder = React.lazy(() =>
   import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminSettingsPlaceholder }))
 );
 
+// ── Candidate & Affiliate workspaces (features/portal), MF-02 on the real API ──
+const CandidateHomePage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateHomePage })));
+const CandidateMyApplicationsPage = React.lazy(() =>
+  import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateApplicationsPage }))
+);
+const CandidateCvsPage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateCvsPage })));
+const SubmissionConsentPage = React.lazy(() =>
+  import('@/features/portal/SubmissionConsentPublicPage').then((m) => ({ default: m.SubmissionConsentPublicPage }))
+);
+const AffiliateHomePage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateHomePage })));
+const AffiliateSubmitPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmitPage })));
+const AffiliateMySubmissionsPage = React.lazy(() =>
+  import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmissionsPage }))
+);
+const AffiliateCandidatesPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateCandidatesPage })));
+const AffiliateAttributionsPage = React.lazy(() =>
+  import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateAttributionsPage }))
+);
+const AffiliateProfilePage = React.lazy(() =>
+  import('@/features/portal/AffiliateProfilePage').then((m) => ({ default: m.AffiliateProfilePage }))
+);
+const AffiliateCommissionsPlaceholder = React.lazy(() =>
+  import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateCommissionsPlaceholder }))
+);
+
+// ── Client Company workspace (features/client-console), backed by the real API ──
+const ClientOverviewPage = React.lazy(() =>
+  import('@/features/client-console/ClientOverviewPage').then((m) => ({ default: m.ClientOverviewPage }))
+);
+const ClientCandidatesPage = React.lazy(() =>
+  import('@/features/client-console/ClientCandidatesPage').then((m) => ({ default: m.ClientCandidatesPage }))
+);
+const ClientWorkspaceInterviewsOffersPage = React.lazy(() =>
+  import('@/features/client-console/ClientMorePages').then((m) => ({ default: m.ClientInterviewsOffersPage }))
+);
+const ClientCompanyPage = React.lazy(() =>
+  import('@/features/client-console/ClientMorePages').then((m) => ({ default: m.ClientCompanyPage }))
+);
+const ClientWarrantyPlaceholder = React.lazy(() =>
+  import('@/features/client-console/ClientMorePages').then((m) => ({ default: m.ClientWarrantyPlaceholder }))
+);
 // ── Internal HR workspace (features/hr-console), backed by the real API ─────
 const HrOverviewPage = React.lazy(() =>
   import('@/features/hr-console/HrOverviewPage').then((m) => ({ default: m.HrOverviewPage }))
@@ -333,6 +374,9 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/candidate/profile': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/applications': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/saved-jobs': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/affiliate/attributions': [UserRole.AFFILIATE, UserRole.ADMIN],
+  '/affiliate/profile': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/jobs': [
     UserRole.CLIENT,
     UserRole.AFFILIATE,
@@ -429,6 +473,22 @@ export const AppRoutes = {
   ConsoleDisputesPlaceholder,
   ConsolePayoutsPlaceholder,
   ConsoleSettingsPlaceholder,
+  CandidateHomePage,
+  CandidateMyApplicationsPage,
+  CandidateCvsPage,
+  SubmissionConsentPage,
+  AffiliateHomePage,
+  AffiliateSubmitPage,
+  AffiliateMySubmissionsPage,
+  AffiliateCandidatesPage,
+  AffiliateAttributionsPage,
+  AffiliateProfilePage,
+  AffiliateCommissionsPlaceholder,
+  ClientOverviewPage,
+  ClientCandidatesPage,
+  ClientWorkspaceInterviewsOffersPage,
+  ClientCompanyPage,
+  ClientWarrantyPlaceholder,
   HrOverviewPage,
   HrScreeningPage,
   HrPipelinePage,

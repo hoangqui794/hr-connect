@@ -39,6 +39,11 @@ import { AdminScope } from '@/features/admin-console/adminTheme';
 import { AdminLayout } from '@/features/admin-console/AdminLayout';
 import { HrScope } from '@/features/hr-console/hrTheme';
 import { HrLayout } from '@/features/hr-console/HrLayout';
+import { ClientScope } from '@/features/client-console/clientTheme';
+import { ClientShell } from '@/features/client-console/ClientShell';
+import { AffiliateScope, CandidateScope } from '@/features/portal/portalTheme';
+import { CandidateShell } from '@/features/portal/CandidateShell';
+import { AffiliateShell } from '@/features/portal/AffiliateShell';
 
 // ─── Page-level Suspense boundary ────────────────────────────────────────────
 
@@ -105,6 +110,10 @@ export const router = createBrowserRouter([
   {
     path: '/jobs/:id',
     element: withSuspense(<AppRoutes.Mf01PublicJobDetailPage />),
+  },
+  {
+    path: '/submission-consent',
+    element: withSuspense(<AppRoutes.SubmissionConsentPage />),
   },
 
   // ── Protected routes (inside AppShell) ────────────────────────────────────
@@ -260,6 +269,90 @@ export const router = createBrowserRouter([
     ],
   },
 
+  // ── Candidate workspace (MF-02 branch A): top navigation, teal accent ─────────
+  {
+    path: '/candidate',
+    element: (
+      <ProtectedRoute requiredRoles={ROUTE_ACCESS['/candidate/dashboard']}>
+        <CandidateScope>
+          <CandidateShell />
+        </CandidateScope>
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/candidate/dashboard" replace /> },
+      { path: 'dashboard', element: <AppRoutes.CandidateHomePage /> },
+      { path: 'applications', element: <AppRoutes.CandidateMyApplicationsPage /> },
+      { path: 'consents', element: <Navigate to="/candidate/applications?tab=consents" replace /> },
+      { path: 'cvs', element: <AppRoutes.CandidateCvsPage /> },
+      { path: 'affiliate-cvs', element: <Navigate to="/candidate/cvs?tab=affiliate" replace /> },
+      { path: 'profile', element: <AppRoutes.CandidateProfilePage /> },
+      // Saved jobs had no backend; send people to the job search.
+      { path: 'saved-jobs', element: <Navigate to="/jobs" replace /> },
+    ],
+  },
+  { path: '/profile', element: <Navigate to="/candidate/profile" replace /> },
+  { path: '/cv-builder', element: <Navigate to="/candidate/cvs" replace /> },
+
+  // ── Affiliate workspace (MF-02 branch B): light sidebar, violet accent ──────
+  {
+    path: '/affiliate',
+    element: (
+      <ProtectedRoute requiredRoles={ROUTE_ACCESS['/affiliate/dashboard']}>
+        <AffiliateScope>
+          <AffiliateShell />
+        </AffiliateScope>
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/affiliate/dashboard" replace /> },
+      { path: 'dashboard', element: <AppRoutes.AffiliateHomePage /> },
+      { path: 'jobs', element: <AppRoutes.Mf01InAppJobDiscoveryPage /> },
+      { path: 'submit-candidate', element: <AppRoutes.AffiliateSubmitPage /> },
+      { path: 'submissions', element: <AppRoutes.AffiliateMySubmissionsPage /> },
+      { path: 'candidates', element: <AppRoutes.AffiliateCandidatesPage /> },
+      { path: 'attributions', element: <AppRoutes.AffiliateAttributionsPage /> },
+      { path: 'profile', element: <AppRoutes.AffiliateProfilePage /> },
+      // MF-05 commissions have no API yet.
+      { path: 'commissions', element: <AppRoutes.AffiliateCommissionsPlaceholder /> },
+      // Old entry points.
+      { path: 'referral', element: <Navigate to="/affiliate/submit-candidate" replace /> },
+      { path: 'refer', element: <Navigate to="/affiliate/submit-candidate" replace /> },
+      { path: 'ledger', element: <Navigate to="/affiliate/commissions" replace /> },
+    ],
+  },
+
+  // ── Client Company workspace: own shell (ClientShell), top navigation + indigo accent ──
+  {
+    path: '/client',
+    element: (
+      <ProtectedRoute requiredRoles={ROUTE_ACCESS['/client/dashboard']}>
+        <ClientScope>
+          <ClientShell />
+        </ClientScope>
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/client/dashboard" replace /> },
+      { path: 'dashboard', element: <AppRoutes.ClientOverviewPage /> },
+      { path: 'jobs', element: <AppRoutes.Mf01ClientJobsListPage /> },
+      { path: 'jobs/create', element: <AppRoutes.Mf01JobFormPage /> },
+      {
+        path: 'jobs/:id/edit',
+        element: (
+          <ProtectedRoute requiredRoles={ROUTE_ACCESS['/client/jobs/:id/edit']}>
+            <AppRoutes.Mf01JobFormPage />
+          </ProtectedRoute>
+        ),
+      },
+      { path: 'post-job', element: <Navigate to="/client/jobs/create" replace /> },
+      { path: 'candidates', element: <AppRoutes.ClientCandidatesPage /> },
+      { path: 'interviews-offers', element: <AppRoutes.ClientWorkspaceInterviewsOffersPage /> },
+      { path: 'company', element: <AppRoutes.ClientCompanyPage /> },
+      // MF-05 warranty has no backend API yet: explicit empty state, no mock numbers.
+      { path: 'warranty', element: <AppRoutes.ClientWarrantyPlaceholder /> },
+    ],
+  },
   // ── Internal HR workspace: own shell (HrLayout), light sidebar + sky accent ──
   {
     path: '/hr',

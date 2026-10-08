@@ -3,10 +3,13 @@
  * @description Admin profile (GET/PUT /admin/profile/me) and the pages whose backend API
  * does not exist yet (disputes, payouts, settings) — those show an explicit empty state.
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Form, Input, Skeleton } from 'antd';
+import { KeyOutlined } from '@ant-design/icons';
 import { apiClient, getApiErrorMessage } from '@/services/apiClient';
+import { AvatarUpload } from '@/components/common/AvatarUpload';
+import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
 import { NoApiYet, formatDateTime } from './adminTheme';
 import { Initials, PageHero, StatusDot, Surface } from './ui';
 
@@ -26,6 +29,7 @@ interface AdminProfile {
 export const AdminProfilePage: React.FC = () => {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [form] = Form.useForm<{ displayName: string; phone?: string; jobTitle?: string }>();
   const profile = useQuery({
     queryKey: ['admin-profile'],
@@ -80,12 +84,20 @@ export const AdminProfilePage: React.FC = () => {
         <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
           <Surface padded className="self-start">
             <div className="flex flex-col items-center text-center">
-              <Initials name={p.displayName || p.email || 'Admin'} size={72} />
+              <AvatarUpload size={72} />
               <div className="mt-3 text-lg font-bold text-slate-900">{p.displayName || '—'}</div>
               <div className="text-sm text-slate-600">{p.jobTitle || 'Quản trị viên nền tảng'}</div>
               <div className="mt-3">
                 <StatusDot tone={p.status === 'ACTIVE' ? 'success' : 'neutral'}>{p.status === 'ACTIVE' ? 'Đang hoạt động' : p.status}</StatusDot>
               </div>
+              <Button
+                type="default"
+                icon={<KeyOutlined />}
+                className="mt-4 !rounded-lg text-xs"
+                onClick={() => setShowPasswordModal(true)}
+              >
+                Đổi mật khẩu
+              </Button>
             </div>
             <div className="mt-5">
               {infoRows.map(([label, value]) => (
@@ -128,6 +140,11 @@ export const AdminProfilePage: React.FC = () => {
           </Surface>
         </div>
       )}
+
+      <ChangePasswordModal
+        open={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+      />
     </div>
   );
 };
