@@ -33,6 +33,7 @@ export interface CandidateApplication {
 export interface ApplyJobResult {
   applicationId: string;
   submissionId: string;
+  candidateId: string;
   jobId: string;
   cvId: string;
   status: string;

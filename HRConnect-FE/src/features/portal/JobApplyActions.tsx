@@ -12,7 +12,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Modal, Result, Skeleton, Upload } from 'antd';
 import { CheckCircleFilled, FilePdfOutlined, InboxOutlined, SendOutlined, UserAddOutlined } from '@ant-design/icons';
 import { applyApi } from '@/services/api/mf02Api';
-import { getApiErrorMessage } from '@/services/apiClient';
+import { getApiError } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 import type { Job } from '@/types/api/jobs';
@@ -28,6 +28,20 @@ const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void }> = (
   const cvs = useCandidateCvs();
   const [source, setSource] = useState<Source | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryUntil, setRetryUntil] = useState<number | null>(null);
+  const [retryRemaining, setRetryRemaining] = useState(0);
+
+  useEffect(() => {
+    if (!retryUntil) return;
+    const update = () => {
+      const remaining = Math.max(0, Math.ceil((retryUntil - Date.now()) / 1000));
+      setRetryRemaining(remaining);
+      if (remaining === 0) setRetryUntil(null);
+    };
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [retryUntil]);
 
   // Preselect the primary CV (or the newest) once the vault is loaded.
   useEffect(() => {
@@ -43,23 +57,31 @@ const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void }> = (
       queryClient.invalidateQueries({ queryKey: candidateKeys.applications });
       queryClient.invalidateQueries({ queryKey: candidateKeys.cvs });
     },
-    onError: (err) => setError(getApiErrorMessage(err, 'Không nộp được đơn ứng tuyển.')),
+    onError: (err) => {
+      const apiError = getApiError(err, 'Không nộp được đơn ứng tuyển.');
+      setError(apiError.message);
+      if (apiError.status === 429 && apiError.retryAfterSeconds) {
+        setRetryUntil(Date.now() + apiError.retryAfterSeconds * 1000);
+      }
+    },
   });
 
   const close = () => {
     setSource(null);
     setError(null);
+    setRetryUntil(null);
+    setRetryRemaining(0);
     apply.reset();
     onClose();
   };
 
   return (
-    <Modal open={open} onCancel={close} footer={null} width={560} destroyOnClose title={apply.isSuccess ? null : 'Ứng tuyển'}>
+    <Modal open={open} onCancel={close} footer={null} width={560} destroyOnHidden title={apply.isSuccess ? null : 'Ứng tuyển'}>
       {apply.isSuccess ? (
         <Result
           status="success"
           title="Đã nộp đơn ứng tuyển"
-          subTitle={`Đơn của bạn vào vị trí “${job.title}” đã được gửi. Bạn có thể theo dõi tiến độ ở mục Đơn ứng tuyển.`}
+          subTitle={`Đơn vào vị trí “${job.title}” đã được tạo với trạng thái ${apply.data.data.status}. Yêu cầu chấm điểm hiện ở trạng thái ${apply.data.data.aiStatus}.`}
           extra={[
             <Button key="go" type="primary" onClick={() => navigate('/candidate/applications')}>
               Xem đơn của tôi
@@ -77,6 +99,20 @@ const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void }> = (
           </div>
 
           {error && <Alert type="error" showIcon message={error} />}
+          {retryRemaining > 0 && (
+            <Alert
+              type="warning"
+              showIcon
+              message={`Bạn có thể thử lại sau ${retryRemaining} giây.`}
+            />
+          )}
+          {cvs.isError && (
+            <Alert
+              type="error"
+              showIcon
+              message={getApiError(cvs.error, 'Không tải được kho CV.').message}
+            />
+          )}
 
           <div>
             <div className="mb-2 text-sm font-semibold text-slate-900">Chọn CV gửi kèm</div>
@@ -156,7 +192,13 @@ const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void }> = (
 
           <div className="flex justify-end gap-2 pt-1">
             <Button onClick={close}>Hủy</Button>
-            <Button type="primary" icon={<SendOutlined />} disabled={!source} loading={apply.isPending} onClick={() => apply.mutate()}>
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              disabled={!source || retryRemaining > 0}
+              loading={apply.isPending}
+              onClick={() => apply.mutate()}
+            >
               Nộp đơn
             </Button>
           </div>
@@ -169,19 +211,20 @@ const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void }> = (
 /** Role-aware call to action for a job page. Renders nothing for roles that cannot submit. */
 export const JobApplyActions: React.FC<{ job: Job }> = ({ job }) => {
   const navigate = useNavigate();
-  const role = useAuthStore((s) => s.user?.role);
+  const hasAnyRole = useAuthStore((s) => s.hasAnyRole);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
   const [open, setOpen] = useState(false);
 
   if (job.status !== 'ACTIVE') return null;
 
-  if (role === UserRole.CANDIDATE) {
-    const allowed = job.visibility === 'PUBLIC';
+  if (hasAnyRole([UserRole.CANDIDATE])) {
+    const allowed = hasPermission('application.create');
     return (
       <>
         <Button type="primary" size="large" icon={<SendOutlined />} disabled={!allowed} onClick={() => setOpen(true)}>
           Ứng tuyển
         </Button>
-        {!allowed && <p className="m-0 mt-1 text-xs text-slate-500">Tin này chỉ nhận hồ sơ qua đối tác.</p>}
+        {!allowed && <p className="m-0 mt-1 text-xs text-slate-500">Tài khoản chưa có quyền tự ứng tuyển.</p>}
         <ApplyModal job={job} open={open} onClose={() => setOpen(false)} />
       </>
     );
@@ -189,7 +232,7 @@ export const JobApplyActions: React.FC<{ job: Job }> = ({ job }) => {
 
   // Affiliates only open job pages they are allowed to see (GET /jobs/{id} applies the service-type
   // rules), so a loaded job here is one they may refer into; the form re-checks it anyway.
-  if (role === UserRole.AFFILIATE) {
+  if (hasAnyRole([UserRole.AFFILIATE]) && hasPermission('submission.create')) {
     return (
       <Button type="primary" size="large" icon={<UserAddOutlined />} onClick={() => navigate(`/affiliate/submit-candidate?job=${job.jobId}`)}>
         Giới thiệu ứng viên
