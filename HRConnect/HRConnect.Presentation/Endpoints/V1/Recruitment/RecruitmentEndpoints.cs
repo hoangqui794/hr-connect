@@ -13,6 +13,7 @@ using HRConnect.Application.Features.Recruitment.Commands.WithdrawApplication;
 using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplications;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
+using HRConnect.Application.Features.Recruitment.Queries.GetApplicationCvDownloadUrl;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationTimeline;
 using HRConnect.Presentation.Authorization;
 using MediatR;
@@ -281,6 +282,57 @@ public static class RecruitmentEndpoints
         .WithDescription("Dành cho Client Company (chỉ xem hồ sơ của công ty mình qua quyền application.view_company), Internal HR và Admin (xem qua quyền application.view). Trả về đầy đủ thông tin ứng viên, CV, tóm tắt phỏng vấn, offer, thông tin tiếp nhận việc và các hành động được phép (allowedActions).")
         .Produces<RecruitmentApplicationDetailResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
+        // GET /api/v1/recruitment/applications/{applicationId:guid}/cv/download-url
+        group.MapGet("/applications/{applicationId:guid}/cv/download-url", async (
+            Guid applicationId,
+            [FromServices] ISender sender = null!,
+            ClaimsPrincipal user = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var isClient = user.IsInRole("CLIENT_COMPANY_USER")
+                && PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
+            var isInternal = user.IsInRole("INTERNAL_HR")
+                && PermissionAuthorization.HasPermission(user, ViewAllPermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!isClient && !isInternal && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(ViewAllPermission);
+            }
+
+            try
+            {
+                var query = new GetApplicationCvDownloadUrlQuery(
+                    applicationId,
+                    userId.Value,
+                    IsClientCompanyUser: isClient && !isInternal && !isAdmin,
+                    IsInternalHrOrAdmin: isInternal || isAdmin);
+
+                return Results.Ok(await sender.Send(query, cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+        })
+        .WithName("GetApplicationCvDownloadUrl")
+        .WithSummary("Lấy đường dẫn tạm thời để xem CV của hồ sơ tuyển dụng")
+        .WithDescription("Dành cho Client Company (hồ sơ thuộc công ty mình và đang hiển thị với Client), Internal HR và Admin. Áp dụng cùng quy tắc che thông tin của MF-03: với dịch vụ HEADHUNT_COD, Client chỉ xem được CV sau khi ứng viên đi làm (403 trước đó). Đường dẫn có hiệu lực 10 phút và mỗi lần cấp đều ghi audit log.")
+        .Produces<GetApplicationCvDownloadUrlResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
