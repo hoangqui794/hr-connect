@@ -45,6 +45,23 @@ public class PermissionSeederTests
         sql[roleStart..roleEnd].Should().Contain("'candidate.identity.manage_own'");
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void PermissionSeed_AssignsCandidateIdentityReviewToPlatformAdmin(bool embedded)
+    {
+        var sql = embedded
+            ? GetEmbeddedSeedSql()
+            : File.ReadAllText(FindPermissionFile()!);
+
+        sql.Should().Contain("('candidate.identity.review'");
+        var roleEnd = sql.IndexOf("WHERE r.code = 'PLATFORM_ADMIN'", StringComparison.Ordinal);
+        roleEnd.Should().BeGreaterThan(0);
+        var roleStart = sql.LastIndexOf("JOIN public.permission p", roleEnd, StringComparison.Ordinal);
+        roleStart.Should().BeGreaterThanOrEqualTo(0);
+        sql[roleStart..roleEnd].Should().Contain("'candidate.identity.review'");
+    }
+
     private static void AssertAffiliateAttributionPermission(string sql)
     {
         sql.Should().Contain("('attribution.view_own'");

@@ -2,6 +2,23 @@ using HRConnect.Domain.Entities;
 
 namespace HRConnect.Application.Common.Interfaces.Repositories;
 
+public sealed record AdminIdentityClaimListRecord(
+    Guid ClaimId,
+    Guid RequesterUserId,
+    Guid RequesterCandidateId,
+    Guid? TargetCandidateId,
+    string NormalizedEmail,
+    string Status,
+    string? ReviewReason,
+    string RequesterDisplayName,
+    string RequesterPrimaryEmail,
+    string RequesterCandidateName,
+    string? TargetCandidateName,
+    DateTime CreatedAt,
+    DateTime? VerifiedAt,
+    DateTime? ReviewedAt,
+    Guid? ReviewedBy);
+
 public interface ICandidateIdentityClaimRepository
 {
     Task<CandidateIdentityClaim?> GetByIdAsync(
@@ -11,6 +28,15 @@ public interface ICandidateIdentityClaimRepository
     Task<CandidateIdentityClaim?> GetActiveByRequesterAndEmailAsync(
         Guid requesterUserId,
         string normalizedEmail,
+        CancellationToken cancellationToken = default);
+
+    Task<(IReadOnlyList<AdminIdentityClaimListRecord> Items, int TotalCount)> GetAdminListAsync(
+        string status,
+        string? search,
+        int page,
+        int pageSize,
+        string sortBy,
+        bool descending,
         CancellationToken cancellationToken = default);
 
     Task AddAsync(

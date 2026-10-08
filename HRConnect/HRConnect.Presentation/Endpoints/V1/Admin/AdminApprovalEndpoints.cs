@@ -8,6 +8,7 @@ using HRConnect.Application.Features.Admin.Approvals.GetApprovalList;
 using HRConnect.Application.Features.Admin.Approvals.GetCompanyVerificationDetail;
 using HRConnect.Application.Features.Admin.Approvals.RejectAffiliate;
 using HRConnect.Application.Features.Admin.Approvals.RejectCompany;
+using HRConnect.Application.Features.Admin.IdentityClaims.GetIdentityClaimList;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,6 +21,43 @@ public static class AdminApprovalEndpoints
         var group = app.MapGroup("/api/v1/admin")
                        .WithTags("Admin Approvals")
                        .RequireAuthorization();
+
+        group.MapGet("/candidate-identity-claims", async (
+            [FromQuery] string status = "PENDING_ADMIN_REVIEW",
+            [FromQuery] string? search = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string sortBy = "createdAt",
+            [FromQuery] string sortDirection = "desc",
+            [FromServices] ISender sender = null!,
+            [FromServices] IValidator<GetIdentityClaimListQuery> validator = null!,
+            ClaimsPrincipal user = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            if (!HasIdentityClaimReviewPermission(user))
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Bạn không có quyền xem hàng đợi xác minh danh tính Candidate."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var query = new GetIdentityClaimListQuery(
+                status, search, page, pageSize, sortBy, sortDirection);
+            var validation = await validator.ValidateAsync(query, cancellationToken);
+            if (!validation.IsValid)
+                return Results.ValidationProblem(validation.ToDictionary());
+
+            return Results.Ok(await sender.Send(query, cancellationToken));
+        })
+        .WithName("GetCandidateIdentityClaimList")
+        .WithSummary("Admin xem danh sách yêu cầu liên kết danh tính Candidate")
+        .WithDescription("Yêu cầu permission candidate.identity.review. Mặc định chỉ trả các yêu cầu PENDING_ADMIN_REVIEW; hỗ trợ xem lịch sử COMPLETED hoặc REJECTED, tìm kiếm, phân trang và sắp xếp. Email cần chứng minh được che một phần trong danh sách.")
+        .Produces<GetIdentityClaimListResponse>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden);
 
         // 1. Danh sách phê duyệt hợp nhất (Unified Approval List)
         group.MapGet("/approvals", async (
@@ -397,6 +435,10 @@ public static class AdminApprovalEndpoints
 
         return app;
     }
+
+    private static bool HasIdentityClaimReviewPermission(ClaimsPrincipal user) =>
+        user.IsInRole("PLATFORM_ADMIN") ||
+        user.HasClaim("permission", "candidate.identity.review");
 
     private static bool HasAdminAccess(ClaimsPrincipal user) =>
         user.IsInRole("PLATFORM_ADMIN") ||

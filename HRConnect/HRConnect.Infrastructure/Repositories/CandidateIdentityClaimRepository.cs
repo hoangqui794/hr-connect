@@ -32,6 +32,69 @@ public sealed class CandidateIdentityClaimRepository(ApplicationDbContext contex
                      ActiveStatuses.Contains(claim.Status),
             cancellationToken);
 
+    public async Task<(IReadOnlyList<AdminIdentityClaimListRecord> Items, int TotalCount)> GetAdminListAsync(
+        string status,
+        string? search,
+        int page,
+        int pageSize,
+        string sortBy,
+        bool descending,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.CandidateIdentityClaims.AsNoTracking()
+            .Where(claim => claim.Status == status);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(claim =>
+                claim.NormalizedEmail.Contains(term) ||
+                claim.RequesterUser.Email.ToLower().Contains(term) ||
+                (claim.RequesterUser.DisplayName ?? string.Empty).ToLower().Contains(term) ||
+                claim.RequesterCandidate.FullName.ToLower().Contains(term) ||
+                (claim.TargetCandidate != null &&
+                 claim.TargetCandidate.FullName.ToLower().Contains(term)));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        query = (sortBy, descending) switch
+        {
+            ("verifiedAt", true) => query.OrderByDescending(claim => claim.VerifiedAt)
+                .ThenByDescending(claim => claim.CreatedAt),
+            ("verifiedAt", false) => query.OrderBy(claim => claim.VerifiedAt)
+                .ThenBy(claim => claim.CreatedAt),
+            ("reviewedAt", true) => query.OrderByDescending(claim => claim.ReviewedAt)
+                .ThenByDescending(claim => claim.CreatedAt),
+            ("reviewedAt", false) => query.OrderBy(claim => claim.ReviewedAt)
+                .ThenBy(claim => claim.CreatedAt),
+            ("createdAt", false) => query.OrderBy(claim => claim.CreatedAt),
+            _ => query.OrderByDescending(claim => claim.CreatedAt)
+        };
+
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(claim => new AdminIdentityClaimListRecord(
+                claim.ClaimId,
+                claim.RequesterUserId,
+                claim.RequesterCandidateId,
+                claim.TargetCandidateId,
+                claim.NormalizedEmail,
+                claim.Status,
+                claim.ReviewReason,
+                claim.RequesterUser.DisplayName ?? claim.RequesterUser.Email,
+                claim.RequesterUser.Email,
+                claim.RequesterCandidate.FullName,
+                claim.TargetCandidate == null ? null : claim.TargetCandidate.FullName,
+                claim.CreatedAt,
+                claim.VerifiedAt,
+                claim.ReviewedAt,
+                claim.ReviewedBy))
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public Task AddAsync(
         CandidateIdentityClaim claim,
         CancellationToken cancellationToken = default) =>

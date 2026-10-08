@@ -118,6 +118,7 @@ public static class DatabaseSeeder
         ('candidate.profile.view_own', 'candidate_profile', 'view_own', 'View own candidate profile'),
         ('candidate.profile.update_own', 'candidate_profile', 'update_own', 'Update own candidate profile'),
         ('candidate.identity.manage_own', 'candidate_identity', 'manage_own', 'Manage own verified email identities'),
+        ('candidate.identity.review', 'candidate_identity', 'review', 'Review Candidate identity claims'),
         ('cv.create', 'candidate_cv', 'create', 'Create own CV'),
         ('cv.view_own', 'candidate_cv', 'view_own', 'View own CV'),
         ('cv.update_own', 'candidate_cv', 'update_own', 'Update own CV'),
@@ -251,7 +252,7 @@ public static class DatabaseSeeder
     FROM public.role r
     JOIN public.permission p ON p.code IN (
         'job.view', 'job.review', 'job.publish', 'notification.view_own', 'user.view', 'user.manage', 'role.view', 'role.manage',
-        'permission.view', 'permission.manage', 'company.verify', 'affiliate.verify',
+        'permission.view', 'permission.manage', 'company.verify', 'affiliate.verify', 'candidate.identity.review',
         'dispute.view', 'dispute.resolve', 'commission.manage', 'payout.manage',
         'system_config.view', 'system_config.manage', 'report.view', 'audit.view', 'application.retry_ai_scoring',
         'interview.record_result', 'application.decide_backup', 'offer.send', 'offer.withdraw', 'placement.confirm', 'application.mark_not_started'

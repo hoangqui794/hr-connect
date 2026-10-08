@@ -43,6 +43,11 @@ VALUES
      'manage_own',
      'Manage own verified email identities'),
 
+    ('candidate.identity.review',
+     'candidate_identity',
+     'review',
+     'Review Candidate identity claims'),
+
     ('cv.create',
      'candidate_cv',
      'create',
@@ -622,6 +627,7 @@ JOIN public.permission p
 
         'company.verify',
         'affiliate.verify',
+        'candidate.identity.review',
 
         'dispute.view',
         'dispute.resolve',
