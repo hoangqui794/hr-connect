@@ -13,6 +13,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { JobDiscoveryPage } from './JobDiscoveryPage';
 import { JobDetailPanel } from './JobDetailPanel';
 import { useJobDetail } from './useJobQueries';
+import { JobApplyActions } from '@/features/portal/JobApplyActions';
 
 const { Title, Text } = Typography;
 
@@ -59,7 +60,13 @@ export const PublicJobDetailPage: React.FC = () => {
         ) : detail.isLoading || !detail.data ? (
           <Skeleton active paragraph={{ rows: 12 }} />
         ) : (
-          <JobDetailPanel job={detail.data} />
+          <>
+            {/* MF-02: candidates apply here, affiliates go to the referral form. */}
+            <div className="mb-5 flex flex-col items-end">
+              <JobApplyActions job={detail.data} />
+            </div>
+            <JobDetailPanel job={detail.data} />
+          </>
         )}
       </div>
     </PublicFrame>

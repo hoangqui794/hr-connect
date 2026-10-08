@@ -1,4 +1,4 @@
-/* Console accent: emerald for Admin (default), sky for Internal HR (.hr-console), indigo for Client (.client-console).
+/* Console accent: emerald Admin (default), sky Internal HR, blue Client, teal Candidate, violet Affiliate.
    Shared components read these variables instead of hard-coded colours. */
 :root {
   --console-accent: #047857;        /* white text on it: 5.5:1 */
@@ -66,6 +66,28 @@
     transition: none;
     transform: none;
   }
+}
+
+.candidate-console {
+  --console-accent: #0f766e;        /* white text on it: 5.5:1 */
+  --console-accent-strong: #115e59; /* text on white: 7.6:1 */
+  --console-accent-soft: #f0fdfa;
+  --console-accent-bright: #2dd4bf;
+  --console-accent-glow: rgba(45, 212, 191, 0.55);
+}
+
+.affiliate-console {
+  --console-accent: #6d28d9;        /* white text on it: 7.1:1 */
+  --console-accent-strong: #5b21b6; /* text on white: 8.6:1 */
+  --console-accent-soft: #f5f3ff;
+  --console-accent-bright: #a78bfa;
+  --console-accent-glow: rgba(167, 139, 250, 0.6);
+  --affiliate-gold: #b45309;        /* money figures, text on white: 5.0:1 */
+}
+
+.candidate-console .admin-surface,
+.affiliate-console .admin-surface {
+  border-radius: 18px;
 }
 
 .hr-console {

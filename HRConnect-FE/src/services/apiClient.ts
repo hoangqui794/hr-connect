@@ -136,6 +136,13 @@ export const getApiErrorMessage = (
     }
 
     // 2. RFC 9110 / 7807 ProblemDetails: { title, detail, errors }
+    // ValidationProblem carries the useful (Vietnamese) messages in `errors`; its title is generic English.
+    if (data?.errors && typeof data.errors === 'object') {
+      const fieldErrors = Object.values(data.errors)
+        .flat()
+        .filter((msg): msg is string => typeof msg === 'string' && Boolean(msg));
+      if (fieldErrors.length > 0) return [...new Set(fieldErrors)].join(' ');
+    }
     if (data?.detail) {
       return data.detail;
     }

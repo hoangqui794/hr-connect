@@ -189,8 +189,8 @@ public static class CandidateEndpoints
 
         affiliateCvGroup.MapGet("", async (
             ClaimsPrincipal user,
-            int page,
-            int pageSize,
+            int? page,
+            int? pageSize,
             [FromServices] ISender sender,
             CancellationToken cancellationToken) =>
         {
@@ -202,7 +202,7 @@ public static class CandidateEndpoints
             try
             {
                 return Results.Ok(await sender.Send(
-                    new GetCandidateAffiliateCvsQuery(userId.Value, page, pageSize), cancellationToken));
+                    new GetCandidateAffiliateCvsQuery(userId.Value, page ?? 1, pageSize ?? 20), cancellationToken));
             }
             catch (NotFoundException ex)
             {
@@ -373,8 +373,8 @@ public static class CandidateEndpoints
         affiliateCvGroup.MapGet("/{cvId:guid}/usages", async (
             Guid cvId,
             ClaimsPrincipal user,
-            int page,
-            int pageSize,
+            int? page,
+            int? pageSize,
             [FromServices] ISender sender,
             CancellationToken cancellationToken) =>
         {
@@ -386,7 +386,7 @@ public static class CandidateEndpoints
             try
             {
                 return Results.Ok(await sender.Send(
-                    new GetCandidateAffiliateCvUsagesQuery(userId.Value, cvId, page, pageSize), cancellationToken));
+                    new GetCandidateAffiliateCvUsagesQuery(userId.Value, cvId, page ?? 1, pageSize ?? 20), cancellationToken));
             }
             catch (NotFoundException ex)
             {

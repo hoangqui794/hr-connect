@@ -41,6 +41,9 @@ import { HrScope } from '@/features/hr-console/hrTheme';
 import { HrLayout } from '@/features/hr-console/HrLayout';
 import { ClientScope } from '@/features/client-console/clientTheme';
 import { ClientShell } from '@/features/client-console/ClientShell';
+import { AffiliateScope, CandidateScope } from '@/features/portal/portalTheme';
+import { CandidateShell } from '@/features/portal/CandidateShell';
+import { AffiliateShell } from '@/features/portal/AffiliateShell';
 
 // ─── Page-level Suspense boundary ────────────────────────────────────────────
 
@@ -119,62 +122,6 @@ export const router = createBrowserRouter([
         element: protectedPage('/dashboard', <AppRoutes.Dashboard />),
       },
       {
-        path: 'affiliate/dashboard',
-        element: protectedPage('/affiliate/dashboard', <AppRoutes.AffiliateDashboardPage />),
-      },
-      {
-        path: 'affiliate/jobs',
-        element: protectedPage('/affiliate/jobs', <AppRoutes.Mf01InAppJobDiscoveryPage />),
-      },
-      {
-        path: 'affiliate/submissions',
-        element: protectedPage('/affiliate/submissions', <AppRoutes.AffiliateSubmissionsPage />),
-      },
-      {
-        path: 'affiliate/candidates',
-        element: protectedPage('/affiliate/candidates', <AppRoutes.AffiliateSubmissionsPage />),
-      },
-      {
-        path: 'affiliate/submit-candidate',
-        element: protectedPage('/affiliate/submit-candidate', <AppRoutes.ReferralForm />),
-      },
-      {
-        path: 'affiliate/referral',
-        element: protectedPage('/affiliate/referral', <AppRoutes.ReferralForm />),
-      },
-      {
-        path: 'affiliate/refer',
-        element: protectedPage('/affiliate/refer', <AppRoutes.ReferralForm />),
-      },
-      {
-        path: 'affiliate/commissions',
-        element: protectedPage('/affiliate/commissions', <AppRoutes.AffiliateCommissionsPage />),
-      },
-      {
-        path: 'affiliate/ledger',
-        element: protectedPage('/affiliate/ledger', <AppRoutes.AffiliateCommissionsPage />),
-      },
-      {
-        path: 'candidate/dashboard',
-        element: protectedPage('/candidate/dashboard', <AppRoutes.CandidateDashboardPage />),
-      },
-      {
-        path: 'profile',
-        element: protectedPage('/profile', <AppRoutes.CandidateProfilePage />),
-      },
-      {
-        path: 'candidate/profile',
-        element: protectedPage('/candidate/profile', <AppRoutes.CandidateProfilePage />),
-      },
-      {
-        path: 'candidate/applications',
-        element: protectedPage('/candidate/applications', <AppRoutes.CandidateApplicationsPage />),
-      },
-      {
-        path: 'candidate/saved-jobs',
-        element: protectedPage('/candidate/saved-jobs', <AppRoutes.CandidateSavedJobsPage />),
-      },
-      {
         path: 'jobs',
         element: protectedPage('/jobs', <AppRoutes.Mf01InAppJobDiscoveryPage />),
       },
@@ -190,10 +137,6 @@ export const router = createBrowserRouter([
       {
         path: 'candidates',
         element: protectedPage('/candidates', <AppRoutes.CandidateList />),
-      },
-      {
-        path: 'cv-builder',
-        element: protectedPage('/cv-builder', <AppRoutes.CVBuilder />),
       },
     ],
   },
@@ -227,6 +170,56 @@ export const router = createBrowserRouter([
       { path: 'payouts', element: <AppRoutes.ConsolePayoutsPlaceholder /> },
       { path: 'finance', element: <AppRoutes.ConsolePayoutsPlaceholder /> },
       { path: 'settings', element: <AppRoutes.ConsoleSettingsPlaceholder /> },
+    ],
+  },
+
+  // ── Candidate workspace (MF-02 branch A): top navigation, teal accent ─────────
+  {
+    path: '/candidate',
+    element: (
+      <ProtectedRoute requiredRoles={ROUTE_ACCESS['/candidate/dashboard']}>
+        <CandidateScope>
+          <CandidateShell />
+        </CandidateScope>
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/candidate/dashboard" replace /> },
+      { path: 'dashboard', element: <AppRoutes.CandidateHomePage /> },
+      { path: 'applications', element: <AppRoutes.CandidateMyApplicationsPage /> },
+      { path: 'cvs', element: <AppRoutes.CandidateCvsPage /> },
+      { path: 'profile', element: <AppRoutes.CandidateProfilePage /> },
+      // Saved jobs had no backend; send people to the job search.
+      { path: 'saved-jobs', element: <Navigate to="/jobs" replace /> },
+    ],
+  },
+  { path: '/profile', element: <Navigate to="/candidate/profile" replace /> },
+  { path: '/cv-builder', element: <Navigate to="/candidate/cvs" replace /> },
+
+  // ── Affiliate workspace (MF-02 branch B): light sidebar, violet accent ──────
+  {
+    path: '/affiliate',
+    element: (
+      <ProtectedRoute requiredRoles={ROUTE_ACCESS['/affiliate/dashboard']}>
+        <AffiliateScope>
+          <AffiliateShell />
+        </AffiliateScope>
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/affiliate/dashboard" replace /> },
+      { path: 'dashboard', element: <AppRoutes.AffiliateHomePage /> },
+      { path: 'jobs', element: <AppRoutes.Mf01InAppJobDiscoveryPage /> },
+      { path: 'submit-candidate', element: <AppRoutes.AffiliateSubmitPage /> },
+      { path: 'submissions', element: <AppRoutes.AffiliateMySubmissionsPage /> },
+      { path: 'candidates', element: <AppRoutes.AffiliateCandidatesPage /> },
+      { path: 'attributions', element: <AppRoutes.AffiliateAttributionsPage /> },
+      // MF-05 commissions have no API yet.
+      { path: 'commissions', element: <AppRoutes.AffiliateCommissionsPlaceholder /> },
+      // Old entry points.
+      { path: 'referral', element: <Navigate to="/affiliate/submit-candidate" replace /> },
+      { path: 'refer', element: <Navigate to="/affiliate/submit-candidate" replace /> },
+      { path: 'ledger', element: <Navigate to="/affiliate/commissions" replace /> },
     ],
   },
 
