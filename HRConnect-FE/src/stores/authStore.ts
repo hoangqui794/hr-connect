@@ -276,6 +276,31 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
+// Each tab holds its own in-memory copy of this store. When another tab logs out or signs in as a
+// different account, follow it; otherwise this tab keeps showing the old user's workspace (e.g. the
+// Client console) while the stored token now belongs to someone else (e.g. an Admin).
+const SESSION_STORAGE_KEYS = new Set<string>([
+  'hr-connect-auth',
+  AUTH_STORAGE_KEYS.ACCESS_TOKEN,
+  AUTH_STORAGE_KEYS.AUTH_TOKEN,
+]);
+
+export const followSessionChangeFromOtherTab = async (event: StorageEvent): Promise<boolean> => {
+  // key === null means the other tab cleared all of localStorage.
+  if (event.key !== null && !SESSION_STORAGE_KEYS.has(event.key)) return false;
+  await useAuthStore.persist.rehydrate();
+  return true;
+};
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', followSessionChangeFromOtherTab);
+  // The persisted role is only a cache: on load, confirm it with the server for the stored token so
+  // a stale role from an earlier account can never pick the workspace.
+  if (authService.getAccessToken()) {
+    void useAuthStore.getState().syncCurrentUser();
+  }
+}
+
 // apiClient fires this when a request is still 401 after one token refresh attempt:
 // the session is gone, so drop to GUEST (route guards then send the user to /login).
 if (typeof window !== 'undefined') {
