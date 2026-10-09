@@ -77,6 +77,10 @@ export const ClientJobsListPage: React.FC = () => {
   const [detailJobId, setDetailJobId] = useState<string>();
   const [pending, setPending] = useState<PendingAction>(null);
 
+  const highlightParam = searchParams.get('highlight') || searchParams.get('jobId');
+  const openDetailParam = searchParams.get('openDetail') === 'true';
+  const [highlightedJobId, setHighlightedJobId] = useState<string | null>(null);
+
   // One request for everything, filtered locally so each tab can show its count.
   const { data: jobs = [], isLoading, isError, error, refetch, isFetching } = useMyJobs();
   const detail = useJobDetail(detailJobId);
@@ -89,6 +93,39 @@ export const ClientJobsListPage: React.FC = () => {
     });
     return byStatus;
   }, [jobs]);
+
+  // Tự động tìm kiếm, làm nổi bật và cuộn tới bài viết khi người dùng nhấn từ thông báo
+  React.useEffect(() => {
+    if (!highlightParam || jobs.length === 0) return;
+
+    const query = highlightParam.trim().toLowerCase();
+    const matchedJob = jobs.find(
+      (j) => j.jobId.toLowerCase() === query || j.title.toLowerCase().includes(query)
+    );
+
+    if (matchedJob) {
+      setHighlightedJobId(matchedJob.jobId);
+
+      // Nếu bộ lọc hiện tại đang ẩn bài này, tự động chuyển về ALL hoặc trạng thái của bài
+      if (filter !== 'ALL' && matchedJob.status !== filter) {
+        setFilter(matchedJob.status);
+      }
+
+      if (openDetailParam) {
+        setDetailJobId(matchedJob.jobId);
+      }
+
+      // Cuộn mượt đến thẻ bài viết sau khi render
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`job-card-${matchedJob.jobId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 350);
+
+      return () => clearTimeout(timer);
+    }
+  }, [highlightParam, jobs]);
 
   const visibleJobs = useMemo(
     () =>
@@ -185,13 +222,20 @@ export const ClientJobsListPage: React.FC = () => {
       key: 'title',
       render: (_, job) => (
         <div className="min-w-[220px]">
-          <button
-            type="button"
-            onClick={() => setDetailJobId(job.jobId)}
-            className="text-left font-semibold text-slate-900 hover:text-emerald-700 cursor-pointer bg-transparent border-0 p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700 rounded"
-          >
-            {job.title || 'Vị trí chưa đặt tên'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDetailJobId(job.jobId)}
+              className="text-left font-semibold text-slate-900 hover:text-emerald-700 cursor-pointer bg-transparent border-0 p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700 rounded"
+            >
+              {job.title || 'Vị trí chưa đặt tên'}
+            </button>
+            {job.jobId === highlightedJobId && (
+              <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 animate-pulse">
+                🔔 Từ thông báo
+              </span>
+            )}
+          </div>
           <div className="text-xs text-slate-500 mt-0.5">
             {job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'} · {job.location ?? 'Chưa có địa điểm'}
           </div>
@@ -309,8 +353,32 @@ export const ClientJobsListPage: React.FC = () => {
             <div className="grid grid-cols-[minmax(0,1fr)] gap-4 p-5 pt-2 sm:grid-cols-2 xl:grid-cols-3">
               {visibleJobs.map((job) => {
                 const count = applicationsOf(job.jobId);
+                const isHighlighted = highlightedJobId === job.jobId;
                 return (
-                  <article key={job.jobId} className="client-soft-card flex flex-col gap-3 rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+                  <article
+                    id={`job-card-${job.jobId}`}
+                    key={job.jobId}
+                    className={`client-soft-card relative flex flex-col gap-3 rounded-[18px] p-5 transition-all duration-500 ${
+                      isHighlighted
+                        ? 'bg-gradient-to-b from-blue-50/95 via-sky-50/50 to-white ring-4 ring-blue-500/80 border-2 border-solid border-blue-500 shadow-xl shadow-blue-500/25 scale-[1.02]'
+                        : 'bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]'
+                    }`}
+                  >
+                    {isHighlighted && (
+                      <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm">
+                        <span className="flex items-center gap-1.5 animate-pulse">
+                          <span>🔔</span> Đang xem tin từ thông báo
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setHighlightedJobId(null)}
+                          className="cursor-pointer border-0 bg-transparent text-white/80 hover:text-white p-0 text-xs"
+                          title="Tắt làm nổi bật"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
                     <div className="flex items-start justify-between gap-3">
                       <Tooltip title={JOB_STATUS[job.status].hint}>
                         <span>
@@ -322,7 +390,9 @@ export const ClientJobsListPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setDetailJobId(job.jobId)}
-                      className="cursor-pointer rounded border-0 bg-transparent p-0 text-left text-[16px] font-semibold leading-snug text-slate-900 hover:text-[color:var(--console-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+                      className={`cursor-pointer rounded border-0 bg-transparent p-0 text-left text-[16px] leading-snug hover:text-[color:var(--console-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
+                        isHighlighted ? 'font-bold text-blue-900' : 'font-semibold text-slate-900'
+                      }`}
                     >
                       {job.title || 'Vị trí chưa đặt tên'}
                     </button>
@@ -361,6 +431,14 @@ export const ClientJobsListPage: React.FC = () => {
               rowKey="jobId"
               columns={columns}
               dataSource={visibleJobs}
+              rowClassName={(record) =>
+                record.jobId === highlightedJobId
+                  ? '!bg-blue-50/90 !border-l-4 !border-l-blue-600 font-semibold transition-colors duration-300'
+                  : ''
+              }
+              onRow={(record) => ({
+                id: `job-card-${record.jobId}`,
+              })}
               scroll={{ x: 1080 }}
               pagination={{ pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
             />
