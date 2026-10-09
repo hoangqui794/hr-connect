@@ -56,6 +56,7 @@ public static class DatabaseSeeder
         await ServiceTypeAllowedRoleSeeder.SeedAsync(context, logger, cancellationToken);
 
         await CommissionMilestoneSeeder.SeedAsync(context, logger, cancellationToken);
+        await CommissionRuleSeeder.SeedAsync(context, logger, cancellationToken);
 
         // 4. Tự động nạp toàn bộ danh sách Permissions và Role-Permissions từ file Permission.md
         if (context.Database.IsRelational())

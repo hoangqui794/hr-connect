@@ -93,11 +93,13 @@ public static class DependencyInjection
         services.AddScoped<IInterviewRepository, InterviewRepository>();
         services.AddScoped<IOfferRepository, OfferRepository>();
         services.AddScoped<IPlacementRepository, PlacementRepository>();
+        services.AddScoped<IFinanceRepository, FinanceRepository>();
         services.AddScoped<IAttributionRepository, AttributionRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAdminApprovalService, HRConnect.Infrastructure.Services.Admin.AdminApprovalService>();
         services.AddScoped<IMf03ScoringTrigger, HRConnect.Infrastructure.Services.Integration.Mf03ScoringTrigger>();
 
+        services.Configure<Mf05Settings>(configuration.GetSection(Mf05Settings.SectionName));
         services.Configure<Mf03IntegrationSettings>(configuration.GetSection(Mf03IntegrationSettings.SectionName));
         services.PostConfigure<Mf03IntegrationSettings>(settings =>
         {
@@ -116,6 +118,7 @@ public static class DependencyInjection
         services.AddHostedService<HRConnect.Infrastructure.Services.SubmissionConsents.SubmissionConsentExpiryWorker>();
         services.AddHostedService<AccountLifecycleEmailOutboxWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Offers.OfferExpiryWorker>();
+        services.AddHostedService<HRConnect.Infrastructure.Services.Finance.WarrantyProgressWorker>();
 
         // 5. Cloudflare R2 Object Storage & CV Storage
         var r2Settings = new R2Settings();

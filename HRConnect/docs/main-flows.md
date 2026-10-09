@@ -349,25 +349,25 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
 
 Áp dụng cho `HEADHUNT_COD`. Chạy song song với việc thu phí.
 
-1. Từ ngày đi làm, hệ thống đếm ngày bảo hành (mặc định 60 ngày, cấu hình được) và tạo hoa hồng `PENDING` cho Affiliate có attribution.
-2. Tới mỗi mốc 15, 30, 60 ngày mà không có báo cáo nghỉ việc, hệ thống tự ghi nhận phần hoa hồng tương ứng là `EARNED`. Internal HR không phải xác nhận từng mốc, chỉ xử lý ngoại lệ.
-3. Ứng viên nghỉ việc trong thời hạn bảo hành: Client báo nghỉ → Internal HR xác minh ngày nghỉ với ứng viên và Client → hệ thống hủy phần hoa hồng chưa đạt mốc và mở tuyển thay thế theo chính sách bảo hành.
+1. Từ ngày đi làm, hệ thống đếm ngày bảo hành (**30 ngày**, cấu hình được) và tạo hoa hồng `PENDING` cho Affiliate có attribution.
+2. Hết 30 ngày mà không có báo cáo nghỉ việc, hệ thống tự chuyển bảo hành sang `PASSED` và ghi nhận **toàn bộ** hoa hồng là `EARNED` (không chia mốc; quyết định 2026-10-09). Internal HR không phải xác nhận, chỉ xử lý ngoại lệ.
+3. Ứng viên nghỉ việc trong thời hạn bảo hành: Client báo nghỉ (bảo hành `CLAIMED`, hoa hồng `ON_HOLD`) → Internal HR xác minh ngày nghỉ: xác nhận thì bảo hành `VOIDED`, hoa hồng `CANCELLED`, Client được tuyển thay thế; bác bỏ thì quay lại `ACTIVE` / `PENDING`.
 4. Thử việc không dùng làm mốc tính hoa hồng, vì thời gian thử việc khác nhau theo vị trí; kết quả thử việc chỉ là thông tin theo dõi **[CẦN XÁC NHẬN]**.
 
 ## Hoa hồng
 
-**Điều kiện xét duyệt:** hoa hồng chỉ được đưa sang bước duyệt khi đồng thời (a) đã đạt mốc và (b) Client đã thanh toán phí dịch vụ. Khi Client chưa thanh toán, hoa hồng đã `EARNED` vẫn chờ, chưa chi **[CẦN XÁC NHẬN]**.
+**Điều kiện xét duyệt:** hoa hồng chỉ được đưa sang bước duyệt khi đồng thời (a) ứng viên đã đi làm đủ 30 ngày và (b) Client đã thanh toán phí dịch vụ. Khi Client chưa thanh toán, hoa hồng đã `EARNED` vẫn chờ, chưa chi (đã xác nhận 2026-10-09).
 
 | Service Type | Cách tính hoa hồng |
 |---|---|
-| `HEADHUNT_COD` | Theo từng placement; ghi nhận dần 25% (ngày 15), 25% (ngày 30), 50% (ngày 60) |
+| `HEADHUNT_COD` | Theo từng placement; nhận **100% một lần** khi ứng viên đi làm đủ 30 ngày. Commission Rule `PERCENT` tính trên phí dịch vụ, `FIXED` là số tiền cố định |
 | `CV_SOURCING` | Quỹ hoa hồng = phí dịch vụ × tỷ lệ chia (mặc định 60%); chia theo số CV được tính quota của từng Affiliate |
 | `CV_APPLICATION` | Không có hoa hồng |
 
 **Trạng thái hoa hồng:** `PENDING` → `EARNED` → `PAYABLE` → `PAID`; nhánh phụ `ON_HOLD`, `CANCELLED`.
 
-- `PENDING`: đã có placement, chưa đạt mốc.
-- `EARNED`: đã đạt mốc, chờ đủ điều kiện xét duyệt.
+- `PENDING`: đã có placement, chưa đủ 30 ngày.
+- `EARNED`: đã đủ 30 ngày, chờ Client thanh toán phí và Admin duyệt.
 - `PAYABLE`: Platform Admin đã duyệt (kiểm tra attribution, placement, mốc, tranh chấp), chờ chi.
 - `PAID`: đã ghi nhận chi.
 - `ON_HOLD`: tạm giữ vì đang có tranh chấp; được xét lại khi tranh chấp có kết quả.
@@ -411,11 +411,11 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 
 **Tiền**
 
-5. Mốc hoa hồng 15/30/60 ngày theo bảo hành, thay cho "qua thử việc / ký hợp đồng" trong đề tài gốc; thử việc chỉ là thông tin theo dõi.
+5. ~~Mốc hoa hồng 15/30/60 ngày~~ → **đã chốt 2026-10-09:** một mốc duy nhất, đủ 30 ngày đi làm (= hết bảo hành 30 ngày), thay cho "qua thử việc / ký hợp đồng" trong đề tài gốc; thử việc chỉ là thông tin theo dõi.
 6. Bộ trạng thái hoa hồng, payout và công nợ phí ở MF-05.
 7. Hoa hồng chỉ được xét duyệt khi Client đã thanh toán phí. Nếu Client quá hạn không trả thì Affiliate có được nhận hoa hồng không.
 8. Tuyển thay thế trong bảo hành: có thu thêm phí không, có bảo hành mới không, Affiliate giới thiệu người thay thế có hoa hồng không.
-9. Các con số 1,5; 60 ngày; 60%; giá gói là giá trị mặc định cấu hình được, không phải số cứng.
+9. Các con số 1,5; 30 ngày; 60%; giá gói là giá trị mặc định cấu hình được, không phải số cứng.
 
 **Quy tắc khác**
 
@@ -520,7 +520,7 @@ Mục này đánh giá các Main Flow ở góc nhìn vận hành thực tế: ch
 | # | Vấn đề | Tác động | Đề xuất | Mức độ |
 |---|---|---|---|---|
 | 5.1 | Toàn bộ luồng chưa có nghiệp vụ | Hệ thống chưa tạo ra doanh thu và chưa trả được hoa hồng; đây là mục tiêu chính của đề tài | Làm theo thứ tự: phí `HEADHUNT_COD` → hoa hồng theo mốc → payout → `CV_SOURCING` → gói `CV_APPLICATION` | Cao |
-| 5.2 | Trộn "bảo hành" (15/30/60 ngày) với "thử việc" | Thử việc ở Việt Nam thay đổi theo vị trí (30, 60, 180 ngày). Dùng thử việc làm mốc thì hoa hồng mỗi job một kiểu và khó giải thích | Mốc hoa hồng tính theo số ngày làm việc thực tế trong thời hạn bảo hành; thử việc chỉ là thông tin theo dõi **(đã đưa vào thiết kế)** | Cao |
+| 5.2 | Trộn "bảo hành" (nay là 30 ngày) với "thử việc" | Thử việc ở Việt Nam thay đổi theo vị trí (30, 60, 180 ngày). Dùng thử việc làm mốc thì hoa hồng mỗi job một kiểu và khó giải thích | Mốc hoa hồng tính theo số ngày làm việc thực tế trong thời hạn bảo hành; thử việc chỉ là thông tin theo dõi **(đã đưa vào thiết kế)** | Cao |
 | 5.3 | Không có vai trò và luồng ghi nhận Client đã thanh toán | Hoa hồng bị giữ cho tới khi Client trả tiền, nhưng không ai có chức năng xác nhận việc đó; hoa hồng treo vô thời hạn | Thêm bản ghi công nợ phí dịch vụ (chờ, đến hạn, đã trả, quá hạn) do Platform Admin cập nhật **(đã đưa vào thiết kế)** | Cao |
 | 5.4 | Ứng viên nghỉ việc trong bảo hành: không rõ ai báo, ai xác nhận | Client không có động cơ báo sớm nếu không được lợi; Affiliate vẫn nhận mốc hoa hồng không đáng có | Client báo nghỉ để kích hoạt tuyển thay thế; Internal HR xác nhận ngày nghỉ; phần hoa hồng chưa đạt mốc tự hủy **(đã đưa vào thiết kế)** | Trung bình |
 | 5.5 | Tuyển thay thế chưa có quy tắc attribution | Không rõ ứng viên thay thế có phát sinh hoa hồng mới hay không | Ứng viên thay thế tạo placement mới không thu thêm phí; hoa hồng theo thỏa thuận riêng, ghi rõ trong Commission Rule | Trung bình |
