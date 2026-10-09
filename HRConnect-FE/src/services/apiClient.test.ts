@@ -55,6 +55,20 @@ describe('API client foundation', () => {
     expect(capturedConfig?.headers.get('Content-Type')).not.toBe('multipart/form-data');
   });
 
+  it('updates candidate CV title with JSON metadata only', async () => {
+    let capturedConfig: InternalAxiosRequestConfig | undefined;
+    apiClient.defaults.adapter = async (config) => {
+      capturedConfig = config;
+      return { data: { success: true, message: 'OK' }, status: 200, statusText: 'OK', headers: {}, config };
+    };
+
+    await candidateCvApi.updateTitle('cv-1', 'CV Backend 2026');
+
+    expect(capturedConfig?.method).toBe('patch');
+    expect(capturedConfig?.url).toBe('/candidates/cv/cv-1');
+    expect(JSON.parse(capturedConfig?.data as string)).toEqual({ title: 'CV Backend 2026' });
+  });
+
   it('sends candidate application filters to the backend list endpoint', async () => {
     let capturedConfig: InternalAxiosRequestConfig | undefined;
     apiClient.defaults.adapter = async (config) => {

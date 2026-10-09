@@ -51,6 +51,9 @@ export const candidateCvApi = {
   async setPrimary(cvId: string) {
     return (await apiClient.patch<{ message?: string }>(`/candidates/cv/${cvId}/primary`)).data;
   },
+  async updateTitle(cvId: string, title: string) {
+    return (await apiClient.patch<{ success: boolean; message: string }>(`/candidates/cv/${cvId}`, { title })).data;
+  },
   async remove(cvId: string) {
     return (await apiClient.delete<{ message?: string }>(`/candidates/cv/${cvId}`)).data;
   },

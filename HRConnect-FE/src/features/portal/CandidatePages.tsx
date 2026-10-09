@@ -7,10 +7,11 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Button, DatePicker, Pagination, Popconfirm, Select, Skeleton, Tooltip, Upload } from 'antd';
+import { Alert, App as AntApp, Button, DatePicker, Input, Modal, Pagination, Popconfirm, Select, Skeleton, Tooltip, Upload } from 'antd';
 import {
   CheckCircleFilled,
   DeleteOutlined,
+  EditOutlined,
   EyeOutlined,
   FilePdfOutlined,
   InboxOutlined,
@@ -426,9 +427,15 @@ export const CvUploader: React.FC<{ onUploaded?: () => void; compact?: boolean }
 export const CandidateCvsPage: React.FC = () => {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
   const cvs = useCandidateCvs();
   const openSigned = useOpenSignedUrl();
   const [busyId, setBusyId] = useState<string>();
+  const [editing, setEditing] = useState<{ cvId: string; title: string }>();
+  const canView = hasPermission('cv.view_own');
+  const canCreate = hasPermission('cv.create');
+  const canUpdate = hasPermission('cv.update_own');
+  const canDelete = hasPermission('cv.delete_own');
 
   const act = async (cvId: string, run: () => Promise<{ message?: string }>, ok: string) => {
     setBusyId(cvId);
@@ -445,9 +452,25 @@ export const CandidateCvsPage: React.FC = () => {
 
   const list = cvs.data ?? [];
 
+  const saveTitle = async () => {
+    if (!editing) return;
+    const title = editing.title.trim();
+    if (!title) {
+      message.error('Tiêu đề CV không được để trống.');
+      return;
+    }
+    if (title.length > 180) {
+      message.error('Tiêu đề CV không được vượt quá 180 ký tự.');
+      return;
+    }
+    await act(editing.cvId, () => candidateCvApi.updateTitle(editing.cvId, title), 'Đã cập nhật tên CV.');
+    setEditing(undefined);
+  };
+
   return (
     <div>
       <PageHero eyebrow="Hồ sơ" title="Kho CV" description="CV bạn tải lên được dùng để ứng tuyển. CV chính được chọn sẵn khi bạn bấm Ứng tuyển." />
+      {!canView && <Alert className="mb-5" type="error" showIcon message="Bạn không có quyền xem kho CV cá nhân." />}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-3">
           {cvs.isLoading ? (
@@ -476,10 +499,17 @@ export const CandidateCvsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  <Tooltip title="Xem CV">
-                    <Button icon={<EyeOutlined />} aria-label={`Xem ${cv.title ?? 'CV'}`} onClick={() => openSigned(() => candidateCvApi.downloadUrl(cv.cvId))} />
-                  </Tooltip>
-                  {!cv.isPrimary && (
+                  {canView && (
+                    <Tooltip title="Xem CV">
+                      <Button icon={<EyeOutlined />} aria-label={`Xem ${cv.title ?? 'CV'}`} onClick={() => openSigned(() => candidateCvApi.downloadUrl(cv.cvId))} />
+                    </Tooltip>
+                  )}
+                  {canUpdate && (
+                    <Tooltip title="Đổi tên CV">
+                      <Button icon={<EditOutlined />} aria-label={`Đổi tên ${cv.title ?? 'CV'}`} onClick={() => setEditing({ cvId: cv.cvId, title: cv.title || cv.fileName || '' })} />
+                    </Tooltip>
+                  )}
+                  {canUpdate && !cv.isPrimary && (
                     <Tooltip title="Đặt làm CV chính">
                       <Button
                         icon={busyId === cv.cvId ? undefined : <StarOutlined />}
@@ -492,28 +522,48 @@ export const CandidateCvsPage: React.FC = () => {
                   {cv.isPrimary && (
                     <Button icon={<StarFilled />} disabled aria-label="CV chính" className="!text-amber-600" />
                   )}
-                  <Popconfirm
-                    title="Xóa CV này?"
+                  {canDelete && <Popconfirm
+                    title="Gỡ CV khỏi kho?"
                     description="CV đã dùng trong đơn ứng tuyển vẫn được giữ cho nhà tuyển dụng."
-                    okText="Xóa"
+                    okText="Gỡ khỏi kho"
                     okButtonProps={{ danger: true }}
                     cancelText="Hủy"
-                    onConfirm={() => act(cv.cvId, () => candidateCvApi.remove(cv.cvId), 'Đã xóa CV.')}
+                    onConfirm={() => act(cv.cvId, () => candidateCvApi.remove(cv.cvId), 'Đã gỡ CV khỏi kho.')}
                   >
-                    <Button danger icon={<DeleteOutlined />} aria-label={`Xóa ${cv.title ?? 'CV'}`} />
-                  </Popconfirm>
+                    <Button danger icon={<DeleteOutlined />} aria-label={`Gỡ ${cv.title ?? 'CV'} khỏi kho`} />
+                  </Popconfirm>}
                 </div>
               </article>
             ))
           )}
         </div>
-        <aside className="lg:sticky lg:top-24 lg:self-start">
+        {canCreate && <aside className="lg:sticky lg:top-24 lg:self-start">
           <Surface className="p-5">
             <h2 className="m-0 mb-3 text-base font-semibold text-slate-900">Tải CV mới</h2>
             <CvUploader />
           </Surface>
-        </aside>
+        </aside>}
       </div>
+      <Modal
+        title="Đổi tên CV"
+        open={Boolean(editing)}
+        okText="Lưu thay đổi"
+        cancelText="Hủy"
+        confirmLoading={Boolean(editing && busyId === editing.cvId)}
+        okButtonProps={{ disabled: !editing?.title.trim() || (editing?.title.trim().length ?? 0) > 180 }}
+        onOk={saveTitle}
+        onCancel={() => setEditing(undefined)}
+      >
+        <Input
+          autoFocus
+          maxLength={180}
+          showCount
+          value={editing?.title ?? ''}
+          aria-label="Tiêu đề CV"
+          onChange={(event) => setEditing((current) => current ? { ...current, title: event.target.value } : current)}
+          onPressEnter={saveTitle}
+        />
+      </Modal>
     </div>
   );
 };
