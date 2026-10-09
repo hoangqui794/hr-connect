@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Form, Input, Skeleton, Tag } from 'antd';
 import { CheckCircleOutlined, LinkOutlined, MailOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
@@ -29,7 +29,7 @@ const savePendingClaim = (claim: CandidateIdentityClaimState | null) => {
   else sessionStorage.removeItem(STORAGE_KEY);
 };
 
-const secondsUntil = (value?: string) => Math.max(0, Math.ceil((dayjs(value).valueOf() - Date.now()) / 1000));
+const secondsUntil = (value: string | undefined, now: number) => Math.max(0, Math.ceil((dayjs(value).valueOf() - now) / 1000));
 const duration = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 
 export const CandidateIdentityPage: React.FC = () => {
@@ -52,8 +52,8 @@ export const CandidateIdentityPage: React.FC = () => {
     queryFn: candidateIdentityApi.listEmailIdentities,
     enabled: canManage,
   });
-  const expiresIn = useMemo(() => pending ? secondsUntil(pending.expiresAt) : 0, [pending, clock]);
-  const resendIn = useMemo(() => pending ? secondsUntil(pending.resendAfter) : 0, [pending, clock]);
+  const expiresIn = pending ? secondsUntil(pending.expiresAt, clock) : 0;
+  const resendIn = pending ? secondsUntil(pending.resendAfter, clock) : 0;
 
   const replacePending = (claim: CandidateIdentityClaimState | null) => {
     setPending(claim);
