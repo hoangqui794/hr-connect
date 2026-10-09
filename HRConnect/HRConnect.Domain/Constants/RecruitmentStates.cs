@@ -51,4 +51,6 @@ public static class OfferStates
 public static class PlacementStates
 {
     public const string Started = "STARTED";
+    /// <summary>MF-05: leaving within the warranty was confirmed by Internal HR.</summary>
+    public const string LeftDuringWarranty = "LEFT_DURING_WARRANTY";
 }

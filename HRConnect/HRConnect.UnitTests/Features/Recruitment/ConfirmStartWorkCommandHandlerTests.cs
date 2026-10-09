@@ -5,6 +5,7 @@ using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmStartWork;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -22,6 +23,15 @@ public class ConfirmStartWorkCommandHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<ConfirmStartWorkCommandHandler>> _loggerMock = new();
     private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
+    private readonly Mock<IPlacementFinanceService> _placementFinanceServiceMock = CreateFinanceMock();
+
+    private static Mock<IPlacementFinanceService> CreateFinanceMock()
+    {
+        var mock = new Mock<IPlacementFinanceService>();
+        mock.Setup(s => s.InitializeAsync(It.IsAny<Placement>(), It.IsAny<JobApplicationContext>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlacementFinanceResult(false, null, null, null, null, null, null, Array.Empty<string>()));
+        return mock;
+    }
 
     private ConfirmStartWorkCommandHandler CreateHandler() =>
         new(
@@ -31,7 +41,8 @@ public class ConfirmStartWorkCommandHandlerTests
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _loggerMock.Object,
-            _auditLogServiceMock.Object);
+            _auditLogServiceMock.Object,
+            _placementFinanceServiceMock.Object);
 
     [Fact]
     public async Task Handle_WhenActualStartDateIsInFuture_ShouldThrowBadRequestException()

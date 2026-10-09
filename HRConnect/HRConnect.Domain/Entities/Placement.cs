@@ -40,5 +40,7 @@ public partial class Placement
     public virtual Probation? Probation { get; set; }
 
     public virtual Warranty? Warranty { get; set; }
+
+    public virtual ServiceFee? ServiceFee { get; set; }
 }
 
