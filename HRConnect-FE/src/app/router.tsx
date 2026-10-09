@@ -164,6 +164,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <AppRoutes.ConsoleOverviewPage /> },
       { path: 'approvals', element: <AppRoutes.ConsoleApprovalsPage /> },
       { path: 'candidate-identity-claims', element: <AppRoutes.ConsoleIdentityClaimsPage /> },
+      { path: 'candidate-identity-claims/:claimId', element: <AppRoutes.ConsoleIdentityClaimDetailPage /> },
       // Old entry points open the unified queue pre-filtered by type.
       { path: 'companies', element: <AppRoutes.ConsoleApprovalsPage presetType="CLIENT" /> },
       { path: 'affiliates', element: <AppRoutes.ConsoleApprovalsPage presetType="AFFILIATE" /> },

@@ -1,6 +1,11 @@
 import { apiClient } from '../../apiClient';
 import type { ApiEnvelope, Paged } from '@/types/api/admin';
-import type { AdminIdentityClaimListItem, AdminIdentityClaimListParams } from '@/types/api/mf02';
+import type {
+  AdminIdentityClaimDecisionResult,
+  AdminIdentityClaimDetail,
+  AdminIdentityClaimListItem,
+  AdminIdentityClaimListParams,
+} from '@/types/api/mf02';
 import { cleanParams } from './shared';
 
 export const adminIdentityClaimApi = {
@@ -11,5 +16,27 @@ export const adminIdentityClaimApi = {
       { params: cleanParams(params) }
     );
     return response.data.data;
+  },
+  async get(claimId: string): Promise<AdminIdentityClaimDetail> {
+    const response = await apiClient.get<ApiEnvelope<AdminIdentityClaimDetail>>(
+      `/admin/candidate-identity-claims/${claimId}`
+    );
+    return response.data.data;
+  },
+  async approve(claimId: string, concurrencyToken: string, note?: string): Promise<AdminIdentityClaimDecisionResult> {
+    return (
+      await apiClient.post<AdminIdentityClaimDecisionResult>(
+        `/admin/candidate-identity-claims/${claimId}/approve`,
+        { concurrencyToken, note: note || null }
+      )
+    ).data;
+  },
+  async reject(claimId: string, concurrencyToken: string, reason: string): Promise<AdminIdentityClaimDecisionResult> {
+    return (
+      await apiClient.post<AdminIdentityClaimDecisionResult>(
+        `/admin/candidate-identity-claims/${claimId}/reject`,
+        { concurrencyToken, reason }
+      )
+    ).data;
   },
 };

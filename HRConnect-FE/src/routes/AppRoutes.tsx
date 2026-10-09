@@ -135,6 +135,9 @@ const ConsoleApprovalsPage = React.lazy(() =>
 const ConsoleIdentityClaimsPage = React.lazy(() =>
   import('@/features/admin-console/AdminIdentityClaimsPage').then((m) => ({ default: m.AdminIdentityClaimsPage }))
 );
+const ConsoleIdentityClaimDetailPage = React.lazy(() =>
+  import('@/features/admin-console/AdminIdentityClaimDetailPage').then((m) => ({ default: m.AdminIdentityClaimDetailPage }))
+);
 const ConsoleUsersPage = React.lazy(() =>
   import('@/features/admin-console/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage }))
 );
@@ -510,6 +513,7 @@ export const AppRoutes = {
   ConsoleOverviewPage,
   ConsoleApprovalsPage,
   ConsoleIdentityClaimsPage,
+  ConsoleIdentityClaimDetailPage,
   ConsoleUsersPage,
   ConsoleServiceTypesPage,
   ConsoleCommissionRulesPage,
