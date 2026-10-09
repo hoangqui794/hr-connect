@@ -143,6 +143,10 @@ public class PlacementRepository : IPlacementRepository
 
     public void Update(Placement placement)
     {
-        _context.Placements.Update(placement);
+        var entry = _context.Entry(placement);
+        if (entry.State == EntityState.Detached)
+        {
+            _context.Placements.Update(placement);
+        }
     }
 }
