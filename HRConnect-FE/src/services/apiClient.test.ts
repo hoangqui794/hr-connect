@@ -164,4 +164,23 @@ describe('API client foundation', () => {
     expect(capturedConfig?.method).toBe('get');
     expect(capturedConfig?.url).toBe('/affiliates/submissions/submission-1');
   });
+
+  it('posts resend consent to the selected owned submission', async () => {
+    let capturedConfig: InternalAxiosRequestConfig | undefined;
+    apiClient.defaults.adapter = async (config) => {
+      capturedConfig = config;
+      return {
+        data: { success: true, submissionId: 'submission-1', status: 'PENDING_CONSENT' },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      };
+    };
+
+    await affiliateApi.resendConsent('submission-1');
+
+    expect(capturedConfig?.method).toBe('post');
+    expect(capturedConfig?.url).toBe('/affiliates/submissions/submission-1/consent/resend');
+  });
 });

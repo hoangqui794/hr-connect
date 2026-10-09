@@ -93,6 +93,16 @@ export interface AffiliateSubmissionDetail extends AffiliateSubmission {
   updatedAt: string;
 }
 
+export interface ResendSubmissionConsentResult {
+  success: boolean;
+  message: string;
+  submissionId: string;
+  status: string;
+  expiresAt: string;
+  emailSendCount: number;
+  emailDeliveryStatus: string;
+}
+
 export interface AffiliateReferralProgress {
   submissionId: string;
   applicationId: string | null;

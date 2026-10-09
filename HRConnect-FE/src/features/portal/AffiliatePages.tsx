@@ -41,7 +41,8 @@ import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
 import { affiliateApi } from '@/services/api/mf02Api';
 import { jobsApi } from '@/services/api/jobsApi';
-import { getApiErrorMessage } from '@/services/apiClient';
+import { getApiError, getApiErrorMessage } from '@/services/apiClient';
+import { useAuthStore } from '@/stores/authStore';
 import type { AffiliateAttribution, AffiliateSubmission, LibraryCandidate } from '@/types/api/mf02';
 import { NoApiYet } from '@/features/admin-console/adminTheme';
 import { FilterPills, PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
@@ -470,9 +471,7 @@ export const AffiliateSubmitPage: React.FC = () => {
 const STATUSES = ['all', 'PENDING_CONSENT', 'ACCEPTED', 'CONSENT_REJECTED', 'CONSENT_EXPIRED', 'BLOCKED_DUPLICATE', 'JOB_UNAVAILABLE'] as const;
 
 export const AffiliateSubmissionsPage: React.FC = () => {
-  const { message } = AntApp.useApp();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const status = (STATUSES as readonly string[]).includes(searchParams.get('status') ?? '') ? (searchParams.get('status') as (typeof STATUSES)[number]) : 'all';
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
@@ -497,15 +496,6 @@ export const AffiliateSubmissionsPage: React.FC = () => {
   // Hiring progress of accepted referrals, keyed by submission.
   const progress = useQuery({ queryKey: [...keys.submissions, 'progress'], queryFn: () => affiliateApi.referrals({ page: 1, pageSize: 100 }) });
   const progressOf = (id: string) => progress.data?.items.find((p) => p.submissionId === id)?.progressStatus;
-
-  const resend = useMutation({
-    mutationFn: (id: string) => affiliateApi.resendConsent(id),
-    onSuccess: (res) => {
-      message.success(res.message || 'Đã gửi lại email xác nhận.');
-      queryClient.invalidateQueries({ queryKey: keys.submissions });
-    },
-    onError: (err) => message.error(getApiErrorMessage(err, 'Chưa gửi lại được email.')),
-  });
 
   const columns: ColumnsType<AffiliateSubmission> = [
     { title: 'Ứng viên', key: 'c', render: (_, r) => <PersonCell name={r.candidateName} /> },
@@ -547,10 +537,9 @@ export const AffiliateSubmissionsPage: React.FC = () => {
             <Button
               size="small"
               icon={<MailOutlined />}
-              loading={resend.isPending && resend.variables === r.submissionId}
-              onClick={() => resend.mutate(r.submissionId)}
+              onClick={() => navigate(`/affiliate/submissions/${r.submissionId}`)}
             >
-              Gửi lại email
+              Gửi lại
             </Button>
           )}
         </div>
@@ -645,12 +634,54 @@ export const AffiliateSubmissionsPage: React.FC = () => {
 };
 
 export const AffiliateSubmissionDetailPage: React.FC = () => {
+  const { message } = AntApp.useApp();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const canResend = useAuthStore((state) => state.hasPermission('submission.consent.resend_own'));
   const { submissionId = '' } = useParams();
+  const [retryUntil, setRetryUntil] = useState<number | null>(null);
+  const [retryRemaining, setRetryRemaining] = useState(0);
+  const [resentInThisView, setResentInThisView] = useState(false);
   const detail = useQuery({
     queryKey: [...keys.submissions, 'detail', submissionId],
     queryFn: () => affiliateApi.submissionDetail(submissionId),
     enabled: Boolean(submissionId),
+  });
+
+  useEffect(() => {
+    if (!retryUntil) return;
+    const update = () => {
+      const remaining = Math.max(0, Math.ceil((retryUntil - Date.now()) / 1000));
+      setRetryRemaining(remaining);
+      if (remaining === 0) setRetryUntil(null);
+    };
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [retryUntil]);
+
+  const resend = useMutation({
+    mutationFn: () => affiliateApi.resendConsent(submissionId),
+    onSuccess: async (result) => {
+      setResentInThisView(true);
+      if (result.emailDeliveryStatus === 'FAILED') message.warning(result.message);
+      else message.success(result.message);
+      await queryClient.invalidateQueries({ queryKey: keys.submissions });
+    },
+    onError: async (error) => {
+      const apiError = getApiError(error, 'Chưa gửi lại được yêu cầu xác nhận.');
+      const serverTimestamp = apiError.message.match(
+        /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})/
+      )?.[0];
+      const retryAt = apiError.retryAfterSeconds
+        ? Date.now() + apiError.retryAfterSeconds * 1000
+        : serverTimestamp
+          ? Date.parse(serverTimestamp)
+          : undefined;
+      if (retryAt && retryAt > Date.now()) setRetryUntil(retryAt);
+      message.error(apiError.message);
+      if (apiError.status === 409) await queryClient.invalidateQueries({ queryKey: keys.submissions });
+    },
   });
 
   if (detail.isLoading) return <Skeleton active paragraph={{ rows: 8 }} />;
@@ -709,6 +740,33 @@ export const AffiliateSubmissionDetailPage: React.FC = () => {
             message="Đang chờ Candidate xác nhận"
             description="Application, Attribution và MF03 chỉ được tạo sau khi Candidate đồng ý."
           />
+        )}
+        {resend.data && (
+          <Alert
+            className="mt-5"
+            type={resend.data.emailDeliveryStatus === 'FAILED' ? 'warning' : 'success'}
+            showIcon
+            message={resend.data.message}
+            description={`Hạn xác nhận mới: ${fmt(resend.data.expiresAt)} · Đã gửi ${resend.data.emailSendCount} lần.`}
+          />
+        )}
+        {submission.status === 'PENDING_CONSENT' && canResend && (
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <Button
+              type="primary"
+              icon={<MailOutlined />}
+              loading={resend.isPending}
+              disabled={resentInThisView || retryRemaining > 0}
+              onClick={() => resend.mutate()}
+            >
+              {retryRemaining > 0
+                ? `Thử lại sau ${retryRemaining} giây`
+                : resentInThisView
+                  ? 'Đã gửi lại yêu cầu'
+                  : 'Gửi lại yêu cầu xác nhận'}
+            </Button>
+            <span className="text-xs text-slate-500">Liên kết xác nhận cũ sẽ bị vô hiệu hóa.</span>
+          </div>
         )}
       </Surface>
     </div>

@@ -20,6 +20,7 @@ import type {
   CandidateCv,
   LibraryCandidate,
   LibraryCandidateDetail,
+  ResendSubmissionConsentResult,
   SubmitCandidateResult,
   TotalCountPage,
 } from '@/types/api/mf02';
@@ -129,10 +130,8 @@ export const affiliateApi = {
   async submissionDetail(submissionId: string): Promise<AffiliateSubmissionDetail> {
     return (await apiClient.get<AffiliateSubmissionDetail>(`/affiliates/submissions/${submissionId}`)).data;
   },
-  async resendConsent(submissionId: string) {
-    return (
-      await apiClient.post<{ message: string; expiresAt: string; emailSendCount: number }>(`/affiliates/submissions/${submissionId}/consent/resend`)
-    ).data;
+  async resendConsent(submissionId: string): Promise<ResendSubmissionConsentResult> {
+    return (await apiClient.post<ResendSubmissionConsentResult>(`/affiliates/submissions/${submissionId}/consent/resend`)).data;
   },
   async referrals(params: { jobId?: string; page: number; pageSize: number }): Promise<TotalCountPage<AffiliateReferralProgress>> {
     return (await apiClient.get<TotalCountPage<AffiliateReferralProgress>>('/affiliates/referrals', { params: clean(params) })).data;
