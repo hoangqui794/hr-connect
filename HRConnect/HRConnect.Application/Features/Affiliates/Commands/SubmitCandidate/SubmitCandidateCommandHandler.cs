@@ -19,6 +19,8 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
 {
     private readonly IAffiliateProfileRepository _affiliateProfileRepository;
     private readonly ICandidateRepository _candidateRepository;
+    private readonly IUserEmailIdentityRepository _emailIdentityRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IJobRepository _jobRepository;
     private readonly ICandidateCvRepository _candidateCvRepository;
     private readonly ICvStorageService _cvStorageService;
@@ -39,6 +41,8 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
     public SubmitCandidateCommandHandler(
         IAffiliateProfileRepository affiliateProfileRepository,
         ICandidateRepository candidateRepository,
+        IUserEmailIdentityRepository emailIdentityRepository,
+        IUserRepository userRepository,
         IJobRepository jobRepository,
         ICandidateCvRepository candidateCvRepository,
         ICvStorageService cvStorageService,
@@ -58,6 +62,8 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
     {
         _affiliateProfileRepository = affiliateProfileRepository;
         _candidateRepository = candidateRepository;
+        _emailIdentityRepository = emailIdentityRepository;
+        _userRepository = userRepository;
         _jobRepository = jobRepository;
         _candidateCvRepository = candidateCvRepository;
         _cvStorageService = cvStorageService;
@@ -165,18 +171,56 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             if (!string.IsNullOrWhiteSpace(normalizedEmail))
                 candidateByEmail = await _candidateRepository.GetByNormalizedEmailAsync(normalizedEmail, cancellationToken);
 
+            Candidate? candidateByVerifiedIdentity = null;
+            if (!string.IsNullOrWhiteSpace(normalizedEmail))
+            {
+                var emailIdentity = await _emailIdentityRepository.GetActiveByNormalizedEmailAsync(
+                    normalizedEmail, cancellationToken);
+                if (emailIdentity != null &&
+                    string.Equals(emailIdentity.Status, "VERIFIED", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.Equals(emailIdentity.User.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new ConflictException(
+                            "Tài khoản Candidate sở hữu email này hiện không hoạt động.",
+                            "CANDIDATE_ACCOUNT_NOT_ACTIVE");
+                    }
+
+                    candidateByVerifiedIdentity = await _candidateRepository.GetByUserIdAsync(
+                        emailIdentity.UserId, cancellationToken);
+                    if (candidateByVerifiedIdentity == null ||
+                        !string.Equals(candidateByVerifiedIdentity.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+                        candidateByVerifiedIdentity.MergedIntoCandidateId.HasValue)
+                    {
+                        throw new ConflictException(
+                            "Email đã được xác minh nhưng hồ sơ Candidate liên kết không còn hợp lệ.",
+                            "VERIFIED_IDENTITY_CANDIDATE_NOT_ELIGIBLE");
+                    }
+                }
+            }
+
             Candidate? candidateByPhone = null;
             if (!string.IsNullOrWhiteSpace(normalizedPhone))
                 candidateByPhone = await _candidateRepository.GetByNormalizedPhoneAsync(normalizedPhone, cancellationToken);
 
-            if (candidateByEmail != null && candidateByPhone != null && candidateByEmail.CandidateId != candidateByPhone.CandidateId)
+            if (candidateByVerifiedIdentity != null && candidateByEmail != null &&
+                candidateByVerifiedIdentity.CandidateId != candidateByEmail.CandidateId)
+            {
+                throw new ConflictException(
+                    "Email này đang liên quan đến hai hồ sơ Candidate chưa được hợp nhất. Vui lòng chờ Ban quản trị xử lý trước khi nộp hồ sơ mới.",
+                    "CANDIDATE_IDENTITY_MERGE_PENDING");
+            }
+
+            var candidateResolvedByEmail = candidateByVerifiedIdentity ?? candidateByEmail;
+            if (candidateResolvedByEmail != null && candidateByPhone != null &&
+                candidateResolvedByEmail.CandidateId != candidateByPhone.CandidateId)
             {
                 _logger.LogWarning("Xung đột danh tính ứng viên: Email {Email} (CandidateId {EmailCandId}) và Phone {Phone} (CandidateId {PhoneCandId})",
-                    normalizedEmail, candidateByEmail.CandidateId, normalizedPhone, candidateByPhone.CandidateId);
+                    normalizedEmail, candidateResolvedByEmail.CandidateId, normalizedPhone, candidateByPhone.CandidateId);
                 throw new ConflictException("Email và số điện thoại này thuộc về hai ứng viên khác nhau trong hệ thống.");
             }
 
-            candidate = candidateByEmail ?? candidateByPhone;
+            candidate = candidateResolvedByEmail ?? candidateByPhone;
             if (candidate != null)
             {
                 if (!string.Equals(candidate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
@@ -187,7 +231,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
 
                 // Email is the consent identity. Never attach a phone-matched Candidate
                 // to an email that is not already owned by that Candidate.
-                if (candidateByEmail == null && !string.IsNullOrWhiteSpace(normalizedEmail))
+                if (candidateResolvedByEmail == null && !string.IsNullOrWhiteSpace(normalizedEmail))
                 {
                     throw new ConflictException("Số điện thoại đã thuộc một Candidate khác hoặc email không khớp với hồ sơ Candidate hiện có.");
                 }
@@ -202,9 +246,35 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         }
 
         var now = DateTime.UtcNow;
-        var recipientEmail = !isLibraryReuse && !string.IsNullOrWhiteSpace(request.Email)
-            ? request.Email.Trim()
-            : candidate?.Email?.Trim();
+        string? recipientEmail;
+        if (candidate?.UserId.HasValue == true)
+        {
+            var candidateUser = await _userRepository.GetByIdAsync(candidate.UserId.Value, cancellationToken);
+            var primaryIdentity = await _emailIdentityRepository.GetPrimaryByUserIdAsync(
+                candidate.UserId.Value, cancellationToken);
+            if (candidateUser == null ||
+                !string.Equals(candidateUser.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+                primaryIdentity == null ||
+                !string.Equals(primaryIdentity.Kind, "PRIMARY", StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(primaryIdentity.Status, "VERIFIED", StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(primaryIdentity.NormalizedEmail,
+                    _emailNormalizer.Normalize(candidateUser.Email), StringComparison.Ordinal) ||
+                !string.Equals(primaryIdentity.NormalizedEmail,
+                    _emailNormalizer.Normalize(primaryIdentity.Email), StringComparison.Ordinal))
+            {
+                throw new ConflictException(
+                    "Tài khoản Candidate chưa có email chính đã xác minh để nhận yêu cầu xác nhận.",
+                    "CANDIDATE_PRIMARY_EMAIL_NOT_VERIFIED");
+            }
+
+            recipientEmail = primaryIdentity.Email.Trim();
+        }
+        else
+        {
+            recipientEmail = !isLibraryReuse && !string.IsNullOrWhiteSpace(request.Email)
+                ? request.Email.Trim()
+                : candidate?.Email?.Trim();
+        }
         if (string.IsNullOrWhiteSpace(recipientEmail))
         {
             throw new BadRequestException("Candidate phải có email để nhận và xác nhận yêu cầu nộp hồ sơ.");

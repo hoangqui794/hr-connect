@@ -228,7 +228,7 @@ public static class JobEndpoints
         .WithTags("Affiliate Submissions")
         .WithName("AffiliateSubmitCandidate")
         .WithSummary("Affiliate Recruiter nộp hồ sơ ứng viên vào Job")
-        .WithDescription("Yêu cầu permission submission.create. Có hai chế độ: (1) nộp Candidate/CV mới bằng fullName, email và file PDF; (2) tái sử dụng kho bằng candidateId + cvId, không gửi file. Ở chế độ kho, backend tự lấy danh tính Candidate và chỉ chấp nhận CV ACTIVE do chính Affiliate tải, đã được Candidate xác nhận. Mỗi Job vẫn tạo consent mới; Application, Attribution và MF03 chỉ được tạo sau khi Candidate đồng ý.")
+        .WithDescription("Yêu cầu permission submission.create. Có hai chế độ: (1) nộp Candidate/CV mới bằng fullName, email và file PDF; (2) tái sử dụng kho bằng candidateId + cvId, không gửi file. Backend nhận diện Candidate bằng email hồ sơ hoặc email alias đã xác minh, vẫn bắt buộc email và số điện thoại cùng trỏ về một Candidate. Nếu Candidate đã có tài khoản, consent chỉ được gửi tới email chính đã xác minh của tài khoản; email Affiliate nhập không được dùng làm địa chỉ nhận tùy ý. Ở chế độ kho, backend tự lấy danh tính Candidate và chỉ chấp nhận CV ACTIVE do chính Affiliate tải, đã được Candidate xác nhận. Mỗi Job vẫn tạo consent mới; Application, Attribution và MF03 chỉ được tạo sau khi Candidate đồng ý.")
         .RequireRateLimiting("submission-consent")
         .DisableAntiforgery()
         .Produces<SubmitCandidateResponse>(StatusCodes.Status200OK)

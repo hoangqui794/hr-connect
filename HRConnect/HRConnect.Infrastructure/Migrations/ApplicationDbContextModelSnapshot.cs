@@ -1170,6 +1170,140 @@ namespace HRConnect.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.CandidateIdentityClaim", b =>
+                {
+                    b.Property<Guid>("ClaimId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("claim_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("AssertedEmail")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("asserted_email");
+
+                    b.Property<int>("AttemptCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTime?>("LastSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_sent_at");
+
+                    b.Property<string>("NormalizedEmail")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("normalized_email");
+
+                    b.Property<Guid>("RequesterCandidateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requester_candidate_id");
+
+                    b.Property<Guid>("RequesterUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requester_user_id");
+
+                    b.Property<int>("ResendCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("resend_count");
+
+                    b.Property<string>("ReviewReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("review_reason");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("TargetCandidateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_candidate_id");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
+                    b.HasKey("ClaimId")
+                        .HasName("candidate_identity_claim_pkey");
+
+                    b.HasIndex("RequesterCandidateId");
+
+                    b.HasIndex("ReviewedBy");
+
+                    b.HasIndex(new[] { "Status", "ExpiresAt" }, "idx_candidate_identity_claim_status_expiry");
+
+                    b.HasIndex(new[] { "RequesterUserId", "NormalizedEmail" }, "uq_candidate_identity_claim_active_requester_email")
+                        .IsUnique()
+                        .HasFilter("status IN ('PENDING_VERIFICATION','VERIFIED','PENDING_ADMIN_REVIEW')");
+
+                    b.HasIndex(new[] { "TargetCandidateId" }, "uq_candidate_identity_claim_active_target")
+                        .IsUnique()
+                        .HasFilter("target_candidate_id IS NOT NULL AND status IN ('VERIFIED','PENDING_ADMIN_REVIEW')");
+
+                    b.HasIndex(new[] { "TokenHash" }, "uq_candidate_identity_claim_token_hash")
+                        .IsUnique();
+
+                    b.ToTable("candidate_identity_claim", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_candidate_identity_claim_attempts", "attempt_count >= 0 AND resend_count >= 0");
+
+                            t.HasCheckConstraint("ck_candidate_identity_claim_expiry", "expires_at > created_at");
+
+                            t.HasCheckConstraint("ck_candidate_identity_claim_status", "status IN ('PENDING_VERIFICATION','VERIFIED','COMPLETED','PENDING_ADMIN_REVIEW','REJECTED','EXPIRED','CANCELLED')");
+                        });
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.CandidateJobMatch", b =>
                 {
                     b.Property<Guid>("CandidateJobMatchId")
@@ -3616,6 +3750,100 @@ namespace HRConnect.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.UserEmailIdentity", b =>
+                {
+                    b.Property<Guid>("EmailIdentityId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("email_identity_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("NormalizedEmail")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("normalized_email");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("VerificationSource")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("verification_source");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
+                    b.HasKey("EmailIdentityId")
+                        .HasName("user_email_identity_pkey");
+
+                    b.HasIndex(new[] { "UserId", "Status" }, "idx_user_email_identity_user_status");
+
+                    b.HasIndex(new[] { "NormalizedEmail" }, "uq_user_email_identity_active_email")
+                        .IsUnique()
+                        .HasFilter("status <> 'REVOKED'");
+
+                    b.HasIndex(new[] { "UserId", "Kind" }, "uq_user_email_identity_primary_user")
+                        .IsUnique()
+                        .HasFilter("kind = 'PRIMARY' AND status <> 'REVOKED'");
+
+                    b.ToTable("user_email_identity", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_user_email_identity_kind", "kind IN ('PRIMARY','ALIAS')");
+
+                            t.HasCheckConstraint("ck_user_email_identity_revoked_at", "status <> 'REVOKED' OR revoked_at IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_user_email_identity_status", "status IN ('PENDING','VERIFIED','REVOKED')");
+
+                            t.HasCheckConstraint("ck_user_email_identity_verified_at", "status <> 'VERIFIED' OR verified_at IS NOT NULL");
+                        });
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.UserRole", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -4026,6 +4254,43 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Candidate");
 
                     b.Navigation("CvTemplate");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.CandidateIdentityClaim", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.Candidate", "RequesterCandidate")
+                        .WithMany("CandidateIdentityClaimRequesterCandidates")
+                        .HasForeignKey("RequesterCandidateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("candidate_identity_claim_requester_candidate_id_fkey");
+
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "RequesterUser")
+                        .WithMany("CandidateIdentityClaimRequesterUsers")
+                        .HasForeignKey("RequesterUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("candidate_identity_claim_requester_user_id_fkey");
+
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "ReviewedByNavigation")
+                        .WithMany("CandidateIdentityClaimReviewedByNavigations")
+                        .HasForeignKey("ReviewedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("candidate_identity_claim_reviewed_by_fkey");
+
+                    b.HasOne("HRConnect.Domain.Entities.Candidate", "TargetCandidate")
+                        .WithMany("CandidateIdentityClaimTargetCandidates")
+                        .HasForeignKey("TargetCandidateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("candidate_identity_claim_target_candidate_id_fkey");
+
+                    b.Navigation("RequesterCandidate");
+
+                    b.Navigation("RequesterUser");
+
+                    b.Navigation("ReviewedByNavigation");
+
+                    b.Navigation("TargetCandidate");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.CandidateJobMatch", b =>
@@ -4689,6 +4954,18 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Submission");
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.UserEmailIdentity", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "User")
+                        .WithMany("UserEmailIdentities")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("user_email_identity_user_id_fkey");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.UserRole", b =>
                 {
                     b.HasOne("HRConnect.Domain.Entities.AppUser", "AssignedByNavigation")
@@ -4781,6 +5058,10 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.Navigation("Candidate");
 
+                    b.Navigation("CandidateIdentityClaimRequesterUsers");
+
+                    b.Navigation("CandidateIdentityClaimReviewedByNavigations");
+
                     b.Navigation("CommissionAdjustments");
 
                     b.Navigation("Commissions");
@@ -4827,6 +5108,8 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.Navigation("Submissions");
 
+                    b.Navigation("UserEmailIdentities");
+
                     b.Navigation("UserRoleAssignedByNavigations");
 
                     b.Navigation("UserRoleRevokedByNavigations");
@@ -4865,6 +5148,10 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Applications");
 
                     b.Navigation("CandidateCvs");
+
+                    b.Navigation("CandidateIdentityClaimRequesterCandidates");
+
+                    b.Navigation("CandidateIdentityClaimTargetCandidates");
 
                     b.Navigation("CandidateJobMatches");
 

@@ -104,4 +104,71 @@ public class CandidateRepository : ICandidateRepository
                 .SetProperty(c => c.UserId, userId)
                 .SetProperty(c => c.UpdatedAt, DateTime.UtcNow), cancellationToken) == 1;
     }
+
+    public Task<bool> HasIdentityBusinessDataAsync(
+        Guid candidateId,
+        CancellationToken cancellationToken = default) =>
+        _context.Candidates
+            .Where(candidate => candidate.CandidateId == candidateId)
+            .AnyAsync(candidate =>
+                candidate.CandidateCvs.Any() ||
+                candidate.Submissions.Any() ||
+                candidate.Applications.Any() ||
+                candidate.CandidateJobMatches.Any() ||
+                candidate.CandidateSkills.Any(), cancellationToken);
+
+    public async Task<bool> TrySwapIdentityCandidateAsync(
+        Guid placeholderCandidateId,
+        Guid targetCandidateId,
+        Guid userId,
+        string normalizedEmail,
+        CancellationToken cancellationToken = default)
+    {
+        if (placeholderCandidateId == targetCandidateId) return true;
+
+        var now = DateTime.UtcNow;
+        var placeholderUpdated = await _context.Candidates
+            .Where(candidate =>
+                candidate.CandidateId == placeholderCandidateId &&
+                candidate.UserId == userId &&
+                candidate.Status == "ACTIVE" &&
+                candidate.MergedIntoCandidateId == null &&
+                !candidate.CandidateCvs.Any() &&
+                !candidate.Submissions.Any() &&
+                !candidate.Applications.Any() &&
+                !candidate.CandidateJobMatches.Any() &&
+                !candidate.CandidateSkills.Any())
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(candidate => candidate.UserId, (Guid?)null)
+                .SetProperty(candidate => candidate.Status, "ARCHIVED")
+                .SetProperty(candidate => candidate.MergedIntoCandidateId, targetCandidateId)
+                .SetProperty(candidate => candidate.UpdatedAt, now), cancellationToken);
+        if (placeholderUpdated != 1) return false;
+
+        var targetUpdated = await _context.Candidates
+            .Where(candidate =>
+                candidate.CandidateId == targetCandidateId &&
+                candidate.UserId == null &&
+                candidate.Status == "ACTIVE" &&
+                candidate.MergedIntoCandidateId == null &&
+                candidate.NormalizedEmail == normalizedEmail)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(candidate => candidate.UserId, userId)
+                .SetProperty(candidate => candidate.UpdatedAt, now), cancellationToken);
+
+        if (targetUpdated == 1) return true;
+
+        await _context.Candidates
+            .Where(candidate =>
+                candidate.CandidateId == placeholderCandidateId &&
+                candidate.UserId == null &&
+                candidate.Status == "ARCHIVED" &&
+                candidate.MergedIntoCandidateId == targetCandidateId)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(candidate => candidate.UserId, userId)
+                .SetProperty(candidate => candidate.Status, "ACTIVE")
+                .SetProperty(candidate => candidate.MergedIntoCandidateId, (Guid?)null)
+                .SetProperty(candidate => candidate.UpdatedAt, now), cancellationToken);
+        return false;
+    }
 }

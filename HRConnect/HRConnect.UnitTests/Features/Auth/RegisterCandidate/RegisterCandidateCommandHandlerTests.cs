@@ -14,6 +14,7 @@ namespace HRConnect.UnitTests.Features.Auth.RegisterCandidate;
 public class RegisterCandidateCommandHandlerTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IUserEmailIdentityRepository> _userEmailIdentityRepositoryMock;
     private readonly Mock<ICandidateRepository> _candidateRepositoryMock;
     private readonly Mock<IRoleRepository> _roleRepositoryMock;
     private readonly Mock<IUserRoleRepository> _userRoleRepositoryMock;
@@ -34,6 +35,7 @@ public class RegisterCandidateCommandHandlerTests
     public RegisterCandidateCommandHandlerTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
+        _userEmailIdentityRepositoryMock = new Mock<IUserEmailIdentityRepository>();
         _candidateRepositoryMock = new Mock<ICandidateRepository>();
         _roleRepositoryMock = new Mock<IRoleRepository>();
         _userRoleRepositoryMock = new Mock<IUserRoleRepository>();
@@ -59,6 +61,7 @@ public class RegisterCandidateCommandHandlerTests
 
         _handler = new RegisterCandidateCommandHandler(
             _userRepositoryMock.Object,
+            _userEmailIdentityRepositoryMock.Object,
             _candidateRepositoryMock.Object,
             _roleRepositoryMock.Object,
             _userRoleRepositoryMock.Object,
@@ -96,6 +99,29 @@ public class RegisterCandidateCommandHandlerTests
         // Assert
         await act.Should().ThrowAsync<ConflictException>()
             .WithMessage("*Email này đã được sử dụng*");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRejectRegistration_WhenEmailBelongsToAnotherActiveIdentity()
+    {
+        var command = new RegisterCandidateCommand(
+            "alias@example.com", "Password@123", "Nguyen Van A", "0901234567");
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns("alias@example.com");
+        _userRepositoryMock
+            .Setup(x => x.ExistsByEmailAsync("alias@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _userEmailIdentityRepositoryMock
+            .Setup(x => x.ExistsActiveByNormalizedEmailAsync("alias@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var action = () => _handler.Handle(command, CancellationToken.None);
+
+        await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*đã được sử dụng bởi một tài khoản khác*");
+        _userRepositoryMock.Verify(
+            x => x.AddAsync(It.IsAny<AppUser>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(
+            x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -226,6 +252,13 @@ public class RegisterCandidateCommandHandlerTests
 
         // Verify user added and transaction committed
         _userRepositoryMock.Verify(x => x.AddAsync(It.IsAny<AppUser>(), It.IsAny<CancellationToken>()), Times.Once);
+        _userEmailIdentityRepositoryMock.Verify(x => x.AddAsync(
+            It.Is<UserEmailIdentity>(identity =>
+                identity.UserId == result.Data.UserId &&
+                identity.NormalizedEmail == "candidate@example.com" &&
+                identity.Kind == "PRIMARY" &&
+                identity.Status == "PENDING"),
+            It.IsAny<CancellationToken>()), Times.Once);
         _userRoleRepositoryMock.Verify(x => x.AddAsync(It.IsAny<UserRole>(), It.IsAny<CancellationToken>()), Times.Once);
         _userTokenRepositoryMock.Verify(x => x.AddAsync(It.IsAny<UserToken>(), It.IsAny<CancellationToken>()), Times.Once);
         _emailOutboxRepositoryMock.Verify(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()), Times.Once);

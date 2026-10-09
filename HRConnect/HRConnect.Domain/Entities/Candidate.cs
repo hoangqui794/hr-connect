@@ -48,6 +48,10 @@ public partial class Candidate
 
     public virtual ICollection<CandidateCv> CandidateCvs { get; set; } = new List<CandidateCv>();
 
+    public virtual ICollection<CandidateIdentityClaim> CandidateIdentityClaimRequesterCandidates { get; set; } = new List<CandidateIdentityClaim>();
+
+    public virtual ICollection<CandidateIdentityClaim> CandidateIdentityClaimTargetCandidates { get; set; } = new List<CandidateIdentityClaim>();
+
     public virtual ICollection<CandidateJobMatch> CandidateJobMatches { get; set; } = new List<CandidateJobMatch>();
 
     public virtual ICollection<CandidateSkill> CandidateSkills { get; set; } = new List<CandidateSkill>();
