@@ -1766,6 +1766,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("'PUBLIC'::character varying")
                 .HasComment("D07-ready job visibility. Exact actor permissions remain a business-rule/authorization concern.")
                 .HasColumnName("visibility");
+            entity.Property(e => e.SourcingTarget).HasColumnName("sourcing_target");
+            entity.Property(e => e.SourcingPricePerCv).HasPrecision(18, 2).HasColumnName("sourcing_price_per_cv");
+            entity.Property(e => e.FeeMultiplier).HasPrecision(5, 2).HasColumnName("fee_multiplier");
+            entity.Property(e => e.WarrantyDays).HasColumnName("warranty_days");
+            entity.Property(e => e.PaymentDueDays).HasColumnName("payment_due_days");
 
             entity.HasOne(d => d.Company).WithMany(p => p.Jobs)
                 .HasForeignKey(d => d.CompanyId)

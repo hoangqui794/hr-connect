@@ -31,7 +31,15 @@ public interface IPlacementFinanceService
 }
 
 /// <summary>What the placement handler already loaded; avoids reloading the application.</summary>
-public sealed record JobApplicationContext(Guid ApplicationId, Guid CompanyId, Guid ServiceTypeId, string? ServiceTypeCode, Offer Offer);
+public sealed record JobApplicationContext(
+    Guid ApplicationId,
+    Guid CompanyId,
+    Guid ServiceTypeId,
+    string? ServiceTypeCode,
+    Offer Offer,
+    decimal? FeeMultiplier = null,
+    int? WarrantyDays = null,
+    int? PaymentDueDays = null);
 
 public sealed class PlacementFinanceService : IPlacementFinanceService
 {
@@ -65,12 +73,22 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
         var now = DateTime.UtcNow;
         var warnings = new List<string>();
 
+        var warrantyDays = (context.WarrantyDays.HasValue && context.WarrantyDays.Value > 0)
+            ? context.WarrantyDays.Value
+            : _settings.WarrantyDays;
+        var feeMultiplier = (context.FeeMultiplier.HasValue && context.FeeMultiplier.Value > 0)
+            ? context.FeeMultiplier.Value
+            : _settings.HeadhuntFeeMultiplier;
+        var paymentDueDays = (context.PaymentDueDays.HasValue && context.PaymentDueDays.Value > 0)
+            ? context.PaymentDueDays.Value
+            : _settings.PaymentDueDays;
+
         var warranty = new Warranty
         {
             WarrantyId = Guid.NewGuid(),
             PlacementId = placement.PlacementId,
             StartDate = placement.ActualStartDate,
-            EndDate = placement.ActualStartDate.AddDays(_settings.WarrantyDays),
+            EndDate = placement.ActualStartDate.AddDays(warrantyDays),
             Status = WarrantyStates.Active,
             CreatedAt = now,
             UpdatedAt = now,
@@ -86,10 +104,10 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
                 PlacementId = placement.PlacementId,
                 CompanyId = context.CompanyId,
                 BaseSalary = salary,
-                FeeMultiplier = _settings.HeadhuntFeeMultiplier,
-                Amount = decimal.Round(salary * _settings.HeadhuntFeeMultiplier, 2, MidpointRounding.AwayFromZero),
+                FeeMultiplier = feeMultiplier,
+                Amount = decimal.Round(salary * feeMultiplier, 2, MidpointRounding.AwayFromZero),
                 CurrencyCode = string.IsNullOrWhiteSpace(context.Offer.CurrencyCode) ? "VND" : context.Offer.CurrencyCode.Trim().ToUpperInvariant(),
-                DueDate = placement.ActualStartDate.AddDays(_settings.PaymentDueDays),
+                DueDate = placement.ActualStartDate.AddDays(paymentDueDays),
                 Status = ServiceFeeStates.Pending,
                 CreatedAt = now,
                 UpdatedAt = now,
