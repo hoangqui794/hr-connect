@@ -11,6 +11,7 @@ import '@/features/admin-console/admin-console.css';
 import { CheckOutlined, CloseOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { Job, JobRejectReasonCode } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
+import { useAlertStore } from '@/stores/alertStore';
 import { useJobDetail, useJobMutations, useJobReviewQueue } from './useJobQueries';
 import { JobDetailPanel } from './JobDetailPanel';
 import { ReasonModal } from './ReasonModal';
@@ -52,8 +53,9 @@ export const JobReviewPage: React.FC = () => {
   const detail = useJobDetail(selectedId);
   const { approve, reject } = useJobMutations();
 
+  // Hiển thị công việc mới gửi nhất lên trên cùng của danh sách chờ duyệt
   const jobs = useMemo(
-    () => [...(queue.data ?? [])].sort((a, b) => new Date(waitingSince(a)).getTime() - new Date(waitingSince(b)).getTime()),
+    () => [...(queue.data ?? [])].sort((a, b) => new Date(waitingSince(b)).getTime() - new Date(waitingSince(a)).getTime()),
     [queue.data]
   );
 
@@ -76,7 +78,16 @@ export const JobReviewPage: React.FC = () => {
       onOk: () =>
         approve
           .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken })
-          .then((res) => message.success(res.message))
+          .then((res) => {
+            message.success(res.message);
+            useAlertStore.getState().addAlert({
+              type: 'success',
+              title: 'Tin tuyển dụng đã được duyệt',
+              message: `Tin tuyển dụng "${job.title}" đã được Internal HR phê duyệt và công bố công khai.`,
+              actionLabel: 'Xem tin tuyển dụng',
+              actionRoute: `/client/jobs?highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
+            });
+          })
           .catch((err) => message.error(getApiErrorMessage(err))),
     });
 
@@ -85,7 +96,7 @@ export const JobReviewPage: React.FC = () => {
       <PageHero
         eyebrow="Vận hành"
         title="Duyệt tin tuyển dụng"
-        description="Kiểm tra mô tả và yêu cầu trước khi tin được công bố. Tin gửi lâu nhất ở đầu danh sách."
+        description="Kiểm tra mô tả và yêu cầu trước khi tin được công bố. Tin gửi mới nhất ở đầu danh sách."
         actions={
           <Button size="large" icon={<ReloadOutlined />} loading={queue.isFetching && !queue.isLoading} onClick={() => queue.refetch()}>
             Tải lại
@@ -176,6 +187,13 @@ export const JobReviewPage: React.FC = () => {
             })
             .then((res) => {
               message.success(res.message);
+              useAlertStore.getState().addAlert({
+                type: 'error',
+                title: 'Tin tuyển dụng bị từ chối duyệt',
+                message: `Tin tuyển dụng "${job.title}" đã bị từ chối: ${reasonText || 'Vui lòng kiểm tra lại yêu cầu'}.`,
+                actionLabel: 'Xem tin tuyển dụng',
+                actionRoute: `/client/jobs?highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
+              });
               setRejectOpen(false);
             })
             .catch((err) => message.error(getApiErrorMessage(err)))

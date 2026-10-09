@@ -285,6 +285,88 @@ const moneyInputProps = {
   parser: (v?: string) => Number((v ?? '').replace(/\D/g, '')),
 };
 
+const STANDARD_CATEGORIES = [
+  'Kỹ thuật / Chuyên môn',
+  'Kinh nghiệm làm việc',
+  'Ngoại ngữ',
+  'Học vấn / Bằng cấp',
+  'Chứng chỉ nghề nghiệp',
+  'Kỹ năng mềm',
+] as const;
+
+const OTHER_CATEGORY_VALUE = '__OTHER__';
+
+const RequirementCategoryField: React.FC<{
+  value?: string;
+  onChange?: (val: string | undefined) => void;
+}> = ({ value, onChange }) => {
+  const isStandard = Boolean(value && (STANDARD_CATEGORIES as readonly string[]).includes(value));
+  const isCustom = Boolean(value && !isStandard);
+
+  const [selectedType, setSelectedType] = useState<string | undefined>(() => {
+    if (!value) return undefined;
+    if (isStandard) return value;
+    return OTHER_CATEGORY_VALUE;
+  });
+
+  const [customText, setCustomText] = useState<string>(() => (isCustom ? value! : ''));
+
+  useEffect(() => {
+    if (!value) {
+      setSelectedType(undefined);
+      setCustomText('');
+    } else if ((STANDARD_CATEGORIES as readonly string[]).includes(value)) {
+      setSelectedType(value);
+      setCustomText('');
+    } else {
+      setSelectedType(OTHER_CATEGORY_VALUE);
+      setCustomText(value);
+    }
+  }, [value]);
+
+  const handleSelectChange = (newVal?: string) => {
+    setSelectedType(newVal);
+    if (!newVal) {
+      onChange?.(undefined);
+    } else if (newVal === OTHER_CATEGORY_VALUE) {
+      onChange?.(customText.trim() ? customText.trim() : undefined);
+    } else {
+      onChange?.(newVal);
+    }
+  };
+
+  const handleCustomTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const text = e.target.value;
+    setCustomText(text);
+    onChange?.(text.trim() ? text.trim() : undefined);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Select
+        placeholder="Chọn nhóm…"
+        value={selectedType}
+        onChange={handleSelectChange}
+        allowClear
+        className="w-full"
+        options={[
+          ...STANDARD_CATEGORIES.map((c) => ({ value: c, label: c })),
+          { value: OTHER_CATEGORY_VALUE, label: 'Khác (Tự nhập…)' },
+        ]}
+      />
+      {selectedType === OTHER_CATEGORY_VALUE && (
+        <Input
+          placeholder="Nhập tên nhóm khác…"
+          value={customText}
+          onChange={handleCustomTextChange}
+          className="text-xs"
+          autoFocus
+        />
+      )}
+    </div>
+  );
+};
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export const JobFormPage: React.FC = () => {
@@ -647,7 +729,7 @@ export const JobFormPage: React.FC = () => {
                   <div className="space-y-3">
                     {fields.map((field, index) => (
                       <div key={field.key} className="rounded-xl bg-slate-50 p-3 sm:p-4">
-                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 md:grid-cols-[150px_minmax(0,1fr)_170px_auto]">
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 md:grid-cols-[145px_minmax(0,1fr)_205px_auto]">
                           <Form.Item name={[field.name, 'requirementType']} label="Mức độ" className="mb-2 md:mb-0" rules={[{ required: true, message: 'Chọn mức độ.' }]}>
                             <Radio.Group optionType="button" buttonStyle="solid" size="middle">
                               <Radio.Button value="MUST_HAVE">Bắt buộc</Radio.Button>
@@ -666,7 +748,7 @@ export const JobFormPage: React.FC = () => {
                           </div>
                           <div className="order-4 col-span-2 md:order-none md:col-span-1">
                             <Form.Item name={[field.name, 'category']} label="Nhóm" className="mb-0">
-                              <Input placeholder="Kỹ năng, ngoại ngữ…" />
+                              <RequirementCategoryField />
                             </Form.Item>
                           </div>
                           <Button

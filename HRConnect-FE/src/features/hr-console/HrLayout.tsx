@@ -26,6 +26,7 @@ import { authService } from '@/services/authService';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { Initials } from '@/features/admin-console/ui';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import '@/features/admin-console/admin-console.css';
 
 interface NavItem {
@@ -196,8 +197,10 @@ export const HrLayout: React.FC = () => {
             )}
           </nav>
           </div>
-          <Dropdown
-            trigger={['click']}
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <Dropdown
+              trigger={['click']}
             menu={{
               items: [
                 { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ của tôi' },
@@ -219,6 +222,7 @@ export const HrLayout: React.FC = () => {
               </span>
             </button>
           </Dropdown>
+          </div>
         </header>
 
         <AdminTopProgress offsetLeft={compact ? 0 : width} />

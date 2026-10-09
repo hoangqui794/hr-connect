@@ -15,6 +15,7 @@ import { authService } from '@/services/authService';
 import { Initials } from '@/features/admin-console/ui';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import '@/features/admin-console/admin-console.css';
 
 const NAV = [
@@ -106,6 +107,7 @@ export const ClientShell: React.FC = () => {
             >
               Đăng tin
             </Button>
+            <NotificationBell />
             <Dropdown
               trigger={['click']}
               menu={{
