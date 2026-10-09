@@ -24,7 +24,7 @@ class RequirementMatch(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     suggested_evidence: list[dict] = Field(default_factory=list, alias="suggestedEvidence")
     match_method: Literal[
-        "DETERMINISTIC", "DETERMINISTIC_PARTIAL", "NOT_FOUND", "UNKNOWN"
+        "DETERMINISTIC", "DETERMINISTIC_PARTIAL", "SEMANTIC_PARTIAL", "NOT_FOUND", "UNKNOWN"
     ] = Field(alias="matchMethod")
 
 

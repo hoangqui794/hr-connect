@@ -3,8 +3,13 @@
 Vocabulary identifies capabilities, not people, companies, or fixture filenames.
 Unrecognized clauses remain visible for review. Retrieval never proves a claim.
 """
+import json
 import re
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
+
+from app.core.config import get_settings
 
 from app.schemas.matching_request import JobRequirement
 
@@ -43,6 +48,33 @@ CAPABILITIES = (
     Capability("Content creation", r"content creation|sáng tạo nội dung", r"(?:created|produced|wrote).{0,30}(?:content|articles|posts)|sáng tạo nội dung|viết bài"),
     Capability("Campaign analysis", r"campaign analysis|phân tích chiến dịch", r"analy[sz](?:ed|ing).{0,30}campaign|phân tích.{0,20}chiến dịch"),
 )
+_DEFAULT_LEXICON = Path(__file__).resolve().parents[1] / "data" / "capability_lexicon.json"
+
+
+@lru_cache(maxsize=1)
+def load_capabilities() -> tuple[Capability, ...]:
+    """Built-in capabilities merged with the configurable lexicon file.
+
+    The lexicon lets HR widen accepted phrasings without code changes; every
+    match it produces is still flagged for human review.
+    """
+    configured = get_settings().capability_lexicon_path
+    path = Path(configured) if configured else _DEFAULT_LEXICON
+    if not path.is_file():
+        return CAPABILITIES
+    lexicon = json.loads(path.read_text(encoding="utf-8"))
+    extend = lexicon.get("extend", {})
+    merged = [
+        Capability(c.name, c.trigger, "|".join([c.evidence, *extend[c.name]]) if extend.get(c.name) else c.evidence)
+        for c in CAPABILITIES
+    ]
+    merged += [Capability(item["name"], item["trigger"], item["evidence"]) for item in lexicon.get("add", [])]
+    for capability in merged:
+        re.compile(capability.trigger)
+        re.compile(capability.evidence)
+    return tuple(merged)
+
+
 _UNSUPPORTED = re.compile(r"\b(?:no|not|without|lack\w*|want to|wish to|seeking to|plan to|aim to|aspir\w*)\b|chưa có|không có|mong muốn", re.I)
 _THIRD_PARTY = re.compile(r"\bby (?:the )?(?:ba|another|other|external|design)\b|do nhóm khác", re.I)
 _LEADING_CONNECTOR = re.compile(r"^(?:(?:and|or|và|hoặc)\b[\s,:;-]*)+", re.I)
@@ -76,6 +108,11 @@ def evidence_spans(text: str) -> list[dict]:
                 start = match.start() + part.start() + len(part.group()) - len(part.group().lstrip())
                 spans.append({"text": value, "start": start, "end": start + len(value), "source": "cvText"})
     return spans
+
+
+def is_supported_span(text: str) -> bool:
+    """False for aspirations, negations, or work credited to someone else."""
+    return not _UNSUPPORTED.search(text) and not _THIRD_PARTY.search(text)
 
 
 def _normalize_fragment(fragment: str) -> str:
@@ -127,7 +164,7 @@ def evaluate_clauses(requirement: JobRequirement, text: str) -> dict | None:
         return None
     if requirement.evidence_groups and not re.search(r"backend.*(?:and|và).*client.*performance", content, re.I):
         return None
-    capabilities = [c for c in CAPABILITIES if re.search(c.trigger, content, re.I)]
+    capabilities = [c for c in load_capabilities() if re.search(c.trigger, content, re.I)]
     # Keep unsupported conjuncts instead of reporting a full match for only
     # the recognized part (e.g. negotiation AND underwater welding).
     fragments = re.split(r"\s+\b(?:and|or|và|hoặc)\b\s+|,\s*", content, flags=re.I)

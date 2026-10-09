@@ -1,0 +1,17 @@
+{
+  "description": "Extra phrasings for OTHER requirements. 'extend' adds evidence patterns to a built-in capability by name; 'add' defines a new capability (trigger matches the job requirement, evidence matches a CV sentence). Patterns are case-insensitive regular expressions. Every match stays flagged for human review.",
+  "extend": {
+    "Teamwork": ["led (?:a |the )?(?:development |engineering |dev )?team", "team lead\\w*", "cross.functional", "worked (?:closely )?with (?:stakeholders|customers|clients|product)"],
+    "Database design": ["database partitioning", "partition\\w* (?:tables?|data)", "\\bERD\\b", "normali[sz]\\w* (?:schema|database|tables?)", "thiết kế (?:database|csdl)"],
+    "Query optimization": ["optimi[sz]\\w* (?:sql|database)", "execution plans?", "tối ưu (?:sql|database|csdl)"],
+    "Problem analysis": ["debugg\\w*", "investigat\\w* .{0,30}(?:issue|bug|incident|problem)", "resolv\\w* .{0,30}(?:issue|bug|incident)"],
+    "Technical proposals": ["architecture discussions?", "design reviews?", "recommend\\w* .{0,40}(?:solution|architecture|approach)", "established technical foundation"]
+  },
+  "add": [
+    {"name": "OOP", "trigger": "\\bOOP\\b|object.oriented", "evidence": "\\bOOP\\b|object.oriented|design patterns|\\bC#|\\bJava\\b"},
+    {"name": "SOLID principles", "trigger": "\\bSOLID\\b", "evidence": "\\bSOLID\\b"},
+    {"name": "Design patterns", "trigger": "design patterns?", "evidence": "design patterns?|\\bCQRS\\b|mediator|repository pattern"},
+    {"name": "Testable code", "trigger": "testab\\w*", "evidence": "unit test\\w*|integration test\\w*|\\bxunit\\b|\\bjest\\b|testab\\w*"},
+    {"name": "Maintainable code", "trigger": "maintainab\\w*|readab\\w*|clean code", "evidence": "clean (?:architecture|code)|maintainab\\w*|code quality|code reviews?|refactor\\w*"}
+  ]
+}

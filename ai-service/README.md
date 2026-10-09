@@ -8,7 +8,7 @@ The service returns evidence and an experimental `MatchScore` only. It never ret
 
 ## Pipeline
 
-`CV → safe validation → layout-aware PDF/DOCX extraction or OCR → structured CV parsing → deterministic MUST_HAVE/SHOULD_HAVE matching → Sentence-BERT embeddings (`paraphrase-multilingual-MiniLM-L12-v2`, see `EMBEDDING_MODEL_EVALUATION.md`) → cosine similarity → experimental score → deterministic evidence → JSON`
+`CV → safe validation → layout-aware PDF/DOCX extraction or OCR → structured CV parsing → deterministic MUST_HAVE/SHOULD_HAVE matching → Sentence-BERT embeddings (`paraphrase-multilingual-MiniLM-L12-v2`, see `EMBEDDING_MODEL_EVALUATION.md`) → chunk-level cosine similarity (CV and JD split into chunks, rescaled) → optional cross-encoder evidence reranking → bounded semantic partial credit for soft requirements → experimental score → deterministic evidence → JSON`
 
 Rule matching and semantic similarity are separate. A high semantic score does not silently turn a missing MUST_HAVE into a deterministic match. Explanations are generated only from observed evidence; no LLM is used.
 
@@ -111,6 +111,12 @@ pytest
 ```
 
 Tests inject deterministic fake embeddings and OCR, so the test suite does not download embedding or EasyOCR models. Structured extraction is deliberately conservative: uncertain values remain null and every extracted record carries evidence/confidence. Phase 1 reconstructs digital PDF layouts; OCR bounding-box layout reconstruction and highly graphical/table-driven CVs remain follow-up work and may require human review.
+
+## Measuring accuracy
+
+`evaluation/README.md` explains how to score HR-labelled cases (`tools/evaluate_scoring.py`), calibrate weights
+(`--calibrate`), and compare stored scores with real HR decisions (`evaluation/hr_feedback.sql` + `tools/hr_feedback_report.py`).
+Accepted phrasings for soft requirements live in `app/data/capability_lexicon.json`.
 
 ## Deploy to Render
 

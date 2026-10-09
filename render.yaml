@@ -16,7 +16,17 @@ services:
       - key: EMBEDDING_MODEL
         value: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
       - key: SEMANTIC_MATCH_THRESHOLD
-        value: "0.50"
+        value: "0.35"
+      - key: SEMANTIC_FLOOR
+        value: "0.10"
+      - key: SEMANTIC_CEILING
+        value: "0.55"
+      - key: EVIDENCE_CREDIT_THRESHOLD
+        value: "0.65"
+      # Cross-encoder reranker needs ~0.5 GB more RAM; enable on the pro plan:
+      # cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
+      - key: RERANKER_MODEL
+        value: ""
       - key: LOG_LEVEL
         value: INFO
       - key: OCR_LANGUAGES
