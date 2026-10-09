@@ -160,7 +160,7 @@ const ConsolePayoutsPlaceholder = React.lazy(() =>
   import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminPayoutsPlaceholder }))
 );
 const ConsoleSettingsPlaceholder = React.lazy(() =>
-  import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminSettingsPlaceholder }))
+  import('@/features/admin-console/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage }))
 );
 
 // ── Candidate & Affiliate workspaces (features/portal), MF-02 on the real API ──
