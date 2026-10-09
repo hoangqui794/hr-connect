@@ -163,6 +163,8 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/admin/dashboard" replace /> },
       { path: 'dashboard', element: <AppRoutes.ConsoleOverviewPage /> },
       { path: 'approvals', element: <AppRoutes.ConsoleApprovalsPage /> },
+      { path: 'candidate-identity-claims', element: <AppRoutes.ConsoleIdentityClaimsPage /> },
+      { path: 'candidate-identity-claims/:claimId', element: <AppRoutes.ConsoleIdentityClaimDetailPage /> },
       // Old entry points open the unified queue pre-filtered by type.
       { path: 'companies', element: <AppRoutes.ConsoleApprovalsPage presetType="CLIENT" /> },
       { path: 'affiliates', element: <AppRoutes.ConsoleApprovalsPage presetType="AFFILIATE" /> },
@@ -199,6 +201,8 @@ export const router = createBrowserRouter([
       { path: 'submission-consents/:submissionId', element: <AppRoutes.CandidateSubmissionConsentPage /> },
       { path: 'cvs', element: <AppRoutes.CandidateCvsPage /> },
       { path: 'affiliate-cvs', element: <AppRoutes.CandidateAffiliateCvsPage /> },
+      { path: 'affiliate-cvs/:cvId', element: <AppRoutes.CandidateAffiliateCvDetailPage /> },
+      { path: 'settings/email-identities', element: <AppRoutes.CandidateIdentityPage /> },
       { path: 'profile', element: <AppRoutes.CandidateProfilePage /> },
       // Saved jobs had no backend; send people to the job search.
       { path: 'saved-jobs', element: <Navigate to="/jobs" replace /> },

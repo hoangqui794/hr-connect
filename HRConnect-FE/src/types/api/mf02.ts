@@ -48,6 +48,180 @@ export interface CandidateAffiliateCv {
   createdAt: string;
 }
 
+export interface CandidateAffiliateCvDetail extends CandidateAffiliateCv {
+  reuseChangedAt: string | null;
+  declinedSubmissionCount: number;
+  expiredSubmissionCount: number;
+  updatedAt: string;
+}
+
+export interface CandidateAffiliateCvUsage {
+  submissionId: string;
+  jobId: string;
+  jobTitle: string;
+  companyId: string;
+  companyName: string;
+  affiliateUserId: string;
+  affiliateDisplayName: string;
+  submissionStatus: string;
+  submittedAt: string;
+  consentStatus: string | null;
+  consentRequestedAt: string | null;
+  consentExpiresAt: string | null;
+  consentRespondedAt: string | null;
+  applicationId: string | null;
+  applicationStatus: string | null;
+  applicationCurrentStage: string | null;
+  aiStatus: string | null;
+  aiMatchScore: number | null;
+  aiMatchTier: string | null;
+  aiCompletedAt: string | null;
+}
+
+export interface CandidateAffiliateCvReuseResult {
+  cvId: string;
+  affiliateReuseStatus: string;
+  reuseConcurrencyToken: string;
+  reuseChangedAt: string | null;
+}
+
+export interface CandidateAffiliateCvAdoptionResult {
+  sourceCvId: string;
+  cvId: string;
+  title: string;
+  fileName: string | null;
+  isPrimary: boolean;
+  status: string;
+  alreadyAdopted: boolean;
+  createdAt: string;
+}
+
+export interface CandidateEmailIdentity {
+  emailIdentityId: string;
+  email: string;
+  kind: 'PRIMARY' | 'ALIAS' | string;
+  status: 'VERIFIED' | 'PENDING' | 'REVOKED' | string;
+  verificationSource: string;
+  verifiedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+  concurrencyToken: string;
+  canRevoke: boolean;
+  canMakePrimary: boolean;
+}
+
+export interface CandidateIdentityClaimState {
+  claimId: string;
+  maskedDestination: string;
+  expiresAt: string;
+  resendAfter: string;
+  concurrencyToken: string;
+  resendCount?: number;
+  emailDeliveryStatus?: string;
+}
+
+export interface CandidateIdentityClaimVerification {
+  success: boolean;
+  message: string;
+  claimId: string;
+  status: 'COMPLETED' | 'PENDING_ADMIN_REVIEW' | string;
+  candidateId: string | null;
+  concurrencyToken: string;
+}
+
+export type AdminIdentityClaimStatus =
+  | 'PENDING_ADMIN_REVIEW'
+  | 'COMPLETED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'CANCELLED'
+  | string;
+
+export interface AdminIdentityClaimListItem {
+  claimId: string;
+  requesterUserId: string;
+  requesterCandidateId: string;
+  targetCandidateId: string | null;
+  maskedAssertedEmail: string;
+  status: AdminIdentityClaimStatus;
+  reviewReason: string | null;
+  requesterDisplayName: string;
+  requesterPrimaryEmail: string;
+  requesterCandidateName: string;
+  targetCandidateName: string | null;
+  createdAt: string;
+  verifiedAt: string | null;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+}
+
+export interface AdminIdentityClaimListParams {
+  status?: AdminIdentityClaimStatus;
+  search?: string;
+  page: number;
+  pageSize: number;
+  sortBy?: 'createdAt' | 'verifiedAt' | 'reviewedAt';
+  sortDirection?: 'asc' | 'desc';
+}
+
+export interface AdminIdentityClaimCandidateDetail {
+  candidateId: string;
+  userId: string | null;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  status: string;
+  mergedIntoCandidateId: string | null;
+  cvCount: number;
+  submissionCount: number;
+  applicationCount: number;
+  matchCount: number;
+  hasBusinessData: boolean;
+}
+
+export interface AdminIdentityClaimEmailOwner {
+  emailIdentityId: string;
+  userId: string;
+  primaryEmail: string;
+  displayName: string;
+  kind: string;
+  status: string;
+}
+
+export interface AdminIdentityClaimDetail {
+  claimId: string;
+  requesterUserId: string;
+  requesterDisplayName: string;
+  requesterPrimaryEmail: string;
+  requesterUserStatus: string;
+  assertedEmail: string;
+  status: AdminIdentityClaimStatus;
+  reviewReason: string | null;
+  expiresAt: string;
+  attemptCount: number;
+  resendCount: number;
+  lastSentAt: string | null;
+  verifiedAt: string | null;
+  completedAt: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  concurrencyToken: string;
+  requesterCandidate: AdminIdentityClaimCandidateDetail;
+  targetCandidate: AdminIdentityClaimCandidateDetail | null;
+  currentEmailOwner: AdminIdentityClaimEmailOwner | null;
+}
+
+export interface AdminIdentityClaimDecisionResult {
+  success: boolean;
+  message: string;
+  claimId: string;
+  status: AdminIdentityClaimStatus;
+  canonicalCandidateId?: string;
+  concurrencyToken: string;
+}
+
 export interface CandidateApplicationDetail extends CandidateApplication {
   candidateId: string;
   companyId: string | null;
