@@ -13,11 +13,11 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8001
     log_level: str = "INFO"
-    embedding_model: str = "BAAI/bge-m3"
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     must_have_weight: float = 0.50
     should_have_weight: float = 0.20
     semantic_weight: float = 0.30
-    semantic_match_threshold: float = 0.65
+    semantic_match_threshold: float = 0.50
     max_upload_size_mb: int = Field(default=10, ge=1, le=50)
     max_pdf_pages: int = Field(default=20, ge=1, le=200)
     max_image_pixels: int = Field(default=40_000_000, ge=1_000_000)
