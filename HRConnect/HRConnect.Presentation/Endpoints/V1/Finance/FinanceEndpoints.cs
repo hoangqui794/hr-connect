@@ -52,6 +52,17 @@ public static class FinanceEndpoints
             .WithSummary("Internal HR xác minh báo nghỉ việc")
             .WithDescription("Xác nhận: bảo hành VOIDED, hoa hồng CANCELLED, Client được tuyển thay thế. Bác bỏ (cần ghi chú): bảo hành ACTIVE, hoa hồng PENDING. Quyền warranty.manage.");
 
+        group.MapGet("/warranties", (
+                ClaimsPrincipal user, [FromServices] ISender sender, [FromQuery] string? status, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
+            Execute(user, [WarrantyManage, CommissionManage, CommissionView, PlacementConfirm], userId =>
+            {
+                var platform = Has(user, WarrantyManage) || Has(user, CommissionManage) || Has(user, CommissionView);
+                return sender.Send(new GetWarrantiesQuery(platform ? null : userId, status, page, pageSize), ct);
+            }))
+            .WithName("GetWarranties")
+            .WithSummary("Danh sách bảo hành HEADHUNT_COD")
+            .WithDescription("Internal HR / Admin xem tất cả (báo nghỉ CLAIMED lên đầu); Client (placement.confirm) chỉ xem của doanh nghiệp mình. Trạng thái: ACTIVE, CLAIMED, PASSED, VOIDED.");
+
         group.MapGet("/service-fees", (
                 ClaimsPrincipal user, [FromServices] ISender sender, [FromQuery] string? status, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
             Execute(user, [CommissionManage, CommissionView, PlacementConfirm], userId =>

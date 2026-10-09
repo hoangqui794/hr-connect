@@ -16,6 +16,11 @@ public sealed record CommissionDto(
     string? CandidateName, decimal Amount, decimal? BaseAmount, string Status, string? MilestoneType,
     DateOnly? WarrantyEndDate, string? WarrantyStatus, string? ServiceFeeStatus, DateTime? ApprovedAt, DateTime CreatedAt);
 
+public sealed record WarrantyDto(
+    Guid WarrantyId, Guid PlacementId, string? CompanyName, string? JobTitle, string? CandidateName, string? Position,
+    DateOnly StartDate, DateOnly? EndDate, string Status, string PlacementStatus, string? ResultNote,
+    string? ServiceFeeStatus, decimal? ServiceFeeAmount, string? CommissionStatus, decimal? CommissionAmount);
+
 public sealed record PayoutDto(
     Guid PayoutId, Guid CommissionId, decimal Amount, DateTime? PayoutDate, string? Method, string? TransactionReference,
     string Status, int AttemptNo, DateTime CreatedAt);
@@ -26,12 +31,16 @@ public sealed record GetServiceFeesQuery(Guid? CompanyUserId, string? Status, in
 /// <summary>AffiliateUserId limits the list to the affiliate's own commissions.</summary>
 public sealed record GetCommissionsQuery(Guid? AffiliateUserId, string? Status, int Page, int PageSize) : IRequest<PagedResult<CommissionDto>>;
 
+/// <summary>CompanyUserId limits the list to that Client's company; null lists every warranty.</summary>
+public sealed record GetWarrantiesQuery(Guid? CompanyUserId, string? Status, int Page, int PageSize) : IRequest<PagedResult<WarrantyDto>>;
+
 public sealed record GetPayoutsQuery(Guid? AffiliateUserId, int Page, int PageSize) : IRequest<PagedResult<PayoutDto>>;
 
 public sealed class FinanceQueryHandlers :
     IRequestHandler<GetServiceFeesQuery, PagedResult<ServiceFeeDto>>,
     IRequestHandler<GetCommissionsQuery, PagedResult<CommissionDto>>,
-    IRequestHandler<GetPayoutsQuery, PagedResult<PayoutDto>>
+    IRequestHandler<GetPayoutsQuery, PagedResult<PayoutDto>>,
+    IRequestHandler<GetWarrantiesQuery, PagedResult<WarrantyDto>>
 {
     private readonly IFinanceRepository _financeRepository;
     private readonly ICompanyUserRepository _companyUserRepository;
@@ -80,6 +89,29 @@ public sealed class FinanceQueryHandlers :
         return new PagedResult<PayoutDto>(items.Select(p => new PayoutDto(
             p.PayoutId, p.CommissionId, p.Amount, p.PayoutDate, p.Method, p.TransactionReference,
             p.Status, p.AttemptNo, p.CreatedAt)).ToList(), total, page, pageSize);
+    }
+
+    public async Task<PagedResult<WarrantyDto>> Handle(GetWarrantiesQuery request, CancellationToken cancellationToken)
+    {
+        var (page, pageSize) = Normalize(request.Page, request.PageSize);
+        Guid? companyId = null;
+        if (request.CompanyUserId is Guid companyUserId)
+        {
+            var companyUser = await _companyUserRepository.GetByUserIdAsync(companyUserId, cancellationToken)
+                ?? throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+            companyId = companyUser.CompanyId;
+        }
+
+        var (items, total) = await _financeRepository.GetWarrantiesAsync(companyId, Upper(request.Status), page, pageSize, cancellationToken);
+        return new PagedResult<WarrantyDto>(items.Select(w =>
+        {
+            var commission = w.Placement?.Commissions.OrderByDescending(c => c.CreatedAt).FirstOrDefault();
+            return new WarrantyDto(
+                w.WarrantyId, w.PlacementId, w.Placement?.Application?.Job?.Company?.CompanyName,
+                w.Placement?.Application?.Job?.Title, w.Placement?.Application?.Candidate?.FullName, w.Placement?.Position,
+                w.StartDate, w.EndDate, w.Status, w.Placement?.Status ?? string.Empty, w.ResultNote,
+                w.Placement?.ServiceFee?.Status, w.Placement?.ServiceFee?.Amount, commission?.Status, commission?.Amount);
+        }).ToList(), total, page, pageSize);
     }
 
     private static (int Page, int PageSize) Normalize(int page, int pageSize) =>

@@ -7,6 +7,7 @@ using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Finance.Commands.Settlement;
 using HRConnect.Application.Features.Finance.Commands.WarrantyClaims;
 using HRConnect.Application.Features.Finance.Common;
+using HRConnect.Application.Features.Finance.Queries;
 using HRConnect.Application.Features.Settings;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
@@ -68,7 +69,22 @@ public class Mf05FinanceTests
             ActualStartDate = Start, Status = PlacementStates.Started, ConfirmedAt = now, CreatedAt = now, UpdatedAt = now,
             Application = application,
         };
-        _context.AddRange(job, application, offer, placement);
+        var company = new Company
+        {
+            CompanyId = _companyId, CompanyName = "ABC Technology", VerificationStatus = "VERIFIED", CreatedAt = now, UpdatedAt = now,
+        };
+        var candidate = new Candidate
+        {
+            CandidateId = application.CandidateId, FullName = "Nguyễn Văn Nam", ProfileVisibility = "PRIVATE", Status = "ACTIVE",
+            CreatedAt = now, UpdatedAt = now,
+        };
+        // Real databases guarantee these through foreign keys; required-navigation includes need them here too.
+        if (!_context.Companies.Local.Any(c => c.CompanyId == _companyId))
+        {
+            _context.Add(company);
+        }
+
+        _context.AddRange(candidate, job, application, offer, placement);
         if (attribution)
         {
             _context.Add(new Attribution
@@ -277,6 +293,29 @@ public class Mf05FinanceTests
         await ReportHandler()
             .Invoking(h => h.Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(30), "x", _actor), default))
             .Should().ThrowAsync<BadRequestException>();
+    }
+
+    [Fact]
+    public async Task Warranty_list_is_scoped_to_the_clients_company_and_filters_by_status()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        await ReportHandler().Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(3), "Nghỉ", _actor), default);
+
+        GetWarrantiesQuery Query(string? status) => new(_actor, status, 1, 20);
+        FinanceQueryHandlers HandlersFor(Guid companyId)
+        {
+            var companyUsers = new Mock<ICompanyUserRepository>();
+            companyUsers.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new CompanyUser { CompanyId = companyId, UserId = _actor, Status = "ACTIVE" });
+            return new FinanceQueryHandlers(Repository, companyUsers.Object);
+        }
+
+        var own = await HandlersFor(_companyId).Handle(Query("CLAIMED"), default);
+        own.TotalCount.Should().Be(1);
+        own.Items.Single().CommissionStatus.Should().Be(CommissionStates.OnHold);
+        (await HandlersFor(_companyId).Handle(Query("PASSED"), default)).TotalCount.Should().Be(0);
+        (await HandlersFor(Guid.NewGuid()).Handle(Query(null), default)).TotalCount.Should().Be(0);
     }
 
     // ---- approval and payout ----------------------------------------------------------------
