@@ -452,6 +452,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/admin/settings': [UserRole.ADMIN],
   '/admin/audit-trail': [UserRole.ADMIN],
   '/admin/approvals': [UserRole.ADMIN],
+  '/admin/jobs': [UserRole.ADMIN],
   '/admin/candidate-identity-claims': [UserRole.ADMIN],
   '/admin/candidate-identity-claims/:claimId': [UserRole.ADMIN],
   '/admin/service-types': [UserRole.ADMIN],

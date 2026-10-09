@@ -95,9 +95,11 @@ export const jobsApi = {
   },
 
   // ── Internal HR ─────────────────────────────────────────────────────────────
-  /** GET /internal/jobs/review — PENDING_REVIEW queue. */
-  async getReviewQueue(): Promise<Job[]> {
-    const res = await apiClient.get<Job[]>('/internal/jobs/review');
+  /** GET /internal/jobs/review — job review list with optional status filter (PENDING_REVIEW, ACTIVE, REJECTED, ALL). */
+  async getReviewQueue(status?: string): Promise<Job[]> {
+    const res = await apiClient.get<Job[]>('/internal/jobs/review', {
+      params: cleanParams({ status }),
+    });
     return res.data;
   },
 

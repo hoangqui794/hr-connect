@@ -13,6 +13,7 @@ import {
   BankOutlined,
   DashboardOutlined,
   DollarOutlined,
+  FileTextOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuOutlined,
@@ -42,6 +43,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: 'Vận hành',
     items: [
+      { to: '/admin/jobs', label: 'Duyệt tin tuyển dụng', icon: <FileTextOutlined /> },
       { to: '/admin/approvals', label: 'Phê duyệt tài khoản', icon: <SafetyCertificateOutlined /> },
       { to: '/admin/candidate-identity-claims', label: 'Danh tính Candidate', icon: <LinkOutlined /> },
       { to: '/admin/users', label: 'Người dùng', icon: <TeamOutlined /> },

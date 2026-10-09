@@ -18,7 +18,7 @@ export const jobQueryKeys = {
   mine: (status?: JobStatus) => [...jobQueryKeys.all, 'mine', status ?? 'ALL'] as const,
   search: (params: JobSearchParams) => [...jobQueryKeys.all, 'search', params] as const,
   detail: (jobId: string) => [...jobQueryKeys.all, 'detail', jobId] as const,
-  review: () => [...jobQueryKeys.all, 'review'] as const,
+  review: (status?: string) => [...jobQueryKeys.all, 'review', status ?? 'ALL'] as const,
   serviceTypes: ['mf01-service-types'] as const,
 };
 
@@ -40,8 +40,8 @@ export const useJobDetail = (jobId: string | undefined) =>
     enabled: Boolean(jobId),
   });
 
-export const useJobReviewQueue = () =>
-  useQuery({ queryKey: jobQueryKeys.review(), queryFn: () => jobsApi.getReviewQueue() });
+export const useJobReviewQueue = (status?: string) =>
+  useQuery({ queryKey: jobQueryKeys.review(status), queryFn: () => jobsApi.getReviewQueue(status) });
 
 export const useServiceTypes = () =>
   useQuery({

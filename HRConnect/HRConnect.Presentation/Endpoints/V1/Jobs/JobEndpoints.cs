@@ -238,9 +238,9 @@ public static class JobEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
-        review.MapGet("/review", async (ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
-        { if (!ReviewerCan(user, "job.review")) return Forbidden(); return await Run(async () => Results.Ok(await sender.Send(new GetJobsForReviewQuery(), ct))); }
-        ).WithName("GetJobsForReview").WithSummary("Lấy hàng đợi Job chờ xét duyệt");
+        review.MapGet("/review", async (string? status, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+        { if (!ReviewerCan(user, "job.review")) return Forbidden(); return await Run(async () => Results.Ok(await sender.Send(new GetJobsForReviewQuery(status), ct))); }
+        ).WithName("GetJobsForReview").WithSummary("Lấy danh sách Job cho Internal HR theo trạng thái xét duyệt (mặc định PENDING_REVIEW, hoặc ACTIVE, REJECTED, ALL...)");
         review.MapPost("/{jobId:guid}/approve", async (Guid jobId, Guid concurrencyToken, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.publish")) return Forbidden();

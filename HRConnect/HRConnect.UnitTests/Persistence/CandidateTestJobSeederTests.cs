@@ -48,12 +48,15 @@ public class CandidateTestJobSeederTests
             .Should().OnlyContain(group => group.Count() == CandidateTestJobSeeder.JobsPerServiceType);
         jobs.Should().OnlyContain(job =>
             job.Status == JobStatuses.Active &&
-            job.Visibility == JobVisibilities.Public &&
             job.SalaryMin > 0 &&
             job.SalaryMax >= job.SalaryMin &&
             job.Quantity > 0 &&
             job.JobRequirements.Count >= 4 &&
             job.JobSkills.Count >= 5);
+        jobs.Where(j => j.ServiceType.Code == "CV_APPLICATION")
+            .Should().OnlyContain(j => j.Visibility == JobVisibilities.Public);
+        jobs.Where(j => j.ServiceType.Code is "CV_SOURCING" or "HEADHUNT_COD")
+            .Should().OnlyContain(j => j.Visibility == JobVisibilities.PartnerOnly);
         jobs.Should().OnlyContain(job => job.JobRequirements.Sum(requirement => requirement.Weight) == 1.00m);
         jobs.Should().OnlyContain(job => job.JobSkills.Sum(skill => skill.Weight) == 1.00m);
 
@@ -100,7 +103,7 @@ public class CandidateTestJobSeederTests
         job2.Should().NotBeNull();
         job2!.ServiceType.Code.Should().Be("HEADHUNT_COD");
         job2.Status.Should().Be(JobStatuses.Active);
-        job2.Visibility.Should().Be(JobVisibilities.Public);
+        job2.Visibility.Should().Be(JobVisibilities.PartnerOnly);
         job2.EmploymentType.Should().Be("FULL_TIME");
         job2.Location.Should().Be("Ho Chi Minh City");
         job2.SalaryMin.Should().Be(25000000m);
@@ -133,7 +136,7 @@ public class CandidateTestJobSeederTests
         job3.Should().NotBeNull();
         job3!.ServiceType.Code.Should().Be("CV_SOURCING");
         job3.Status.Should().Be(JobStatuses.Active);
-        job3.Visibility.Should().Be(JobVisibilities.Public);
+        job3.Visibility.Should().Be(JobVisibilities.PartnerOnly);
         job3.EmploymentType.Should().Be("FULL_TIME");
         job3.Location.Should().Be("Ho Chi Minh City");
         job3.SalaryMin.Should().Be(18000000m);
@@ -293,7 +296,7 @@ public class CandidateTestJobSeederTests
             candidateAllowedServiceTypeIds.Contains(job.ServiceTypeId));
         var affiliateVisibleJobCount = await context.Jobs.CountAsync(job =>
             job.Status == JobStatuses.Active &&
-            job.Visibility == JobVisibilities.Public &&
+            job.Visibility == JobVisibilities.PartnerOnly &&
             affiliateAllowedServiceTypeIds.Contains(job.ServiceTypeId));
 
         candidateVisibleJobCount.Should().Be(CandidateTestJobSeeder.JobsPerServiceType);

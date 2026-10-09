@@ -15,7 +15,7 @@ namespace HRConnect.Infrastructure.Persistence.Seed;
 /// Nạp các công việc mẫu (Job) thực tế đại diện cho toàn bộ 3 loại hình dịch vụ tuyển dụng:
 /// 1. CV_APPLICATION: Ứng viên tự ứng tuyển (Candidate Self-Apply).
 /// 2. HEADHUNT_COD: Affiliate Recruiter giới thiệu ứng viên nhận hoa hồng COD.
-/// 3. CV_SOURCING: Cả Ứng viên và Affiliate Recruiter đều được phép nộp hồ sơ.
+/// 3. CV_SOURCING: Affiliate Recruiter nộp hồ sơ ứng viên (Candidate không tự nộp CV_SOURCING).
 /// Hoàn toàn idempotent: kiểm tra sự tồn tại theo Company + Title + ServiceType trước khi nạp.
 /// </summary>
 public static class CandidateTestJobSeeder
@@ -371,6 +371,15 @@ public static class CandidateTestJobSeeder
 
             if (existingJob != null)
             {
+                var expectedVisibility = GetDefaultVisibilityForServiceType(jobDef.ServiceTypeCode);
+                if (existingJob.Visibility != expectedVisibility)
+                {
+                    existingJob.Visibility = expectedVisibility;
+                    await context.SaveChangesAsync(cancellationToken);
+                    logger?.LogInformation("Đã đồng bộ lại Visibility hợp lệ cho Job seed '{Title}' thành {Visibility}.",
+                        jobDef.Title, expectedVisibility);
+                }
+
                 logger?.LogInformation("Job seed '{Title}' đã tồn tại (JobId: {JobId}, Status: {Status}). Bỏ qua tạo mới để đảm bảo tính Idempotent.",
                     jobDef.Title, existingJob.JobId, existingJob.Status);
 
@@ -440,7 +449,7 @@ public static class CandidateTestJobSeeder
                 SalaryMax = jobDef.SalaryMax,
                 CurrencyCode = jobDef.CurrencyCode,
                 Quantity = jobDef.Quantity,
-                Visibility = JobVisibilities.Public,
+                Visibility = GetDefaultVisibilityForServiceType(jobDef.ServiceTypeCode),
                 Status = JobStatuses.Active,
                 PostedAt = now,
                 ClosedAt = null,
@@ -571,4 +580,13 @@ public static class CandidateTestJobSeeder
             }
         }
     }
+
+    public static string GetDefaultVisibilityForServiceType(string serviceTypeCode) =>
+        serviceTypeCode switch
+        {
+            "CV_APPLICATION" => JobVisibilities.Public,
+            "CV_SOURCING" => JobVisibilities.PartnerOnly,
+            "HEADHUNT_COD" => JobVisibilities.PartnerOnly,
+            _ => JobVisibilities.InternalOnly
+        };
 }
