@@ -349,6 +349,7 @@ app.MapInterviewEndpoints();
 app.MapOfferEndpoints();
 app.MapPlacementEndpoints();
 app.MapFinanceEndpoints();
+app.MapBusinessSettingEndpoints();
 app.MapSubmissionConsentEndpoints();
 
 // ==============================================================================

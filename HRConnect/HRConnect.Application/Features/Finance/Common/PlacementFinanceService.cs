@@ -2,11 +2,11 @@ using System.Text.Json;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace HRConnect.Application.Features.Finance.Common;
 
@@ -39,18 +39,18 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
 
     private readonly IFinanceRepository _financeRepository;
     private readonly IAuditLogService _auditLogService;
-    private readonly Mf05Settings _settings;
+    private readonly IBusinessSettings _settings;
     private readonly ILogger<PlacementFinanceService> _logger;
 
     public PlacementFinanceService(
         IFinanceRepository financeRepository,
         IAuditLogService auditLogService,
-        IOptions<Mf05Settings> settings,
+        IBusinessSettings settings,
         ILogger<PlacementFinanceService> logger)
     {
         _financeRepository = financeRepository;
         _auditLogService = auditLogService;
-        _settings = settings.Value;
+        _settings = settings;
         _logger = logger;
     }
 
@@ -64,13 +64,17 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
 
         var now = DateTime.UtcNow;
         var warnings = new List<string>();
+        // Admin-configurable numbers (system_setting), defaulting to the business-model documents.
+        var warrantyDays = await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays, cancellationToken);
+        var feeMultiplier = await _settings.GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier, cancellationToken);
+        var paymentDueDays = await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, cancellationToken);
 
         var warranty = new Warranty
         {
             WarrantyId = Guid.NewGuid(),
             PlacementId = placement.PlacementId,
             StartDate = placement.ActualStartDate,
-            EndDate = placement.ActualStartDate.AddDays(_settings.WarrantyDays),
+            EndDate = placement.ActualStartDate.AddDays(warrantyDays),
             Status = WarrantyStates.Active,
             CreatedAt = now,
             UpdatedAt = now,
@@ -86,10 +90,10 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
                 PlacementId = placement.PlacementId,
                 CompanyId = context.CompanyId,
                 BaseSalary = salary,
-                FeeMultiplier = _settings.HeadhuntFeeMultiplier,
-                Amount = decimal.Round(salary * _settings.HeadhuntFeeMultiplier, 2, MidpointRounding.AwayFromZero),
+                FeeMultiplier = feeMultiplier,
+                Amount = decimal.Round(salary * feeMultiplier, 2, MidpointRounding.AwayFromZero),
                 CurrencyCode = string.IsNullOrWhiteSpace(context.Offer.CurrencyCode) ? "VND" : context.Offer.CurrencyCode.Trim().ToUpperInvariant(),
-                DueDate = placement.ActualStartDate.AddDays(_settings.PaymentDueDays),
+                DueDate = placement.ActualStartDate.AddDays(paymentDueDays),
                 Status = ServiceFeeStates.Pending,
                 CreatedAt = now,
                 UpdatedAt = now,
@@ -148,7 +152,7 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
                         rateType = rule.RateType,
                         rateValue = rule.RateValue,
                         commissionAmount = amount.Value,
-                        earnedWhen = $"warranty passed ({_settings.WarrantyDays} days after {placement.ActualStartDate:yyyy-MM-dd})",
+                        earnedWhen = $"warranty passed ({warrantyDays} days after {placement.ActualStartDate:yyyy-MM-dd})",
                     }, SnapshotJson),
                     CalculatedAt = now,
                     CreatedAt = now,

@@ -3,9 +3,11 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Finance.Commands.Settlement;
 using HRConnect.Application.Features.Finance.Commands.WarrantyClaims;
 using HRConnect.Application.Features.Finance.Common;
+using HRConnect.Application.Features.Settings;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
@@ -33,7 +35,7 @@ public class Mf05FinanceTests
     private UnitOfWork UnitOfWork => new(_context);
 
     private PlacementFinanceService FinanceService() => new(
-        Repository, _audit.Object, Options.Create(new Mf05Settings()), NullLogger<PlacementFinanceService>.Instance);
+        Repository, _audit.Object, new BusinessSettingsService(new SystemSettingRepository(_context)), NullLogger<PlacementFinanceService>.Instance);
 
     private SettlementCommandHandlers Settlement() => new(Repository, UnitOfWork, _audit.Object);
 
@@ -127,6 +129,24 @@ public class Mf05FinanceTests
         commission.Amount.Should().Be(9_000_000m); // 30% of the fee, all at once
         commission.Status.Should().Be(CommissionStates.Pending);
         commission.MilestoneType.Should().Be(CommissionMilestoneCodes.WarrantyPassed);
+    }
+
+    [Fact]
+    public async Task Admin_configured_numbers_apply_to_new_placements()
+    {
+        var admin = Guid.NewGuid();
+        var handlers = new BusinessSettingHandlers(new SystemSettingRepository(_context), UnitOfWork, _audit.Object);
+        await handlers.Handle(new UpdateBusinessSettingCommand(BusinessSettingKeys.HeadhuntFeeMultiplier, 2m, admin), default);
+        await handlers.Handle(new UpdateBusinessSettingCommand(BusinessSettingKeys.HeadhuntWarrantyDays, 45m, admin), default);
+        var (placement, offer) = await SeedPlacementAsync();
+
+        await InitializeAsync(placement, offer);
+
+        var fee = await _context.ServiceFees.SingleAsync();
+        fee.FeeMultiplier.Should().Be(2m);
+        fee.Amount.Should().Be(40_000_000m);
+        fee.DueDate.Should().Be(Start.AddDays(20)); // default payment due days from the HEADHUNT_COD document
+        (await _context.Warranties.SingleAsync()).EndDate.Should().Be(Start.AddDays(45));
     }
 
     [Fact]
