@@ -390,7 +390,13 @@ export const JobFormPage: React.FC = () => {
     () => serviceTypes.data?.find((s) => s.id === serviceTypeId)?.code,
     [serviceTypes.data, serviceTypeId]
   );
-  const visibilityOptions = allowedVisibilities(selectedCode);
+  // INTERNAL_ONLY is hidden until Internal HR can submit candidates on a job's behalf: today such a job
+  // is seen by no Candidate or Affiliate, so it could never receive an application. A job already saved
+  // as INTERNAL_ONLY keeps the option so editing it does not silently change who sees it.
+  const savedAsInternal = existing.data?.visibility === 'INTERNAL_ONLY';
+  const visibilityOptions = allowedVisibilities(selectedCode).filter(
+    (v) => v !== 'INTERNAL_ONLY' || savedAsInternal
+  );
   const hasMustHave = (watched.requirements ?? []).some((r) => r?.requirementType === 'MUST_HAVE' && r.content?.trim());
 
   useEffect(() => {
@@ -589,12 +595,18 @@ export const JobFormPage: React.FC = () => {
                 label="Ai được thấy tin"
                 className="mb-0"
                 rules={[{ required: true, message: 'Chọn phạm vi hiển thị.' }]}
-                extra={!selectedCode ? 'Chọn loại dịch vụ trước.' : undefined}
+                extra={
+                  !selectedCode
+                    ? 'Chọn loại dịch vụ trước.'
+                    : savedAsInternal
+                      ? undefined
+                      : 'Tin "Nội bộ" tạm ẩn: hiện chưa có cách nhận hồ sơ cho tin chỉ nội bộ thấy.'
+                }
               >
                 {selectedCode ? (
                   <ChoiceCards
                     name="visibility"
-                    columns="sm:grid-cols-2"
+                    columns={visibilityOptions.length > 1 ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}
                     disabled={!editable}
                     options={visibilityOptions.map((v) => ({ value: v, title: VISIBILITY_LABEL[v].label, summary: VISIBILITY_LABEL[v].summary }))}
                   />
