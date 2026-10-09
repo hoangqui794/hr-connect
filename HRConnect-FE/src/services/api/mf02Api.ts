@@ -13,20 +13,23 @@ import type {
   AffiliateProfile,
   AffiliateReferralProgress,
   AffiliateSubmission,
+  AffiliateSubmissionDetail,
   ApplyJobResult,
   CandidateApplication,
+  CandidateApplicationDetail,
+  CandidateAffiliateCv,
   CandidateCv,
   LibraryCandidate,
   LibraryCandidateDetail,
+  ResendSubmissionConsentResult,
+  SubmissionConsentDecisionResult,
+  SubmissionConsentReview,
   SubmitCandidateResult,
   TotalCountPage,
 } from '@/types/api/mf02';
 
 const clean = <T extends object>(params: T): Partial<T> =>
   Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')) as Partial<T>;
-
-/** apiClient defaults to JSON; axios 1.x would turn FormData into JSON under that header. */
-const MULTIPART = { headers: { 'Content-Type': 'multipart/form-data' } };
 
 const form = (fields: Record<string, string | Blob | undefined | null>) => {
   const fd = new FormData();
@@ -44,10 +47,13 @@ export const candidateCvApi = {
   },
   async upload(file: File, title?: string, isPrimary?: boolean) {
     const body = form({ file, title, isPrimary: isPrimary ? 'true' : undefined });
-    return (await apiClient.post<ApiEnvelope<unknown> & { message?: string }>('/candidates/cv', body, MULTIPART)).data;
+    return (await apiClient.post<ApiEnvelope<unknown> & { message?: string }>('/candidates/cv', body)).data;
   },
   async setPrimary(cvId: string) {
     return (await apiClient.patch<{ message?: string }>(`/candidates/cv/${cvId}/primary`)).data;
+  },
+  async updateTitle(cvId: string, title: string) {
+    return (await apiClient.patch<{ success: boolean; message: string }>(`/candidates/cv/${cvId}`, { title })).data;
   },
   async remove(cvId: string) {
     return (await apiClient.delete<{ message?: string }>(`/candidates/cv/${cvId}`)).data;
@@ -58,8 +64,38 @@ export const candidateCvApi = {
 };
 
 export const candidateApplicationsApi = {
-  async list(params: { status?: string; page: number; pageSize: number }): Promise<PagedItems<CandidateApplication>> {
+  async list(params: {
+    status?: string;
+    jobId?: string;
+    fromDate?: string;
+    toDate?: string;
+    page: number;
+    pageSize: number;
+  }): Promise<PagedItems<CandidateApplication>> {
     return (await apiClient.get<ApiEnvelope<PagedItems<CandidateApplication>>>('/candidates/applications', { params: clean(params) })).data.data;
+  },
+  async detail(applicationId: string): Promise<CandidateApplicationDetail> {
+    return (await apiClient.get<CandidateApplicationDetail>(`/candidates/applications/${applicationId}`)).data;
+  },
+};
+
+export const candidateAffiliateCvApi = {
+  async list(page: number, pageSize: number): Promise<PagedItems<CandidateAffiliateCv>> {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: {
+        items: CandidateAffiliateCv[];
+        pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
+      };
+    }>('/candidates/me/affiliate-cvs', { params: { page, pageSize } });
+    const { items, pagination } = response.data.data;
+    return {
+      items,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      total: pagination.totalItems,
+      totalPages: pagination.totalPages,
+    };
   },
 };
 
@@ -67,23 +103,66 @@ export const applyApi = {
   /** POST /jobs/{id}/apply — exactly one CV source: an existing cvId or a new PDF. */
   async apply(jobId: string, source: { cvId: string } | { file: File }) {
     const body = 'cvId' in source ? form({ cvId: source.cvId }) : form({ file: source.file });
-    return (await apiClient.post<{ success: boolean; message: string; data: ApplyJobResult }>(`/jobs/${jobId}/apply`, body, MULTIPART)).data;
+    return (await apiClient.post<{ success: boolean; message: string; data: ApplyJobResult }>(`/jobs/${jobId}/apply`, body)).data;
+  },
+};
+
+export const candidateConsentApi = {
+  async review(submissionId: string): Promise<SubmissionConsentReview> {
+    return (
+      await apiClient.get<{ success: boolean; data: SubmissionConsentReview }>(
+        `/candidates/me/submission-consents/${submissionId}`
+      )
+    ).data.data;
+  },
+  async respond(submissionId: string, decision: 'CONFIRM' | 'DECLINE', allowFutureReuse: boolean) {
+    return (
+      await apiClient.post<SubmissionConsentDecisionResult>(
+        `/candidates/me/submission-consents/${submissionId}/respond`,
+        { decision, allowFutureReuse }
+      )
+    ).data;
+  },
+  async reviewPublic(token: string): Promise<SubmissionConsentReview> {
+    return (
+      await apiClient.post<{ success: boolean; data: SubmissionConsentReview }>(
+        '/submission-consents/review',
+        { token }
+      )
+    ).data.data;
+  },
+  async respondPublic(token: string, decision: 'CONFIRM' | 'DECLINE', allowFutureReuse: boolean) {
+    return (
+      await apiClient.post<SubmissionConsentDecisionResult>('/submission-consents/respond', {
+        token,
+        decision,
+        allowFutureReuse,
+      })
+    ).data;
   },
 };
 
 // ─── Branch B: affiliate ─────────────────────────────────────────────────────
 
-export interface SubmitCandidateInput {
-  /** Candidate from the affiliate's library … */
-  candidateId?: string;
-  cvId?: string;
-  /** … or a new candidate with a PDF. */
-  fullName?: string;
-  email?: string;
-  phone?: string;
-  file?: File;
-  note?: string;
-}
+export type SubmitCandidateInput =
+  | {
+      candidateId: string;
+      cvId: string;
+      fullName?: never;
+      email?: never;
+      phone?: never;
+      file?: never;
+      note?: string;
+    }
+  | {
+      candidateId?: never;
+      cvId?: never;
+      fullName: string;
+      email: string;
+      phone?: string;
+      file: File;
+      note?: string;
+    };
 
 export const affiliateApi = {
   async profile(): Promise<AffiliateProfile> {
@@ -93,24 +172,27 @@ export const affiliateApi = {
     return (await apiClient.get<ApiEnvelope<AffiliatePerformance>>('/affiliates/profile/me/performance')).data.data;
   },
   async submit(jobId: string, input: SubmitCandidateInput) {
-    const body = form({
-      candidateId: input.candidateId,
-      cvId: input.cvId,
-      fullName: input.fullName,
-      email: input.email,
-      phone: input.phone,
-      note: input.note,
-      file: input.file,
-    });
-    return (await apiClient.post<{ success: boolean; message: string; data: SubmitCandidateResult }>(`/jobs/${jobId}/candidate-submissions`, body, MULTIPART)).data;
+    const body = 'candidateId' in input
+      ? form({ candidateId: input.candidateId, cvId: input.cvId, note: input.note })
+      : form({ fullName: input.fullName, email: input.email, phone: input.phone, note: input.note, file: input.file });
+    return (await apiClient.post<{ success: boolean; message: string; data: SubmitCandidateResult }>(`/jobs/${jobId}/candidate-submissions`, body)).data;
   },
-  async submissions(params: { status?: string; jobId?: string; page: number; pageSize: number }): Promise<TotalCountPage<AffiliateSubmission>> {
+  async submissions(params: {
+    status?: string;
+    jobId?: string;
+    candidateId?: string;
+    fromDate?: string;
+    toDate?: string;
+    page: number;
+    pageSize: number;
+  }): Promise<TotalCountPage<AffiliateSubmission>> {
     return (await apiClient.get<TotalCountPage<AffiliateSubmission>>('/affiliates/submissions', { params: clean(params) })).data;
   },
-  async resendConsent(submissionId: string) {
-    return (
-      await apiClient.post<{ message: string; expiresAt: string; emailSendCount: number }>(`/affiliates/submissions/${submissionId}/consent/resend`)
-    ).data;
+  async submissionDetail(submissionId: string): Promise<AffiliateSubmissionDetail> {
+    return (await apiClient.get<AffiliateSubmissionDetail>(`/affiliates/submissions/${submissionId}`)).data;
+  },
+  async resendConsent(submissionId: string): Promise<ResendSubmissionConsentResult> {
+    return (await apiClient.post<ResendSubmissionConsentResult>(`/affiliates/submissions/${submissionId}/consent/resend`)).data;
   },
   async referrals(params: { jobId?: string; page: number; pageSize: number }): Promise<TotalCountPage<AffiliateReferralProgress>> {
     return (await apiClient.get<TotalCountPage<AffiliateReferralProgress>>('/affiliates/referrals', { params: clean(params) })).data;

@@ -6,12 +6,13 @@
  * API yet and shows an empty state.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   App as AntApp,
   Button,
+  DatePicker,
   Drawer,
   Form,
   Input,
@@ -33,13 +34,15 @@ import {
   SearchOutlined,
   SendOutlined,
   UserAddOutlined,
+  ArrowLeftOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
 import { affiliateApi } from '@/services/api/mf02Api';
 import { jobsApi } from '@/services/api/jobsApi';
-import { getApiErrorMessage } from '@/services/apiClient';
+import { getApiError, getApiErrorMessage } from '@/services/apiClient';
+import { useAuthStore } from '@/stores/authStore';
 import type { AffiliateAttribution, AffiliateSubmission, LibraryCandidate } from '@/types/api/mf02';
 import { NoApiYet } from '@/features/admin-console/adminTheme';
 import { FilterPills, PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
@@ -168,6 +171,7 @@ export const AffiliateSubmitPage: React.FC = () => {
   const [form] = Form.useForm<SubmitForm>();
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [presetCvRejected, setPresetCvRejected] = useState(false);
   const [librarySearch, setLibrarySearch] = useState('');
   const mode = Form.useWatch('mode', form) ?? 'new';
   const candidateId = Form.useWatch('candidateId', form);
@@ -188,12 +192,25 @@ export const AffiliateSubmitPage: React.FC = () => {
   useEffect(() => {
     const presetJob = searchParams.get('job');
     const presetCandidate = searchParams.get('candidate');
+    const presetCv = searchParams.get('cv');
     form.setFieldsValue({
       mode: presetCandidate ? 'library' : 'new',
       ...(presetJob ? { jobId: presetJob } : {}),
       ...(presetCandidate ? { candidateId: presetCandidate } : {}),
+      ...(presetCv ? { cvId: presetCv } : {}),
     });
   }, [searchParams, form]);
+
+  useEffect(() => {
+    const presetCv = searchParams.get('cv');
+    if (!presetCv || !libraryDetail.data) return;
+    const selectedCv = libraryDetail.data.cvs.find((cv) => cv.cvId === presetCv && cv.status === 'ACTIVE');
+    if (selectedCv) form.setFieldValue('cvId', presetCv);
+    else {
+      form.setFieldValue('cvId', undefined);
+      setPresetCvRejected(true);
+    }
+  }, [searchParams, libraryDetail.data, form]);
 
   const selectedJob = useMemo(() => jobs.data?.items.find((j) => j.jobId === jobId), [jobs.data, jobId]);
 
@@ -211,7 +228,7 @@ export const AffiliateSubmitPage: React.FC = () => {
       affiliateApi.submit(
         v.jobId,
         v.mode === 'library'
-          ? { candidateId: v.candidateId, cvId: v.cvId, note: v.note?.trim() || undefined }
+          ? { candidateId: v.candidateId!, cvId: v.cvId!, note: v.note?.trim() || undefined }
           : { fullName: v.fullName!.trim(), email: v.email!.trim(), phone: v.phone?.trim() || undefined, file: file!, note: v.note?.trim() || undefined }
       ),
     onSuccess: () => {
@@ -227,8 +244,8 @@ export const AffiliateSubmitPage: React.FC = () => {
         <Result
           status="success"
           icon={<MailOutlined className="!text-[color:var(--console-accent)]" />}
-          title="Đã gửi email xác nhận cho ứng viên"
-          subTitle={`Ứng viên cần đồng ý${d.consentExpiresAt ? ` trước ${fmt(d.consentExpiresAt)}` : ' trong 48 giờ'}. Attribution được ghi cho bạn ngay khi ứng viên đồng ý.`}
+          title={d.emailDeliveryStatus === 'FAILED' ? 'Đã lưu hồ sơ, đang chờ gửi lại email' : 'Đã gửi hồ sơ và đang chờ Candidate xác nhận'}
+          subTitle={`Submission đang ở trạng thái chờ xác nhận${d.consentExpiresAt ? ` đến ${fmt(d.consentExpiresAt)}` : ''}. Application, Attribution và AI chưa được tạo cho đến khi Candidate đồng ý.`}
           extra={[
             <Button key="list" type="primary" onClick={() => navigate('/affiliate/submissions')}>
               Xem lượt giới thiệu
@@ -245,6 +262,15 @@ export const AffiliateSubmitPage: React.FC = () => {
             </Button>,
           ]}
         />
+        {d.emailDeliveryStatus === 'FAILED' && (
+          <Alert
+            type="warning"
+            showIcon
+            message="Hồ sơ đã được lưu nhưng email chưa gửi được"
+            description="Không nộp lại hồ sơ. Vào Lượt giới thiệu để gửi lại yêu cầu xác nhận."
+            action={<Button onClick={() => navigate('/affiliate/submissions?status=PENDING_CONSENT')}>Gửi lại email</Button>}
+          />
+        )}
       </Surface>
     );
   }
@@ -254,7 +280,7 @@ export const AffiliateSubmitPage: React.FC = () => {
       <PageHero
         eyebrow="Giới thiệu"
         title="Giới thiệu ứng viên"
-        description="Ứng viên nhận email và có 48 giờ để đồng ý. Hệ thống kiểm tra trùng ngay khi bạn gửi: một ứng viên chỉ có một hồ sơ trong mỗi tin."
+        description="Candidate sẽ nhận yêu cầu xác nhận. Application, Attribution và chấm điểm AI chỉ bắt đầu sau khi Candidate đồng ý."
       />
       <Form<SubmitForm>
         form={form}
@@ -281,6 +307,16 @@ export const AffiliateSubmitPage: React.FC = () => {
                 onClose={() => setPresetRejected(false)}
                 message="Tin bạn chọn không nhận giới thiệu từ Affiliate"
                 description="Loại dịch vụ của tin này chỉ nhận ứng viên tự nộp. Hãy chọn một tin trong danh sách bên dưới."
+              />
+            )}
+            {presetCvRejected && (
+              <Alert
+                type="warning"
+                showIcon
+                closable
+                onClose={() => setPresetCvRejected(false)}
+                message="CV đã chọn không còn được phép tái sử dụng"
+                description="Hãy chọn một CV ACTIVE khác trong kho của Candidate."
               />
             )}
 
@@ -415,7 +451,7 @@ export const AffiliateSubmitPage: React.FC = () => {
                 <p className="m-0 mt-2 text-sm text-slate-500">Chưa chọn tin.</p>
               )}
               <ul className="m-0 mt-4 space-y-1.5 pl-4 text-[13px] text-slate-600">
-                <li>Ứng viên nhận email xác nhận, hiệu lực 48 giờ.</li>
+                <li>Candidate nhận yêu cầu xác nhận theo thời hạn backend trả về.</li>
                 <li>Attribution ghi cho bạn khi ứng viên đồng ý.</li>
                 <li>Ứng viên đã có hồ sơ trong tin này sẽ bị chặn trùng.</li>
               </ul>
@@ -432,38 +468,34 @@ export const AffiliateSubmitPage: React.FC = () => {
 
 // ─── Submissions ────────────────────────────────────────────────────────────
 
-const STATUSES = ['all', 'PENDING_CONSENT', 'ACCEPTED', 'CONSENT_REJECTED', 'CONSENT_EXPIRED', 'BLOCKED_DUPLICATE'] as const;
+const STATUSES = ['all', 'PENDING_CONSENT', 'ACCEPTED', 'CONSENT_REJECTED', 'CONSENT_EXPIRED', 'BLOCKED_DUPLICATE', 'JOB_UNAVAILABLE'] as const;
 
 export const AffiliateSubmissionsPage: React.FC = () => {
-  const { message } = AntApp.useApp();
-  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const status = (STATUSES as readonly string[]).includes(searchParams.get('status') ?? '') ? (searchParams.get('status') as (typeof STATUSES)[number]) : 'all';
-  const page = Number(searchParams.get('page')) || 1;
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const jobId = searchParams.get('jobId') || undefined;
+  const candidateId = searchParams.get('candidateId') || undefined;
+  const fromDate = searchParams.get('fromDate') || undefined;
+  const toDate = searchParams.get('toDate') || undefined;
+  const jobs = useQuery({ queryKey: ['aff-jobs', 'submission-filter'], queryFn: () => jobsApi.search({ page: 1, pageSize: 100 }) });
+  const commonFilters = { jobId, candidateId, fromDate, toDate };
 
   const counts = useQueries({
     queries: STATUSES.map((s) => ({
-      queryKey: [...keys.submissions, 'count', s],
-      queryFn: async () => (await affiliateApi.submissions({ status: s === 'all' ? undefined : s, page: 1, pageSize: 1 })).totalCount,
+      queryKey: [...keys.submissions, 'count', s, jobId, candidateId, fromDate, toDate],
+      queryFn: async () => (await affiliateApi.submissions({ ...commonFilters, status: s === 'all' ? undefined : s, page: 1, pageSize: 1 })).totalCount,
     })),
   });
   const list = useQuery({
-    queryKey: [...keys.submissions, 'list', status, page],
-    queryFn: () => affiliateApi.submissions({ status: status === 'all' ? undefined : status, page, pageSize: 10 }),
+    queryKey: [...keys.submissions, 'list', status, jobId, candidateId, fromDate, toDate, page],
+    queryFn: () => affiliateApi.submissions({ ...commonFilters, status: status === 'all' ? undefined : status, page, pageSize: 10 }),
     placeholderData: (prev) => prev,
   });
   // Hiring progress of accepted referrals, keyed by submission.
   const progress = useQuery({ queryKey: [...keys.submissions, 'progress'], queryFn: () => affiliateApi.referrals({ page: 1, pageSize: 100 }) });
   const progressOf = (id: string) => progress.data?.items.find((p) => p.submissionId === id)?.progressStatus;
-
-  const resend = useMutation({
-    mutationFn: (id: string) => affiliateApi.resendConsent(id),
-    onSuccess: (res) => {
-      message.success(res.message || 'Đã gửi lại email xác nhận.');
-      queryClient.invalidateQueries({ queryKey: keys.submissions });
-    },
-    onError: (err) => message.error(getApiErrorMessage(err, 'Chưa gửi lại được email.')),
-  });
 
   const columns: ColumnsType<AffiliateSubmission> = [
     { title: 'Ứng viên', key: 'c', render: (_, r) => <PersonCell name={r.candidateName} /> },
@@ -495,22 +527,37 @@ export const AffiliateSubmissionsPage: React.FC = () => {
     {
       title: <span className="sr-only">Thao tác</span>,
       key: 'a',
-      width: 150,
-      render: (_, r) =>
-        r.status === 'PENDING_CONSENT' ? (
-          <Button
-            size="small"
-            icon={<MailOutlined />}
-            loading={resend.isPending && resend.variables === r.submissionId}
-            onClick={() => resend.mutate(r.submissionId)}
-          >
-            Gửi lại email
+      width: 235,
+      render: (_, r) => (
+        <div className="flex gap-2">
+          <Button size="small" onClick={() => navigate(`/affiliate/submissions/${r.submissionId}`)}>
+            Xem
           </Button>
-        ) : null,
+          {r.status === 'PENDING_CONSENT' && (
+            <Button
+              size="small"
+              icon={<MailOutlined />}
+              onClick={() => navigate(`/affiliate/submissions/${r.submissionId}`)}
+            >
+              Gửi lại
+            </Button>
+          )}
+        </div>
+      ),
     },
   ];
 
-  const setStatus = (v: string) => setSearchParams(v === 'all' ? {} : { status: v });
+  const updateFilters = (updates: Record<string, string | undefined>) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    });
+    if (!Object.prototype.hasOwnProperty.call(updates, 'page')) next.delete('page');
+    setSearchParams(next);
+  };
+
+  const setStatus = (value: string) => updateFilters({ status: value === 'all' ? undefined : value });
 
   return (
     <div>
@@ -532,6 +579,32 @@ export const AffiliateSubmissionsPage: React.FC = () => {
             onChange={setStatus}
             options={STATUSES.map((s, i) => ({ value: s, label: s === 'all' ? 'Tất cả' : submissionStatus(s).label, count: counts[i].data }))}
           />
+          <div className="mt-3 flex flex-wrap gap-3">
+            <Select
+              aria-label="Lọc theo việc làm"
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              loading={jobs.isLoading}
+              placeholder="Tất cả việc làm"
+              value={jobId}
+              className="min-w-64"
+              onChange={(value) => updateFilters({ jobId: value })}
+              options={(jobs.data?.items ?? []).map((job) => ({ value: job.jobId, label: `${job.title} — ${job.companyName ?? ''}` }))}
+            />
+            <DatePicker.RangePicker
+              aria-label="Lọc theo ngày gửi"
+              format="DD/MM/YYYY"
+              value={fromDate && toDate ? [dayjs(fromDate), dayjs(toDate)] : null}
+              onChange={(dates) => updateFilters({
+                fromDate: dates?.[0]?.startOf('day').toISOString(),
+                toDate: dates?.[1]?.endOf('day').toISOString(),
+              })}
+            />
+            {(jobId || candidateId || fromDate || toDate) && (
+              <Button onClick={() => setSearchParams(status === 'all' ? {} : { status })}>Xóa bộ lọc</Button>
+            )}
+          </div>
         </div>
         {list.isError ? (
           <div className="p-5">
@@ -550,10 +623,150 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               pageSize: 10,
               total: list.data?.totalCount ?? 0,
               showSizeChanger: false,
-              onChange: (p) => setSearchParams({ ...(status === 'all' ? {} : { status }), page: String(p) }),
+              onChange: (nextPage) => updateFilters({ page: String(nextPage) }),
             }}
             locale={{ emptyText: <div className="py-10 text-slate-600">Chưa có lượt giới thiệu nào.</div> }}
           />
+        )}
+      </Surface>
+    </div>
+  );
+};
+
+export const AffiliateSubmissionDetailPage: React.FC = () => {
+  const { message } = AntApp.useApp();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const canResend = useAuthStore((state) => state.hasPermission('submission.consent.resend_own'));
+  const { submissionId = '' } = useParams();
+  const [retryUntil, setRetryUntil] = useState<number | null>(null);
+  const [retryRemaining, setRetryRemaining] = useState(0);
+  const [resentInThisView, setResentInThisView] = useState(false);
+  const detail = useQuery({
+    queryKey: [...keys.submissions, 'detail', submissionId],
+    queryFn: () => affiliateApi.submissionDetail(submissionId),
+    enabled: Boolean(submissionId),
+  });
+
+  useEffect(() => {
+    if (!retryUntil) return;
+    const update = () => {
+      const remaining = Math.max(0, Math.ceil((retryUntil - Date.now()) / 1000));
+      setRetryRemaining(remaining);
+      if (remaining === 0) setRetryUntil(null);
+    };
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [retryUntil]);
+
+  const resend = useMutation({
+    mutationFn: () => affiliateApi.resendConsent(submissionId),
+    onSuccess: async (result) => {
+      setResentInThisView(true);
+      if (result.emailDeliveryStatus === 'FAILED') message.warning(result.message);
+      else message.success(result.message);
+      await queryClient.invalidateQueries({ queryKey: keys.submissions });
+    },
+    onError: async (error) => {
+      const apiError = getApiError(error, 'Chưa gửi lại được yêu cầu xác nhận.');
+      const serverTimestamp = apiError.message.match(
+        /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})/
+      )?.[0];
+      const retryAt = apiError.retryAfterSeconds
+        ? Date.now() + apiError.retryAfterSeconds * 1000
+        : serverTimestamp
+          ? Date.parse(serverTimestamp)
+          : undefined;
+      if (retryAt && retryAt > Date.now()) setRetryUntil(retryAt);
+      message.error(apiError.message);
+      if (apiError.status === 409) await queryClient.invalidateQueries({ queryKey: keys.submissions });
+    },
+  });
+
+  if (detail.isLoading) return <Skeleton active paragraph={{ rows: 8 }} />;
+  if (detail.isError || !detail.data) {
+    return (
+      <Surface className="p-6">
+        <Alert
+          type="error"
+          showIcon
+          message="Không tải được chi tiết lượt giới thiệu"
+          description={getApiErrorMessage(detail.error)}
+          action={<Button onClick={() => navigate('/affiliate/submissions')}>Về danh sách</Button>}
+        />
+      </Surface>
+    );
+  }
+
+  const submission = detail.data;
+  const status = submissionStatus(submission.status);
+  return (
+    <div className="space-y-5">
+      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/affiliate/submissions')}>
+        Lượt giới thiệu
+      </Button>
+      <PageHero
+        eyebrow="Chi tiết lượt giới thiệu"
+        title={submission.candidateName}
+        description={`${submission.jobTitle} — ${submission.companyName}`}
+        actions={<StatusDot tone={status.tone}>{status.label}</StatusDot>}
+      />
+      <Surface className="p-6">
+        <dl className="grid grid-cols-1 gap-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            ['Email Candidate', submission.candidateEmail || '—'],
+            ['Số điện thoại', submission.candidatePhone || '—'],
+            ['CV', submission.cvTitle || submission.cvFileName || '—'],
+            ['Gửi hồ sơ lúc', fmt(submission.submittedAt)],
+            ['Gửi email lúc', fmt(submission.consentEmailSentAt)],
+            ['Hạn xác nhận', fmt(submission.consentExpiresAt)],
+            ['Candidate phản hồi lúc', fmt(submission.consentRespondedAt)],
+            ['Application', submission.applicationId || 'Chưa tạo'],
+            ['Attribution', submission.attributionId || 'Chưa tạo'],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-slate-500">{label}</dt>
+              <dd className="m-0 mt-1 break-words font-medium text-slate-900">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        {submission.reason && <Alert className="mt-5" type="info" showIcon message="Thông tin xử lý" description={submission.reason} />}
+        {submission.status === 'PENDING_CONSENT' && (
+          <Alert
+            className="mt-5"
+            type="warning"
+            showIcon
+            message="Đang chờ Candidate xác nhận"
+            description="Application, Attribution và MF03 chỉ được tạo sau khi Candidate đồng ý."
+          />
+        )}
+        {resend.data && (
+          <Alert
+            className="mt-5"
+            type={resend.data.emailDeliveryStatus === 'FAILED' ? 'warning' : 'success'}
+            showIcon
+            message={resend.data.message}
+            description={`Hạn xác nhận mới: ${fmt(resend.data.expiresAt)} · Đã gửi ${resend.data.emailSendCount} lần.`}
+          />
+        )}
+        {submission.status === 'PENDING_CONSENT' && canResend && (
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <Button
+              type="primary"
+              icon={<MailOutlined />}
+              loading={resend.isPending}
+              disabled={resentInThisView || retryRemaining > 0}
+              onClick={() => resend.mutate()}
+            >
+              {retryRemaining > 0
+                ? `Thử lại sau ${retryRemaining} giây`
+                : resentInThisView
+                  ? 'Đã gửi lại yêu cầu'
+                  : 'Gửi lại yêu cầu xác nhận'}
+            </Button>
+            <span className="text-xs text-slate-500">Liên kết xác nhận cũ sẽ bị vô hiệu hóa.</span>
+          </div>
         )}
       </Surface>
     </div>
@@ -637,6 +850,15 @@ export const AffiliateCandidatesPage: React.FC = () => {
                     <Button size="small" icon={<EyeOutlined />} onClick={() => openSigned(() => affiliateApi.libraryCvUrl(detail.data!.candidateId, cv.cvId))}>
                       Xem
                     </Button>
+                    {cv.status === 'ACTIVE' && (
+                      <Button
+                        size="small"
+                        type="primary"
+                        onClick={() => navigate(`/affiliate/submit-candidate?candidate=${detail.data!.candidateId}&cv=${cv.cvId}`)}
+                      >
+                        Dùng CV này
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>

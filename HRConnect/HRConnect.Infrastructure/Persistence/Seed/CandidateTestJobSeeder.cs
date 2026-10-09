@@ -7,6 +7,7 @@ using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace HRConnect.Infrastructure.Persistence.Seed;
 
@@ -31,8 +32,6 @@ public static class CandidateTestJobSeeder
 
     public const string Job3Title = "[SEED] Full Stack .NET Developer - CV Sourcing";
     public const string Job3ServiceTypeCode = "CV_SOURCING";
-
-    public static readonly string[] AllSeedJobTitles = [Job1Title, Job2Title, Job3Title];
 
     public record SeedRequirementDef(string RequirementType, string Category, string Content, decimal Weight);
     public record SeedSkillDef(string Name, string Normalized, string Category, bool IsMandatory, decimal Weight);
@@ -145,8 +144,75 @@ public static class CandidateTestJobSeeder
                 new("REST API", "REST API", "Architecture", true, 0.15m),
                 new("Git", "GIT", "Version Control", false, 0.10m)
             ]
-        )
+        ),
+
+        // Additional CV_APPLICATION jobs (Candidate self-apply)
+        CreateAdditionalJob("[SEED] Frontend Developer (React)", "CV_APPLICATION", "Build responsive recruitment products with React and TypeScript.", "Ho Chi Minh City", 15000000m, 24000000m, 2, "React", "REACT", "Frontend Framework", "TypeScript", "TYPESCRIPT", "Programming Language"),
+        CreateAdditionalJob("[SEED] Junior Java Backend Developer", "CV_APPLICATION", "Develop Spring Boot services and reliable REST APIs for HR products.", "Ha Noi", 14000000m, 22000000m, 2, "Java", "JAVA", "Programming Language", "Spring Boot", "SPRING BOOT", "Web Framework"),
+        CreateAdditionalJob("[SEED] QA Automation Engineer", "CV_APPLICATION", "Create automated API and UI tests for business-critical recruitment workflows.", "Da Nang", 13000000m, 23000000m, 2, "Selenium", "SELENIUM", "Testing", "Postman", "POSTMAN", "API Testing"),
+        CreateAdditionalJob("[SEED] Data Analyst", "CV_APPLICATION", "Turn recruitment and operations data into clear dashboards and actionable insights.", "Ho Chi Minh City", 14000000m, 25000000m, 2, "Power BI", "POWER BI", "Analytics", "Python", "PYTHON", "Programming Language"),
+        CreateAdditionalJob("[SEED] Flutter Mobile Developer", "CV_APPLICATION", "Build candidate and recruiter mobile experiences with Flutter.", "Remote - Vietnam", 15000000m, 26000000m, 2, "Flutter", "FLUTTER", "Mobile Framework", "Dart", "DART", "Programming Language"),
+
+        // Additional HEADHUNT_COD jobs (Affiliate Recruiter submission)
+        CreateAdditionalJob("[SEED] Engineering Manager - Headhunt", "HEADHUNT_COD", "Lead a cross-functional engineering team and own reliable product delivery.", "Ho Chi Minh City", 50000000m, 75000000m, 1, "Engineering Management", "ENGINEERING MANAGEMENT", "Leadership", "Agile", "AGILE", "Delivery"),
+        CreateAdditionalJob("[SEED] Cloud Solutions Architect - Headhunt", "HEADHUNT_COD", "Design secure and scalable cloud platforms for enterprise workloads.", "Ha Noi", 55000000m, 85000000m, 1, "AWS", "AWS", "Cloud", "Kubernetes", "KUBERNETES", "DevOps"),
+        CreateAdditionalJob("[SEED] Senior Java Engineer - Headhunt", "HEADHUNT_COD", "Design high-throughput Java services for a growing technology platform.", "Ho Chi Minh City", 35000000m, 55000000m, 2, "Java", "JAVA", "Programming Language", "Spring Boot", "SPRING BOOT", "Web Framework"),
+        CreateAdditionalJob("[SEED] Cybersecurity Engineer - Headhunt", "HEADHUNT_COD", "Protect cloud applications through security monitoring, assessment, and response.", "Ha Noi", 38000000m, 60000000m, 1, "Cloud Security", "CLOUD SECURITY", "Security", "SIEM", "SIEM", "Security Operations"),
+        CreateAdditionalJob("[SEED] Senior Data Engineer - Headhunt", "HEADHUNT_COD", "Build governed data pipelines and platforms for analytics at scale.", "Remote - Vietnam", 40000000m, 65000000m, 2, "Apache Spark", "APACHE SPARK", "Data Engineering", "Python", "PYTHON", "Programming Language"),
+
+        // Additional CV_SOURCING jobs (Affiliate Recruiter submission)
+        CreateAdditionalJob("[SEED] Product Designer - CV Sourcing", "CV_SOURCING", "Design accessible candidate and recruiter experiences from research to delivery.", "Ho Chi Minh City", 22000000m, 35000000m, 2, "Figma", "FIGMA", "Design", "User Research", "USER RESEARCH", "Product Design"),
+        CreateAdditionalJob("[SEED] Business Analyst - CV Sourcing", "CV_SOURCING", "Translate recruitment operations into clear product requirements and workflows.", "Ha Noi", 20000000m, 32000000m, 2, "Business Analysis", "BUSINESS ANALYSIS", "Analysis", "BPMN", "BPMN", "Process Modeling"),
+        CreateAdditionalJob("[SEED] Node.js Backend Developer - CV Sourcing", "CV_SOURCING", "Develop secure Node.js APIs and event-driven integrations.", "Da Nang", 22000000m, 36000000m, 2, "Node.js", "NODE.JS", "Backend Framework", "TypeScript", "TYPESCRIPT", "Programming Language"),
+        CreateAdditionalJob("[SEED] DevOps Engineer - CV Sourcing", "CV_SOURCING", "Automate delivery pipelines and operate reliable cloud infrastructure.", "Remote - Vietnam", 28000000m, 45000000m, 2, "Docker", "DOCKER", "DevOps", "Kubernetes", "KUBERNETES", "DevOps"),
+        CreateAdditionalJob("[SEED] React Native Developer - CV Sourcing", "CV_SOURCING", "Deliver stable cross-platform mobile applications for recruitment users.", "Ho Chi Minh City", 23000000m, 38000000m, 2, "React Native", "REACT NATIVE", "Mobile Framework", "TypeScript", "TYPESCRIPT", "Programming Language")
     ];
+
+    public const int JobsPerServiceType = 6;
+    public const int TotalSeedJobCount = JobsPerServiceType * 3;
+    public static readonly string[] AllSeedJobTitles = SeedJobs.Select(job => job.Title).ToArray();
+
+    private static SeedJobDef CreateAdditionalJob(
+        string title,
+        string serviceTypeCode,
+        string description,
+        string location,
+        decimal salaryMin,
+        decimal salaryMax,
+        int quantity,
+        string primarySkillName,
+        string primarySkillNormalized,
+        string primarySkillCategory,
+        string secondarySkillName,
+        string secondarySkillNormalized,
+        string secondarySkillCategory)
+    {
+        return new SeedJobDef(
+            Title: title,
+            ServiceTypeCode: serviceTypeCode,
+            Description: description,
+            Location: location,
+            EmploymentType: "FULL_TIME",
+            SalaryMin: salaryMin,
+            SalaryMax: salaryMax,
+            CurrencyCode: "VND",
+            Quantity: quantity,
+            Requirements:
+            [
+                new(JobRequirementTypes.MustHave, "Experience", $"Có kinh nghiệm thực tế phù hợp với vị trí {title.Replace("[SEED] ", string.Empty)}.", 0.30m),
+                new(JobRequirementTypes.MustHave, "Technical", $"Sử dụng tốt {primarySkillName} và {secondarySkillName} trong dự án thực tế.", 0.40m),
+                new(JobRequirementTypes.ShouldHave, "Communication", "Giao tiếp rõ ràng, phối hợp tốt và có tinh thần chịu trách nhiệm.", 0.15m),
+                new(JobRequirementTypes.ShouldHave, "Education", "Tốt nghiệp chuyên ngành phù hợp hoặc có năng lực thực tế tương đương.", 0.15m)
+            ],
+            Skills:
+            [
+                new(primarySkillName, primarySkillNormalized, primarySkillCategory, true, 0.35m),
+                new(secondarySkillName, secondarySkillNormalized, secondarySkillCategory, true, 0.25m),
+                new("SQL", "SQL", "Database", false, 0.15m),
+                new("Git", "GIT", "Version Control", false, 0.10m),
+                new("English", "ENGLISH", "Communication", false, 0.15m)
+            ]);
+    }
 
     /// <summary>
     /// Nạp các công việc mẫu (Job) cho toàn bộ 3 loại hình dịch vụ: CV_APPLICATION, HEADHUNT_COD, CV_SOURCING.
@@ -419,7 +485,8 @@ public static class CandidateTestJobSeeder
                 logger?.LogInformation("Đã nạp thành công Job seed '{Title}' (JobId: {JobId}) thuộc ServiceType '{ServiceType}' cho Doanh nghiệp '{Company}'.",
                     job.Title, job.JobId, serviceType.Code, company.CompanyName);
             }
-            catch (DbUpdateException ex)
+            catch (DbUpdateException ex) when (
+                ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
             {
                 logger?.LogWarning(ex, "Xung đột tương tranh khi nạp Job seed '{Title}'. Bản ghi có thể đã được nạp bởi tiến trình khác.", jobDef.Title);
                 foreach (var entry in context.ChangeTracker.Entries().Where(e => e.State == EntityState.Added))

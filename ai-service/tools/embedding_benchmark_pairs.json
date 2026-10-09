@@ -1,0 +1,41 @@
+{
+  "description": "Anonymized CV/JD pairs for comparing embedding models. relevant=true means a human reviewer would consider the CV on-topic for the job.",
+  "jobs": {
+    "dotnet": {"title": ".NET Backend Developer", "description": "Phát triển REST API bằng ASP.NET Core, Entity Framework Core và PostgreSQL. Làm việc với Docker và CI/CD.", "requirements": ["ASP.NET Core", "PostgreSQL", "Docker"]},
+    "react": {"title": "Frontend Developer (ReactJS)", "description": "Build responsive web dashboards with ReactJS, TypeScript and REST APIs. Collaborate with designers on UI/UX.", "requirements": ["ReactJS", "TypeScript", "HTML/CSS"]},
+    "accountant": {"title": "Kế toán tổng hợp", "description": "Lập báo cáo tài chính, quyết toán thuế, theo dõi công nợ và hạch toán trên phần mềm MISA.", "requirements": ["Kế toán tổng hợp", "Báo cáo thuế", "MISA"]},
+    "sales": {"title": "Nhân viên kinh doanh B2B", "description": "Tìm kiếm khách hàng doanh nghiệp, tư vấn giải pháp phần mềm, đàm phán và chốt hợp đồng, đạt chỉ tiêu doanh số.", "requirements": ["Bán hàng B2B", "Đàm phán", "Chăm sóc khách hàng"]},
+    "data": {"title": "Data Analyst", "description": "Analyze business data using SQL and Python, build Power BI dashboards and present insights to stakeholders.", "requirements": ["SQL", "Python", "Power BI"]},
+    "nurse": {"title": "Điều dưỡng viên", "description": "Chăm sóc bệnh nhân nội trú, theo dõi dấu hiệu sinh tồn, thực hiện y lệnh của bác sĩ tại bệnh viện.", "requirements": ["Chứng chỉ hành nghề điều dưỡng", "Chăm sóc bệnh nhân"]}
+  },
+  "candidates": {
+    "dotnet_vi": {"summary": "Lập trình viên backend 4 năm kinh nghiệm", "skills": ["C#", "ASP.NET Core", "PostgreSQL", "Docker"], "cvText": "Xây dựng hệ thống API cho sàn thương mại điện tử bằng ASP.NET Core và EF Core, cơ sở dữ liệu PostgreSQL, triển khai bằng Docker trên Azure."},
+    "dotnet_en": {"summary": "Backend engineer focused on .NET", "skills": ["C#", ".NET 8", "SQL Server", "Redis"], "cvText": "Designed microservices in .NET 8 with SQL Server and Redis caching; wrote integration tests and GitHub Actions pipelines."},
+    "react_en": {"summary": "Frontend developer, 3 years", "skills": ["React", "TypeScript", "Tailwind CSS"], "cvText": "Built admin dashboards and booking flows with React, TypeScript and Tailwind; integrated REST APIs and improved Lighthouse scores."},
+    "react_vi": {"summary": "Lập trình viên giao diện web", "skills": ["ReactJS", "JavaScript", "Ant Design"], "cvText": "Phát triển giao diện quản trị bằng ReactJS và Ant Design, kết nối REST API, tối ưu hiển thị trên điện thoại."},
+    "accountant_vi": {"summary": "Kế toán 5 năm kinh nghiệm", "skills": ["Kế toán tổng hợp", "MISA", "Excel"], "cvText": "Phụ trách sổ sách kế toán, lập báo cáo tài chính năm, kê khai và quyết toán thuế TNDN, đối chiếu công nợ khách hàng."},
+    "sales_vi": {"summary": "Chuyên viên kinh doanh phần mềm", "skills": ["Bán hàng B2B", "Đàm phán", "CRM"], "cvText": "Tìm kiếm và chăm sóc khách hàng doanh nghiệp, tư vấn giải pháp ERP, đạt 120% chỉ tiêu doanh số năm 2025."},
+    "data_en": {"summary": "Data analyst with BI experience", "skills": ["SQL", "Python", "Power BI", "Pandas"], "cvText": "Built Power BI dashboards for retail sales, wrote SQL queries over a data warehouse and automated reports with Python."},
+    "nurse_vi": {"summary": "Điều dưỡng 6 năm tại bệnh viện đa khoa", "skills": ["Chăm sóc bệnh nhân", "Chứng chỉ hành nghề"], "cvText": "Chăm sóc bệnh nhân khoa nội, theo dõi mạch, huyết áp, thực hiện y lệnh và hướng dẫn người nhà bệnh nhân."}
+  },
+  "pairs": [
+    {"job": "dotnet", "candidate": "dotnet_vi", "relevant": true},
+    {"job": "dotnet", "candidate": "dotnet_en", "relevant": true},
+    {"job": "react", "candidate": "react_en", "relevant": true},
+    {"job": "react", "candidate": "react_vi", "relevant": true},
+    {"job": "accountant", "candidate": "accountant_vi", "relevant": true},
+    {"job": "sales", "candidate": "sales_vi", "relevant": true},
+    {"job": "data", "candidate": "data_en", "relevant": true},
+    {"job": "nurse", "candidate": "nurse_vi", "relevant": true},
+    {"job": "dotnet", "candidate": "accountant_vi", "relevant": false},
+    {"job": "dotnet", "candidate": "nurse_vi", "relevant": false},
+    {"job": "react", "candidate": "sales_vi", "relevant": false},
+    {"job": "react", "candidate": "accountant_vi", "relevant": false},
+    {"job": "accountant", "candidate": "react_en", "relevant": false},
+    {"job": "sales", "candidate": "nurse_vi", "relevant": false},
+    {"job": "data", "candidate": "nurse_vi", "relevant": false},
+    {"job": "nurse", "candidate": "dotnet_en", "relevant": false},
+    {"job": "accountant", "candidate": "data_en", "relevant": false},
+    {"job": "sales", "candidate": "dotnet_vi", "relevant": false}
+  ]
+}

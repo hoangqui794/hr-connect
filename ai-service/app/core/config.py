@@ -13,11 +13,33 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8001
     log_level: str = "INFO"
-    embedding_model: str = "BAAI/bge-m3"
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     must_have_weight: float = 0.50
     should_have_weight: float = 0.20
     semantic_weight: float = 0.30
-    semantic_match_threshold: float = 0.65
+    semantic_match_threshold: float = 0.35
+    # Raw chunk similarity is rescaled from [floor, ceiling] to [0, 1]. Values are
+    # model-specific; calibrate with tools/benchmark_embedding_models.py.
+    semantic_floor: float = Field(default=0.10, ge=0, le=1)
+    semantic_ceiling: float = Field(default=0.55, ge=0, le=1)
+    # Empty uses app/data/capability_lexicon.json.
+    capability_lexicon_path: str = ""
+    # Semantic partial credit for unresolved OTHER requirements: never MATCHED,
+    # always flagged for review. Set the credit to 0 to disable.
+    evidence_credit_threshold: float = Field(default=0.65, ge=0, le=1)
+    evidence_partial_credit: float = Field(default=0.5, ge=0, le=1)
+    # Optional cross-encoder that re-scores evidence spans (e.g.
+    # cross-encoder/mmarco-mMiniLMv2-L12-H384-v1). Empty disables it.
+    reranker_model: str = ""
+    reranker_credit_threshold: float = Field(default=0.5, ge=0, le=1)
+    # Scale the semantic component by MUST_HAVE coverage so topic similarity
+    # cannot compensate for missing hard requirements.
+    semantic_gated_by_must_have: bool = True
+    # A MUST_HAVE whose technology the job title/description names is core; a
+    # CV with no evidence for it is capped like a failed knockout.
+    infer_core_requirements: bool = True
+    # Highest score a CV can get while a knockout MUST_HAVE is not fully met.
+    knockout_score_cap: float = Field(default=59, ge=0, le=100)
     max_upload_size_mb: int = Field(default=10, ge=1, le=50)
     max_pdf_pages: int = Field(default=20, ge=1, le=200)
     max_image_pixels: int = Field(default=40_000_000, ge=1_000_000)
@@ -51,6 +73,8 @@ class Settings(BaseSettings):
             raise ValueError("Scoring weights must total 1.0")
         if not 0 <= self.semantic_match_threshold <= 1:
             raise ValueError("SEMANTIC_MATCH_THRESHOLD must be between 0 and 1")
+        if self.semantic_floor >= self.semantic_ceiling:
+            raise ValueError("SEMANTIC_FLOOR must be lower than SEMANTIC_CEILING")
         return self
 
 

@@ -14,6 +14,11 @@ export interface UserProfile {
   phone?: string;
   avatar?: string;
   role: UserRole;
+  /** Every backend role retained for users who participate in multiple portals. */
+  roles?: string[];
+  permissions?: string[];
+  status?: string;
+  emailVerified?: boolean;
   company?: string;
   companyName?: string;
   companySize?: string;
@@ -99,4 +104,21 @@ export const mapApiRoleToUserRole = (roles?: string[] | null): UserRole => {
   if (normalized.some((r) => r.includes('INTERNAL_HR') || r.includes('HR_OPS') || r.includes('HR'))) return UserRole.INTERNAL_HR;
   if (normalized.some((r) => r.includes('CANDIDATE') || r.includes('TALENT'))) return UserRole.CANDIDATE;
   return UserRole.CANDIDATE;
+};
+
+/** Maps every recognized backend role without losing multi-role membership. */
+export const mapApiRolesToUserRoles = (roles?: string[] | null): UserRole[] => {
+  if (!roles?.length) return [];
+  const result = new Set<UserRole>();
+
+  roles.forEach((rawRole) => {
+    const normalized = rawRole.toUpperCase();
+    if (normalized.includes('ADMIN')) result.add(UserRole.ADMIN);
+    else if (normalized.includes('CLIENT') || normalized.includes('EMPLOYER')) result.add(UserRole.CLIENT);
+    else if (normalized.includes('AFFILIATE') || normalized.includes('HEADHUNTER') || normalized.includes('RECRUITER')) result.add(UserRole.AFFILIATE);
+    else if (normalized.includes('INTERNAL_HR') || normalized.includes('HR_OPS') || normalized === 'HR') result.add(UserRole.INTERNAL_HR);
+    else if (normalized.includes('CANDIDATE') || normalized.includes('TALENT')) result.add(UserRole.CANDIDATE);
+  });
+
+  return [...result];
 };

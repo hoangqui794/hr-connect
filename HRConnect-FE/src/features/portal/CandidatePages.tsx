@@ -5,16 +5,18 @@
  * Applying itself happens on the job page through <ApplyButton />.
  */
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Button, Popconfirm, Skeleton, Tooltip, Upload } from 'antd';
+import { Alert, App as AntApp, Button, DatePicker, Input, Modal, Pagination, Popconfirm, Select, Skeleton, Tooltip, Upload } from 'antd';
 import {
   CheckCircleFilled,
   DeleteOutlined,
+  EditOutlined,
   EyeOutlined,
   FilePdfOutlined,
   InboxOutlined,
   SearchOutlined,
+  ArrowLeftOutlined,
   StarFilled,
   StarOutlined,
 } from '@ant-design/icons';
@@ -25,7 +27,7 @@ import { candidateApplicationsApi, candidateCvApi } from '@/services/api/mf02Api
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { CandidateApplication } from '@/types/api/mf02';
-import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { CANDIDATE_STEPS, MAX_CV_MB, candidateStage, cvFileError, fileSize } from './mf02Labels';
 
 dayjs.extend(relativeTimePlugin);
@@ -34,11 +36,12 @@ dayjs.locale('vi');
 export const candidateKeys = {
   cvs: ['candidate-cvs'] as const,
   applications: ['candidate-applications'] as const,
+  applicationDetail: (applicationId: string) => ['candidate-applications', applicationId] as const,
 };
 
 export const useCandidateCvs = () => useQuery({ queryKey: candidateKeys.cvs, queryFn: () => candidateCvApi.list() });
 const useMyApplications = () =>
-  useQuery({ queryKey: candidateKeys.applications, queryFn: () => candidateApplicationsApi.list({ page: 1, pageSize: 50 }) });
+  useQuery({ queryKey: [...candidateKeys.applications, 'overview'], queryFn: () => candidateApplicationsApi.list({ page: 1, pageSize: 50 }) });
 
 /** Opens a signed CV link in a new tab (tab opened first so popup blockers allow it). */
 export const useOpenSignedUrl = () => {
@@ -78,6 +81,7 @@ const StageTracker: React.FC<{ status: string }> = ({ status }) => {
 };
 
 const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
+  const navigate = useNavigate();
   const st = candidateStage(a.status);
   return (
     <article className="admin-surface flex flex-col gap-3 p-5">
@@ -96,6 +100,11 @@ const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
             <FilePdfOutlined aria-hidden /> {a.cvTitle}
           </span>
         )}
+      </div>
+      <div>
+        <Button type="link" className="!h-auto !p-0" onClick={() => navigate(`/candidate/applications/${a.applicationId}`)}>
+          Xem chi tiết
+        </Button>
       </div>
     </article>
   );
@@ -150,7 +159,7 @@ export const CandidateHomePage: React.FC = () => {
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-3">
         {[
           { label: 'Đơn đã nộp', value: items.length, to: '/candidate/applications' },
-          { label: 'Đang xử lý', value: active.length, to: '/candidate/applications?group=active' },
+          { label: 'Đang xử lý', value: active.length, to: '/candidate/applications' },
           { label: 'CV trong kho', value: cvs.data?.length ?? 0, to: '/candidate/cvs' },
         ].map((k) => (
           <button
@@ -199,11 +208,28 @@ export const CandidateHomePage: React.FC = () => {
 export const CandidateApplicationsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const group = (searchParams.get('group') as 'all' | 'active' | 'closed') || 'all';
-  const apps = useMyApplications();
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const status = searchParams.get('status') || undefined;
+  const jobId = searchParams.get('jobId') || undefined;
+  const fromDate = searchParams.get('fromDate') || undefined;
+  const toDate = searchParams.get('toDate') || undefined;
+  const filters = { status, jobId, fromDate, toDate, page, pageSize: 10 };
+  const apps = useQuery({
+    queryKey: [...candidateKeys.applications, filters],
+    queryFn: () => candidateApplicationsApi.list(filters),
+    placeholderData: (previous) => previous,
+  });
   const items = apps.data?.items ?? [];
-  const activeItems = items.filter((a) => !candidateStage(a.status).closed);
-  const shown = group === 'active' ? activeItems : group === 'closed' ? items.filter((a) => candidateStage(a.status).closed) : items;
+
+  const updateFilters = (updates: Record<string, string | undefined>) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    });
+    if (!Object.prototype.hasOwnProperty.call(updates, 'page')) next.delete('page');
+    setSearchParams(next);
+  };
 
   return (
     <div>
@@ -217,26 +243,47 @@ export const CandidateApplicationsPage: React.FC = () => {
           </Button>
         }
       />
-      <div className="mb-4">
-        <FilterPills
-          label="Lọc đơn"
-          value={group}
-          onChange={(v) => setSearchParams(v === 'all' ? {} : { group: v })}
+      <div className="mb-4 flex flex-wrap gap-3">
+        <Select
+          aria-label="Lọc theo trạng thái"
+          allowClear
+          placeholder="Tất cả trạng thái"
+          value={status}
+          onChange={(value) => updateFilters({ status: value })}
+          className="min-w-52"
           options={[
-            { value: 'all', label: 'Tất cả', count: items.length },
-            { value: 'active', label: 'Đang xử lý', count: activeItems.length },
-            { value: 'closed', label: 'Đã kết thúc', count: items.length - activeItems.length },
-          ]}
+            ['SUBMITTED', 'Đã nộp'],
+            ['SCREENING', 'Đang được xem'],
+            ['SHORTLISTED', 'Được chọn'],
+            ['INTERVIEW', 'Phỏng vấn'],
+            ['OFFER_PENDING', 'Đang chuẩn bị offer'],
+            ['OFFER_ACCEPTED', 'Đã nhận offer'],
+            ['PLACED', 'Đã đi làm'],
+            ['REJECTED', 'Chưa phù hợp'],
+            ['WITHDRAWN', 'Đã rút đơn'],
+          ].map(([value, label]) => ({ value, label }))}
         />
+        <DatePicker.RangePicker
+          aria-label="Lọc theo ngày ứng tuyển"
+          format="DD/MM/YYYY"
+          value={fromDate && toDate ? [dayjs(fromDate), dayjs(toDate)] : null}
+          onChange={(dates) =>
+            updateFilters({
+              fromDate: dates?.[0]?.startOf('day').toISOString(),
+              toDate: dates?.[1]?.endOf('day').toISOString(),
+            })
+          }
+        />
+        {(status || fromDate || toDate || jobId) && <Button onClick={() => setSearchParams({})}>Xóa bộ lọc</Button>}
       </div>
       {apps.isLoading ? (
         <Skeleton active paragraph={{ rows: 6 }} />
       ) : apps.isError ? (
         <Alert type="error" showIcon message="Không tải được đơn ứng tuyển" description={getApiErrorMessage(apps.error)} />
-      ) : shown.length === 0 ? (
+      ) : items.length === 0 ? (
         <Surface className="p-10 text-center">
-          <p className="m-0 text-sm text-slate-600">{items.length === 0 ? 'Bạn chưa ứng tuyển công việc nào.' : 'Không có đơn nào trong nhóm này.'}</p>
-          {items.length === 0 && (
+          <p className="m-0 text-sm text-slate-600">{status || fromDate || toDate || jobId ? 'Không có đơn nào phù hợp bộ lọc.' : 'Bạn chưa ứng tuyển công việc nào.'}</p>
+          {!status && !fromDate && !toDate && !jobId && (
             <Button type="primary" className="mt-3" icon={<SearchOutlined />} onClick={() => navigate('/jobs')}>
               Tìm việc làm
             </Button>
@@ -244,11 +291,97 @@ export const CandidateApplicationsPage: React.FC = () => {
         </Surface>
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-          {shown.map((a) => (
+          {items.map((a) => (
             <ApplicationCard key={a.applicationId} a={a} />
           ))}
         </div>
       )}
+      {(apps.data?.totalPages ?? 0) > 1 && (
+        <div className="mt-6 flex justify-center">
+          <Pagination
+            current={page}
+            pageSize={10}
+            total={apps.data?.total ?? 0}
+            showSizeChanger={false}
+            onChange={(nextPage) => updateFilters({ page: String(nextPage) })}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const CandidateApplicationDetailPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { applicationId = '' } = useParams();
+  const detail = useQuery({
+    queryKey: candidateKeys.applicationDetail(applicationId),
+    queryFn: () => candidateApplicationsApi.detail(applicationId),
+    enabled: Boolean(applicationId),
+  });
+
+  if (detail.isLoading) return <Skeleton active paragraph={{ rows: 8 }} />;
+
+  if (detail.isError || !detail.data) {
+    return (
+      <Surface className="p-6">
+        <Alert
+          type="error"
+          showIcon
+          message="Không tải được chi tiết đơn ứng tuyển"
+          description={getApiErrorMessage(detail.error)}
+          action={<Button onClick={() => navigate('/candidate/applications')}>Về danh sách</Button>}
+        />
+      </Surface>
+    );
+  }
+
+  const application = detail.data;
+  const stage = candidateStage(application.status);
+
+  return (
+    <div className="space-y-5">
+      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/candidate/applications')}>
+        Đơn ứng tuyển
+      </Button>
+      <PageHero
+        eyebrow="Chi tiết ứng tuyển"
+        title={application.jobTitle}
+        description={application.companyName}
+        actions={<StatusDot tone={stage.tone}>{stage.label}</StatusDot>}
+      />
+      <Surface className="space-y-5 p-6">
+        <StageTracker status={application.status} />
+        <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-slate-500">CV đã nộp</dt>
+            <dd className="m-0 mt-1 font-medium text-slate-900">{application.cvTitle || application.cvFileName || 'Không có tên CV'}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Nguồn hồ sơ</dt>
+            <dd className="m-0 mt-1 font-medium text-slate-900">
+              {application.submissionSource === 'AFFILIATE' ? 'Affiliate giới thiệu' : 'Candidate tự ứng tuyển'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Ngày ứng tuyển</dt>
+            <dd className="m-0 mt-1 font-medium text-slate-900">{dayjs(application.appliedAt).format('HH:mm DD/MM/YYYY')}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Cập nhật gần nhất</dt>
+            <dd className="m-0 mt-1 font-medium text-slate-900">{dayjs(application.updatedAt).format('HH:mm DD/MM/YYYY')}</dd>
+          </div>
+        </dl>
+        {application.statusReason && <Alert type="info" showIcon message="Thông tin trạng thái" description={application.statusReason} />}
+      </Surface>
+      <Surface className="p-6">
+        <h2 className="m-0 text-base font-bold text-slate-900">Kết quả AI</h2>
+        <div className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+          <div><span className="text-slate-500">Trạng thái</span><strong className="mt-1 block text-slate-900">{application.aiStatus || 'Chưa có kết quả'}</strong></div>
+          <div><span className="text-slate-500">Điểm phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchScore == null ? '—' : `${application.aiMatchScore}%`}</strong></div>
+          <div><span className="text-slate-500">Mức phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchTier || '—'}</strong></div>
+        </div>
+      </Surface>
     </div>
   );
 };
@@ -294,9 +427,15 @@ export const CvUploader: React.FC<{ onUploaded?: () => void; compact?: boolean }
 export const CandidateCvsPage: React.FC = () => {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
   const cvs = useCandidateCvs();
   const openSigned = useOpenSignedUrl();
   const [busyId, setBusyId] = useState<string>();
+  const [editing, setEditing] = useState<{ cvId: string; title: string }>();
+  const canView = hasPermission('cv.view_own');
+  const canCreate = hasPermission('cv.create');
+  const canUpdate = hasPermission('cv.update_own');
+  const canDelete = hasPermission('cv.delete_own');
 
   const act = async (cvId: string, run: () => Promise<{ message?: string }>, ok: string) => {
     setBusyId(cvId);
@@ -313,9 +452,25 @@ export const CandidateCvsPage: React.FC = () => {
 
   const list = cvs.data ?? [];
 
+  const saveTitle = async () => {
+    if (!editing) return;
+    const title = editing.title.trim();
+    if (!title) {
+      message.error('Tiêu đề CV không được để trống.');
+      return;
+    }
+    if (title.length > 180) {
+      message.error('Tiêu đề CV không được vượt quá 180 ký tự.');
+      return;
+    }
+    await act(editing.cvId, () => candidateCvApi.updateTitle(editing.cvId, title), 'Đã cập nhật tên CV.');
+    setEditing(undefined);
+  };
+
   return (
     <div>
       <PageHero eyebrow="Hồ sơ" title="Kho CV" description="CV bạn tải lên được dùng để ứng tuyển. CV chính được chọn sẵn khi bạn bấm Ứng tuyển." />
+      {!canView && <Alert className="mb-5" type="error" showIcon message="Bạn không có quyền xem kho CV cá nhân." />}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-3">
           {cvs.isLoading ? (
@@ -344,10 +499,17 @@ export const CandidateCvsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  <Tooltip title="Xem CV">
-                    <Button icon={<EyeOutlined />} aria-label={`Xem ${cv.title ?? 'CV'}`} onClick={() => openSigned(() => candidateCvApi.downloadUrl(cv.cvId))} />
-                  </Tooltip>
-                  {!cv.isPrimary && (
+                  {canView && (
+                    <Tooltip title="Xem CV">
+                      <Button icon={<EyeOutlined />} aria-label={`Xem ${cv.title ?? 'CV'}`} onClick={() => openSigned(() => candidateCvApi.downloadUrl(cv.cvId))} />
+                    </Tooltip>
+                  )}
+                  {canUpdate && (
+                    <Tooltip title="Đổi tên CV">
+                      <Button icon={<EditOutlined />} aria-label={`Đổi tên ${cv.title ?? 'CV'}`} onClick={() => setEditing({ cvId: cv.cvId, title: cv.title || cv.fileName || '' })} />
+                    </Tooltip>
+                  )}
+                  {canUpdate && !cv.isPrimary && (
                     <Tooltip title="Đặt làm CV chính">
                       <Button
                         icon={busyId === cv.cvId ? undefined : <StarOutlined />}
@@ -360,28 +522,48 @@ export const CandidateCvsPage: React.FC = () => {
                   {cv.isPrimary && (
                     <Button icon={<StarFilled />} disabled aria-label="CV chính" className="!text-amber-600" />
                   )}
-                  <Popconfirm
-                    title="Xóa CV này?"
+                  {canDelete && <Popconfirm
+                    title="Gỡ CV khỏi kho?"
                     description="CV đã dùng trong đơn ứng tuyển vẫn được giữ cho nhà tuyển dụng."
-                    okText="Xóa"
+                    okText="Gỡ khỏi kho"
                     okButtonProps={{ danger: true }}
                     cancelText="Hủy"
-                    onConfirm={() => act(cv.cvId, () => candidateCvApi.remove(cv.cvId), 'Đã xóa CV.')}
+                    onConfirm={() => act(cv.cvId, () => candidateCvApi.remove(cv.cvId), 'Đã gỡ CV khỏi kho.')}
                   >
-                    <Button danger icon={<DeleteOutlined />} aria-label={`Xóa ${cv.title ?? 'CV'}`} />
-                  </Popconfirm>
+                    <Button danger icon={<DeleteOutlined />} aria-label={`Gỡ ${cv.title ?? 'CV'} khỏi kho`} />
+                  </Popconfirm>}
                 </div>
               </article>
             ))
           )}
         </div>
-        <aside className="lg:sticky lg:top-24 lg:self-start">
+        {canCreate && <aside className="lg:sticky lg:top-24 lg:self-start">
           <Surface className="p-5">
             <h2 className="m-0 mb-3 text-base font-semibold text-slate-900">Tải CV mới</h2>
             <CvUploader />
           </Surface>
-        </aside>
+        </aside>}
       </div>
+      <Modal
+        title="Đổi tên CV"
+        open={Boolean(editing)}
+        okText="Lưu thay đổi"
+        cancelText="Hủy"
+        confirmLoading={Boolean(editing && busyId === editing.cvId)}
+        okButtonProps={{ disabled: !editing?.title.trim() || (editing?.title.trim().length ?? 0) > 180 }}
+        onOk={saveTitle}
+        onCancel={() => setEditing(undefined)}
+      >
+        <Input
+          autoFocus
+          maxLength={180}
+          showCount
+          value={editing?.title ?? ''}
+          aria-label="Tiêu đề CV"
+          onChange={(event) => setEditing((current) => current ? { ...current, title: event.target.value } : current)}
+          onPressEnter={saveTitle}
+        />
+      </Modal>
     </div>
   );
 };
