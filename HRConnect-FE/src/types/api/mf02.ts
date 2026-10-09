@@ -129,6 +129,41 @@ export interface CandidateIdentityClaimVerification {
   concurrencyToken: string;
 }
 
+export type AdminIdentityClaimStatus =
+  | 'PENDING_ADMIN_REVIEW'
+  | 'COMPLETED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'CANCELLED'
+  | string;
+
+export interface AdminIdentityClaimListItem {
+  claimId: string;
+  requesterUserId: string;
+  requesterCandidateId: string;
+  targetCandidateId: string | null;
+  maskedAssertedEmail: string;
+  status: AdminIdentityClaimStatus;
+  reviewReason: string | null;
+  requesterDisplayName: string;
+  requesterPrimaryEmail: string;
+  requesterCandidateName: string;
+  targetCandidateName: string | null;
+  createdAt: string;
+  verifiedAt: string | null;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+}
+
+export interface AdminIdentityClaimListParams {
+  status?: AdminIdentityClaimStatus;
+  search?: string;
+  page: number;
+  pageSize: number;
+  sortBy?: 'createdAt' | 'verifiedAt' | 'reviewedAt';
+  sortDirection?: 'asc' | 'desc';
+}
+
 export interface CandidateApplicationDetail extends CandidateApplication {
   candidateId: string;
   companyId: string | null;

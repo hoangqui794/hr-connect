@@ -132,6 +132,9 @@ const ConsoleOverviewPage = React.lazy(() =>
 const ConsoleApprovalsPage = React.lazy(() =>
   import('@/features/admin-console/AdminApprovalsPage').then((m) => ({ default: m.AdminApprovalsPage }))
 );
+const ConsoleIdentityClaimsPage = React.lazy(() =>
+  import('@/features/admin-console/AdminIdentityClaimsPage').then((m) => ({ default: m.AdminIdentityClaimsPage }))
+);
 const ConsoleUsersPage = React.lazy(() =>
   import('@/features/admin-console/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage }))
 );
@@ -446,6 +449,8 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/admin/settings': [UserRole.ADMIN],
   '/admin/audit-trail': [UserRole.ADMIN],
   '/admin/approvals': [UserRole.ADMIN],
+  '/admin/candidate-identity-claims': [UserRole.ADMIN],
+  '/admin/candidate-identity-claims/:claimId': [UserRole.ADMIN],
   '/admin/service-types': [UserRole.ADMIN],
   '/admin/commission-rules': [UserRole.ADMIN],
   '/admin/profile': [UserRole.ADMIN],
@@ -504,6 +509,7 @@ export const AppRoutes = {
   Mf01PublicJobDetailPage,
   ConsoleOverviewPage,
   ConsoleApprovalsPage,
+  ConsoleIdentityClaimsPage,
   ConsoleUsersPage,
   ConsoleServiceTypesPage,
   ConsoleCommissionRulesPage,

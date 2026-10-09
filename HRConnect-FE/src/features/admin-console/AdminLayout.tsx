@@ -17,6 +17,7 @@ import {
   MenuFoldOutlined,
   MenuOutlined,
   MenuUnfoldOutlined,
+  LinkOutlined,
   SafetyCertificateOutlined,
   SettingOutlined,
   SolutionOutlined,
@@ -42,6 +43,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     group: 'Vận hành',
     items: [
       { to: '/admin/approvals', label: 'Phê duyệt tài khoản', icon: <SafetyCertificateOutlined /> },
+      { to: '/admin/candidate-identity-claims', label: 'Danh tính Candidate', icon: <LinkOutlined /> },
       { to: '/admin/users', label: 'Người dùng', icon: <TeamOutlined /> },
     ],
   },
