@@ -819,7 +819,11 @@ export const JobFormPage: React.FC = () => {
           {/* Candidate-facing preview */}
           <div className="admin-surface overflow-hidden">
             <div className="border-0 border-b border-solid border-slate-100 px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-              Ứng viên sẽ thấy
+              {watched.visibility === 'PARTNER_ONLY'
+                ? 'Affiliate sẽ thấy'
+                : watched.visibility === 'INTERNAL_ONLY'
+                ? 'Chỉ nội bộ thấy'
+                : 'Ứng viên và khách sẽ thấy'}
             </div>
             <div className="p-5">
               <div className="text-[16px] font-semibold leading-snug text-slate-900">{watched.title?.trim() || 'Tên vị trí'}</div>
