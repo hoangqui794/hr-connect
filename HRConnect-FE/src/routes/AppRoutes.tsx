@@ -178,6 +178,9 @@ const CandidateAffiliateCvsPage = React.lazy(() =>
 const CandidateAffiliateCvDetailPage = React.lazy(() =>
   import('@/features/portal/CandidateAffiliateCvsPage').then((m) => ({ default: m.CandidateAffiliateCvDetailPage }))
 );
+const CandidateIdentityPage = React.lazy(() =>
+  import('@/features/portal/CandidateIdentityPage').then((m) => ({ default: m.CandidateIdentityPage }))
+);
 const AffiliateHomePage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateHomePage })));
 const AffiliateSubmitPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmitPage })));
 const AffiliateMySubmissionsPage = React.lazy(() =>
@@ -410,6 +413,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/candidate/cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/affiliate-cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/affiliate-cvs/:cvId': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/settings/email-identities': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/affiliate/attributions': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/jobs': [
     UserRole.CLIENT,
@@ -516,6 +520,7 @@ export const AppRoutes = {
   CandidateCvsPage,
   CandidateAffiliateCvsPage,
   CandidateAffiliateCvDetailPage,
+  CandidateIdentityPage,
   AffiliateHomePage,
   AffiliateSubmitPage,
   AffiliateMySubmissionsPage,
