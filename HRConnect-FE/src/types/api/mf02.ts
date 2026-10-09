@@ -30,9 +30,40 @@ export interface CandidateApplication {
   appliedAt: string;
 }
 
+export interface CandidateAffiliateCv {
+  cvId: string;
+  title: string;
+  fileName: string | null;
+  mimeType: string | null;
+  fileSizeBytes: number | null;
+  documentStatus: string;
+  affiliateReuseStatus: string;
+  reuseConcurrencyToken: string;
+  affiliateUserId: string;
+  affiliateDisplayName: string;
+  submissionCount: number;
+  pendingConsentCount: number;
+  acceptedSubmissionCount: number;
+  lastSubmittedAt: string | null;
+  createdAt: string;
+}
+
+export interface CandidateApplicationDetail extends CandidateApplication {
+  candidateId: string;
+  companyId: string | null;
+  cvFileName: string | null;
+  currentStage: string | null;
+  statusReason: string | null;
+  submissionSource: string | null;
+  updatedAt: string;
+  aiMatchScore: number | null;
+  aiMatchTier: string | null;
+}
+
 export interface ApplyJobResult {
   applicationId: string;
   submissionId: string;
+  candidateId: string;
   jobId: string;
   cvId: string;
   status: string;
@@ -67,6 +98,52 @@ export interface AffiliateSubmission {
   duplicateOfSubmissionId: string | null;
   reason: string | null;
   submittedAt: string;
+}
+
+export interface AffiliateSubmissionDetail extends AffiliateSubmission {
+  consentRequestedAt: string | null;
+  consentEmailSentAt: string | null;
+  candidateEmail: string | null;
+  candidatePhone: string | null;
+  companyName: string;
+  cvTitle: string | null;
+  cvFileName: string | null;
+  updatedAt: string;
+}
+
+export interface ResendSubmissionConsentResult {
+  success: boolean;
+  message: string;
+  submissionId: string;
+  status: string;
+  expiresAt: string;
+  emailSendCount: number;
+  emailDeliveryStatus: string;
+}
+
+export interface SubmissionConsentReview {
+  submissionId: string;
+  status: string;
+  expiresAt: string;
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+  cvFileName: string;
+  cvDownloadUrl: string | null;
+  cvUrlExpiresAt: string | null;
+  affiliateReuseStatus: string | null;
+  reuseConcurrencyToken: string | null;
+}
+
+export interface SubmissionConsentDecisionResult {
+  success: boolean;
+  message: string;
+  submissionId: string;
+  submissionStatus: string;
+  applicationId: string | null;
+  aiStatus: string;
+  affiliateReuseStatus: string | null;
+  reuseConcurrencyToken: string | null;
 }
 
 export interface AffiliateReferralProgress {
@@ -124,11 +201,14 @@ export interface LibraryCandidateDetail {
 
 export interface SubmitCandidateResult {
   applicationId: string | null;
+  attributionId: string | null;
+  affiliateId: string;
   submissionId: string;
   candidateId: string;
   jobId: string;
   cvId: string;
   status: SubmissionStatus;
+  aiStatus: string;
   consentExpiresAt: string | null;
   emailDeliveryStatus: string;
   submittedAt: string;

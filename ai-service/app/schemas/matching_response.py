@@ -23,8 +23,11 @@ class RequirementMatch(BaseModel):
     requires_manual_review: bool = Field(default=False, alias="requiresManualReview")
     warnings: list[str] = Field(default_factory=list)
     suggested_evidence: list[dict] = Field(default_factory=list, alias="suggestedEvidence")
+    knockout: bool = False
+    # Inferred: the job title/description names this requirement's technology.
+    core: bool = False
     match_method: Literal[
-        "DETERMINISTIC", "DETERMINISTIC_PARTIAL", "NOT_FOUND", "UNKNOWN"
+        "DETERMINISTIC", "DETERMINISTIC_PARTIAL", "SEMANTIC_PARTIAL", "NOT_FOUND", "UNKNOWN"
     ] = Field(alias="matchMethod")
 
 

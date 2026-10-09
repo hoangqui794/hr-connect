@@ -9,10 +9,11 @@ from starlette.concurrency import run_in_threadpool
 from app.clients.hrconnect_client import HRConnectClient
 from app.core.dependencies import get_document_parser, get_semantic_matcher
 from app.schemas.cv import CvParseResponse, DocumentMetadata
-from app.schemas.matching_request import Candidate, CandidateSkill, MatchingRequest, RequirementCategory
+from app.schemas.matching_request import MatchingRequest, RequirementCategory
 from app.schemas.scoring_job import ScoringJobRequest
+from app.services.candidate_builder import candidate_from_parse
 from app.services.matching_service import MatchingService
-from app.services.parse_diagnostics import build_parse_diagnostics, unreliable_evidence_fields
+from app.services.parse_diagnostics import build_parse_diagnostics
 from app.services.structured_cv_parser import StructuredCvParser
 
 logger = logging.getLogger(__name__)
@@ -167,29 +168,11 @@ class ScoringOrchestrator:
 
 
 def _to_matching_request(job, job_data, parse_result: CvParseResponse) -> MatchingRequest:
-    structured = parse_result.candidate
     return MatchingRequest(
         requestId=job.request_id,
         applicationId=job.application_id,
         attemptNo=job.attempt_no,
-        candidate=Candidate(
-            summary=structured.summary or parse_result.raw_text[:5000],
-            yearsOfExperience=structured.total_years_of_experience,
-            highestEducation=(
-                structured.education[0].degree or structured.education[0].school
-                if structured.education
-                else None
-            ),
-            skills=[
-                CandidateSkill(name=skill.name, yearsOfExperience=skill.years_of_experience)
-                for skill in structured.skills
-            ],
-            cvText=parse_result.raw_text,
-            parseConfidence=parse_result.parse_confidence,
-            requiresManualReview=parse_result.requires_manual_review,
-            parseWarnings=parse_result.warnings,
-            unreliableEvidenceFields=unreliable_evidence_fields(parse_result.diagnostics),
-        ),
+        candidate=candidate_from_parse(parse_result),
         job=job_data,
     )
 

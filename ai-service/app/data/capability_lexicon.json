@@ -1,0 +1,45 @@
+{
+  "description": "Extra phrasings for OTHER requirements. 'extend' adds evidence patterns to a built-in capability by name; 'add' defines a new capability (trigger matches the job requirement, evidence matches a CV sentence); an 'add' whose name already exists widens that capability instead of duplicating it. Patterns are case-insensitive regular expressions. Every match stays flagged for human review.",
+  "extend": {
+    "Teamwork": ["led (?:a |the )?(?:development |engineering |dev )?team", "team lead\\w*", "cross.functional", "worked (?:closely )?with (?:stakeholders|customers|clients|product)"],
+    "Database design": ["database partitioning", "partition\\w* (?:tables?|data)", "\\bERD\\b", "normali[sz]\\w* (?:schema|database|tables?)", "thiết kế (?:database|csdl)"],
+    "Query optimization": ["optimi[sz]\\w* (?:sql|database)", "execution plans?", "tối ưu (?:sql|database|csdl)"],
+    "Problem analysis": ["debugg\\w*", "investigat\\w* .{0,30}(?:issue|bug|incident|problem)", "resolv\\w* .{0,30}(?:issue|bug|incident)", "problem definition"],
+    "Technical proposals": ["architecture discussions?", "design reviews?", "recommend\\w* .{0,40}(?:solution|architecture|approach)", "established technical foundation", "(?:led|drove|made) .{0,20}technical decisions", "(?:technical|architectural|ux) .{0,10}trade-?offs?"],
+    "Reusable UI components": ["component librar(?:y|ies)", "(?:core )?ui building blocks", "form components"],
+    "Frontend codebase architecture": ["(?:set up|established|built) the frontend project structure", "frontend project structure"],
+    "Client performance": ["optimistic updates", "application responsiveness", "reduced unnecessary requests", "ui thrashing"],
+    "OOP": ["design patterns", "\\bC#", "\\bJava\\b"],
+    "Design patterns": ["\\bCQRS\\b", "mediator", "repository pattern"],
+    "Testable code": ["\\bxunit\\b", "\\bjest\\b"],
+    "Maintainable code": ["clean (?:architecture|code)", "code quality", "code reviews?"]
+  },
+  "add": [
+    {"name": "Teamwork", "trigger": "collaborat\\w*|team ?player", "evidence": "collaborat\\w* (?:closely|directly|with)"},
+    {"name": "Communication", "trigger": "communicat\\w*|giao tiếp", "evidence": "communicat\\w*|giao tiếp|present\\w* (?:to|for) (?:clients|customers|stakeholders|management)|partnered closely|worked closely with|collaborat\\w* (?:closely|directly) with|requirements? gathering"},
+    {"name": "English", "trigger": "english|tiếng anh|spoken|written|ngoại ngữ", "evidence": "\\benglish\\b|tiếng anh|\\bielts\\b|\\btoeic\\b|\\btoefl\\b|cambridge (?:english|certificate)"}
+  ],
+  "skillSynonyms": {
+    "Git": ["GitHub", "GitLab", "Bitbucket"],
+    "CI/CD": ["GitHub Actions", "GitHub Workflows", "GitLab CI", "Jenkins", "Azure Pipelines", "CircleCI"],
+    "SQL": ["PostgreSQL", "MySQL", "SQL Server", "Oracle Database", "MariaDB", "SQLite"],
+    "REST API": ["RESTful", "REST APIs", "Web API"],
+    "RESTful": ["REST API", "Web API"],
+    "Multi-Tenancy": ["multi-tenant", "multitenant", "multi tenant"],
+    "Microservices": ["microservice architecture", "micro-services"],
+    "Entity Framework": ["EF Core", "Entity Framework Core"],
+    "Lambda": ["Lambda Expressions"],
+    "Kubernetes": ["k8s"],
+    "Scrum": ["Agile Scrum"]
+  },
+  "domainSynonyms": {
+    "web": ["fullstack", "full-stack", "full stack", "frontend", "front-end", "backend", "back-end", "REST API", "RESTful", "Web API", "ASP.NET", "Angular", "React", "Vue", "Next.js", "Node.js", "NestJS", "Express", "Spring Boot", "Django", "Laravel", "PHP", "HTML", "SPA"],
+    "backend": ["back-end", "fullstack", "full-stack", "full stack", "REST API", "RESTful", "Web API", "ASP.NET", ".NET", "Node.js", "NestJS", "Spring Boot", "Django", "Laravel"],
+    "frontend": ["front-end", "fullstack", "full-stack", "full stack", "Angular", "React", "Vue", "Next.js", "HTML", "CSS"],
+    "mobile": ["iOS", "Android", "Flutter", "React Native", "Swift", "Kotlin"],
+    "game": ["Unity", "Unreal", "gameplay"],
+    ".NET": ["ASP.NET", ".NET Core", "Blazor", "Entity Framework"],
+    "Java": ["Spring Boot", "Spring", "Hibernate", "JPA"],
+    "Node.js": ["NestJS", "Express", "Fastify"]
+  }
+}

@@ -104,6 +104,14 @@ export const router = createBrowserRouter([
     element: <ServicesPage />,
   },
   {
+    path: '/submission-consent',
+    element: (
+      <CandidateScope>
+        {withSuspense(<AppRoutes.PublicSubmissionConsentPage />)}
+      </CandidateScope>
+    ),
+  },
+  {
     path: '/jobs',
     element: withSuspense(<AppRoutes.Mf01PublicJobSearchPage />),
   },
@@ -187,7 +195,10 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/candidate/dashboard" replace /> },
       { path: 'dashboard', element: <AppRoutes.CandidateHomePage /> },
       { path: 'applications', element: <AppRoutes.CandidateMyApplicationsPage /> },
+      { path: 'applications/:applicationId', element: <AppRoutes.CandidateApplicationDetailPage /> },
+      { path: 'submission-consents/:submissionId', element: <AppRoutes.CandidateSubmissionConsentPage /> },
       { path: 'cvs', element: <AppRoutes.CandidateCvsPage /> },
+      { path: 'affiliate-cvs', element: <AppRoutes.CandidateAffiliateCvsPage /> },
       { path: 'profile', element: <AppRoutes.CandidateProfilePage /> },
       // Saved jobs had no backend; send people to the job search.
       { path: 'saved-jobs', element: <Navigate to="/jobs" replace /> },
@@ -212,6 +223,7 @@ export const router = createBrowserRouter([
       { path: 'jobs', element: <AppRoutes.Mf01InAppJobDiscoveryPage /> },
       { path: 'submit-candidate', element: <AppRoutes.AffiliateSubmitPage /> },
       { path: 'submissions', element: <AppRoutes.AffiliateMySubmissionsPage /> },
+      { path: 'submissions/:submissionId', element: <AppRoutes.AffiliateSubmissionDetailPage /> },
       { path: 'candidates', element: <AppRoutes.AffiliateCandidatesPage /> },
       { path: 'attributions', element: <AppRoutes.AffiliateAttributionsPage /> },
       // MF-05 commissions have no API yet.

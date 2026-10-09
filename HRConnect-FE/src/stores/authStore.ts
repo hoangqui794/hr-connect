@@ -7,7 +7,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { UserRole, UserProfile, DEMO_USERS, mapApiRoleToUserRole } from '@/types/roles';
+import { UserRole, UserProfile, DEMO_USERS, mapApiRoleToUserRole, mapApiRolesToUserRoles } from '@/types/roles';
 import { authService, type CurrentUserDto, AUTH_STORAGE_KEYS } from '@/services/authService';
 import { findRegisteredAccountByEmail, saveRegisteredAccount } from '@/services/accountService';
 
@@ -44,6 +44,8 @@ interface AuthState {
   logout: () => void;
   updateUser: (updates: Partial<UserProfile>) => void;
   syncCurrentUser: () => Promise<UserProfile | null>;
+  hasPermission: (permission: string) => boolean;
+  hasAnyRole: (roles: UserRole[]) => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -122,6 +124,7 @@ export const useAuthStore = create<AuthState>()(
             status: userDto.status,
             roles: userDto.roles,
             permissions: userDto.permissions,
+            emailVerified: userDto.emailVerified,
           },
         });
 
@@ -134,6 +137,10 @@ export const useAuthStore = create<AuthState>()(
           email: userDto.email || '',
           phone: userDto.phone || undefined,
           role: resolvedRole,
+          roles: userDto.roles ?? [],
+          permissions: userDto.permissions ?? [],
+          status: userDto.status ?? undefined,
+          emailVerified: userDto.emailVerified,
           avatar: userDto.avatarUrl || initials,
           trustRating: resolvedRole === UserRole.AFFILIATE ? 5.0 : undefined,
         };
@@ -166,6 +173,10 @@ export const useAuthStore = create<AuthState>()(
               email: dto.email || '',
               phone: dto.phone || undefined,
               role: resolvedRole,
+              roles: dto.roles ?? [],
+              permissions: dto.permissions ?? [],
+              status: dto.status ?? undefined,
+              emailVerified: dto.emailVerified,
               avatar: dto.avatarUrl || getInitials(dto.displayName || dto.email || 'User'),
               trustRating: resolvedRole === UserRole.AFFILIATE ? 5.0 : undefined,
             };
@@ -231,6 +242,16 @@ export const useAuthStore = create<AuthState>()(
         set((state) => ({
           user: state.user ? { ...state.user, ...updates } : null,
         }));
+      },
+
+      hasPermission: (permission: string) =>
+        Boolean(permission && get().user?.permissions?.includes(permission)),
+
+      hasAnyRole: (roles: UserRole[]) => {
+        const state = get();
+        const assignedRoles = mapApiRolesToUserRoles(state.user?.roles);
+        if (!assignedRoles.length && state.role !== UserRole.GUEST) assignedRoles.push(state.role);
+        return roles.some((role) => assignedRoles.includes(role));
       },
     }),
     {

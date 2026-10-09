@@ -162,11 +162,26 @@ const CandidateHomePage = React.lazy(() => import('@/features/portal/CandidatePa
 const CandidateMyApplicationsPage = React.lazy(() =>
   import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateApplicationsPage }))
 );
+const CandidateApplicationDetailPage = React.lazy(() =>
+  import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateApplicationDetailPage }))
+);
+const CandidateSubmissionConsentPage = React.lazy(() =>
+  import('@/features/portal/CandidateSubmissionConsentPage').then((m) => ({ default: m.CandidateSubmissionConsentPage }))
+);
+const PublicSubmissionConsentPage = React.lazy(() =>
+  import('@/features/portal/PublicSubmissionConsentPage').then((m) => ({ default: m.PublicSubmissionConsentPage }))
+);
 const CandidateCvsPage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateCvsPage })));
+const CandidateAffiliateCvsPage = React.lazy(() =>
+  import('@/features/portal/CandidateAffiliateCvsPage').then((m) => ({ default: m.CandidateAffiliateCvsPage }))
+);
 const AffiliateHomePage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateHomePage })));
 const AffiliateSubmitPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmitPage })));
 const AffiliateMySubmissionsPage = React.lazy(() =>
   import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmissionsPage }))
+);
+const AffiliateSubmissionDetailPage = React.lazy(() =>
+  import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmissionDetailPage }))
 );
 const AffiliateCandidatesPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateCandidatesPage })));
 const AffiliateAttributionsPage = React.lazy(() =>
@@ -268,6 +283,9 @@ interface ProtectedRouteProps {
    * Defaults: /login for guests, /dashboard?reason=forbidden for wrong role.
    */
   redirectTo?: string;
+  /** Backend permission claims required by this screen. */
+  requiredPermissions?: string[];
+  permissionMode?: 'all' | 'any';
 }
 
 /**
@@ -307,8 +325,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRoles,
   children,
   redirectTo,
+  requiredPermissions = [],
+  permissionMode = 'all',
 }) => {
-  const { role, isAuthenticated, user } = useAuthStore();
+  const { role, isAuthenticated, user, hasAnyRole } = useAuthStore();
   const location = useLocation();
 
   // Unauthenticated user trying to access any protected route
@@ -318,7 +338,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Authenticated but wrong role
-  if (!requiredRoles.includes(role)) {
+  if (!hasAnyRole(requiredRoles)) {
+    const target = redirectTo ?? getDashboardRouteForRole(role);
+    return <Navigate to={target} replace />;
+  }
+
+  const permissions = user.permissions ?? [];
+  const hasRequiredPermissions =
+    requiredPermissions.length === 0 ||
+    (permissionMode === 'any'
+      ? requiredPermissions.some((permission) => permissions.includes(permission))
+      : requiredPermissions.every((permission) => permissions.includes(permission)));
+
+  if (!hasRequiredPermissions) {
     const target = redirectTo ?? getDashboardRouteForRole(role);
     return <Navigate to={target} replace />;
   }
@@ -369,8 +401,11 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/profile': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/profile': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/applications': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/applications/:applicationId': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/submission-consents/:submissionId': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/saved-jobs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/affiliate-cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/affiliate/attributions': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/jobs': [
     UserRole.CLIENT,
@@ -385,6 +420,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/affiliate/submit-candidate': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/jobs': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/submissions': [UserRole.AFFILIATE, UserRole.ADMIN],
+  '/affiliate/submissions/:submissionId': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/candidates': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/commissions': [UserRole.AFFILIATE, UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/affiliate/ledger': [UserRole.AFFILIATE, UserRole.INTERNAL_HR, UserRole.ADMIN],
@@ -470,10 +506,15 @@ export const AppRoutes = {
   ConsoleSettingsPlaceholder,
   CandidateHomePage,
   CandidateMyApplicationsPage,
+  CandidateApplicationDetailPage,
+  CandidateSubmissionConsentPage,
+  PublicSubmissionConsentPage,
   CandidateCvsPage,
+  CandidateAffiliateCvsPage,
   AffiliateHomePage,
   AffiliateSubmitPage,
   AffiliateMySubmissionsPage,
+  AffiliateSubmissionDetailPage,
   AffiliateCandidatesPage,
   AffiliateAttributionsPage,
   AffiliateCommissionsPlaceholder,

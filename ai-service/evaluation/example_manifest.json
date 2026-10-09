@@ -1,0 +1,27 @@
+{
+  "note": "Synthetic example showing the manifest format. Labels are illustrative, not HR decisions.",
+  "cases": [
+    {
+      "id": "example-dotnet-strong",
+      "cv": {"candidate": {
+        "summary": "Backend developer, 5 years with .NET",
+        "yearsOfExperience": 5,
+        "skills": [{"name": "C#"}, {"name": "ASP.NET Core"}, {"name": "PostgreSQL"}, {"name": "Docker"}],
+        "cvText": "Built REST APIs with ASP.NET Core and PostgreSQL for an e-commerce platform.\nLed a team of 4 developers and reviewed code.\nContainerized services with Docker and GitLab CI."
+      }},
+      "job": "example_job.json",
+      "label": {"score": 90, "requirements": {"dotnet": "MATCHED", "postgres": "MATCHED", "experience": "MATCHED", "docker": "MATCHED"}}
+    },
+    {
+      "id": "example-accountant-unrelated",
+      "cv": {"candidate": {
+        "summary": "Kế toán tổng hợp 4 năm",
+        "yearsOfExperience": 4,
+        "skills": [{"name": "MISA"}, {"name": "Excel"}],
+        "cvText": "Lập báo cáo tài chính, quyết toán thuế, đối chiếu công nợ."
+      }},
+      "job": "example_job.json",
+      "label": {"score": 10, "requirements": {"dotnet": "NOT_FOUND", "postgres": "NOT_FOUND", "experience": "MATCHED", "docker": "NOT_FOUND"}}
+    }
+  ]
+}
