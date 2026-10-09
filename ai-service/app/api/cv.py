@@ -18,10 +18,11 @@ from app.schemas.cv import (
     FileMatchingMetadata,
     FileMatchingResponse,
 )
-from app.schemas.matching_request import Candidate, CandidateSkill, MatchingRequest, RequirementCategory
+from app.schemas.matching_request import MatchingRequest, RequirementCategory
+from app.services.candidate_builder import candidate_from_parse
 from app.services.document_parser import CvProcessingError, DocumentParser
 from app.services.matching_service import MatchingService
-from app.services.parse_diagnostics import build_parse_diagnostics, unreliable_evidence_fields
+from app.services.parse_diagnostics import build_parse_diagnostics
 from app.services.semantic_matcher import SemanticMatcher
 from app.services.structured_cv_parser import StructuredCvParser
 
@@ -134,30 +135,11 @@ async def match_cv_file(
             for skill in (requirement.content, *requirement.alternatives)
         ]
         parse_result = await _parse_upload(file, parser, job_skills)
-        structured = parse_result.candidate
-        summary = structured.summary or parse_result.raw_text[:5000]
         request = MatchingRequest(
             requestId=parsed_metadata.request_id,
             applicationId=parsed_metadata.application_id,
             attemptNo=parsed_metadata.attempt_no,
-            candidate=Candidate(
-                summary=summary,
-                yearsOfExperience=structured.total_years_of_experience,
-                highestEducation=(
-                    structured.education[0].degree or structured.education[0].school
-                    if structured.education
-                    else None
-                ),
-                skills=[
-                    CandidateSkill(name=skill.name, yearsOfExperience=skill.years_of_experience)
-                    for skill in structured.skills
-                ],
-                cvText=parse_result.raw_text,
-                parseConfidence=parse_result.parse_confidence,
-                requiresManualReview=parse_result.requires_manual_review,
-                parseWarnings=parse_result.warnings,
-                unreliableEvidenceFields=unreliable_evidence_fields(parse_result.diagnostics),
-            ),
+            candidate=candidate_from_parse(parse_result),
             job=parsed_metadata.job,
         )
         matching_result = await run_in_threadpool(
