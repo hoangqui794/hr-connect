@@ -21,7 +21,16 @@ public class JobManagementCommandHandlerTests
     private readonly Mock<IJobRepository> _jobs = new();
     private readonly Mock<ICompanyUserRepository> _members = new();
     private readonly Mock<INotificationRepository> _notifications = new();
+    private readonly Mock<IBusinessSettings> _businessSettings = new();
     private readonly Mock<IUnitOfWork> _uow = new();
+
+    public JobManagementCommandHandlerTests()
+    {
+        _businessSettings.Setup(x => x.DefaultHeadhuntFeeMultiplier).Returns(1.5m);
+        _businessSettings.Setup(x => x.DefaultWarrantyDays).Returns(30);
+        _businessSettings.Setup(x => x.DefaultPaymentDueDays).Returns(14);
+        _businessSettings.Setup(x => x.DefaultSourcingPricePerCv).Returns(100_000m);
+    }
 
     [Fact]
     public async Task Update_ShouldReplaceDraftFieldsAndRequirements()
@@ -135,7 +144,7 @@ public class JobManagementCommandHandlerTests
         job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid(), IsMandatory = true });
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
-        var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
+        var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
             .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
         result.Data.Status.Should().Be(JobStatuses.PendingReview);
         job.JobStatusHistories.Should().ContainSingle(x => x.OldStatus == JobStatuses.Draft && x.NewStatus == JobStatuses.PendingReview);
@@ -150,7 +159,7 @@ public class JobManagementCommandHandlerTests
         job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
 
-        var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
+        var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
             .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
 
         result.Data.Status.Should().Be(JobStatuses.PendingReview);
@@ -161,7 +170,7 @@ public class JobManagementCommandHandlerTests
     public async Task Submit_ShouldKeepDraft_WhenMandatoryDataIsMissing()
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
-        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
+        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
             .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
         await action.Should().ThrowAsync<BadRequestException>(); job.Status.Should().Be(JobStatuses.Draft);
         _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -179,7 +188,7 @@ public class JobManagementCommandHandlerTests
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ServiceTypeCodes.CvSourcing);
 
-        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
+        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
             .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
 
         await action.Should().ThrowAsync<BadRequestException>();
@@ -208,7 +217,7 @@ public class JobManagementCommandHandlerTests
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
 
-        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
+        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
             .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
 
         await action.Should().ThrowAsync<BadRequestException>();
@@ -224,7 +233,7 @@ public class JobManagementCommandHandlerTests
         job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid() });
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
-        var submit = new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object);
+        var submit = new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object);
 
         await submit.Handle(new SubmitJobCommand { JobId = job.JobId, UserId = owner, ConcurrencyToken = job.ConcurrencyToken }, default);
         await new RejectJobCommandHandler(_jobs.Object, _notifications.Object, _uow.Object).Handle(
@@ -340,6 +349,92 @@ public class JobManagementCommandHandlerTests
         action.Should().Throw<ConflictException>();
         job.Status.Should().Be(from);
         job.JobStatusHistories.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Submit_CvSourcing_ShouldRequireSourcingTarget()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "Senior Sourcing"; job.Description = "Sourcing JD"; job.Benefits = "Good";
+        job.Location = "HN"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.PartnerOnly;
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvSourcing);
+
+        // Trường hợp không có SourcingTarget
+        job.SourcingTarget = null;
+        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*Sourcing Target*");
+
+        // Trường hợp SourcingTarget <= 0
+        job.SourcingTarget = 0;
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*Sourcing Target*");
+    }
+
+    [Fact]
+    public async Task Submit_CvSourcing_ShouldSetDefaultSourcingPrice_WhenNotProvided()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "Senior Sourcing"; job.Description = "Sourcing JD"; job.Benefits = "Good";
+        job.Location = "HN"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.PartnerOnly;
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+        job.SourcingTarget = 5;
+        job.SourcingPricePerCv = null;
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvSourcing);
+
+        var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        result.Data.Status.Should().Be(JobStatuses.PendingReview);
+        job.SourcingTarget.Should().Be(5);
+        job.SourcingPricePerCv.Should().Be(100_000m);
+        job.FeeMultiplier.Should().BeNull();
+        job.WarrantyDays.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Submit_HeadhuntCod_ShouldSetDefaultCommercialTerms_WhenNotProvided()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "CTO Headhunt"; job.Description = "CTO JD"; job.Benefits = "Equity";
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.PartnerOnly;
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+        job.FeeMultiplier = null;
+        job.WarrantyDays = null;
+        job.PaymentDueDays = null;
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.HeadhuntCod);
+
+        var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        result.Data.Status.Should().Be(JobStatuses.PendingReview);
+        job.FeeMultiplier.Should().Be(1.5m);
+        job.WarrantyDays.Should().Be(30);
+        job.PaymentDueDays.Should().Be(14);
+        job.SourcingTarget.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Submit_HeadhuntCod_ShouldRejectInvalidCommercialTerms()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "CTO Headhunt"; job.Description = "CTO JD"; job.Benefits = "Equity";
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.PartnerOnly;
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+        job.FeeMultiplier = -1m;
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.HeadhuntCod);
+
+        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*Fee Multiplier*");
     }
 
     private (Job Job, Guid User) SetupOwnedJob(string status)

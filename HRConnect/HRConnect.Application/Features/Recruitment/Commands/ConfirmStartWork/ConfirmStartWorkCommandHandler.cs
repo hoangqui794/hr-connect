@@ -155,7 +155,10 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
                 application.Job.CompanyId,
                 application.Job.ServiceTypeId,
                 application.Job.ServiceType?.Code,
-                offer),
+                offer,
+                application.Job.FeeMultiplier,
+                application.Job.WarrantyDays,
+                application.Job.PaymentDueDays),
             request.CurrentUserId,
             cancellationToken);
 
