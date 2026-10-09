@@ -18,6 +18,10 @@ import type {
   CandidateApplication,
   CandidateApplicationDetail,
   CandidateAffiliateCv,
+  CandidateAffiliateCvAdoptionResult,
+  CandidateAffiliateCvDetail,
+  CandidateAffiliateCvReuseResult,
+  CandidateAffiliateCvUsage,
   CandidateCv,
   LibraryCandidate,
   LibraryCandidateDetail,
@@ -96,6 +100,56 @@ export const candidateAffiliateCvApi = {
       total: pagination.totalItems,
       totalPages: pagination.totalPages,
     };
+  },
+  async detail(cvId: string): Promise<CandidateAffiliateCvDetail> {
+    return (
+      await apiClient.get<ApiEnvelope<CandidateAffiliateCvDetail>>(
+        `/candidates/me/affiliate-cvs/${cvId}`
+      )
+    ).data.data;
+  },
+  async downloadUrl(cvId: string): Promise<{ downloadUrl: string; expiresAt: string }> {
+    return (
+      await apiClient.get<ApiEnvelope<{ downloadUrl: string; expiresAt: string }>>(
+        `/candidates/me/affiliate-cvs/${cvId}/download-url`
+      )
+    ).data.data;
+  },
+  async usages(cvId: string, page: number, pageSize: number): Promise<PagedItems<CandidateAffiliateCvUsage>> {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: {
+        cvId: string;
+        items: CandidateAffiliateCvUsage[];
+        pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
+      };
+    }>(`/candidates/me/affiliate-cvs/${cvId}/usages`, { params: { page, pageSize } });
+    const { items, pagination } = response.data.data;
+    return {
+      items,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      total: pagination.totalItems,
+      totalPages: pagination.totalPages,
+    };
+  },
+  async updateReuse(cvId: string, allowed: boolean, concurrencyToken: string) {
+    return (
+      await apiClient.patch<{
+        success: boolean;
+        message: string;
+        data: CandidateAffiliateCvReuseResult;
+      }>(`/candidates/me/affiliate-cvs/${cvId}/reuse`, { allowed, concurrencyToken })
+    ).data;
+  },
+  async adopt(cvId: string, title?: string) {
+    return (
+      await apiClient.post<{
+        success: boolean;
+        message: string;
+        data: CandidateAffiliateCvAdoptionResult;
+      }>(`/candidates/me/affiliate-cvs/${cvId}/adopt`, title ? { title } : {})
+    ).data;
   },
 };
 
