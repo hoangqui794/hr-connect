@@ -9,7 +9,7 @@ from app.core.config import get_settings
 from app.schemas.matching_request import RequirementType
 from app.schemas.matching_response import RequirementMatch
 from app.services.matching_service import _apply_semantic_partial_credit
-from app.services.requirement_evidence import load_capabilities
+from app.services.requirement_evidence import load_capabilities, load_lexicon
 from app.services.semantic_matcher import SemanticMatcher
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
@@ -97,6 +97,7 @@ def test_lexicon_extends_and_adds_capabilities(tmp_path, monkeypatch) -> None:
     }), encoding="utf-8")
     monkeypatch.setenv("CAPABILITY_LEXICON_PATH", str(lexicon))
     get_settings.cache_clear()
+    load_lexicon.cache_clear()
     load_capabilities.cache_clear()
     try:
         capabilities = {item.name: item for item in load_capabilities()}
@@ -104,6 +105,7 @@ def test_lexicon_extends_and_adds_capabilities(tmp_path, monkeypatch) -> None:
         assert capabilities["Kanban"].trigger == "kanban"
     finally:
         get_settings.cache_clear()
+        load_lexicon.cache_clear()
         load_capabilities.cache_clear()
 
 

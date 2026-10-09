@@ -29,6 +29,8 @@ services:
         value: ""
       - key: SEMANTIC_GATED_BY_MUST_HAVE
         value: "true"
+      - key: INFER_CORE_REQUIREMENTS
+        value: "true"
       - key: KNOCKOUT_SCORE_CAP
         value: "59"
       - key: LOG_LEVEL

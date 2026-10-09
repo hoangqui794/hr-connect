@@ -39,6 +39,22 @@ class CandidateSkill(StrictTextModel):
     years_of_experience: float | None = Field(default=None, alias="yearsOfExperience", ge=0)
 
 
+class WorkRole(StrictTextModel):
+    """One employment entry; `text` holds its description, technologies and projects."""
+
+    position: str | None = Field(default=None, max_length=300)
+    company: str | None = Field(default=None, max_length=300)
+    start_date: str | None = Field(default=None, alias="startDate", max_length=50)
+    end_date: str | None = Field(default=None, alias="endDate", max_length=50)
+    text: str | None = Field(default=None, max_length=20_000)
+
+
+class EducationEntry(StrictTextModel):
+    degree: str | None = Field(default=None, max_length=300)
+    major: str | None = Field(default=None, max_length=300)
+    school: str | None = Field(default=None, max_length=300)
+
+
 class Candidate(StrictTextModel):
     summary: str = Field(min_length=1, max_length=5000)
     years_of_experience: float | None = Field(default=None, alias="yearsOfExperience", ge=0)
@@ -51,6 +67,10 @@ class Candidate(StrictTextModel):
     unreliable_evidence_fields: list[str] = Field(
         default_factory=list, alias="unreliableEvidenceFields", max_length=20
     )
+    # Optional structure from the CV parser; enables domain-specific years
+    # ("2 years of .NET") and degree/major checks. Older payloads omit them.
+    work_experience: list[WorkRole] = Field(default_factory=list, alias="workExperience", max_length=50)
+    education: list[EducationEntry] = Field(default_factory=list, max_length=20)
 
 
 class JobRequirement(StrictTextModel):

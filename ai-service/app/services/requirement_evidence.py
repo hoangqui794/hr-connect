@@ -52,17 +52,30 @@ _DEFAULT_LEXICON = Path(__file__).resolve().parents[1] / "data" / "capability_le
 
 
 @lru_cache(maxsize=1)
+def load_lexicon() -> dict:
+    """The configurable lexicon file (CAPABILITY_LEXICON_PATH), or {} when absent."""
+    configured = get_settings().capability_lexicon_path
+    path = Path(configured) if configured else _DEFAULT_LEXICON
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+
+
+def synonyms(section: str, term: str) -> list[str]:
+    """Equivalent wordings for a skill or domain term from the lexicon (case-insensitive key)."""
+    table = load_lexicon().get(section, {})
+    key = term.strip().casefold()
+    return next((values for name, values in table.items() if name.casefold() == key), [])
+
+
+@lru_cache(maxsize=1)
 def load_capabilities() -> tuple[Capability, ...]:
     """Built-in capabilities merged with the configurable lexicon file.
 
     The lexicon lets HR widen accepted phrasings without code changes; every
     match it produces is still flagged for human review.
     """
-    configured = get_settings().capability_lexicon_path
-    path = Path(configured) if configured else _DEFAULT_LEXICON
-    if not path.is_file():
+    lexicon = load_lexicon()
+    if not lexicon:
         return CAPABILITIES
-    lexicon = json.loads(path.read_text(encoding="utf-8"))
     extend = lexicon.get("extend", {})
     merged = [
         Capability(c.name, c.trigger, "|".join([c.evidence, *extend[c.name]]) if extend.get(c.name) else c.evidence)

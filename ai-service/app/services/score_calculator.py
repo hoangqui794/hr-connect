@@ -35,6 +35,9 @@ class ScoreCalculator:
             + effective_semantic_score * self.settings.semantic_weight
         )
         score = max(0.0, min(100.0, weighted * 100))
-        if any(item.knockout and item.match_status != "MATCHED" for item in must_have):
+        if any(
+            (item.knockout and item.match_status != "MATCHED") or (item.core and item.match_status == "NOT_FOUND")
+            for item in must_have
+        ):
             score = min(score, self.settings.knockout_score_cap)
         return round(score, 2)

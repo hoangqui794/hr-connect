@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
 
+from app.core.config import get_settings
 from app.schemas.matching_request import (
     JobRequirement,
     MatchingRequest,
@@ -10,16 +11,22 @@ from app.schemas.matching_request import (
 )
 from app.schemas.matching_response import RequirementMatch
 from app.services.normalizer import extract_skill_alias, normalize_skill_name, normalize_text
-from app.services.requirement_evidence import evaluate_clauses
+from app.services.requirement_evidence import evaluate_clauses, synonyms
+from app.services.requirement_rules import (
+    domain_terms,
+    domain_years,
+    education_matches,
+    is_core_requirement,
+    phrase_pattern,
+)
 
 
 def _contains_phrase(text: str, phrase: str) -> bool:
-    pattern = rf"(?<!\w){re.escape(phrase)}(?!\w)"
     negative_context = re.compile(
         r"(?:without|no|not|lacks?|missing|không\s+có|chưa\s+có|thiếu)\s+$",
         flags=re.IGNORECASE,
     )
-    for match in re.finditer(pattern, text, flags=re.IGNORECASE):
+    for match in phrase_pattern(phrase).finditer(text):
         prefix = text[max(0, match.start() - 24) : match.start()]
         if negative_context.search(prefix):
             continue
@@ -140,10 +147,19 @@ class RequirementMatcher:
             target = must_have if requirement.type == RequirementType.MUST_HAVE else should_have
             target.append(result)
 
+        if get_settings().infer_core_requirements:
+            # Results keep the job's order within each type.
+            job_text = f"{request.job.title}\n{request.job.description}"
+            requirements = [r for r in request.job.requirements if r.type == RequirementType.MUST_HAVE]
+            for requirement, item in zip(requirements, must_have):
+                item.core = is_core_requirement(requirement, job_text)
         for item in must_have:
             if item.knockout and item.match_status != "MATCHED":
                 item.requires_manual_review = True
                 item.warnings = [*item.warnings, "KNOCKOUT_NOT_MET"]
+            elif item.core and item.match_status == "NOT_FOUND":
+                item.requires_manual_review = True
+                item.warnings = [*item.warnings, "CORE_REQUIREMENT_MISSING"]
         return must_have, should_have
 
     @staticmethod
@@ -155,11 +171,25 @@ class RequirementMatcher:
         candidate_facts: str,
         request: MatchingRequest,
     ) -> _RequirementEvaluation:
+        if requirement.category == RequirementCategory.EDUCATION:
+            verdict = education_matches(content, request.candidate, candidate_facts)
+            if verdict is not None:
+                return (
+                    _RequirementEvaluation(True, "MATCHED", 1.0, request.candidate.highest_education or content, [content], [])
+                    if verdict
+                    else _RequirementEvaluation(False, "NOT_FOUND", 0.0, None, [], [content])
+                )
+
         if requirement.category == RequirementCategory.EXPERIENCE:
             required_years = requirement.min_years or _required_years(content)
+            terms = domain_terms(requirement)
+            if required_years is not None and terms and request.candidate.work_experience:
+                return _domain_experience(required_years, terms, request)
             candidate_years = request.candidate.years_of_experience
             if required_years is not None and candidate_years is not None and candidate_years >= required_years:
-                return _RequirementEvaluation(True, "MATCHED", 1.0, f"{candidate_years:g} years of experience", [f"{candidate_years:g} years"], [])
+                # Total years stand in for domain years only when no work history was supplied.
+                unverified = ("DOMAIN_YEARS_UNVERIFIED",) if terms else ()
+                return _RequirementEvaluation(True, "MATCHED", 1.0, f"{candidate_years:g} years of experience", [f"{candidate_years:g} years"], [], unverified)
             if required_years is None and _contains_phrase(evidence_text, normalize_text(content, lowercase=True)):
                 return _RequirementEvaluation(True, "MATCHED", 1.0, content, [content], [])
             return _RequirementEvaluation(False, "NOT_FOUND", 0.0, None, [], [content])
@@ -214,7 +244,12 @@ class RequirementMatcher:
             explicit = skill_map.get(canonical) or skill_map.get(lookup)
             if explicit is not None:
                 return explicit.name
-            return canonical if _contains_phrase(evidence_text, canonical) else None
+            if _contains_phrase(evidence_text, canonical):
+                return canonical
+            # Configured equivalents: "Git" is shown by GitHub/GitLab, "SQL" by PostgreSQL.
+            return next(
+                (alias for alias in synonyms("skillSynonyms", term) if _contains_phrase(evidence_text, alias)), None
+            )
         required = normalize_text(term, lowercase=True)
         if category == RequirementCategory.EDUCATION and _education_matches(candidate_facts, required):
             return term
@@ -256,7 +291,7 @@ _MIN_CV_CHARS_FOR_MENTION_COUNT = 600
 
 def _is_weak_single_mention(term: str, cv_text: str) -> bool:
     """One passing mention in prose ("ported a game to .NET in one night") is not a skill claim."""
-    pattern = re.compile(rf"(?<!\w){re.escape(term)}(?!\w)", re.I)
+    pattern = phrase_pattern(term)
     hits = [line for line in cv_text.splitlines() if pattern.search(line)]
     occurrences = sum(len(pattern.findall(line)) for line in hits)
     return occurrences == 1 and _is_narrative_line(hits[0])
@@ -296,3 +331,20 @@ def _discount_weak_mentions(
         [*evaluation.missing_evidence, *(f"{term} (single passing mention)" for term in weak)],
         ("WEAK_SINGLE_MENTION",),
     )
+
+
+def _domain_experience(required_years: float, terms: list[str], request: MatchingRequest) -> _RequirementEvaluation:
+    """Years in roles that mention the requirement's domain, not total career length."""
+    result = domain_years(request.candidate.work_experience, terms)
+    warnings = ("ROLE_DATES_UNREADABLE",) if result.unparsed_roles else ()
+    evidence = f"{result.years:g} years in {', '.join(terms)} roles" + (
+        f" ({'; '.join(result.roles)})" if result.roles else ""
+    )
+    if result.years >= required_years:
+        return _RequirementEvaluation(True, "MATCHED", 1.0, evidence, [f"{result.years:g} years"], [], warnings)
+    if result.years > 0:
+        return _RequirementEvaluation(
+            False, "PARTIAL", round(result.years / required_years, 4), evidence, [f"{result.years:g} years"],
+            [f"{required_years:g} years of {', '.join(terms)}"], warnings,
+        )
+    return _RequirementEvaluation(False, "NOT_FOUND", 0.0, None, [], [f"{required_years:g} years of {', '.join(terms)}"], warnings)

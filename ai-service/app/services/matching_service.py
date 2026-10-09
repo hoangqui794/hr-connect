@@ -34,10 +34,13 @@ class MatchingService:
                 f"{len(unresolved)} requirements need evidence review; inferred criteria are experimental "
                 "and semantic suggestions are unverified, not proof of qualification."
             )
-        failed_knockouts = [item.requirement for item in must_have if item.knockout and item.match_status != "MATCHED"]
+        failed_knockouts = [
+            item.requirement for item in must_have
+            if (item.knockout and item.match_status != "MATCHED") or (item.core and item.match_status == "NOT_FOUND")
+        ]
         if failed_knockouts:
             reasons.append(
-                f"Knockout requirement not fully met ({'; '.join(failed_knockouts)}); "
+                f"Knockout or core requirement not met ({'; '.join(failed_knockouts)}); "
                 f"score capped at {settings.knockout_score_cap:g}."
             )
         return MatchingResponse(

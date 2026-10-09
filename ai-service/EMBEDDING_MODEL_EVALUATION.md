@@ -133,3 +133,27 @@ của CV Node.js như trước.
 
 `--calibrate` trên 3 CV gợi ý giảm `SEMANTIC_WEIGHT` xuống 0,10 nhưng làm tỷ lệ cùng tier giảm từ 100% xuống 67% — quá khớp,
 không áp dụng.
+
+## Thử với JD thật (TopCV .NET, ITviec Java) (2026-10-09)
+
+Thêm 2 JD thật, nhập như HR (không có cờ knockout): 9 lần chấm = 3 JD × 3 CV. CV .NET tốt nhất bị chấm 66,66 với JD .NET thật.
+
+| Lỗi | Sửa |
+|---|---|
+| "HTML5", "CSS3", "Stored Procedures" không khớp "HTML", "CSS", "stored procedure" | Khớp cụm từ chấp nhận hậu tố phiên bản và số nhiều |
+| JD tiếng Việt "Cao đẳng/Đại học ngành CNTT" không khớp "Bachelor/Engineer's Degree in Software Engineering" | So bậc học và nhóm ngành CNTT song ngữ, đọc từ mục học vấn đã tách |
+| "2 năm .NET", "4+ năm Java", "3 năm web" so với tổng số năm (gồm cả thực tập) | Cộng năm của các vị trí liên quan (từ đồng nghĩa lĩnh vực trong từ điển), bỏ thực tập, gộp khoảng trùng |
+| Kỹ năng trong tiêu đề JD (".NET", "Spring Boot") ngang hàng yêu cầu khác | Tự nhận yêu cầu cốt lõi từ tiêu đề/mô tả; hoàn toàn không có → chặn trần 59 |
+| "Git" ≠ GitHub/GitLab, "SQL" ≠ PostgreSQL, "Multi-Tenancy" ≠ multi-tenant; thiếu Communication/English | `skillSynonyms`, `domainSynonyms`, năng lực Communication/English trong từ điển |
+
+Danh sách vị trí làm việc và học vấn đã có ở cả `/match-file` lẫn luồng backend (AI service tự đọc CV), nên không cần sửa backend.
+
+| 9 lần chấm, nhãn tạm (chưa phải của HR) | Trước | Sau |
+|---|---|---|
+| MAE | 9,90 | 7,38 |
+| Cùng tier | 88,9% | 100% |
+| Khớp từng yêu cầu | 80,3% | 93,2% |
+| CV .NET với JD .NET thật (nhãn 85) | 66,66 | 82,70 |
+
+Còn lệch: CV Node.js với JD .NET thật được 57,45 (nhãn 30) dù mọi yêu cầu đều khớp nhãn — khoảng cách nằm ở công thức (SHOULD_HAVE
+20% cho "ưu tiên MySQL", trần 59 khi thiếu kỹ năng cốt lõi). Cần nhãn của HR trên nhiều CV hơn mới hiệu chỉnh được.

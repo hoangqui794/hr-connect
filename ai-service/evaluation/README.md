@@ -64,7 +64,14 @@ Trong JD, đặt `"knockout": true` cho MUST_HAVE mà thiếu là loại (ví d�
 điểm bị chặn ở `KNOCKOUT_SCORE_CAP` (mặc định 59), yêu cầu có cảnh báo `KNOCKOUT_NOT_MET` và hồ sơ cần người xem.
 Backend/FE chưa gửi cờ này; cần thêm vào yêu cầu của job (MF-01).
 
+## Yêu cầu cốt lõi (tự nhận)
+
+MUST_HAVE loại SKILL/EXPERIENCE có công nghệ nằm trong tiêu đề hoặc mô tả JD được coi là cốt lõi. CV hoàn toàn không có bằng chứng
+cho yêu cầu đó bị chặn ở `KNOCKOUT_SCORE_CAP` và có cảnh báo `CORE_REQUIREMENT_MISSING`. Tắt bằng `INFER_CORE_REQUIREMENTS=false`.
+
 ## Từ điển năng lực
 
 Cách diễn đạt được chấp nhận cho yêu cầu mềm nằm ở `app/data/capability_lexicon.json` (hoặc file chỉ định bởi
 `CAPABILITY_LEXICON_PATH`). Thêm cách diễn đạt mới vào đó khi đánh giá cho thấy AI bỏ sót, rồi chạy lại mục 2.
+File còn có `skillSynonyms` (ví dụ Git ↔ GitHub/GitLab, SQL ↔ PostgreSQL) và `domainSynonyms` (ví dụ kinh nghiệm "web" được
+chứng minh bằng vị trí làm Angular/React/REST API) dùng khi đếm số năm kinh nghiệm theo lĩnh vực.

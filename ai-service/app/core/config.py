@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # Scale the semantic component by MUST_HAVE coverage so topic similarity
     # cannot compensate for missing hard requirements.
     semantic_gated_by_must_have: bool = True
+    # A MUST_HAVE whose technology the job title/description names is core; a
+    # CV with no evidence for it is capped like a failed knockout.
+    infer_core_requirements: bool = True
     # Highest score a CV can get while a knockout MUST_HAVE is not fully met.
     knockout_score_cap: float = Field(default=59, ge=0, le=100)
     max_upload_size_mb: int = Field(default=10, ge=1, le=50)
