@@ -208,4 +208,32 @@ describe('API client foundation', () => {
     expect(requests[1].url).toBe('/candidates/me/submission-consents/submission-1/respond');
     expect(JSON.parse(requests[1].data as string)).toEqual({ decision: 'CONFIRM', allowFutureReuse: true });
   });
+
+  it('keeps the public consent token in request bodies', async () => {
+    const requests: InternalAxiosRequestConfig[] = [];
+    apiClient.defaults.adapter = async (config) => {
+      requests.push(config);
+      return {
+        data: config.url?.endsWith('/review')
+          ? { success: true, data: { submissionId: 'submission-1', status: 'PENDING' } }
+          : { success: true, submissionId: 'submission-1', submissionStatus: 'ACCEPTED' },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      };
+    };
+
+    await candidateConsentApi.reviewPublic('one-time-token');
+    await candidateConsentApi.respondPublic('one-time-token', 'DECLINE', false);
+
+    expect(requests[0].url).toBe('/submission-consents/review');
+    expect(JSON.parse(requests[0].data as string)).toEqual({ token: 'one-time-token' });
+    expect(requests[1].url).toBe('/submission-consents/respond');
+    expect(JSON.parse(requests[1].data as string)).toEqual({
+      token: 'one-time-token',
+      decision: 'DECLINE',
+      allowFutureReuse: false,
+    });
+  });
 });

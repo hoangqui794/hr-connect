@@ -168,6 +168,9 @@ const CandidateApplicationDetailPage = React.lazy(() =>
 const CandidateSubmissionConsentPage = React.lazy(() =>
   import('@/features/portal/CandidateSubmissionConsentPage').then((m) => ({ default: m.CandidateSubmissionConsentPage }))
 );
+const PublicSubmissionConsentPage = React.lazy(() =>
+  import('@/features/portal/PublicSubmissionConsentPage').then((m) => ({ default: m.PublicSubmissionConsentPage }))
+);
 const CandidateCvsPage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateCvsPage })));
 const AffiliateHomePage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateHomePage })));
 const AffiliateSubmitPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmitPage })));
@@ -501,6 +504,7 @@ export const AppRoutes = {
   CandidateMyApplicationsPage,
   CandidateApplicationDetailPage,
   CandidateSubmissionConsentPage,
+  PublicSubmissionConsentPage,
   CandidateCvsPage,
   AffiliateHomePage,
   AffiliateSubmitPage,

@@ -104,6 +104,14 @@ export const router = createBrowserRouter([
     element: <ServicesPage />,
   },
   {
+    path: '/submission-consent',
+    element: (
+      <CandidateScope>
+        {withSuspense(<AppRoutes.PublicSubmissionConsentPage />)}
+      </CandidateScope>
+    ),
+  },
+  {
     path: '/jobs',
     element: withSuspense(<AppRoutes.Mf01PublicJobSearchPage />),
   },

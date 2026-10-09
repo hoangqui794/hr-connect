@@ -99,6 +99,23 @@ export const candidateConsentApi = {
       )
     ).data;
   },
+  async reviewPublic(token: string): Promise<SubmissionConsentReview> {
+    return (
+      await apiClient.post<{ success: boolean; data: SubmissionConsentReview }>(
+        '/submission-consents/review',
+        { token }
+      )
+    ).data.data;
+  },
+  async respondPublic(token: string, decision: 'CONFIRM' | 'DECLINE', allowFutureReuse: boolean) {
+    return (
+      await apiClient.post<SubmissionConsentDecisionResult>('/submission-consents/respond', {
+        token,
+        decision,
+        allowFutureReuse,
+      })
+    ).data;
+  },
 };
 
 // ─── Branch B: affiliate ─────────────────────────────────────────────────────
