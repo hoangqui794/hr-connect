@@ -7,6 +7,7 @@ using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace HRConnect.Infrastructure.Persistence.Seed;
 
@@ -484,7 +485,8 @@ public static class CandidateTestJobSeeder
                 logger?.LogInformation("Đã nạp thành công Job seed '{Title}' (JobId: {JobId}) thuộc ServiceType '{ServiceType}' cho Doanh nghiệp '{Company}'.",
                     job.Title, job.JobId, serviceType.Code, company.CompanyName);
             }
-            catch (DbUpdateException ex)
+            catch (DbUpdateException ex) when (
+                ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
             {
                 logger?.LogWarning(ex, "Xung đột tương tranh khi nạp Job seed '{Title}'. Bản ghi có thể đã được nạp bởi tiến trình khác.", jobDef.Title);
                 foreach (var entry in context.ChangeTracker.Entries().Where(e => e.State == EntityState.Added))
