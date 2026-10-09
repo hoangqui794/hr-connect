@@ -132,6 +132,12 @@ const ConsoleOverviewPage = React.lazy(() =>
 const ConsoleApprovalsPage = React.lazy(() =>
   import('@/features/admin-console/AdminApprovalsPage').then((m) => ({ default: m.AdminApprovalsPage }))
 );
+const ConsoleIdentityClaimsPage = React.lazy(() =>
+  import('@/features/admin-console/AdminIdentityClaimsPage').then((m) => ({ default: m.AdminIdentityClaimsPage }))
+);
+const ConsoleIdentityClaimDetailPage = React.lazy(() =>
+  import('@/features/admin-console/AdminIdentityClaimDetailPage').then((m) => ({ default: m.AdminIdentityClaimDetailPage }))
+);
 const ConsoleUsersPage = React.lazy(() =>
   import('@/features/admin-console/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage }))
 );
@@ -174,6 +180,12 @@ const PublicSubmissionConsentPage = React.lazy(() =>
 const CandidateCvsPage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateCvsPage })));
 const CandidateAffiliateCvsPage = React.lazy(() =>
   import('@/features/portal/CandidateAffiliateCvsPage').then((m) => ({ default: m.CandidateAffiliateCvsPage }))
+);
+const CandidateAffiliateCvDetailPage = React.lazy(() =>
+  import('@/features/portal/CandidateAffiliateCvsPage').then((m) => ({ default: m.CandidateAffiliateCvDetailPage }))
+);
+const CandidateIdentityPage = React.lazy(() =>
+  import('@/features/portal/CandidateIdentityPage').then((m) => ({ default: m.CandidateIdentityPage }))
 );
 const AffiliateHomePage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateHomePage })));
 const AffiliateSubmitPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmitPage })));
@@ -406,6 +418,8 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/candidate/saved-jobs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/affiliate-cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/affiliate-cvs/:cvId': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/settings/email-identities': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/affiliate/attributions': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/jobs': [
     UserRole.CLIENT,
@@ -438,6 +452,8 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/admin/settings': [UserRole.ADMIN],
   '/admin/audit-trail': [UserRole.ADMIN],
   '/admin/approvals': [UserRole.ADMIN],
+  '/admin/candidate-identity-claims': [UserRole.ADMIN],
+  '/admin/candidate-identity-claims/:claimId': [UserRole.ADMIN],
   '/admin/service-types': [UserRole.ADMIN],
   '/admin/commission-rules': [UserRole.ADMIN],
   '/admin/profile': [UserRole.ADMIN],
@@ -496,6 +512,8 @@ export const AppRoutes = {
   Mf01PublicJobDetailPage,
   ConsoleOverviewPage,
   ConsoleApprovalsPage,
+  ConsoleIdentityClaimsPage,
+  ConsoleIdentityClaimDetailPage,
   ConsoleUsersPage,
   ConsoleServiceTypesPage,
   ConsoleCommissionRulesPage,
@@ -511,6 +529,8 @@ export const AppRoutes = {
   PublicSubmissionConsentPage,
   CandidateCvsPage,
   CandidateAffiliateCvsPage,
+  CandidateAffiliateCvDetailPage,
+  CandidateIdentityPage,
   AffiliateHomePage,
   AffiliateSubmitPage,
   AffiliateMySubmissionsPage,
