@@ -86,3 +86,23 @@ rỗng); bật khi máy chủ đủ RAM.
 | Yêu cầu khớp nhãn | 14/15 (thiếu "database design") | 15/15 |
 
 Một CV chưa đủ để kết luận. Dùng `tools/evaluate_scoring.py` với bộ ca có nhãn của HR (xem `evaluation/README.md`).
+
+## Knockout, nhắc thoáng qua, câu bị ngắt dòng (2026-10-09)
+
+CV thứ hai (Node.js/React, ứng tuyển JD .NET) lộ hai lỗi: thiếu C#/.NET chỉ mất ~3 điểm (".NET" trong câu "converted a 2D game
+… to .NET in one night" vẫn được tính), và bỏ sót bằng chứng do PDF ngắt câu giữa dòng / từ điển thiếu cách diễn đạt.
+
+- **Knockout**: MUST_HAVE có `knockout: true` chưa đạt → điểm tối đa 59, cần người xem.
+- **Nhắc thoáng qua**: kỹ năng chỉ xuất hiện 1 lần, trong câu văn xuôi (≥ 8 từ, không phải dòng liệt kê/tech stack), không được
+  tính; bỏ qua với CV < 600 ký tự hoặc kỹ năng khai kèm số năm. Cảnh báo `WEAK_SINGLE_MENTION`.
+- **Ngắt dòng**: `evidence_spans` nối dòng khi dòng trước chưa hết câu và dòng sau bắt đầu bằng chữ thường/số.
+- **Từ điển**: "component library", "UI building blocks", "frontend project structure", "technical decisions", "trade-offs",
+  "optimistic updates", "application responsiveness".
+
+| 2 CV thật, nhãn tạm (chưa phải của HR) | Nhãn | Trước | Sau |
+|---|---|---|---|
+| CV .NET + Angular | 82 | 87,12 | 86,52 |
+| CV Node.js + React (JD .NET, `backend-dotnet` knockout) | 58 | 71,91 | 59,00 |
+| MAE / cùng tier / khớp yêu cầu | | 9,52 / 50% / 90% | 2,76 / 100% / 96,7% |
+
+Lệch còn lại: `backend-dotnet` của CV Node.js — nhãn tạm ghi PARTIAL, AI ghi NOT_FOUND (một lần nhắc thoáng qua không được tính).

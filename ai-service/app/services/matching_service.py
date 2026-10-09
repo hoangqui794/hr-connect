@@ -34,6 +34,12 @@ class MatchingService:
                 f"{len(unresolved)} requirements need evidence review; inferred criteria are experimental "
                 "and semantic suggestions are unverified, not proof of qualification."
             )
+        failed_knockouts = [item.requirement for item in must_have if item.knockout and item.match_status != "MATCHED"]
+        if failed_knockouts:
+            reasons.append(
+                f"Knockout requirement not fully met ({'; '.join(failed_knockouts)}); "
+                f"score capped at {settings.knockout_score_cap:g}."
+            )
         return MatchingResponse(
             requestId=normalized.request_id,
             applicationId=normalized.application_id,
@@ -45,7 +51,7 @@ class MatchingService:
             candidateHighlights=highlights,
             missingRequirements=missing,
             matchingReasons=reasons,
-            requiresManualReview=bool(unresolved) or normalized.candidate.requires_manual_review,
+            requiresManualReview=bool(unresolved) or bool(failed_knockouts) or normalized.candidate.requires_manual_review,
             modelName=settings.embedding_model,
         )
 

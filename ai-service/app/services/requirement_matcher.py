@@ -55,6 +55,7 @@ class _RequirementEvaluation:
     evidence: str | None
     matched_terms: list[str]
     missing_evidence: list[str]
+    warnings: tuple[str, ...] = ()
 
 
 class RequirementMatcher:
@@ -88,6 +89,7 @@ class RequirementMatcher:
                     matchedTerms=[item["criterion"] for item in supported],
                     missingEvidence=[item["criterion"] for item in clauses["criteria"] if item["status"] != "MATCHED"],
                     criteria=clauses["criteria"], warnings=clauses["warnings"], requiresManualReview=True,
+                    knockout=requirement.knockout,
                     matchMethod="DETERMINISTIC" if clauses["status"] == "MATCHED" else "DETERMINISTIC_PARTIAL" if clauses["status"] == "PARTIAL" else "UNKNOWN" if clauses["status"] == "UNKNOWN" else "NOT_FOUND",
                 )
                 (must_have if requirement.type == RequirementType.MUST_HAVE else should_have).append(result)
@@ -95,6 +97,8 @@ class RequirementMatcher:
             evaluation = self._match_requirement(
                 requirement, content, skill_map, evidence_text, candidate_facts, request
             )
+            if requirement.category == RequirementCategory.SKILL and evaluation.matched_terms:
+                evaluation = _discount_weak_mentions(evaluation, requirement, request.candidate.cv_text, skill_map)
             if evaluation.status == "NOT_FOUND" and _evidence_is_unreadable(requirement, request):
                 evaluation = _RequirementEvaluation(
                     False, "UNKNOWN", 0.0, None, [], evaluation.missing_evidence
@@ -120,10 +124,11 @@ class RequirementMatcher:
                     else "NOT_FOUND"
                 ),
                 requiresManualReview=(
-                    evaluation.status == "UNKNOWN"
+                    bool(evaluation.warnings)
+                    or evaluation.status == "UNKNOWN"
                     or (requirement.category == RequirementCategory.OTHER and not evaluation.matched)
                 ),
-                warnings=(
+                warnings=list(evaluation.warnings) + (
                     ["SOURCE_EVIDENCE_UNREADABLE"]
                     if evaluation.status == "UNKNOWN"
                     else ["UNRESOLVED_REQUIREMENT_EVIDENCE"]
@@ -131,9 +136,14 @@ class RequirementMatcher:
                     else []
                 ),
             )
+            result.knockout = requirement.knockout
             target = must_have if requirement.type == RequirementType.MUST_HAVE else should_have
             target.append(result)
 
+        for item in must_have:
+            if item.knockout and item.match_status != "MATCHED":
+                item.requires_manual_review = True
+                item.warnings = [*item.warnings, "KNOCKOUT_NOT_MET"]
         return must_have, should_have
 
     @staticmethod
@@ -224,3 +234,65 @@ def _evidence_is_unreadable(
         RequirementCategory.OTHER: "other",
     }
     return field_by_category[requirement.category] in fields
+
+
+_LIST_LABEL = re.compile(
+    r"^\W*(?:tech(?:nical)?\s*stack|technolog\w*|skills?|tools?|languages?|frameworks?|kỹ năng|công nghệ)\b", re.I
+)
+
+
+def _is_narrative_line(line: str) -> bool:
+    """A prose sentence, not a skills list or tech-stack line."""
+    return (
+        len(line.split()) >= 8
+        and ":" not in line
+        and line.count(",") < 2
+        and not _LIST_LABEL.search(line)
+    )
+
+
+_MIN_CV_CHARS_FOR_MENTION_COUNT = 600
+
+
+def _is_weak_single_mention(term: str, cv_text: str) -> bool:
+    """One passing mention in prose ("ported a game to .NET in one night") is not a skill claim."""
+    pattern = re.compile(rf"(?<!\w){re.escape(term)}(?!\w)", re.I)
+    hits = [line for line in cv_text.splitlines() if pattern.search(line)]
+    occurrences = sum(len(pattern.findall(line)) for line in hits)
+    return occurrences == 1 and _is_narrative_line(hits[0])
+
+
+def _discount_weak_mentions(
+    evaluation: _RequirementEvaluation,
+    requirement: JobRequirement,
+    cv_text: str,
+    skill_map: dict[str, object],
+) -> _RequirementEvaluation:
+    # Mention counts mean nothing in a short text, and a skill the candidate
+    # declared with years of experience is a deliberate claim.
+    if len(cv_text) < _MIN_CV_CHARS_FOR_MENTION_COUNT:
+        return evaluation
+
+    def declared_with_years(term: str) -> bool:
+        skill = skill_map.get(normalize_skill_name(term))
+        return getattr(skill, "years_of_experience", None) is not None
+
+    weak = [
+        term for term in evaluation.matched_terms
+        if not declared_with_years(term) and _is_weak_single_mention(term, cv_text)
+    ]
+    if not weak:
+        return evaluation
+    strong = [term for term in evaluation.matched_terms if term not in weak]
+    terms = requirement.alternatives or [requirement.content]
+    if requirement.operator == RequirementOperator.ANY_OF:
+        coverage = 1.0 if strong else 0.0
+    else:
+        coverage = len(strong) / len(terms) if strong else 0.0
+    status = "MATCHED" if coverage == 1 else "PARTIAL" if coverage > 0 else "NOT_FOUND"
+    return _RequirementEvaluation(
+        status == "MATCHED", status, coverage,
+        " | ".join(strong) or None, strong,
+        [*evaluation.missing_evidence, *(f"{term} (single passing mention)" for term in weak)],
+        ("WEAK_SINGLE_MENTION",),
+    )

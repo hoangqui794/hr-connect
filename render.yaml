@@ -27,6 +27,8 @@ services:
       # cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
       - key: RERANKER_MODEL
         value: ""
+      - key: KNOCKOUT_SCORE_CAP
+        value: "59"
       - key: LOG_LEVEL
         value: INFO
       - key: OCR_LANGUAGES

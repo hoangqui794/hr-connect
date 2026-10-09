@@ -58,6 +58,12 @@ mới đáng tin, rồi mới đặt `MUST_HAVE_WEIGHT` / `SHOULD_HAVE_WEIGHT` /
 Báo cáo tỷ lệ HR chọn/loại theo từng tier, lý do loại hay gặp, tỷ lệ chọn có giảm dần từ tier cao xuống thấp không
 (`monotonic`), và các ca lệch nhất (điểm ≥80 bị loại, điểm <60 được chọn) để đưa vào bộ ca có nhãn ở mục 1.
 
+## Yêu cầu knockout
+
+Trong JD, đặt `"knockout": true` cho MUST_HAVE mà thiếu là loại (ví dụ C#/.NET cho vị trí .NET). Nếu yêu cầu đó chưa `MATCHED`,
+điểm bị chặn ở `KNOCKOUT_SCORE_CAP` (mặc định 59), yêu cầu có cảnh báo `KNOCKOUT_NOT_MET` và hồ sơ cần người xem.
+Backend/FE chưa gửi cờ này; cần thêm vào yêu cầu của job (MF-01).
+
 ## Từ điển năng lực
 
 Cách diễn đạt được chấp nhận cho yêu cầu mềm nằm ở `app/data/capability_lexicon.json` (hoặc file chỉ định bởi

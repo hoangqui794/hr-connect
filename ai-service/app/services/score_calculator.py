@@ -29,4 +29,7 @@ class ScoreCalculator:
             + _ratio(should_have) * self.settings.should_have_weight
             + effective_semantic_score * self.settings.semantic_weight
         )
-        return round(max(0.0, min(100.0, weighted * 100)), 2)
+        score = max(0.0, min(100.0, weighted * 100))
+        if any(item.knockout and item.match_status != "MATCHED" for item in must_have):
+            score = min(score, self.settings.knockout_score_cap)
+        return round(score, 2)

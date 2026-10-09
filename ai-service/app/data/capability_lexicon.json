@@ -5,7 +5,10 @@
     "Database design": ["database partitioning", "partition\\w* (?:tables?|data)", "\\bERD\\b", "normali[sz]\\w* (?:schema|database|tables?)", "thiết kế (?:database|csdl)"],
     "Query optimization": ["optimi[sz]\\w* (?:sql|database)", "execution plans?", "tối ưu (?:sql|database|csdl)"],
     "Problem analysis": ["debugg\\w*", "investigat\\w* .{0,30}(?:issue|bug|incident|problem)", "resolv\\w* .{0,30}(?:issue|bug|incident)"],
-    "Technical proposals": ["architecture discussions?", "design reviews?", "recommend\\w* .{0,40}(?:solution|architecture|approach)", "established technical foundation"]
+    "Technical proposals": ["architecture discussions?", "design reviews?", "recommend\\w* .{0,40}(?:solution|architecture|approach)", "established technical foundation", "(?:led|drove|made) .{0,20}technical decisions", "(?:technical|architectural|ux) .{0,10}trade-?offs?"],
+    "Reusable UI components": ["component librar(?:y|ies)", "(?:core )?ui building blocks", "form components"],
+    "Frontend codebase architecture": ["(?:set up|established|built) the frontend project structure", "frontend project structure"],
+    "Client performance": ["optimistic updates", "application responsiveness", "reduced unnecessary requests", "ui thrashing"]
   },
   "add": [
     {"name": "OOP", "trigger": "\\bOOP\\b|object.oriented", "evidence": "\\bOOP\\b|object.oriented|design patterns|\\bC#|\\bJava\\b"},

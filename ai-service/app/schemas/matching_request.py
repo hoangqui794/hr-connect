@@ -61,6 +61,8 @@ class JobRequirement(StrictTextModel):
     alternatives: list[str] = Field(default_factory=list, max_length=20)
     min_years: float | None = Field(default=None, alias="minYears", ge=0, le=80)
     evidence_groups: list[list[str]] = Field(default_factory=list, alias="evidenceGroups", max_length=10)
+    # MUST_HAVE only: when not fully MATCHED the score is capped (KNOCKOUT_SCORE_CAP).
+    knockout: bool = False
 
     @field_validator("alternatives")
     @classmethod

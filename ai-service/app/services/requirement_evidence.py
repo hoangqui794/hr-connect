@@ -97,15 +97,33 @@ _PERFORMANCE_PERCENT = re.compile(
 )
 
 
+_SOFT_WRAP = re.compile(r"(?<![.!?:;])\n(?=[ \t]*[a-zà-ỹ0-9(])")
+
+
+def _logical_lines(text: str) -> list[tuple[int, str]]:
+    """Lines with PDF soft wraps rejoined ("from 3+\\nseconds to sub 100ms").
+
+    A wrap is a newline after a line that does not end a sentence, followed by
+    a lowercase word or number. It becomes a space, so lengths and offsets in
+    the original text are unchanged.
+    """
+    unwrapped = _SOFT_WRAP.sub(" ", text)
+    return [(match.start(), match.group()) for match in re.finditer(r"[^\n]+", unwrapped)]
+
+
 def evidence_spans(text: str) -> list[dict]:
-    """Offsets refer to the exact CV text supplied to this evaluator."""
+    """Offsets refer to the exact CV text supplied to this evaluator.
+
+    A span that crosses a soft-wrapped line shows the wrap as a space; it covers
+    the same characters as text[start:end].
+    """
     spans = []
-    for match in re.finditer(r"[^\n]+", text):
+    for line_start, line in _logical_lines(text):
         # Keep bullet/newline boundaries; split sentences only at sentence ends.
-        for part in re.finditer(r".+?(?:[.!?](?=\s+[A-ZÀ-Ỹ])|$)", match.group()):
+        for part in re.finditer(r".+?(?:[.!?](?=\s+[A-ZÀ-Ỹ])|$)", line):
             value = part.group().strip()
             if value:
-                start = match.start() + part.start() + len(part.group()) - len(part.group().lstrip())
+                start = line_start + part.start() + len(part.group()) - len(part.group().lstrip())
                 spans.append({"text": value, "start": start, "end": start + len(value), "source": "cvText"})
     return spans
 
