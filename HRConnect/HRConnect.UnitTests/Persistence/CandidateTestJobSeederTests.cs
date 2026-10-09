@@ -25,7 +25,7 @@ public class CandidateTestJobSeederTests
     }
 
     [Fact]
-    public async Task SeedAsync_ShouldSeedAllThreeJobsRequirementsAndSkills_WhenCalled()
+    public async Task SeedAsync_ShouldSeedSixJobsPerServiceType_WithValidBusinessData()
     {
         // Arrange
         using var context = CreateInMemoryDbContext();
@@ -43,8 +43,19 @@ public class CandidateTestJobSeederTests
             .OrderBy(j => j.Title)
             .ToListAsync();
 
-        // Exactly 3 representative Jobs must be seeded
-        jobs.Should().HaveCount(3);
+        jobs.Should().HaveCount(CandidateTestJobSeeder.TotalSeedJobCount);
+        jobs.GroupBy(job => job.ServiceType.Code)
+            .Should().OnlyContain(group => group.Count() == CandidateTestJobSeeder.JobsPerServiceType);
+        jobs.Should().OnlyContain(job =>
+            job.Status == JobStatuses.Active &&
+            job.Visibility == JobVisibilities.Public &&
+            job.SalaryMin > 0 &&
+            job.SalaryMax >= job.SalaryMin &&
+            job.Quantity > 0 &&
+            job.JobRequirements.Count >= 4 &&
+            job.JobSkills.Count >= 5);
+        jobs.Should().OnlyContain(job => job.JobRequirements.Sum(requirement => requirement.Weight) == 1.00m);
+        jobs.Should().OnlyContain(job => job.JobSkills.Sum(skill => skill.Weight) == 1.00m);
 
         var clientUser = await context.AppUsers.FirstOrDefaultAsync(u => u.Email == "client@gmail.com");
         clientUser.Should().NotBeNull();
@@ -157,14 +168,20 @@ public class CandidateTestJobSeederTests
         using var context = CreateInMemoryDbContext();
         await DatabaseSeeder.SeedAsync(context, seedDemoAccounts: true);
 
+        var jobCountBefore = await context.Jobs.CountAsync();
+        var requirementCountBefore = await context.JobRequirements.CountAsync();
+        var jobSkillCountBefore = await context.JobSkills.CountAsync();
+        var skillCountBefore = await context.Skills.CountAsync();
+
         // Act - Run seeder a second time
         await CandidateTestJobSeeder.SeedAsync(context);
 
-        // Assert - exactly 3 jobs, 15 requirements (5 * 3), 16 job_skills (5 + 5 + 6)
-        (await context.Jobs.CountAsync()).Should().Be(3);
-        (await context.JobRequirements.CountAsync()).Should().Be(15);
-        (await context.JobSkills.CountAsync()).Should().Be(16);
-        (await context.Skills.CountAsync()).Should().Be(7); // C#, ASP.NET Core, PostgreSQL, REST API, Git, Docker, React
+        // Assert - rerunning the seed does not duplicate jobs or related data.
+        jobCountBefore.Should().Be(CandidateTestJobSeeder.TotalSeedJobCount);
+        (await context.Jobs.CountAsync()).Should().Be(jobCountBefore);
+        (await context.JobRequirements.CountAsync()).Should().Be(requirementCountBefore);
+        (await context.JobSkills.CountAsync()).Should().Be(jobSkillCountBefore);
+        (await context.Skills.CountAsync()).Should().Be(skillCountBefore);
     }
 
     [Fact]
@@ -260,6 +277,29 @@ public class CandidateTestJobSeederTests
         sourcingAff.Should().NotBeNull();
         sourcingAff!.CanView.Should().BeTrue();
         sourcingAff.CanSubmit.Should().BeTrue();
+
+        var candidateAllowedServiceTypeIds = await context.ServiceTypeAllowedRoles
+            .Where(mapping => mapping.RoleId == candidateRole!.RoleId && mapping.CanView && mapping.CanSubmit)
+            .Select(mapping => mapping.ServiceTypeId)
+            .ToListAsync();
+        var affiliateAllowedServiceTypeIds = await context.ServiceTypeAllowedRoles
+            .Where(mapping => mapping.RoleId == affiliateRole!.RoleId && mapping.CanView && mapping.CanSubmit)
+            .Select(mapping => mapping.ServiceTypeId)
+            .ToListAsync();
+
+        var candidateVisibleJobCount = await context.Jobs.CountAsync(job =>
+            job.Status == JobStatuses.Active &&
+            job.Visibility == JobVisibilities.Public &&
+            candidateAllowedServiceTypeIds.Contains(job.ServiceTypeId));
+        var affiliateVisibleJobCount = await context.Jobs.CountAsync(job =>
+            job.Status == JobStatuses.Active &&
+            job.Visibility == JobVisibilities.Public &&
+            affiliateAllowedServiceTypeIds.Contains(job.ServiceTypeId));
+
+        candidateVisibleJobCount.Should().Be(CandidateTestJobSeeder.JobsPerServiceType);
+        affiliateVisibleJobCount.Should().Be(CandidateTestJobSeeder.JobsPerServiceType * 2);
+        candidateVisibleJobCount.Should().BeGreaterThan(5);
+        affiliateVisibleJobCount.Should().BeGreaterThan(5);
     }
 
     [Fact]
@@ -292,14 +332,14 @@ public class CandidateTestJobSeederTests
                 .Where(j => CandidateTestJobSeeder.AllSeedJobTitles.Contains(j.Title))
                 .ToListAsync();
 
-            seededJobs.Should().HaveCount(3);
+            seededJobs.Should().HaveCount(CandidateTestJobSeeder.TotalSeedJobCount);
             seededJobs.Should().OnlyContain(j => j.Status == JobStatuses.Active);
 
             // Act - test idempotency on real PostgreSQL
             await CandidateTestJobSeeder.SeedAsync(context);
 
             var count = await context.Jobs.CountAsync(j => CandidateTestJobSeeder.AllSeedJobTitles.Contains(j.Title));
-            count.Should().Be(3);
+            count.Should().Be(CandidateTestJobSeeder.TotalSeedJobCount);
         }
         catch (Exception ex) when (ex is Npgsql.NpgsqlException || ex is System.Net.Sockets.SocketException || ex is InvalidOperationException)
         {

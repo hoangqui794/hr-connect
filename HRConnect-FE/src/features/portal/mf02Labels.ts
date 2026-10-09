@@ -61,6 +61,7 @@ export const SUBMISSION_STATUS: Record<string, { label: string; tone: Tone; hint
   CONSENT_REJECTED: { label: 'Ứng viên từ chối', tone: 'danger', hint: 'Ứng viên không đồng ý cho bạn giới thiệu.' },
   CONSENT_EXPIRED: { label: 'Hết hạn xác nhận', tone: 'neutral', hint: 'Ứng viên không trả lời trong hạn; hãy tạo lượt giới thiệu mới.' },
   BLOCKED_DUPLICATE: { label: 'Bị chặn do trùng', tone: 'danger', hint: 'Ứng viên đã có hồ sơ trong tin này; attribution cũ được giữ nguyên.' },
+  JOB_UNAVAILABLE: { label: 'Tin không còn nhận hồ sơ', tone: 'neutral', hint: 'Job đã đóng hoặc không còn cho phép nhận hồ sơ.' },
 };
 
 export const submissionStatus = (s: string) => SUBMISSION_STATUS[s] ?? { label: s, tone: 'neutral' as Tone, hint: '' };
