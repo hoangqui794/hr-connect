@@ -90,3 +90,20 @@ def test_lexicon_accepts_component_library_and_technical_decisions() -> None:
         "Proactive technical solution proposals",
         "Led technical decisions and evaluated technical/UX tradeoffs.",
     ).match_status == "MATCHED"
+
+
+def test_tool_description_is_not_performance_work() -> None:
+    result = evaluate(
+        "Direct backend and client performance optimization with measurable improvement",
+        "Built the client-side map with CesiumJS, powered by Vite for high-performance bundling.",
+    )
+
+    assert "Client performance" not in result.matched_terms
+
+
+def test_generic_refactor_is_not_maintainability_evidence() -> None:
+    weak = evaluate("Maintainable code", "Refactored the architecture into a scalable ES6 Module system.")
+    strong = evaluate("Maintainable code", "Initiated and led major refactors of legacy code.")
+
+    assert weak.match_status == "NOT_FOUND"
+    assert strong.match_status == "MATCHED"

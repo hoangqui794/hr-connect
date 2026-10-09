@@ -36,7 +36,7 @@ CAPABILITIES = (
     Capability("SOLID", r"\bsolid\b", r"\bsolid\b"),
     Capability("Design patterns", r"design patterns?", r"design patterns?"),
     Capability("Testable code", r"testable|kiểm thử", r"unit test\w*|integration test\w*|test.driven|testable|kiểm thử"),
-    Capability("Maintainable code", r"maintainable|bảo trì", r"maintainab\w*|refactor\w*|bảo trì"),
+    Capability("Maintainable code", r"maintainable|bảo trì", r"maintainab\w*|refactor\w* (?:of )?(?:legacy|the code ?base|for (?:readability|maintainability))|bảo trì"),
     Capability("Readable code", r"readable", r"readable|coding standards|code quality standards"),
     Capability(
         "Mentoring",
@@ -68,7 +68,18 @@ def load_capabilities() -> tuple[Capability, ...]:
         Capability(c.name, c.trigger, "|".join([c.evidence, *extend[c.name]]) if extend.get(c.name) else c.evidence)
         for c in CAPABILITIES
     ]
-    merged += [Capability(item["name"], item["trigger"], item["evidence"]) for item in lexicon.get("add", [])]
+    by_name = {capability.name: index for index, capability in enumerate(merged)}
+    for item in lexicon.get("add", []):
+        # A duplicate name would count the same criterion twice in ALL_OF
+        # requirements, so an existing capability is widened instead.
+        if item["name"] in by_name:
+            existing = merged[by_name[item["name"]]]
+            merged[by_name[item["name"]]] = Capability(
+                existing.name, f"{existing.trigger}|{item['trigger']}", f"{existing.evidence}|{item['evidence']}"
+            )
+        else:
+            by_name[item["name"]] = len(merged)
+            merged.append(Capability(item["name"], item["trigger"], item["evidence"]))
     for capability in merged:
         re.compile(capability.trigger)
         re.compile(capability.evidence)
@@ -160,6 +171,16 @@ def _evidence_rank(capability: Capability, span: dict) -> tuple[int, int]:
     return (score, -span["start"])
 
 
+# Performance work needs an action by the candidate; "powered by Vite for
+# high-performance bundling" describes a tool, not optimization they did.
+_PERFORMANCE_WORK = {"Backend performance", "Client performance"}
+_PERFORMANCE_ACTION = re.compile(
+    r"\b(?:optimi[sz](?:ed|es|ing|ation)|improv\w*|reduc\w*|cut(?:s|ting)?|speed\w*|accelerat\w*|"
+    r"eliminat\w*|tun(?:ed|ing)|cach(?:ed|ing)|index(?:ed|ing)|prevent\w*|tối ưu|cải thiện|giảm)\b",
+    re.I,
+)
+
+
 def _find_evidence(capability: Capability, spans: list[dict]) -> dict | None:
     matches = [
         span for span in spans
@@ -167,6 +188,7 @@ def _find_evidence(capability: Capability, spans: list[dict]) -> dict | None:
         and not _UNSUPPORTED.search(span["text"])
         and not _THIRD_PARTY.search(span["text"])
         and (capability.name != "Measured improvement" or _is_measured_performance_span(span["text"]))
+        and (capability.name not in _PERFORMANCE_WORK or _PERFORMANCE_ACTION.search(span["text"]))
     ]
     return max(matches, key=lambda span: _evidence_rank(capability, span), default=None)
 

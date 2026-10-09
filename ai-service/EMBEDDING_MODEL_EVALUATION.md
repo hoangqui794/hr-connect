@@ -106,3 +106,30 @@ CV thứ hai (Node.js/React, ứng tuyển JD .NET) lộ hai lỗi: thiếu C#/.
 | MAE / cùng tier / khớp yêu cầu | | 9,52 / 50% / 90% | 2,76 / 100% / 96,7% |
 
 Lệch còn lại: `backend-dotnet` của CV Node.js — nhãn tạm ghi PARTIAL, AI ghi NOT_FOUND (một lần nhắc thoáng qua không được tính).
+
+## Ngữ nghĩa phụ thuộc MUST_HAVE, siết bằng chứng (2026-10-09)
+
+CV thứ ba (Unity/C#, ứng tuyển cùng JD .NET fullstack) được 36,48 với nhãn tạm 20: riêng phần ngữ nghĩa cho 20 điểm vì CV IT nào
+cũng "giống" JD IT (0,67 so với 0,87–0,88 của hai CV fullstack).
+
+- **Ngữ nghĩa phụ thuộc MUST_HAVE** (`SEMANTIC_GATED_BY_MUST_HAVE=true`): phần ngữ nghĩa nhân với tỷ lệ đạt MUST_HAVE, nên
+  độ giống chủ đề chỉ thưởng cho ứng viên đã đạt yêu cầu cứng, không bù cho yêu cầu thiếu.
+- **Hiệu năng cần hành động**: "Backend/Client performance" chỉ tính câu có hành động tối ưu (optimized, reduced, cut, cached…);
+  "powered by Vite for high-performance bundling" không còn được tính.
+- **Refactor**: chỉ tính refactor mã cũ/codebase ("refactors of legacy code"), không tính "refactored the architecture into modules".
+- **Sửa lỗi từ điển**: bản trước thêm OOP, SOLID, Design patterns, Testable code, Maintainable code trùng với năng lực có sẵn,
+  làm yêu cầu "OOP, SOLID…" bị đếm trùng tiêu chí. Mục trùng tên giờ được gộp.
+
+| 3 CV thật, nhãn tạm (chưa phải của HR) | Nhãn | Trước | Sau |
+|---|---|---|---|
+| .NET + Angular | 82 | 86,52 | 85,43 |
+| Node.js + React (knockout .NET) | 58 | 59,00 | 59,00 |
+| Unity / C# | 20 | 36,48 | 20,18 |
+| MAE / cùng tier / khớp yêu cầu | | 7,33 / 100% / 91,1% | 1,54 / 100% / 93,3% |
+
+Lệch còn lại: (1) "≥ 3 năm kinh nghiệm *web*" vẫn so với tổng số năm (4,1, gồm cả thực tập) vì API chấm điểm chưa nhận danh
+sách vị trí làm việc; (2) OOP được tính nhờ "C# (Expert)" — chấp nhận được nhưng nhãn tạm ghi không có; (3) `backend-dotnet`
+của CV Node.js như trước.
+
+`--calibrate` trên 3 CV gợi ý giảm `SEMANTIC_WEIGHT` xuống 0,10 nhưng làm tỷ lệ cùng tier giảm từ 100% xuống 67% — quá khớp,
+không áp dụng.

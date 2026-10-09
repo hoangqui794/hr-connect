@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # cross-encoder/mmarco-mMiniLMv2-L12-H384-v1). Empty disables it.
     reranker_model: str = ""
     reranker_credit_threshold: float = Field(default=0.5, ge=0, le=1)
+    # Scale the semantic component by MUST_HAVE coverage so topic similarity
+    # cannot compensate for missing hard requirements.
+    semantic_gated_by_must_have: bool = True
     # Highest score a CV can get while a knockout MUST_HAVE is not fully met.
     knockout_score_cap: float = Field(default=59, ge=0, le=100)
     max_upload_size_mb: int = Field(default=10, ge=1, le=50)

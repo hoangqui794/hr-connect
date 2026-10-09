@@ -1,20 +1,18 @@
 {
-  "description": "Extra phrasings for OTHER requirements. 'extend' adds evidence patterns to a built-in capability by name; 'add' defines a new capability (trigger matches the job requirement, evidence matches a CV sentence). Patterns are case-insensitive regular expressions. Every match stays flagged for human review.",
+  "description": "Extra phrasings for OTHER requirements. 'extend' adds evidence patterns to a built-in capability by name; 'add' defines a new capability (trigger matches the job requirement, evidence matches a CV sentence); an 'add' whose name already exists widens that capability instead of duplicating it. Patterns are case-insensitive regular expressions. Every match stays flagged for human review.",
   "extend": {
     "Teamwork": ["led (?:a |the )?(?:development |engineering |dev )?team", "team lead\\w*", "cross.functional", "worked (?:closely )?with (?:stakeholders|customers|clients|product)"],
     "Database design": ["database partitioning", "partition\\w* (?:tables?|data)", "\\bERD\\b", "normali[sz]\\w* (?:schema|database|tables?)", "thiết kế (?:database|csdl)"],
     "Query optimization": ["optimi[sz]\\w* (?:sql|database)", "execution plans?", "tối ưu (?:sql|database|csdl)"],
-    "Problem analysis": ["debugg\\w*", "investigat\\w* .{0,30}(?:issue|bug|incident|problem)", "resolv\\w* .{0,30}(?:issue|bug|incident)"],
+    "Problem analysis": ["debugg\\w*", "investigat\\w* .{0,30}(?:issue|bug|incident|problem)", "resolv\\w* .{0,30}(?:issue|bug|incident)", "problem definition"],
     "Technical proposals": ["architecture discussions?", "design reviews?", "recommend\\w* .{0,40}(?:solution|architecture|approach)", "established technical foundation", "(?:led|drove|made) .{0,20}technical decisions", "(?:technical|architectural|ux) .{0,10}trade-?offs?"],
     "Reusable UI components": ["component librar(?:y|ies)", "(?:core )?ui building blocks", "form components"],
     "Frontend codebase architecture": ["(?:set up|established|built) the frontend project structure", "frontend project structure"],
-    "Client performance": ["optimistic updates", "application responsiveness", "reduced unnecessary requests", "ui thrashing"]
+    "Client performance": ["optimistic updates", "application responsiveness", "reduced unnecessary requests", "ui thrashing"],
+    "OOP": ["design patterns", "\\bC#", "\\bJava\\b"],
+    "Design patterns": ["\\bCQRS\\b", "mediator", "repository pattern"],
+    "Testable code": ["\\bxunit\\b", "\\bjest\\b"],
+    "Maintainable code": ["clean (?:architecture|code)", "code quality", "code reviews?"]
   },
-  "add": [
-    {"name": "OOP", "trigger": "\\bOOP\\b|object.oriented", "evidence": "\\bOOP\\b|object.oriented|design patterns|\\bC#|\\bJava\\b"},
-    {"name": "SOLID principles", "trigger": "\\bSOLID\\b", "evidence": "\\bSOLID\\b"},
-    {"name": "Design patterns", "trigger": "design patterns?", "evidence": "design patterns?|\\bCQRS\\b|mediator|repository pattern"},
-    {"name": "Testable code", "trigger": "testab\\w*", "evidence": "unit test\\w*|integration test\\w*|\\bxunit\\b|\\bjest\\b|testab\\w*"},
-    {"name": "Maintainable code", "trigger": "maintainab\\w*|readab\\w*|clean code", "evidence": "clean (?:architecture|code)|maintainab\\w*|code quality|code reviews?|refactor\\w*"}
-  ]
+  "add": []
 }
