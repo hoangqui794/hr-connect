@@ -3,29 +3,35 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Checkbox, Popconfirm, Result, Skeleton } from 'antd';
 import { EyeOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { candidateConsentApi } from '@/services/api/mf02Api';
 import { getApiError } from '@/services/apiClient';
 import { StatusDot, Surface } from '@/features/admin-console/ui';
 
-const fragmentToken = () => {
-  const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-  return params.get('token')?.trim() || null;
-};
-
 export const PublicSubmissionConsentPage: React.FC = () => {
   const { message } = AntApp.useApp();
-  const [token, setToken] = useState<string | null | undefined>(undefined);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [{ token, submissionId }] = useState(() => {
+    const fragment = new URLSearchParams(location.hash.replace(/^#/, ''));
+    return {
+      token: fragment.get('token')?.trim() || null,
+      submissionId: fragment.get('submissionId')?.trim() || null,
+    };
+  });
   const [allowFutureReuse, setAllowFutureReuse] = useState(false);
   const [completed, setCompleted] = useState<string>();
-  const consumedFragment = React.useRef(false);
 
   useLayoutEffect(() => {
-    if (consumedFragment.current) return;
-    consumedFragment.current = true;
-    const value = fragmentToken();
-    window.history.replaceState(null, document.title, `${window.location.pathname}${window.location.search}`);
-    setToken(value);
-  }, []);
+    if (!submissionId && location.hash) {
+      window.history.replaceState(
+        window.history.state,
+        document.title,
+        `${window.location.pathname}${window.location.search}`
+      );
+      navigate({ pathname: location.pathname, search: location.search, hash: '' }, { replace: true });
+    }
+  }, [location.hash, location.pathname, location.search, navigate, submissionId]);
 
   const review = useQuery({
     queryKey: ['public-submission-consent', token ? 'available' : 'missing'],
@@ -55,7 +61,9 @@ export const PublicSubmissionConsentPage: React.FC = () => {
     },
   });
 
-  if (token === undefined) return <div className="mx-auto max-w-3xl p-6"><Skeleton active paragraph={{ rows: 7 }} /></div>;
+  if (submissionId) {
+    return <Navigate to={`/candidate/submission-consents/${encodeURIComponent(submissionId)}`} replace />;
+  }
 
   if (!token) {
     return (
