@@ -1,7 +1,7 @@
 import { AxiosError, AxiosHeaders, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
 import { apiClient, getApiError, getApiErrorMessage } from './apiClient';
-import { affiliateApi, candidateApplicationsApi, candidateConsentApi, candidateCvApi } from './api/mf02Api';
+import { affiliateApi, candidateAffiliateCvApi, candidateApplicationsApi, candidateConsentApi, candidateCvApi } from './api/mf02Api';
 
 describe('API client foundation', () => {
   afterEach(() => {
@@ -67,6 +67,26 @@ describe('API client foundation', () => {
     expect(capturedConfig?.method).toBe('patch');
     expect(capturedConfig?.url).toBe('/candidates/cv/cv-1');
     expect(JSON.parse(capturedConfig?.data as string)).toEqual({ title: 'CV Backend 2026' });
+  });
+
+  it('maps the affiliate CV pagination envelope for the candidate vault', async () => {
+    let capturedConfig: InternalAxiosRequestConfig | undefined;
+    apiClient.defaults.adapter = async (config) => {
+      capturedConfig = config;
+      return {
+        data: { success: true, data: { items: [], pagination: { page: 2, pageSize: 10, totalItems: 12, totalPages: 2 } } },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      };
+    };
+
+    const result = await candidateAffiliateCvApi.list(2, 10);
+
+    expect(capturedConfig?.url).toBe('/candidates/me/affiliate-cvs');
+    expect(capturedConfig?.params).toEqual({ page: 2, pageSize: 10 });
+    expect(result).toEqual({ items: [], page: 2, pageSize: 10, total: 12, totalPages: 2 });
   });
 
   it('sends candidate application filters to the backend list endpoint', async () => {

@@ -172,6 +172,9 @@ const PublicSubmissionConsentPage = React.lazy(() =>
   import('@/features/portal/PublicSubmissionConsentPage').then((m) => ({ default: m.PublicSubmissionConsentPage }))
 );
 const CandidateCvsPage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateCvsPage })));
+const CandidateAffiliateCvsPage = React.lazy(() =>
+  import('@/features/portal/CandidateAffiliateCvsPage').then((m) => ({ default: m.CandidateAffiliateCvsPage }))
+);
 const AffiliateHomePage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateHomePage })));
 const AffiliateSubmitPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmitPage })));
 const AffiliateMySubmissionsPage = React.lazy(() =>
@@ -402,6 +405,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/candidate/submission-consents/:submissionId': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/saved-jobs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/affiliate-cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/affiliate/attributions': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/jobs': [
     UserRole.CLIENT,
@@ -506,6 +510,7 @@ export const AppRoutes = {
   CandidateSubmissionConsentPage,
   PublicSubmissionConsentPage,
   CandidateCvsPage,
+  CandidateAffiliateCvsPage,
   AffiliateHomePage,
   AffiliateSubmitPage,
   AffiliateMySubmissionsPage,

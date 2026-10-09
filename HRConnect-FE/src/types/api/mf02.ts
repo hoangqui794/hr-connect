@@ -30,6 +30,24 @@ export interface CandidateApplication {
   appliedAt: string;
 }
 
+export interface CandidateAffiliateCv {
+  cvId: string;
+  title: string;
+  fileName: string | null;
+  mimeType: string | null;
+  fileSizeBytes: number | null;
+  documentStatus: string;
+  affiliateReuseStatus: string;
+  reuseConcurrencyToken: string;
+  affiliateUserId: string;
+  affiliateDisplayName: string;
+  submissionCount: number;
+  pendingConsentCount: number;
+  acceptedSubmissionCount: number;
+  lastSubmittedAt: string | null;
+  createdAt: string;
+}
+
 export interface CandidateApplicationDetail extends CandidateApplication {
   candidateId: string;
   companyId: string | null;

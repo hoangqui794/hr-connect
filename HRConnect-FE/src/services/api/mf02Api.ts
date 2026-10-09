@@ -17,6 +17,7 @@ import type {
   ApplyJobResult,
   CandidateApplication,
   CandidateApplicationDetail,
+  CandidateAffiliateCv,
   CandidateCv,
   LibraryCandidate,
   LibraryCandidateDetail,
@@ -75,6 +76,26 @@ export const candidateApplicationsApi = {
   },
   async detail(applicationId: string): Promise<CandidateApplicationDetail> {
     return (await apiClient.get<CandidateApplicationDetail>(`/candidates/applications/${applicationId}`)).data;
+  },
+};
+
+export const candidateAffiliateCvApi = {
+  async list(page: number, pageSize: number): Promise<PagedItems<CandidateAffiliateCv>> {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: {
+        items: CandidateAffiliateCv[];
+        pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
+      };
+    }>('/candidates/me/affiliate-cvs', { params: { page, pageSize } });
+    const { items, pagination } = response.data.data;
+    return {
+      items,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      total: pagination.totalItems,
+      totalPages: pagination.totalPages,
+    };
   },
 };
 

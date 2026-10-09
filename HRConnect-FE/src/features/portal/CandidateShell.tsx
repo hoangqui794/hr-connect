@@ -18,6 +18,7 @@ const NAV = [
   { to: '/candidate/dashboard', label: 'Tổng quan' },
   { to: '/candidate/applications', label: 'Đơn ứng tuyển' },
   { to: '/candidate/cvs', label: 'Kho CV' },
+  { to: '/candidate/affiliate-cvs', label: 'CV Affiliate' },
   { to: '/candidate/profile', label: 'Hồ sơ cá nhân' },
 ] as const;
 
