@@ -96,6 +96,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Placement> Placements { get; set; }
 
+    public virtual DbSet<ServiceFee> ServiceFees { get; set; }
+
     public virtual DbSet<Probation> Probations { get; set; }
 
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
@@ -2137,6 +2139,68 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<ServiceFee>(entity =>
+        {
+            entity.HasKey(e => e.ServiceFeeId).HasName("service_fee_pkey");
+
+            entity.ToTable("service_fee", "public", tb =>
+            {
+                tb.HasComment("MF-05 service fee the Client owes for one HEADHUNT_COD placement. Paid outside the system; Platform Admin records payment.");
+                tb.HasCheckConstraint("ck_service_fee_status", "status IN ('PENDING','PAID','OVERDUE','CANCELLED')");
+                tb.HasCheckConstraint("ck_service_fee_amounts", "amount >= 0 AND base_salary >= 0 AND fee_multiplier > 0");
+                tb.HasCheckConstraint("ck_service_fee_paid", "(status = 'PAID') = (paid_at IS NOT NULL)");
+            });
+
+            entity.HasIndex(e => e.PlacementId, "service_fee_placement_id_key").IsUnique();
+            entity.HasIndex(e => new { e.CompanyId, e.Status }, "idx_service_fee_company_status");
+            entity.HasIndex(e => new { e.Status, e.DueDate }, "idx_service_fee_status_due_date");
+
+            entity.Property(e => e.ServiceFeeId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("service_fee_id");
+            entity.Property(e => e.PlacementId).HasColumnName("placement_id");
+            entity.Property(e => e.CompanyId).HasColumnName("company_id");
+            entity.Property(e => e.BaseSalary)
+                .HasPrecision(18, 2)
+                .HasColumnName("base_salary");
+            entity.Property(e => e.FeeMultiplier)
+                .HasPrecision(6, 3)
+                .HasColumnName("fee_multiplier");
+            entity.Property(e => e.Amount)
+                .HasPrecision(18, 2)
+                .HasColumnName("amount");
+            entity.Property(e => e.CurrencyCode)
+                .HasMaxLength(3)
+                .IsFixedLength()
+                .HasColumnName("currency_code");
+            entity.Property(e => e.DueDate).HasColumnName("due_date");
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'PENDING'::character varying")
+                .HasColumnName("status");
+            entity.Property(e => e.PaidAt).HasColumnName("paid_at");
+            entity.Property(e => e.PaymentReference)
+                .HasMaxLength(200)
+                .HasColumnName("payment_reference");
+            entity.Property(e => e.RecordedBy).HasColumnName("recorded_by");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Placement).WithOne(p => p.ServiceFee)
+                .HasForeignKey<ServiceFee>(d => d.PlacementId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("service_fee_placement_id_fkey");
+
+            entity.HasOne(d => d.Company).WithMany()
+                .HasForeignKey(d => d.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("service_fee_company_id_fkey");
         });
 
         modelBuilder.Entity<Placement>(entity =>

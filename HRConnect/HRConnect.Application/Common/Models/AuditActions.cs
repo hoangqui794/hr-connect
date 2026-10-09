@@ -57,6 +57,17 @@ public static class AuditActions
     public const string OfferWithdrawn = "OFFER_WITHDRAWN";
     public const string OfferExpired = "OFFER_EXPIRED";
     public const string PlacementConfirmed = "PLACEMENT_CONFIRMED";
+    public const string PlacementFinanceInitialized = "PLACEMENT_FINANCE_INITIALIZED";
+    public const string WarrantyPassed = "WARRANTY_PASSED";
+    public const string WarrantyClaimReported = "WARRANTY_CLAIM_REPORTED";
+    public const string WarrantyClaimResolved = "WARRANTY_CLAIM_RESOLVED";
+    public const string ServiceFeeOverdue = "SERVICE_FEE_OVERDUE";
+    public const string ServiceFeePaymentRecorded = "SERVICE_FEE_PAYMENT_RECORDED";
+    public const string CommissionEarned = "COMMISSION_EARNED";
+    public const string CommissionApproved = "COMMISSION_APPROVED";
+    public const string CommissionCancelled = "COMMISSION_CANCELLED";
+    public const string CommissionAdjusted = "COMMISSION_ADJUSTED";
+    public const string PayoutRecorded = "PAYOUT_RECORDED";
     public const string CandidateCvDownloadUrlIssued = "CANDIDATE_CV_DOWNLOAD_URL_ISSUED";
     public const string CandidateAffiliateCvDownloadUrlIssued = "CANDIDATE_AFFILIATE_CV_DOWNLOAD_URL_ISSUED";
     public const string CandidateAffiliateCvAdopted = "CANDIDATE_AFFILIATE_CV_ADOPTED";

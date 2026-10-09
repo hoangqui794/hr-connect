@@ -6,6 +6,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
@@ -23,6 +24,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ConfirmStartWorkCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
+    private readonly IPlacementFinanceService _placementFinanceService;
 
     public ConfirmStartWorkCommandHandler(
         IApplicationRepository applicationRepository,
@@ -31,7 +33,8 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
         ILogger<ConfirmStartWorkCommandHandler> logger,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        IPlacementFinanceService placementFinanceService)
     {
         _applicationRepository = applicationRepository;
         _offerRepository = offerRepository;
@@ -40,6 +43,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         _unitOfWork = unitOfWork;
         _logger = logger;
         _auditLogService = auditLogService;
+        _placementFinanceService = placementFinanceService;
     }
 
     public async Task<ConfirmStartWorkResponse> Handle(ConfirmStartWorkCommand request, CancellationToken cancellationToken)
@@ -143,6 +147,18 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
 
         await _placementRepository.AddAsync(placement, cancellationToken);
 
+        // MF-05: warranty, service fee and commission are created in the same unit of work as the placement.
+        var finance = await _placementFinanceService.InitializeAsync(
+            placement,
+            new JobApplicationContext(
+                application.ApplicationId,
+                application.Job.CompanyId,
+                application.Job.ServiceTypeId,
+                application.Job.ServiceType?.Code,
+                offer),
+            request.CurrentUserId,
+            cancellationToken);
+
         application.Status = ApplicationStates.Placed;
         application.UpdatedAt = now;
         application.ConcurrencyToken = newConcurrencyToken;
@@ -187,7 +203,8 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
             placement.PlacementId,
             placement.ActualStartDate,
             application.ConcurrencyToken,
-            new List<string> { "VIEW_PLACEMENT" }
+            new List<string> { "VIEW_PLACEMENT" },
+            finance.Applicable ? finance : null
         );
     }
 }

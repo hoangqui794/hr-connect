@@ -1,3 +1,4 @@
+using HRConnect.Presentation.Endpoints.V1.Finance;
 using System.Text;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -347,6 +348,7 @@ app.MapRecruitmentEndpoints();
 app.MapInterviewEndpoints();
 app.MapOfferEndpoints();
 app.MapPlacementEndpoints();
+app.MapFinanceEndpoints();
 app.MapSubmissionConsentEndpoints();
 
 // ==============================================================================

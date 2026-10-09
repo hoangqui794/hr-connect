@@ -7,6 +7,7 @@ using HRConnect.Application.Features.Interviews.Commands.ScheduleInterview;
 using HRConnect.Application.Features.Offers.Commands.CreateOfferDraft;
 using HRConnect.Application.Features.Offers.Commands.RespondToOffer;
 using HRConnect.Application.Features.Offers.Commands.SendOffer;
+using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmStartWork;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
@@ -219,7 +220,8 @@ public sealed class Mf04HappyPathFlowTests
             companyUsers.Object,
             unitOfWork.Object,
             Mock.Of<ILogger<ConfirmStartWorkCommandHandler>>(),
-            audit.Object);
+            audit.Object,
+            NotApplicableFinance());
         await confirmStartHandler.Handle(new ConfirmStartWorkCommand(
             application.ApplicationId,
             persistedOffer.OfferId,
@@ -239,5 +241,14 @@ public sealed class Mf04HappyPathFlowTests
         unitOfWork.Verify(
             work => work.SaveChangesAsync(It.IsAny<CancellationToken>()),
             Times.Exactly(6));
+    }
+
+    // MF-05 finance has its own tests; this flow only checks the MF-04 states.
+    private static IPlacementFinanceService NotApplicableFinance()
+    {
+        var finance = new Mock<IPlacementFinanceService>();
+        finance.Setup(s => s.InitializeAsync(It.IsAny<Placement>(), It.IsAny<JobApplicationContext>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlacementFinanceResult(false, null, null, null, null, null, null, Array.Empty<string>()));
+        return finance.Object;
     }
 }
