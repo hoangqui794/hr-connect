@@ -5,6 +5,8 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Recruitment.Common;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -50,19 +52,15 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
             throw new NotFoundException("Không tìm thấy lời mời nhận việc.");
         }
 
-        if (request.ConcurrencyToken.HasValue && request.ConcurrencyToken.Value != offer.ConcurrencyToken)
-        {
-            _logger.LogWarning("Xung đột phiên bản cho offer {OfferId}.", request.OfferId);
-            throw new ConflictException("Dữ liệu offer đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
-        }
+        Mf04ConcurrencyGuard.EnsureMatches(request.ConcurrencyToken, offer.ConcurrencyToken, "offer");
 
-        if (offer.Status == "ACCEPTED")
+        if (offer.Status == OfferStates.Accepted)
         {
             _logger.LogWarning("Offer {OfferId} đã được chấp nhận, không thể thu hồi.", offer.OfferId);
             throw new BadRequestException("Không thể thu hồi offer đã được ứng viên chấp nhận.");
         }
 
-        if (offer.Status is "WITHDRAWN" or "DECLINED")
+        if (offer.Status is not (OfferStates.Draft or OfferStates.Sent))
         {
             _logger.LogWarning("Offer {OfferId} đang ở trạng thái {Status}, không thể thu hồi.",
                 offer.OfferId, offer.Status);
@@ -72,7 +70,7 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (companyUser == null)
+            if (!HRConnect.Application.Features.Recruitment.Common.CompanyMembershipPolicy.IsActive(companyUser))
             {
                 _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
                 throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
@@ -95,7 +93,7 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
         var now = DateTime.UtcNow;
         var trimmedReason = request.Reason.Trim();
 
-        offer.Status = "WITHDRAWN";
+        offer.Status = OfferStates.Withdrawn;
         offer.DeclineReason = trimmedReason;
         offer.UpdatedAt = now;
         offer.ConcurrencyToken = Guid.NewGuid();

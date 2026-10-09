@@ -33,7 +33,7 @@ public class GetOffersQueryHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
 
         _offerRepositoryMock
             .Setup(r => r.GetOffersAsync(

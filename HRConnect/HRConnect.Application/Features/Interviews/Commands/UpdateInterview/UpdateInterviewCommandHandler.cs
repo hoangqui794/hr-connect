@@ -8,6 +8,8 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Interviews.Commands.ScheduleInterview;
+using HRConnect.Application.Features.Interviews.Common;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -53,12 +55,7 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
             throw new BadRequestException($"Không thể cập nhật buổi phỏng vấn đã ở trạng thái {interview.Status}.");
         }
 
-        if (request.ConcurrencyToken.HasValue && request.ConcurrencyToken.Value != interview.ConcurrencyToken)
-        {
-            _logger.LogWarning("Xung đột concurrency trên Interview {InterviewId}. Token yêu cầu {ReqToken} khác với token hiện tại {CurToken}.",
-                interview.InterviewId, request.ConcurrencyToken.Value, interview.ConcurrencyToken);
-            throw new ConflictException("Dữ liệu phỏng vấn đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
-        }
+        Mf04ConcurrencyGuard.EnsureMatches(request.ConcurrencyToken, interview.ConcurrencyToken, "phỏng vấn");
 
         if (request.DurationMinutes.HasValue &&
             (request.DurationMinutes.Value <= 0 || request.DurationMinutes.Value > 480))
@@ -66,10 +63,19 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
             throw new BadRequestException("Thời lượng phỏng vấn phải từ 1 đến 480 phút.");
         }
 
+        var interviewType = Mf04InputPolicy.NormalizeOptionalText(
+            request.InterviewType,
+            Mf04InputPolicy.InterviewTypeMaxLength,
+            "Hình thức phỏng vấn");
+        var location = Mf04InputPolicy.NormalizeOptionalText(
+            request.Location,
+            Mf04InputPolicy.InterviewLocationMaxLength,
+            "Địa điểm phỏng vấn");
+
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (companyUser == null)
+            if (!HRConnect.Application.Features.Recruitment.Common.CompanyMembershipPolicy.IsActive(companyUser))
             {
                 _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
                 throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
@@ -98,21 +104,17 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
 
         if (request.DurationMinutes.HasValue)
         {
-            if (request.DurationMinutes.Value <= 0 || request.DurationMinutes.Value > 480)
-            {
-                throw new BadRequestException("Thời lượng phỏng vấn phải từ 1 đến 480 phút.");
-            }
             interview.DurationMinutes = request.DurationMinutes.Value;
         }
 
-        if (!string.IsNullOrWhiteSpace(request.InterviewType))
+        if (interviewType != null)
         {
-            interview.InterviewType = request.InterviewType.Trim().ToUpperInvariant();
+            interview.InterviewType = interviewType.ToUpperInvariant();
         }
 
         if (request.Location != null)
         {
-            interview.Location = request.Location;
+            interview.Location = location;
         }
 
         if (request.MeetingLink != null)
@@ -123,17 +125,24 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
         var participantsDto = new List<ScheduleInterviewParticipantDto>();
         if (request.Participants != null)
         {
+            var companyId = interview.Application?.Job?.CompanyId
+                ?? throw new BadRequestException("Không xác định được doanh nghiệp sở hữu job.");
+            var normalizedParticipants = await InterviewParticipantPolicy.ValidateAndNormalizeAsync(
+                request.Participants,
+                companyId,
+                _companyUserRepository,
+                cancellationToken);
+
             interview.InterviewParticipants.Clear();
-            foreach (var p in request.Participants)
+            foreach (var participant in normalizedParticipants)
             {
-                var role = string.IsNullOrWhiteSpace(p.Role) ? "INTERVIEWER" : p.Role.Trim().ToUpperInvariant();
                 interview.InterviewParticipants.Add(new InterviewParticipant
                 {
                     InterviewId = interview.InterviewId,
-                    UserId = p.UserId,
-                    Role = role
+                    UserId = participant.UserId,
+                    Role = participant.Role
                 });
-                participantsDto.Add(new ScheduleInterviewParticipantDto(p.UserId, role));
+                participantsDto.Add(participant);
             }
         }
         else

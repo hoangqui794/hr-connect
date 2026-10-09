@@ -26,6 +26,27 @@ public class CompanyUserRepository : ICompanyUserRepository
             .FirstOrDefaultAsync(cu => cu.UserId == userId, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<CompanyUser>> GetActiveByUserIdsAsync(
+        Guid companyId,
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+        {
+            return Array.Empty<CompanyUser>();
+        }
+
+        return await _context.CompanyUsers
+            .AsNoTracking()
+            .Include(cu => cu.User)
+            .Where(cu =>
+                cu.CompanyId == companyId &&
+                userIds.Contains(cu.UserId) &&
+                cu.Status == "ACTIVE" &&
+                cu.User.Status == "ACTIVE")
+            .ToListAsync(cancellationToken);
+    }
+
     public void Update(CompanyUser companyUser)
     {
         _context.CompanyUsers.Update(companyUser);

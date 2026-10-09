@@ -13,6 +13,7 @@ namespace HRConnect.Application.Features.Auth.Commands.RegisterClient;
 public class RegisterClientCommandHandler : IRequestHandler<RegisterClientCommand, RegisterClientResponse>
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserEmailIdentityRepository _userEmailIdentityRepository;
     private readonly ICompanyRepository _companyRepository;
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly ICompanyVerificationRequestRepository _companyVerificationRequestRepository;
@@ -30,6 +31,7 @@ public class RegisterClientCommandHandler : IRequestHandler<RegisterClientComman
 
     public RegisterClientCommandHandler(
         IUserRepository userRepository,
+        IUserEmailIdentityRepository userEmailIdentityRepository,
         ICompanyRepository companyRepository,
         ICompanyUserRepository companyUserRepository,
         ICompanyVerificationRequestRepository companyVerificationRequestRepository,
@@ -46,6 +48,7 @@ public class RegisterClientCommandHandler : IRequestHandler<RegisterClientComman
         ILogger<RegisterClientCommandHandler> logger)
     {
         _userRepository = userRepository;
+        _userEmailIdentityRepository = userEmailIdentityRepository;
         _companyRepository = companyRepository;
         _companyUserRepository = companyUserRepository;
         _companyVerificationRequestRepository = companyVerificationRequestRepository;
@@ -91,6 +94,12 @@ public class RegisterClientCommandHandler : IRequestHandler<RegisterClientComman
             throw new ConflictException("Email này đã được sử dụng bởi một tài khoản khác.");
         }
 
+        if (await _userEmailIdentityRepository.ExistsActiveByNormalizedEmailAsync(normalizedEmail, cancellationToken))
+        {
+            _logger.LogWarning("Đăng ký Client thất bại: Email đã thuộc một danh tính tài khoản đang hoạt động.");
+            throw new ConflictException("Email này đã được sử dụng bởi một tài khoản khác.");
+        }
+
         // 3. Nếu có mã số thuế, kiểm tra trùng TaxCode trong hệ thống doanh nghiệp
         if (!string.IsNullOrWhiteSpace(request.TaxCode))
         {
@@ -126,6 +135,19 @@ public class RegisterClientCommandHandler : IRequestHandler<RegisterClientComman
             };
 
             await _userRepository.AddAsync(newUser, cancellationToken);
+            await _userEmailIdentityRepository.AddAsync(new UserEmailIdentity
+            {
+                EmailIdentityId = Guid.NewGuid(),
+                UserId = newUser.UserId,
+                Email = newUser.Email,
+                NormalizedEmail = normalizedEmail,
+                Kind = "PRIMARY",
+                Status = "PENDING",
+                VerificationSource = "REGISTRATION",
+                CreatedAt = now,
+                UpdatedAt = now,
+                ConcurrencyToken = Guid.NewGuid()
+            }, cancellationToken);
 
             // 6. Tạo mới bản ghi Company (status = PENDING)
             var newCompany = new Company

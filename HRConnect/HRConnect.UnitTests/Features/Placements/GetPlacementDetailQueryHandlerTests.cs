@@ -99,7 +99,7 @@ public class GetPlacementDetailQueryHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId, Status = "ACTIVE" });
 
         var query = new GetPlacementDetailQuery(
             PlacementId: placementId,
@@ -175,7 +175,7 @@ public class GetPlacementDetailQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenValidClientUser_ShouldReturnDetailWithAllowedActions()
+    public async Task Handle_WhenValidClientUser_ShouldReturnReadOnlyPlacementActions()
     {
         // Arrange
         var placementId = Guid.NewGuid();
@@ -239,7 +239,7 @@ public class GetPlacementDetailQueryHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
 
         var query = new GetPlacementDetailQuery(
             PlacementId: placementId,
@@ -261,9 +261,35 @@ public class GetPlacementDetailQueryHandlerTests
         result.Probation!.Result.Should().Be("PENDING");
         result.Warranty.Should().NotBeNull();
         result.Warranty!.Status.Should().Be("ACTIVE");
-        result.AllowedActions.Should().Contain("MANAGE_PLACEMENT");
-        result.AllowedActions.Should().Contain("MARK_NOT_STARTED");
+        result.AllowedActions.Should().Contain("VIEW_PLACEMENT");
+        result.AllowedActions.Should().NotContain(["MANAGE_PLACEMENT", "MARK_NOT_STARTED"]);
         result.AllowedActions.Should().Contain("VIEW_PROBATION");
         result.AllowedActions.Should().Contain("VIEW_WARRANTY");
+    }
+
+    [Fact]
+    public async Task Handle_WhenInternalHrReadsPlacement_ShouldReturnReadOnlyActions()
+    {
+        var placementId = Guid.NewGuid();
+        _placementRepositoryMock
+            .Setup(r => r.GetByIdWithDetailsAsync(placementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Placement
+            {
+                PlacementId = placementId,
+                Status = "STARTED",
+                Application = new HRConnect.Domain.Entities.Application
+                {
+                    Candidate = new Candidate(),
+                    Job = new Job { Company = new Company() }
+                },
+                Offer = new Offer()
+            });
+
+        var result = await CreateHandler().Handle(new GetPlacementDetailQuery(
+            placementId,
+            Guid.NewGuid(),
+            IsInternalHrOrAdmin: true), CancellationToken.None);
+
+        result.AllowedActions.Should().ContainSingle().Which.Should().Be("VIEW_PLACEMENT");
     }
 }

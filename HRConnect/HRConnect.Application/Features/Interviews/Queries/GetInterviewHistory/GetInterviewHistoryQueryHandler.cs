@@ -37,7 +37,7 @@ public class GetInterviewHistoryQueryHandler : IRequestHandler<GetInterviewHisto
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (companyUser == null)
+            if (!HRConnect.Application.Features.Recruitment.Common.CompanyMembershipPolicy.IsActive(companyUser))
             {
                 _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
                 throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
@@ -75,9 +75,9 @@ public class GetInterviewHistoryQueryHandler : IRequestHandler<GetInterviewHisto
                 NewStatus = h.NewStatus,
                 OldScheduledAt = h.OldScheduledAt,
                 NewScheduledAt = h.NewScheduledAt,
-                Reason = h.Reason,
-                ChangedBy = h.ChangedBy,
-                ChangedByName = h.ChangedByNavigation?.DisplayName,
+                Reason = request.IsCandidate ? null : h.Reason,
+                ChangedBy = request.IsCandidate ? null : h.ChangedBy,
+                ChangedByName = request.IsCandidate ? null : h.ChangedByNavigation?.DisplayName,
                 ChangedAt = h.ChangedAt
             }).ToList();
 

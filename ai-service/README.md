@@ -8,7 +8,7 @@ The service returns evidence and an experimental `MatchScore` only. It never ret
 
 ## Pipeline
 
-`CV → safe validation → layout-aware PDF/DOCX extraction or OCR → structured CV parsing → deterministic MUST_HAVE/SHOULD_HAVE matching → BAAI/bge-m3 embeddings → cosine similarity → experimental score → deterministic evidence → JSON`
+`CV → safe validation → layout-aware PDF/DOCX extraction or OCR → structured CV parsing → deterministic MUST_HAVE/SHOULD_HAVE matching → Sentence-BERT embeddings (`paraphrase-multilingual-MiniLM-L12-v2`, see `EMBEDDING_MODEL_EVALUATION.md`) → chunk-level cosine similarity (CV and JD split into chunks, rescaled) → optional cross-encoder evidence reranking → bounded semantic partial credit for soft requirements → experimental score → deterministic evidence → JSON`
 
 Rule matching and semantic similarity are separate. A high semantic score does not silently turn a missing MUST_HAVE into a deterministic match. Explanations are generated only from observed evidence; no LLM is used.
 
@@ -77,7 +77,7 @@ The internal endpoints are:
 
 All require `X-Service-Token`. A timed-out `PROCESSING` job is returned to the dispatch path so a stopped AI process does not permanently lose the scoring request. The presigned storage download is made without this header so the service token is never sent to Cloudflare R2.
 
-The first real matching request may download and load `BAAI/bge-m3`. The first OCR request may download EasyOCR's Vietnamese/English models. Both model families are lazily loaded and cached. Model files and Hugging Face caches are excluded from Git.
+The first real matching request may download and load the configured `EMBEDDING_MODEL` (the Docker image bakes it in). The first OCR request may download EasyOCR's Vietnamese/English models. Both model families are lazily loaded and cached. Model files and Hugging Face caches are excluded from Git.
 
 ## Logging and audit
 
@@ -110,4 +110,20 @@ MF-03 does not calculate Qualified/Counted CV, Service Fee, Commission, Attribut
 pytest
 ```
 
-Tests inject deterministic fake embeddings and OCR, so the test suite does not download BGE-M3 or EasyOCR models. Structured extraction is deliberately conservative: uncertain values remain null and every extracted record carries evidence/confidence. Phase 1 reconstructs digital PDF layouts; OCR bounding-box layout reconstruction and highly graphical/table-driven CVs remain follow-up work and may require human review.
+Tests inject deterministic fake embeddings and OCR, so the test suite does not download embedding or EasyOCR models. Structured extraction is deliberately conservative: uncertain values remain null and every extracted record carries evidence/confidence. Phase 1 reconstructs digital PDF layouts; OCR bounding-box layout reconstruction and highly graphical/table-driven CVs remain follow-up work and may require human review.
+
+## Measuring accuracy
+
+`evaluation/README.md` explains how to score HR-labelled cases (`tools/evaluate_scoring.py`), calibrate weights
+(`--calibrate`), and compare stored scores with real HR decisions (`evaluation/hr_feedback.sql` + `tools/hr_feedback_report.py`).
+Accepted phrasings for soft requirements live in `app/data/capability_lexicon.json`.
+
+## Deploy to Render
+
+`render.yaml` at the repository root is a Render Blueprint for this service (Docker, `rootDir: ai-service`, health check `/health`).
+
+1. Render dashboard → **New → Blueprint** → choose this repository.
+2. Fill the two secrets: `HRCONNECT_BASE_URL` (public URL of the HR Connect backend) and `HRCONNECT_SERVICE_TOKEN`.
+3. On the backend set `Mf03Integration__BaseUrl=https://<ai-service>.onrender.com` and `Mf03Integration__ServiceToken` to the same token.
+
+Use at least the **standard** (2 GB) plan: the service peaks around 1.4 GB RAM with MiniLM, so free/starter instances run out of memory. The backend must be publicly reachable, because the AI service calls it back for scoring jobs. The container listens on Render's `PORT` (default 8001).

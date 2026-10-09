@@ -39,7 +39,7 @@ def test_capability_evidence_across_industries(content, text, status):
     for criterion in result.criteria:
         evidence = criterion["evidence"]
         if evidence:
-            assert text[evidence["start"]:evidence["end"]] == evidence["text"]
+            assert text[evidence["start"]:evidence["end"]].replace("\n", " ") == evidence["text"]
 
 
 def test_embedding_retrieval_never_claims_verification():

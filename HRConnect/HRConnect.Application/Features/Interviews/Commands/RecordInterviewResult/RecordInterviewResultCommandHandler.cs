@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -50,6 +51,8 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
             throw new BadRequestException("Kết quả phỏng vấn không hợp lệ. Giá trị cho phép: PASS, FAIL, BACKUP.");
         }
 
+        var normalizedNextAction = Mf04InputPolicy.NormalizeInterviewNextAction(normalizedResult, request.NextAction);
+
         var interview = await _interviewRepository.GetByIdForUpdateAsync(request.InterviewId, cancellationToken);
         if (interview == null)
         {
@@ -67,12 +70,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
             throw new BadRequestException("Buổi phỏng vấn này đã được ghi nhận kết quả trước đó.");
         }
 
-        if (request.ConcurrencyToken.HasValue && request.ConcurrencyToken.Value != interview.ConcurrencyToken)
-        {
-            _logger.LogWarning("Xung đột concurrency trên Interview {InterviewId}. Token yêu cầu {ReqToken} khác với token hiện tại {CurToken}.",
-                interview.InterviewId, request.ConcurrencyToken.Value, interview.ConcurrencyToken);
-            throw new ConflictException("Dữ liệu phỏng vấn đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
-        }
+        Mf04ConcurrencyGuard.EnsureMatches(request.ConcurrencyToken, interview.ConcurrencyToken, "phỏng vấn");
 
         if (interview.Status != InterviewStates.Scheduled)
         {
@@ -87,7 +85,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (companyUser == null)
+            if (!HRConnect.Application.Features.Recruitment.Common.CompanyMembershipPolicy.IsActive(companyUser))
             {
                 _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
                 throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
@@ -145,14 +143,14 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
 
             if (normalizedResult == InterviewResults.Fail)
             {
-                if (request.IsFinalRound || string.Equals(request.NextAction, "REJECT", StringComparison.OrdinalIgnoreCase))
+                if (request.IsFinalRound || normalizedNextAction == "REJECT")
                 {
                     targetApplicationStatus = ApplicationStates.InterviewFailed;
                 }
             }
             else if (normalizedResult == InterviewResults.Pass)
             {
-                if (request.IsFinalRound || string.Equals(request.NextAction, "MAKE_OFFER", StringComparison.OrdinalIgnoreCase))
+                if (request.IsFinalRound || normalizedNextAction == "MAKE_OFFER")
                 {
                     targetApplicationStatus = ApplicationStates.OfferPending;
                 }
@@ -195,7 +193,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
                 status = interview.Status,
                 result = interview.Result,
                 isFinalRound = request.IsFinalRound,
-                nextAction = request.NextAction
+                nextAction = normalizedNextAction
             }
         }, cancellationToken);
         if (oldApplicationStatus != null && oldApplicationStatus != interview.Application?.Status)

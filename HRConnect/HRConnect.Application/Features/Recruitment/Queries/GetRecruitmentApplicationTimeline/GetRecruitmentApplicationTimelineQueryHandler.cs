@@ -40,7 +40,7 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
         if (request.IsClientCompanyUser)
         {
             var member = await _companyUserRepository.GetByUserIdAsync(request.UserId, cancellationToken);
-            if (member == null || member.CompanyId != app.Job?.CompanyId)
+            if (!CompanyMembershipPolicy.IsActive(member) || member.CompanyId != app.Job?.CompanyId)
             {
                 _logger.LogWarning("Tài khoản {UserId} không có quyền xem timeline hồ sơ thuộc công ty {CompanyId}", request.UserId, app.Job?.CompanyId);
                 throw new ForbiddenException("Bạn không có quyền truy cập hồ sơ ứng tuyển của công ty khác.");

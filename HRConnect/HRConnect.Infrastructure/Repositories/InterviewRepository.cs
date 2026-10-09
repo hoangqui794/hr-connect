@@ -151,6 +151,21 @@ public class InterviewRepository : IInterviewRepository
 
     public void Update(Interview interview)
     {
-        _context.Interviews.Update(interview);
+        var entry = _context.Entry(interview);
+        if (entry.State == EntityState.Detached)
+        {
+            _context.Interviews.Update(interview);
+        }
+        else
+        {
+            foreach (var history in interview.InterviewStatusHistories)
+            {
+                var hEntry = _context.Entry(history);
+                if (hEntry.State == EntityState.Detached)
+                {
+                    hEntry.State = EntityState.Added;
+                }
+            }
+        }
     }
 }

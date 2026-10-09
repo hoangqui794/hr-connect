@@ -175,7 +175,7 @@ public class UpdateOfferDraftCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { CompanyId = companyB });
+            .ReturnsAsync(new CompanyUser { CompanyId = companyB, Status = "ACTIVE" });
 
         var command = new UpdateOfferDraftCommand(
             OfferId: offerId,
@@ -184,7 +184,7 @@ public class UpdateOfferDraftCommandHandlerTests
             StartDate: null,
             ExpiryDate: null,
             OfferDocumentUrl: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: offer.ConcurrencyToken,
             CurrentUserId: clientUserId,
             IsClientCompanyUser: true);
 
@@ -215,7 +215,7 @@ public class UpdateOfferDraftCommandHandlerTests
             StartDate: null,
             ExpiryDate: null,
             OfferDocumentUrl: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: offer.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true);
 
@@ -257,7 +257,7 @@ public class UpdateOfferDraftCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { CompanyId = companyId, Status = "ACTIVE" });
 
         _unitOfWorkMock
             .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))

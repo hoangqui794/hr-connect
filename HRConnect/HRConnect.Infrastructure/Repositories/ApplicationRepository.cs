@@ -261,6 +261,21 @@ public class ApplicationRepository : IApplicationRepository
 
     public void Update(JobApplication application)
     {
-        _context.Applications.Update(application);
+        var entry = _context.Entry(application);
+        if (entry.State == EntityState.Detached)
+        {
+            _context.Applications.Update(application);
+        }
+        else
+        {
+            foreach (var history in application.ApplicationStatusHistories)
+            {
+                var hEntry = _context.Entry(history);
+                if (hEntry.State == EntityState.Detached)
+                {
+                    hEntry.State = EntityState.Added;
+                }
+            }
+        }
     }
 }

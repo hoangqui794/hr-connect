@@ -97,6 +97,10 @@ public class Mf04SchemaReconcileTests
         var interviewConcurrency = interviewEntity.FindProperty("ConcurrencyToken");
         interviewConcurrency.Should().NotBeNull();
         interviewConcurrency!.IsConcurrencyToken.Should().BeTrue();
+        var scheduledInterviewIndex = interviewEntity.GetIndexes()
+            .Single(index => index.GetDatabaseName() == "ux_interview_one_scheduled_per_application");
+        scheduledInterviewIndex.IsUnique.Should().BeTrue();
+        scheduledInterviewIndex.GetFilter().Should().Be("status = 'SCHEDULED'");
 
         // 3. Offer concurrency_token
         var offerEntity = model.FindEntityType(typeof(Offer));

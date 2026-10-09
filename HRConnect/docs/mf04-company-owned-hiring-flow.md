@@ -78,6 +78,16 @@ Creating an interview is the only action that moves `SHORTLISTED` to
 steps. An Affiliate never receives schedule details, interview feedback, offer
 contents, salary, or placement notes.
 
+All persisted MF-04 mutations require the latest `concurrencyToken` returned by
+the corresponding Company/Candidate read API. Missing tokens return `400`; stale
+tokens return `409`. Candidate interview responses intentionally omit internal
+participants, feedback, actor identities, internal history reasons and the
+interview concurrency token.
+
+Interview participants must be active users of the Company that owns the Job.
+The database also enforces at most one `SCHEDULED` interview per Application,
+so concurrent scheduling requests cannot create two active schedules.
+
 ## Offer expiry
 
 An offer remains usable through its `expiryDate`. After that date,

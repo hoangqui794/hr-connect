@@ -69,7 +69,7 @@ public class InterviewItemDto
 
     public DateTime CreatedAt { get; set; }
 
-    public Guid ConcurrencyToken { get; set; }
+    public Guid? ConcurrencyToken { get; set; }
 }
 
 public class InterviewParticipantDto

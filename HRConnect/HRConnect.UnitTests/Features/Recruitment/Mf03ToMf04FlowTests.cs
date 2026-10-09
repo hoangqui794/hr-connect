@@ -64,7 +64,8 @@ public sealed class Mf03ToMf04FlowTests
             Mock.Of<ILogger<ScheduleInterviewCommandHandler>>(), audit.Object);
         var response = await scheduling.Handle(new ScheduleInterviewCommand(
             app.ApplicationId, DateTime.UtcNow.AddDays(2), 60, null, "ONLINE", null,
-            "https://meet.example/interview", [], userId, IsClientCompanyUser: true), CancellationToken.None);
+            "https://meet.example/interview", [], userId, IsClientCompanyUser: true,
+            ApplicationConcurrencyToken: app.ConcurrencyToken), CancellationToken.None);
 
         response.Success.Should().BeTrue();
         app.Status.Should().Be(ApplicationStates.Interview);

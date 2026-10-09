@@ -60,7 +60,7 @@ public class GetOfferDetailQueryHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId, Status = "ACTIVE" });
 
         var query = new GetOfferDetailQuery(offerId, userId, IsClientCompanyUser: true);
 
@@ -88,7 +88,7 @@ public class GetOfferDetailQueryHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
 
         var query = new GetOfferDetailQuery(offerId, userId, IsClientCompanyUser: true);
 

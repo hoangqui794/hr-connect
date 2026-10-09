@@ -62,7 +62,7 @@ public class GetInterviewDetailQueryHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyB });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyB, Status = "ACTIVE" });
 
         var query = new GetInterviewDetailQuery(
             InterviewId: interviewId,
@@ -113,7 +113,7 @@ public class GetInterviewDetailQueryHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyA });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyA, Status = "ACTIVE" });
 
         var query = new GetInterviewDetailQuery(
             InterviewId: interviewId,
@@ -142,6 +142,26 @@ public class GetInterviewDetailQueryHandlerTests
         var interviewId = Guid.NewGuid();
         var candidateUserId = Guid.NewGuid();
         var interview = CreateSampleInterview(interviewId, Guid.NewGuid(), candidateUserId);
+        interview.Result = "PASS";
+        interview.Feedback = "Internal feedback";
+        interview.CreatedBy = Guid.NewGuid();
+        interview.RecordedBy = Guid.NewGuid();
+        interview.RecordedAt = DateTime.UtcNow;
+        interview.InterviewParticipants.Add(new InterviewParticipant
+        {
+            InterviewId = interviewId,
+            UserId = Guid.NewGuid(),
+            Role = "INTERVIEWER"
+        });
+        interview.InterviewStatusHistories.Add(new InterviewStatusHistory
+        {
+            InterviewStatusHistoryId = Guid.NewGuid(),
+            InterviewId = interviewId,
+            NewStatus = "COMPLETED",
+            Reason = "Internal feedback",
+            ChangedBy = Guid.NewGuid(),
+            ChangedAt = DateTime.UtcNow
+        });
 
         _interviewRepositoryMock
             .Setup(r => r.GetByIdWithDetailsAsync(interviewId, It.IsAny<CancellationToken>()))
@@ -162,6 +182,16 @@ public class GetInterviewDetailQueryHandlerTests
         result.Success.Should().BeTrue();
         result.Data.InterviewId.Should().Be(interviewId);
         result.Data.CandidateFullName.Should().Be("Hoang Van E");
+        result.Data.Result.Should().BeNull();
+        result.Data.Feedback.Should().BeNull();
+        result.Data.CreatedBy.Should().BeNull();
+        result.Data.RecordedBy.Should().BeNull();
+        result.Data.RecordedAt.Should().BeNull();
+        result.Data.ConcurrencyToken.Should().BeNull();
+        result.Data.Participants.Should().BeEmpty();
+        result.Data.StatusHistories.Should().ContainSingle();
+        result.Data.StatusHistories[0].Reason.Should().BeNull();
+        result.Data.StatusHistories[0].ChangedBy.Should().BeNull();
     }
 
     [Fact]

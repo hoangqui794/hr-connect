@@ -58,6 +58,34 @@ public class ConfirmStartWorkCommandHandlerTests
             .WithMessage("*tương lai*");
     }
 
+    [Theory]
+    [InlineData(181, 0, "*Vị trí tiếp nhận không được vượt quá 180 ký tự*")]
+    [InlineData(0, 181, "*Bộ phận tiếp nhận không được vượt quá 180 ký tự*")]
+    public async Task Handle_WhenPlacementTextExceedsDatabaseLimit_ShouldThrowBadRequestException(
+        int positionLength,
+        int departmentLength,
+        string expectedMessage)
+    {
+        var command = new ConfirmStartWorkCommand(
+            ApplicationId: Guid.NewGuid(),
+            OfferId: Guid.NewGuid(),
+            ActualStartDate: DateOnly.FromDateTime(DateTime.UtcNow),
+            ConfirmationNote: null,
+            Position: positionLength == 0 ? null : new string('P', positionLength),
+            Department: departmentLength == 0 ? null : new string('D', departmentLength),
+            ConcurrencyToken: null,
+            CurrentUserId: Guid.NewGuid(),
+            IsClientCompanyUser: true);
+
+        Func<Task> act = () => CreateHandler().Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage(expectedMessage);
+        _applicationRepositoryMock.Verify(
+            repository => repository.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     [Fact]
     public async Task Handle_WhenApplicationNotFound_ShouldThrowNotFoundException()
     {
@@ -199,7 +227,7 @@ public class ConfirmStartWorkCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId, Status = "ACTIVE" });
 
         var command = new ConfirmStartWorkCommand(
             ApplicationId: appId,
@@ -437,7 +465,7 @@ public class ConfirmStartWorkCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
 
         var command = new ConfirmStartWorkCommand(
             ApplicationId: appId,

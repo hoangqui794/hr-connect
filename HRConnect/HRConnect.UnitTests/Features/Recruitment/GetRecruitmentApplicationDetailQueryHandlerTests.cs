@@ -65,7 +65,7 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyB });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyB, Status = "ACTIVE" });
 
         var query = new GetRecruitmentApplicationDetailQuery(
             ApplicationId: appId,
@@ -105,7 +105,7 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyA });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyA, Status = "ACTIVE" });
 
         var query = new GetRecruitmentApplicationDetailQuery(
             ApplicationId: appId,
@@ -201,7 +201,7 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
             .ReturnsAsync(app);
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
 
         var act = () => CreateHandler().Handle(new GetRecruitmentApplicationDetailQuery(
             appId, userId, true, false), CancellationToken.None);
@@ -225,7 +225,7 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
             .ReturnsAsync(app);
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
 
         var result = await CreateHandler().Handle(new GetRecruitmentApplicationDetailQuery(
             appId, userId, true, false), CancellationToken.None);
@@ -326,7 +326,7 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
         var userId = Guid.NewGuid();
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
 
         var query = new GetRecruitmentApplicationDetailQuery(
             ApplicationId: appId,
@@ -341,6 +341,35 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
         // Assert
         result.Success.Should().BeTrue();
         result.Data.AllowedActions.Should().Contain("CREATE_OFFER");
+    }
+
+    [Fact]
+    public async Task Handle_WhenLatestOfferExpired_AllowedActionsShouldIncludeCreateOffer()
+    {
+        var appId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var app = CreateSampleApplication(appId, companyId, ApplicationStates.OfferPending);
+        app.Offers.Add(new Offer
+        {
+            OfferId = Guid.NewGuid(),
+            ApplicationId = appId,
+            OfferVersion = 1,
+            Status = OfferStates.Expired
+        });
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+
+        var result = await CreateHandler().Handle(new GetRecruitmentApplicationDetailQuery(
+            appId, userId, IsClientCompanyUser: true, IsInternalHrOrAdmin: false), CancellationToken.None);
+
+        result.Data.AllowedActions.Should().Contain("CREATE_OFFER");
+        result.Data.AllowedActions.Should().NotContain(["UPDATE_OFFER", "SEND_OFFER", "WITHDRAW_OFFER"]);
     }
 
     private static Domain.Entities.Application CreateSampleApplication(

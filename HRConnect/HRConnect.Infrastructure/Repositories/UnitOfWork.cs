@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql;
 
 namespace HRConnect.Infrastructure.Repositories;
 
@@ -29,6 +30,13 @@ public class UnitOfWork : IUnitOfWork
             throw new ConflictException(
                 "Dữ liệu vừa được xử lý bởi một yêu cầu khác. Vui lòng tải lại trạng thái mới nhất.",
                 "CONCURRENT_UPDATE",
+                ex);
+        }
+        catch (DbUpdateException ex) when (IsScheduledInterviewConflict(ex))
+        {
+            throw new ConflictException(
+                "Hồ sơ đã có một lịch phỏng vấn đang chờ. Vui lòng tải lại trạng thái mới nhất.",
+                "INTERVIEW_ALREADY_SCHEDULED",
                 ex);
         }
     }
@@ -78,6 +86,14 @@ public class UnitOfWork : IUnitOfWork
                 "CONCURRENT_UPDATE",
                 ex);
         }
+        catch (DbUpdateException ex) when (IsScheduledInterviewConflict(ex))
+        {
+            await RollbackTransactionAsync(cancellationToken);
+            throw new ConflictException(
+                "Hồ sơ đã có một lịch phỏng vấn đang chờ. Vui lòng tải lại trạng thái mới nhất.",
+                "INTERVIEW_ALREADY_SCHEDULED",
+                ex);
+        }
         catch
         {
             await RollbackTransactionAsync(cancellationToken);
@@ -115,5 +131,14 @@ public class UnitOfWork : IUnitOfWork
             // retry the rejected ACCEPTED submission/application graph.
             _context.ChangeTracker.Clear();
         }
+    }
+
+    private static bool IsScheduledInterviewConflict(DbUpdateException exception)
+    {
+        return exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "ux_interview_one_scheduled_per_application"
+        };
     }
 }

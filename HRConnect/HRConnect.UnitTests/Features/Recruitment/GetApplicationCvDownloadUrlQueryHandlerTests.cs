@@ -36,7 +36,7 @@ public class GetApplicationCvDownloadUrlQueryHandlerTests
 
         _companyUsers
             .Setup(r => r.GetByUserIdAsync(ClientUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = ClientUserId, CompanyId = CompanyId });
+            .ReturnsAsync(new CompanyUser { UserId = ClientUserId, CompanyId = CompanyId, Status = "ACTIVE" });
 
         _storage
             .Setup(s => s.GetCvDownloadUrlAsync(It.IsAny<Guid>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
@@ -81,7 +81,7 @@ public class GetApplicationCvDownloadUrlQueryHandlerTests
 
         result.Data.DownloadUrl.Should().StartWith("https://");
         result.Data.FileName.Should().Be("Nguyen_Van_A.pdf");
-        _storage.Verify(s => s.GetCvDownloadUrlAsync(app.Submission.CandidateCv.CvId,
+        _storage.Verify(s => s.GetCvDownloadUrlAsync(app.Submission!.CandidateCv!.CvId,
             GetApplicationCvDownloadUrlQueryHandler.LinkLifetime, It.IsAny<CancellationToken>()), Times.Once);
         _audit.Verify(a => a.AddAsync(It.Is<AuditEntry>(e => e.Action == AuditActions.ApplicationCvDownloadUrlIssued), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -138,7 +138,7 @@ public class GetApplicationCvDownloadUrlQueryHandlerTests
             new GetApplicationCvDownloadUrlQuery(app.ApplicationId, Guid.NewGuid(), IsClientCompanyUser: false, IsInternalHrOrAdmin: true),
             CancellationToken.None);
 
-        result.Data.CvId.Should().Be(app.Submission.CandidateCv.CvId);
+        result.Data.CvId.Should().Be(app.Submission!.CandidateCv!.CvId);
     }
 
     [Fact]

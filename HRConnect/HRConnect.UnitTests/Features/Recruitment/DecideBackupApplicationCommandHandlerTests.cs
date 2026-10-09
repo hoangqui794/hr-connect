@@ -108,7 +108,7 @@ public class DecideBackupApplicationCommandHandlerTests
             Decision: "SELECT",
             Reason: null,
             Note: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: application.ConcurrencyToken,
             CurrentUserId: userId,
             IsClientCompanyUser: true
         );
@@ -143,14 +143,14 @@ public class DecideBackupApplicationCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId, Status = "ACTIVE" });
 
         var command = new DecideBackupApplicationCommand(
             ApplicationId: appId,
             Decision: "SELECT",
             Reason: null,
             Note: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: application.ConcurrencyToken,
             CurrentUserId: userId,
             IsClientCompanyUser: true
         );
@@ -184,7 +184,7 @@ public class DecideBackupApplicationCommandHandlerTests
             Decision: "SELECT",
             Reason: null,
             Note: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: application.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsClientCompanyUser: false,
             IsInternalHrOrAdmin: false
@@ -292,7 +292,7 @@ public class DecideBackupApplicationCommandHandlerTests
             .ReturnsAsync(application);
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
 
         var command = new DecideBackupApplicationCommand(
             ApplicationId: appId,
@@ -351,14 +351,14 @@ public class DecideBackupApplicationCommandHandlerTests
             .ReturnsAsync(application);
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
 
         var command = new DecideBackupApplicationCommand(
             ApplicationId: appId,
             Decision: "REJECT",
             Reason: "Không đáp ứng yêu cầu vòng phỏng vấn phụ.",
             Note: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: application.ConcurrencyToken,
             CurrentUserId: userId,
             IsClientCompanyUser: true
         );
@@ -397,14 +397,14 @@ public class DecideBackupApplicationCommandHandlerTests
             .ReturnsAsync(application);
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
 
         var command = new DecideBackupApplicationCommand(
             ApplicationId: appId,
             Decision: "KEEP_ON_HOLD",
             Reason: "Chờ kết quả phản hồi của ứng viên chính đợt 1.",
             Note: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: application.ConcurrencyToken,
             CurrentUserId: userId,
             IsClientCompanyUser: true
         );

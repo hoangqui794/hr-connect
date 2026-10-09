@@ -40,4 +40,4 @@ The default consent lifetime is 48 hours. A background worker marks unanswered r
 
 ## Configuration
 
-`SubmissionConsent` in `appsettings.json` controls the expiry, resend cooldown, maximum email sends, and confirmation URL. Local development uses the built-in backend page at `http://localhost:5041/submission-consent`; production must set `SUBMISSION_CONSENT_URL_BASE` to the deployed frontend page. Resend is always an explicit Affiliate action; no worker automatically resends email.
+`SubmissionConsent` in `appsettings.json` controls the expiry, resend cooldown, maximum email sends, and confirmation URL. Local development uses the frontend page at `http://localhost:5173/submission-consent`; production must set `SUBMISSION_CONSENT_URL_BASE` to the deployed frontend page. The backend page at `http://localhost:5041/submission-consent` remains only as a compatibility fallback for links generated before the frontend migration. Resend is always an explicit Affiliate action; no worker automatically resends email.

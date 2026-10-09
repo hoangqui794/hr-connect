@@ -145,6 +145,10 @@ public class OfferRepository : IOfferRepository
 
     public void Update(Offer offer)
     {
-        _context.Offers.Update(offer);
+        var entry = _context.Entry(offer);
+        if (entry.State == EntityState.Detached)
+        {
+            _context.Offers.Update(offer);
+        }
     }
 }

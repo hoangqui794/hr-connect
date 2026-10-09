@@ -37,7 +37,7 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
         if (request.IsClientCompanyUser)
         {
             var member = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (member == null)
+            if (!HRConnect.Application.Features.Recruitment.Common.CompanyMembershipPolicy.IsActive(member))
             {
                 _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
                 throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
@@ -77,15 +77,6 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
             : placement.ConfirmedByNavigation?.Email;
 
         var allowedActions = new List<string> { "VIEW_PLACEMENT" };
-        if (request.IsClientCompanyUser || request.IsInternalHrOrAdmin)
-        {
-            allowedActions.Add("MANAGE_PLACEMENT");
-            if (placement.Status == "STARTED")
-            {
-                allowedActions.Add("MARK_NOT_STARTED");
-            }
-        }
-
         if (placement.Probation != null)
         {
             allowedActions.Add("VIEW_PROBATION");

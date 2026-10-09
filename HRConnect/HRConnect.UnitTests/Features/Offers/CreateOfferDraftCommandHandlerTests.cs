@@ -179,7 +179,7 @@ public class CreateOfferDraftCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { CompanyId = companyB });
+            .ReturnsAsync(new CompanyUser { CompanyId = companyB, Status = "ACTIVE" });
 
         var command = new CreateOfferDraftCommand(
             ApplicationId: appId,
@@ -188,7 +188,7 @@ public class CreateOfferDraftCommandHandlerTests
             StartDate: null,
             ExpiryDate: null,
             OfferDocumentUrl: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: app.ConcurrencyToken,
             CurrentUserId: clientUserId,
             IsClientCompanyUser: true);
 
@@ -219,7 +219,7 @@ public class CreateOfferDraftCommandHandlerTests
             StartDate: null,
             ExpiryDate: null,
             OfferDocumentUrl: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: app.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true);
 
@@ -259,7 +259,7 @@ public class CreateOfferDraftCommandHandlerTests
             StartDate: null,
             ExpiryDate: null,
             OfferDocumentUrl: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: app.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true);
 
@@ -299,7 +299,7 @@ public class CreateOfferDraftCommandHandlerTests
             StartDate: null,
             ExpiryDate: null,
             OfferDocumentUrl: null,
-            ConcurrencyToken: null,
+            ConcurrencyToken: app.ConcurrencyToken,
             CurrentUserId: Guid.NewGuid(),
             IsInternalHrOrAdmin: true);
 
@@ -330,7 +330,7 @@ public class CreateOfferDraftCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { CompanyId = companyId, Status = "ACTIVE" });
 
         var existingOffers = new List<Offer>
         {

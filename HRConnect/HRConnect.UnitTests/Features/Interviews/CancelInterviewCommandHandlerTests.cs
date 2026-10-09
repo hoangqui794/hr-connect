@@ -198,12 +198,12 @@ public class CancelInterviewCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = userCompanyId, Status = "ACTIVE" });
 
         var command = new CancelInterviewCommand(
             InterviewId: interviewId,
             Reason: "Hủy phỏng vấn",
-            ConcurrencyToken: null,
+            ConcurrencyToken: interview.ConcurrencyToken,
             CurrentUserId: userId,
             IsClientCompanyUser: true
         );
@@ -245,7 +245,7 @@ public class CancelInterviewCommandHandlerTests
 
         _companyUserRepositoryMock
             .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
 
         _unitOfWorkMock
             .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))

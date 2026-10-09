@@ -69,7 +69,11 @@ thu hồi.
 - có trạng thái `SHORTLISTED` cho vòng Interview đầu tiên, hoặc `INTERVIEW`
   khi tạo vòng tiếp theo;
 - không có một Interview khác đang `SCHEDULED`;
-- có version/concurrency token hợp lệ nếu API yêu cầu.
+- có `concurrencyToken` hiện hành của Application.
+
+Ngoài kiểm tra ở application service, database có unique partial index bảo đảm
+mỗi Application chỉ có tối đa một Interview `SCHEDULED`. Vì vậy hai request tạo
+lịch chạy đồng thời vẫn không thể tạo hai lịch đang chờ.
 
 Khi Company tạo Interview đầu tiên cho Application `SHORTLISTED`, hệ thống
 chuyển Application sang `INTERVIEW` và Interview mới có trạng thái `SCHEDULED`.
@@ -130,7 +134,10 @@ Company sở hữu toàn bộ mutation của Interview cho Job của mình:
 
 Hệ thống lưu thời gian, hình thức, địa điểm hoặc meeting link, người tham gia,
 vòng Interview, lịch sử thay đổi và audit log. Candidate chỉ xem Interview của
-chính mình.
+chính mình. Người tham gia Interview phải là Company User đang hoạt động của
+đúng Company sở hữu Job. Candidate không nhận danh sách người phỏng vấn,
+feedback nội bộ, actor nội bộ, lý do history nội bộ hoặc concurrency token của
+Interview.
 
 Khi ghi kết quả, Interview chuyển sang `COMPLETED`. Kết quả có ba giá trị:
 
@@ -286,6 +293,11 @@ API mutation luôn phải xác định actor từ access token và kiểm tra ow
 Company/Candidate ở server. Không nhận `companyId`, `candidateId` hoặc role do
 client tự khai như một cơ chế cấp quyền.
 
+Mọi mutation trên Application, Interview hoặc Offer đã lưu phải gửi
+`concurrencyToken` mới nhất. Thiếu token trả `400`; token cũ trả `409`. Token
+được xoay sau mutation thành công và response dành cho actor có quyền mutation
+trả token mới để gọi bước kế tiếp.
+
 ## 10. API MF-04 hiện có
 
 | Nhóm | API chính | Actor mutation |
@@ -324,6 +336,10 @@ ownership.
    nhạy cảm.
 8. Offer hết hạn được xử lý bởi System worker, có audit và notification in-app
    an toàn; MF-04 không tự kích hoạt workflow MF-05.
+9. Không thể tạo hai Interview `SCHEDULED` cho cùng Application, kể cả khi hai
+   request chạy đồng thời.
+10. Participant Interview phải là Company User đang hoạt động của Company sở
+    hữu Job; Candidate không thấy dữ liệu đánh giá và actor nội bộ.
 
 ## 12. Các nội dung chưa thuộc MF-04 hiện tại
 

@@ -10,6 +10,11 @@ public static class AuditActions
     public const string AffiliateRegistered = "AFFILIATE_REGISTERED";
     public const string ClientRegistered = "CLIENT_REGISTERED";
     public const string CandidateRegistered = "CANDIDATE_REGISTERED";
+    public const string IdentityClaimRequested = "IDENTITY_CLAIM_REQUESTED";
+    public const string IdentityClaimOtpResent = "IDENTITY_CLAIM_OTP_RESENT";
+    public const string IdentityEmailVerified = "IDENTITY_EMAIL_VERIFIED";
+    public const string CandidateIdentityClaimed = "CANDIDATE_IDENTITY_CLAIMED";
+    public const string IdentityClaimReviewed = "IDENTITY_CLAIM_REVIEWED";
     public const string PasswordChanged = "PASSWORD_CHANGED";
     public const string PasswordReset = "PASSWORD_RESET";
     public const string SessionRevoked = "SESSION_REVOKED";

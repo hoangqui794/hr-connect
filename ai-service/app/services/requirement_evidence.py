@@ -3,8 +3,13 @@
 Vocabulary identifies capabilities, not people, companies, or fixture filenames.
 Unrecognized clauses remain visible for review. Retrieval never proves a claim.
 """
+import json
 import re
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
+
+from app.core.config import get_settings
 
 from app.schemas.matching_request import JobRequirement
 
@@ -31,7 +36,7 @@ CAPABILITIES = (
     Capability("SOLID", r"\bsolid\b", r"\bsolid\b"),
     Capability("Design patterns", r"design patterns?", r"design patterns?"),
     Capability("Testable code", r"testable|kiểm thử", r"unit test\w*|integration test\w*|test.driven|testable|kiểm thử"),
-    Capability("Maintainable code", r"maintainable|bảo trì", r"maintainab\w*|refactor\w*|bảo trì"),
+    Capability("Maintainable code", r"maintainable|bảo trì", r"maintainab\w*|refactor\w* (?:of )?(?:legacy|the code ?base|for (?:readability|maintainability))|bảo trì"),
     Capability("Readable code", r"readable", r"readable|coding standards|code quality standards"),
     Capability(
         "Mentoring",
@@ -43,6 +48,57 @@ CAPABILITIES = (
     Capability("Content creation", r"content creation|sáng tạo nội dung", r"(?:created|produced|wrote).{0,30}(?:content|articles|posts)|sáng tạo nội dung|viết bài"),
     Capability("Campaign analysis", r"campaign analysis|phân tích chiến dịch", r"analy[sz](?:ed|ing).{0,30}campaign|phân tích.{0,20}chiến dịch"),
 )
+_DEFAULT_LEXICON = Path(__file__).resolve().parents[1] / "data" / "capability_lexicon.json"
+
+
+@lru_cache(maxsize=1)
+def load_lexicon() -> dict:
+    """The configurable lexicon file (CAPABILITY_LEXICON_PATH), or {} when absent."""
+    configured = get_settings().capability_lexicon_path
+    path = Path(configured) if configured else _DEFAULT_LEXICON
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+
+
+def synonyms(section: str, term: str) -> list[str]:
+    """Equivalent wordings for a skill or domain term from the lexicon (case-insensitive key)."""
+    table = load_lexicon().get(section, {})
+    key = term.strip().casefold()
+    return next((values for name, values in table.items() if name.casefold() == key), [])
+
+
+@lru_cache(maxsize=1)
+def load_capabilities() -> tuple[Capability, ...]:
+    """Built-in capabilities merged with the configurable lexicon file.
+
+    The lexicon lets HR widen accepted phrasings without code changes; every
+    match it produces is still flagged for human review.
+    """
+    lexicon = load_lexicon()
+    if not lexicon:
+        return CAPABILITIES
+    extend = lexicon.get("extend", {})
+    merged = [
+        Capability(c.name, c.trigger, "|".join([c.evidence, *extend[c.name]]) if extend.get(c.name) else c.evidence)
+        for c in CAPABILITIES
+    ]
+    by_name = {capability.name: index for index, capability in enumerate(merged)}
+    for item in lexicon.get("add", []):
+        # A duplicate name would count the same criterion twice in ALL_OF
+        # requirements, so an existing capability is widened instead.
+        if item["name"] in by_name:
+            existing = merged[by_name[item["name"]]]
+            merged[by_name[item["name"]]] = Capability(
+                existing.name, f"{existing.trigger}|{item['trigger']}", f"{existing.evidence}|{item['evidence']}"
+            )
+        else:
+            by_name[item["name"]] = len(merged)
+            merged.append(Capability(item["name"], item["trigger"], item["evidence"]))
+    for capability in merged:
+        re.compile(capability.trigger)
+        re.compile(capability.evidence)
+    return tuple(merged)
+
+
 _UNSUPPORTED = re.compile(r"\b(?:no|not|without|lack\w*|want to|wish to|seeking to|plan to|aim to|aspir\w*)\b|chưa có|không có|mong muốn", re.I)
 _THIRD_PARTY = re.compile(r"\bby (?:the )?(?:ba|another|other|external|design)\b|do nhóm khác", re.I)
 _LEADING_CONNECTOR = re.compile(r"^(?:(?:and|or|và|hoặc)\b[\s,:;-]*)+", re.I)
@@ -65,17 +121,40 @@ _PERFORMANCE_PERCENT = re.compile(
 )
 
 
+_SOFT_WRAP = re.compile(r"(?<![.!?:;])\n(?=[ \t]*[a-zà-ỹ0-9(])")
+
+
+def _logical_lines(text: str) -> list[tuple[int, str]]:
+    """Lines with PDF soft wraps rejoined ("from 3+\\nseconds to sub 100ms").
+
+    A wrap is a newline after a line that does not end a sentence, followed by
+    a lowercase word or number. It becomes a space, so lengths and offsets in
+    the original text are unchanged.
+    """
+    unwrapped = _SOFT_WRAP.sub(" ", text)
+    return [(match.start(), match.group()) for match in re.finditer(r"[^\n]+", unwrapped)]
+
+
 def evidence_spans(text: str) -> list[dict]:
-    """Offsets refer to the exact CV text supplied to this evaluator."""
+    """Offsets refer to the exact CV text supplied to this evaluator.
+
+    A span that crosses a soft-wrapped line shows the wrap as a space; it covers
+    the same characters as text[start:end].
+    """
     spans = []
-    for match in re.finditer(r"[^\n]+", text):
+    for line_start, line in _logical_lines(text):
         # Keep bullet/newline boundaries; split sentences only at sentence ends.
-        for part in re.finditer(r".+?(?:[.!?](?=\s+[A-ZÀ-Ỹ])|$)", match.group()):
+        for part in re.finditer(r".+?(?:[.!?](?=\s+[A-ZÀ-Ỹ])|$)", line):
             value = part.group().strip()
             if value:
-                start = match.start() + part.start() + len(part.group()) - len(part.group().lstrip())
+                start = line_start + part.start() + len(part.group()) - len(part.group().lstrip())
                 spans.append({"text": value, "start": start, "end": start + len(value), "source": "cvText"})
     return spans
+
+
+def is_supported_span(text: str) -> bool:
+    """False for aspirations, negations, or work credited to someone else."""
+    return not _UNSUPPORTED.search(text) and not _THIRD_PARTY.search(text)
 
 
 def _normalize_fragment(fragment: str) -> str:
@@ -105,6 +184,16 @@ def _evidence_rank(capability: Capability, span: dict) -> tuple[int, int]:
     return (score, -span["start"])
 
 
+# Performance work needs an action by the candidate; "powered by Vite for
+# high-performance bundling" describes a tool, not optimization they did.
+_PERFORMANCE_WORK = {"Backend performance", "Client performance"}
+_PERFORMANCE_ACTION = re.compile(
+    r"\b(?:optimi[sz](?:ed|es|ing|ation)|improv\w*|reduc\w*|cut(?:s|ting)?|speed\w*|accelerat\w*|"
+    r"eliminat\w*|tun(?:ed|ing)|cach(?:ed|ing)|index(?:ed|ing)|prevent\w*|tối ưu|cải thiện|giảm)\b",
+    re.I,
+)
+
+
 def _find_evidence(capability: Capability, spans: list[dict]) -> dict | None:
     matches = [
         span for span in spans
@@ -112,6 +201,7 @@ def _find_evidence(capability: Capability, spans: list[dict]) -> dict | None:
         and not _UNSUPPORTED.search(span["text"])
         and not _THIRD_PARTY.search(span["text"])
         and (capability.name != "Measured improvement" or _is_measured_performance_span(span["text"]))
+        and (capability.name not in _PERFORMANCE_WORK or _PERFORMANCE_ACTION.search(span["text"]))
     ]
     return max(matches, key=lambda span: _evidence_rank(capability, span), default=None)
 
@@ -127,7 +217,7 @@ def evaluate_clauses(requirement: JobRequirement, text: str) -> dict | None:
         return None
     if requirement.evidence_groups and not re.search(r"backend.*(?:and|và).*client.*performance", content, re.I):
         return None
-    capabilities = [c for c in CAPABILITIES if re.search(c.trigger, content, re.I)]
+    capabilities = [c for c in load_capabilities() if re.search(c.trigger, content, re.I)]
     # Keep unsupported conjuncts instead of reporting a full match for only
     # the recognized part (e.g. negotiation AND underwater welding).
     fragments = re.split(r"\s+\b(?:and|or|và|hoặc)\b\s+|,\s*", content, flags=re.I)

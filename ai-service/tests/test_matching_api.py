@@ -1,6 +1,7 @@
 from typing import Any
 
 from app.api import matching
+from app.core.config import get_settings
 from app.core.dependencies import require_test_endpoint_access
 from app.main import app
 from tests.support import ApiTestClient
@@ -25,7 +26,7 @@ def test_strong_medium_poor_ranking(client: ApiTestClient, load_fixture) -> None
     assert strong["matchScore"] > medium["matchScore"] > poor["matchScore"]
     assert not any(_contains_decision(result) for result in (strong, medium, poor))
     assert strong["status"] == "COMPLETED"
-    assert strong["modelName"] == "BAAI/bge-m3"
+    assert strong["modelName"] == get_settings().embedding_model
 
 
 def test_missing_must_have_appears_in_explanation(client: ApiTestClient, load_fixture) -> None:

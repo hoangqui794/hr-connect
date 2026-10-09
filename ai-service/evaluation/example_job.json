@@ -1,0 +1,10 @@
+{
+  "title": ".NET Backend Developer",
+  "description": "Develop REST backend services with ASP.NET Core and PostgreSQL, deployed with Docker.",
+  "requirements": [
+    {"id": "dotnet", "type": "MUST_HAVE", "category": "SKILL", "content": "ASP.NET Core"},
+    {"id": "postgres", "type": "MUST_HAVE", "category": "SKILL", "content": "PostgreSQL"},
+    {"id": "experience", "type": "MUST_HAVE", "category": "EXPERIENCE", "content": "At least 3 years of backend experience", "minYears": 3},
+    {"id": "docker", "type": "SHOULD_HAVE", "category": "SKILL", "content": "Docker"}
+  ]
+}
