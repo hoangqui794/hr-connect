@@ -1,7 +1,7 @@
 import { AxiosError, AxiosHeaders, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
 import { apiClient, getApiError, getApiErrorMessage } from './apiClient';
-import { affiliateApi, candidateApplicationsApi, candidateCvApi } from './api/mf02Api';
+import { affiliateApi, candidateApplicationsApi, candidateConsentApi, candidateCvApi } from './api/mf02Api';
 
 describe('API client foundation', () => {
   afterEach(() => {
@@ -182,5 +182,30 @@ describe('API client foundation', () => {
 
     expect(capturedConfig?.method).toBe('post');
     expect(capturedConfig?.url).toBe('/affiliates/submissions/submission-1/consent/resend');
+  });
+
+  it('reviews and responds to an authenticated candidate consent by submission id', async () => {
+    const requests: InternalAxiosRequestConfig[] = [];
+    apiClient.defaults.adapter = async (config) => {
+      requests.push(config);
+      return {
+        data: config.method === 'get'
+          ? { success: true, data: { submissionId: 'submission-1', status: 'PENDING' } }
+          : { success: true, submissionId: 'submission-1', submissionStatus: 'ACCEPTED' },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      };
+    };
+
+    await candidateConsentApi.review('submission-1');
+    await candidateConsentApi.respond('submission-1', 'CONFIRM', true);
+
+    expect(requests[0].method).toBe('get');
+    expect(requests[0].url).toBe('/candidates/me/submission-consents/submission-1');
+    expect(requests[1].method).toBe('post');
+    expect(requests[1].url).toBe('/candidates/me/submission-consents/submission-1/respond');
+    expect(JSON.parse(requests[1].data as string)).toEqual({ decision: 'CONFIRM', allowFutureReuse: true });
   });
 });

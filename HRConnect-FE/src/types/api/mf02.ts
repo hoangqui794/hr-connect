@@ -103,6 +103,31 @@ export interface ResendSubmissionConsentResult {
   emailDeliveryStatus: string;
 }
 
+export interface SubmissionConsentReview {
+  submissionId: string;
+  status: string;
+  expiresAt: string;
+  candidateName: string;
+  jobTitle: string;
+  companyName: string;
+  cvFileName: string;
+  cvDownloadUrl: string | null;
+  cvUrlExpiresAt: string | null;
+  affiliateReuseStatus: string | null;
+  reuseConcurrencyToken: string | null;
+}
+
+export interface SubmissionConsentDecisionResult {
+  success: boolean;
+  message: string;
+  submissionId: string;
+  submissionStatus: string;
+  applicationId: string | null;
+  aiStatus: string;
+  affiliateReuseStatus: string | null;
+  reuseConcurrencyToken: string | null;
+}
+
 export interface AffiliateReferralProgress {
   submissionId: string;
   applicationId: string | null;

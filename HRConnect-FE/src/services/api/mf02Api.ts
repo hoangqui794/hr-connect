@@ -21,6 +21,8 @@ import type {
   LibraryCandidate,
   LibraryCandidateDetail,
   ResendSubmissionConsentResult,
+  SubmissionConsentDecisionResult,
+  SubmissionConsentReview,
   SubmitCandidateResult,
   TotalCountPage,
 } from '@/types/api/mf02';
@@ -78,6 +80,24 @@ export const applyApi = {
   async apply(jobId: string, source: { cvId: string } | { file: File }) {
     const body = 'cvId' in source ? form({ cvId: source.cvId }) : form({ file: source.file });
     return (await apiClient.post<{ success: boolean; message: string; data: ApplyJobResult }>(`/jobs/${jobId}/apply`, body)).data;
+  },
+};
+
+export const candidateConsentApi = {
+  async review(submissionId: string): Promise<SubmissionConsentReview> {
+    return (
+      await apiClient.get<{ success: boolean; data: SubmissionConsentReview }>(
+        `/candidates/me/submission-consents/${submissionId}`
+      )
+    ).data.data;
+  },
+  async respond(submissionId: string, decision: 'CONFIRM' | 'DECLINE', allowFutureReuse: boolean) {
+    return (
+      await apiClient.post<SubmissionConsentDecisionResult>(
+        `/candidates/me/submission-consents/${submissionId}/respond`,
+        { decision, allowFutureReuse }
+      )
+    ).data;
   },
 };
 

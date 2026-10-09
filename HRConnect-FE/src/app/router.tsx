@@ -188,6 +188,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <AppRoutes.CandidateHomePage /> },
       { path: 'applications', element: <AppRoutes.CandidateMyApplicationsPage /> },
       { path: 'applications/:applicationId', element: <AppRoutes.CandidateApplicationDetailPage /> },
+      { path: 'submission-consents/:submissionId', element: <AppRoutes.CandidateSubmissionConsentPage /> },
       { path: 'cvs', element: <AppRoutes.CandidateCvsPage /> },
       { path: 'profile', element: <AppRoutes.CandidateProfilePage /> },
       // Saved jobs had no backend; send people to the job search.
