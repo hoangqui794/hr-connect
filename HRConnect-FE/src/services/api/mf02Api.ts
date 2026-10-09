@@ -13,6 +13,7 @@ import type {
   AffiliateProfile,
   AffiliateReferralProgress,
   AffiliateSubmission,
+  AffiliateSubmissionDetail,
   ApplyJobResult,
   CandidateApplication,
   CandidateApplicationDetail,
@@ -124,6 +125,9 @@ export const affiliateApi = {
     pageSize: number;
   }): Promise<TotalCountPage<AffiliateSubmission>> {
     return (await apiClient.get<TotalCountPage<AffiliateSubmission>>('/affiliates/submissions', { params: clean(params) })).data;
+  },
+  async submissionDetail(submissionId: string): Promise<AffiliateSubmissionDetail> {
+    return (await apiClient.get<AffiliateSubmissionDetail>(`/affiliates/submissions/${submissionId}`)).data;
   },
   async resendConsent(submissionId: string) {
     return (

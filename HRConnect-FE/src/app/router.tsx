@@ -213,6 +213,7 @@ export const router = createBrowserRouter([
       { path: 'jobs', element: <AppRoutes.Mf01InAppJobDiscoveryPage /> },
       { path: 'submit-candidate', element: <AppRoutes.AffiliateSubmitPage /> },
       { path: 'submissions', element: <AppRoutes.AffiliateMySubmissionsPage /> },
+      { path: 'submissions/:submissionId', element: <AppRoutes.AffiliateSubmissionDetailPage /> },
       { path: 'candidates', element: <AppRoutes.AffiliateCandidatesPage /> },
       { path: 'attributions', element: <AppRoutes.AffiliateAttributionsPage /> },
       // MF-05 commissions have no API yet.

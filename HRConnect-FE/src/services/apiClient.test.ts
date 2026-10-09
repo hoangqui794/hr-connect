@@ -145,4 +145,23 @@ describe('API client foundation', () => {
       pageSize: 10,
     });
   });
+
+  it('loads affiliate submission detail by its owned submission id', async () => {
+    let capturedConfig: InternalAxiosRequestConfig | undefined;
+    apiClient.defaults.adapter = async (config) => {
+      capturedConfig = config;
+      return {
+        data: { submissionId: 'submission-1', status: 'PENDING_CONSENT' },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      };
+    };
+
+    await affiliateApi.submissionDetail('submission-1');
+
+    expect(capturedConfig?.method).toBe('get');
+    expect(capturedConfig?.url).toBe('/affiliates/submissions/submission-1');
+  });
 });

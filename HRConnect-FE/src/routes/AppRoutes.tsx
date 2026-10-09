@@ -171,6 +171,9 @@ const AffiliateSubmitPage = React.lazy(() => import('@/features/portal/Affiliate
 const AffiliateMySubmissionsPage = React.lazy(() =>
   import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmissionsPage }))
 );
+const AffiliateSubmissionDetailPage = React.lazy(() =>
+  import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmissionDetailPage }))
+);
 const AffiliateCandidatesPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateCandidatesPage })));
 const AffiliateAttributionsPage = React.lazy(() =>
   import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateAttributionsPage }))
@@ -406,6 +409,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/affiliate/submit-candidate': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/jobs': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/submissions': [UserRole.AFFILIATE, UserRole.ADMIN],
+  '/affiliate/submissions/:submissionId': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/candidates': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/commissions': [UserRole.AFFILIATE, UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/affiliate/ledger': [UserRole.AFFILIATE, UserRole.INTERNAL_HR, UserRole.ADMIN],
@@ -496,6 +500,7 @@ export const AppRoutes = {
   AffiliateHomePage,
   AffiliateSubmitPage,
   AffiliateMySubmissionsPage,
+  AffiliateSubmissionDetailPage,
   AffiliateCandidatesPage,
   AffiliateAttributionsPage,
   AffiliateCommissionsPlaceholder,

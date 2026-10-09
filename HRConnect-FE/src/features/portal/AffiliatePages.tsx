@@ -6,7 +6,7 @@
  * API yet and shows an empty state.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
@@ -34,6 +34,7 @@ import {
   SearchOutlined,
   SendOutlined,
   UserAddOutlined,
+  ArrowLeftOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
@@ -470,6 +471,7 @@ const STATUSES = ['all', 'PENDING_CONSENT', 'ACCEPTED', 'CONSENT_REJECTED', 'CON
 
 export const AffiliateSubmissionsPage: React.FC = () => {
   const { message } = AntApp.useApp();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const status = (STATUSES as readonly string[]).includes(searchParams.get('status') ?? '') ? (searchParams.get('status') as (typeof STATUSES)[number]) : 'all';
@@ -535,18 +537,24 @@ export const AffiliateSubmissionsPage: React.FC = () => {
     {
       title: <span className="sr-only">Thao tác</span>,
       key: 'a',
-      width: 150,
-      render: (_, r) =>
-        r.status === 'PENDING_CONSENT' ? (
-          <Button
-            size="small"
-            icon={<MailOutlined />}
-            loading={resend.isPending && resend.variables === r.submissionId}
-            onClick={() => resend.mutate(r.submissionId)}
-          >
-            Gửi lại email
+      width: 235,
+      render: (_, r) => (
+        <div className="flex gap-2">
+          <Button size="small" onClick={() => navigate(`/affiliate/submissions/${r.submissionId}`)}>
+            Xem
           </Button>
-        ) : null,
+          {r.status === 'PENDING_CONSENT' && (
+            <Button
+              size="small"
+              icon={<MailOutlined />}
+              loading={resend.isPending && resend.variables === r.submissionId}
+              onClick={() => resend.mutate(r.submissionId)}
+            >
+              Gửi lại email
+            </Button>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -629,6 +637,77 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               onChange: (nextPage) => updateFilters({ page: String(nextPage) }),
             }}
             locale={{ emptyText: <div className="py-10 text-slate-600">Chưa có lượt giới thiệu nào.</div> }}
+          />
+        )}
+      </Surface>
+    </div>
+  );
+};
+
+export const AffiliateSubmissionDetailPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { submissionId = '' } = useParams();
+  const detail = useQuery({
+    queryKey: [...keys.submissions, 'detail', submissionId],
+    queryFn: () => affiliateApi.submissionDetail(submissionId),
+    enabled: Boolean(submissionId),
+  });
+
+  if (detail.isLoading) return <Skeleton active paragraph={{ rows: 8 }} />;
+  if (detail.isError || !detail.data) {
+    return (
+      <Surface className="p-6">
+        <Alert
+          type="error"
+          showIcon
+          message="Không tải được chi tiết lượt giới thiệu"
+          description={getApiErrorMessage(detail.error)}
+          action={<Button onClick={() => navigate('/affiliate/submissions')}>Về danh sách</Button>}
+        />
+      </Surface>
+    );
+  }
+
+  const submission = detail.data;
+  const status = submissionStatus(submission.status);
+  return (
+    <div className="space-y-5">
+      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/affiliate/submissions')}>
+        Lượt giới thiệu
+      </Button>
+      <PageHero
+        eyebrow="Chi tiết lượt giới thiệu"
+        title={submission.candidateName}
+        description={`${submission.jobTitle} — ${submission.companyName}`}
+        actions={<StatusDot tone={status.tone}>{status.label}</StatusDot>}
+      />
+      <Surface className="p-6">
+        <dl className="grid grid-cols-1 gap-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            ['Email Candidate', submission.candidateEmail || '—'],
+            ['Số điện thoại', submission.candidatePhone || '—'],
+            ['CV', submission.cvTitle || submission.cvFileName || '—'],
+            ['Gửi hồ sơ lúc', fmt(submission.submittedAt)],
+            ['Gửi email lúc', fmt(submission.consentEmailSentAt)],
+            ['Hạn xác nhận', fmt(submission.consentExpiresAt)],
+            ['Candidate phản hồi lúc', fmt(submission.consentRespondedAt)],
+            ['Application', submission.applicationId || 'Chưa tạo'],
+            ['Attribution', submission.attributionId || 'Chưa tạo'],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-slate-500">{label}</dt>
+              <dd className="m-0 mt-1 break-words font-medium text-slate-900">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        {submission.reason && <Alert className="mt-5" type="info" showIcon message="Thông tin xử lý" description={submission.reason} />}
+        {submission.status === 'PENDING_CONSENT' && (
+          <Alert
+            className="mt-5"
+            type="warning"
+            showIcon
+            message="Đang chờ Candidate xác nhận"
+            description="Application, Attribution và MF03 chỉ được tạo sau khi Candidate đồng ý."
           />
         )}
       </Surface>

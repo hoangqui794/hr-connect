@@ -82,6 +82,17 @@ export interface AffiliateSubmission {
   submittedAt: string;
 }
 
+export interface AffiliateSubmissionDetail extends AffiliateSubmission {
+  consentRequestedAt: string | null;
+  consentEmailSentAt: string | null;
+  candidateEmail: string | null;
+  candidatePhone: string | null;
+  companyName: string;
+  cvTitle: string | null;
+  cvFileName: string | null;
+  updatedAt: string;
+}
+
 export interface AffiliateReferralProgress {
   submissionId: string;
   applicationId: string | null;
