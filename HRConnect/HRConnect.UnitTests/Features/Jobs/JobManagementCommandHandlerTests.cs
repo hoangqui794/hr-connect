@@ -20,6 +20,7 @@ public class JobManagementCommandHandlerTests
 {
     private readonly Mock<IJobRepository> _jobs = new();
     private readonly Mock<ICompanyUserRepository> _members = new();
+    private readonly Mock<INotificationRepository> _notifications = new();
     private readonly Mock<IUnitOfWork> _uow = new();
 
     [Fact]
@@ -226,7 +227,7 @@ public class JobManagementCommandHandlerTests
         var submit = new SubmitJobCommandHandler(_jobs.Object, _members.Object, _uow.Object);
 
         await submit.Handle(new SubmitJobCommand { JobId = job.JobId, UserId = owner, ConcurrencyToken = job.ConcurrencyToken }, default);
-        await new RejectJobCommandHandler(_jobs.Object, _uow.Object).Handle(
+        await new RejectJobCommandHandler(_jobs.Object, _notifications.Object, _uow.Object).Handle(
             new RejectJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), ConcurrencyToken = job.ConcurrencyToken, ReasonCode = JobReasonCodes.RejectedIncompleteDescription, ReasonText = "Bổ sung JD" }, default);
         await new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
         {
@@ -246,31 +247,34 @@ public class JobManagementCommandHandlerTests
             Skills = [new JobSkillRequest { SkillId = job.JobSkills.Single().SkillId, IsMandatory = true, Weight = 0.8m }]
         }, default);
         await submit.Handle(new SubmitJobCommand { JobId = job.JobId, UserId = owner, ConcurrencyToken = job.ConcurrencyToken }, default);
-        await new ApproveJobCommandHandler(_jobs.Object, _uow.Object).Handle(
+        await new ApproveJobCommandHandler(_jobs.Object, _notifications.Object, _uow.Object).Handle(
             new ApproveJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), ConcurrencyToken = job.ConcurrencyToken }, default);
 
         job.Status.Should().Be(JobStatuses.Active);
         job.JobStatusHistories.Select(x => x.NewStatus).Should().Equal(
             JobStatuses.PendingReview, JobStatuses.Rejected, JobStatuses.PendingReview, JobStatuses.Active);
         job.JobStatusHistories.Single(x => x.NewStatus == JobStatuses.Rejected).ReasonText.Should().Be("Bổ sung JD");
+        _notifications.Verify(x => x.AddAsync(It.Is<Notification>(n => n.NotificationType == "JOB" && n.UserId == job.CreatedBy), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
     public async Task Approve_ShouldPublishPendingJob()
     {
         var job = SetupJob(JobStatuses.PendingReview); var reviewer = Guid.NewGuid();
-        var result = await new ApproveJobCommandHandler(_jobs.Object, _uow.Object)
+        var result = await new ApproveJobCommandHandler(_jobs.Object, _notifications.Object, _uow.Object)
             .Handle(new ApproveJobCommand { JobId = job.JobId, UserId = reviewer }, default);
         result.Data.Status.Should().Be(JobStatuses.Active); job.PostedAt.Should().NotBeNull();
+        _notifications.Verify(x => x.AddAsync(It.Is<Notification>(n => n.NotificationType == "JOB" && n.UserId == job.CreatedBy && n.RelatedEntityId == job.JobId), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task Reject_ShouldReturnPendingJobWithReason()
     {
         var job = SetupJob(JobStatuses.PendingReview);
-        var result = await new RejectJobCommandHandler(_jobs.Object, _uow.Object)
+        var result = await new RejectJobCommandHandler(_jobs.Object, _notifications.Object, _uow.Object)
             .Handle(new RejectJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), ReasonCode = JobReasonCodes.RejectedIncompleteDescription, ReasonText = "JD chưa rõ" }, default);
         result.Data.Status.Should().Be(JobStatuses.Rejected); job.StatusReason.Should().Be("JD chưa rõ");
+        _notifications.Verify(x => x.AddAsync(It.Is<Notification>(n => n.NotificationType == "JOB" && n.UserId == job.CreatedBy && n.RelatedEntityId == job.JobId), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

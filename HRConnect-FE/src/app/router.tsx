@@ -168,8 +168,8 @@ export const router = createBrowserRouter([
       // Old entry points open the unified queue pre-filtered by type.
       { path: 'companies', element: <AppRoutes.ConsoleApprovalsPage presetType="CLIENT" /> },
       { path: 'affiliates', element: <AppRoutes.ConsoleApprovalsPage presetType="AFFILIATE" /> },
-      // Job review is Internal HR's step (main-flows MF-01); old Admin links land on the overview.
-      { path: 'jobs', element: <Navigate to="/admin/dashboard" replace /> },
+      // Admin can review jobs just like Internal HR (MF-01).
+      { path: 'jobs', element: <AppRoutes.Mf01JobReviewPage /> },
       { path: 'users', element: <AppRoutes.ConsoleUsersPage /> },
       { path: 'service-types', element: <AppRoutes.ConsoleServiceTypesPage /> },
       { path: 'commission-rules', element: <AppRoutes.ConsoleCommissionRulesPage /> },

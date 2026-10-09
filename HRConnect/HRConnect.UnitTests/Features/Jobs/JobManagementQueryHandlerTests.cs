@@ -122,7 +122,7 @@ public class JobManagementQueryHandlerTests
     public async Task GetJobsForReview_ShouldMapPendingQueue()
     {
         var pending = Job(Guid.NewGuid(), "PENDING_REVIEW");
-        _jobs.Setup(x => x.GetPendingReviewAsync(It.IsAny<CancellationToken>())).ReturnsAsync([pending]);
+        _jobs.Setup(x => x.GetForReviewAsync("PENDING_REVIEW", It.IsAny<CancellationToken>())).ReturnsAsync([pending]);
         var result = await new GetJobsForReviewQueryHandler(_jobs.Object).Handle(new GetJobsForReviewQuery(), default);
         result.Should().ContainSingle().Which.JobId.Should().Be(pending.JobId);
     }

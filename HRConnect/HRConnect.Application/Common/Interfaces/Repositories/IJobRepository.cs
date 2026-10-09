@@ -22,6 +22,8 @@ public interface IJobRepository
 
     Task<IReadOnlyList<Job>> GetPendingReviewAsync(CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Job>> GetForReviewAsync(string? status = null, CancellationToken cancellationToken = default);
+
     Task<(IReadOnlyList<Job> Items, int TotalCount)> GetVisibleJobsAsync(
         IReadOnlyCollection<string> roleCodes,
         IReadOnlyCollection<string> allowedVisibilities,
