@@ -327,7 +327,7 @@ Sơ đồ mô tả trường hợp `HEADHUNT_COD`; toàn bộ là thiết kế �
 
 **Điều kiện:** có Placement từ MF-04.
 
-> Toàn bộ luồng này **[CHƯA CÓ CODE]**, ngoại trừ phần cấu hình Commission Rule và Commission Milestone. Nội dung dưới đây là đề xuất **[CẦN XÁC NHẬN]**, dựa trên ba tài liệu mô hình kinh doanh.
+> **Đã có code cho `HEADHUNT_COD` (2026-10-09):** bảo hành 30 ngày, công nợ phí dịch vụ, hoa hồng nhận 100% khi đủ 30 ngày, báo nghỉ và Internal HR xác minh, Admin ghi nhận thu phí, duyệt/hủy/điều chỉnh hoa hồng, ghi nhận payout (API `/api/v1/service-fees`, `/api/v1/commissions`, `/api/v1/payouts`, `/api/v1/admin/...`, `/api/v1/placements/{id}/resignation`). **[CHƯA CÓ CODE]:** `CV_SOURCING`, `CV_APPLICATION`, tuyển thay thế, đánh giá Affiliate, thông báo, giao diện.
 
 ## Phí dịch vụ (Client trả cho HR Connect)
 
@@ -436,8 +436,8 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 | Sourcing Target, hệ số phí, thời hạn bảo hành, gói đăng tin trên job | MF-01 |
 | Trạng thái CV đạt chuẩn / đã giao / tính quota / dự phòng cho `CV_SOURCING` | MF-03 |
 | Theo dõi số vị trí đã tuyển so với số lượng cần tuyển | MF-04 |
-| Công nợ phí dịch vụ và ghi nhận thu phí | MF-05 |
-| Đếm bảo hành, tự ghi nhận mốc, báo nghỉ việc, tuyển thay thế | MF-05 |
+| Công nợ phí dịch vụ và ghi nhận thu phí | MF-05 — đã có code cho `HEADHUNT_COD` |
+| Đếm bảo hành, tự ghi nhận mốc, báo nghỉ việc, tuyển thay thế | MF-05 — đã có code trừ tuyển thay thế |
 | Tính, duyệt hoa hồng; ghi nhận payout; đánh giá Affiliate | MF-05 |
 | Thu hẹp quyền của Internal HR ở MF-04 (không lên lịch, không ghi kết quả, không tạo offer) | MF-04 — đã có code |
 | Bước Internal HR đối soát placement và kiểm tra lý do không nhận việc | MF-04 |
