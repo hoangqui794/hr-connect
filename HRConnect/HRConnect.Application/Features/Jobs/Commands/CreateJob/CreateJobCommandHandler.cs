@@ -91,7 +91,12 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             UpdatedAt = now,
             ConcurrencyToken = Guid.NewGuid(),
             Visibility = request.Visibility.Trim().ToUpperInvariant(),
-            StatusReason = null
+            StatusReason = null,
+            SourcingTarget = request.SourcingTarget,
+            SourcingPricePerCv = request.SourcingPricePerCv,
+            FeeMultiplier = request.FeeMultiplier,
+            WarrantyDays = request.WarrantyDays,
+            PaymentDueDays = request.PaymentDueDays
         };
 
         foreach (var requirement in request.Requirements)

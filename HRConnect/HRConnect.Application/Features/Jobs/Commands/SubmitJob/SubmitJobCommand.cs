@@ -10,8 +10,18 @@ namespace HRConnect.Application.Features.Jobs.Commands.SubmitJob;
 public sealed class SubmitJobCommand : IRequest<JobActionResponse> { [JsonIgnore] public Guid JobId { get; set; } [JsonIgnore] public Guid UserId { get; set; } public Guid ConcurrencyToken { get; set; } }
 public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, JobActionResponse>
 {
-    private readonly IJobRepository _jobs; private readonly ICompanyUserRepository _members; private readonly IUnitOfWork _uow;
-    public SubmitJobCommandHandler(IJobRepository jobs, ICompanyUserRepository members, IUnitOfWork uow) => (_jobs, _members, _uow) = (jobs, members, uow);
+    private readonly IJobRepository _jobs;
+    private readonly ICompanyUserRepository _members;
+    private readonly IBusinessSettings _businessSettings;
+    private readonly IUnitOfWork _uow;
+
+    public SubmitJobCommandHandler(
+        IJobRepository jobs,
+        ICompanyUserRepository members,
+        IBusinessSettings businessSettings,
+        IUnitOfWork uow)
+        => (_jobs, _members, _businessSettings, _uow) = (jobs, members, businessSettings, uow);
+
     public async Task<JobActionResponse> Handle(SubmitJobCommand request, CancellationToken ct)
     {
         var job = await JobHandlerGuards.GetOwnedJobAsync(_jobs, _members, request.JobId, request.UserId, ct);
@@ -33,6 +43,57 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
         if (serviceTypeCode == null)
             throw new BadRequestException("Loại dịch vụ đã ngừng hoạt động nên Job không thể gửi duyệt.");
         JobHandlerGuards.RequireVisibilityAllowed(serviceTypeCode, job.Visibility);
+
+        // Validation & Gán giá trị mặc định theo từng loại dịch vụ (MF-01 B3 & Mục C)
+        if (string.Equals(serviceTypeCode, ServiceTypeCodes.CvSourcing, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!job.SourcingTarget.HasValue || job.SourcingTarget.Value <= 0)
+            {
+                throw new BadRequestException("Tin tuyển dụng CV_SOURCING bắt buộc phải có Sourcing Target (số lượng CV đạt chuẩn) lớn hơn 0.");
+            }
+
+            if (job.SourcingPricePerCv.HasValue && job.SourcingPricePerCv.Value <= 0)
+            {
+                throw new BadRequestException("Đơn giá cho mỗi CV đạt chuẩn phải lớn hơn 0.");
+            }
+
+            job.SourcingPricePerCv ??= _businessSettings.DefaultSourcingPricePerCv;
+            job.FeeMultiplier = null;
+            job.WarrantyDays = null;
+            job.PaymentDueDays = null;
+        }
+        else if (string.Equals(serviceTypeCode, ServiceTypeCodes.HeadhuntCod, StringComparison.OrdinalIgnoreCase))
+        {
+            if (job.FeeMultiplier.HasValue && job.FeeMultiplier.Value <= 0)
+            {
+                throw new BadRequestException("Hệ số phí tuyển dụng (Fee Multiplier) phải lớn hơn 0.");
+            }
+
+            if (job.WarrantyDays.HasValue && job.WarrantyDays.Value <= 0)
+            {
+                throw new BadRequestException("Thời gian bảo hành (Warranty Days) phải lớn hơn 0.");
+            }
+
+            if (job.PaymentDueDays.HasValue && job.PaymentDueDays.Value <= 0)
+            {
+                throw new BadRequestException("Hạn thanh toán phí (Payment Due Days) phải lớn hơn 0.");
+            }
+
+            job.FeeMultiplier ??= _businessSettings.DefaultHeadhuntFeeMultiplier;
+            job.WarrantyDays ??= _businessSettings.DefaultWarrantyDays;
+            job.PaymentDueDays ??= _businessSettings.DefaultPaymentDueDays;
+            job.SourcingTarget = null;
+            job.SourcingPricePerCv = null;
+        }
+        else if (string.Equals(serviceTypeCode, ServiceTypeCodes.CvApplication, StringComparison.OrdinalIgnoreCase))
+        {
+            job.SourcingTarget = null;
+            job.SourcingPricePerCv = null;
+            job.FeeMultiplier = null;
+            job.WarrantyDays = null;
+            job.PaymentDueDays = null;
+        }
+
         JobTransitions.ChangeStatus(job, JobStatuses.PendingReview, request.UserId, JobReasonCodes.SubmittedForReview);
         await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
         await _uow.SaveChangesAsync(ct);

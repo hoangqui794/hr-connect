@@ -19,6 +19,7 @@ public sealed record JobDto(
     string CurrencyCode, int Quantity,
     string Status, string Visibility, string? StatusReason, DateTime? PostedAt,
     DateTime? ClosedAt, DateTime CreatedAt, DateTime UpdatedAt, Guid ConcurrencyToken,
+    int? SourcingTarget, decimal? SourcingPricePerCv, decimal? FeeMultiplier, int? WarrantyDays, int? PaymentDueDays,
     IReadOnlyList<JobRequirementDto> Requirements,
     IReadOnlyList<JobSkillDto> Skills,
     IReadOnlyList<JobStatusHistoryDto> StatusHistories)
@@ -30,6 +31,7 @@ public sealed record JobDto(
         job.MinExperienceYears, job.MaxExperienceYears,
         job.CurrencyCode.Trim(), job.Quantity, job.Status, job.Visibility, job.StatusReason,
         job.PostedAt, job.ClosedAt, job.CreatedAt, job.UpdatedAt, job.ConcurrencyToken,
+        job.SourcingTarget, job.SourcingPricePerCv, job.FeeMultiplier, job.WarrantyDays, job.PaymentDueDays,
         job.JobRequirements.OrderBy(x => x.CreatedAt).Select(x => new JobRequirementDto(
             x.RequirementId, x.RequirementType, x.Category, x.Content, x.Weight)).ToList(),
         job.JobSkills.OrderBy(x => x.SkillId).Select(x => new JobSkillDto(

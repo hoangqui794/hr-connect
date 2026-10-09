@@ -68,6 +68,11 @@ interface JobFormValues {
   location?: string;
   workingTime?: string;
   quantity: number;
+  sourcingTarget?: number | null;
+  sourcingPricePerCv?: number | null;
+  feeMultiplier?: number | null;
+  warrantyDays?: number | null;
+  paymentDueDays?: number | null;
   minExperienceYears?: number | null;
   maxExperienceYears?: number | null;
   salaryMin?: number | null;
@@ -95,6 +100,11 @@ const toFormValues = (job: Job): JobFormValues => ({
   location: job.location ?? undefined,
   workingTime: job.workingTime ?? undefined,
   quantity: job.quantity,
+  sourcingTarget: job.sourcingTarget,
+  sourcingPricePerCv: job.sourcingPricePerCv,
+  feeMultiplier: job.feeMultiplier,
+  warrantyDays: job.warrantyDays,
+  paymentDueDays: job.paymentDueDays,
   minExperienceYears: job.minExperienceYears,
   maxExperienceYears: job.maxExperienceYears,
   salaryMin: job.salaryMin,
@@ -114,7 +124,7 @@ const toFormValues = (job: Job): JobFormValues => ({
 const trimOrNull = (v?: string | null) => (v && v.trim() ? v.trim() : null);
 
 /** Mirrors SubmitJobCommandHandler: fields the backend requires before PENDING_REVIEW. */
-const submitBlockers = (v: JobFormValues): { field: (string | number)[]; message: string }[] => {
+const submitBlockers = (v: JobFormValues, selectedCode?: string): { field: (string | number)[]; message: string }[] => {
   const missing: { field: (string | number)[]; message: string }[] = [];
   const need = (field: keyof JobFormValues, message: string) => {
     if (!trimOrNull(v[field] as string | undefined)) missing.push({ field: [field], message });
@@ -124,6 +134,24 @@ const submitBlockers = (v: JobFormValues): { field: (string | number)[]; message
   need('benefits', 'Nhập quyền lợi.');
   need('location', 'Nhập địa điểm làm việc.');
   if (!v.employmentType) missing.push({ field: ['employmentType'], message: 'Chọn hình thức làm việc.' });
+  if (selectedCode === 'CV_SOURCING') {
+    if (!v.sourcingTarget || v.sourcingTarget <= 0) {
+      missing.push({ field: ['sourcingTarget'], message: 'Nhập Sourcing Target (số CV đạt chuẩn mua) lớn hơn 0.' });
+    }
+    if (v.sourcingPricePerCv != null && v.sourcingPricePerCv <= 0) {
+      missing.push({ field: ['sourcingPricePerCv'], message: 'Đơn giá CV phải lớn hơn 0.' });
+    }
+  } else if (selectedCode === 'HEADHUNT_COD') {
+    if (v.feeMultiplier != null && v.feeMultiplier <= 0) {
+      missing.push({ field: ['feeMultiplier'], message: 'Hệ số phí tuyển dụng phải lớn hơn 0.' });
+    }
+    if (v.warrantyDays != null && v.warrantyDays <= 0) {
+      missing.push({ field: ['warrantyDays'], message: 'Thời gian bảo hành phải lớn hơn 0.' });
+    }
+    if (v.paymentDueDays != null && v.paymentDueDays <= 0) {
+      missing.push({ field: ['paymentDueDays'], message: 'Hạn thanh toán phí phải lớn hơn 0.' });
+    }
+  }
   if (!(v.requirements ?? []).some((r) => r?.requirementType === 'MUST_HAVE' && r.content?.trim()))
     missing.push({ field: ['requirements'], message: 'Thêm ít nhất một yêu cầu bắt buộc.' });
   return missing;
@@ -140,6 +168,11 @@ const toInput = (v: JobFormValues): JobUpsertInput => ({
   location: trimOrNull(v.location),
   workingTime: trimOrNull(v.workingTime),
   quantity: v.quantity,
+  sourcingTarget: v.sourcingTarget ?? null,
+  sourcingPricePerCv: v.sourcingPricePerCv ?? null,
+  feeMultiplier: v.feeMultiplier ?? null,
+  warrantyDays: v.warrantyDays ?? null,
+  paymentDueDays: v.paymentDueDays ?? null,
   minExperienceYears: v.minExperienceYears ?? null,
   maxExperienceYears: v.maxExperienceYears ?? null,
   salaryMin: v.salaryMin ?? null,
@@ -420,6 +453,9 @@ export const JobFormPage: React.FC = () => {
     { label: 'Tên vị trí', done: Boolean(watched.title?.trim()), section: 'job-position' },
     { label: 'Hình thức làm việc', done: Boolean(watched.employmentType), section: 'job-position' },
     { label: 'Địa điểm', done: Boolean(watched.location?.trim()), section: 'job-position' },
+    ...(selectedCode === 'CV_SOURCING'
+      ? [{ label: 'Sourcing Target (CV mua)', done: Boolean(watched.sourcingTarget && watched.sourcingTarget > 0), section: 'job-position' }]
+      : []),
     { label: 'Mô tả công việc', done: Boolean(watched.description?.trim()), section: 'job-content' },
     { label: 'Quyền lợi', done: Boolean(watched.benefits?.trim()), section: 'job-content' },
     { label: 'Ít nhất 1 yêu cầu bắt buộc', done: hasMustHave, section: 'job-requirements' },
@@ -442,7 +478,7 @@ export const JobFormPage: React.FC = () => {
       return;
     }
     if (andSubmit) {
-      const blockers = submitBlockers(values);
+      const blockers = submitBlockers(values, selectedCode);
       if (blockers.length > 0) {
         form.setFields(
           blockers
@@ -675,6 +711,77 @@ export const JobFormPage: React.FC = () => {
                   </Form.Item>
                 </div>
               </fieldset>
+
+              {/* Commercial terms for CV_SOURCING */}
+              {selectedCode === 'CV_SOURCING' && (
+                <div className="mt-5 rounded-xl border border-solid border-blue-200 bg-blue-50/60 p-4">
+                  <div className="mb-3 text-[14px] font-semibold text-blue-900">
+                    Thông số dịch vụ CV Sourcing
+                  </div>
+                  <div className="grid gap-x-4 md:grid-cols-2">
+                    <Form.Item
+                      name="sourcingTarget"
+                      label={<>Sourcing Target (Số CV đạt chuẩn mua)<SubmitHint /></>}
+                      extra="Số lượng Qualified CV bạn muốn HR Connect bàn giao (khác với số người cần tuyển)."
+                      rules={[{ type: 'number', min: 1, message: 'Tối thiểu 1 CV đạt chuẩn.' }]}
+                    >
+                      <InputNumber size="large" min={1} max={1000} className="w-full" placeholder="Ví dụ: 10" addonAfter="CV" />
+                    </Form.Item>
+                    <Form.Item
+                      name="sourcingPricePerCv"
+                      label="Đơn giá mỗi CV đạt chuẩn (VNĐ)"
+                      extra="Đơn giá theo thỏa thuận (mặc định 100.000đ / CV nếu để trống)."
+                      rules={[{ type: 'number', min: 1000, message: 'Đơn giá tối thiểu 1.000 VNĐ.' }]}
+                    >
+                      <InputNumber<number>
+                        size="large"
+                        min={1000}
+                        step={10000}
+                        formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                        parser={(value) => (value ? Number(value.replace(/\D/g, '')) : undefined) as unknown as number}
+                        className="w-full"
+                        placeholder="100,000"
+                        addonAfter="VNĐ"
+                      />
+                    </Form.Item>
+                  </div>
+                </div>
+              )}
+
+              {/* Commercial terms for HEADHUNT_COD */}
+              {selectedCode === 'HEADHUNT_COD' && (
+                <div className="mt-5 rounded-xl border border-solid border-indigo-200 bg-indigo-50/60 p-4">
+                  <div className="mb-3 text-[14px] font-semibold text-indigo-900">
+                    Điều khoản thương mại Headhunt COD (Thỏa thuận hợp đồng)
+                  </div>
+                  <div className="grid gap-x-4 md:grid-cols-3">
+                    <Form.Item
+                      name="feeMultiplier"
+                      label="Hệ số phí tuyển dụng"
+                      extra="Hệ số nhân lương tháng offer (mặc định 1.5× nếu để trống)."
+                      rules={[{ type: 'number', min: 0.1, max: 10, message: 'Hệ số từ 0.1 đến 10.' }]}
+                    >
+                      <InputNumber size="large" min={0.1} max={10} step={0.1} className="w-full" placeholder="1.5" addonAfter="× lương" />
+                    </Form.Item>
+                    <Form.Item
+                      name="warrantyDays"
+                      label="Thời hạn bảo hành"
+                      extra="Số ngày bảo hành vị trí (mặc định 30 ngày nếu để trống)."
+                      rules={[{ type: 'number', min: 1, max: 365, message: 'Từ 1 đến 365 ngày.' }]}
+                    >
+                      <InputNumber size="large" min={1} max={365} className="w-full" placeholder="30" addonAfter="ngày" />
+                    </Form.Item>
+                    <Form.Item
+                      name="paymentDueDays"
+                      label="Hạn thanh toán phí"
+                      extra="Số ngày thanh toán sau khi nhận việc (mặc định 14 ngày)."
+                      rules={[{ type: 'number', min: 1, max: 90, message: 'Từ 1 đến 90 ngày.' }]}
+                    >
+                      <InputNumber size="large" min={1} max={90} className="w-full" placeholder="14" addonAfter="ngày" />
+                    </Form.Item>
+                  </div>
+                </div>
+              )}
             </Section>
 
             {/* 3. Salary */}

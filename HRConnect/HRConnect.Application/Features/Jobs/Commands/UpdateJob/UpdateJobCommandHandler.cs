@@ -49,7 +49,13 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
         job.SalaryNegotiable = request.SalaryNegotiable; job.SalaryNote = Normalize(request.SalaryNote);
         job.MinExperienceYears = request.MinExperienceYears; job.MaxExperienceYears = request.MaxExperienceYears;
         job.CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(); job.Quantity = request.Quantity;
-        job.Visibility = request.Visibility.Trim().ToUpperInvariant(); job.UpdatedAt = now; job.ConcurrencyToken = Guid.NewGuid(); job.StatusReason = null;
+        job.Visibility = request.Visibility.Trim().ToUpperInvariant();
+        job.SourcingTarget = request.SourcingTarget;
+        job.SourcingPricePerCv = request.SourcingPricePerCv;
+        job.FeeMultiplier = request.FeeMultiplier;
+        job.WarrantyDays = request.WarrantyDays;
+        job.PaymentDueDays = request.PaymentDueDays;
+        job.UpdatedAt = now; job.ConcurrencyToken = Guid.NewGuid(); job.StatusReason = null;
         var existingRequirements = job.JobRequirements.OrderBy(item => item.CreatedAt).ToList();
         for (var index = 0; index < request.Requirements.Count; index++)
         {
