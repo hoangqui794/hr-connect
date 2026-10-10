@@ -136,7 +136,7 @@ export const CandidateHomePage: React.FC = () => {
                 : `Bạn có ${active.length} đơn đang được xử lý${interviewing ? `, trong đó ${interviewing} đơn đã được chọn hoặc đang phỏng vấn` : ''}.`}
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
-            <Button type="primary" size="large" icon={<SearchOutlined />} className="!rounded-full !px-6" onClick={() => navigate('/jobs')}>
+            <Button type="primary" size="large" icon={<SearchOutlined />} className="!rounded-full !px-6" onClick={() => navigate('/candidate/jobs')}>
               Tìm việc làm
             </Button>
             <Button size="large" className="!rounded-full !px-6" onClick={() => navigate('/candidate/cvs')}>
@@ -238,7 +238,7 @@ export const CandidateApplicationsPage: React.FC = () => {
         title="Đơn ứng tuyển của tôi"
         description="Theo dõi từng đơn từ lúc nộp đến khi nhận việc. Trạng thái được cập nhật ngay khi nhà tuyển dụng xử lý."
         actions={
-          <Button type="primary" size="large" icon={<SearchOutlined />} onClick={() => navigate('/jobs')}>
+          <Button type="primary" size="large" icon={<SearchOutlined />} onClick={() => navigate('/candidate/jobs')}>
             Tìm việc làm
           </Button>
         }

@@ -246,8 +246,6 @@ export const LoginPage: React.FC = () => {
       const destination =
         redirectFrom && redirectFrom !== '/login' && belongsToRoleWorkspace(resolvedRole, redirectFrom)
           ? redirectFrom
-          : resolvedRole === UserRole.CANDIDATE
-          ? '/'
           : getDashboardRouteForRole(resolvedRole);
 
       navigate(destination, { replace: true });

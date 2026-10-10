@@ -196,6 +196,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/candidate/dashboard" replace /> },
       { path: 'dashboard', element: <AppRoutes.CandidateHomePage /> },
+      { path: 'jobs', element: <AppRoutes.CandidateJobsPage /> },
+      { path: 'jobs/:jobId', element: <AppRoutes.CandidateJobDetailPage /> },
       { path: 'applications', element: <AppRoutes.CandidateMyApplicationsPage /> },
       { path: 'applications/:applicationId', element: <AppRoutes.CandidateApplicationDetailPage /> },
       { path: 'submission-consents/:submissionId', element: <AppRoutes.CandidateSubmissionConsentPage /> },
@@ -205,7 +207,7 @@ export const router = createBrowserRouter([
       { path: 'settings/email-identities', element: <AppRoutes.CandidateIdentityPage /> },
       { path: 'profile', element: <AppRoutes.CandidateProfilePage /> },
       // Saved jobs had no backend; send people to the job search.
-      { path: 'saved-jobs', element: <Navigate to="/jobs" replace /> },
+      { path: 'saved-jobs', element: <Navigate to="/candidate/jobs" replace /> },
     ],
   },
   { path: '/profile', element: <Navigate to="/candidate/profile" replace /> },

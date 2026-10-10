@@ -1,0 +1,28 @@
+.candidate-console {
+  --candidate-page: #f5f8f7;
+  --candidate-surface: #ffffff;
+  --candidate-text: #0f172a;
+  --candidate-muted: #526071;
+  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;
+}
+
+.candidate-account-drawer {
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 200ms ease, visibility 200ms ease;
+}
+
+.candidate-account-drawer[data-open='true'] {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+.candidate-bottom-nav {
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .candidate-account-drawer {
+    transition: none;
+  }
+}

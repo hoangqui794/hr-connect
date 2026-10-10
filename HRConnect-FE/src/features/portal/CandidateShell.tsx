@@ -1,37 +1,53 @@
 /**
  * @file CandidateShell.tsx
- * @description Candidate workspace (MF-02 branch A): job-site style top navigation, teal accent.
- * Derived from ClientShell: same off-canvas menu below lg, loading feedback and Escape handling.
+ * @description Persistent Candidate workspace with task-oriented desktop and mobile navigation.
  */
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Button, Dropdown } from 'antd';
-import { CloseOutlined, LogoutOutlined, MenuOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
+import { Dropdown } from 'antd';
+import {
+  CloseOutlined,
+  FileDoneOutlined,
+  FolderOpenOutlined,
+  HomeOutlined,
+  LogoutOutlined,
+  MailOutlined,
+  SearchOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
 import { Initials } from '@/features/admin-console/ui';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import '@/features/admin-console/admin-console.css';
+import './candidate/candidate.css';
 
-const NAV = [
-  { to: '/candidate/dashboard', label: 'Tổng quan' },
-  { to: '/candidate/applications', label: 'Đơn ứng tuyển' },
-  { to: '/candidate/cvs', label: 'Kho CV' },
-  { to: '/candidate/affiliate-cvs', label: 'CV Affiliate' },
-  { to: '/candidate/settings/email-identities', label: 'Email liên kết' },
-  { to: '/candidate/profile', label: 'Hồ sơ cá nhân' },
+const PRIMARY_NAV = [
+  { to: '/candidate/dashboard', label: 'Tổng quan', icon: HomeOutlined, matches: ['/candidate/dashboard'] },
+  { to: '/candidate/jobs', label: 'Tìm việc', icon: SearchOutlined, matches: ['/candidate/jobs'] },
+  { to: '/candidate/applications', label: 'Đơn ứng tuyển', icon: FileDoneOutlined, matches: ['/candidate/applications', '/candidate/submission-consents'] },
+  {
+    to: '/candidate/cvs',
+    label: 'Hồ sơ & CV',
+    icon: FolderOpenOutlined,
+    matches: ['/candidate/cvs', '/candidate/affiliate-cvs', '/candidate/profile', '/candidate/settings'],
+  },
 ] as const;
 
-const linkClass = (active: boolean, muted?: boolean, compact?: boolean) =>
+const ACCOUNT_LINKS = [
+  { to: '/candidate/profile', label: 'Hồ sơ cá nhân', icon: UserOutlined },
+  { to: '/candidate/affiliate-cvs', label: 'CV do Affiliate gửi', icon: FolderOpenOutlined },
+  { to: '/candidate/settings/email-identities', label: 'Email liên kết & khôi phục dữ liệu', icon: MailOutlined },
+] as const;
+
+const desktopLinkClass = (active: boolean) =>
   [
-    'no-underline transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--console-accent)]',
-    compact ? 'block rounded-xl px-4 py-3 text-[15px]' : 'flex h-10 items-center rounded-full px-4 text-[14px]',
+    'flex h-10 items-center gap-2 rounded-full px-4 text-[14px] no-underline transition-colors duration-150',
+    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--console-accent)]',
     active
       ? 'bg-[color:var(--console-accent-soft)] font-semibold text-[color:var(--console-accent-strong)] shadow-[inset_0_0_0_1px_rgba(15,118,110,0.18)]'
-      : muted
-        ? 'font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800'
-        : 'font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900',
+      : 'font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900',
   ].join(' ');
 
 export const CandidateShell: React.FC = () => {
@@ -39,19 +55,37 @@ export const CandidateShell: React.FC = () => {
   const navigate = useNavigate();
   const compact = useCompactLayout();
   const { user, logout } = useAuthStore();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => setMenuOpen(false), [location.pathname, compact]);
+  const isPathActive = (prefixes: readonly string[]) =>
+    prefixes.some((prefix) => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`));
+
+  const closeAccount = (restoreFocus = false) => {
+    setAccountOpen(false);
+    if (restoreFocus) window.setTimeout(() => accountButtonRef.current?.focus(), 0);
+  };
+
+  useEffect(() => setAccountOpen(false), [location.pathname, compact]);
   useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [menuOpen]);
+    if (!accountOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeButtonRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeAccount(true);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [accountOpen]);
 
   const signOut = async () => {
     try {
-      await authService.logout(); // revokes the refresh token server-side
+      await authService.logout();
     } finally {
       logout();
       navigate('/login');
@@ -59,112 +93,165 @@ export const CandidateShell: React.FC = () => {
   };
 
   const name = user?.name || 'Ứng viên';
-  const isActive = (to: string) => location.pathname === to || location.pathname.startsWith(`${to}/`);
+  const accountMenuItems = [
+    ...ACCOUNT_LINKS.map((item) => ({ key: item.to, icon: React.createElement(item.icon), label: item.label })),
+    { type: 'divider' as const },
+    { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
+  ];
 
   return (
-    <div className="candidate-console min-h-screen bg-[#F3F8F7] text-slate-900">
-      <header className="sticky top-0 z-30 border-0 border-b border-solid border-slate-200/80 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-6 px-4 lg:px-8">
-          {compact && (
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              aria-label="Mở menu"
-              aria-expanded={menuOpen}
-              className="-ml-1 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-lg text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
-            >
-              <MenuOutlined />
-            </button>
-          )}
-
+    <div className="candidate-console min-h-screen bg-[#F5F8F7] text-slate-900">
+      <header className="sticky top-0 z-30 border-0 border-b border-solid border-slate-200/80 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-5 px-4 lg:px-8">
           <NavLink to="/candidate/dashboard" className="flex shrink-0 items-center gap-2.5 no-underline" aria-label="HR Connect, về tổng quan">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--console-accent)] text-base font-extrabold text-white">H</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[color:var(--console-accent)] text-base font-extrabold text-white shadow-sm">H</span>
             <span className="leading-tight">
               <span className="block text-[15px] font-bold text-slate-900">HR Connect</span>
-              <span className="hidden text-[11px] font-medium tracking-wide text-[color:var(--console-accent-strong)] sm:block">Ứng viên</span>
+              <span className="hidden text-[11px] font-medium tracking-wide text-[color:var(--console-accent-strong)] sm:block">Không gian Candidate</span>
             </span>
           </NavLink>
 
           {!compact && (
-            <nav aria-label="Điều hướng chính" className="ml-2 flex items-center gap-1 rounded-full bg-slate-50 p-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
-              {NAV.map((n) => (
-                <NavLink key={n.to} to={n.to} className={linkClass(isActive(n.to), false)} aria-current={isActive(n.to) ? 'page' : undefined}>
-                  {n.label}
-                </NavLink>
-              ))}
+            <nav aria-label="Điều hướng Candidate" className="ml-2 flex items-center gap-1 rounded-full bg-slate-50 p-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
+              {PRIMARY_NAV.map((item) => {
+                const active = isPathActive(item.matches);
+                const Icon = item.icon;
+                return (
+                  <NavLink key={item.to} to={item.to} className={desktopLinkClass(active)} aria-current={active ? 'page' : undefined}>
+                    <Icon aria-hidden />
+                    {item.label}
+                  </NavLink>
+                );
+              })}
             </nav>
           )}
 
-          <div className="ml-auto flex items-center gap-3">
-            <Button type="primary" icon={<SearchOutlined />} onClick={() => navigate('/jobs')} className="hidden !rounded-full !px-5 sm:inline-flex">
-              Tìm việc
-            </Button>
-            <Dropdown
-              trigger={['click']}
-              menu={{
-                items: [
-                  { key: 'company', icon: <UserOutlined />, label: 'Hồ sơ cá nhân' },
-                  { type: 'divider' },
-                  { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
-                ],
-                onClick: ({ key }) => (key === 'logout' ? signOut() : navigate('/candidate/profile')),
-              }}
-            >
+          <div className="ml-auto flex items-center">
+            {compact ? (
               <button
+                ref={accountButtonRef}
                 type="button"
-                aria-label="Tài khoản"
-                className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-2 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] sm:pr-3"
+                aria-label="Mở tài khoản và cài đặt"
+                aria-expanded={accountOpen}
+                aria-controls="candidate-account-panel"
+                onClick={() => setAccountOpen(true)}
+                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full border-0 bg-transparent p-1 pr-2 text-left hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
               >
-                <Initials name={name} size={34} />
-                <span className="hidden text-left leading-tight md:block">
-                  <span className="block max-w-[160px] truncate text-sm font-semibold text-slate-900">{name}</span>
-                  <span className="block max-w-[160px] truncate text-xs text-slate-500">{user?.email}</span>
-                </span>
+                <Initials name={name} size={36} />
+                <span className="max-w-28 truncate text-sm font-semibold text-slate-800">{name}</span>
               </button>
-            </Dropdown>
+            ) : (
+              <Dropdown
+                trigger={['click']}
+                menu={{
+                  items: accountMenuItems,
+                  onClick: ({ key }) => (key === 'logout' ? signOut() : navigate(key)),
+                }}
+              >
+                <button
+                  type="button"
+                  aria-label="Tài khoản và cài đặt"
+                  className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+                >
+                  <Initials name={name} size={36} />
+                  <span className="text-left leading-tight">
+                    <span className="block max-w-[170px] truncate text-sm font-semibold text-slate-900">{name}</span>
+                    <span className="block max-w-[170px] truncate text-xs text-slate-500">{user?.email}</span>
+                  </span>
+                </button>
+              </Dropdown>
+            )}
           </div>
         </div>
       </header>
 
-      {compact && menuOpen && <div className="fixed inset-0 z-40 bg-slate-900/40" onClick={() => setMenuOpen(false)} aria-hidden />}
+      {compact && accountOpen && (
+        <div className="fixed inset-0 z-40 bg-slate-900/40" onClick={() => closeAccount(true)} aria-hidden />
+      )}
       {compact && (
         <aside
-          aria-label="Menu"
-          className="fixed inset-y-0 left-0 z-50 w-[288px] max-w-[85vw] bg-white p-3 shadow-2xl transition-transform duration-200"
-          style={{ transform: menuOpen ? 'none' : 'translateX(-100%)', visibility: menuOpen ? 'visible' : 'hidden' }}
+          id="candidate-account-panel"
+          aria-label="Tài khoản và cài đặt"
+          aria-hidden={!accountOpen}
+          className="candidate-account-drawer fixed inset-y-0 right-0 z-50 w-[320px] max-w-[88vw] bg-white p-4 shadow-2xl"
+          data-open={accountOpen}
         >
-          <div className="mb-3 flex items-center justify-between px-2 pt-1">
-            <span className="text-[15px] font-bold text-slate-900">Menu</span>
+          <div className="mb-5 flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <Initials name={name} size={44} />
+              <div className="min-w-0">
+                <p className="m-0 truncate text-sm font-bold text-slate-900">{name}</p>
+                <p className="m-0 mt-0.5 truncate text-xs text-slate-500">{user?.email}</p>
+              </div>
+            </div>
             <button
+              ref={closeButtonRef}
               type="button"
-              onClick={() => setMenuOpen(false)}
-              aria-label="Đóng menu"
-              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-slate-600 hover:bg-slate-100"
+              onClick={() => closeAccount(true)}
+              aria-label="Đóng tài khoản và cài đặt"
+              className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl border-0 bg-slate-100 text-slate-700 hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
             >
               <CloseOutlined />
             </button>
           </div>
-          <nav aria-label="Điều hướng chính" className="space-y-1">
-            {NAV.map((n) => (
-              <NavLink key={n.to} to={n.to} className={linkClass(isActive(n.to), false, true)}>
-                {n.label}
-              </NavLink>
-            ))}
-            <NavLink to="/jobs" className={linkClass(false, false, true)}>
-              Tìm việc làm
-            </NavLink>
+          <nav aria-label="Liên kết tài khoản" className="space-y-1">
+            {ACCOUNT_LINKS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  tabIndex={accountOpen ? 0 : -1}
+                  className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium text-slate-700 no-underline hover:bg-slate-100 hover:text-slate-950"
+                >
+                  <Icon aria-hidden className="text-[color:var(--console-accent)]" />
+                  {item.label}
+                </NavLink>
+              );
+            })}
           </nav>
+          <button
+            type="button"
+            tabIndex={accountOpen ? 0 : -1}
+            onClick={signOut}
+            className="mt-5 flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-xl border-0 bg-red-50 px-3 text-sm font-semibold text-red-700 hover:bg-red-100"
+          >
+            <LogoutOutlined aria-hidden />
+            Đăng xuất
+          </button>
         </aside>
       )}
 
       <AdminTopProgress offsetLeft={0} />
-      <main className="mx-auto max-w-[1280px] px-4 py-6 lg:px-8 lg:py-8">
+      <main className="mx-auto max-w-[1280px] px-4 py-6 pb-28 lg:px-8 lg:py-8">
         <AdminPageEnter pathKey={location.pathname}>
           <Suspense fallback={<AdminPageSkeleton />}>
             <Outlet />
           </Suspense>
         </AdminPageEnter>
       </main>
+
+      {compact && (
+        <nav aria-label="Điều hướng Candidate trên thiết bị di động" className="candidate-bottom-nav fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-0 border-t border-solid border-slate-200 bg-white/95 px-1 pt-1 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+          {PRIMARY_NAV.map((item) => {
+            const active = isPathActive(item.matches);
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                aria-current={active ? 'page' : undefined}
+                className={`flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-xl px-1 text-center text-[11px] no-underline ${
+                  active ? 'font-semibold text-[color:var(--console-accent-strong)]' : 'font-medium text-slate-500'
+                }`}
+              >
+                <Icon aria-hidden className="text-lg" />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+      )}
     </div>
   );
 };

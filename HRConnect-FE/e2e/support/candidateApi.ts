@@ -76,4 +76,14 @@ export async function mockCandidateApis(page: Page) {
       })
     );
   });
+
+  await page.route('**/api/v1/service-types**', async (route) => {
+    await route.fulfill(json({ success: true, data: { items: [] } }));
+  });
+
+  await page.route('**/api/v1/jobs**', async (route) => {
+    await route.fulfill(
+      json({ items: [], page: 1, pageSize: 12, total: 0, totalPages: 0 })
+    );
+  });
 }

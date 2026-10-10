@@ -9,16 +9,11 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
   await page.getByPlaceholder('••••••••').fill('111111Aa@');
   await page.getByRole('button', { name: 'Đăng nhập tài khoản' }).click();
 
-  await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
-
-  // The current product redirects Candidate to the public home. Open the owned
-  // workspace explicitly so this smoke test remains useful while step 1 changes
-  // the post-login destination to /candidate/dashboard.
-  await page.goto('/candidate/dashboard');
+  await expect(page).toHaveURL(/\/candidate\/dashboard$/);
 
   await expect(page.getByRole('heading', { name: /Chào E2E/i })).toBeVisible();
   await expect(page.getByRole('link', { name: /HR Connect, về tổng quan/i })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Tìm việc làm' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Tìm việc' })).toBeVisible();
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
@@ -29,4 +24,8 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
     path: testInfo.outputPath(`candidate-dashboard-${testInfo.project.name}.png`),
     fullPage: true,
   });
+
+  await page.getByRole('link', { name: 'Tìm việc', exact: true }).click();
+  await expect(page).toHaveURL(/\/candidate\/jobs$/);
+  await expect(page.getByRole('heading', { name: 'Tìm việc làm phù hợp' })).toBeVisible();
 });
