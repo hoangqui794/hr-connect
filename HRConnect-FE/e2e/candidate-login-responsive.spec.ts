@@ -12,8 +12,10 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
   await expect(page).toHaveURL(/\/candidate\/dashboard$/);
 
   await expect(page.getByRole('heading', { name: /Chào E2E/i })).toBeVisible();
-  await expect(page.getByRole('link', { name: /HR Connect, về tổng quan/i })).toBeVisible();
+  const brandLink = page.getByRole('link', { name: /HR Connect, về tổng quan/i });
+  await expect(brandLink).toBeVisible();
   await expect(page.getByRole('link', { name: 'Tìm việc' })).toBeVisible();
+  const initialBrandX = (await brandLink.boundingBox())?.x;
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
@@ -28,6 +30,8 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
   await page.getByRole('link', { name: 'Tìm việc', exact: true }).click();
   await expect(page).toHaveURL(/\/candidate\/jobs$/);
   await expect(page.getByRole('heading', { name: 'Tìm việc làm phù hợp' })).toBeVisible();
+  const jobsBrandX = (await brandLink.boundingBox())?.x;
+  expect(Math.abs((jobsBrandX ?? 0) - (initialBrandX ?? 0))).toBeLessThan(1);
 
   const jobsHaveHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
@@ -42,6 +46,8 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
   await page.goto('/candidate/profile');
   await expect(page.getByRole('heading', { name: 'Candidate E2E' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Hồ sơ & CV', exact: true })).not.toHaveAttribute('aria-current', 'page');
+  const profileBrandX = (await brandLink.boundingBox())?.x;
+  expect(Math.abs((profileBrandX ?? 0) - (initialBrandX ?? 0))).toBeLessThan(1);
   const profileHasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
   );

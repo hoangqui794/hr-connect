@@ -1,3 +1,8 @@
+.candidate-console,
+html:has(.candidate-console) {
+  scrollbar-gutter: stable;
+}
+
 .candidate-console {
   --candidate-page: #f5f8f7;
   --candidate-surface: #ffffff;
@@ -247,6 +252,9 @@
 
 .candidate-profile-page {
   width: 100%;
+  max-width: none !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
 }
 
 .candidate-profile-hero {
