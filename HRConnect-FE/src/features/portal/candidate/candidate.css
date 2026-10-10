@@ -300,6 +300,22 @@
   background: linear-gradient(180deg, #fff 0%, #fbfefd 100%);
 }
 
+.candidate-consent-page {
+  max-width: 68rem;
+}
+
+.candidate-consent-surface .ant-btn {
+  min-height: 2.75rem;
+  border-radius: 0.75rem;
+}
+
+.candidate-consent-surface dl > div {
+  padding: 0.9rem 1rem;
+  border: 1px solid #e7eeec;
+  border-radius: 0.9rem;
+  background: #fbfefd;
+}
+
 @media (max-width: 639px) {
   .candidate-page {
     gap: 1rem;
