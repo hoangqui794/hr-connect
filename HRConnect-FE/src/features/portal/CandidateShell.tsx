@@ -31,7 +31,7 @@ const PRIMARY_NAV = [
     to: '/candidate/cvs',
     label: 'Hồ sơ & CV',
     icon: FolderOpenOutlined,
-    matches: ['/candidate/cvs', '/candidate/affiliate-cvs', '/candidate/profile', '/candidate/settings'],
+    matches: ['/candidate/cvs', '/candidate/affiliate-cvs'],
   },
 ] as const;
 
@@ -61,6 +61,7 @@ export const CandidateShell: React.FC = () => {
 
   const isPathActive = (prefixes: readonly string[]) =>
     prefixes.some((prefix) => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`));
+  const isAccountPathActive = isPathActive(ACCOUNT_LINKS.map((item) => item.to));
 
   const closeAccount = (restoreFocus = false) => {
     setAccountOpen(false);
@@ -145,13 +146,19 @@ export const CandidateShell: React.FC = () => {
                 trigger={['click']}
                 menu={{
                   items: accountMenuItems,
+                  selectedKeys: isAccountPathActive ? ACCOUNT_LINKS.filter((item) => isPathActive([item.to])).map((item) => item.to) : [],
                   onClick: ({ key }) => (key === 'logout' ? signOut() : navigate(key)),
                 }}
               >
                 <button
                   type="button"
                   aria-label="Tài khoản và cài đặt"
-                  className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+                  data-active={isAccountPathActive}
+                  className={`flex cursor-pointer items-center gap-3 rounded-full border-0 py-1 pl-1 pr-3 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
+                    isAccountPathActive
+                      ? 'bg-[color:var(--console-accent-soft)] shadow-[inset_0_0_0_1px_rgba(15,118,110,0.18)]'
+                      : 'bg-transparent hover:bg-slate-100'
+                  }`}
                 >
                   <Initials name={name} size={36} />
                   <span className="text-left leading-tight">

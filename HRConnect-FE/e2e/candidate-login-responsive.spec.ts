@@ -41,6 +41,7 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
 
   await page.goto('/candidate/profile');
   await expect(page.getByRole('heading', { name: 'Candidate E2E' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Hồ sơ & CV', exact: true })).not.toHaveAttribute('aria-current', 'page');
   const profileHasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
   );
