@@ -7,15 +7,18 @@ import { JobDiscoveryPage } from '@/features/jobs-mf01/JobDiscoveryPage';
 import { JobDetailPanel } from '@/features/jobs-mf01/JobDetailPanel';
 import { useJobDetail } from '@/features/jobs-mf01/useJobQueries';
 import { JobApplyActions } from '@/features/portal/JobApplyActions';
+import { CandidatePageHeader, CandidateSurface } from './CandidateUi';
 
 export const CandidateJobsPage: React.FC = () => (
-  <div className="space-y-5">
-    <header>
-      <p className="m-0 text-xs font-bold uppercase tracking-[0.12em] text-[color:var(--console-accent-strong)]">Cơ hội dành cho bạn</p>
-      <h1 className="m-0 mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Tìm việc làm phù hợp</h1>
-      <p className="m-0 mt-2 text-sm text-slate-600">Tìm kiếm, xem chi tiết và ứng tuyển mà không rời khỏi không gian Candidate.</p>
-    </header>
-    <JobDiscoveryPage detailBasePath="/candidate/jobs" />
+  <div className="candidate-page candidate-jobs-page">
+    <CandidatePageHeader
+      eyebrow="Cơ hội dành cho bạn"
+      title="Tìm việc làm phù hợp"
+      description="Khám phá công việc đang tuyển và ứng tuyển nhanh bằng CV đã lưu của bạn."
+    />
+    <div className="candidate-job-discovery">
+      <JobDiscoveryPage detailBasePath="/candidate/jobs" />
+    </div>
   </div>
 );
 
@@ -24,12 +27,12 @@ export const CandidateJobDetailPage: React.FC = () => {
   const detail = useJobDetail(jobId);
 
   return (
-    <div className="space-y-4">
-      <Link to="/candidate/jobs" className="inline-flex min-h-11 items-center gap-2 rounded-lg text-sm font-semibold text-slate-600 no-underline hover:text-[color:var(--console-accent-strong)]">
+    <div className="candidate-page candidate-job-detail-page">
+      <Link to="/candidate/jobs" className="candidate-back-link">
         <ArrowLeftOutlined aria-hidden />
         Quay lại danh sách việc làm
       </Link>
-      <section className="rounded-2xl border border-solid border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      <CandidateSurface className="candidate-job-detail-surface">
         {detail.isError ? (
           <Alert type="error" showIcon message="Không thể mở việc làm này" description={getApiErrorMessage(detail.error)} />
         ) : detail.isLoading || !detail.data ? (
@@ -42,7 +45,7 @@ export const CandidateJobDetailPage: React.FC = () => {
             <JobDetailPanel job={detail.data} />
           </>
         )}
-      </section>
+      </CandidateSurface>
     </div>
   );
 };

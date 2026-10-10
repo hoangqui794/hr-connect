@@ -3,7 +3,150 @@
   --candidate-surface: #ffffff;
   --candidate-text: #0f172a;
   --candidate-muted: #526071;
+  --candidate-border: #dfe8e5;
+  --candidate-accent: #087f6f;
+  --candidate-accent-soft: #e7f6f2;
+  --candidate-radius: 1.25rem;
   font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;
+}
+
+.candidate-page {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.candidate-page-header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.candidate-eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--candidate-accent);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.candidate-page-title {
+  margin: 0;
+  color: var(--candidate-text);
+  font-size: clamp(1.65rem, 4vw, 2.15rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.18;
+}
+
+.candidate-page-description {
+  max-width: 42rem;
+  margin: 0.55rem 0 0;
+  color: var(--candidate-muted);
+  font-size: 0.925rem;
+  line-height: 1.65;
+}
+
+.candidate-page-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.candidate-surface {
+  min-width: 0;
+  border: 1px solid var(--candidate-border);
+  border-radius: var(--candidate-radius);
+  background: var(--candidate-surface);
+  box-shadow: 0 12px 35px rgb(15 23 42 / 5%);
+}
+
+.candidate-back-link {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  color: #475569;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.candidate-back-link:hover {
+  color: var(--candidate-accent);
+}
+
+.candidate-job-discovery > .space-y-5 {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.candidate-job-discovery > .space-y-5 > div:first-child,
+.candidate-job-discovery .ant-card,
+.candidate-job-discovery .rounded-xl.border,
+.candidate-job-discovery .candidate-job-empty {
+  border-color: var(--candidate-border) !important;
+  border-radius: var(--candidate-radius) !important;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 4%);
+}
+
+.candidate-job-discovery > .space-y-5 > div:first-child {
+  padding: 1rem;
+}
+
+.candidate-job-discovery .ant-input-affix-wrapper,
+.candidate-job-discovery .ant-input-group-wrapper,
+.candidate-job-discovery .ant-select-selector,
+.candidate-job-discovery .ant-input {
+  min-height: 2.75rem;
+  border-radius: 0.75rem !important;
+}
+
+.candidate-job-discovery .ant-input-search-button {
+  min-height: 2.75rem;
+  border-radius: 0 0.75rem 0.75rem 0 !important;
+}
+
+.candidate-job-discovery .ant-card {
+  overflow: hidden;
+}
+
+.candidate-job-discovery .ant-card-hoverable:hover {
+  border-color: #91cfc3 !important;
+  box-shadow: 0 16px 38px rgb(8 127 111 / 10%);
+  transform: translateY(-2px);
+}
+
+.candidate-job-detail-surface {
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+@media (max-width: 639px) {
+  .candidate-page {
+    gap: 1rem;
+  }
+
+  .candidate-page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .candidate-page-actions,
+  .candidate-page-actions > * {
+    width: 100%;
+  }
+
+  .candidate-job-discovery > .space-y-5 > div:first-child {
+    padding: 0.875rem;
+  }
 }
 
 .candidate-account-drawer {

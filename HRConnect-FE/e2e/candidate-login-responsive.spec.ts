@@ -28,4 +28,14 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
   await page.getByRole('link', { name: 'Tìm việc', exact: true }).click();
   await expect(page).toHaveURL(/\/candidate\/jobs$/);
   await expect(page.getByRole('heading', { name: 'Tìm việc làm phù hợp' })).toBeVisible();
+
+  const jobsHaveHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  );
+  expect(jobsHaveHorizontalOverflow).toBe(false);
+
+  await page.screenshot({
+    path: testInfo.outputPath(`candidate-jobs-${testInfo.project.name}.png`),
+    fullPage: true,
+  });
 });
