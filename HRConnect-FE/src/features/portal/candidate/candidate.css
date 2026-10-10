@@ -204,6 +204,32 @@
   font-weight: 700;
 }
 
+.candidate-cv-card {
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.candidate-cv-card:hover {
+  border-color: #b7dcd5;
+  box-shadow: 0 15px 32px rgb(15 23 42 / 7%);
+}
+
+.candidate-cv-card .ant-btn,
+.candidate-cv-upload .ant-btn {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-radius: 0.75rem;
+}
+
+.candidate-cv-upload .ant-upload-drag {
+  border-color: #b7dcd5;
+  border-radius: 1rem !important;
+  background: #f8fcfb !important;
+}
+
+.candidate-cv-upload .ant-upload-drag:hover {
+  border-color: var(--candidate-accent);
+}
+
 @media (max-width: 639px) {
   .candidate-page {
     gap: 1rem;
@@ -237,6 +263,11 @@
   .candidate-filter-bar .ant-picker,
   .candidate-filter-bar .ant-btn {
     width: 100%;
+  }
+
+  .candidate-cv-card > div:last-child {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 

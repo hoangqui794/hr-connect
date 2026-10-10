@@ -471,8 +471,8 @@ export const CandidateCvsPage: React.FC = () => {
   };
 
   return (
-    <div>
-      <PageHero eyebrow="Hồ sơ" title="Kho CV" description="CV bạn tải lên được dùng để ứng tuyển. CV chính được chọn sẵn khi bạn bấm Ứng tuyển." />
+    <div className="candidate-page candidate-cv-page">
+      <CandidatePageHeader eyebrow="Hồ sơ" title="Kho CV" description="CV bạn tải lên được dùng để ứng tuyển. CV chính được chọn sẵn khi bạn bấm Ứng tuyển." />
       {!canView && <Alert className="mb-5" type="error" showIcon message="Bạn không có quyền xem kho CV cá nhân." />}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-3">
@@ -481,10 +481,10 @@ export const CandidateCvsPage: React.FC = () => {
           ) : cvs.isError ? (
             <Alert type="error" showIcon message={getApiErrorMessage(cvs.error)} />
           ) : list.length === 0 ? (
-            <Surface className="p-10 text-center text-sm text-slate-600">Chưa có CV nào. Tải CV đầu tiên ở khung bên cạnh.</Surface>
+            <CandidateSurface className="candidate-empty-surface p-10 text-center text-sm text-slate-600">Chưa có CV nào. Tải CV đầu tiên ở khung bên cạnh.</CandidateSurface>
           ) : (
             list.map((cv) => (
-              <article key={cv.cvId} className="admin-surface flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap">
+              <article key={cv.cvId} className="candidate-surface candidate-cv-card flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap">
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl text-red-700" aria-hidden>
                   <FilePdfOutlined />
                 </span>
@@ -541,10 +541,10 @@ export const CandidateCvsPage: React.FC = () => {
           )}
         </div>
         {canCreate && <aside className="lg:sticky lg:top-24 lg:self-start">
-          <Surface className="p-5">
+          <CandidateSurface className="candidate-cv-upload p-5">
             <h2 className="m-0 mb-3 text-base font-semibold text-slate-900">Tải CV mới</h2>
             <CvUploader />
-          </Surface>
+          </CandidateSurface>
         </aside>}
       </div>
       <Modal
