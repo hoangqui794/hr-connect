@@ -7,9 +7,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { candidateAffiliateCvApi } from '@/services/api/mf02Api';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
-import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { StatusDot } from '@/features/admin-console/ui';
 import { fileSize, submissionStatus } from './mf02Labels';
 import { candidateKeys, useOpenSignedUrl } from './CandidatePages';
+import { CandidatePageHeader, CandidateSurface } from './candidate/CandidateUi';
 
 export const candidateAffiliateCvKeys = {
   all: ['candidate-affiliate-cvs'] as const,
@@ -33,8 +34,8 @@ export const CandidateAffiliateCvsPage: React.FC = () => {
   const items = query.data?.items ?? [];
 
   return (
-    <div>
-      <PageHero
+    <div className="candidate-page candidate-affiliate-cvs-page">
+      <CandidatePageHeader
         eyebrow="Quyền riêng tư CV"
         title="CV do Affiliate đã nộp"
         description="Kiểm tra những CV Affiliate đã tải thay bạn. Bạn có thể xem nguồn gửi, lịch sử sử dụng và quản lý quyền dùng lại ở trang chi tiết."
@@ -47,17 +48,17 @@ export const CandidateAffiliateCvsPage: React.FC = () => {
       ) : query.isError ? (
         <Alert type="error" showIcon message="Không tải được danh sách CV" description={getApiErrorMessage(query.error)} />
       ) : items.length === 0 ? (
-        <Surface className="p-10 text-center">
+        <CandidateSurface className="candidate-empty-surface p-10 text-center">
           <SafetyCertificateOutlined className="text-3xl text-teal-700" aria-hidden />
           <p className="m-0 mt-3 font-semibold text-slate-900">Chưa có CV nào do Affiliate tải lên</p>
           <p className="m-0 mt-1 text-sm text-slate-600">Khi một Affiliate giới thiệu bạn, CV và quyền sử dụng sẽ xuất hiện tại đây.</p>
-        </Surface>
+        </CandidateSurface>
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
           {items.map((cv) => {
             const reuseAllowed = cv.affiliateReuseStatus === 'ALLOWED';
             return (
-              <article key={cv.cvId} className="admin-surface flex flex-col gap-4 p-5">
+              <article key={cv.cvId} className="candidate-surface candidate-affiliate-cv-card flex flex-col gap-4 p-5">
                 <div className="flex items-start gap-3">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl text-red-700" aria-hidden>
                     <FilePdfOutlined />
@@ -169,7 +170,7 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
   if (detail.isLoading) return <Skeleton active paragraph={{ rows: 10 }} />;
   if (detail.isError || !detail.data) {
     return (
-      <Surface className="p-6">
+      <CandidateSurface className="p-6">
         <Alert
           type="error"
           showIcon
@@ -177,25 +178,25 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
           description={getApiErrorMessage(detail.error)}
           action={<Button onClick={() => navigate('/candidate/affiliate-cvs')}>Về danh sách</Button>}
         />
-      </Surface>
+      </CandidateSurface>
     );
   }
 
   const cv = detail.data;
   const reuseAllowed = cv.affiliateReuseStatus === 'ALLOWED';
   return (
-    <div className="space-y-5">
-      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/candidate/affiliate-cvs')}>
+    <div className="candidate-page candidate-affiliate-cv-detail-page">
+      <Button className="candidate-detail-back" icon={<ArrowLeftOutlined />} onClick={() => navigate('/candidate/affiliate-cvs')}>
         Danh sách CV Affiliate
       </Button>
-      <PageHero
+      <CandidatePageHeader
         eyebrow="Quyền riêng tư CV"
         title={cv.title || cv.fileName || 'CV Affiliate'}
         description={`Được tải lên bởi ${cv.affiliateDisplayName} · ${dayjs(cv.createdAt).format('DD/MM/YYYY')}`}
         actions={<StatusDot tone={reuseAllowed ? 'success' : 'neutral'}>{reuseAllowed ? 'Cho phép dùng lại' : 'Đã thu hồi dùng lại'}</StatusDot>}
       />
 
-      <Surface className="p-6">
+      <CandidateSurface className="p-6">
         <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
           <dl className="grid flex-1 grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
             {[
@@ -246,9 +247,9 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
           message="Quyền dùng lại chỉ áp dụng cho lần giới thiệu mới"
           description="Thu hồi quyền không xóa Submission, Application, Attribution hoặc kết quả chấm điểm đã phát sinh."
         />
-      </Surface>
+      </CandidateSurface>
 
-      <Surface>
+      <CandidateSurface className="overflow-hidden">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="m-0 text-base font-bold text-slate-900">CV này đã được dùng ở đâu</h2>
           <p className="m-0 mt-1 text-sm text-slate-500">Lịch sử Job và tiến độ phát sinh từ CV, mới nhất trước.</p>
@@ -300,7 +301,7 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
             />
           </div>
         )}
-      </Surface>
+      </CandidateSurface>
     </div>
   );
 };
