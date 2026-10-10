@@ -1,13 +1,24 @@
 import { expect, test } from '@playwright/test';
 import { mockCandidateApis } from './support/candidateApi';
 
-test('Trang chủ công khai hiển thị lối vào cho Guest', async ({ page }) => {
+test('Trang chủ công khai hiển thị lối vào cho Guest', async ({ page }, testInfo) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: /Tuyển Dụng Chuẩn ATS/i })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Đăng nhập/i })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Đăng ký/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Kết nối đúng người/i })).toBeVisible();
+  await expect(page.getByText('Việc làm', { exact: true })).toBeVisible();
+  await expect(page.getByText('Giải pháp dịch vụ', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Đăng nhập', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Đăng ký', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Vào không gian Candidate' })).toHaveCount(0);
+
+  await page.screenshot({
+    path: testInfo.outputPath(`guest-landing-${testInfo.project.name}.png`),
+    fullPage: true,
+  });
+
+  await page.getByText('Vai trò', { exact: true }).click();
+  await expect(page).toHaveURL(/\/#roles$/);
+  await expect.poll(() => page.locator('#roles').evaluate((element) => element.getBoundingClientRect().top)).toBeLessThan(140);
 });
 
 test('Candidate đăng nhập và mở được workspace trên viewport hiện tại', async ({ page }, testInfo) => {

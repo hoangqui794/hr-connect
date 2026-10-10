@@ -4,6 +4,7 @@ import {
   LogoutOutlined,
   DashboardOutlined,
   CompassOutlined,
+  SearchOutlined,
   TeamOutlined,
   DollarCircleOutlined,
   BellOutlined,
@@ -63,8 +64,9 @@ export const Navbar: React.FC = () => {
     },
   ];
 
-  const isRecruiterActive = location.search.includes('mode=recruiters');
-  const isHomeActive = location.pathname === '/' && !isRecruiterActive;
+  const isRolesActive = location.pathname === '/' && location.hash === '#roles';
+  const isHomeActive = location.pathname === '/' && !isRolesActive;
+  const isJobsActive = location.pathname === '/jobs' || location.pathname.startsWith('/jobs/');
 
   // Ẩn mục "Bảng giá dịch vụ" đối với CANDIDATE; Chỉ hiển thị khi là Khách (chưa đăng nhập) hoặc Doanh nghiệp
   const showServicesPricing =
@@ -100,14 +102,14 @@ export const Navbar: React.FC = () => {
             width: 38,
             height: 38,
             borderRadius: 10,
-            background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+            background: 'linear-gradient(135deg, #0f766e, #14b8a6)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: 800,
             color: '#fff',
             fontSize: 19,
-            boxShadow: '0 3px 12px rgba(37, 99, 235, 0.3)',
+            boxShadow: '0 3px 12px rgba(15, 118, 110, 0.26)',
           }}
         >
           H
@@ -117,9 +119,9 @@ export const Navbar: React.FC = () => {
         </span>
         <Tag
           style={{
-            background: '#eff6ff',
-            color: '#1d4ed8',
-            border: '1px solid #bfdbfe',
+            background: '#f0fdfa',
+            color: '#115e59',
+            border: '1px solid #99f6e4',
             borderRadius: 100,
             fontSize: 10,
             fontWeight: 700,
@@ -127,40 +129,55 @@ export const Navbar: React.FC = () => {
             padding: '1px 8px',
           }}
         >
-          AI-Powered
+          Recruitment Platform
         </Tag>
       </div>
 
-      {/* Menu điều hướng chính: [Trang chủ / Tìm việc], [Mạng lưới Recruiter], [Bảng giá dịch vụ] */}
+      {/* Các chức năng Guest: xem giới thiệu, tìm việc và xem thông tin dịch vụ. */}
       <nav style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Button
           type="text"
           icon={<CompassOutlined />}
           onClick={() => navigate('/')}
           style={{
-            color: isHomeActive ? '#1d4ed8' : '#475569',
+            color: isHomeActive ? '#115e59' : '#475569',
             fontWeight: isHomeActive ? 700 : 500,
             fontSize: 14,
-            background: isHomeActive ? '#eff6ff' : 'transparent',
+            background: isHomeActive ? '#f0fdfa' : 'transparent',
             borderRadius: 8,
           }}
         >
-          Trang chủ / Tìm việc
+          Giới thiệu
+        </Button>
+
+        <Button
+          type="text"
+          icon={<SearchOutlined />}
+          onClick={() => navigate('/jobs')}
+          style={{
+            color: isJobsActive ? '#115e59' : '#475569',
+            fontWeight: isJobsActive ? 700 : 500,
+            fontSize: 14,
+            background: isJobsActive ? '#f0fdfa' : 'transparent',
+            borderRadius: 8,
+          }}
+        >
+          Việc làm
         </Button>
 
         <Button
           type="text"
           icon={<TeamOutlined />}
-          onClick={() => navigate('/?mode=recruiters')}
+          onClick={() => navigate('/#roles')}
           style={{
-            color: isRecruiterActive ? '#1d4ed8' : '#475569',
-            fontWeight: isRecruiterActive ? 700 : 500,
+            color: isRolesActive ? '#115e59' : '#475569',
+            fontWeight: isRolesActive ? 700 : 500,
             fontSize: 14,
-            background: isRecruiterActive ? '#eff6ff' : 'transparent',
+            background: isRolesActive ? '#f0fdfa' : 'transparent',
             borderRadius: 8,
           }}
         >
-          Mạng lưới Recruiter
+          Vai trò
         </Button>
 
         {showServicesPricing && (
@@ -169,13 +186,13 @@ export const Navbar: React.FC = () => {
             icon={<DollarCircleOutlined />}
             onClick={() => navigate('/services')}
             style={{
-              color: location.pathname === '/services' ? '#1d4ed8' : '#475569',
+              color: location.pathname === '/services' ? '#115e59' : '#475569',
               fontWeight: location.pathname === '/services' ? 700 : 500,
               fontSize: 14,
               borderRadius: 8,
             }}
           >
-            Bảng giá dịch vụ
+            Giải pháp dịch vụ
           </Button>
         )}
       </nav>
@@ -207,7 +224,7 @@ export const Navbar: React.FC = () => {
               >
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(241, 245, 249, 0.9)', display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>Thông báo</span>
-                  <span style={{ color: '#2563eb', fontSize: 11, cursor: 'pointer', fontWeight: 600 }} onClick={() => useAlertStore.getState().clearAll()}>
+                  <span style={{ color: '#0f766e', fontSize: 11, cursor: 'pointer', fontWeight: 600 }} onClick={() => useAlertStore.getState().clearAll()}>
                     Xóa tất cả
                   </span>
                 </div>
@@ -269,7 +286,7 @@ export const Navbar: React.FC = () => {
                 <Avatar
                   size={28}
                   style={{
-                    background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                    background: 'linear-gradient(135deg, #0f766e, #115e59)',
                     fontWeight: 700,
                     fontSize: 12,
                   }}
@@ -305,9 +322,9 @@ export const Navbar: React.FC = () => {
                 fontWeight: 600,
                 fontSize: 13,
                 borderRadius: 8,
-                background: '#2563eb',
+                background: '#0f766e',
                 border: 'none',
-                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                boxShadow: '0 2px 8px rgba(15, 118, 110, 0.25)',
               }}
             >
               {t.nav.register}
