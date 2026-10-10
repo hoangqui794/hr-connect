@@ -7,7 +7,8 @@ import { candidateIdentityApi } from '@/services/api/mf02/candidateIdentityApi';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { CandidateIdentityClaimState, CandidateIdentityClaimVerification } from '@/types/api/mf02';
-import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { StatusDot } from '@/features/admin-console/ui';
+import { CandidatePageHeader, CandidateSurface } from './candidate/CandidateUi';
 
 const STORAGE_KEY = 'hrconnect:candidate-identity-claim';
 export const candidateIdentityKeys = { all: ['candidate-email-identities'] as const };
@@ -132,8 +133,8 @@ export const CandidateIdentityPage: React.FC = () => {
   if (!canManage) return <Alert type="error" showIcon message="Bạn không có quyền quản lý email liên kết." />;
 
   return (
-    <div className="space-y-5">
-      <PageHero
+    <div className="candidate-page candidate-identity-page">
+      <CandidatePageHeader
         eyebrow="Danh tính Candidate"
         title="Email và hồ sơ liên kết"
         description="Xác minh email cũ để nhận lại CV và lịch sử ứng tuyển đã được Affiliate tạo trước khi bạn đăng ký. Email phụ không dùng để đăng nhập hoặc quên mật khẩu."
@@ -150,7 +151,7 @@ export const CandidateIdentityPage: React.FC = () => {
         />
       )}
 
-      <Surface>
+      <CandidateSurface className="overflow-hidden">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="m-0 text-base font-bold text-slate-900">Email của tài khoản</h2>
           <p className="m-0 mt-1 text-sm text-slate-500">Email chính dùng đăng nhập; email phụ chỉ giúp nhận diện đúng hồ sơ Candidate.</p>
@@ -180,9 +181,9 @@ export const CandidateIdentityPage: React.FC = () => {
             ))}
           </ul>
         )}
-      </Surface>
+      </CandidateSurface>
 
-      <Surface className="p-5">
+      <CandidateSurface className="candidate-identity-claim p-5">
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700"><LinkOutlined /></span>
           <div>
@@ -238,7 +239,7 @@ export const CandidateIdentityPage: React.FC = () => {
             {pending.emailDeliveryStatus === 'FAILED' && <Alert type="warning" showIcon message="Email trước chưa gửi được. Bạn có thể bấm Gửi lại mã khi hết thời gian chờ." />}
           </div>
         )}
-      </Surface>
+      </CandidateSurface>
 
       <Alert
         type="info"

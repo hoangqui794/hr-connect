@@ -279,6 +279,27 @@
   border-radius: 0.75rem !important;
 }
 
+.candidate-identity-page {
+  max-width: 68rem;
+}
+
+.candidate-identity-page .ant-alert,
+.candidate-identity-page .ant-input-affix-wrapper,
+.candidate-identity-page .ant-input,
+.candidate-identity-page .ant-btn {
+  border-radius: 0.75rem;
+}
+
+.candidate-identity-page .ant-input-affix-wrapper,
+.candidate-identity-page .ant-input,
+.candidate-identity-page .ant-btn {
+  min-height: 2.75rem;
+}
+
+.candidate-identity-claim {
+  background: linear-gradient(180deg, #fff 0%, #fbfefd 100%);
+}
+
 @media (max-width: 639px) {
   .candidate-page {
     gap: 1rem;
