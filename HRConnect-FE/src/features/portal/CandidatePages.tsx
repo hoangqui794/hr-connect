@@ -29,6 +29,7 @@ import { useAuthStore } from '@/stores/authStore';
 import type { CandidateApplication } from '@/types/api/mf02';
 import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { CANDIDATE_STEPS, MAX_CV_MB, candidateStage, cvFileError, fileSize } from './mf02Labels';
+import { CandidateSurface } from './candidate/CandidateUi';
 
 dayjs.extend(relativeTimePlugin);
 dayjs.locale('vi');
@@ -84,7 +85,7 @@ const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
   const navigate = useNavigate();
   const st = candidateStage(a.status);
   return (
-    <article className="admin-surface flex flex-col gap-3 p-5">
+    <article className="candidate-surface candidate-application-card flex flex-col gap-3 p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[16px] font-semibold leading-snug text-slate-900">{a.jobTitle}</div>
@@ -123,8 +124,8 @@ export const CandidateHomePage: React.FC = () => {
   const firstName = (user?.name || 'bạn').trim().split(/\s+/).slice(-1)[0];
 
   return (
-    <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-br from-teal-50 via-white to-emerald-50 p-7 shadow-[0_0_0_1px_rgba(15,118,110,0.1)] sm:p-9">
+    <div className="candidate-page candidate-dashboard-page">
+      <section className="candidate-dashboard-hero">
         <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-teal-200/50 blur-3xl" />
         <div className="relative">
           <h1 className="m-0 text-[30px] font-extrabold leading-tight tracking-[-0.02em] text-slate-900">Chào {firstName},</h1>
@@ -156,7 +157,7 @@ export const CandidateHomePage: React.FC = () => {
         />
       )}
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-3">
+      <div className="candidate-stat-grid">
         {[
           { label: 'Đơn đã nộp', value: items.length, to: '/candidate/applications' },
           { label: 'Đang xử lý', value: active.length, to: '/candidate/applications' },
@@ -166,7 +167,7 @@ export const CandidateHomePage: React.FC = () => {
             key={k.label}
             type="button"
             onClick={() => navigate(k.to)}
-            className="admin-surface cursor-pointer border-0 p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+            className="candidate-surface candidate-stat-card cursor-pointer p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--candidate-accent)]"
           >
             <span className="block text-[13px] font-medium text-slate-600">{k.label}</span>
             <span className="mt-1 block text-[28px] font-bold tabular-nums text-slate-900">
@@ -176,8 +177,8 @@ export const CandidateHomePage: React.FC = () => {
         ))}
       </div>
 
-      <section>
-        <div className="mb-3 flex items-center justify-between">
+      <section className="candidate-dashboard-section">
+        <div className="candidate-section-heading">
           <h2 className="m-0 text-base font-bold text-slate-900">Đơn gần đây</h2>
           {items.length > 0 && (
             <Button type="link" className="!px-0" onClick={() => navigate('/candidate/applications')}>
@@ -190,7 +191,9 @@ export const CandidateHomePage: React.FC = () => {
         ) : apps.isError ? (
           <Alert type="error" showIcon message={getApiErrorMessage(apps.error)} />
         ) : items.length === 0 ? (
-          <Surface className="p-8 text-center text-sm text-slate-600">Chưa có đơn ứng tuyển nào.</Surface>
+          <CandidateSurface className="candidate-empty-surface p-8 text-center text-sm text-slate-600">
+            Chưa có đơn ứng tuyển nào.
+          </CandidateSurface>
         ) : (
           <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
             {items.slice(0, 4).map((a) => (
