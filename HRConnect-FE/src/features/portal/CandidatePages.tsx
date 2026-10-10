@@ -29,7 +29,7 @@ import { useAuthStore } from '@/stores/authStore';
 import type { CandidateApplication } from '@/types/api/mf02';
 import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { CANDIDATE_STEPS, MAX_CV_MB, candidateStage, cvFileError, fileSize } from './mf02Labels';
-import { CandidateSurface } from './candidate/CandidateUi';
+import { CandidatePageHeader, CandidateSurface } from './candidate/CandidateUi';
 
 dayjs.extend(relativeTimePlugin);
 dayjs.locale('vi');
@@ -235,8 +235,8 @@ export const CandidateApplicationsPage: React.FC = () => {
   };
 
   return (
-    <div>
-      <PageHero
+    <div className="candidate-page candidate-applications-page">
+      <CandidatePageHeader
         eyebrow="Ứng tuyển"
         title="Đơn ứng tuyển của tôi"
         description="Theo dõi từng đơn từ lúc nộp đến khi nhận việc. Trạng thái được cập nhật ngay khi nhà tuyển dụng xử lý."
@@ -246,7 +246,7 @@ export const CandidateApplicationsPage: React.FC = () => {
           </Button>
         }
       />
-      <div className="mb-4 flex flex-wrap gap-3">
+      <CandidateSurface className="candidate-filter-bar">
         <Select
           aria-label="Lọc theo trạng thái"
           allowClear
@@ -278,20 +278,20 @@ export const CandidateApplicationsPage: React.FC = () => {
           }
         />
         {(status || fromDate || toDate || jobId) && <Button onClick={() => setSearchParams({})}>Xóa bộ lọc</Button>}
-      </div>
+      </CandidateSurface>
       {apps.isLoading ? (
         <Skeleton active paragraph={{ rows: 6 }} />
       ) : apps.isError ? (
         <Alert type="error" showIcon message="Không tải được đơn ứng tuyển" description={getApiErrorMessage(apps.error)} />
       ) : items.length === 0 ? (
-        <Surface className="p-10 text-center">
+        <CandidateSurface className="candidate-empty-surface p-10 text-center">
           <p className="m-0 text-sm text-slate-600">{status || fromDate || toDate || jobId ? 'Không có đơn nào phù hợp bộ lọc.' : 'Bạn chưa ứng tuyển công việc nào.'}</p>
           {!status && !fromDate && !toDate && !jobId && (
-            <Button type="primary" className="mt-3" icon={<SearchOutlined />} onClick={() => navigate('/jobs')}>
+            <Button type="primary" className="mt-3" icon={<SearchOutlined />} onClick={() => navigate('/candidate/jobs')}>
               Tìm việc làm
             </Button>
           )}
-        </Surface>
+        </CandidateSurface>
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
           {items.map((a) => (
@@ -327,7 +327,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
 
   if (detail.isError || !detail.data) {
     return (
-      <Surface className="p-6">
+      <CandidateSurface className="p-6">
         <Alert
           type="error"
           showIcon
@@ -335,7 +335,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
           description={getApiErrorMessage(detail.error)}
           action={<Button onClick={() => navigate('/candidate/applications')}>Về danh sách</Button>}
         />
-      </Surface>
+      </CandidateSurface>
     );
   }
 
@@ -343,17 +343,17 @@ export const CandidateApplicationDetailPage: React.FC = () => {
   const stage = candidateStage(application.status);
 
   return (
-    <div className="space-y-5">
-      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/candidate/applications')}>
+    <div className="candidate-page candidate-application-detail-page">
+      <Button className="candidate-detail-back" icon={<ArrowLeftOutlined />} onClick={() => navigate('/candidate/applications')}>
         Đơn ứng tuyển
       </Button>
-      <PageHero
+      <CandidatePageHeader
         eyebrow="Chi tiết ứng tuyển"
         title={application.jobTitle}
         description={application.companyName}
         actions={<StatusDot tone={stage.tone}>{stage.label}</StatusDot>}
       />
-      <Surface className="space-y-5 p-6">
+      <CandidateSurface className="space-y-5 p-6">
         <StageTracker status={application.status} />
         <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
           <div>
@@ -376,15 +376,15 @@ export const CandidateApplicationDetailPage: React.FC = () => {
           </div>
         </dl>
         {application.statusReason && <Alert type="info" showIcon message="Thông tin trạng thái" description={application.statusReason} />}
-      </Surface>
-      <Surface className="p-6">
+      </CandidateSurface>
+      <CandidateSurface className="p-6">
         <h2 className="m-0 text-base font-bold text-slate-900">Kết quả AI</h2>
         <div className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
           <div><span className="text-slate-500">Trạng thái</span><strong className="mt-1 block text-slate-900">{application.aiStatus || 'Chưa có kết quả'}</strong></div>
           <div><span className="text-slate-500">Điểm phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchScore == null ? '—' : `${application.aiMatchScore}%`}</strong></div>
           <div><span className="text-slate-500">Mức phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchTier || '—'}</strong></div>
         </div>
-      </Surface>
+      </CandidateSurface>
     </div>
   );
 };

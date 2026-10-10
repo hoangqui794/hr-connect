@@ -183,6 +183,27 @@
   color: var(--candidate-muted);
 }
 
+.candidate-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.candidate-filter-bar .ant-select-selector,
+.candidate-filter-bar .ant-picker,
+.candidate-filter-bar .ant-btn {
+  min-height: 2.75rem;
+  border-radius: 0.75rem !important;
+}
+
+.candidate-detail-back {
+  width: fit-content;
+  min-height: 2.75rem;
+  border-radius: 0.75rem;
+  font-weight: 700;
+}
+
 @media (max-width: 639px) {
   .candidate-page {
     gap: 1rem;
@@ -209,6 +230,13 @@
   .candidate-stat-grid {
     grid-template-columns: 1fr;
     gap: 0.75rem;
+  }
+
+  .candidate-filter-bar,
+  .candidate-filter-bar .ant-select,
+  .candidate-filter-bar .ant-picker,
+  .candidate-filter-bar .ant-btn {
+    width: 100%;
   }
 }
 
