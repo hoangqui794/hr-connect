@@ -32,6 +32,13 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
   await expect(page.getByRole('heading', { name: 'Tìm việc làm phù hợp' })).toBeVisible();
   const jobsBrandX = (await brandLink.boundingBox())?.x;
   expect(Math.abs((jobsBrandX ?? 0) - (initialBrandX ?? 0))).toBeLessThan(1);
+  const filterHeights = await Promise.all([
+    page.getByLabel('Từ khóa tìm việc').evaluate((element) => element.closest('.ant-input-group-wrapper')?.getBoundingClientRect().height ?? 0),
+    page.getByLabel('Địa điểm').evaluate((element) => element.closest('.ant-input-affix-wrapper')?.getBoundingClientRect().height ?? 0),
+    page.getByRole('combobox', { name: 'Hình thức làm việc' }).evaluate((element) => element.closest('.ant-select')?.getBoundingClientRect().height ?? 0),
+    page.getByRole('combobox', { name: 'Loại dịch vụ' }).evaluate((element) => element.closest('.ant-select')?.getBoundingClientRect().height ?? 0),
+  ]);
+  expect(Math.max(...filterHeights) - Math.min(...filterHeights)).toBeLessThan(1);
 
   const jobsHaveHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

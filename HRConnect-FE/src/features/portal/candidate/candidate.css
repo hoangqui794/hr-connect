@@ -109,10 +109,17 @@ html:has(.candidate-console) {
 
 .candidate-job-discovery .ant-input-affix-wrapper,
 .candidate-job-discovery .ant-input-group-wrapper,
+.candidate-job-discovery .ant-select,
 .candidate-job-discovery .ant-select-selector,
 .candidate-job-discovery .ant-input {
+  height: 2.75rem;
   min-height: 2.75rem;
   border-radius: 0.75rem !important;
+}
+
+.candidate-job-discovery .ant-input-affix-wrapper > .ant-input {
+  height: auto;
+  min-height: 0;
 }
 
 .candidate-job-discovery .ant-input-search-button {
