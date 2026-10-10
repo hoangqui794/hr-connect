@@ -38,4 +38,16 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
     path: testInfo.outputPath(`candidate-jobs-${testInfo.project.name}.png`),
     fullPage: true,
   });
+
+  await page.goto('/candidate/profile');
+  await expect(page.getByRole('heading', { name: 'Candidate E2E' })).toBeVisible();
+  const profileHasHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  );
+  expect(profileHasHorizontalOverflow).toBe(false);
+
+  await page.screenshot({
+    path: testInfo.outputPath(`candidate-profile-${testInfo.project.name}.png`),
+    fullPage: true,
+  });
 });

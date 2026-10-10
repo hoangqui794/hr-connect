@@ -385,9 +385,10 @@ export const CandidateProfilePage: React.FC = () => {
       : `${experienceNum} năm kinh nghiệm`;
 
   return (
-    <div style={{ maxWidth: 1180, margin: '0 auto', paddingBottom: 60 }}>
+    <div className="candidate-page candidate-profile-page" style={{ maxWidth: 1180, margin: '0 auto', paddingBottom: 60 }}>
       {/* Header Profile Summary — Impeccable Style System */}
       <div
+        className="candidate-profile-hero"
         style={{
           borderRadius: 20,
           background: 'linear-gradient(135deg, #0B0F17 0%, #111827 50%, #1e293b 100%)',
@@ -592,6 +593,7 @@ export const CandidateProfilePage: React.FC = () => {
 
       {/* Main Tabs Container */}
       <Card
+        className="candidate-profile-tabs"
         bordered={false}
         style={{
           borderRadius: 20,
