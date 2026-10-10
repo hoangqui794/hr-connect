@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
 import { Button, Space, Tag, Avatar, Dropdown, Badge, List, message } from 'antd';
 import {
-  UserOutlined,
   LogoutOutlined,
   DashboardOutlined,
-  IdcardOutlined,
-  CheckCircleOutlined,
-  HeartOutlined,
   CompassOutlined,
   TeamOutlined,
   DollarCircleOutlined,
@@ -17,7 +13,7 @@ import { useAuthStore, getInitials } from '@/stores/authStore';
 import { useAlertStore } from '@/stores/alertStore';
 import { useI18nStore } from '@/i18n';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
-import { CandidateUserDropdown } from '@/components/common/CandidateUserDropdown';
+import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWorkspaceMenu';
 import { DEMO_USERS, UserRole } from '@/types/roles';
 import { ROLE_DASHBOARD_ROUTES } from '@/routes/AppRoutes';
 
@@ -38,53 +34,6 @@ export const Navbar: React.FC = () => {
     void message.success('Đã đăng xuất thành công!');
     navigate('/');
   };
-
-  // Candidate-specific dropdown menu
-  const candidateMenuItems = [
-    {
-      key: 'user-info',
-      label: (
-        <div style={{ padding: '6px 4px' }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{userName}</div>
-          <div style={{ fontSize: 11, color: '#64748b' }}>{userEmail}</div>
-        </div>
-      ),
-      disabled: true,
-    },
-    { type: 'divider' as const },
-    {
-      key: 'dashboard',
-      icon: <DashboardOutlined style={{ color: '#0284c7' }} />,
-      label: 'Bảng điều khiển Ứng viên',
-      onClick: () => navigate('/candidate/dashboard'),
-    },
-    {
-      key: 'profile',
-      icon: <IdcardOutlined style={{ color: '#8b5cf6' }} />,
-      label: 'Trang cá nhân & Quản lý CV',
-      onClick: () => navigate('/candidate/profile'),
-    },
-    {
-      key: 'applications',
-      icon: <CheckCircleOutlined style={{ color: '#10b981' }} />,
-      label: 'Lịch sử ứng tuyển & Lịch PV',
-      onClick: () => navigate('/candidate/applications'),
-    },
-    {
-      key: 'saved-jobs',
-      icon: <HeartOutlined style={{ color: '#ef4444' }} />,
-      label: 'Việc làm đã lưu',
-      onClick: () => navigate('/candidate/saved-jobs'),
-    },
-    { type: 'divider' as const },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: 'Đăng xuất',
-      danger: true,
-      onClick: handleLogout,
-    },
-  ];
 
   // Generic non-candidate dropdown
   const genericMenuItems = [
@@ -113,8 +62,6 @@ export const Navbar: React.FC = () => {
       onClick: handleLogout,
     },
   ];
-
-  const userMenuItems = role === UserRole.CANDIDATE ? candidateMenuItems : genericMenuItems;
 
   const isRecruiterActive = location.search.includes('mode=recruiters');
   const isHomeActive = location.pathname === '/' && !isRecruiterActive;
@@ -304,9 +251,9 @@ export const Navbar: React.FC = () => {
 
         {isAuthenticated ? (
           role === UserRole.CANDIDATE ? (
-            <CandidateUserDropdown />
+            <CandidateWorkspaceMenu showWorkspaceButton />
           ) : (
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
+            <Dropdown menu={{ items: genericMenuItems }} placement="bottomRight" trigger={['click']}>
               <div
                 style={{
                   display: 'flex',
