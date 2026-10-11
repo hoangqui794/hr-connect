@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Typography, message, Alert, Modal } from 'antd';
+import { Form, Input, Button, message, Alert, Modal } from 'antd';
 import {
   LockOutlined,
   MailOutlined,
@@ -30,8 +30,7 @@ import { UserRole, ROLE_LABELS, mapApiRoleToUserRole } from '@/types/roles';
 import { getDashboardRouteForRole } from '@/routes/AppRoutes';
 import { authService, type LoginResponse, type CurrentUserResponse } from '@/services/authService';
 import { getApiErrorMessage } from '@/services/apiClient';
-
-const { Text } = Typography;
+import { AuthPageShell, AUTH_INPUT_CLASS, AUTH_LABEL_CLASS } from './AuthPageShell';
 
 interface DemoAccount {
   role: UserRole;
@@ -333,214 +332,150 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background ambient mesh */}
-      <div className="absolute top-0 left-0 right-0 h-96 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100/60 via-indigo-50/40 to-transparent pointer-events-none" />
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-blue-400/15 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-10 left-10 w-[300px] h-[300px] bg-indigo-300/15 rounded-full blur-[90px] pointer-events-none" />
+    <>
+      <AuthPageShell
+        eyebrow="Chào mừng bạn trở lại"
+        title="Đăng nhập HR Connect"
+        description="Tiếp tục quản lý cơ hội nghề nghiệp, ứng viên và quy trình tuyển dụng của bạn."
+        sideTitle="Mọi hành trình tuyển dụng bắt đầu từ một kết nối đáng tin cậy."
+        sideDescription="Một không gian làm việc chung cho Candidate, Affiliate Recruiter, doanh nghiệp và đội ngũ HR."
+        benefits={[
+          'Theo dõi hồ sơ và trạng thái tuyển dụng rõ ràng',
+          'Quản lý CV, ứng viên và nguồn giới thiệu tập trung',
+          'Bảo vệ tài khoản bằng xác thực và phân quyền theo vai trò',
+        ]}
+      >
+        {verifiedSuccessNotice && (
+          <Alert
+            message="Xác thực email thành công"
+            description={verifiedSuccessNotice}
+            type="success"
+            showIcon
+            closable
+            onClose={() => setVerifiedSuccessNotice(null)}
+            className="mb-5 rounded-xl"
+          />
+        )}
 
-      <div className="w-full max-w-lg relative z-10">
-        {/* Brand Header */}
-        <div
-          onClick={() => navigate('/')}
-          className="text-center mb-6 cursor-pointer select-none group"
-          title="Quay về trang chủ HR Connect"
-        >
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-extrabold text-xl mx-auto mb-3 shadow-md shadow-blue-500/25 group-hover:scale-105 transition-transform duration-200">
-            H
+        {errorMessage && (errorMessage.includes('pending Admin approval') || errorMessage.includes('chờ Admin duyệt') || errorMessage.includes('chờ Ban quản trị')) ? (
+          <Alert
+            message="Tài khoản đang chờ xét duyệt"
+            description="Email đã được xác thực. Ban quản trị đang xem xét hồ sơ và sẽ gửi thông báo khi tài khoản được kích hoạt."
+            type="warning"
+            showIcon
+            closable
+            onClose={() => setErrorMessage(null)}
+            className="mb-5 rounded-xl border-amber-200 bg-amber-50"
+          />
+        ) : errorMessage ? (
+          <Alert
+            message="Chưa thể đăng nhập"
+            description={errorMessage}
+            type="error"
+            showIcon
+            closable
+            onClose={() => setErrorMessage(null)}
+            className="mb-5 rounded-xl"
+          />
+        ) : null}
+
+        <Form form={form} layout="vertical" requiredMark={false} onFinish={handleFormSubmit}>
+          <Form.Item
+            label={<span className={AUTH_LABEL_CLASS}>Email</span>}
+            name="email"
+            rules={[
+              { required: true, message: 'Vui lòng nhập địa chỉ email.' },
+              { type: 'email', message: 'Email chưa đúng định dạng.' },
+            ]}
+          >
+            <Input
+              size="large"
+              type="email"
+              autoComplete="email"
+              prefix={<MailOutlined className="mr-1 text-slate-400" />}
+              placeholder="ten@email.com"
+              disabled={submitting}
+              className={AUTH_INPUT_CLASS}
+            />
+          </Form.Item>
+
+          <div className="mb-2 flex items-center justify-between">
+            <label htmlFor="password" className={AUTH_LABEL_CLASS}>Mật khẩu</label>
+            <button
+              type="button"
+              onClick={() => {
+                setIsForgotModalOpen(true);
+                setForgotStep('REQUEST_OTP');
+                const currentEmail = form.getFieldValue('email');
+                if (currentEmail) forgotForm.setFieldsValue({ email: currentEmail });
+              }}
+              className="cursor-pointer border-0 bg-transparent p-0 text-sm font-semibold text-blue-600 hover:text-blue-800"
+            >
+              Quên mật khẩu?
+            </button>
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-1">
-            HR Connect
-          </h2>
-          <p className="text-xs text-slate-500 tracking-wide font-medium">
-            AI-Powered Recruitment & Affiliate Headhunting Platform
-          </p>
+          <Form.Item name="password" rules={[{ required: true, message: 'Vui lòng nhập mật khẩu.' }]} className="mb-6">
+            <Input.Password
+              id="password"
+              size="large"
+              autoComplete="current-password"
+              prefix={<LockOutlined className="mr-1 text-slate-400" />}
+              placeholder="Nhập mật khẩu"
+              disabled={submitting}
+              className={AUTH_INPUT_CLASS}
+            />
+          </Form.Item>
+
+          <Button
+            type="primary"
+            htmlType="submit"
+            block
+            size="large"
+            loading={submitting}
+            disabled={submitting}
+            icon={<ArrowRightOutlined />}
+            iconPosition="end"
+            className="h-12 rounded-xl border-0 bg-blue-600 text-sm font-bold shadow-lg shadow-blue-600/20 hover:!bg-blue-700"
+          >
+            {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
+          </Button>
+        </Form>
+
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-600">
+          Chưa có tài khoản?{' '}
+          <Link to="/register" className="font-bold text-blue-700 hover:text-blue-900">
+            Tạo tài khoản miễn phí
+          </Link>
         </div>
 
-        {/* Login Panel */}
-        <div className="bg-white/90 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-[0_4px_25px_-5px_rgba(0,0,0,0.06)]">
-          <div className="mb-5">
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-1">
-              Đăng nhập tài khoản
-            </h3>
-            <Text className="text-xs text-slate-500">
-              Nhập email và mật khẩu của bạn để truy cập hệ thống
-            </Text>
-          </div>
-
-          {/* Account Activated Success Banner */}
-          {verifiedSuccessNotice && (
-            <Alert
-              message={verifiedSuccessNotice}
-              type="success"
-              showIcon
-              closable
-              onClose={() => setVerifiedSuccessNotice(null)}
-              className="mb-4 text-xs rounded-xl"
-            />
-          )}
-
-          {/* Pending Approval Notice */}
-          {errorMessage && (errorMessage.includes('pending Admin approval') || errorMessage.includes('chờ Admin duyệt') || errorMessage.includes('chờ Ban quản trị')) ? (
-            <Alert
-              message="Tài khoản đang chờ Admin xét duyệt"
-              description="Hồ sơ đăng ký của bạn đã được xác thực email thành công và đang chờ Ban quản trị (Admin) kiểm duyệt. Bạn sẽ nhận được email thông báo ngay sau khi tài khoản được kích hoạt."
-              type="warning"
-              showIcon
-              closable
-              onClose={() => setErrorMessage(null)}
-              className="mb-4 text-xs rounded-xl border border-amber-300 bg-amber-50"
-            />
-          ) : errorMessage ? (
-            /* Error Alert */
-            <Alert
-              message={errorMessage}
-              type="error"
-              showIcon
-              closable
-              onClose={() => setErrorMessage(null)}
-              className="mb-4 text-xs rounded-xl"
-            />
-          ) : null}
-
-          {/* Form */}
-          <Form
-            form={form}
-            layout="vertical"
-            requiredMark={false}
-            onFinish={handleFormSubmit}
-          >
-            <Form.Item
-              label={<span className="text-xs font-semibold text-slate-700">Địa chỉ Email</span>}
-              name="email"
-              rules={[
-                { required: true, message: 'Vui lòng nhập địa chỉ email!' },
-                { type: 'email', message: 'Địa chỉ email không đúng định dạng!' },
-              ]}
-              style={{ marginBottom: 14 }}
-            >
-              <Input
-                size="large"
-                prefix={<MailOutlined className="text-slate-400 mr-1" />}
-                placeholder="ten@doanhnghiep.com"
-                disabled={submitting}
-                className="bg-slate-50/70 border-slate-200 text-slate-900 rounded-xl h-11 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500"
-              />
-            </Form.Item>
-
-            <div className="mb-2 flex items-center justify-between">
-              <label htmlFor="password" className="text-xs font-semibold text-slate-700">
-                Mật khẩu
-              </label>
-              <button
-                    type="button"
-                    onClick={() => {
-                      setIsForgotModalOpen(true);
-                      setForgotStep('REQUEST_OTP');
-                      const currentEmail = form.getFieldValue('email');
-                      if (currentEmail) forgotForm.setFieldsValue({ email: currentEmail });
-                    }}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium bg-transparent border-none p-0 cursor-pointer"
-                  >
-                Quên mật khẩu?
-              </button>
-            </div>
-            <Form.Item
-              name="password"
-              rules={[{ required: true, message: 'Vui lòng nhập mật khẩu!' }]}
-              style={{ marginBottom: 20 }}
-            >
-              <Input.Password
-                size="large"
-                prefix={<LockOutlined className="text-slate-400 mr-1" />}
-                placeholder="••••••••"
-                disabled={submitting}
-                className="bg-slate-50/70 border-slate-200 text-slate-900 rounded-xl h-11 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500"
-              />
-            </Form.Item>
-
-            <Button
-              type="primary"
-              htmlType="submit"
-              block
-              size="large"
-              loading={submitting}
-              disabled={submitting}
-              icon={<ArrowRightOutlined />}
-              iconPosition="end"
-              className="h-11 rounded-xl font-semibold text-sm bg-blue-600 hover:bg-blue-700 border-none shadow-md shadow-blue-500/20 transition-all duration-200 cursor-pointer"
-            >
-              {submitting ? 'Đang xác thực tài khoản...' : 'Đăng nhập tài khoản'}
-            </Button>
-          </Form>
-
-          {/* Quick Fill Test Accounts (development only) */}
-          {SHOW_DEMO_ACCOUNTS && (
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-                <ThunderboltOutlined className="text-amber-500" />
-                <span>Tài khoản thử nghiệm (Điền & Gọi API)</span>
-              </div>
-              <span className="text-[10px] text-slate-500 font-mono">MK: {DEMO_PASSWORD}</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+        {SHOW_DEMO_ACCOUNTS && (
+          <details className="group mt-5 rounded-2xl border border-dashed border-slate-300 bg-white">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-bold text-slate-700">
+              <span className="flex items-center gap-2"><ThunderboltOutlined className="text-amber-500" /> Tài khoản kiểm thử</span>
+              <span className="text-xs font-medium text-slate-400 group-open:hidden">Mở danh sách</span>
+            </summary>
+            <div className="grid grid-cols-1 gap-2 border-t border-slate-100 p-3 sm:grid-cols-2">
               {DEMO_ACCOUNTS.map((demo) => (
                 <button
                   key={demo.role}
                   type="button"
                   disabled={submitting}
                   onClick={() => handleQuickFill(demo)}
-                  title={demo.email}
-                  className={`${demo.role === UserRole.ADMIN ? 'col-span-2 ' : ''}flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-blue-50/50 hover:border-blue-300 transition-all duration-150 text-left group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className={`${demo.role === UserRole.ADMIN ? 'sm:col-span-2 ' : ''}flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50`}
                 >
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 transition-transform group-hover:scale-105"
-                    style={{
-                      background: demo.badgeBg,
-                      color: demo.accentColor,
-                      border: `1px solid ${demo.accentColor}30`,
-                    }}
-                  >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: demo.badgeBg, color: demo.accentColor }}>
                     {demo.icon}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold text-slate-800 group-hover:text-blue-700 truncate">
-                      {demo.title}
-                    </div>
-                    <div className="text-[10px] text-slate-500 truncate">
-                      {demo.email}
-                    </div>
-                  </div>
+                  </span>
+                  <span className="min-w-0">
+                    <strong className="block truncate text-xs text-slate-800">{demo.title}</strong>
+                    <span className="block truncate text-[11px] text-slate-500">{demo.email}</span>
+                  </span>
                 </button>
               ))}
             </div>
-          </div>
-          )}
-
-          {/* Footer note */}
-          <div className="mt-6 pt-4 border-t border-slate-100 text-center space-y-1.5">
-            <div className="text-xs text-slate-500">
-              Chưa có tài khoản?{' '}
-              <Link
-                to="/register"
-                className="text-blue-600 hover:text-blue-700 font-semibold underline"
-              >
-                Đăng ký ngay
-              </Link>
-            </div>
-            <div>
-              <Link
-                to="/"
-                className="text-xs text-slate-400 hover:text-slate-600 font-medium"
-              >
-                ← Quay lại trang chủ
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+          </details>
+        )}
+      </AuthPageShell>
 
       {/* ─── FORGOT & RESET PASSWORD MODAL ─── */}
       <Modal
@@ -695,7 +630,7 @@ export const LoginPage: React.FC = () => {
           )}
         </div>
       </Modal>
-    </div>
+    </>
   );
 };
 

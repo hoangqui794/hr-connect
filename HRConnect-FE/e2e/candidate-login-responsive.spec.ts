@@ -25,9 +25,11 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
   await mockCandidateApis(page);
   await page.goto('/login');
 
-  await page.getByPlaceholder('ten@doanhnghiep.com').fill('candidate@gmail.com');
-  await page.getByPlaceholder('••••••••').fill('111111Aa@');
-  await page.getByRole('button', { name: 'Đăng nhập tài khoản' }).click();
+  await expect(page.getByRole('button', { name: /Về trang chủ/ }).last()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Đăng nhập HR Connect' })).toBeVisible();
+  await page.getByPlaceholder('ten@email.com').fill('candidate@gmail.com');
+  await page.getByPlaceholder('Nhập mật khẩu').fill('111111Aa@');
+  await page.locator('form button[type="submit"]').click();
 
   await expect(page).toHaveURL(/\/candidate\/dashboard$/);
 
@@ -91,7 +93,7 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
   await expect(page.getByText('Quản lý tìm việc')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Tài khoản và cài đặt' }).click();
-  await page.getByRole('menuitem', { name: 'Đăng xuất' }).click();
+  await page.getByText('Đăng xuất', { exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { name: /Kết nối đúng người/i })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Đăng nhập', exact: true })).toBeVisible();
