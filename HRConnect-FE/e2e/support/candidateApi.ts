@@ -48,6 +48,10 @@ export async function mockCandidateApis(page: Page) {
     await route.fulfill(json({ success: true, data: candidate }));
   });
 
+  await page.route('**/api/v1/auth/logout', async (route) => {
+    await route.fulfill(json({ success: true, message: 'Đăng xuất thành công.' }));
+  });
+
   await page.route('**/api/v1/candidates/applications**', async (route) => {
     await route.fulfill(
       json({

@@ -89,4 +89,10 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
   await expect(page).toHaveURL(/\/candidate\/dashboard$/);
   await expect(page.getByRole('heading', { name: /Chào E2E/i })).toBeVisible();
   await expect(page.getByText('Quản lý tìm việc')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Tài khoản và cài đặt' }).click();
+  await page.getByRole('menuitem', { name: 'Đăng xuất' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { name: /Kết nối đúng người/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Đăng nhập', exact: true })).toBeVisible();
 });
