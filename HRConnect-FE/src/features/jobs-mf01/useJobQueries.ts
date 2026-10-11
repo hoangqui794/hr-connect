@@ -17,6 +17,7 @@ export const jobQueryKeys = {
   all: ['mf01-jobs'] as const,
   mine: (status?: JobStatus) => [...jobQueryKeys.all, 'mine', status ?? 'ALL'] as const,
   search: (params: JobSearchParams) => [...jobQueryKeys.all, 'search', params] as const,
+  publicSearch: (params: JobSearchParams) => [...jobQueryKeys.all, 'public-search', params] as const,
   detail: (jobId: string) => [...jobQueryKeys.all, 'detail', jobId] as const,
   review: () => [...jobQueryKeys.all, 'review'] as const,
   serviceTypes: ['mf01-service-types'] as const,
@@ -29,6 +30,14 @@ export const useJobSearch = (params: JobSearchParams, enabled = true) =>
   useQuery({
     queryKey: jobQueryKeys.search(params),
     queryFn: () => jobsApi.search(params),
+    enabled,
+    placeholderData: (previous) => previous,
+  });
+
+export const usePublicJobSearch = (params: JobSearchParams, enabled = true) =>
+  useQuery({
+    queryKey: jobQueryKeys.publicSearch(params),
+    queryFn: () => jobsApi.searchPublic(params),
     enabled,
     placeholderData: (previous) => previous,
   });
