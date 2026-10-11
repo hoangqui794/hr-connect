@@ -95,6 +95,16 @@ builder.Services.AddRateLimiter(options =>
             AutoReplenishment = true
         }));
 
+    options.AddPolicy("public-read", context => RateLimitPartition.GetFixedWindowLimiter(
+        ClientKey(context),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 120,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+
     options.AddPolicy("auth-sensitive", context => RateLimitPartition.GetFixedWindowLimiter(
         ClientKey(context),
         _ => new FixedWindowRateLimiterOptions

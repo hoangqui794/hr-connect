@@ -3,42 +3,33 @@ import {
   Layout,
   Badge,
   Dropdown,
-  Avatar,
   Space,
   Button,
   Tag,
-  message,
   List,
 } from 'antd';
 import {
   BellOutlined,
-  LogoutOutlined,
-  IdcardOutlined,
-  CheckCircleOutlined,
-  HeartOutlined,
   CompassOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore, getInitials } from '@/stores/authStore';
+import { useAuthStore } from '@/stores/authStore';
 import { useAlertStore } from '@/stores/alertStore';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
-import { CandidateUserDropdown } from '@/components/common/CandidateUserDropdown';
-import type { MenuProps } from 'antd';
+import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWorkspaceMenu';
 
 const { Header } = Layout;
 
 export const CandidateHeader: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const { alerts, unreadCount, markAllRead, dismissAlert } = useAlertStore();
   const [notifOpen, setNotifOpen] = useState(false);
 
   // Dynamic notification state from hrconnect_notifications filtered by currentUser.email
   const [unreadNotifsCount, setUnreadNotifsCount] = useState<number>(0);
-  const [userNotifications, setUserNotifications] = useState<any[]>([]);
-
   React.useEffect(() => {
     const fetchNotifications = () => {
       try {
@@ -50,7 +41,6 @@ export const CandidateHeader: React.FC = () => {
             const filtered = parsed.filter((n: any) =>
               !currentEmail || !n.recipientEmail || n.recipientEmail.toLowerCase().trim() === currentEmail
             );
-            setUserNotifications(filtered);
             const unread = filtered.filter((n: any) => n.isRead === false).length;
             setUnreadNotifsCount(unread);
             return;
@@ -60,17 +50,12 @@ export const CandidateHeader: React.FC = () => {
         console.error('Failed to read hrconnect_notifications:', e);
       }
       setUnreadNotifsCount(0);
-      setUserNotifications([]);
     };
 
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 1500);
     return () => clearInterval(interval);
   }, [user?.email]);
-
-  const userName = user?.name || 'Ứng viên';
-  const userEmail = user?.email || '';
-  const userAvatar = user?.avatar || getInitials(userName);
 
   const isHomeActive = location.pathname === '/' || location.pathname === '/jobs';
   const isRecruiterActive = location.search.includes('mode=recruiters');
@@ -258,8 +243,7 @@ export const CandidateHeader: React.FC = () => {
           </Badge>
         </Dropdown>
 
-        {/* Avatar cá nhân TopCV Dropdown Menu */}
-        <CandidateUserDropdown />
+        <CandidateWorkspaceMenu />
       </Space>
     </Header>
   );

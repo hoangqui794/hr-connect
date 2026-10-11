@@ -25,6 +25,13 @@ const cleanParams = <T extends object>(params: T): Partial<T> =>
   ) as Partial<T>;
 
 export const jobsApi = {
+  // ── Guest / public Candidate scope ──────────────────────────────────────────
+  /** GET /public/jobs — ACTIVE/PUBLIC jobs visible to the Candidate role. */
+  async searchPublic(params: JobSearchParams): Promise<JobPage> {
+    const res = await apiClient.get<JobPage>('/public/jobs', { params: cleanParams(params) });
+    return res.data;
+  },
+
   // ── Client Company ──────────────────────────────────────────────────────────
   /** GET /jobs/mine — jobs of the caller's company. */
   async getMine(status?: JobStatus): Promise<Job[]> {

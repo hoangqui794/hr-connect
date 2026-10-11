@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 import { Button, Space, Tag, Avatar, Dropdown, Badge, List, message } from 'antd';
 import {
-  UserOutlined,
   LogoutOutlined,
   DashboardOutlined,
-  IdcardOutlined,
-  CheckCircleOutlined,
-  HeartOutlined,
   CompassOutlined,
+  SearchOutlined,
   TeamOutlined,
   DollarCircleOutlined,
   BellOutlined,
@@ -16,8 +13,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore, getInitials } from '@/stores/authStore';
 import { useAlertStore } from '@/stores/alertStore';
 import { useI18nStore } from '@/i18n';
-import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
-import { CandidateUserDropdown } from '@/components/common/CandidateUserDropdown';
+import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWorkspaceMenu';
 import { DEMO_USERS, UserRole } from '@/types/roles';
 import { ROLE_DASHBOARD_ROUTES } from '@/routes/AppRoutes';
 
@@ -38,53 +34,6 @@ export const Navbar: React.FC = () => {
     void message.success('Đã đăng xuất thành công!');
     navigate('/');
   };
-
-  // Candidate-specific dropdown menu
-  const candidateMenuItems = [
-    {
-      key: 'user-info',
-      label: (
-        <div style={{ padding: '6px 4px' }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{userName}</div>
-          <div style={{ fontSize: 11, color: '#64748b' }}>{userEmail}</div>
-        </div>
-      ),
-      disabled: true,
-    },
-    { type: 'divider' as const },
-    {
-      key: 'dashboard',
-      icon: <DashboardOutlined style={{ color: '#0284c7' }} />,
-      label: 'Bảng điều khiển Ứng viên',
-      onClick: () => navigate('/candidate/dashboard'),
-    },
-    {
-      key: 'profile',
-      icon: <IdcardOutlined style={{ color: '#8b5cf6' }} />,
-      label: 'Trang cá nhân & Quản lý CV',
-      onClick: () => navigate('/candidate/profile'),
-    },
-    {
-      key: 'applications',
-      icon: <CheckCircleOutlined style={{ color: '#10b981' }} />,
-      label: 'Lịch sử ứng tuyển & Lịch PV',
-      onClick: () => navigate('/candidate/applications'),
-    },
-    {
-      key: 'saved-jobs',
-      icon: <HeartOutlined style={{ color: '#ef4444' }} />,
-      label: 'Việc làm đã lưu',
-      onClick: () => navigate('/candidate/saved-jobs'),
-    },
-    { type: 'divider' as const },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: 'Đăng xuất',
-      danger: true,
-      onClick: handleLogout,
-    },
-  ];
 
   // Generic non-candidate dropdown
   const genericMenuItems = [
@@ -114,10 +63,9 @@ export const Navbar: React.FC = () => {
     },
   ];
 
-  const userMenuItems = role === UserRole.CANDIDATE ? candidateMenuItems : genericMenuItems;
-
-  const isRecruiterActive = location.search.includes('mode=recruiters');
-  const isHomeActive = location.pathname === '/' && !isRecruiterActive;
+  const isRolesActive = location.pathname === '/' && location.hash === '#roles';
+  const isHomeActive = location.pathname === '/' && !isRolesActive;
+  const isJobsActive = location.pathname === '/jobs' || location.pathname.startsWith('/jobs/');
 
   // Ẩn mục "Bảng giá dịch vụ" đối với CANDIDATE; Chỉ hiển thị khi là Khách (chưa đăng nhập) hoặc Doanh nghiệp
   const showServicesPricing =
@@ -153,14 +101,14 @@ export const Navbar: React.FC = () => {
             width: 38,
             height: 38,
             borderRadius: 10,
-            background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+            background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: 800,
             color: '#fff',
             fontSize: 19,
-            boxShadow: '0 3px 12px rgba(37, 99, 235, 0.3)',
+            boxShadow: '0 3px 12px rgba(15, 118, 110, 0.26)',
           }}
         >
           H
@@ -170,9 +118,9 @@ export const Navbar: React.FC = () => {
         </span>
         <Tag
           style={{
-            background: '#eff6ff',
+            background: '#f0fdfa',
             color: '#1d4ed8',
-            border: '1px solid #bfdbfe',
+            border: '1px solid #99f6e4',
             borderRadius: 100,
             fontSize: 10,
             fontWeight: 700,
@@ -180,11 +128,11 @@ export const Navbar: React.FC = () => {
             padding: '1px 8px',
           }}
         >
-          AI-Powered
+          Recruitment Platform
         </Tag>
       </div>
 
-      {/* Menu điều hướng chính: [Trang chủ / Tìm việc], [Mạng lưới Recruiter], [Bảng giá dịch vụ] */}
+      {/* Các chức năng Guest: xem giới thiệu, tìm việc và xem thông tin dịch vụ. */}
       <nav style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Button
           type="text"
@@ -192,28 +140,43 @@ export const Navbar: React.FC = () => {
           onClick={() => navigate('/')}
           style={{
             color: isHomeActive ? '#1d4ed8' : '#475569',
-            fontWeight: isHomeActive ? 700 : 500,
+            fontWeight: 600,
             fontSize: 14,
-            background: isHomeActive ? '#eff6ff' : 'transparent',
+            background: isHomeActive ? '#f0fdfa' : 'transparent',
             borderRadius: 8,
           }}
         >
-          Trang chủ / Tìm việc
+          Giới thiệu
+        </Button>
+
+        <Button
+          type="text"
+          icon={<SearchOutlined />}
+          onClick={() => navigate('/jobs')}
+          style={{
+            color: isJobsActive ? '#1d4ed8' : '#475569',
+            fontWeight: 600,
+            fontSize: 14,
+            background: isJobsActive ? '#f0fdfa' : 'transparent',
+            borderRadius: 8,
+          }}
+        >
+          Việc làm
         </Button>
 
         <Button
           type="text"
           icon={<TeamOutlined />}
-          onClick={() => navigate('/?mode=recruiters')}
+          onClick={() => navigate('/#roles')}
           style={{
-            color: isRecruiterActive ? '#1d4ed8' : '#475569',
-            fontWeight: isRecruiterActive ? 700 : 500,
+            color: isRolesActive ? '#1d4ed8' : '#475569',
+            fontWeight: 600,
             fontSize: 14,
-            background: isRecruiterActive ? '#eff6ff' : 'transparent',
+            background: isRolesActive ? '#f0fdfa' : 'transparent',
             borderRadius: 8,
           }}
         >
-          Mạng lưới Recruiter
+          Vai trò
         </Button>
 
         {showServicesPricing && (
@@ -223,21 +186,18 @@ export const Navbar: React.FC = () => {
             onClick={() => navigate('/services')}
             style={{
               color: location.pathname === '/services' ? '#1d4ed8' : '#475569',
-              fontWeight: location.pathname === '/services' ? 700 : 500,
+              fontWeight: 600,
               fontSize: 14,
               borderRadius: 8,
             }}
           >
-            Bảng giá dịch vụ
+            Giải pháp dịch vụ
           </Button>
         )}
       </nav>
 
-      {/* Right Controls: Language, Notification, Avatar / Auth */}
+      {/* Right Controls: Notification, Avatar / Auth */}
       <Space size={14} align="center">
-        {/* Nút chuyển ngôn ngữ [VN / EN] */}
-        <LanguageSwitcher theme="light" size="middle" />
-
         {isAuthenticated && (
           <Dropdown
             open={notifOpen}
@@ -304,9 +264,9 @@ export const Navbar: React.FC = () => {
 
         {isAuthenticated ? (
           role === UserRole.CANDIDATE ? (
-            <CandidateUserDropdown />
+            <CandidateWorkspaceMenu showWorkspaceButton />
           ) : (
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
+            <Dropdown menu={{ items: genericMenuItems }} placement="bottomRight" trigger={['click']}>
               <div
                 style={{
                   display: 'flex',
@@ -360,7 +320,7 @@ export const Navbar: React.FC = () => {
                 borderRadius: 8,
                 background: '#2563eb',
                 border: 'none',
-                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                boxShadow: '0 2px 8px rgba(15, 118, 110, 0.25)',
               }}
             >
               {t.nav.register}

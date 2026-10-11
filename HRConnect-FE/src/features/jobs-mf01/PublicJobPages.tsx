@@ -1,10 +1,11 @@
 /**
  * @file PublicJobPages.tsx
  * @description Public-site wrappers (landing Navbar, no AppShell) for MF-01 discovery and
- * job detail. Data still requires login: GET /jobs and GET /jobs/{id} are authorized endpoints.
+ * job detail. Guests can browse the same ACTIVE/PUBLIC scope as Candidate; authentication is
+ * requested only when they choose to apply.
  */
-import React from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Alert, Button, Skeleton, Typography } from 'antd';
 import { ArrowLeftOutlined, LoginOutlined } from '@ant-design/icons';
 import { Navbar } from '@/features/landing/components/Navbar';
@@ -32,30 +33,31 @@ export const PublicJobSearchPage: React.FC = () => (
       </Title>
       <Text type="secondary">Tin đã được Internal HR duyệt, cập nhật trực tiếp từ hệ thống.</Text>
     </header>
-    <JobDiscoveryPage />
+    <JobDiscoveryPage publicAccess />
   </PublicFrame>
 );
 
 export const PublicJobDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const detail = useJobDetail(isAuthenticated ? id : undefined);
+  const detail = useJobDetail(id);
+  const resumeApply = (location.state as { intent?: string } | null)?.intent === 'apply';
+
+  useEffect(() => {
+    if (isAuthenticated && resumeApply && detail.data) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [detail.data, isAuthenticated, location.pathname, navigate, resumeApply]);
 
   return (
     <PublicFrame>
-      <Link to="/jobs" className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-emerald-700">
+      <Link to="/jobs" className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-blue-700">
         <ArrowLeftOutlined aria-hidden /> Tất cả việc làm
       </Link>
       <div className="rounded-xl border border-solid border-slate-200 bg-white p-6">
-        {!isAuthenticated ? (
-          <div className="py-10 text-center">
-            <Title level={4}>Đăng nhập để xem chi tiết việc làm</Title>
-            <Button type="primary" icon={<LoginOutlined />} onClick={() => navigate('/login')}>
-              Đăng nhập
-            </Button>
-          </div>
-        ) : detail.isError ? (
+        {detail.isError ? (
           <Alert type="error" showIcon message="Không xem được việc làm này" description={getApiErrorMessage(detail.error)} />
         ) : detail.isLoading || !detail.data ? (
           <Skeleton active paragraph={{ rows: 12 }} />
@@ -63,7 +65,18 @@ export const PublicJobDetailPage: React.FC = () => {
           <>
             {/* MF-02: candidates apply here, affiliates go to the referral form. */}
             <div className="mb-5 flex flex-col items-end">
-              <JobApplyActions job={detail.data} />
+              {isAuthenticated ? (
+                <JobApplyActions job={detail.data} autoOpen={resumeApply} />
+              ) : (
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<LoginOutlined />}
+                  onClick={() => navigate('/login', { state: { from: location.pathname, intent: 'apply' } })}
+                >
+                  Đăng nhập để ứng tuyển
+                </Button>
+              )}
             </div>
             <JobDetailPanel job={detail.data} />
           </>

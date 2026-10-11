@@ -80,7 +80,7 @@ export const AffiliateShell: React.FC = () => {
       await authService.logout(); // revokes the refresh token server-side
     } finally {
       logout();
-      navigate('/login');
+      window.location.replace('/');
     }
   };
 

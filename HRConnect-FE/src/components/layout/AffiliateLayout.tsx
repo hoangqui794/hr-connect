@@ -160,7 +160,7 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
         label: 'Đăng xuất',
         onClick: () => {
           logout();
-          navigate('/login');
+          window.location.replace('/');
         },
       },
     ],
