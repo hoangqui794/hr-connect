@@ -183,7 +183,7 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Candidate workspace (MF-02 branch A): top navigation, teal accent ─────────
+  // ── Candidate workspace (MF-02 branch A): top navigation, blue accent ─────────
   {
     path: '/candidate',
     element: (

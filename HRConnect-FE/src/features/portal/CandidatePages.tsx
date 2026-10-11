@@ -126,7 +126,7 @@ export const CandidateHomePage: React.FC = () => {
   return (
     <div className="candidate-page candidate-dashboard-page">
       <section className="candidate-dashboard-hero">
-        <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-teal-200/50 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-blue-200/50 blur-3xl" />
         <div className="relative">
           <h1 className="m-0 text-[30px] font-extrabold leading-tight tracking-[-0.02em] text-slate-900">Chào {firstName},</h1>
           <p className="m-0 mt-2 max-w-xl text-[15px] leading-relaxed text-slate-600">

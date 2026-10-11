@@ -49,7 +49,7 @@ export const CandidateAffiliateCvsPage: React.FC = () => {
         <Alert type="error" showIcon message="Không tải được danh sách CV" description={getApiErrorMessage(query.error)} />
       ) : items.length === 0 ? (
         <CandidateSurface className="candidate-empty-surface p-10 text-center">
-          <SafetyCertificateOutlined className="text-3xl text-teal-700" aria-hidden />
+          <SafetyCertificateOutlined className="text-3xl text-blue-700" aria-hidden />
           <p className="m-0 mt-3 font-semibold text-slate-900">Chưa có CV nào do Affiliate tải lên</p>
           <p className="m-0 mt-1 text-sm text-slate-600">Khi một Affiliate giới thiệu bạn, CV và quyền sử dụng sẽ xuất hiện tại đây.</p>
         </CandidateSurface>

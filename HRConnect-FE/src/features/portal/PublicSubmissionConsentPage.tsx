@@ -107,7 +107,7 @@ export const PublicSubmissionConsentPage: React.FC = () => {
     <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-3xl space-y-5">
         <header className="text-center">
-          <a href="/" className="text-xl font-extrabold tracking-tight text-teal-700">HR Connect</a>
+          <a href="/" className="text-xl font-extrabold tracking-tight text-blue-700">HR Connect</a>
           <h1 className="m-0 mt-5 text-3xl font-extrabold text-slate-900">Xác nhận hồ sơ ứng tuyển</h1>
           <p className="mt-2 text-sm leading-6 text-slate-600">Kiểm tra thông tin trước khi cho phép Affiliate gửi CV của bạn đến doanh nghiệp.</p>
         </header>

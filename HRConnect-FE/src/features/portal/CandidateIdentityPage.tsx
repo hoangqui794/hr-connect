@@ -165,7 +165,7 @@ export const CandidateIdentityPage: React.FC = () => {
             {(identities.data ?? []).map((identity) => (
               <li key={identity.emailIdentityId} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700"><MailOutlined /></span>
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700"><MailOutlined /></span>
                   <div className="min-w-0">
                     <div className="truncate font-semibold text-slate-900">{identity.email}</div>
                     <div className="mt-1 text-xs text-slate-500">
@@ -185,7 +185,7 @@ export const CandidateIdentityPage: React.FC = () => {
 
       <CandidateSurface className="candidate-identity-claim p-5">
         <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700"><LinkOutlined /></span>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700"><LinkOutlined /></span>
           <div>
             <h2 className="m-0 text-base font-bold text-slate-900">Nhận lại hồ sơ theo email cũ</h2>
             <p className="m-0 mt-1 text-sm text-slate-600">Chỉ nhập email mà Affiliate từng dùng để nộp hồ sơ của chính bạn.</p>

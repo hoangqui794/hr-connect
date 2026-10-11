@@ -102,7 +102,7 @@ export const Navbar: React.FC = () => {
             width: 38,
             height: 38,
             borderRadius: 10,
-            background: 'linear-gradient(135deg, #0f766e, #14b8a6)',
+            background: 'linear-gradient(135deg, #2563eb, #60a5fa)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -120,7 +120,7 @@ export const Navbar: React.FC = () => {
         <Tag
           style={{
             background: '#f0fdfa',
-            color: '#115e59',
+            color: '#1d4ed8',
             border: '1px solid #99f6e4',
             borderRadius: 100,
             fontSize: 10,
@@ -140,7 +140,7 @@ export const Navbar: React.FC = () => {
           icon={<CompassOutlined />}
           onClick={() => navigate('/')}
           style={{
-            color: isHomeActive ? '#115e59' : '#475569',
+            color: isHomeActive ? '#1d4ed8' : '#475569',
             fontWeight: isHomeActive ? 700 : 500,
             fontSize: 14,
             background: isHomeActive ? '#f0fdfa' : 'transparent',
@@ -155,7 +155,7 @@ export const Navbar: React.FC = () => {
           icon={<SearchOutlined />}
           onClick={() => navigate('/jobs')}
           style={{
-            color: isJobsActive ? '#115e59' : '#475569',
+            color: isJobsActive ? '#1d4ed8' : '#475569',
             fontWeight: isJobsActive ? 700 : 500,
             fontSize: 14,
             background: isJobsActive ? '#f0fdfa' : 'transparent',
@@ -170,7 +170,7 @@ export const Navbar: React.FC = () => {
           icon={<TeamOutlined />}
           onClick={() => navigate('/#roles')}
           style={{
-            color: isRolesActive ? '#115e59' : '#475569',
+            color: isRolesActive ? '#1d4ed8' : '#475569',
             fontWeight: isRolesActive ? 700 : 500,
             fontSize: 14,
             background: isRolesActive ? '#f0fdfa' : 'transparent',
@@ -186,7 +186,7 @@ export const Navbar: React.FC = () => {
             icon={<DollarCircleOutlined />}
             onClick={() => navigate('/services')}
             style={{
-              color: location.pathname === '/services' ? '#115e59' : '#475569',
+              color: location.pathname === '/services' ? '#1d4ed8' : '#475569',
               fontWeight: location.pathname === '/services' ? 700 : 500,
               fontSize: 14,
               borderRadius: 8,
@@ -224,7 +224,7 @@ export const Navbar: React.FC = () => {
               >
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(241, 245, 249, 0.9)', display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>Thông báo</span>
-                  <span style={{ color: '#0f766e', fontSize: 11, cursor: 'pointer', fontWeight: 600 }} onClick={() => useAlertStore.getState().clearAll()}>
+                  <span style={{ color: '#2563eb', fontSize: 11, cursor: 'pointer', fontWeight: 600 }} onClick={() => useAlertStore.getState().clearAll()}>
                     Xóa tất cả
                   </span>
                 </div>
@@ -286,7 +286,7 @@ export const Navbar: React.FC = () => {
                 <Avatar
                   size={28}
                   style={{
-                    background: 'linear-gradient(135deg, #0f766e, #115e59)',
+                    background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                     fontWeight: 700,
                     fontSize: 12,
                   }}
@@ -322,7 +322,7 @@ export const Navbar: React.FC = () => {
                 fontWeight: 600,
                 fontSize: 13,
                 borderRadius: 8,
-                background: '#0f766e',
+                background: '#2563eb',
                 border: 'none',
                 boxShadow: '0 2px 8px rgba(15, 118, 110, 0.25)',
               }}

@@ -940,11 +940,11 @@ export const CandidateProfilePage: React.FC = () => {
                           borderRadius: 9999,
                           fontWeight: 700,
                           fontSize: 15,
-                          background: '#00b14f',
-                          borderColor: '#00b14f',
+                          background: '#2563eb',
+                          borderColor: '#2563eb',
                           height: 46,
                           padding: '0 36px',
-                          boxShadow: '0 4px 14px rgba(0, 177, 79, 0.28)',
+                          boxShadow: '0 4px 14px rgba(37, 99, 235, 0.24)',
                           transition: 'all 0.2s ease',
                           cursor: 'pointer',
                         }}
@@ -1079,8 +1079,8 @@ export const CandidateProfilePage: React.FC = () => {
                         styles={{ body: { padding: '24px' } }}
                       >
                         <div>
-                          <div style={{ width: 44, height: 44, borderRadius: 10, background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                            <UploadOutlined style={{ fontSize: 22, color: '#10b981' }} />
+                          <div style={{ width: 44, height: 44, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                            <UploadOutlined style={{ fontSize: 22, color: '#2563eb' }} />
                           </div>
                           <Tag color="green" style={{ borderRadius: 6, fontWeight: 700, marginBottom: 8 }}>
                             Chế độ 3
@@ -1099,8 +1099,8 @@ export const CandidateProfilePage: React.FC = () => {
                           style={{
                             borderRadius: 8,
                             fontWeight: 700,
-                            borderColor: '#10b981',
-                            color: '#10b981',
+                            borderColor: '#2563eb',
+                            color: '#2563eb',
                             marginTop: 12,
                           }}
                         >
@@ -1369,7 +1369,7 @@ export const CandidateProfilePage: React.FC = () => {
       <Modal
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <UploadOutlined style={{ color: '#10b981', fontSize: 18 }} />
+            <UploadOutlined style={{ color: '#2563eb', fontSize: 18 }} />
             <span style={{ fontWeight: 800 }}>Tải Lên Tệp CV (PDF / DOCX)</span>
           </div>
         }
@@ -1381,7 +1381,7 @@ export const CandidateProfilePage: React.FC = () => {
         <div style={{ marginTop: 12 }}>
           <Upload.Dragger {...uploadProps}>
             <p className="ant-upload-drag-icon">
-              <UploadOutlined style={{ fontSize: 36, color: '#10b981' }} />
+              <UploadOutlined style={{ fontSize: 36, color: '#2563eb' }} />
             </p>
             <p style={{ fontWeight: 700, fontSize: 15, color: '#0f172a', margin: '0 0 6px' }}>
               Nhấp hoặc kéo thả tệp CV vào khu vực này

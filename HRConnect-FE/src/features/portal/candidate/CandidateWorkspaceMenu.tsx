@@ -29,7 +29,7 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
       await authService.logout();
     } finally {
       logout();
-      navigate('/login');
+      window.location.replace('/');
     }
   };
 
@@ -102,9 +102,9 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
         <button
           type="button"
           aria-label="Mở menu tài khoản Candidate"
-          className="flex h-[38px] cursor-pointer items-center gap-2 rounded-full border border-solid border-slate-200 bg-white py-1 pl-1 pr-3 text-left transition-colors hover:border-teal-300 hover:bg-teal-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600"
+          className="flex h-[38px] cursor-pointer items-center gap-2 rounded-full border border-solid border-slate-200 bg-white py-1 pl-1 pr-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
-          <Avatar size={30} style={{ background: '#0f766e', fontSize: 12, fontWeight: 700 }}>
+          <Avatar size={30} style={{ background: '#2563eb', fontSize: 12, fontWeight: 700 }}>
             {user?.avatar || getInitials(name)}
           </Avatar>
           <span className="max-w-28 truncate text-sm font-semibold text-slate-800">

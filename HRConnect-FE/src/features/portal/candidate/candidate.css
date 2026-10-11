@@ -4,13 +4,13 @@ html:has(.candidate-console) {
 }
 
 .candidate-console {
-  --candidate-page: #f5f8f7;
+  --candidate-page: #f4f7fc;
   --candidate-surface: #ffffff;
   --candidate-text: #0f172a;
   --candidate-muted: #526071;
-  --candidate-border: #dfe8e5;
-  --candidate-accent: #087f6f;
-  --candidate-accent-soft: #e7f6f2;
+  --candidate-border: #dbe5f3;
+  --candidate-accent: #2563eb;
+  --candidate-accent-soft: #eff6ff;
   --candidate-radius: 1.25rem;
   font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;
 }
@@ -132,8 +132,8 @@ html:has(.candidate-console) {
 }
 
 .candidate-job-discovery .ant-card-hoverable:hover {
-  border-color: #91cfc3 !important;
-  box-shadow: 0 16px 38px rgb(8 127 111 / 10%);
+  border-color: #93c5fd !important;
+  box-shadow: 0 16px 38px rgb(37 99 235 / 10%);
   transform: translateY(-2px);
 }
 
@@ -145,10 +145,10 @@ html:has(.candidate-console) {
   position: relative;
   overflow: hidden;
   padding: clamp(1.5rem, 4vw, 2.25rem);
-  border: 1px solid #cce8e2;
+  border: 1px solid #bfdbfe;
   border-radius: var(--candidate-radius);
-  background: linear-gradient(135deg, #e8f7f3 0%, #fff 52%, #effaf4 100%);
-  box-shadow: 0 14px 38px rgb(8 127 111 / 7%);
+  background: linear-gradient(135deg, #eff6ff 0%, #fff 52%, #f8fbff 100%);
+  box-shadow: 0 14px 38px rgb(37 99 235 / 7%);
 }
 
 .candidate-stat-grid {
@@ -164,8 +164,8 @@ html:has(.candidate-console) {
 }
 
 .candidate-stat-card:hover {
-  border-color: #91cfc3;
-  box-shadow: 0 16px 34px rgb(8 127 111 / 9%);
+  border-color: #93c5fd;
+  box-shadow: 0 16px 34px rgb(37 99 235 / 9%);
   transform: translateY(-2px);
 }
 
@@ -187,7 +187,7 @@ html:has(.candidate-console) {
 }
 
 .candidate-application-card:hover {
-  border-color: #b7dcd5;
+  border-color: #bfdbfe;
   box-shadow: 0 15px 32px rgb(15 23 42 / 7%);
 }
 
@@ -221,7 +221,7 @@ html:has(.candidate-console) {
 }
 
 .candidate-cv-card:hover {
-  border-color: #b7dcd5;
+  border-color: #bfdbfe;
   box-shadow: 0 15px 32px rgb(15 23 42 / 7%);
 }
 
@@ -233,9 +233,9 @@ html:has(.candidate-console) {
 }
 
 .candidate-cv-upload .ant-upload-drag {
-  border-color: #b7dcd5;
+  border-color: #bfdbfe;
   border-radius: 1rem !important;
-  background: #f8fcfb !important;
+  background: #f8fbff !important;
 }
 
 .candidate-cv-upload .ant-upload-drag:hover {
@@ -247,7 +247,7 @@ html:has(.candidate-console) {
 }
 
 .candidate-affiliate-cv-card:hover {
-  border-color: #b7dcd5;
+  border-color: #bfdbfe;
   box-shadow: 0 15px 32px rgb(15 23 42 / 7%);
   transform: translateY(-2px);
 }
@@ -265,10 +265,10 @@ html:has(.candidate-console) {
 }
 
 .candidate-profile-hero {
-  border-color: rgb(45 212 191 / 24%) !important;
+  border-color: rgb(96 165 250 / 30%) !important;
   border-radius: var(--candidate-radius) !important;
-  background: linear-gradient(135deg, #0f3d38 0%, #115e59 52%, #0f766e 100%) !important;
-  box-shadow: 0 18px 42px rgb(15 118 110 / 18%) !important;
+  background: linear-gradient(135deg, #172554 0%, #1e3a8a 52%, #1d4ed8 100%) !important;
+  box-shadow: 0 18px 42px rgb(37 99 235 / 20%) !important;
 }
 
 .candidate-profile-tabs {
@@ -284,6 +284,14 @@ html:has(.candidate-console) {
 
 .candidate-profile-tabs .ant-tabs-tab {
   min-height: 2.75rem;
+}
+
+.candidate-profile-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--candidate-accent) !important;
+}
+
+.candidate-profile-tabs .ant-tabs-ink-bar {
+  background: var(--candidate-accent) !important;
 }
 
 .candidate-profile-tabs .ant-input,
@@ -312,7 +320,7 @@ html:has(.candidate-console) {
 }
 
 .candidate-identity-claim {
-  background: linear-gradient(180deg, #fff 0%, #fbfefd 100%);
+  background: linear-gradient(180deg, #fff 0%, #f8fbff 100%);
 }
 
 .candidate-consent-page {
@@ -326,9 +334,9 @@ html:has(.candidate-console) {
 
 .candidate-consent-surface dl > div {
   padding: 0.9rem 1rem;
-  border: 1px solid #e7eeec;
+  border: 1px solid #dbeafe;
   border-radius: 0.9rem;
-  background: #fbfefd;
+  background: #f8fbff;
 }
 
 @media (max-width: 639px) {

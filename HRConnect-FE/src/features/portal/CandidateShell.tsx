@@ -46,7 +46,7 @@ const desktopLinkClass = (active: boolean) =>
     'flex h-10 items-center gap-2 rounded-full px-4 text-[14px] no-underline transition-colors duration-150',
     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--console-accent)]',
     active
-      ? 'bg-[color:var(--console-accent-soft)] font-semibold text-[color:var(--console-accent-strong)] shadow-[inset_0_0_0_1px_rgba(15,118,110,0.18)]'
+      ? 'bg-[color:var(--console-accent-soft)] font-semibold text-[color:var(--console-accent-strong)] shadow-[inset_0_0_0_1px_rgba(37,99,235,0.18)]'
       : 'font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900',
   ].join(' ');
 
@@ -89,7 +89,7 @@ export const CandidateShell: React.FC = () => {
       await authService.logout();
     } finally {
       logout();
-      navigate('/login');
+      window.location.replace('/');
     }
   };
 
@@ -101,7 +101,7 @@ export const CandidateShell: React.FC = () => {
   ];
 
   return (
-    <div className="candidate-console min-h-screen bg-[#F5F8F7] text-slate-900">
+    <div className="candidate-console min-h-screen bg-[#F4F7FC] text-slate-900">
       <header className="sticky top-0 z-30 border-0 border-b border-solid border-slate-200/80 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-5 px-4 lg:px-8">
           <NavLink to="/candidate/dashboard" className="flex shrink-0 items-center gap-2.5 no-underline" aria-label="HR Connect, về tổng quan">
@@ -156,7 +156,7 @@ export const CandidateShell: React.FC = () => {
                   data-active={isAccountPathActive}
                   className={`flex cursor-pointer items-center gap-3 rounded-full border-0 py-1 pl-1 pr-3 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
                     isAccountPathActive
-                      ? 'bg-[color:var(--console-accent-soft)] shadow-[inset_0_0_0_1px_rgba(15,118,110,0.18)]'
+                      ? 'bg-[color:var(--console-accent-soft)] shadow-[inset_0_0_0_1px_rgba(37,99,235,0.18)]'
                       : 'bg-transparent hover:bg-slate-100'
                   }`}
                 >
