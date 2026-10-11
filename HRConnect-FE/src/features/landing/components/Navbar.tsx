@@ -13,7 +13,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore, getInitials } from '@/stores/authStore';
 import { useAlertStore } from '@/stores/alertStore';
 import { useI18nStore } from '@/i18n';
-import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWorkspaceMenu';
 import { DEMO_USERS, UserRole } from '@/types/roles';
 import { ROLE_DASHBOARD_ROUTES } from '@/routes/AppRoutes';
@@ -141,7 +140,7 @@ export const Navbar: React.FC = () => {
           onClick={() => navigate('/')}
           style={{
             color: isHomeActive ? '#1d4ed8' : '#475569',
-            fontWeight: isHomeActive ? 700 : 500,
+            fontWeight: 600,
             fontSize: 14,
             background: isHomeActive ? '#f0fdfa' : 'transparent',
             borderRadius: 8,
@@ -156,7 +155,7 @@ export const Navbar: React.FC = () => {
           onClick={() => navigate('/jobs')}
           style={{
             color: isJobsActive ? '#1d4ed8' : '#475569',
-            fontWeight: isJobsActive ? 700 : 500,
+            fontWeight: 600,
             fontSize: 14,
             background: isJobsActive ? '#f0fdfa' : 'transparent',
             borderRadius: 8,
@@ -171,7 +170,7 @@ export const Navbar: React.FC = () => {
           onClick={() => navigate('/#roles')}
           style={{
             color: isRolesActive ? '#1d4ed8' : '#475569',
-            fontWeight: isRolesActive ? 700 : 500,
+            fontWeight: 600,
             fontSize: 14,
             background: isRolesActive ? '#f0fdfa' : 'transparent',
             borderRadius: 8,
@@ -187,7 +186,7 @@ export const Navbar: React.FC = () => {
             onClick={() => navigate('/services')}
             style={{
               color: location.pathname === '/services' ? '#1d4ed8' : '#475569',
-              fontWeight: location.pathname === '/services' ? 700 : 500,
+              fontWeight: 600,
               fontSize: 14,
               borderRadius: 8,
             }}
@@ -197,11 +196,8 @@ export const Navbar: React.FC = () => {
         )}
       </nav>
 
-      {/* Right Controls: Language, Notification, Avatar / Auth */}
+      {/* Right Controls: Notification, Avatar / Auth */}
       <Space size={14} align="center">
-        {/* Nút chuyển ngôn ngữ [VN / EN] */}
-        <LanguageSwitcher theme="light" size="middle" />
-
         {isAuthenticated && (
           <Dropdown
             open={notifOpen}
