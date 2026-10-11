@@ -260,6 +260,55 @@ public class ConfirmStartWorkCommandHandlerTests
             .WithMessage("*doanh nghiệp khác*");
     }
 
+    [Fact]
+    public async Task Handle_WhenApplicationJobIsMissing_ShouldThrowConflictException()
+    {
+        var appId = Guid.NewGuid();
+        var offerId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var application = new Domain.Entities.Application
+        {
+            ApplicationId = appId,
+            JobId = Guid.NewGuid(),
+            Status = "OFFER_ACCEPTED",
+            ConcurrencyToken = Guid.NewGuid(),
+            Job = null!
+        };
+
+        _applicationRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(application);
+        _offerRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(offerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Offer { OfferId = offerId, ApplicationId = appId, Status = "ACCEPTED" });
+        _companyUserRepositoryMock
+            .Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+
+        var command = new ConfirmStartWorkCommand(
+            ApplicationId: appId,
+            OfferId: offerId,
+            ActualStartDate: DateOnly.FromDateTime(DateTime.UtcNow),
+            ConfirmationNote: null,
+            Position: null,
+            Department: null,
+            ConcurrencyToken: application.ConcurrencyToken,
+            CurrentUserId: userId,
+            IsClientCompanyUser: true);
+
+        Func<Task> act = () => CreateHandler().Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*không còn liên kết với công việc hợp lệ*");
+        _placementRepositoryMock.Verify(
+            repository => repository.AddAsync(It.IsAny<Placement>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _unitOfWorkMock.Verify(
+            unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     [Theory]
     [InlineData("REJECTED")]
     [InlineData("WITHDRAWN")]

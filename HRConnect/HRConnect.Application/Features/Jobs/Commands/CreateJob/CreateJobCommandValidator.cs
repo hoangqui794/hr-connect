@@ -29,7 +29,8 @@ public class CreateJobCommandValidator : AbstractValidator<CreateJobCommand>
             RuleFor(x => x.EmploymentType)
                 .MaximumLength(50).WithMessage("Loại hình làm việc không được vượt quá 50 ký tự.");
             RuleFor(x => x.EmploymentType)
-                .Must(value => EmploymentTypes.All.Contains(value.Trim().ToUpperInvariant()))
+                .Must(value => value is not null
+                    && EmploymentTypes.All.Contains(value.Trim().ToUpperInvariant()))
                 .WithMessage("Loại hình làm việc phải là FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP hoặc FREELANCE.");
         });
 

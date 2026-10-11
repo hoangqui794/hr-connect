@@ -103,6 +103,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
             throw new BadRequestException($"Chỉ có thể xác nhận bắt đầu làm việc khi thư mời nhận việc đã được chấp nhận (ACCEPTED). Trạng thái hiện tại: {offer.Status}.");
         }
 
+        Job job;
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
@@ -112,10 +113,20 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
                 throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
             }
 
-            if (application.Job?.CompanyId != companyUser.CompanyId)
+            job = application.Job;
+            if (job == null)
+            {
+                _logger.LogError(
+                    "Hồ sơ ứng tuyển {ApplicationId} không còn liên kết tới Job {JobId}.",
+                    application.ApplicationId,
+                    application.JobId);
+                throw new ConflictException("Hồ sơ ứng tuyển không còn liên kết với công việc hợp lệ. Vui lòng liên hệ quản trị viên.");
+            }
+
+            if (job.CompanyId != companyUser.CompanyId)
             {
                 _logger.LogWarning("User {UserId} thuộc công ty {CompanyId} cố xác nhận đi làm cho hồ sơ của công ty {JobCompanyId}.",
-                    request.CurrentUserId, companyUser.CompanyId, application.Job?.CompanyId);
+                    request.CurrentUserId, companyUser.CompanyId, job.CompanyId);
                 throw new ForbiddenException("Bạn không có quyền xác nhận đi làm cho ứng viên của doanh nghiệp khác.");
             }
         }
@@ -135,7 +146,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
             ApplicationId = application.ApplicationId,
             OfferId = offer.OfferId,
             ActualStartDate = request.ActualStartDate,
-            Position = position ?? application.Job?.Title,
+            Position = position ?? job.Title,
             Department = department,
             Status = PlacementStates.Started,
             ConfirmedBy = request.CurrentUserId,
@@ -152,13 +163,13 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
             placement,
             new JobApplicationContext(
                 application.ApplicationId,
-                application.Job.CompanyId,
-                application.Job.ServiceTypeId,
-                application.Job.ServiceType?.Code,
+                job.CompanyId,
+                job.ServiceTypeId,
+                job.ServiceType?.Code,
                 offer,
-                application.Job.FeeMultiplier,
-                application.Job.WarrantyDays,
-                application.Job.PaymentDueDays),
+                job.FeeMultiplier,
+                job.WarrantyDays,
+                job.PaymentDueDays),
             request.CurrentUserId,
             cancellationToken);
 
