@@ -148,7 +148,7 @@ export const HomePage: React.FC = () => {
             </div>
 
             <div className="relative">
-              <div className="rounded-[30px] border border-solid border-slate-200 bg-slate-950 p-6 text-white shadow-[0_30px_80px_rgba(15,23,42,0.2)] lg:p-8">
+              <div className="rounded-[30px] border border-solid border-blue-200/50 bg-blue-950 p-6 text-white shadow-[0_30px_80px_rgba(23,37,84,0.25)] lg:p-8">
                 <div className="flex items-center justify-between gap-4 border-0 border-b border-solid border-white/10 pb-5">
                   <div>
                     <p className="m-0 text-xs font-bold uppercase tracking-[0.18em] text-blue-300">HR Connect workflow</p>
@@ -229,7 +229,7 @@ export const HomePage: React.FC = () => {
               <div className="space-y-4">
                 {PROCESS_STEPS.map((step) => (
                   <article key={step.number} className="grid grid-cols-[64px_1fr] gap-5 rounded-2xl border border-solid border-slate-200 bg-[#F9FBFA] p-6">
-                    <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-sm font-extrabold text-blue-300">{step.number}</span>
+                    <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-700 text-sm font-extrabold text-white">{step.number}</span>
                     <div>
                       <h3 className="m-0 text-xl font-bold text-slate-950">{step.title}</h3>
                       <p className="mb-0 mt-2 leading-7 text-slate-600">{step.description}</p>
@@ -242,7 +242,7 @@ export const HomePage: React.FC = () => {
         </section>
 
         <section className="px-6 py-24 lg:px-10">
-          <div className="mx-auto grid max-w-[1240px] grid-cols-1 overflow-hidden rounded-[30px] border border-solid border-slate-200 bg-slate-950 shadow-[0_28px_80px_rgba(15,23,42,0.16)] lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="mx-auto grid max-w-[1240px] grid-cols-1 overflow-hidden rounded-[30px] border border-solid border-blue-900/50 bg-gradient-to-br from-blue-950 to-indigo-950 shadow-[0_28px_80px_rgba(23,37,84,0.2)] lg:grid-cols-[1.05fr_0.95fr]">
             <div className="p-8 text-white lg:p-12">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-400/15 text-xl text-blue-300"><FileSearchOutlined aria-hidden /></span>
               <h2 className="mb-0 mt-6 text-4xl font-extrabold tracking-[-0.035em]">Tuyển dụng nhanh hơn nhưng vẫn giữ quyền kiểm soát</h2>
@@ -273,7 +273,7 @@ export const HomePage: React.FC = () => {
         </section>
       </main>
 
-      <footer className="border-0 border-t border-solid border-slate-800 bg-slate-950 px-6 py-8 text-slate-400 lg:px-10">
+      <footer className="border-0 border-t border-solid border-blue-900 bg-blue-950 px-6 py-8 text-slate-400 lg:px-10">
         <div className="mx-auto flex max-w-[1240px] flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 font-extrabold text-white">H</span>

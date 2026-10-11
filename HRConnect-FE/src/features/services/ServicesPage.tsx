@@ -65,7 +65,7 @@ export const ServicesPage: React.FC = () => {
             </div>
             <div className="overflow-x-auto rounded-[24px] border border-solid border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.07)]">
               <table className="w-full min-w-[980px] border-collapse text-left">
-                <thead><tr className="bg-slate-950 text-white"><th className="w-[18%] px-5 py-5 text-sm">Tiêu chí</th>{SERVICE_HEADERS.map(([code, name]) => <th key={code} className="w-[27.33%] px-5 py-5"><span className="block text-xs font-bold tracking-[0.08em] text-blue-300">{code}</span><span className="mt-1 block text-base">{name}</span></th>)}</tr></thead>
+                <thead><tr className="bg-blue-950 text-white"><th className="w-[18%] px-5 py-5 text-sm">Tiêu chí</th>{SERVICE_HEADERS.map(([code, name]) => <th key={code} className="w-[27.33%] px-5 py-5"><span className="block text-xs font-bold tracking-[0.08em] text-blue-300">{code}</span><span className="mt-1 block text-base">{name}</span></th>)}</tr></thead>
                 <tbody>{COMPARISON_ROWS.map((row, index) => <tr key={row.label} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'}><th className="border-0 border-t border-solid border-slate-200 px-5 py-5 text-sm font-bold text-slate-900">{row.label}</th><td className="border-0 border-t border-solid border-slate-200 px-5 py-5 text-sm leading-6 text-slate-600">{row.cod}</td><td className="border-0 border-t border-solid border-slate-200 px-5 py-5 text-sm leading-6 text-slate-600">{row.sourcing}</td><td className="border-0 border-t border-solid border-slate-200 px-5 py-5 text-sm leading-6 text-slate-600">{row.application}</td></tr>)}</tbody>
               </table>
             </div>
@@ -73,7 +73,7 @@ export const ServicesPage: React.FC = () => {
         </section>
 
         <section className="px-6 pb-20 lg:px-10">
-          <div className="mx-auto flex max-w-[1240px] flex-col items-start justify-between gap-6 rounded-[28px] bg-slate-950 px-8 py-10 text-white lg:flex-row lg:items-center lg:px-12">
+          <div className="mx-auto flex max-w-[1240px] flex-col items-start justify-between gap-6 rounded-[28px] bg-gradient-to-br from-blue-950 to-indigo-950 px-8 py-10 text-white lg:flex-row lg:items-center lg:px-12">
             <div><p className="m-0 text-sm font-bold uppercase tracking-[0.14em] text-blue-300">Bắt đầu cùng HR Connect</p><h2 className="mb-0 mt-2 text-3xl font-extrabold">Đưa nhu cầu tuyển dụng vào một quy trình rõ ràng.</h2><p className="mb-0 mt-3 text-slate-300">Đăng ký doanh nghiệp để tạo Job và chọn dịch vụ phù hợp.</p></div>
             <button type="button" onClick={() => navigate('/register?role=CLIENT')} className="inline-flex min-h-12 shrink-0 cursor-pointer items-center gap-2 rounded-xl border-0 bg-blue-600 px-6 text-base font-bold text-white transition hover:bg-blue-500">Đăng ký doanh nghiệp<ArrowRightOutlined aria-hidden /></button>
           </div>

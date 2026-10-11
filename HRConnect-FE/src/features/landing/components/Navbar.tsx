@@ -94,7 +94,7 @@ export const Navbar: React.FC = () => {
       <div
         onClick={() => navigate('/')}
         title="HR Connect — AI-Powered Recruitment Platform"
-        style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', userSelect: 'none' }}
+        style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', userSelect: 'none' }}
       >
         <div
           style={{
@@ -197,7 +197,7 @@ export const Navbar: React.FC = () => {
       </nav>
 
       {/* Right Controls: Notification, Avatar / Auth */}
-      <Space size={14} align="center">
+      <Space size={14} align="center" style={{ flex: 1, justifyContent: 'flex-end' }}>
         {isAuthenticated && (
           <Dropdown
             open={notifOpen}
