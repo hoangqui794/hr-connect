@@ -165,6 +165,12 @@ const ConsoleSettingsPlaceholder = React.lazy(() =>
 
 // ── Candidate & Affiliate workspaces (features/portal), MF-02 on the real API ──
 const CandidateHomePage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateHomePage })));
+const CandidateJobsPage = React.lazy(() =>
+  import('@/features/portal/candidate/CandidateJobPages').then((m) => ({ default: m.CandidateJobsPage }))
+);
+const CandidateJobDetailPage = React.lazy(() =>
+  import('@/features/portal/candidate/CandidateJobPages').then((m) => ({ default: m.CandidateJobDetailPage }))
+);
 const CandidateMyApplicationsPage = React.lazy(() =>
   import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateApplicationsPage }))
 );
@@ -309,7 +315,7 @@ export const getDashboardRouteForRole = (role?: string | UserRole | null): strin
   const normalized = String(role).toUpperCase().trim();
   switch (normalized) {
     case 'CANDIDATE':
-      return '/';
+      return '/candidate/dashboard';
     case 'AFFILIATE':
       return '/affiliate/dashboard';
     case 'CLIENT':
@@ -329,7 +335,7 @@ export const ROLE_DASHBOARD_ROUTES: Record<UserRole, string> = {
   [UserRole.AFFILIATE]: '/affiliate/dashboard',
   [UserRole.INTERNAL_HR]: '/hr/dashboard',
   [UserRole.ADMIN]: '/admin/dashboard',
-  [UserRole.CANDIDATE]: '/',
+  [UserRole.CANDIDATE]: '/candidate/dashboard',
   [UserRole.GUEST]: '/login',
 };
 
@@ -410,6 +416,8 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/hr/profile': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/placement-review': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/candidate/dashboard': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/jobs': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/jobs/:jobId': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/profile': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/profile': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/applications': [UserRole.CANDIDATE, UserRole.ADMIN],
@@ -524,6 +532,8 @@ export const AppRoutes = {
   ConsolePayoutsPlaceholder,
   ConsoleSettingsPlaceholder,
   CandidateHomePage,
+  CandidateJobsPage,
+  CandidateJobDetailPage,
   CandidateMyApplicationsPage,
   CandidateApplicationDetailPage,
   CandidateSubmissionConsentPage,

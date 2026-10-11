@@ -242,15 +242,17 @@ export const LoginPage: React.FC = () => {
       // Resume the page that asked for login only when it belongs to this role's own workspace.
       // After a logout the remembered page is the previous user's (e.g. /client/...), and an Admin
       // may technically open it, but should land in the Admin console instead.
-      const redirectFrom = (location.state as { from?: string } | undefined)?.from;
+      const redirectState = location.state as { from?: string; intent?: string } | undefined;
+      const redirectFrom = redirectState?.from;
       const destination =
         redirectFrom && redirectFrom !== '/login' && belongsToRoleWorkspace(resolvedRole, redirectFrom)
           ? redirectFrom
-          : resolvedRole === UserRole.CANDIDATE
-          ? '/'
           : getDashboardRouteForRole(resolvedRole);
 
-      navigate(destination, { replace: true });
+      navigate(destination, {
+        replace: true,
+        state: redirectState?.intent ? { intent: redirectState.intent } : undefined,
+      });
     } catch (err: unknown) {
       const formattedError = getApiErrorMessage(err);
       setErrorMessage(formattedError);

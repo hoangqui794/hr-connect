@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { ProtectedRoute } from './AppRoutes';
+import { getDashboardRouteForRole, ProtectedRoute, ROLE_DASHBOARD_ROUTES } from './AppRoutes';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 
@@ -50,5 +50,13 @@ describe('ProtectedRoute', () => {
   it('redirects when the permission claim is missing', () => {
     renderProtected(['application.delete']);
     expect(screen.getByText('Forbidden')).toBeInTheDocument();
+  });
+});
+
+describe('Candidate workspace entry', () => {
+  it('uses the owned Candidate dashboard consistently', () => {
+    expect(getDashboardRouteForRole(UserRole.CANDIDATE)).toBe('/candidate/dashboard');
+    expect(getDashboardRouteForRole('candidate')).toBe('/candidate/dashboard');
+    expect(ROLE_DASHBOARD_ROUTES[UserRole.CANDIDATE]).toBe('/candidate/dashboard');
   });
 });

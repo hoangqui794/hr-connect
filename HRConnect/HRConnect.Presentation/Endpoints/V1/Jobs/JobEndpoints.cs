@@ -9,6 +9,7 @@ using HRConnect.Application.Features.Jobs.Commands.RejectJob;
 using HRConnect.Application.Features.Jobs.Commands.ResumeJob;
 using HRConnect.Application.Features.Jobs.Commands.SubmitJob;
 using HRConnect.Application.Features.Jobs.Commands.UpdateJob;
+using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.Candidates.Commands.ApplyJob;
 using HRConnect.Application.Features.Affiliates.Commands.SubmitCandidate;
 using HRConnect.Application.Features.Jobs.Queries.GetJobDetail;
@@ -26,8 +27,23 @@ public static class JobEndpoints
 {
     public static IEndpointRouteBuilder MapJobEndpoints(this IEndpointRouteBuilder app)
     {
+        var publicJobs = app.MapGroup("/api/v1/public/jobs").WithTags("Public Jobs").AllowAnonymous();
         var jobs = app.MapGroup("/api/v1/jobs").WithTags("Jobs").RequireAuthorization();
         var review = app.MapGroup("/api/v1/internal/jobs").WithTags("Job Review").RequireAuthorization();
+
+        publicJobs.MapGet("", async (string? search, string? location, string? employmentType,
+            Guid? serviceTypeId, decimal? salaryMin, decimal? salaryMax, int? page, int? pageSize,
+            ISender sender, CancellationToken ct) =>
+            await Run(async () => Results.Ok(await sender.Send(new GetPublicJobsQuery(
+                [JobAccessPolicy.CandidateRole], false, search, location, employmentType, serviceTypeId,
+                salaryMin, salaryMax, page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : 20), ct))))
+        .WithName("GetGuestCandidateJobs")
+        .WithSummary("Guest tìm Job Candidate được phép xem")
+        .WithDescription("Không cần đăng nhập. API cố định phạm vi CANDIDATE: chỉ trả Job ACTIVE, PUBLIC và thuộc Service Type có can_view cho role CANDIDATE. Không trả Job PARTNER_ONLY dành cho Affiliate.")
+        .RequireRateLimiting("public-read")
+        .Produces<JobPageDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status429TooManyRequests);
 
         jobs.MapPost("", async (ClaimsPrincipal user, [FromBody] CreateJobCommand command, ISender sender, IValidator<CreateJobCommand> validator, CancellationToken ct) =>
         {
@@ -87,16 +103,20 @@ public static class JobEndpoints
                 RoleCodes(user), internalAccess, search, location, employmentType, serviceTypeId, salaryMin, salaryMax,
                 page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : 20), ct)));
         }).WithName("GetPublicJobs").WithSummary("Tìm Job đang hoạt động theo quyền xem của Service Type")
-        .WithDescription("Filters MF01: search, location, employmentType, serviceTypeId, salaryMin, salaryMax. page mặc định 1; pageSize mặc định 20 và tối đa 100.");
+        .WithDescription("Yêu cầu đăng nhập và permission job.view. Kết quả được lọc theo role thật và Service Type. Hỗ trợ search, location, employmentType, serviceTypeId, salaryMin, salaryMax; page mặc định 1, pageSize mặc định 20 và tối đa 100.");
         jobs.MapGet("/{jobId:guid}", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         {
-            var id = UserId(user); if (id == null) return Results.Unauthorized();
-            var internalAccess = ReviewerCan(user, "job.review");
-            var canAttemptView = internalAccess || ClientCan(user, "job.view_own") || user.HasClaim("permission", "job.view");
+            var isAuthenticated = user.Identity?.IsAuthenticated == true;
+            var id = UserId(user);
+            var internalAccess = isAuthenticated && ReviewerCan(user, "job.review");
+            var canAttemptView = !isAuthenticated || internalAccess || ClientCan(user, "job.view_own") || user.HasClaim("permission", "job.view");
             if (!canAttemptView) return Forbidden();
-            return await Run(async () => Results.Ok(await sender.Send(new GetJobDetailQuery(jobId, id.Value, internalAccess, RoleCodes(user)), ct)));
+            var roleCodes = isAuthenticated ? RoleCodes(user) : [JobAccessPolicy.CandidateRole];
+            return await Run(async () => Results.Ok(await sender.Send(new GetJobDetailQuery(jobId, id ?? Guid.Empty, internalAccess, roleCodes), ct)));
         }
-        ).WithName("GetJobDetail").WithSummary("Lấy chi tiết Job");
+        ).AllowAnonymous()
+        .WithName("GetJobDetail").WithSummary("Lấy chi tiết Job")
+        .WithDescription("Guest được xem chi tiết theo đúng phạm vi Candidate. Job chỉ dành cho Affiliate hoặc Internal không được trả về cho Guest.");
 
         // POST /api/v1/jobs/{jobId}/apply - Ứng viên tự ứng tuyển vào công việc
         jobs.MapPost("/{jobId:guid}/apply", async (
