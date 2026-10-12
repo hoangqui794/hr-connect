@@ -1,6 +1,16 @@
 import { apiClient } from '../apiClient';
 import type { ApiEnvelope } from '@/types/api/admin';
-import type { BusinessSetting, Commission, CommissionStatus, FinancePage, Payout, ServiceFee, ServiceFeeStatus } from '@/types/api/finance';
+import type {
+  BusinessSetting,
+  Commission,
+  CommissionStatus,
+  FinancePage,
+  Payout,
+  ServiceFee,
+  ServiceFeeStatus,
+  Warranty,
+  WarrantyStatus,
+} from '@/types/api/finance';
 
 const clean = <T extends Record<string, unknown>>(params: T) =>
   Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '' && v !== 'all'));
@@ -43,6 +53,9 @@ export const financeApi = {
   },
   async payouts(params: { page: number; pageSize: number }): Promise<FinancePage<Payout>> {
     return (await apiClient.get<ApiEnvelope<FinancePage<Payout>>>('/payouts', { params: clean(params) })).data.data;
+  },
+  async warranties(params: { status?: WarrantyStatus | 'all'; page: number; pageSize: number }): Promise<FinancePage<Warranty>> {
+    return (await apiClient.get<ApiEnvelope<FinancePage<Warranty>>>('/warranties', { params: clean(params) })).data.data;
   },
   async reportResignation(placementId: string, input: { lastWorkingDate: string; reason: string }) {
     return (await apiClient.post<ApiEnvelope<unknown>>(`/placements/${placementId}/resignation`, input)).data;

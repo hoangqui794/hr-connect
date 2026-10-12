@@ -76,3 +76,23 @@ export interface Payout {
   attemptNo: number;
   createdAt: string;
 }
+
+export type WarrantyStatus = 'ACTIVE' | 'CLAIMED' | 'PASSED' | 'VOIDED';
+
+export interface Warranty {
+  warrantyId: string;
+  placementId: string;
+  companyName?: string | null;
+  jobTitle?: string | null;
+  candidateName?: string | null;
+  position?: string | null;
+  startDate: string;
+  endDate?: string | null;
+  status: WarrantyStatus;
+  placementStatus: string;
+  resultNote?: string | null;
+  serviceFeeStatus?: ServiceFeeStatus | null;
+  serviceFeeAmount?: number | null;
+  commissionStatus?: CommissionStatus | null;
+  commissionAmount?: number | null;
+}
