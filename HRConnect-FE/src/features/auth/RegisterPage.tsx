@@ -424,7 +424,7 @@ export const RegisterPage: React.FC = () => {
           </Checkbox>
         </Form.Item>
 
-        <Button type="primary" htmlType="submit" size="large" loading={submitting} disabled={submitting} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border-0 bg-blue-600 text-sm font-bold shadow-lg shadow-blue-600/20 hover:!bg-blue-700">
+        <Button type="primary" htmlType="submit" size="large" loading={submitting} disabled={submitting} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border-0 bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-sm font-bold text-white shadow-lg shadow-[#1E9EDB]/30 hover:opacity-95 transition-all">
           <span>{submitting ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}</span>
           {!submitting && <ArrowRightOutlined />}
         </Button>
@@ -432,7 +432,7 @@ export const RegisterPage: React.FC = () => {
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-600">
         Đã có tài khoản?{' '}
-        <Link to="/login" className="font-bold text-blue-700 hover:text-blue-900">Đăng nhập</Link>
+        <Link to="/login" className="font-bold text-[#1E9EDB] hover:text-[#168ec6]">Đăng nhập</Link>
       </div>
     </AuthPageShell>
   );
