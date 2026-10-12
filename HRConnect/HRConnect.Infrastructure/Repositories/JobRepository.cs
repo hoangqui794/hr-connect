@@ -124,6 +124,8 @@ public class JobRepository : IJobRepository
         decimal? salaryMax,
         int page,
         int pageSize,
+        string? sortBy = null,
+        string? sortDirection = null,
         CancellationToken cancellationToken = default)
     {
         var allowedServiceTypeIds = _context.ServiceTypeAllowedRoles.AsNoTracking()
@@ -137,9 +139,14 @@ public class JobRepository : IJobRepository
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var pattern = $"%{search.Trim()}%";
-            query = query.Where(job => EF.Functions.ILike(job.Title, pattern) ||
-                                       (job.Description != null && EF.Functions.ILike(job.Description, pattern)));
+            var trimmedSearch = search.Trim();
+            if (trimmedSearch.Length > 200) trimmedSearch = trimmedSearch[..200];
+            var pattern = $"%{trimmedSearch}%";
+            query = query.Where(job =>
+                EF.Functions.ILike(job.Title, pattern) ||
+                (job.Description != null && EF.Functions.ILike(job.Description, pattern)) ||
+                (job.Company != null && EF.Functions.ILike(job.Company.CompanyName, pattern)) ||
+                job.JobSkills.Any(js => js.Skill != null && EF.Functions.ILike(js.Skill.SkillName, pattern)));
         }
 
         if (!string.IsNullOrWhiteSpace(location))
@@ -164,13 +171,40 @@ public class JobRepository : IJobRepository
             query = query.Where(job => job.SalaryMin == null || job.SalaryMin <= salaryMax.Value);
 
         var totalCount = await query.CountAsync(cancellationToken);
-        var items = await query
+
+        var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy) ? "POSTED_AT" : sortBy.Trim().ToUpperInvariant();
+        var normalizedSortDirection = string.IsNullOrWhiteSpace(sortDirection) ? "DESC" : sortDirection.Trim().ToUpperInvariant();
+
+        var orderedQuery = (normalizedSortBy, normalizedSortDirection) switch
+        {
+            ("SALARY", "ASC") => query
+                .OrderBy(job => !job.SalaryMin.HasValue && !job.SalaryMax.HasValue)
+                .ThenBy(job => job.SalaryMin ?? job.SalaryMax)
+                .ThenBy(job => job.SalaryMax)
+                .ThenByDescending(job => job.PostedAt)
+                .ThenBy(job => job.JobId),
+
+            ("SALARY", "DESC") => query
+                .OrderBy(job => !job.SalaryMax.HasValue && !job.SalaryMin.HasValue)
+                .ThenByDescending(job => job.SalaryMax ?? job.SalaryMin)
+                .ThenByDescending(job => job.SalaryMin)
+                .ThenByDescending(job => job.PostedAt)
+                .ThenBy(job => job.JobId),
+
+            ("POSTED_AT", "ASC") => query
+                .OrderBy(job => job.PostedAt)
+                .ThenBy(job => job.JobId),
+
+            _ => query
+                .OrderByDescending(job => job.PostedAt)
+                .ThenBy(job => job.JobId)
+        };
+
+        var items = await orderedQuery
             .Include(job => job.Company)
             .Include(job => job.ServiceType)
             .Include(job => job.JobRequirements)
             .Include(job => job.JobSkills).ThenInclude(jobSkill => jobSkill.Skill)
-            .OrderByDescending(job => job.PostedAt)
-            .ThenBy(job => job.JobId)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .AsSplitQuery()

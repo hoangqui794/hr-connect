@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace HRConnect.Domain.Entities;
@@ -63,5 +63,7 @@ public partial class Candidate
     public virtual ICollection<Submission> Submissions { get; set; } = new List<Submission>();
 
     public virtual AppUser? User { get; set; }
+
+    public virtual ICollection<CandidateSavedJob> CandidateSavedJobs { get; set; } = new List<CandidateSavedJob>();
 }
 

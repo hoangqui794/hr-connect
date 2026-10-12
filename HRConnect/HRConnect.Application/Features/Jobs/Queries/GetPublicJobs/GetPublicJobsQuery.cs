@@ -14,7 +14,9 @@ public sealed record GetPublicJobsQuery(
     decimal? SalaryMin = null,
     decimal? SalaryMax = null,
     int Page = 1,
-    int PageSize = 20) : IRequest<JobPageDto>;
+    int PageSize = 20,
+    string? SortBy = null,
+    string? SortDirection = null) : IRequest<JobPageDto>;
 
 public sealed record JobPageDto(
     IReadOnlyList<JobDto> Items,
@@ -37,6 +39,25 @@ public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQue
             throw new HRConnect.Application.Common.Exceptions.BadRequestException("EmploymentType phải là FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP hoặc FREELANCE.");
         if (request.SalaryMin < 0 || request.SalaryMax < 0 || (request.SalaryMin.HasValue && request.SalaryMax.HasValue && request.SalaryMin > request.SalaryMax))
             throw new HRConnect.Application.Common.Exceptions.BadRequestException("Khoảng lương filter không hợp lệ.");
+
+        string? sortBy = null;
+        if (!string.IsNullOrWhiteSpace(request.SortBy))
+        {
+            var normalizedSortBy = request.SortBy.Trim().ToUpperInvariant();
+            if (normalizedSortBy is not "POSTED_AT" and not "SALARY")
+                throw new HRConnect.Application.Common.Exceptions.BadRequestException("sortBy chỉ chấp nhận POSTED_AT hoặc SALARY.");
+            sortBy = normalizedSortBy;
+        }
+
+        string? sortDirection = null;
+        if (!string.IsNullOrWhiteSpace(request.SortDirection))
+        {
+            var normalizedSortDirection = request.SortDirection.Trim().ToUpperInvariant();
+            if (normalizedSortDirection is not "DESC" and not "ASC")
+                throw new HRConnect.Application.Common.Exceptions.BadRequestException("sortDirection chỉ chấp nhận DESC hoặc ASC.");
+            sortDirection = normalizedSortDirection;
+        }
+
         var roleCodes = request.RoleCodes.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var allowedVisibilities = JobAccessPolicy.GetDiscoverableVisibilities(
             roleCodes, request.HasInternalAccess);
@@ -52,6 +73,8 @@ public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQue
             request.SalaryMax,
             page,
             pageSize,
+            sortBy,
+            sortDirection,
             cancellationToken);
 
         return new JobPageDto(

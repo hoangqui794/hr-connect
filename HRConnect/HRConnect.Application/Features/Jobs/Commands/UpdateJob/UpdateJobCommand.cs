@@ -32,6 +32,7 @@ public sealed class UpdateJobCommand : IRequest<JobActionResponse>
     public int? WarrantyDays { get; set; }
     public int? PaymentDueDays { get; set; }
     public Guid? PostingPackageId { get; set; }
+    public DateTime? ApplicationDeadline { get; set; }
     public List<CreateJobRequirementRequest> Requirements { get; set; } = [];
     public List<JobSkillRequest> Skills { get; set; } = [];
 }

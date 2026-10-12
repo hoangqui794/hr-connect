@@ -52,6 +52,8 @@ public class CreateJobCommand : IRequest<CreateJobResponse>
 
     public Guid? PostingPackageId { get; set; }
 
+    public DateTime? ApplicationDeadline { get; set; }
+
     public List<CreateJobRequirementRequest> Requirements { get; set; } = [];
 
     public List<JobSkillRequest> Skills { get; set; } = [];

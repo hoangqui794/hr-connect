@@ -94,6 +94,12 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             throw new BadRequestException("Công việc hiện không ở trạng thái nhận hồ sơ ứng tuyển.");
         }
 
+        if (job.ApplicationDeadline.HasValue && job.ApplicationDeadline.Value <= DateTime.UtcNow)
+        {
+            _logger.LogWarning("JobId {JobId} đã quá hạn nộp hồ sơ ({Deadline}).", job.JobId, job.ApplicationDeadline);
+            throw new BadRequestException("Công việc đã hết hạn nhận hồ sơ ứng tuyển.");
+        }
+
         // 3. Phân quyền can_submit dựa trên Service Type và Roles
         if (!JobAccessPolicy.CanCandidateApply(job, request.RoleCodes))
         {

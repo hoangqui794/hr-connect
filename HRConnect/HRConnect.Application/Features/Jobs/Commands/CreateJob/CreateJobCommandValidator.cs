@@ -97,6 +97,12 @@ public class CreateJobCommandValidator : AbstractValidator<CreateJobCommand>
             .Must(value => JobVisibilities.All.Contains(value.Trim().ToUpperInvariant()))
             .WithMessage("Chế độ hiển thị phải là PUBLIC, PARTNER_ONLY hoặc INTERNAL_ONLY.");
 
+        When(x => x.ApplicationDeadline.HasValue, () =>
+        {
+            RuleFor(x => x.ApplicationDeadline)
+                .GreaterThan(DateTime.UtcNow).WithMessage("Hạn nhận hồ sơ phải lớn hơn thời điểm hiện tại.");
+        });
+
         RuleForEach(x => x.Requirements)
             .NotNull().WithMessage("Yêu cầu công việc không được là null.")
             .SetValidator(new CreateJobRequirementRequestValidator());

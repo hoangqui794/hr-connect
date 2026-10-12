@@ -44,6 +44,8 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
         if (serviceTypeCode == null)
             throw new BadRequestException("Loại dịch vụ đã ngừng hoạt động nên Job không thể gửi duyệt.");
         JobHandlerGuards.RequireVisibilityAllowed(serviceTypeCode, job.Visibility);
+        if (job.ApplicationDeadline.HasValue && job.ApplicationDeadline.Value <= DateTime.UtcNow)
+            throw new BadRequestException("Hạn nhận hồ sơ của công việc phải lớn hơn thời điểm hiện tại.");
 
         // Validation & Gán giá trị mặc định theo từng loại dịch vụ (MF-01 B3 & Mục C)
         if (string.Equals(serviceTypeCode, ServiceTypeCodes.CvSourcing, StringComparison.OrdinalIgnoreCase))

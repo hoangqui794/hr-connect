@@ -98,6 +98,11 @@ public partial class Job
     /// </summary>
     public DateTime? ExpiresAt { get; set; }
 
+    /// <summary>
+    /// Hạn nhận hồ sơ ứng tuyển của công việc (MF-01).
+    /// </summary>
+    public DateTime? ApplicationDeadline { get; set; }
+
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
 
     public virtual ICollection<CandidateJobMatch> CandidateJobMatches { get; set; } = new List<CandidateJobMatch>();
@@ -119,5 +124,7 @@ public partial class Job
     public virtual JobPostingPackage? PostingPackage { get; set; }
 
     public virtual ICollection<JobPostingFee> JobPostingFees { get; set; } = new List<JobPostingFee>();
+
+    public virtual ICollection<CandidateSavedJob> CandidateSavedJobs { get; set; } = new List<CandidateSavedJob>();
 }
 

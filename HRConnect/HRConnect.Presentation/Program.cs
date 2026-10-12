@@ -20,6 +20,7 @@ using HRConnect.Presentation.Endpoints.V1.Companies;
 using HRConnect.Presentation.Endpoints.V1.InternalHr;
 using HRConnect.Presentation.Endpoints.V1.Internal;
 using HRConnect.Presentation.Endpoints.V1.SubmissionConsents;
+using HRConnect.Presentation.Endpoints.V1.Notifications;
 using HRConnect.Presentation.Swagger;
 using HRConnect.Presentation.Endpoints.Internal;
 using HRConnect.Presentation.Endpoints.V1.Recruitment;
@@ -382,6 +383,8 @@ app.MapPlacementEndpoints();
 app.MapFinanceEndpoints();
 app.MapBusinessSettingEndpoints();
 app.MapSubmissionConsentEndpoints();
+app.MapCandidateSavedJobEndpoints();
+app.MapNotificationEndpoints();
 
 // ==============================================================================
 // 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động
