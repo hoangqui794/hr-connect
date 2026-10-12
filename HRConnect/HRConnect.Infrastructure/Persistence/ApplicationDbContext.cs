@@ -98,6 +98,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<ServiceFee> ServiceFees { get; set; }
 
+    public virtual DbSet<SystemSetting> SystemSettings { get; set; }
+
     public virtual DbSet<Probation> Probations { get; set; }
 
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
@@ -2144,6 +2146,30 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<SystemSetting>(entity =>
+        {
+            entity.HasKey(e => e.SettingKey).HasName("system_setting_pkey");
+
+            entity.ToTable("system_setting", "public", tb => tb.HasComment(
+                "Admin overrides of configurable business numbers. Keys, defaults and ranges are declared in code (BusinessSettingKeys); no row means the documented default applies."));
+
+            entity.Property(e => e.SettingKey)
+                .HasMaxLength(100)
+                .HasColumnName("setting_key");
+            entity.Property(e => e.Value)
+                .HasMaxLength(100)
+                .HasColumnName("value");
+            entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.UpdatedByNavigation).WithMany()
+                .HasForeignKey(d => d.UpdatedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("system_setting_updated_by_fkey");
         });
 
         modelBuilder.Entity<ServiceFee>(entity =>

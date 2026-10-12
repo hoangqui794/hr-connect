@@ -3847,6 +3847,40 @@ namespace HRConnect.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.SystemSetting", b =>
+                {
+                    b.Property<string>("SettingKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("setting_key");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("value");
+
+                    b.HasKey("SettingKey")
+                        .HasName("system_setting_pkey");
+
+                    b.HasIndex("UpdatedBy");
+
+                    b.ToTable("system_setting", "public", t =>
+                        {
+                            t.HasComment("Admin overrides of configurable business numbers. Keys, defaults and ranges are declared in code (BusinessSettingKeys); no row means the documented default applies.");
+                        });
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.UserEmailIdentity", b =>
                 {
                     b.Property<Guid>("EmailIdentityId")
@@ -5070,6 +5104,17 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasConstraintName("submission_consent_submission_id_fkey");
 
                     b.Navigation("Submission");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.SystemSetting", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "UpdatedByNavigation")
+                        .WithMany()
+                        .HasForeignKey("UpdatedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("system_setting_updated_by_fkey");
+
+                    b.Navigation("UpdatedByNavigation");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.UserEmailIdentity", b =>
