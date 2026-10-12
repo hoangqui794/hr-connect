@@ -18,7 +18,7 @@ public class OfferDetailDto
 
     public Guid ApplicationId { get; set; }
 
-    public JobDetailDto Job { get; set; } = new();
+    public OfferJobSummaryDto Job { get; set; } = new();
 
     public CandidateDetailDto Candidate { get; set; } = new();
 
@@ -55,7 +55,7 @@ public class OfferDetailDto
     public List<PlacementSummaryDto> Placements { get; set; } = new();
 }
 
-public class JobDetailDto
+public class OfferJobSummaryDto
 {
     public Guid JobId { get; set; }
 
