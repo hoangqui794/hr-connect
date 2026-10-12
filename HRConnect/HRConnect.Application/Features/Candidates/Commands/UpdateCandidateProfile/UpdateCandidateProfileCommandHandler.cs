@@ -51,6 +51,15 @@ public class UpdateCandidateProfileCommandHandler : IRequestHandler<UpdateCandid
         candidate.HighestEducation = request.HighestEducation?.Trim();
         candidate.YearsOfExperience = request.YearsOfExperience;
         candidate.Summary = request.Summary?.Trim();
+        candidate.CurrentJobTitle = request.CurrentJobTitle?.Trim();
+        candidate.CurrentLevel = request.CurrentLevel?.Trim();
+        candidate.TargetRole = request.TargetRole?.Trim();
+        candidate.ExpectedSalaryMin = request.ExpectedSalaryMin;
+        candidate.ExpectedSalaryMax = request.ExpectedSalaryMax;
+        candidate.ExpectedSalaryCurrency = string.IsNullOrWhiteSpace(request.ExpectedSalaryCurrency) ? "VND" : request.ExpectedSalaryCurrency.Trim().ToUpperInvariant();
+        candidate.AvailableFrom = request.AvailableFrom;
+        candidate.PreferredLocations = request.PreferredLocations?.Trim();
+        candidate.PreferredWorkModes = request.PreferredWorkModes?.Trim();
         candidate.UpdatedAt = now;
 
         _candidateRepository.Update(candidate);
@@ -90,6 +99,15 @@ public class UpdateCandidateProfileCommandHandler : IRequestHandler<UpdateCandid
                 HighestEducation = candidate.HighestEducation,
                 YearsOfExperience = candidate.YearsOfExperience,
                 Summary = candidate.Summary,
+                CurrentJobTitle = candidate.CurrentJobTitle,
+                CurrentLevel = candidate.CurrentLevel,
+                TargetRole = candidate.TargetRole,
+                ExpectedSalaryMin = candidate.ExpectedSalaryMin,
+                ExpectedSalaryMax = candidate.ExpectedSalaryMax,
+                ExpectedSalaryCurrency = candidate.ExpectedSalaryCurrency,
+                AvailableFrom = candidate.AvailableFrom,
+                PreferredLocations = candidate.PreferredLocations,
+                PreferredWorkModes = candidate.PreferredWorkModes,
                 ProfileVisibility = candidate.ProfileVisibility,
                 UpdatedAt = candidate.UpdatedAt
             }

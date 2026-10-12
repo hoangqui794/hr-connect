@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace HRConnect.Domain.Entities;
@@ -30,6 +30,24 @@ public partial class Candidate
     public decimal? YearsOfExperience { get; set; }
 
     public string? Summary { get; set; }
+
+    public string? CurrentJobTitle { get; set; }
+
+    public string? CurrentLevel { get; set; }
+
+    public string? TargetRole { get; set; }
+
+    public decimal? ExpectedSalaryMin { get; set; }
+
+    public decimal? ExpectedSalaryMax { get; set; }
+
+    public string? ExpectedSalaryCurrency { get; set; }
+
+    public DateOnly? AvailableFrom { get; set; }
+
+    public string? PreferredLocations { get; set; }
+
+    public string? PreferredWorkModes { get; set; }
 
     public string ProfileVisibility { get; set; } = null!;
 

@@ -99,6 +99,63 @@ public class UpdateCandidateProfileCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenCareerFieldsProvided_ShouldUpdateAllCareerFields()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var candidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            UserId = userId,
+            FullName = "Tran Van C",
+            Status = "ACTIVE"
+        };
+        var user = new AppUser { UserId = userId, DisplayName = "Tran Van C" };
+
+        _candidateRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+        _userRepositoryMock
+            .Setup(u => u.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var command = new UpdateCandidateProfileCommand
+        {
+            UserId = userId,
+            FullName = "Tran Van C",
+            CurrentJobTitle = "Tech Lead",
+            CurrentLevel = "LEAD",
+            TargetRole = "Engineering Manager",
+            ExpectedSalaryMin = 40000000,
+            ExpectedSalaryMax = 60000000,
+            ExpectedSalaryCurrency = "VND",
+            AvailableFrom = new DateOnly(2026, 12, 1),
+            PreferredLocations = "Hanoi, Remote",
+            PreferredWorkModes = "HYBRID"
+        };
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.Data.Should().NotBeNull();
+        result.Data!.CurrentJobTitle.Should().Be("Tech Lead");
+        result.Data.CurrentLevel.Should().Be("LEAD");
+        result.Data.TargetRole.Should().Be("Engineering Manager");
+        result.Data.ExpectedSalaryMin.Should().Be(40000000);
+        result.Data.ExpectedSalaryMax.Should().Be(60000000);
+        result.Data.ExpectedSalaryCurrency.Should().Be("VND");
+        result.Data.AvailableFrom.Should().Be(new DateOnly(2026, 12, 1));
+        result.Data.PreferredLocations.Should().Be("Hanoi, Remote");
+        result.Data.PreferredWorkModes.Should().Be("HYBRID");
+
+        candidate.CurrentJobTitle.Should().Be("Tech Lead");
+        candidate.ExpectedSalaryMin.Should().Be(40000000);
+        _candidateRepositoryMock.Verify(r => r.Update(candidate), Times.Once);
+    }
+
+    [Fact]
     public async Task Handle_WhenCandidateNotFound_ShouldThrowNotFoundException()
     {
         // Arrange

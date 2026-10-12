@@ -65,5 +65,67 @@ public class UpdateCandidateProfileCommandValidator : AbstractValidator<UpdateCa
             RuleFor(x => x.Summary)
                 .MaximumLength(2000).WithMessage("Tóm tắt bản thân không được vượt quá 2000 ký tự.");
         });
+
+        When(x => !string.IsNullOrWhiteSpace(x.CurrentJobTitle), () =>
+        {
+            RuleFor(x => x.CurrentJobTitle)
+                .MaximumLength(150).WithMessage("Chức danh hiện tại không được vượt quá 150 ký tự.");
+        });
+
+        When(x => !string.IsNullOrWhiteSpace(x.CurrentLevel), () =>
+        {
+            RuleFor(x => x.CurrentLevel)
+                .MaximumLength(50).WithMessage("Cấp bậc hiện tại không được vượt quá 50 ký tự.");
+        });
+
+        When(x => !string.IsNullOrWhiteSpace(x.TargetRole), () =>
+        {
+            RuleFor(x => x.TargetRole)
+                .MaximumLength(150).WithMessage("Vị trí mong muốn không được vượt quá 150 ký tự.");
+        });
+
+        When(x => x.ExpectedSalaryMin.HasValue, () =>
+        {
+            RuleFor(x => x.ExpectedSalaryMin)
+                .GreaterThanOrEqualTo(0).WithMessage("Mức lương tối thiểu mong muốn không được nhỏ hơn 0.");
+        });
+
+        When(x => x.ExpectedSalaryMax.HasValue, () =>
+        {
+            RuleFor(x => x.ExpectedSalaryMax)
+                .GreaterThanOrEqualTo(0).WithMessage("Mức lương tối đa mong muốn không được nhỏ hơn 0.");
+        });
+
+        When(x => x.ExpectedSalaryMin.HasValue && x.ExpectedSalaryMax.HasValue, () =>
+        {
+            RuleFor(x => x.ExpectedSalaryMax)
+                .GreaterThanOrEqualTo(x => x.ExpectedSalaryMin!.Value)
+                .WithMessage("Mức lương tối đa mong muốn phải lớn hơn hoặc bằng mức lương tối thiểu.");
+        });
+
+        When(x => !string.IsNullOrWhiteSpace(x.ExpectedSalaryCurrency), () =>
+        {
+            RuleFor(x => x.ExpectedSalaryCurrency)
+                .MaximumLength(10).WithMessage("Đơn vị tiền tệ không được vượt quá 10 ký tự.");
+        });
+
+        When(x => x.AvailableFrom.HasValue, () =>
+        {
+            RuleFor(x => x.AvailableFrom)
+                .GreaterThanOrEqualTo(DateOnly.FromDateTime(DateTime.UtcNow))
+                .WithMessage("Ngày có thể bắt đầu làm việc phải từ ngày hôm nay trở đi.");
+        });
+
+        When(x => !string.IsNullOrWhiteSpace(x.PreferredLocations), () =>
+        {
+            RuleFor(x => x.PreferredLocations)
+                .MaximumLength(255).WithMessage("Địa điểm mong muốn không được vượt quá 255 ký tự.");
+        });
+
+        When(x => !string.IsNullOrWhiteSpace(x.PreferredWorkModes), () =>
+        {
+            RuleFor(x => x.PreferredWorkModes)
+                .MaximumLength(100).WithMessage("Hình thức làm việc mong muốn không được vượt quá 100 ký tự.");
+        });
     }
 }

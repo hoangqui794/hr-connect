@@ -94,4 +94,57 @@ public class UpdateCandidateProfileCommandValidatorTests
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == nameof(command.Gender));
     }
+
+    [Fact]
+    public void Validate_WhenSalaryMinNegative_ShouldFail()
+    {
+        var command = new UpdateCandidateProfileCommand
+        {
+            FullName = "Valid Name",
+            ExpectedSalaryMin = -5000000
+        };
+
+        var result = _validator.Validate(command);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == nameof(command.ExpectedSalaryMin));
+    }
+
+    [Fact]
+    public void Validate_WhenSalaryMaxLessThanMin_ShouldFail()
+    {
+        var command = new UpdateCandidateProfileCommand
+        {
+            FullName = "Valid Name",
+            ExpectedSalaryMin = 20000000,
+            ExpectedSalaryMax = 15000000
+        };
+
+        var result = _validator.Validate(command);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == nameof(command.ExpectedSalaryMax));
+    }
+
+    [Fact]
+    public void Validate_WhenCareerFieldsValid_ShouldPass()
+    {
+        var command = new UpdateCandidateProfileCommand
+        {
+            FullName = "Nguyen Van A",
+            CurrentJobTitle = "Senior Backend Engineer",
+            CurrentLevel = "SENIOR",
+            TargetRole = "Technical Lead",
+            ExpectedSalaryMin = 30000000,
+            ExpectedSalaryMax = 50000000,
+            ExpectedSalaryCurrency = "VND",
+            AvailableFrom = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
+            PreferredLocations = "Hanoi, Remote",
+            PreferredWorkModes = "HYBRID"
+        };
+
+        var result = _validator.Validate(command);
+
+        result.IsValid.Should().BeTrue();
+    }
 }

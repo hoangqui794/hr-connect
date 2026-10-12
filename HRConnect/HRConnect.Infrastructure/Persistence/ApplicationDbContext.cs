@@ -746,6 +746,33 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("'ACTIVE'::character varying")
                 .HasColumnName("status");
             entity.Property(e => e.Summary).HasColumnName("summary");
+            entity.Property(e => e.CurrentJobTitle)
+                .HasMaxLength(150)
+                .HasColumnName("current_job_title");
+            entity.Property(e => e.CurrentLevel)
+                .HasMaxLength(50)
+                .HasColumnName("current_level");
+            entity.Property(e => e.TargetRole)
+                .HasMaxLength(150)
+                .HasColumnName("target_role");
+            entity.Property(e => e.ExpectedSalaryMin)
+                .HasPrecision(18, 2)
+                .HasColumnName("expected_salary_min");
+            entity.Property(e => e.ExpectedSalaryMax)
+                .HasPrecision(18, 2)
+                .HasColumnName("expected_salary_max");
+            entity.Property(e => e.ExpectedSalaryCurrency)
+                .HasMaxLength(10)
+                .HasDefaultValueSql("'VND'::character varying")
+                .HasColumnName("expected_salary_currency");
+            entity.Property(e => e.AvailableFrom)
+                .HasColumnName("available_from");
+            entity.Property(e => e.PreferredLocations)
+                .HasMaxLength(255)
+                .HasColumnName("preferred_locations");
+            entity.Property(e => e.PreferredWorkModes)
+                .HasMaxLength(100)
+                .HasColumnName("preferred_work_modes");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
