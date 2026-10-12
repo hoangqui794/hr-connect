@@ -94,7 +94,7 @@ export const Navbar: React.FC = () => {
           title="HR Connect — AI-Powered Recruitment Platform"
           className="flex cursor-pointer select-none items-center gap-2.5 sm:gap-3 shrink-0"
         >
-          <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-400 text-lg sm:text-xl font-extrabold text-white shadow-md shadow-blue-500/20">
+          <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-lg sm:text-xl font-black text-white shadow-md shadow-[#1E9EDB]/30">
             H
           </div>
           <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap">
@@ -291,12 +291,13 @@ export const Navbar: React.FC = () => {
                 type="primary"
                 onClick={() => navigate('/register')}
                 style={{
-                  fontWeight: 600,
+                  fontWeight: 700,
                   fontSize: 13,
                   borderRadius: 8,
-                  background: '#2563eb',
+                  background: 'linear-gradient(135deg, #1E9EDB 0%, #53B7E8 100%)',
                   border: 'none',
-                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                  boxShadow: '0 3px 10px rgba(30, 158, 219, 0.35)',
+                  color: '#ffffff',
                 }}
               >
                 {t.nav.register}
@@ -367,7 +368,7 @@ export const Navbar: React.FC = () => {
         styles={{ body: { padding: '16px 20px' } }}
         title={
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-sm font-extrabold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-sm font-black text-white shadow-sm shadow-[#1E9EDB]/30">
               H
             </div>
             <span className="font-bold text-slate-900">HR Connect</span>
@@ -474,7 +475,13 @@ export const Navbar: React.FC = () => {
               block
               icon={<UserAddOutlined />}
               onClick={() => navigateAndClose('/register')}
-              className="h-10 font-bold bg-blue-600 rounded-lg shadow-sm"
+              style={{
+                background: 'linear-gradient(135deg, #1E9EDB 0%, #53B7E8 100%)',
+                border: 'none',
+                boxShadow: '0 3px 10px rgba(30, 158, 219, 0.35)',
+                color: '#ffffff',
+              }}
+              className="h-10 font-bold rounded-lg shadow-sm"
             >
               {t.nav.register}
             </Button>
