@@ -45,6 +45,7 @@ public static class InterviewEndpoints
             [FromQuery] DateTime? toDate,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
+            [FromQuery] string? sortDirection = "DESC",
             [FromServices] ISender sender = null!,
             ClaimsPrincipal user = null!,
             CancellationToken cancellationToken = default) =>
@@ -80,7 +81,8 @@ public static class InterviewEndpoints
                     FromDate: fromDate,
                     ToDate: toDate,
                     Page: page,
-                    PageSize: pageSize
+                    PageSize: pageSize,
+                    SortDirection: sortDirection
                 );
 
                 var response = await sender.Send(query, cancellationToken);

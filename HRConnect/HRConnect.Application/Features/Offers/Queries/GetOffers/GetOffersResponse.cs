@@ -72,4 +72,6 @@ public class OfferItemDto
     public DateTime UpdatedAt { get; set; }
 
     public Guid ConcurrencyToken { get; set; }
+
+    public bool CanRespond { get; set; }
 }

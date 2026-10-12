@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Recruitment.Common;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -95,7 +96,8 @@ public class GetOffersQueryHandler : IRequestHandler<GetOffersQuery, GetOffersRe
             DeclineReason = o.DeclineReason,
             CreatedAt = o.CreatedAt,
             UpdatedAt = o.UpdatedAt,
-            ConcurrencyToken = o.ConcurrencyToken
+            ConcurrencyToken = o.ConcurrencyToken,
+            CanRespond = o.Status == OfferStates.Sent && (!o.ExpiryDate.HasValue || o.ExpiryDate.Value >= DateOnly.FromDateTime(DateTime.UtcNow))
         }).ToList();
 
         return new GetOffersResponse

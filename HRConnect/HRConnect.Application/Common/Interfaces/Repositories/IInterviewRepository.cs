@@ -20,6 +20,7 @@ public interface IInterviewRepository
         DateTime? toDate,
         int page,
         int pageSize,
+        string? sortDirection = "DESC",
         CancellationToken cancellationToken = default);
 
     Task<Interview?> GetByIdAsync(Guid interviewId, CancellationToken cancellationToken = default);

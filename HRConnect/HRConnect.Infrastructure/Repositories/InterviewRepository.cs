@@ -31,6 +31,7 @@ public class InterviewRepository : IInterviewRepository
         DateTime? toDate,
         int page,
         int pageSize,
+        string? sortDirection = "DESC",
         CancellationToken cancellationToken = default)
     {
         var query = _context.Interviews.AsNoTracking();
@@ -84,7 +85,11 @@ public class InterviewRepository : IInterviewRepository
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var items = await query
+        var orderedQuery = string.Equals(sortDirection, "ASC", StringComparison.OrdinalIgnoreCase)
+            ? query.OrderBy(i => i.ScheduledAt ?? i.CreatedAt)
+            : query.OrderByDescending(i => i.ScheduledAt ?? i.CreatedAt);
+
+        var items = await orderedQuery
             .Include(i => i.Application)
                 .ThenInclude(a => a.Job)
                     .ThenInclude(j => j.Company)
@@ -97,7 +102,6 @@ public class InterviewRepository : IInterviewRepository
                 .ThenInclude(p => p.User)
             .Include(i => i.CreatedByNavigation)
             .Include(i => i.RecordedByNavigation)
-            .OrderByDescending(i => i.ScheduledAt ?? i.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .AsSplitQuery()

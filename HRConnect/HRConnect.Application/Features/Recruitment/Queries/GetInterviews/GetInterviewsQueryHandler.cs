@@ -67,6 +67,7 @@ public class GetInterviewsQueryHandler : IRequestHandler<GetInterviewsQuery, Get
             request.ToDate,
             page,
             pageSize,
+            request.SortDirection,
             cancellationToken);
 
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);

@@ -44,6 +44,8 @@ public class OfferDetailDto
 
     public Guid ConcurrencyToken { get; set; }
 
+    public bool CanRespond { get; set; }
+
     public CreatedByDto? CreatedBy { get; set; }
 
     public DateTime CreatedAt { get; set; }
