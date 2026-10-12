@@ -82,13 +82,15 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
             </h2>
             <p className="mb-0 mt-2 max-w-sm text-xs leading-5 text-white/95 font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.1)]">{sideDescription}</p>
 
-            <div className={`mt-3.5 ${fitScreen ? 'space-y-1.5' : 'space-y-2.5'}`}>
+            <div className={`mt-3.5 ${fitScreen ? 'space-y-2' : 'space-y-3'}`}>
               {benefits.map((benefit) => (
                 <div
                   key={benefit}
-                  className="flex items-start gap-2.5 rounded-xl border border-white/90 bg-white/85 px-3 py-2 text-xs font-bold text-[#0c365a] backdrop-blur-md shadow-sm shadow-[#1E9EDB]/15"
+                  className="flex items-center gap-2.5 text-xs sm:text-[13px] font-semibold text-white drop-shadow-[0_1px_2px_rgba(10,50,85,0.2)]"
                 >
-                  <CheckCircleFilled className="mt-0.5 shrink-0 text-[#1E9EDB] text-sm" />
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/25 text-[11px] text-white">
+                    ✓
+                  </span>
                   <span>{benefit}</span>
                 </div>
               ))}
