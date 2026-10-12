@@ -29,6 +29,9 @@ using HRConnect.Presentation.Middleware;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using HRConnect.Presentation.RateLimiting;
+using HRConnect.Presentation.HealthChecks;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Net;
 
@@ -47,6 +50,12 @@ builder.Configuration.AddEnvironmentVariables();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks()
+    .AddCheck(
+        "self",
+        () => HealthCheckResult.Healthy("Ứng dụng đang hoạt động."),
+        tags: ["live"])
+    .AddCheck<DatabaseHealthCheck>("postgresql", tags: ["ready"]);
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -90,6 +99,16 @@ builder.Services.AddRateLimiter(options =>
         _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+
+    options.AddPolicy("public-read", context => RateLimitPartition.GetFixedWindowLimiter(
+        ClientKey(context),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 120,
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0,
             AutoReplenishment = true
@@ -326,6 +345,18 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("live"),
+    ResponseWriter = HealthCheckResponseWriter.WriteAsync
+}).AllowAnonymous();
+
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("ready"),
+    ResponseWriter = HealthCheckResponseWriter.WriteAsync
+}).AllowAnonymous();
+
 // Minimal API Endpoints:
 app.MapAuthEndpoints();
 app.MapCandidateEndpoints();
@@ -349,6 +380,7 @@ app.MapInterviewEndpoints();
 app.MapOfferEndpoints();
 app.MapPlacementEndpoints();
 app.MapFinanceEndpoints();
+app.MapBusinessSettingEndpoints();
 app.MapSubmissionConsentEndpoints();
 
 // ==============================================================================

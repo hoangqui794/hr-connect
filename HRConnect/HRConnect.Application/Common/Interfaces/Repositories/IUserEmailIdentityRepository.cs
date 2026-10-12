@@ -12,6 +12,8 @@ public interface IUserEmailIdentityRepository
 
     Task<IReadOnlyList<UserEmailIdentity>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    Task<UserEmailIdentity?> GetByIdAndUserIdAsync(Guid emailIdentityId, Guid userId, CancellationToken cancellationToken = default);
+
     Task AddAsync(UserEmailIdentity identity, CancellationToken cancellationToken = default);
 
     void Update(UserEmailIdentity identity);

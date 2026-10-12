@@ -35,6 +35,8 @@ html {
   scroll-behavior: smooth;
   background-color: #F8FAFC;
   color-scheme: light;
+  /* Keep the public header fixed when navigating between short and long pages. */
+  scrollbar-gutter: stable;
 }
 
 body {

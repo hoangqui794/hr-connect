@@ -1,7 +1,11 @@
 import { apiClient } from '../../apiClient';
-import type { SubmissionConsentDecisionResult, SubmissionConsentReview } from '@/types/api/mf02';
+import type { PagedItems } from '@/types/api/hr';
+import type { CandidateSubmissionConsent, SubmissionConsentDecisionResult, SubmissionConsentReview } from '@/types/api/mf02';
 
 export const candidateConsentApi = {
+  async list(params: { status?: string; page: number; pageSize: number }): Promise<PagedItems<CandidateSubmissionConsent>> {
+    return (await apiClient.get<{ success: boolean; data: PagedItems<CandidateSubmissionConsent> }>('/candidates/me/submission-consents', { params })).data.data;
+  },
   async review(submissionId: string): Promise<SubmissionConsentReview> {
     return (await apiClient.get<{ success: boolean; data: SubmissionConsentReview }>(`/candidates/me/submission-consents/${submissionId}`)).data.data;
   },

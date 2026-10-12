@@ -31,19 +31,23 @@ public class GetCandidateCvsQueryHandler : IRequestHandler<GetCandidateCvsQuery,
             throw new NotFoundException("Không tìm thấy thông tin ứng viên tương ứng với tài khoản.");
         }
 
-        var cvs = await _candidateCvRepository.GetByCandidateIdAsync(candidate.CandidateId, cancellationToken);
+        var cvs = await _candidateCvRepository.GetPersonalCvUsageAsync(candidate.CandidateId, cancellationToken);
 
-        var items = cvs.Select(cv => new CandidateCvItemResponse
+        var items = cvs.Select(record => new CandidateCvItemResponse
         {
-            CvId = cv.CvId,
-            Title = cv.Title,
-            FileName = cv.FileName ?? $"{cv.CvId}.pdf",
-            MimeType = cv.MimeType ?? "application/pdf",
-            FileSizeBytes = cv.FileSizeBytes,
-            IsPrimary = cv.IsPrimary,
-            Status = cv.Status,
-            CreatedAt = cv.CreatedAt,
-            UpdatedAt = cv.UpdatedAt
+            CvId = record.Cv.CvId,
+            Title = record.Cv.Title,
+            FileName = record.Cv.FileName ?? $"{record.Cv.CvId}.pdf",
+            MimeType = record.Cv.MimeType ?? "application/pdf",
+            FileSizeBytes = record.Cv.FileSizeBytes,
+            IsPrimary = record.Cv.IsPrimary,
+            Status = record.Cv.Status,
+            CreatedAt = record.Cv.CreatedAt,
+            UpdatedAt = record.Cv.UpdatedAt,
+            SubmissionUsageCount = record.SubmissionUsageCount,
+            ApplicationUsageCount = record.ApplicationUsageCount,
+            IsReferenced = record.SubmissionUsageCount > 0,
+            DeleteBehavior = record.SubmissionUsageCount > 0 ? "ARCHIVE_HISTORY" : "HARD_DELETE"
         }).ToList();
 
         return new GetCandidateCvsResponse

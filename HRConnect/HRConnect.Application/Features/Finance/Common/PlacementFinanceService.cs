@@ -2,11 +2,11 @@ using System.Text.Json;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace HRConnect.Application.Features.Finance.Common;
 
@@ -47,18 +47,18 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
 
     private readonly IFinanceRepository _financeRepository;
     private readonly IAuditLogService _auditLogService;
-    private readonly Mf05Settings _settings;
+    private readonly IAdminBusinessSettings _settings;
     private readonly ILogger<PlacementFinanceService> _logger;
 
     public PlacementFinanceService(
         IFinanceRepository financeRepository,
         IAuditLogService auditLogService,
-        IOptions<Mf05Settings> settings,
+        IAdminBusinessSettings settings,
         ILogger<PlacementFinanceService> logger)
     {
         _financeRepository = financeRepository;
         _auditLogService = auditLogService;
-        _settings = settings.Value;
+        _settings = settings;
         _logger = logger;
     }
 
@@ -73,15 +73,17 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
         var now = DateTime.UtcNow;
         var warnings = new List<string>();
 
-        var warrantyDays = (context.WarrantyDays.HasValue && context.WarrantyDays.Value > 0)
+        // Terms agreed on the job (MF-01) win; otherwise the Admin-configurable defaults
+        // (system_setting), which start from the business-model documents.
+        var warrantyDays = context.WarrantyDays is > 0
             ? context.WarrantyDays.Value
-            : _settings.WarrantyDays;
-        var feeMultiplier = (context.FeeMultiplier.HasValue && context.FeeMultiplier.Value > 0)
+            : await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays, cancellationToken);
+        var feeMultiplier = context.FeeMultiplier is > 0
             ? context.FeeMultiplier.Value
-            : _settings.HeadhuntFeeMultiplier;
-        var paymentDueDays = (context.PaymentDueDays.HasValue && context.PaymentDueDays.Value > 0)
+            : await _settings.GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier, cancellationToken);
+        var paymentDueDays = context.PaymentDueDays is > 0
             ? context.PaymentDueDays.Value
-            : _settings.PaymentDueDays;
+            : await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, cancellationToken);
 
         var warranty = new Warranty
         {
@@ -166,7 +168,7 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
                         rateType = rule.RateType,
                         rateValue = rule.RateValue,
                         commissionAmount = amount.Value,
-                        earnedWhen = $"warranty passed ({_settings.WarrantyDays} days after {placement.ActualStartDate:yyyy-MM-dd})",
+                        earnedWhen = $"warranty passed ({warrantyDays} days after {placement.ActualStartDate:yyyy-MM-dd})",
                     }, SnapshotJson),
                     CalculatedAt = now,
                     CreatedAt = now,

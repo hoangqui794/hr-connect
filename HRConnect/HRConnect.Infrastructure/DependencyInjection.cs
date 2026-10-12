@@ -94,6 +94,7 @@ public static class DependencyInjection
         services.AddScoped<IOfferRepository, OfferRepository>();
         services.AddScoped<IPlacementRepository, PlacementRepository>();
         services.AddScoped<IFinanceRepository, FinanceRepository>();
+        services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
         services.AddScoped<IAttributionRepository, AttributionRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAdminApprovalService, HRConnect.Infrastructure.Services.Admin.AdminApprovalService>();

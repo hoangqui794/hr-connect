@@ -39,6 +39,14 @@ public sealed class UserEmailIdentityRepository(ApplicationDbContext context) : 
             .ThenByDescending(item => item.VerifiedAt)
             .ToListAsync(cancellationToken);
 
+    public Task<UserEmailIdentity?> GetByIdAndUserIdAsync(
+        Guid emailIdentityId,
+        Guid userId,
+        CancellationToken cancellationToken = default) =>
+        context.UserEmailIdentities.SingleOrDefaultAsync(
+            item => item.EmailIdentityId == emailIdentityId && item.UserId == userId,
+            cancellationToken);
+
     public Task AddAsync(UserEmailIdentity identity, CancellationToken cancellationToken = default) =>
         context.UserEmailIdentities.AddAsync(identity, cancellationToken).AsTask();
 

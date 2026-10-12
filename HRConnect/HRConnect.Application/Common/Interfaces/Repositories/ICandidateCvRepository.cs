@@ -12,6 +12,8 @@ public interface ICandidateCvRepository
 
     Task<List<CandidateCv>> GetByCandidateIdAsync(Guid candidateId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<CandidateCvUsageRecord>> GetPersonalCvUsageAsync(Guid candidateId, CancellationToken cancellationToken = default);
+
     Task<CandidateCv?> GetAdoptedBySourceCvIdAsync(Guid candidateId, Guid sourceCvId, CancellationToken cancellationToken = default);
 
     Task AddAsync(CandidateCv candidateCv, CancellationToken cancellationToken = default);
@@ -22,3 +24,8 @@ public interface ICandidateCvRepository
 
     Task<bool> IsCvInUseAsync(Guid cvId, CancellationToken cancellationToken = default);
 }
+
+public sealed record CandidateCvUsageRecord(
+    CandidateCv Cv,
+    int SubmissionUsageCount,
+    int ApplicationUsageCount);

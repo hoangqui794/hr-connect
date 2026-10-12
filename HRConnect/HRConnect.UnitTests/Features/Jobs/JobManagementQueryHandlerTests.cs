@@ -91,6 +91,27 @@ public class JobManagementQueryHandlerTests
         result.TotalPages.Should().Be(1);
     }
 
+    [Fact]
+    public async Task GetPublicJobs_ShouldApplyCandidateScopeForGuestCatalog()
+    {
+        var visibleJob = Job(Guid.NewGuid(), JobStatuses.Active);
+        _jobs.Setup(x => x.GetVisibleJobsAsync(
+                It.Is<IReadOnlyCollection<string>>(roles =>
+                    roles.Count == 1 && roles.Contains(JobAccessPolicy.CandidateRole)),
+                It.Is<IReadOnlyCollection<string>>(visibilities =>
+                    visibilities.Count == 1 && visibilities.Contains(JobVisibilities.Public)),
+                false, null, null, null, null, null, null, 1, 12,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(([visibleJob], 1));
+
+        var result = await new GetPublicJobsQueryHandler(_jobs.Object).Handle(
+            new GetPublicJobsQuery([JobAccessPolicy.CandidateRole], false, null, null, null, Page: 1, PageSize: 12),
+            default);
+
+        result.Items.Should().ContainSingle().Which.JobId.Should().Be(visibleJob.JobId);
+        _jobs.VerifyAll();
+    }
+
     [Theory]
     [InlineData(JobVisibilities.Public, "CANDIDATE", true)]
     [InlineData(JobVisibilities.Public, "AFFILIATE_RECRUITER", true)]

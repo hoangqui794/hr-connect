@@ -1,7 +1,7 @@
 import { AxiosError, AxiosHeaders, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
 import { apiClient, getApiError, getApiErrorMessage } from './apiClient';
-import { affiliateApi, candidateAffiliateCvApi, candidateApplicationsApi, candidateConsentApi, candidateCvApi } from './api/mf02Api';
+import { affiliateApi, candidateAffiliateCvApi, candidateApplicationsApi, candidateConsentApi, candidateCvApi, candidateIdentityApi } from './api/mf02Api';
 
 describe('API client foundation', () => {
   afterEach(() => {
@@ -107,6 +107,8 @@ describe('API client foundation', () => {
       jobId: 'job-1',
       fromDate: '2026-10-01T00:00:00.000Z',
       toDate: '2026-10-08T23:59:59.999Z',
+      search: 'Backend',
+      submissionSource: 'AFFILIATE',
       page: 2,
       pageSize: 10,
     });
@@ -117,6 +119,8 @@ describe('API client foundation', () => {
       jobId: 'job-1',
       fromDate: '2026-10-01T00:00:00.000Z',
       toDate: '2026-10-08T23:59:59.999Z',
+      search: 'Backend',
+      submissionSource: 'AFFILIATE',
       page: 2,
       pageSize: 10,
     });
@@ -241,6 +245,30 @@ describe('API client foundation', () => {
     expect(requests[1].method).toBe('post');
     expect(requests[1].url).toBe('/candidates/me/submission-consents/submission-1/respond');
     expect(JSON.parse(requests[1].data as string)).toEqual({ decision: 'CONFIRM', allowFutureReuse: true });
+  });
+
+  it('lists pending candidate consents and revokes an alias with concurrency', async () => {
+    const requests: InternalAxiosRequestConfig[] = [];
+    apiClient.defaults.adapter = async (config) => {
+      requests.push(config);
+      return {
+        data: config.url?.endsWith('/revoke')
+          ? { success: true, emailIdentityId: 'email-1', status: 'REVOKED' }
+          : { success: true, data: { items: [], page: 1, pageSize: 5, total: 0, totalPages: 0 } },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      };
+    };
+
+    await candidateConsentApi.list({ status: 'PENDING', page: 1, pageSize: 5 });
+    await candidateIdentityApi.revoke('email-1', 'concurrency-1');
+
+    expect(requests[0].url).toBe('/candidates/me/submission-consents');
+    expect(requests[0].params).toEqual({ status: 'PENDING', page: 1, pageSize: 5 });
+    expect(requests[1].url).toBe('/candidates/me/email-identities/email-1/revoke');
+    expect(JSON.parse(requests[1].data as string)).toEqual({ concurrencyToken: 'concurrency-1' });
   });
 
   it('keeps the public consent token in request bodies', async () => {

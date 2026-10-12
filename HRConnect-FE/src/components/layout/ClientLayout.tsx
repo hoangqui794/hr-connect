@@ -126,7 +126,7 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
   const handleLogout = useCallback(() => {
     logout();
     void message.success('Đã đăng xuất tài khoản doanh nghiệp!');
-    navigate('/login');
+    window.location.replace('/');
   }, [logout, navigate]);
 
   // Determine active menu key

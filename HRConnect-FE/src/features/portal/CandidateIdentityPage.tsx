@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Button, Form, Input, Skeleton, Tag } from 'antd';
-import { CheckCircleOutlined, LinkOutlined, MailOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { Alert, App as AntApp, Button, Form, Input, Popconfirm, Skeleton, Tag } from 'antd';
+import { CheckCircleOutlined, DeleteOutlined, LinkOutlined, MailOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { candidateIdentityApi } from '@/services/api/mf02/candidateIdentityApi';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { CandidateIdentityClaimState, CandidateIdentityClaimVerification } from '@/types/api/mf02';
-import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { StatusDot } from '@/features/admin-console/ui';
+import { CandidatePageHeader, CandidateSurface } from './candidate/CandidateUi';
 
 const STORAGE_KEY = 'hrconnect:candidate-identity-claim';
 export const candidateIdentityKeys = { all: ['candidate-email-identities'] as const };
@@ -129,11 +130,25 @@ export const CandidateIdentityPage: React.FC = () => {
     },
   });
 
+  const revoke = useMutation({
+    mutationFn: (identity: { emailIdentityId: string; concurrencyToken: string }) =>
+      candidateIdentityApi.revoke(identity.emailIdentityId, identity.concurrencyToken),
+    onSuccess: async () => {
+      message.success('Đã thu hồi email phụ khỏi hồ sơ Candidate.');
+      await queryClient.invalidateQueries({ queryKey: candidateIdentityKeys.all });
+    },
+    onError: async (error) => {
+      const apiError = getApiError(error, 'Chưa thể thu hồi email liên kết.');
+      message.error(apiError.message);
+      if (apiError.status === 409) await queryClient.invalidateQueries({ queryKey: candidateIdentityKeys.all });
+    },
+  });
+
   if (!canManage) return <Alert type="error" showIcon message="Bạn không có quyền quản lý email liên kết." />;
 
   return (
-    <div className="space-y-5">
-      <PageHero
+    <div className="candidate-page candidate-identity-page">
+      <CandidatePageHeader
         eyebrow="Danh tính Candidate"
         title="Email và hồ sơ liên kết"
         description="Xác minh email cũ để nhận lại CV và lịch sử ứng tuyển đã được Affiliate tạo trước khi bạn đăng ký. Email phụ không dùng để đăng nhập hoặc quên mật khẩu."
@@ -150,7 +165,7 @@ export const CandidateIdentityPage: React.FC = () => {
         />
       )}
 
-      <Surface>
+      <CandidateSurface className="overflow-hidden">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="m-0 text-base font-bold text-slate-900">Email của tài khoản</h2>
           <p className="m-0 mt-1 text-sm text-slate-500">Email chính dùng đăng nhập; email phụ chỉ giúp nhận diện đúng hồ sơ Candidate.</p>
@@ -164,7 +179,7 @@ export const CandidateIdentityPage: React.FC = () => {
             {(identities.data ?? []).map((identity) => (
               <li key={identity.emailIdentityId} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700"><MailOutlined /></span>
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700"><MailOutlined /></span>
                   <div className="min-w-0">
                     <div className="truncate font-semibold text-slate-900">{identity.email}</div>
                     <div className="mt-1 text-xs text-slate-500">
@@ -175,16 +190,38 @@ export const CandidateIdentityPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Tag color={identity.kind === 'PRIMARY' ? 'blue' : 'cyan'}>{identity.kind === 'PRIMARY' ? 'Email chính' : 'Email phụ'}</Tag>
                   <StatusDot tone={identity.status === 'VERIFIED' ? 'success' : 'neutral'}>{identity.status}</StatusDot>
+                  {identity.canRevoke && identity.status === 'VERIFIED' && (
+                    <Popconfirm
+                      title="Thu hồi email phụ?"
+                      description="Email này sẽ không còn được dùng để nhận diện và khôi phục dữ liệu Candidate. CV và đơn ứng tuyển đã liên kết vẫn được giữ."
+                      okText="Thu hồi"
+                      okButtonProps={{ danger: true }}
+                      cancelText="Giữ lại"
+                      onConfirm={() => revoke.mutate({
+                        emailIdentityId: identity.emailIdentityId,
+                        concurrencyToken: identity.concurrencyToken,
+                      })}
+                    >
+                      <Button
+                        danger
+                        icon={<DeleteOutlined />}
+                        loading={revoke.isPending && revoke.variables?.emailIdentityId === identity.emailIdentityId}
+                        aria-label={`Thu hồi email ${identity.email}`}
+                      >
+                        Thu hồi
+                      </Button>
+                    </Popconfirm>
+                  )}
                 </div>
               </li>
             ))}
           </ul>
         )}
-      </Surface>
+      </CandidateSurface>
 
-      <Surface className="p-5">
+      <CandidateSurface className="candidate-identity-claim p-5">
         <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700"><LinkOutlined /></span>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700"><LinkOutlined /></span>
           <div>
             <h2 className="m-0 text-base font-bold text-slate-900">Nhận lại hồ sơ theo email cũ</h2>
             <p className="m-0 mt-1 text-sm text-slate-600">Chỉ nhập email mà Affiliate từng dùng để nộp hồ sơ của chính bạn.</p>
@@ -238,7 +275,7 @@ export const CandidateIdentityPage: React.FC = () => {
             {pending.emailDeliveryStatus === 'FAILED' && <Alert type="warning" showIcon message="Email trước chưa gửi được. Bạn có thể bấm Gửi lại mã khi hết thời gian chờ." />}
           </div>
         )}
-      </Surface>
+      </CandidateSurface>
 
       <Alert
         type="info"

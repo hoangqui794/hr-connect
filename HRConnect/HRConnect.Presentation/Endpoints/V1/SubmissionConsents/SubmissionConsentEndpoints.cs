@@ -3,6 +3,8 @@ using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.SubmissionConsents.GetSubmissionConsent;
 using HRConnect.Application.Features.SubmissionConsents.RespondSubmissionConsent;
+using HRConnect.Application.Features.Candidates.Queries.GetCandidateSubmissionConsents;
+using HRConnect.Presentation.Authorization;
 using MediatR;
 
 namespace HRConnect.Presentation.Endpoints.V1.SubmissionConsents;
@@ -79,6 +81,32 @@ public static class SubmissionConsentEndpoints
             .WithTags("Candidate Submission Consents")
             .RequireAuthorization()
             .RequireRateLimiting("submission-consent");
+
+        candidateGroup.MapGet("", async (
+            string? status,
+            int? page,
+            int? pageSize,
+            ClaimsPrincipal user,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "application.view_own"))
+                return PermissionAuthorization.Forbidden("application.view_own");
+            var userId = UserId(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+            return await Run(() => sender.Send(new GetCandidateSubmissionConsentsQuery(
+                userId.Value, status, page ?? 1, pageSize ?? 20), cancellationToken));
+        })
+            .WithName("GetCandidateSubmissionConsents")
+            .WithSummary("Candidate xem danh sách yêu cầu xác nhận hồ sơ")
+            .WithDescription("Yêu cầu permission application.view_own. Mặc định trả các yêu cầu PENDING; hỗ trợ lịch sử CONFIRMED, DECLINED, EXPIRED và CANCELLED. API đọc không tự đổi trạng thái hết hạn.")
+            .Produces<CandidateSubmissionConsentsResponse>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status409Conflict)
+            .Produces(StatusCodes.Status429TooManyRequests);
 
         candidateGroup.MapGet("/{submissionId:guid}", async (
             Guid submissionId,

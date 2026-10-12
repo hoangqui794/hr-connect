@@ -37,6 +37,10 @@ public interface IFinanceRepository
     Task<(IReadOnlyList<Commission> Items, int TotalCount)> GetCommissionsAsync(
         Guid? affiliateUserId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
 
+    /// <summary>Warranties with their placement, job, candidate, service fee and commissions (read-only).</summary>
+    Task<(IReadOnlyList<Warranty> Items, int TotalCount)> GetWarrantiesAsync(
+        Guid? companyId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
+
     Task<(IReadOnlyList<Payout> Items, int TotalCount)> GetPayoutsAsync(
         Guid? affiliateUserId, int page, int pageSize, CancellationToken cancellationToken = default);
 }

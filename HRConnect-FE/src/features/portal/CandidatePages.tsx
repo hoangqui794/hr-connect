@@ -23,12 +23,13 @@ import {
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
-import { candidateApplicationsApi, candidateCvApi } from '@/services/api/mf02Api';
+import { candidateApplicationsApi, candidateConsentApi, candidateCvApi } from '@/services/api/mf02Api';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { CandidateApplication } from '@/types/api/mf02';
 import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { CANDIDATE_STEPS, MAX_CV_MB, candidateStage, cvFileError, fileSize } from './mf02Labels';
+import { CandidatePageHeader, CandidateSurface } from './candidate/CandidateUi';
 
 dayjs.extend(relativeTimePlugin);
 dayjs.locale('vi');
@@ -37,6 +38,7 @@ export const candidateKeys = {
   cvs: ['candidate-cvs'] as const,
   applications: ['candidate-applications'] as const,
   applicationDetail: (applicationId: string) => ['candidate-applications', applicationId] as const,
+  submissionConsents: (status: string) => ['candidate-submission-consents', status] as const,
 };
 
 export const useCandidateCvs = () => useQuery({ queryKey: candidateKeys.cvs, queryFn: () => candidateCvApi.list() });
@@ -84,7 +86,7 @@ const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
   const navigate = useNavigate();
   const st = candidateStage(a.status);
   return (
-    <article className="admin-surface flex flex-col gap-3 p-5">
+    <article className="candidate-surface candidate-application-card flex flex-col gap-3 p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[16px] font-semibold leading-snug text-slate-900">{a.jobTitle}</div>
@@ -123,9 +125,9 @@ export const CandidateHomePage: React.FC = () => {
   const firstName = (user?.name || 'bạn').trim().split(/\s+/).slice(-1)[0];
 
   return (
-    <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-br from-teal-50 via-white to-emerald-50 p-7 shadow-[0_0_0_1px_rgba(15,118,110,0.1)] sm:p-9">
-        <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-teal-200/50 blur-3xl" />
+    <div className="candidate-page candidate-dashboard-page">
+      <section className="candidate-dashboard-hero">
+        <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-blue-200/50 blur-3xl" />
         <div className="relative">
           <h1 className="m-0 text-[30px] font-extrabold leading-tight tracking-[-0.02em] text-slate-900">Chào {firstName},</h1>
           <p className="m-0 mt-2 max-w-xl text-[15px] leading-relaxed text-slate-600">
@@ -136,7 +138,7 @@ export const CandidateHomePage: React.FC = () => {
                 : `Bạn có ${active.length} đơn đang được xử lý${interviewing ? `, trong đó ${interviewing} đơn đã được chọn hoặc đang phỏng vấn` : ''}.`}
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
-            <Button type="primary" size="large" icon={<SearchOutlined />} className="!rounded-full !px-6" onClick={() => navigate('/jobs')}>
+            <Button type="primary" size="large" icon={<SearchOutlined />} className="!rounded-full !px-6" onClick={() => navigate('/candidate/jobs')}>
               Tìm việc làm
             </Button>
             <Button size="large" className="!rounded-full !px-6" onClick={() => navigate('/candidate/cvs')}>
@@ -156,7 +158,7 @@ export const CandidateHomePage: React.FC = () => {
         />
       )}
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-3">
+      <div className="candidate-stat-grid">
         {[
           { label: 'Đơn đã nộp', value: items.length, to: '/candidate/applications' },
           { label: 'Đang xử lý', value: active.length, to: '/candidate/applications' },
@@ -166,7 +168,7 @@ export const CandidateHomePage: React.FC = () => {
             key={k.label}
             type="button"
             onClick={() => navigate(k.to)}
-            className="admin-surface cursor-pointer border-0 p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+            className="candidate-surface candidate-stat-card cursor-pointer p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--candidate-accent)]"
           >
             <span className="block text-[13px] font-medium text-slate-600">{k.label}</span>
             <span className="mt-1 block text-[28px] font-bold tabular-nums text-slate-900">
@@ -176,8 +178,8 @@ export const CandidateHomePage: React.FC = () => {
         ))}
       </div>
 
-      <section>
-        <div className="mb-3 flex items-center justify-between">
+      <section className="candidate-dashboard-section">
+        <div className="candidate-section-heading">
           <h2 className="m-0 text-base font-bold text-slate-900">Đơn gần đây</h2>
           {items.length > 0 && (
             <Button type="link" className="!px-0" onClick={() => navigate('/candidate/applications')}>
@@ -190,7 +192,9 @@ export const CandidateHomePage: React.FC = () => {
         ) : apps.isError ? (
           <Alert type="error" showIcon message={getApiErrorMessage(apps.error)} />
         ) : items.length === 0 ? (
-          <Surface className="p-8 text-center text-sm text-slate-600">Chưa có đơn ứng tuyển nào.</Surface>
+          <CandidateSurface className="candidate-empty-surface p-8 text-center text-sm text-slate-600">
+            Chưa có đơn ứng tuyển nào.
+          </CandidateSurface>
         ) : (
           <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
             {items.slice(0, 4).map((a) => (
@@ -213,13 +217,20 @@ export const CandidateApplicationsPage: React.FC = () => {
   const jobId = searchParams.get('jobId') || undefined;
   const fromDate = searchParams.get('fromDate') || undefined;
   const toDate = searchParams.get('toDate') || undefined;
-  const filters = { status, jobId, fromDate, toDate, page, pageSize: 10 };
+  const search = searchParams.get('search') || undefined;
+  const submissionSource = (searchParams.get('submissionSource') || undefined) as 'CANDIDATE' | 'AFFILIATE' | undefined;
+  const [searchDraft, setSearchDraft] = useState(search ?? '');
+  const filters = { status, jobId, fromDate, toDate, search, submissionSource, page, pageSize: 10 };
   const apps = useQuery({
     queryKey: [...candidateKeys.applications, filters],
     queryFn: () => candidateApplicationsApi.list(filters),
     placeholderData: (previous) => previous,
   });
   const items = apps.data?.items ?? [];
+  const pendingConsents = useQuery({
+    queryKey: candidateKeys.submissionConsents('PENDING'),
+    queryFn: () => candidateConsentApi.list({ status: 'PENDING', page: 1, pageSize: 5 }),
+  });
 
   const updateFilters = (updates: Record<string, string | undefined>) => {
     const next = new URLSearchParams(searchParams);
@@ -232,18 +243,66 @@ export const CandidateApplicationsPage: React.FC = () => {
   };
 
   return (
-    <div>
-      <PageHero
+    <div className="candidate-page candidate-applications-page">
+      <CandidatePageHeader
         eyebrow="Ứng tuyển"
         title="Đơn ứng tuyển của tôi"
         description="Theo dõi từng đơn từ lúc nộp đến khi nhận việc. Trạng thái được cập nhật ngay khi nhà tuyển dụng xử lý."
         actions={
-          <Button type="primary" size="large" icon={<SearchOutlined />} onClick={() => navigate('/jobs')}>
+          <Button type="primary" size="large" icon={<SearchOutlined />} onClick={() => navigate('/candidate/jobs')}>
             Tìm việc làm
           </Button>
         }
       />
-      <div className="mb-4 flex flex-wrap gap-3">
+      {pendingConsents.isError ? (
+        <Alert
+          type="warning"
+          showIcon
+          message="Chưa tải được yêu cầu xác nhận hồ sơ"
+          description={getApiErrorMessage(pendingConsents.error)}
+          action={<Button onClick={() => pendingConsents.refetch()}>Thử lại</Button>}
+        />
+      ) : pendingConsents.isLoading ? (
+        <CandidateSurface className="p-5"><Skeleton active paragraph={{ rows: 2 }} /></CandidateSurface>
+      ) : (pendingConsents.data?.items.length ?? 0) > 0 ? (
+        <CandidateSurface className="overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <div>
+              <h2 className="m-0 text-base font-bold text-slate-900">Đang chờ bạn xác nhận</h2>
+              <p className="m-0 mt-1 text-sm text-slate-500">Affiliate chỉ có thể gửi hồ sơ đến doanh nghiệp sau khi bạn đồng ý.</p>
+            </div>
+            <StatusDot tone="warning">{pendingConsents.data?.total ?? 0} yêu cầu</StatusDot>
+          </div>
+          <ul className="m-0 list-none divide-y divide-slate-100 p-0">
+            {pendingConsents.data?.items.map((consent) => (
+              <li key={consent.submissionId} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
+                <div className="min-w-0">
+                  <div className="font-semibold text-slate-900">{consent.jobTitle}</div>
+                  <div className="mt-1 text-sm text-slate-500">
+                    {consent.companyName} · do {consent.affiliateDisplayName} giới thiệu · hết hạn {dayjs(consent.expiresAt).format('HH:mm DD/MM/YYYY')}
+                  </div>
+                </div>
+                <Button type="primary" onClick={() => navigate(`/candidate/submission-consents/${consent.submissionId}`)}>
+                  Xem và xác nhận
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </CandidateSurface>
+      ) : null}
+      <CandidateSurface className="candidate-filter-bar">
+        <Input.Search
+          aria-label="Tìm theo công việc hoặc doanh nghiệp"
+          allowClear
+          value={searchDraft}
+          placeholder="Tên công việc hoặc doanh nghiệp"
+          className="min-w-64 flex-1"
+          onChange={(event) => {
+            setSearchDraft(event.target.value);
+            if (!event.target.value) updateFilters({ search: undefined });
+          }}
+          onSearch={(value) => updateFilters({ search: value.trim() || undefined })}
+        />
         <Select
           aria-label="Lọc theo trạng thái"
           allowClear
@@ -263,6 +322,18 @@ export const CandidateApplicationsPage: React.FC = () => {
             ['WITHDRAWN', 'Đã rút đơn'],
           ].map(([value, label]) => ({ value, label }))}
         />
+        <Select
+          aria-label="Lọc theo nguồn ứng tuyển"
+          allowClear
+          placeholder="Tất cả nguồn"
+          value={submissionSource}
+          onChange={(value) => updateFilters({ submissionSource: value })}
+          className="min-w-48"
+          options={[
+            { value: 'CANDIDATE', label: 'Tôi tự ứng tuyển' },
+            { value: 'AFFILIATE', label: 'Affiliate giới thiệu' },
+          ]}
+        />
         <DatePicker.RangePicker
           aria-label="Lọc theo ngày ứng tuyển"
           format="DD/MM/YYYY"
@@ -274,21 +345,23 @@ export const CandidateApplicationsPage: React.FC = () => {
             })
           }
         />
-        {(status || fromDate || toDate || jobId) && <Button onClick={() => setSearchParams({})}>Xóa bộ lọc</Button>}
-      </div>
+        {(status || fromDate || toDate || jobId || search || submissionSource) && (
+          <Button onClick={() => { setSearchDraft(''); setSearchParams({}); }}>Xóa bộ lọc</Button>
+        )}
+      </CandidateSurface>
       {apps.isLoading ? (
         <Skeleton active paragraph={{ rows: 6 }} />
       ) : apps.isError ? (
         <Alert type="error" showIcon message="Không tải được đơn ứng tuyển" description={getApiErrorMessage(apps.error)} />
       ) : items.length === 0 ? (
-        <Surface className="p-10 text-center">
-          <p className="m-0 text-sm text-slate-600">{status || fromDate || toDate || jobId ? 'Không có đơn nào phù hợp bộ lọc.' : 'Bạn chưa ứng tuyển công việc nào.'}</p>
-          {!status && !fromDate && !toDate && !jobId && (
-            <Button type="primary" className="mt-3" icon={<SearchOutlined />} onClick={() => navigate('/jobs')}>
+        <CandidateSurface className="candidate-empty-surface p-10 text-center">
+          <p className="m-0 text-sm text-slate-600">{status || fromDate || toDate || jobId || search || submissionSource ? 'Không có đơn nào phù hợp bộ lọc.' : 'Bạn chưa ứng tuyển công việc nào.'}</p>
+          {!status && !fromDate && !toDate && !jobId && !search && !submissionSource && (
+            <Button type="primary" className="mt-3" icon={<SearchOutlined />} onClick={() => navigate('/candidate/jobs')}>
               Tìm việc làm
             </Button>
           )}
-        </Surface>
+        </CandidateSurface>
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
           {items.map((a) => (
@@ -324,7 +397,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
 
   if (detail.isError || !detail.data) {
     return (
-      <Surface className="p-6">
+      <CandidateSurface className="p-6">
         <Alert
           type="error"
           showIcon
@@ -332,7 +405,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
           description={getApiErrorMessage(detail.error)}
           action={<Button onClick={() => navigate('/candidate/applications')}>Về danh sách</Button>}
         />
-      </Surface>
+      </CandidateSurface>
     );
   }
 
@@ -340,17 +413,17 @@ export const CandidateApplicationDetailPage: React.FC = () => {
   const stage = candidateStage(application.status);
 
   return (
-    <div className="space-y-5">
-      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/candidate/applications')}>
+    <div className="candidate-page candidate-application-detail-page">
+      <Button className="candidate-detail-back" icon={<ArrowLeftOutlined />} onClick={() => navigate('/candidate/applications')}>
         Đơn ứng tuyển
       </Button>
-      <PageHero
+      <CandidatePageHeader
         eyebrow="Chi tiết ứng tuyển"
         title={application.jobTitle}
         description={application.companyName}
         actions={<StatusDot tone={stage.tone}>{stage.label}</StatusDot>}
       />
-      <Surface className="space-y-5 p-6">
+      <CandidateSurface className="space-y-5 p-6">
         <StageTracker status={application.status} />
         <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
           <div>
@@ -373,15 +446,15 @@ export const CandidateApplicationDetailPage: React.FC = () => {
           </div>
         </dl>
         {application.statusReason && <Alert type="info" showIcon message="Thông tin trạng thái" description={application.statusReason} />}
-      </Surface>
-      <Surface className="p-6">
+      </CandidateSurface>
+      <CandidateSurface className="p-6">
         <h2 className="m-0 text-base font-bold text-slate-900">Kết quả AI</h2>
         <div className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
           <div><span className="text-slate-500">Trạng thái</span><strong className="mt-1 block text-slate-900">{application.aiStatus || 'Chưa có kết quả'}</strong></div>
           <div><span className="text-slate-500">Điểm phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchScore == null ? '—' : `${application.aiMatchScore}%`}</strong></div>
           <div><span className="text-slate-500">Mức phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchTier || '—'}</strong></div>
         </div>
-      </Surface>
+      </CandidateSurface>
     </div>
   );
 };
@@ -468,8 +541,8 @@ export const CandidateCvsPage: React.FC = () => {
   };
 
   return (
-    <div>
-      <PageHero eyebrow="Hồ sơ" title="Kho CV" description="CV bạn tải lên được dùng để ứng tuyển. CV chính được chọn sẵn khi bạn bấm Ứng tuyển." />
+    <div className="candidate-page candidate-cv-page">
+      <CandidatePageHeader eyebrow="Hồ sơ" title="Kho CV" description="CV bạn tải lên được dùng để ứng tuyển. CV chính được chọn sẵn khi bạn bấm Ứng tuyển." />
       {!canView && <Alert className="mb-5" type="error" showIcon message="Bạn không có quyền xem kho CV cá nhân." />}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-3">
@@ -478,10 +551,10 @@ export const CandidateCvsPage: React.FC = () => {
           ) : cvs.isError ? (
             <Alert type="error" showIcon message={getApiErrorMessage(cvs.error)} />
           ) : list.length === 0 ? (
-            <Surface className="p-10 text-center text-sm text-slate-600">Chưa có CV nào. Tải CV đầu tiên ở khung bên cạnh.</Surface>
+            <CandidateSurface className="candidate-empty-surface p-10 text-center text-sm text-slate-600">Chưa có CV nào. Tải CV đầu tiên ở khung bên cạnh.</CandidateSurface>
           ) : (
             list.map((cv) => (
-              <article key={cv.cvId} className="admin-surface flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap">
+              <article key={cv.cvId} className="candidate-surface candidate-cv-card flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap">
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl text-red-700" aria-hidden>
                   <FilePdfOutlined />
                 </span>
@@ -496,6 +569,13 @@ export const CandidateCvsPage: React.FC = () => {
                   </div>
                   <div className="truncate text-xs text-slate-500">
                     {cv.fileName} · {fileSize(cv.fileSizeBytes)} · cập nhật {dayjs(cv.updatedAt).format('DD/MM/YYYY')}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {cv.applicationUsageCount > 0
+                      ? `Đang được lưu trong ${cv.applicationUsageCount} đơn ứng tuyển${cv.submissionUsageCount > cv.applicationUsageCount ? ` và ${cv.submissionUsageCount - cv.applicationUsageCount} lượt nộp khác` : ''}.`
+                      : cv.submissionUsageCount > 0
+                        ? `Đã được dùng trong ${cv.submissionUsageCount} lượt nộp hồ sơ.`
+                        : 'Chưa được dùng trong lượt nộp nào.'}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
@@ -524,7 +604,9 @@ export const CandidateCvsPage: React.FC = () => {
                   )}
                   {canDelete && <Popconfirm
                     title="Gỡ CV khỏi kho?"
-                    description="CV đã dùng trong đơn ứng tuyển vẫn được giữ cho nhà tuyển dụng."
+                    description={cv.deleteBehavior === 'ARCHIVE_HISTORY'
+                      ? 'CV sẽ ẩn khỏi kho cá nhân nhưng bản đã gắn với lượt nộp và đơn ứng tuyển vẫn được giữ làm lịch sử.'
+                      : 'CV chưa được sử dụng nên sẽ được xóa khỏi kho.'}
                     okText="Gỡ khỏi kho"
                     okButtonProps={{ danger: true }}
                     cancelText="Hủy"
@@ -538,10 +620,10 @@ export const CandidateCvsPage: React.FC = () => {
           )}
         </div>
         {canCreate && <aside className="lg:sticky lg:top-24 lg:self-start">
-          <Surface className="p-5">
+          <CandidateSurface className="candidate-cv-upload p-5">
             <h2 className="m-0 mb-3 text-base font-semibold text-slate-900">Tải CV mới</h2>
             <CvUploader />
-          </Surface>
+          </CandidateSurface>
         </aside>}
       </div>
       <Modal

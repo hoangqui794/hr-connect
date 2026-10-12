@@ -65,6 +65,9 @@ dist/
 **/dist/
 dist-ssr/
 *.local
+playwright-report/
+test-results/
+blob-report/
 
 **/swagger.json
 ## Local MF-03 E2E runtime
