@@ -253,76 +253,36 @@ export const RegisterPage: React.FC = () => {
         'Affiliate Recruiter ghi nhận nguồn giới thiệu minh bạch',
       ]}
       extraVisual={
-        <div className="space-y-2.5">
-          {/* Stickers: Topic features */}
-          <div className="flex flex-wrap gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-full border border-white/80 bg-white/75 px-2.5 py-0.5 text-[11px] font-extrabold text-[#0c365a] shadow-sm backdrop-blur-md">
-              🤖 AI CV Match 98%
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-white/80 bg-white/75 px-2.5 py-0.5 text-[11px] font-extrabold text-[#0c365a] shadow-sm backdrop-blur-md">
-              🛡️ Bảo hành ứng viên 60 ngày
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-white/80 bg-white/75 px-2.5 py-0.5 text-[11px] font-extrabold text-[#0c365a] shadow-sm backdrop-blur-md">
-              💰 Hoa hồng Affiliate tức thì
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-white/80 bg-white/75 px-2.5 py-0.5 text-[11px] font-extrabold text-[#0c365a] shadow-sm backdrop-blur-md">
-              ⚡ ATS Standard Builder
-            </span>
-          </div>
-
-          {/* Mini Interactive Preview Card: AI Connected Candidate */}
-          <div className="overflow-hidden rounded-xl border border-white/90 bg-white/85 p-3 shadow-sm shadow-[#1E9EDB]/15 backdrop-blur-md">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-white text-[11px] font-black shadow-sm">
-                  AI
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <strong className="text-xs text-slate-800">Lê Hoàng Nam</strong>
-                    <span className="rounded bg-blue-100 px-1 py-0.2 text-[9px] font-bold text-blue-700">Verified</span>
-                  </div>
-                  <span className="text-[10px] text-slate-500 font-medium">Senior React & .NET Developer</span>
-                </div>
-              </div>
-              <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">
-                ★ 98% Match
+        <div className="mt-5 overflow-hidden rounded-2xl border border-white/40 bg-white/20 p-4 text-white backdrop-blur-xl shadow-lg shadow-[#1E9EDB]/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#1E9EDB] text-sm font-black shadow-sm">
+                AI
               </span>
-            </div>
-
-            <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-200/60 pt-1.5 text-[10px]">
-              <div className="flex items-center gap-1 text-slate-600 font-medium">
-                <SafetyCertificateOutlined className="text-[#1E9EDB]" />
-                <span>Bảo hành: <strong>60 ngày</strong></span>
-              </div>
-              <div className="text-right font-bold text-amber-600">
-                Hoa hồng: 12.000.000đ
+              <div>
+                <strong className="block text-xs font-bold text-white">Smart Match & Verification</strong>
+                <span className="text-[11px] text-white/85">Khớp nối ứng viên & doanh nghiệp tự động</span>
               </div>
             </div>
+            <span className="rounded-full border border-white/40 bg-white/25 px-2.5 py-0.5 text-[10px] font-extrabold text-white">
+              98% Fit
+            </span>
           </div>
 
-          {/* Platform Quick Stats */}
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl border border-white/70 bg-white/60 p-1.5 backdrop-blur-sm">
-              <strong className="block text-xs font-black text-[#0c365a]">5.000+</strong>
-              <span className="text-[9px] text-[#0c365a]/80 font-medium">Việc làm IT</span>
-            </div>
-            <div className="rounded-xl border border-white/70 bg-white/60 p-1.5 backdrop-blur-sm">
-              <strong className="block text-xs font-black text-[#0c365a]">800+</strong>
-              <span className="text-[9px] text-[#0c365a]/80 font-medium">Doanh nghiệp</span>
-            </div>
-            <div className="rounded-xl border border-white/70 bg-white/60 p-1.5 backdrop-blur-sm">
-              <strong className="block text-xs font-black text-[#0c365a]">100%</strong>
-              <span className="text-[9px] text-[#0c365a]/80 font-medium">Minh bạch</span>
-            </div>
+          <div className="mt-3.5 flex items-center justify-between border-t border-white/20 pt-2.5 text-[11px] text-white/90">
+            <span className="flex items-center gap-1.5">
+              <SafetyCertificateOutlined className="text-white text-xs" />
+              <span>Bảo hành tuyển dụng 60 ngày</span>
+            </span>
+            <span className="font-bold">Hoa hồng minh bạch</span>
           </div>
         </div>
       }
     >
-      {/* Role Selection Tabs */}
-      <div className="mb-2.5">
-        <p className="mb-1 text-xs font-bold text-slate-700">Bạn đăng ký với vai trò nào?</p>
-        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+      {/* Role Selection Segmented Control */}
+      <div className="mb-3">
+        <p className="mb-1.5 text-xs font-bold text-slate-700">Bạn đăng ký với vai trò nào?</p>
+        <div className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
           {ROLE_OPTIONS.map((option) => {
             const isSelected = selectedRole === option.role;
             return (
@@ -333,23 +293,15 @@ export const RegisterPage: React.FC = () => {
                   setSelectedRole(option.role);
                   setErrorMessage(null);
                 }}
-                className={`relative flex items-center gap-2 cursor-pointer rounded-xl border p-2 text-left transition ${
+                className={`flex items-center justify-center gap-1.5 rounded-lg py-2 px-1 text-xs font-bold transition-all cursor-pointer border-0 ${
                   isSelected
-                    ? 'border-[#1E9EDB] bg-[#E2F3FB]/70 shadow-sm ring-2 ring-[#53B7E8]/25'
-                    : 'border-slate-200 bg-white hover:border-[#80CCEE] hover:bg-slate-50'
+                    ? 'bg-white text-[#1E9EDB] shadow-sm'
+                    : 'bg-transparent text-slate-600 hover:text-slate-900'
                 }`}
                 aria-pressed={isSelected}
               >
-                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
-                  isSelected ? 'bg-white shadow-sm' : 'bg-slate-100'
-                }`}>
-                  {option.icon}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <strong className="block truncate text-xs text-slate-900">{option.title}</strong>
-                  <span className="block truncate text-[10px] text-slate-500 leading-tight">{option.subtitle}</span>
-                </div>
-                {isSelected && <CheckCircleFilled className="shrink-0 text-[#1E9EDB] text-xs" />}
+                <span className="text-sm">{option.icon}</span>
+                <span className="truncate">{option.title}</span>
               </button>
             );
           })}
