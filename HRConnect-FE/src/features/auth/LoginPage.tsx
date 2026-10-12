@@ -345,6 +345,32 @@ export const LoginPage: React.FC = () => {
           'Quản lý CV, ứng viên và nguồn giới thiệu tập trung',
           'Bảo vệ tài khoản bằng xác thực và phân quyền theo vai trò',
         ]}
+        extraVisual={
+          <div className="mt-5 overflow-hidden rounded-2xl border border-white/40 bg-white/20 p-4 text-white backdrop-blur-xl shadow-lg shadow-[#1E9EDB]/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#1E9EDB] text-sm font-black shadow-sm">
+                  HR
+                </span>
+                <div>
+                  <strong className="block text-xs font-bold text-white">HR Connect Ecosystem</strong>
+                  <span className="text-[11px] text-white/85">Không gian làm việc đồng bộ & chuẩn xác</span>
+                </div>
+              </div>
+              <span className="rounded-full border border-white/40 bg-white/25 px-2.5 py-0.5 text-[10px] font-extrabold text-white">
+                RBAC Hub
+              </span>
+            </div>
+
+            <div className="mt-3.5 flex items-center justify-between border-t border-white/20 pt-2.5 text-[11px] text-white/90">
+              <span className="flex items-center gap-1.5">
+                <SafetyCertificateOutlined className="text-white text-xs" />
+                <span>Xác thực bảo mật đa phân quyền</span>
+              </span>
+              <span className="font-bold">Đồng bộ tức thì</span>
+            </div>
+          </div>
+        }
       >
         {verifiedSuccessNotice && (
           <Alert
