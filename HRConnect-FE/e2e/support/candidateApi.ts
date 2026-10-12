@@ -61,6 +61,43 @@ export async function mockCandidateApis(page: Page) {
     );
   });
 
+  await page.route('**/api/v1/candidates/me/submission-consents**', async (route) => {
+    if (/\/submission-consents\/[0-9a-f-]+/i.test(new URL(route.request().url()).pathname)) {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill(
+      json({
+        success: true,
+        data: {
+          items: [{
+            submissionId: '10000000-0000-0000-0000-000000000001',
+            consentStatus: 'PENDING',
+            submissionStatus: 'PENDING_CONSENT',
+            jobId: '20000000-0000-0000-0000-000000000001',
+            jobTitle: 'Backend Developer',
+            companyId: '30000000-0000-0000-0000-000000000001',
+            companyName: 'HR Connect Demo',
+            cvId: '40000000-0000-0000-0000-000000000001',
+            cvTitle: 'CV Backend',
+            cvFileName: 'cv-backend.pdf',
+            affiliateUserId: '50000000-0000-0000-0000-000000000001',
+            affiliateDisplayName: 'Affiliate Demo',
+            requestedAt: '2026-10-12T01:00:00Z',
+            expiresAt: '2099-01-01T00:00:00Z',
+            respondedAt: null,
+            isActionable: true,
+            remainingSeconds: 999999,
+          }],
+          page: 1,
+          pageSize: 5,
+          total: 1,
+          totalPages: 1,
+        },
+      })
+    );
+  });
+
   await page.route('**/api/v1/candidates/cv', async (route) => {
     await route.fulfill(json({ success: true, data: [] }));
   });

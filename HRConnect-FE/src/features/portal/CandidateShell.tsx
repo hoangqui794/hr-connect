@@ -103,7 +103,13 @@ export const CandidateShell: React.FC = () => {
   return (
     <div className="candidate-console min-h-screen bg-[#F4F7FC] text-slate-900">
       <header className="sticky top-0 z-30 border-0 border-b border-solid border-slate-200/80 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-5 px-4 lg:px-8">
+        <div
+          className={
+            compact
+              ? 'flex h-16 w-full items-center gap-4 px-4'
+              : 'grid h-16 w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-6 px-6 lg:px-10'
+          }
+        >
           <NavLink to="/candidate/dashboard" className="flex shrink-0 items-center gap-2.5 no-underline" aria-label="HR Connect, về tổng quan">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[color:var(--console-accent)] text-base font-extrabold text-white shadow-sm">H</span>
             <span className="leading-tight">
@@ -113,7 +119,7 @@ export const CandidateShell: React.FC = () => {
           </NavLink>
 
           {!compact && (
-            <nav aria-label="Điều hướng Candidate" className="ml-2 flex items-center gap-1 rounded-full bg-slate-50 p-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
+            <nav aria-label="Điều hướng Candidate" className="flex items-center justify-self-center gap-1 rounded-full bg-slate-50 p-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
               {PRIMARY_NAV.map((item) => {
                 const active = isPathActive(item.matches);
                 const Icon = item.icon;
@@ -127,7 +133,7 @@ export const CandidateShell: React.FC = () => {
             </nav>
           )}
 
-          <div className="ml-auto flex items-center">
+          <div className={compact ? 'ml-auto flex items-center' : 'flex items-center justify-self-end'}>
             {compact ? (
               <button
                 ref={accountButtonRef}
