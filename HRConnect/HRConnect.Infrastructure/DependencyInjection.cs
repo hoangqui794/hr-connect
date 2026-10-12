@@ -191,6 +191,9 @@ public static class DependencyInjection
         services.Configure<BusinessSettingsOptions>(configuration.GetSection(BusinessSettingsOptions.SectionName));
         services.AddSingleton<IBusinessSettings, HRConnect.Infrastructure.Services.BusinessSettings>();
 
+        // 8. Background Workers (MF-01 Expiration Worker)
+        services.AddHostedService<HRConnect.Infrastructure.Services.Jobs.JobExpirationWorker>();
+
         return services;
 
     }

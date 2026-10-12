@@ -20,6 +20,8 @@ export const jobQueryKeys = {
   detail: (jobId: string) => [...jobQueryKeys.all, 'detail', jobId] as const,
   review: (status?: string) => [...jobQueryKeys.all, 'review', status ?? 'ALL'] as const,
   serviceTypes: ['mf01-service-types'] as const,
+  postingPackages: ['mf01-posting-packages'] as const,
+  postingEligibility: ['mf01-posting-eligibility'] as const,
 };
 
 export const useMyJobs = (status?: JobStatus) =>
@@ -48,6 +50,20 @@ export const useServiceTypes = () =>
     queryKey: jobQueryKeys.serviceTypes,
     queryFn: () => serviceTypesApi.getActive(),
     staleTime: 10 * 60 * 1000,
+  });
+
+export const usePostingPackages = () =>
+  useQuery({
+    queryKey: jobQueryKeys.postingPackages,
+    queryFn: () => jobsApi.getPostingPackages(),
+    staleTime: 10 * 60 * 1000,
+  });
+
+export const usePostingEligibility = () =>
+  useQuery({
+    queryKey: jobQueryKeys.postingEligibility,
+    queryFn: () => jobsApi.getPostingEligibility(),
+    staleTime: 60 * 1000,
   });
 
 /** All write operations, each refreshing every MF-01 cache on success. */

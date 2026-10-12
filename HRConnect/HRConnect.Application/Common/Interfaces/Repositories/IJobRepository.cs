@@ -53,5 +53,21 @@ public interface IJobRepository
         IReadOnlyCollection<Guid> roleIds,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<JobPostingPackage>> GetPostingPackagesAsync(bool activeOnly = true, CancellationToken cancellationToken = default);
+
+    Task<JobPostingPackage?> GetPostingPackageByIdAsync(Guid packageId, CancellationToken cancellationToken = default);
+
+    Task<JobPostingPackage?> GetPostingPackageByCodeAsync(string code, CancellationToken cancellationToken = default);
+
+    Task AddPostingFeeAsync(JobPostingFee fee, CancellationToken cancellationToken = default);
+
+    Task<JobPostingFee?> GetPostingFeeByJobIdAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Job>> GetExpiredActiveJobsAsync(DateTime now, int take = 100, CancellationToken cancellationToken = default);
+
+    Task<int> CountActiveJobsByCompanyIdAsync(Guid companyId, CancellationToken cancellationToken = default);
+
+    Task<Job?> GetLastPostedJobByCompanyIdAsync(Guid companyId, string? packageCode = null, CancellationToken cancellationToken = default);
+
     void Update(Job job);
 }

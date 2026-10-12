@@ -96,7 +96,8 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             SourcingPricePerCv = request.SourcingPricePerCv,
             FeeMultiplier = request.FeeMultiplier,
             WarrantyDays = request.WarrantyDays,
-            PaymentDueDays = request.PaymentDueDays
+            PaymentDueDays = request.PaymentDueDays,
+            PostingPackageId = request.PostingPackageId
         };
 
         foreach (var requirement in request.Requirements)
@@ -137,6 +138,26 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             ReasonText = null,
             ChangedAt = now
         });
+
+        if (request.PostingPackageId.HasValue)
+        {
+            var package = await _jobRepository.GetPostingPackageByIdAsync(request.PostingPackageId.Value, cancellationToken);
+            if (package != null && string.Equals(package.Code, JobPostingPackageCodes.Standard, StringComparison.OrdinalIgnoreCase))
+            {
+                job.JobPostingFees.Add(new JobPostingFee
+                {
+                    PostingFeeId = Guid.NewGuid(),
+                    JobId = jobId,
+                    PackageId = package.PackageId,
+                    CompanyId = companyUser.CompanyId,
+                    Amount = package.Price > 0 ? package.Price : 1500000m,
+                    CurrencyCode = "VND",
+                    Status = JobPostingFeeStatuses.Pending,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
+        }
 
         await _jobRepository.AddAsync(job, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

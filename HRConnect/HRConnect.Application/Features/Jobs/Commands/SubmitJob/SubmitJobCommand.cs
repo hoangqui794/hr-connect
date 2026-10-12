@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Domain.Entities;
 using MediatR;
 
 namespace HRConnect.Application.Features.Jobs.Commands.SubmitJob;
@@ -92,6 +93,109 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
             job.FeeMultiplier = null;
             job.WarrantyDays = null;
             job.PaymentDueDays = null;
+
+            // Xử lý gói đăng tin (MF-01 B1 & B2)
+            var package = job.PostingPackage;
+            if (package == null && job.PostingPackageId.HasValue)
+            {
+                package = await _jobs.GetPostingPackageByIdAsync(job.PostingPackageId.Value, ct);
+            }
+
+            // Nếu chưa chọn gói, mặc định chọn gói FREE
+            if (package == null)
+            {
+                package = await _jobs.GetPostingPackageByCodeAsync(JobPostingPackageCodes.Free, ct);
+                if (package != null)
+                {
+                    job.PostingPackageId = package.PackageId;
+                    job.PostingPackage = package;
+                }
+            }
+
+            if (package == null)
+            {
+                throw new BadRequestException("Không tìm thấy gói đăng tin tuyển dụng hợp lệ.");
+            }
+
+            var now = DateTime.UtcNow;
+
+            // Kiểm tra giới hạn gói FREE (B2)
+            if (string.Equals(package.Code, JobPostingPackageCodes.Free, StringComparison.OrdinalIgnoreCase))
+            {
+                // Giới hạn 1: Số tin ACTIVE đồng thời không vượt quá FreeActiveJobLimit
+                var activeCount = await _jobs.CountActiveJobsByCompanyIdAsync(job.CompanyId, ct);
+                if (activeCount >= _businessSettings.FreeActiveJobLimit)
+                {
+                    throw new BadRequestException(
+                        $"Doanh nghiệp đã có {activeCount} tin tuyển dụng đang mở. Gói Miễn Phí (FREE) chỉ cho phép tối đa {_businessSettings.FreeActiveJobLimit} tin mở tại một thời điểm. Vui lòng đóng tin hiện tại hoặc nâng cấp lên gói Tiêu Chuẩn (STANDARD).");
+                }
+
+                // Giới hạn 2: Chu kỳ mở lại FreeCooldownMonths (2 tháng)
+                var lastPostedJob = await _jobs.GetLastPostedJobByCompanyIdAsync(job.CompanyId, JobPostingPackageCodes.Free, ct);
+                if (lastPostedJob != null && lastPostedJob.JobId != job.JobId && lastPostedJob.PostedAt.HasValue)
+                {
+                    var nextAllowedDate = lastPostedJob.PostedAt.Value.AddMonths(_businessSettings.FreeCooldownMonths);
+                    if (now < nextAllowedDate)
+                    {
+                        throw new BadRequestException(
+                            $"Gói Miễn Phí (FREE) chỉ áp dụng chu kỳ {_businessSettings.FreeCooldownMonths} tháng một lần. Tin tuyển dụng miễn phí gần nhất của bạn đã đăng ngày {lastPostedJob.PostedAt.Value:dd/MM/yyyy}. Bạn có thể đăng tin miễn phí tiếp theo từ ngày {nextAllowedDate:dd/MM/yyyy} hoặc chọn gói Tiêu Chuẩn (STANDARD).");
+                    }
+                }
+
+                // Tạo bản ghi phí gói FREE (0 VNĐ, PAID)
+                var existingFee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct);
+                if (existingFee == null)
+                {
+                    var freeFee = new JobPostingFee
+                    {
+                        PostingFeeId = Guid.NewGuid(),
+                        JobId = job.JobId,
+                        PackageId = package.PackageId,
+                        CompanyId = job.CompanyId,
+                        Amount = 0m,
+                        CurrencyCode = "VND",
+                        Status = JobPostingFeeStatuses.Paid,
+                        PaidAt = now,
+                        PaymentReference = "FREE_TIER",
+                        CreatedAt = now,
+                        UpdatedAt = now
+                    };
+                    await _jobs.AddPostingFeeAsync(freeFee, ct);
+                }
+            }
+            else if (string.Equals(package.Code, JobPostingPackageCodes.Standard, StringComparison.OrdinalIgnoreCase))
+            {
+                // Tạo hoặc cập nhật bản ghi phí gói STANDARD (1.500.000 VNĐ, PENDING)
+                var standardPrice = package.Price > 0 ? package.Price : _businessSettings.StandardPostingPackagePrice;
+                var existingFee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct);
+                if (existingFee == null)
+                {
+                    var fee = new JobPostingFee
+                    {
+                        PostingFeeId = Guid.NewGuid(),
+                        JobId = job.JobId,
+                        PackageId = package.PackageId,
+                        CompanyId = job.CompanyId,
+                        Amount = standardPrice,
+                        CurrencyCode = "VND",
+                        Status = JobPostingFeeStatuses.Pending,
+                        CreatedAt = now,
+                        UpdatedAt = now
+                    };
+                    await _jobs.AddPostingFeeAsync(fee, ct);
+                }
+                else if (existingFee.Status != JobPostingFeeStatuses.Paid)
+                {
+                    existingFee.Amount = standardPrice;
+                    existingFee.PackageId = package.PackageId;
+                    existingFee.UpdatedAt = now;
+                }
+            }
+        }
+        else
+        {
+            job.PostingPackageId = null;
+            job.ExpiresAt = null;
         }
 
         JobTransitions.ChangeStatus(job, JobStatuses.PendingReview, request.UserId, JobReasonCodes.SubmittedForReview);

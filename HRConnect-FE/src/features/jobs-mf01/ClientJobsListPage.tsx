@@ -16,11 +16,13 @@ import {
   Empty,
   Skeleton,
   Table,
+  Tag,
   Tooltip,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   AppstoreOutlined,
+  CreditCardOutlined,
   EditOutlined,
   EnvironmentOutlined,
   EyeOutlined,
@@ -38,6 +40,7 @@ import '@/features/admin-console/admin-console.css';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useJobDetail, useJobMutations, useMyJobs } from './useJobQueries';
 import { JobDetailPanel, JobStatusTag } from './JobDetailPanel';
+import { PaymentDemoModal } from './PaymentDemoModal';
 import { ReasonModal } from './ReasonModal';
 import {
   CLOSE_REASONS,
@@ -76,6 +79,7 @@ export const ClientJobsListPage: React.FC = () => {
   };
   const [detailJobId, setDetailJobId] = useState<string>();
   const [pending, setPending] = useState<PendingAction>(null);
+  const [paymentModalJob, setPaymentModalJob] = useState<{ jobId: string; title: string; amount?: number } | null>(null);
 
   const highlightParam = searchParams.get('highlight') || searchParams.get('jobId');
   const openDetailParam = searchParams.get('openDetail') === 'true';
@@ -126,6 +130,16 @@ export const ClientJobsListPage: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [highlightParam, jobs]);
+
+  const expiredJobs = useMemo(
+    () =>
+      jobs.filter(
+        (j) =>
+          (j.expiresAt && new Date(j.expiresAt) <= new Date()) ||
+          (j.status === 'CLOSED' && Boolean(j.statusReason?.toLowerCase().includes('hết hạn')))
+      ),
+    [jobs]
+  );
 
   const visibleJobs = useMemo(
     () =>
@@ -184,6 +198,17 @@ export const ClientJobsListPage: React.FC = () => {
         ];
         return (
           <div className="flex items-center justify-end gap-1">
+            {job.postingFeeStatus === 'PENDING' && (
+              <Button
+                size="small"
+                type="primary"
+                className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600"
+                icon={<CreditCardOutlined />}
+                onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title, amount: 1500000 })}
+              >
+                Thanh toán (Demo)
+              </Button>
+            )}
             {can.canSubmit && (
               <Button size="small" type="primary" icon={<SendOutlined />} loading={busy} onClick={() => confirmSubmit(job)}>
                 Gửi duyệt
@@ -247,14 +272,26 @@ export const ClientJobsListPage: React.FC = () => {
     },
     {
       title: 'Trạng thái',
-      dataIndex: 'status',
-      width: 130,
-      render: (status: JobStatus) => (
-        <Tooltip title={JOB_STATUS[status].hint}>
-          <span>
-            <JobStatusTag status={status} />
-          </span>
-        </Tooltip>
+      key: 'status',
+      width: 150,
+      render: (_, job) => (
+        <div className="space-y-1">
+          <Tooltip title={JOB_STATUS[job.status].hint}>
+            <span>
+              <JobStatusTag status={job.status} />
+            </span>
+          </Tooltip>
+          {job.postingFeeStatus === 'PENDING' && (
+            <div>
+              <Tag color="warning" className="m-0 text-[11px] font-medium">Chờ phí 1.5M đ</Tag>
+            </div>
+          )}
+          {job.postingFeeStatus === 'PAID' && (
+            <div>
+              <Tag color="success" className="m-0 text-[11px] font-medium">Đã nộp phí</Tag>
+            </div>
+          )}
+        </div>
       ),
     },
     { title: 'Mức lương', key: 'salary', width: 220, render: (_, job) => formatSalary(job) },
@@ -291,6 +328,22 @@ export const ClientJobsListPage: React.FC = () => {
           </>
         }
       />
+
+      {expiredJobs.length > 0 && (
+        <Alert
+          type="warning"
+          showIcon
+          closable
+          className="mb-4"
+          message={`Bạn có ${expiredJobs.length} tin tuyển dụng đã hết hạn hiển thị (30 ngày)`}
+          description="Các tin tuyển dụng theo gói đã kết thúc thời hạn hiển thị và tự động đóng. Bạn có thể đăng tin mới với Gói Tiêu Chuẩn (STANDARD) để tiếp tục tuyển dụng không giới hạn."
+          action={
+            <Button size="small" type="primary" onClick={() => navigate('/client/jobs/create')}>
+              Đăng tin mới (Standard)
+            </Button>
+          }
+        />
+      )}
 
       {isError ? (
         <Alert
@@ -403,6 +456,19 @@ export const ClientJobsListPage: React.FC = () => {
                       </div>
                       <div>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'}</div>
                     </div>
+                    {job.postingFeeStatus === 'PENDING' && (
+                      <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2 text-xs text-amber-900">
+                        <span className="font-medium">Chờ thanh toán phí (1.5M đ)</span>
+                        <Button
+                          type="primary"
+                          size="small"
+                          className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600 !text-xs !h-6"
+                          onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title, amount: 1500000 })}
+                        >
+                          Thanh toán (Demo)
+                        </Button>
+                      </div>
+                    )}
                     {job.status === 'REJECTED' && job.statusReason && (
                       <div className="line-clamp-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-800">Lý do từ chối: {job.statusReason}</div>
                     )}
@@ -458,7 +524,14 @@ export const ClientJobsListPage: React.FC = () => {
         ) : detail.isError ? (
           <Alert type="error" showIcon message={getApiErrorMessage(detail.error)} />
         ) : detail.data ? (
-          <JobDetailPanel job={detail.data} showHistory />
+          <JobDetailPanel
+            job={detail.data}
+            showHistory
+            onPaySuccess={() => {
+              refetch();
+              detail.refetch();
+            }}
+          />
         ) : null}
       </Drawer>
 
@@ -507,6 +580,18 @@ export const ClientJobsListPage: React.FC = () => {
             })
             .catch(notifyError)
         }
+      />
+
+      <PaymentDemoModal
+        visible={Boolean(paymentModalJob)}
+        jobId={paymentModalJob?.jobId ?? ''}
+        jobTitle={paymentModalJob?.title ?? ''}
+        amount={paymentModalJob?.amount}
+        onClose={() => setPaymentModalJob(null)}
+        onPaymentSuccess={() => {
+          setPaymentModalJob(null);
+          refetch();
+        }}
       />
     </div>
   );
