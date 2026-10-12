@@ -252,6 +252,32 @@ export const RegisterPage: React.FC = () => {
         'Doanh nghiệp theo dõi ứng viên theo từng Job',
         'Affiliate Recruiter ghi nhận nguồn giới thiệu minh bạch',
       ]}
+      extraVisual={
+        <div className="mt-4 overflow-hidden rounded-2xl border border-white/70 bg-white/50 p-3.5 text-slate-800 backdrop-blur-md shadow-md shadow-[#1E9EDB]/15">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-white text-sm font-black shadow-sm">
+                AI
+              </span>
+              <div>
+                <strong className="block text-xs font-bold text-slate-900">Smart Match & Verification</strong>
+                <span className="text-[11px] font-medium text-slate-600">Khớp nối ứng viên & doanh nghiệp tự động</span>
+              </div>
+            </div>
+            <span className="rounded-full border border-emerald-400/60 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-600">
+              98% Fit
+            </span>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between border-t border-white/60 pt-2.5 text-[11px] text-slate-600 font-medium">
+            <span className="flex items-center gap-1.5">
+              <SafetyCertificateOutlined className="text-emerald-500 text-xs" />
+              <span>Bảo hành tuyển dụng 60 ngày</span>
+            </span>
+            <span className="font-bold text-slate-800">Hoa hồng minh bạch</span>
+          </div>
+        </div>
+      }
     >
       {/* Role Selection Segmented Control */}
       <div className="mb-3">
