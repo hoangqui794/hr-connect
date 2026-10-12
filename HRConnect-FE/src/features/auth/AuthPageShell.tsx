@@ -2,13 +2,19 @@ import React from 'react';
 import { ArrowLeftOutlined, CheckCircleFilled, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
+export interface BenefitItem {
+  icon?: React.ReactNode;
+  title: string;
+  desc?: string;
+}
+
 interface AuthPageShellProps {
   eyebrow: string;
   title: string;
   description: string;
   sideTitle: string;
-  sideDescription: string;
-  benefits: string[];
+  sideDescription?: string;
+  benefits: (string | BenefitItem)[];
   children: React.ReactNode;
   wide?: boolean;
   fitScreen?: boolean;
@@ -176,33 +182,58 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
             </span>
           </button>
 
-          {/* Hero text & benefits & extra visual */}
-          <div className={`relative z-10 ${fitScreen ? 'my-auto py-1' : 'my-8'} max-w-md`}>
-            <span className="mb-2.5 inline-flex rounded-full border border-blue-500/40 bg-white/70 px-3 py-0.5 text-[11px] font-black uppercase tracking-[0.14em] text-blue-900 shadow-sm">
-              Tuyển dụng rõ ràng hơn
-            </span>
-            <h2 className="m-0 text-xl font-black leading-[1.2] tracking-[-0.03em] text-slate-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)] xl:text-[28px]">
-              {sideTitle}
-            </h2>
-            <p className="mb-0 mt-2 max-w-sm text-xs leading-5 text-slate-800 font-semibold drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">{sideDescription}</p>
-
-            <div className={`mt-3.5 ${fitScreen ? 'space-y-2' : 'space-y-3'}`}>
-              {benefits.map((benefit) => (
-                <div
-                  key={benefit}
-                  className="flex items-center gap-2.5 text-xs sm:text-[13px] font-bold text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1E9EDB] text-[11px] text-white font-black shadow-sm">
-                    ✓
-                  </span>
-                  <span>{benefit}</span>
-                </div>
-              ))}
+          {/* Hero text & benefits & extra visual - UI/UX clean balanced distribution */}
+          <div className="relative z-10 my-auto py-2 max-w-md flex flex-col justify-center">
+            {/* Centered Heading Group */}
+            <div className="text-center flex flex-col items-center">
+              <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-white/80 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-blue-900 shadow-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#1E9EDB] animate-pulse" />
+                Tuyển dụng rõ ràng hơn
+              </span>
+              <h2 className="m-0 text-center text-lg xl:text-2xl font-black leading-tight tracking-[-0.02em] text-slate-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]">
+                {sideTitle}
+              </h2>
+              {sideDescription && (
+                <p className="mb-0 mt-1.5 text-center text-xs text-slate-700 font-medium drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+                  {sideDescription}
+                </p>
+              )}
             </div>
 
-            {/* Extra visual element if provided */}
+            {/* Feature Highlights: Icon + Key Term + Concise Desc */}
+            <div className="mt-3.5 sm:mt-4 space-y-2 sm:space-y-2.5 w-full">
+              {benefits.map((item, idx) => {
+                const isObject = typeof item !== 'string';
+                const title = isObject ? item.title : item;
+                const desc = isObject ? item.desc : null;
+                const icon = isObject && item.icon ? item.icon : <CheckCircleFilled className="text-[#1E9EDB]" />;
+
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2.5 rounded-xl border border-white/60 bg-white/45 p-2 sm:p-2.5 backdrop-blur-sm shadow-sm"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-base shadow-sm border border-white/80">
+                      {icon}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <strong className="block text-xs font-bold leading-tight text-slate-900">
+                        {title}
+                      </strong>
+                      {desc && (
+                        <span className="mt-0.5 block text-[11px] font-medium text-slate-600 leading-tight">
+                          {desc}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Extra visual element - seamlessly placed right below the benefits cards */}
             {extraVisual && (
-              <div className="mt-3.5">
+              <div className="mt-2.5 sm:mt-3">
                 {extraVisual}
               </div>
             )}

@@ -33,6 +33,7 @@ import {
   TeamOutlined,
   SafetyCertificateOutlined,
   IdcardOutlined,
+  SolutionOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { UserRole } from '@/types/roles';
@@ -245,12 +246,24 @@ export const RegisterPage: React.FC = () => {
       eyebrow="Bắt đầu cùng HR Connect"
       title="Tạo tài khoản HR Connect"
       description="Chọn vai trò và hoàn tất thông tin để bắt đầu không gian làm việc của bạn."
-      sideTitle="Một tài khoản, đúng trải nghiệm cho từng vai trò."
-      sideDescription="Dù bạn đang tìm việc, tuyển người hay giới thiệu ứng viên, HR Connect giúp mọi bước rõ ràng và dễ theo dõi."
+      sideTitle="Một nền tảng, trọn vẹn vai trò"
+      sideDescription="Trải nghiệm chuyên biệt cho từng chủ thể tuyển dụng."
       benefits={[
-        'Candidate quản lý CV và tiến trình ứng tuyển tập trung',
-        'Doanh nghiệp theo dõi ứng viên theo từng Job',
-        'Affiliate Recruiter ghi nhận nguồn giới thiệu minh bạch',
+        {
+          icon: <SolutionOutlined className="text-blue-600" />,
+          title: 'Ứng viên tìm việc',
+          desc: 'Quản lý CV, khớp nối việc làm phù hợp',
+        },
+        {
+          icon: <BankOutlined className="text-emerald-600" />,
+          title: 'Doanh nghiệp tuyển dụng',
+          desc: 'Tiếp cận nguồn ứng viên chất lượng cao',
+        },
+        {
+          icon: <TeamOutlined className="text-amber-600" />,
+          title: 'Cộng tác viên Headhunter',
+          desc: 'Gửi nguồn giới thiệu, nhận thưởng minh bạch',
+        },
       ]}
       extraVisual={
         <div className="mt-4 overflow-hidden rounded-2xl border border-white/70 bg-white/50 p-3.5 text-slate-800 backdrop-blur-md shadow-md shadow-[#1E9EDB]/15">

@@ -23,6 +23,9 @@ import {
   KeyOutlined,
   ReloadOutlined,
   SettingOutlined,
+  ApartmentOutlined,
+  TeamOutlined,
+  SolutionOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore, type UserProfile, getInitials } from '@/stores/authStore';
@@ -338,12 +341,24 @@ export const LoginPage: React.FC = () => {
         eyebrow="Chào mừng bạn trở lại"
         title="Đăng nhập HR Connect"
         description="Tiếp tục quản lý cơ hội nghề nghiệp, ứng viên và quy trình tuyển dụng của bạn."
-        sideTitle="Mọi hành trình tuyển dụng bắt đầu từ một kết nối đáng tin cậy."
-        sideDescription="Một không gian làm việc chung cho Candidate, Affiliate Recruiter, doanh nghiệp và đội ngũ HR."
+        sideTitle="Kết nối tuyển dụng thông minh"
+        sideDescription="Hệ sinh thái kết nối Doanh nghiệp, Headhunter và Ứng viên."
         benefits={[
-          'Theo dõi hồ sơ và trạng thái tuyển dụng rõ ràng',
-          'Quản lý CV, ứng viên và nguồn giới thiệu tập trung',
-          'Bảo vệ tài khoản bằng xác thực và phân quyền theo vai trò',
+          {
+            icon: <ApartmentOutlined className="text-blue-600" />,
+            title: 'Doanh nghiệp tuyển dụng',
+            desc: 'Quản trị tin đăng & ứng viên tập trung',
+          },
+          {
+            icon: <TeamOutlined className="text-emerald-600" />,
+            title: 'Mạng lưới Headhunter',
+            desc: 'Giới thiệu nhân tài, hoa hồng minh bạch',
+          },
+          {
+            icon: <SafetyCertificateOutlined className="text-indigo-600" />,
+            title: 'Bảo mật & Phân quyền',
+            desc: 'Bảo vệ dữ liệu, kiểm soát theo vai trò',
+          },
         ]}
         extraVisual={
           <div className="mt-4 overflow-hidden rounded-2xl border border-white/70 bg-white/50 p-3.5 text-slate-800 backdrop-blur-md shadow-md shadow-[#1E9EDB]/15">
