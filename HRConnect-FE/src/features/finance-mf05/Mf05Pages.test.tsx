@@ -71,7 +71,7 @@ describe('MF-05 HR warranty verification', () => {
 
   beforeEach(() => {
     vi.mocked(financeApi.warranties).mockResolvedValue(page([claimed]));
-    vi.mocked(financeApi.resolveResignation).mockReset().mockResolvedValue({});
+    vi.mocked(financeApi.resolveResignation).mockReset().mockResolvedValue({ success: true, data: null });
   });
 
   it('requires a note to reject a reported resignation', async () => {
