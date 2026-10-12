@@ -231,6 +231,42 @@ Nếu chưa làm hạng mục này, frontend phải ẩn chức năng Saved Job;
 
 Không được làm gãy frontend hiện tại. Có thể thêm DTO mới theo version hoặc phối hợp cập nhật FE trong cùng đợt.
 
+## F. Notification API dùng chung — ưu tiên rất cao
+
+Theo phân công của nhóm, MF-01 chịu trách nhiệm hạ tầng đọc và quản lý
+notification dùng chung cho mọi role. Các MF khác vẫn tạo notification cho
+sự kiện nghiệp vụ do chính MF đó sở hữu.
+
+```http
+GET  /api/v1/notifications?page=1&pageSize=20&type=&isRead=
+GET  /api/v1/notifications/unread-count
+POST /api/v1/notifications/{notificationId}/read
+POST /api/v1/notifications/read-all
+```
+
+Quy tắc:
+
+- Xác định `userId` từ access token; không nhận `userId` từ request.
+- Người dùng chỉ đọc và cập nhật notification của chính mình.
+- List phân trang tại database và mặc định mới nhất trước.
+- `read` và `read-all` phải idempotent.
+- `unread-count` chỉ đếm notification chưa đọc của user hiện tại.
+- Response có `relatedEntityType`, `relatedEntityId` và route hint an toàn.
+- Không lưu signed URL, OTP, consent token hoặc dữ liệu nhạy cảm trong payload.
+- Bổ sung index `(user_id, is_read, created_at)` nếu query plan cần.
+
+Phân công producer:
+
+| Sự kiện | Module tạo notification |
+|---|---|
+| Job được duyệt/từ chối/đóng | MF-01 |
+| Consent và Submission | MF-02 |
+| Kết quả AI cần chú ý | MF-03 |
+| Interview, Offer, Application lifecycle | MF-04 |
+
+MF-01 không sao chép business của các MF khác; MF-01 chỉ cung cấp repository,
+query/command và endpoint đọc/đánh dấu notification dùng chung.
+
 ## 4. Phần cần phối hợp nhưng không thuộc MF-01
 
 Dev MF-01 không tự triển khai các trường sau trong Job aggregate:
@@ -266,11 +302,12 @@ Số Application, CV, consent chờ xác nhận thuộc MF-02. MF-01 chỉ có t
 
 ## 6. Thứ tự triển khai đề xuất
 
-1. **Deadline + `isAcceptingApplications`** vì liên quan trực tiếp việc có nhận hồ sơ hay không.
-2. **Sort Job** và mở rộng search theo Company/Skill.
-3. **Tách DTO list/detail** để giảm payload.
-4. **Saved Jobs** nếu Product xác nhận giữ chức năng.
-5. Phối hợp MF-02 để hiển thị `alreadyApplied` mà không trộn ownership giữa hai module.
+1. **Notification API dùng chung** để các MF có một kênh hiển thị thống nhất.
+2. **Deadline + `isAcceptingApplications`** vì liên quan trực tiếp việc có nhận hồ sơ hay không.
+3. **Sort Job** và mở rộng search theo Company/Skill.
+4. **Tách DTO list/detail** để giảm payload.
+5. **Saved Jobs** nếu Product xác nhận giữ chức năng.
+6. Phối hợp MF-02 để hiển thị `alreadyApplied` mà không trộn ownership giữa hai module.
 
 ## 7. Kịch bản test tay bàn giao
 

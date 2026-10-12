@@ -287,6 +287,55 @@ Response cho Candidate cần có:
 
 Không trả Offer `DRAFT` hoặc bản đã bị thu hồi mà Candidate chưa từng được nhận.
 
+## G. Candidate Profile dùng dữ liệu thật — ưu tiên rất cao
+
+Theo phân công của nhóm, MF-04 chịu trách nhiệm hoàn thiện contract hồ sơ cá
+nhân Candidate. Giao diện không được tiếp tục xem `localStorage` là nguồn dữ
+liệu nghiệp vụ hoặc báo lưu thành công khi backend thất bại.
+
+Các API cần giữ tương thích và hoàn thiện:
+
+```http
+GET    /api/v1/candidates/profile/me
+PUT    /api/v1/candidates/profile/me
+PATCH  /api/v1/candidates/profile/me/visibility
+GET    /api/v1/skills
+PUT    /api/v1/candidates/profile/me/skills
+POST   /api/v1/candidates/profile/me/skills
+PATCH  /api/v1/candidates/profile/me/skills/{skillId}
+DELETE /api/v1/candidates/profile/me/skills/{skillId}
+```
+
+Các trường hiện có tiếp tục là nguồn sự thật: họ tên, điện thoại, ngày sinh,
+giới tính, địa chỉ, học vấn, số năm kinh nghiệm, giới thiệu, avatar, visibility,
+skills và CV chính.
+
+Các trường nghề nghiệp cần bổ sung sau khi chốt migration:
+
+```text
+current_job_title
+current_level
+target_role
+expected_salary_min
+expected_salary_max
+expected_salary_currency
+available_from
+preferred_locations
+preferred_work_modes
+```
+
+Quy tắc:
+
+- Email đăng nhập là read-only; thay đổi/khôi phục email đi qua Candidate Email Identity.
+- Candidate chỉ sửa hồ sơ của chính mình.
+- Candidate archive/merged/inactive không được cập nhật hồ sơ canonical cũ.
+- Không ánh xạ `currentLevel` vào `highestEducation`.
+- Validate mức lương, currency, ngày sẵn sàng và độ dài ở backend.
+- Update thành công trả snapshot mới nhất từ database; lỗi không được trả thành công giả.
+- Nếu dùng concurrency, GET/PUT trả `concurrencyToken`, token cũ trả `409`.
+- Thay đổi visibility và dữ liệu nghề nghiệp quan trọng phải ghi audit.
+- Không xây CV builder/template trong Profile; Profile chỉ trả summary CV chính.
+
 ## 4. Điểm phối hợp với MF-02 và frontend
 
 ### 4.1 Không tạo Application detail thứ ba có dữ liệu mâu thuẫn
@@ -303,7 +352,7 @@ Nếu trang detail cần AI, chỉ trả trạng thái và kết quả đã đư
 
 ### 4.3 Notification reader là hạ tầng chung
 
-MF-04 tạo notification đúng transaction. Module shared cung cấp:
+MF-04 tạo notification đúng transaction. MF-01 cung cấp hạ tầng đọc/đánh dấu:
 
 ```http
 GET  /api/v1/notifications
@@ -326,12 +375,13 @@ POST /api/v1/notifications/read-all
 
 ## 6. Thứ tự triển khai đề xuất
 
-1. **Candidate Application detail projection** có `concurrencyToken` và `allowedActions`.
-2. **Candidate timeline projection**.
-3. **Candidate Application CV download URL**.
-4. **Notification cho Interview/Offer/Application**.
-5. Xác nhận filter/sort cho danh sách Interview và Offer của Candidate.
-6. Phối hợp FE gắn rút hồ sơ, lịch phỏng vấn và phản hồi Offer.
+1. **Candidate Profile dùng dữ liệu thật** và migration trường nghề nghiệp đã chốt.
+2. **Candidate Application detail projection** có `concurrencyToken` và `allowedActions`.
+3. **Candidate timeline projection**.
+4. **Candidate Application CV download URL**.
+5. **Tạo notification row cho Interview/Offer/Application** theo contract MF-01.
+6. Xác nhận filter/sort cho danh sách Interview và Offer của Candidate.
+7. Phối hợp FE gắn Profile, rút hồ sơ, lịch phỏng vấn và phản hồi Offer.
 
 ## 7. Kịch bản test tay bàn giao
 
