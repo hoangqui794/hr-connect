@@ -345,32 +345,6 @@ export const LoginPage: React.FC = () => {
           'Quản lý CV, ứng viên và nguồn giới thiệu tập trung',
           'Bảo vệ tài khoản bằng xác thực và phân quyền theo vai trò',
         ]}
-        extraVisual={
-          <div className="mt-5 overflow-hidden rounded-2xl border border-white/40 bg-white/20 p-4 text-white backdrop-blur-xl shadow-lg shadow-[#1E9EDB]/20">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#1E9EDB] text-sm font-black shadow-sm">
-                  HR
-                </span>
-                <div>
-                  <strong className="block text-xs font-bold text-white">HR Connect Ecosystem</strong>
-                  <span className="text-[11px] text-white/85">Không gian làm việc đồng bộ & chuẩn xác</span>
-                </div>
-              </div>
-              <span className="rounded-full border border-white/40 bg-white/25 px-2.5 py-0.5 text-[10px] font-extrabold text-white">
-                RBAC Hub
-              </span>
-            </div>
-
-            <div className="mt-3.5 flex items-center justify-between border-t border-white/20 pt-2.5 text-[11px] text-white/90">
-              <span className="flex items-center gap-1.5">
-                <SafetyCertificateOutlined className="text-white text-xs" />
-                <span>Xác thực bảo mật đa phân quyền</span>
-              </span>
-              <span className="font-bold">Đồng bộ tức thì</span>
-            </div>
-          </div>
-        }
       >
         {verifiedSuccessNotice && (
           <Alert
@@ -469,7 +443,7 @@ export const LoginPage: React.FC = () => {
           </Button>
         </Form>
 
-        <div className="mt-3.5 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2 text-center text-xs text-slate-600">
+        <div className="mt-3.5 rounded-xl border border-white/70 bg-white/60 backdrop-blur-md px-3.5 py-2 text-center text-xs text-slate-600">
           Chưa có tài khoản?{' '}
           <Link to="/register" className="font-bold text-[#1E9EDB] hover:text-[#168ec6]">
             Tạo tài khoản miễn phí
@@ -477,7 +451,7 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {SHOW_DEMO_ACCOUNTS && (
-          <details className="group mt-3 rounded-xl border border-dashed border-slate-300/80 bg-white">
+          <details className="group mt-3 rounded-xl border border-dashed border-slate-300/80 bg-white/70 backdrop-blur-md">
             <summary className="flex cursor-pointer list-none items-center justify-between px-3.5 py-2 text-xs font-bold text-slate-700">
               <span className="flex items-center gap-1.5"><ThunderboltOutlined className="text-amber-500" /> Tài khoản kiểm thử</span>
               <span className="text-[11px] font-medium text-slate-400 group-open:hidden">Mở danh sách</span>

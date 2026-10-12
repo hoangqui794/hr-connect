@@ -235,7 +235,7 @@ export const RegisterPage: React.FC = () => {
   };
 
   const COMPACT_INPUT_CLASS =
-    'h-10 text-xs sm:text-sm rounded-xl border-slate-200 bg-white text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-[#53B7E8] focus:border-[#1E9EDB] transition-colors';
+    'h-10 text-xs sm:text-sm rounded-xl border border-white/70 bg-white/80 backdrop-blur-md text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-[#53B7E8] focus:border-[#1E9EDB] focus:bg-white transition-all';
   const COMPACT_LABEL_CLASS = 'text-xs font-bold text-slate-700';
 
   return (
@@ -252,37 +252,11 @@ export const RegisterPage: React.FC = () => {
         'Doanh nghiệp theo dõi ứng viên theo từng Job',
         'Affiliate Recruiter ghi nhận nguồn giới thiệu minh bạch',
       ]}
-      extraVisual={
-        <div className="mt-5 overflow-hidden rounded-2xl border border-white/40 bg-white/20 p-4 text-white backdrop-blur-xl shadow-lg shadow-[#1E9EDB]/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#1E9EDB] text-sm font-black shadow-sm">
-                AI
-              </span>
-              <div>
-                <strong className="block text-xs font-bold text-white">Smart Match & Verification</strong>
-                <span className="text-[11px] text-white/85">Khớp nối ứng viên & doanh nghiệp tự động</span>
-              </div>
-            </div>
-            <span className="rounded-full border border-white/40 bg-white/25 px-2.5 py-0.5 text-[10px] font-extrabold text-white">
-              98% Fit
-            </span>
-          </div>
-
-          <div className="mt-3.5 flex items-center justify-between border-t border-white/20 pt-2.5 text-[11px] text-white/90">
-            <span className="flex items-center gap-1.5">
-              <SafetyCertificateOutlined className="text-white text-xs" />
-              <span>Bảo hành tuyển dụng 60 ngày</span>
-            </span>
-            <span className="font-bold">Hoa hồng minh bạch</span>
-          </div>
-        </div>
-      }
     >
       {/* Role Selection Segmented Control */}
       <div className="mb-3">
         <p className="mb-1.5 text-xs font-bold text-slate-700">Bạn đăng ký với vai trò nào?</p>
-        <div className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
+        <div className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100/80 backdrop-blur-sm p-1 border border-white/60">
           {ROLE_OPTIONS.map((option) => {
             const isSelected = selectedRole === option.role;
             return (
@@ -452,7 +426,7 @@ export const RegisterPage: React.FC = () => {
         </Button>
       </Form>
 
-      <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 py-1.5 px-3 text-center text-xs text-slate-600">
+      <div className="mt-2 rounded-xl border border-white/70 bg-white/60 backdrop-blur-md py-1.5 px-3 text-center text-xs text-slate-600">
         Đã có tài khoản?{' '}
         <Link to="/login" className="font-bold text-[#1E9EDB] hover:text-[#168ec6]">Đăng nhập</Link>
       </div>

@@ -15,7 +15,107 @@ interface AuthPageShellProps {
   extraVisual?: React.ReactNode;
 }
 
-/** Shared, human-friendly shell for every public authentication screen with soothing ombre blue palette. */
+/** Full-screen background radar layer that sits behind the auth shell card */
+const FullscreenRadarBackground: React.FC = () => {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden select-none" aria-hidden="true">
+      {/* Central Radar Origin: positioned prominently in the background */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+        {/* Radar Concentric Rings with crisp vibrant opacity & glow */}
+        <div className="absolute h-[1400px] w-[1400px] rounded-full border border-sky-400/25" />
+        <div className="absolute h-[1150px] w-[1150px] rounded-full border-2 border-sky-400/35" />
+        <div className="absolute h-[920px] w-[920px] rounded-full border border-sky-400/40 border-dashed" />
+        <div className="absolute h-[720px] w-[720px] rounded-full border-2 border-sky-500/50" />
+        <div className="absolute h-[520px] w-[520px] rounded-full border border-sky-400/55 border-dashed" />
+        <div className="absolute h-[340px] w-[340px] rounded-full border-2 border-sky-500/60" />
+        <div className="absolute h-[160px] w-[160px] rounded-full border border-sky-400/70" />
+
+        {/* Center Origin Radar Pulse */}
+        <div className="relative flex h-6 w-6 items-center justify-center">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
+          <span className="relative inline-flex h-3 w-3 rounded-full bg-[#1E9EDB] shadow-[0_0_12px_#1E9EDB]" />
+        </div>
+
+        {/* Crosshair coordinate axes */}
+        <div className="absolute h-[1400px] w-[1.5px] bg-gradient-to-b from-transparent via-sky-500/45 to-transparent" />
+        <div className="absolute h-[1.5px] w-[1400px] bg-gradient-to-r from-transparent via-sky-500/45 to-transparent" />
+
+        {/* Diagonal radar guide lines */}
+        <div className="absolute h-[1150px] w-[1px] rotate-45 bg-gradient-to-b from-transparent via-sky-400/30 to-transparent" />
+        <div className="absolute h-[1150px] w-[1px] -rotate-45 bg-gradient-to-b from-transparent via-sky-400/30 to-transparent" />
+
+        {/* Sweeping Radar Beam with bright scanning head */}
+        <div className="pointer-events-none absolute h-[1150px] w-[1150px] animate-[spin_7s_linear_infinite] rounded-full bg-[conic-gradient(from_0deg,_transparent_0deg,_transparent_280deg,_rgba(30,158,219,0.12)_320deg,_rgba(14,165,233,0.38)_360deg)]">
+          {/* Leading beam edge */}
+          <div className="absolute top-0 left-1/2 h-1/2 w-[2px] bg-gradient-to-t from-transparent via-sky-400 to-[#38bdf8] shadow-[0_0_10px_#38bdf8]" />
+        </div>
+
+        {/* Radar targets on rings with connection beam */}
+        <div className="absolute -left-[200px] -top-[160px] flex items-center gap-1.5">
+          <span className="relative flex h-3 w-3">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]" />
+          </span>
+        </div>
+        <div className="absolute right-[220px] bottom-[140px] flex items-center gap-1.5">
+          <span className="relative flex h-3 w-3">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+          </span>
+        </div>
+      </div>
+
+      {/* Dynamic Laser Line connecting nodes across the background */}
+      <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
+        <line
+          x1="20%"
+          y1="25%"
+          x2="80%"
+          y2="75%"
+          stroke="#0284c7"
+          strokeWidth="2"
+          strokeDasharray="6 4"
+          className="animate-pulse opacity-70"
+        />
+      </svg>
+
+      {/* 4 Floating Radar Badges (z-20 to float crisply without being cut off by card edges) */}
+      {/* Node A: Headhunter (Góc trên trái) */}
+      <div className="pointer-events-auto absolute left-3 top-3 sm:left-6 sm:top-5 z-20 flex items-center gap-2 rounded-full border border-amber-400/80 bg-white/95 px-3 py-1.5 backdrop-blur-md shadow-md shadow-amber-500/15">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+        </span>
+        <span className="text-xs font-black tracking-tight text-amber-900">Headhunter</span>
+      </div>
+
+      {/* Node B: Doanh nghiệp (Góc dưới phải) */}
+      <div className="pointer-events-auto absolute right-3 bottom-3 sm:right-6 sm:bottom-5 z-20 flex items-center gap-2 rounded-full border border-emerald-400/80 bg-white/95 px-3 py-1.5 backdrop-blur-md shadow-md shadow-emerald-500/15">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+        </span>
+        <span className="text-xs font-black tracking-tight text-emerald-900">Doanh nghiệp</span>
+      </div>
+
+      {/* Node C: AI Matching Indicator (Góc trên phải) */}
+      <div className="pointer-events-auto absolute right-3 top-3 sm:right-6 sm:top-5 z-20 flex items-center gap-2 rounded-full border border-sky-400/80 bg-white/95 px-3 py-1.5 backdrop-blur-md shadow-md shadow-sky-500/15">
+        <span className="h-2.5 w-2.5 rounded-full bg-[#1E9EDB] animate-pulse shadow-[0_0_6px_#1E9EDB]" />
+        <span className="text-xs font-black tracking-tight text-[#0c365a]">AI Match: 98%</span>
+      </div>
+
+      {/* Node D: Ứng viên (Góc dưới trái) */}
+      <div className="pointer-events-auto absolute left-3 bottom-3 sm:left-6 sm:bottom-5 z-20 flex items-center gap-2 rounded-full border border-blue-400/80 bg-white/95 px-3 py-1.5 backdrop-blur-md shadow-md shadow-blue-500/15">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-blue-500" />
+        </span>
+        <span className="text-xs font-black tracking-tight text-blue-950">Ứng viên</span>
+      </div>
+    </div>
+  );
+};
+
 export const AuthPageShell: React.FC<AuthPageShellProps> = ({
   eyebrow,
   title,
@@ -34,27 +134,31 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
     <main
       className={`relative w-full text-slate-900 ${
         fitScreen
-          ? 'h-screen h-[100dvh] overflow-hidden bg-gradient-to-br from-[#E2F3FB]/60 via-slate-50 to-[#B1E0F4]/35 px-3 py-2 sm:px-5 sm:py-3 flex items-center justify-center'
+          ? 'h-screen h-[100dvh] overflow-hidden bg-gradient-to-br from-[#c0e6f8] via-[#e2f3fc] to-[#aee0f7] px-4 py-3 sm:px-8 sm:py-5 flex items-center justify-center'
           : 'min-h-screen overflow-hidden bg-slate-50 px-4 py-5 sm:px-6 lg:flex lg:items-center lg:py-8'
       }`}
     >
-      {/* Background radial highlights */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(30,158,219,0.10),_transparent_40%),radial-gradient(circle_at_bottom_right,_rgba(83,183,232,0.10),_transparent_36%)]" />
+      {/* Full-screen AI Talent Radar Background Layer */}
+      <FullscreenRadarBackground />
 
+      {/* Background radial soft highlights */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(30,158,219,0.2),_transparent_50%),radial-gradient(circle_at_bottom_right,_rgba(14,165,233,0.2),_transparent_45%)]" />
+
+      {/* Transparent Clear Glass Card: Genuinely see-through so user sees the background radar */}
       <section
-        className={`relative mx-auto grid w-full overflow-hidden rounded-2xl sm:rounded-[26px] border border-slate-200/90 bg-white shadow-[0_24px_70px_-24px_rgba(15,23,42,0.22)] ${
+        className={`relative z-10 mx-auto grid w-full overflow-hidden rounded-2xl sm:rounded-[28px] border-2 border-white/80 bg-white/10 shadow-[0_25px_80px_-15px_rgba(14,165,233,0.25)] ${
           fitScreen
-            ? 'h-full max-h-[96vh] lg:grid-cols-[0.86fr_1.14fr]'
+            ? 'h-full max-h-[94vh] lg:grid-cols-[0.85fr_1.15fr]'
             : 'lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[0.88fr_1.12fr]'
-        } ${wide ? 'max-w-[1260px]' : 'max-w-[1100px]'}`}
+        } ${wide ? 'max-w-[1100px]' : 'max-w-[1020px]'}`}
       >
-        {/* Left Side: Exact User Pastel Ombre Blue Gradient (#1E9EDB -> #53B7E8 -> #80CCEE -> #B1E0F4 -> #E2F3FB) */}
-        <aside className={`relative hidden overflow-hidden bg-[linear-gradient(155deg,#1E9EDB_0%,#53B7E8_28%,#80CCEE_58%,#B1E0F4_84%,#E2F3FB_100%)] text-slate-900 lg:flex lg:flex-col lg:justify-between ${
-          fitScreen ? 'p-5 xl:p-7' : 'p-7 xl:p-10'
+        {/* Left Side: Transparent Crystal Glass with subtle ombre tint (reveals radar clearly) */}
+        <aside className={`relative hidden overflow-hidden bg-gradient-to-br from-white/25 via-sky-100/20 to-transparent text-slate-900 lg:flex lg:flex-col lg:justify-between border-r border-white/60 ${
+          fitScreen ? 'p-6 xl:p-8' : 'p-7 xl:p-10'
         }`}>
           {/* Subtle luminous ambient rings */}
-          <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/25 blur-2xl" />
-          <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-[#80CCEE]/30 blur-3xl" />
+          <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/20 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-[#80CCEE]/25 blur-3xl" />
 
           {/* Logo brand */}
           <button
@@ -67,28 +171,28 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
               H
             </span>
             <span>
-              <strong className="block text-base font-extrabold leading-none tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.15)]">HR Connect</strong>
-              <span className="mt-1 block text-[11px] font-medium text-white/90">Kết nối đúng người, đúng cơ hội</span>
+              <strong className="block text-base font-extrabold leading-none tracking-tight text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]">HR Connect</strong>
+              <span className="mt-1 block text-[11px] font-bold text-slate-700">Kết nối đúng người, đúng cơ hội</span>
             </span>
           </button>
 
           {/* Hero text & benefits & extra visual */}
-          <div className={`relative ${fitScreen ? 'my-auto py-1' : 'my-8'} max-w-md`}>
-            <span className="mb-2.5 inline-flex rounded-full border border-white/60 bg-white/30 px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white backdrop-blur-md shadow-sm">
+          <div className={`relative z-10 ${fitScreen ? 'my-auto py-1' : 'my-8'} max-w-md`}>
+            <span className="mb-2.5 inline-flex rounded-full border border-blue-500/40 bg-white/70 px-3 py-0.5 text-[11px] font-black uppercase tracking-[0.14em] text-blue-900 shadow-sm">
               Tuyển dụng rõ ràng hơn
             </span>
-            <h2 className="m-0 text-xl font-black leading-[1.2] tracking-[-0.03em] text-white drop-shadow-[0_2px_4px_rgba(10,50,85,0.25)] xl:text-[28px]">
+            <h2 className="m-0 text-xl font-black leading-[1.2] tracking-[-0.03em] text-slate-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)] xl:text-[28px]">
               {sideTitle}
             </h2>
-            <p className="mb-0 mt-2 max-w-sm text-xs leading-5 text-white/95 font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.1)]">{sideDescription}</p>
+            <p className="mb-0 mt-2 max-w-sm text-xs leading-5 text-slate-800 font-semibold drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">{sideDescription}</p>
 
             <div className={`mt-3.5 ${fitScreen ? 'space-y-2' : 'space-y-3'}`}>
               {benefits.map((benefit) => (
                 <div
                   key={benefit}
-                  className="flex items-center gap-2.5 text-xs sm:text-[13px] font-semibold text-white drop-shadow-[0_1px_2px_rgba(10,50,85,0.2)]"
+                  className="flex items-center gap-2.5 text-xs sm:text-[13px] font-bold text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]"
                 >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/25 text-[11px] text-white">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1E9EDB] text-[11px] text-white font-black shadow-sm">
                     ✓
                   </span>
                   <span>{benefit}</span>
@@ -96,7 +200,7 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
               ))}
             </div>
 
-            {/* Extra visual element (stickers, preview card, badges) */}
+            {/* Extra visual element if provided */}
             {extraVisual && (
               <div className="mt-3.5">
                 {extraVisual}
@@ -105,16 +209,16 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
           </div>
 
           {/* Security footnote */}
-          <div className="relative flex items-center gap-2 text-[11px] text-[#0c365a] font-bold">
+          <div className="relative z-10 flex items-center gap-2 text-[11px] text-slate-800 font-extrabold drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
             <SafetyCertificateOutlined className="text-[#1E9EDB] text-sm" />
             <span>Dữ liệu tài khoản được bảo vệ trong suốt quá trình sử dụng.</span>
           </div>
         </aside>
 
-        {/* Right Side: Form Body */}
+        {/* Right Side: High-transparency Frosted Form Body */}
         <div
-          className={`relative flex flex-col justify-between ${
-            fitScreen ? 'h-full overflow-y-auto p-4 sm:p-6 xl:p-8 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden' : 'p-5 sm:p-9 xl:p-12'
+          className={`relative flex flex-col justify-between bg-white/35 backdrop-blur-[1px] ${
+            fitScreen ? 'h-full overflow-y-auto p-5 sm:p-7 xl:p-8 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden' : 'p-5 sm:p-9 xl:p-12'
           }`}
         >
           <div>
@@ -148,6 +252,6 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
 };
 
 export const AUTH_INPUT_CLASS =
-  'h-11 rounded-xl border-slate-200 bg-white text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-blue-400 focus:border-blue-600 transition-colors';
+  'h-11 rounded-xl border border-white/70 bg-white/80 backdrop-blur-md text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-blue-400 focus:border-blue-600 focus:bg-white transition-all';
 
 export const AUTH_LABEL_CLASS = 'text-xs sm:text-sm font-bold text-slate-700';
