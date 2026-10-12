@@ -232,7 +232,6 @@ export const router = createBrowserRouter([
       { path: 'submissions/:submissionId', element: <AppRoutes.AffiliateSubmissionDetailPage /> },
       { path: 'candidates', element: <AppRoutes.AffiliateCandidatesPage /> },
       { path: 'attributions', element: <AppRoutes.AffiliateAttributionsPage /> },
-      // MF-05 commissions have no API yet.
       { path: 'commissions', element: <AppRoutes.AffiliateCommissionsPlaceholder /> },
       // Old entry points.
       { path: 'referral', element: <Navigate to="/affiliate/submit-candidate" replace /> },

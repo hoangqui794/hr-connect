@@ -157,10 +157,10 @@ const ConsoleDisputesPlaceholder = React.lazy(() =>
   import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminDisputesPlaceholder }))
 );
 const ConsolePayoutsPlaceholder = React.lazy(() =>
-  import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminPayoutsPlaceholder }))
+  import('@/features/finance-mf05/AdminFinancePage').then((m) => ({ default: m.AdminFinancePage }))
 );
 const ConsoleSettingsPlaceholder = React.lazy(() =>
-  import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminSettingsPlaceholder }))
+  import('@/features/admin-console/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage }))
 );
 
 // ── Candidate & Affiliate workspaces (features/portal), MF-02 on the real API ──
@@ -206,7 +206,7 @@ const AffiliateAttributionsPage = React.lazy(() =>
   import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateAttributionsPage }))
 );
 const AffiliateCommissionsPlaceholder = React.lazy(() =>
-  import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateCommissionsPlaceholder }))
+  import('@/features/finance-mf05/AffiliateCommissionsPage').then((m) => ({ default: m.AffiliateCommissionsPage }))
 );
 
 // ── Client Company workspace (features/client-console), backed by the real API ──
@@ -223,7 +223,7 @@ const ClientCompanyPage = React.lazy(() =>
   import('@/features/client-console/ClientMorePages').then((m) => ({ default: m.ClientCompanyPage }))
 );
 const ClientWarrantyPlaceholder = React.lazy(() =>
-  import('@/features/client-console/ClientMorePages').then((m) => ({ default: m.ClientWarrantyPlaceholder }))
+  import('@/features/finance-mf05/WarrantyPages').then((m) => ({ default: m.ClientWarrantyPage }))
 );
 
 // ── Internal HR workspace (features/hr-console), backed by the real API ─────
@@ -243,7 +243,7 @@ const HrPlacementReviewPlaceholder = React.lazy(() =>
   import('@/features/hr-console/HrProfileAndPlaceholders').then((m) => ({ default: m.HrPlacementReviewPlaceholder }))
 );
 const HrWarrantyPlaceholder = React.lazy(() =>
-  import('@/features/hr-console/HrProfileAndPlaceholders').then((m) => ({ default: m.HrWarrantyPlaceholder }))
+  import('@/features/finance-mf05/WarrantyPages').then((m) => ({ default: m.HrWarrantyPage }))
 );
 
 // ── MF-01 pages backed by the real API (features/jobs-mf01) ──────────────────

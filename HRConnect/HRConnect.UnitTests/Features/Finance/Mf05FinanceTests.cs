@@ -3,9 +3,12 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Finance.Commands.Settlement;
 using HRConnect.Application.Features.Finance.Commands.WarrantyClaims;
 using HRConnect.Application.Features.Finance.Common;
+using HRConnect.Application.Features.Finance.Queries;
+using HRConnect.Application.Features.Settings;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
@@ -33,7 +36,7 @@ public class Mf05FinanceTests
     private UnitOfWork UnitOfWork => new(_context);
 
     private PlacementFinanceService FinanceService() => new(
-        Repository, _audit.Object, Options.Create(new Mf05Settings()), NullLogger<PlacementFinanceService>.Instance);
+        Repository, _audit.Object, new BusinessSettingsService(new SystemSettingRepository(_context)), NullLogger<PlacementFinanceService>.Instance);
 
     private SettlementCommandHandlers Settlement() => new(Repository, UnitOfWork, _audit.Object);
 
@@ -66,7 +69,22 @@ public class Mf05FinanceTests
             ActualStartDate = Start, Status = PlacementStates.Started, ConfirmedAt = now, CreatedAt = now, UpdatedAt = now,
             Application = application,
         };
-        _context.AddRange(job, application, offer, placement);
+        var company = new Company
+        {
+            CompanyId = _companyId, CompanyName = "ABC Technology", VerificationStatus = "VERIFIED", CreatedAt = now, UpdatedAt = now,
+        };
+        var candidate = new Candidate
+        {
+            CandidateId = application.CandidateId, FullName = "Nguyễn Văn Nam", ProfileVisibility = "PRIVATE", Status = "ACTIVE",
+            CreatedAt = now, UpdatedAt = now,
+        };
+        // Real databases guarantee these through foreign keys; required-navigation includes need them here too.
+        if (!_context.Companies.Local.Any(c => c.CompanyId == _companyId))
+        {
+            _context.Add(company);
+        }
+
+        _context.AddRange(candidate, job, application, offer, placement);
         if (attribution)
         {
             _context.Add(new Attribution
@@ -127,6 +145,45 @@ public class Mf05FinanceTests
         commission.Amount.Should().Be(9_000_000m); // 30% of the fee, all at once
         commission.Status.Should().Be(CommissionStates.Pending);
         commission.MilestoneType.Should().Be(CommissionMilestoneCodes.WarrantyPassed);
+    }
+
+    [Fact]
+    public async Task Admin_configured_numbers_apply_to_new_placements()
+    {
+        var admin = Guid.NewGuid();
+        var handlers = new BusinessSettingHandlers(new SystemSettingRepository(_context), UnitOfWork, _audit.Object);
+        await handlers.Handle(new UpdateBusinessSettingCommand(BusinessSettingKeys.HeadhuntFeeMultiplier, 2m, admin), default);
+        await handlers.Handle(new UpdateBusinessSettingCommand(BusinessSettingKeys.HeadhuntWarrantyDays, 45m, admin), default);
+        var (placement, offer) = await SeedPlacementAsync();
+
+        await InitializeAsync(placement, offer);
+
+        var fee = await _context.ServiceFees.SingleAsync();
+        fee.FeeMultiplier.Should().Be(2m);
+        fee.Amount.Should().Be(40_000_000m);
+        fee.DueDate.Should().Be(Start.AddDays(20)); // default payment due days from the HEADHUNT_COD document
+        (await _context.Warranties.SingleAsync()).EndDate.Should().Be(Start.AddDays(45));
+    }
+
+    [Fact]
+    public async Task Terms_on_the_job_win_over_admin_defaults()
+    {
+        var handlers = new BusinessSettingHandlers(new SystemSettingRepository(_context), UnitOfWork, _audit.Object);
+        await handlers.Handle(new UpdateBusinessSettingCommand(BusinessSettingKeys.HeadhuntFeeMultiplier, 2m, _actor), default);
+        var (placement, offer) = await SeedPlacementAsync();
+
+        await FinanceService().InitializeAsync(
+            placement,
+            new JobApplicationContext(placement.ApplicationId, _companyId, _serviceTypeId, ServiceTypeCodesForTest.Headhunt, offer,
+                FeeMultiplier: 1.8m, WarrantyDays: 60, PaymentDueDays: 10),
+            _actor);
+        await _context.SaveChangesAsync();
+
+        var fee = await _context.ServiceFees.SingleAsync();
+        fee.FeeMultiplier.Should().Be(1.8m);
+        fee.Amount.Should().Be(36_000_000m);
+        fee.DueDate.Should().Be(Start.AddDays(10));
+        (await _context.Warranties.SingleAsync()).EndDate.Should().Be(Start.AddDays(60));
     }
 
     [Fact]
@@ -257,6 +314,52 @@ public class Mf05FinanceTests
         await ReportHandler()
             .Invoking(h => h.Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(30), "x", _actor), default))
             .Should().ThrowAsync<BadRequestException>();
+    }
+
+    [Fact]
+    public async Task Warranty_list_is_scoped_to_the_clients_company_and_filters_by_status()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        await ReportHandler().Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(3), "Nghỉ", _actor), default);
+
+        GetWarrantiesQuery Query(string? status) => new(_actor, status, 1, 20);
+        FinanceQueryHandlers HandlersFor(Guid companyId)
+        {
+            var companyUsers = new Mock<ICompanyUserRepository>();
+            companyUsers.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new CompanyUser { CompanyId = companyId, UserId = _actor, Status = "ACTIVE" });
+            return new FinanceQueryHandlers(Repository, companyUsers.Object);
+        }
+
+        var own = await HandlersFor(_companyId).Handle(Query("CLAIMED"), default);
+        own.TotalCount.Should().Be(1);
+        own.Items.Single().CommissionStatus.Should().Be(CommissionStates.OnHold);
+        (await HandlersFor(_companyId).Handle(Query("PASSED"), default)).TotalCount.Should().Be(0);
+        (await HandlersFor(Guid.NewGuid()).Handle(Query(null), default)).TotalCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Bank_details_are_only_listed_when_requested()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        var attribution = await _context.Attributions.SingleAsync();
+        var user = new AppUser { UserId = Guid.NewGuid(), Email = "aff@example.com", PasswordHash = "x", Status = "ACTIVE", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        _context.Add(user);
+        _context.Add(new AffiliateProfile
+        {
+            AffiliateId = attribution.AffiliateId, UserId = user.UserId, AffiliateType = "INDIVIDUAL", Status = "ACTIVE", BankName = "Vietcombank", BankAccountNumber = "0123456789",
+            BankAccountHolder = "NGUYEN VAN HUNG", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        });
+        await _context.SaveChangesAsync();
+        await InitializeAsync(placement, offer);
+        var handlers = new FinanceQueryHandlers(Repository, Mock.Of<ICompanyUserRepository>());
+
+        var withBank = await handlers.Handle(new GetCommissionsQuery(null, null, 1, 20, IncludeBankDetails: true), default);
+        var withoutBank = await handlers.Handle(new GetCommissionsQuery(null, null, 1, 20), default);
+
+        withBank.Items.Single().AffiliateBank!.BankAccountNumber.Should().Be("0123456789");
+        withoutBank.Items.Single().AffiliateBank.Should().BeNull();
     }
 
     // ---- approval and payout ----------------------------------------------------------------

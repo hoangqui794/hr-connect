@@ -16,6 +16,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
         services.AddScoped<ISubmissionConsentExpiryService, SubmissionConsentExpiryService>();
         services.AddScoped<IOfferExpiryService, OfferExpiryService>();
+        services.AddScoped<HRConnect.Application.Common.Settings.IAdminBusinessSettings, HRConnect.Application.Features.Settings.BusinessSettingsService>();
         services.AddScoped<HRConnect.Application.Features.Finance.Common.IPlacementFinanceService, HRConnect.Application.Features.Finance.Common.PlacementFinanceService>();
         services.AddScoped<HRConnect.Application.Features.Finance.Common.IWarrantyProgressService, HRConnect.Application.Features.Finance.Common.WarrantyProgressService>();
 
