@@ -59,7 +59,7 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
             className="relative z-10 flex w-fit cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left text-white"
             aria-label="Về trang chủ HR Connect"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-lg font-black text-[#1E9EDB] shadow-md shadow-[#1E9EDB]/30">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-lg font-black text-white shadow-md shadow-[#1E9EDB]/30 border border-white/70">
               H
             </span>
             <span>
@@ -116,7 +116,7 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
 
             <div className="mb-4">
               <div className="mb-2 flex items-center gap-2.5 lg:hidden">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#163866] text-base font-black text-white">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-base font-black text-white shadow-sm shadow-[#1E9EDB]/30">
                   H
                 </span>
                 <strong className="text-base text-slate-900">HR Connect</strong>

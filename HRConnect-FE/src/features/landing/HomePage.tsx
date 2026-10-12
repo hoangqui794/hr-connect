@@ -266,7 +266,7 @@ export const HomePage: React.FC = () => {
             <h2 className="m-0 text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-[-0.035em] text-slate-950">Bắt đầu từ đúng workspace của bạn</h2>
             <p className="mb-0 mt-3 sm:mt-4 text-base sm:text-lg leading-7 sm:leading-8 text-slate-600">Tạo tài khoản để sử dụng HR Connect theo vai trò, hoặc xem trước các cơ hội việc làm đang mở.</p>
             <div className="mt-7 sm:mt-8 flex flex-col sm:flex-row justify-center gap-3">
-              <button type="button" onClick={() => navigate('/register')} className="min-h-12 cursor-pointer rounded-xl border-0 bg-blue-700 px-7 text-base font-bold text-white hover:bg-blue-800">Đăng ký ngay</button>
+              <button type="button" onClick={() => navigate('/register')} className="min-h-12 cursor-pointer rounded-xl border-0 bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] px-7 text-base font-bold text-white shadow-md shadow-[#1E9EDB]/30 hover:opacity-95">Đăng ký ngay</button>
               <button type="button" onClick={() => navigate('/jobs')} className="min-h-12 cursor-pointer rounded-xl border border-solid border-slate-300 bg-white px-7 text-base font-bold text-slate-800 hover:border-blue-300 hover:bg-blue-50">Xem việc làm</button>
             </div>
           </div>
@@ -276,7 +276,7 @@ export const HomePage: React.FC = () => {
       <footer className="border-0 border-t border-solid border-blue-900 bg-blue-950 px-4 sm:px-6 lg:px-10 py-6 sm:py-8 text-slate-400">
         <div className="mx-auto flex max-w-[1240px] flex-col gap-3 text-xs sm:text-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-blue-600 font-extrabold text-white">H</span>
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] font-black text-white shadow-sm shadow-[#1E9EDB]/30">H</span>
             <span><strong className="text-white">HR Connect</strong> · Nền tảng tuyển dụng và kết nối nhân tài</span>
           </div>
           <span>© 2026 HR Connect</span>
