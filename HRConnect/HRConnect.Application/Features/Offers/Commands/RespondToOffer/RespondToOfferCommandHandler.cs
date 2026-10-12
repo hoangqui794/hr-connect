@@ -19,19 +19,22 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RespondToOfferCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationRepository? _notificationRepository;
 
     public RespondToOfferCommandHandler(
         IOfferRepository offerRepository,
         IApplicationRepository applicationRepository,
         IUnitOfWork unitOfWork,
         ILogger<RespondToOfferCommandHandler> logger,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        INotificationRepository? notificationRepository = null)
     {
         _offerRepository = offerRepository;
         _applicationRepository = applicationRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
         _auditLogService = auditLogService;
+        _notificationRepository = notificationRepository;
     }
 
     public async Task<RespondToOfferResponse> Handle(RespondToOfferCommand request, CancellationToken cancellationToken)
@@ -176,6 +179,33 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
                 NewValues = new { status = application!.Status, sourceAction = normalizedResponse == "ACCEPTED" ? AuditActions.OfferAccepted : AuditActions.OfferDeclined }
             }, cancellationToken);
         }
+
+        if (_notificationRepository != null && offer.CreatedBy is { } offerCreatorId && offerCreatorId != Guid.Empty)
+        {
+            var isAccepted = normalizedResponse == "ACCEPTED";
+            await _notificationRepository.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = offerCreatorId,
+                NotificationType = "OFFER",
+                Title = isAccepted ? "Ứng viên đã chấp nhận lời mời nhận việc" : "Ứng viên đã từ chối lời mời nhận việc",
+                Message = isAccepted
+                    ? $"Ứng viên {application?.Candidate?.FullName} đã chấp nhận Offer cho vị trí {application?.Job?.Title}."
+                    : $"Ứng viên {application?.Candidate?.FullName} đã từ chối Offer cho vị trí {application?.Job?.Title}.",
+                RelatedEntityType = "OFFER",
+                RelatedEntityId = offer.OfferId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    applicationId = offer.ApplicationId,
+                    offerId = offer.OfferId,
+                    status = offer.Status,
+                    declineReason = offer.DeclineReason
+                }),
+                IsRead = false,
+                CreatedAt = now
+            }, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Ứng viên {UserId} đã phản hồi {Response} cho offer {OfferId}.",

@@ -20,19 +20,22 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RescheduleInterviewCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationRepository? _notificationRepository;
 
     public RescheduleInterviewCommandHandler(
         IInterviewRepository interviewRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
         ILogger<RescheduleInterviewCommandHandler> logger,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        INotificationRepository? notificationRepository = null)
     {
         _interviewRepository = interviewRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
         _auditLogService = auditLogService;
+        _notificationRepository = notificationRepository;
     }
 
     public async Task<RescheduleInterviewResponse> Handle(RescheduleInterviewCommand request, CancellationToken cancellationToken)
@@ -152,6 +155,30 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
                 hasReason = true
             }
         }, cancellationToken);
+
+        if (_notificationRepository != null && interview.Application?.Candidate?.UserId is { } candidateUserId)
+        {
+            await _notificationRepository.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = candidateUserId,
+                NotificationType = "INTERVIEW",
+                Title = $"Dời lịch phỏng vấn Vòng {interview.InterviewRound}",
+                Message = $"Lịch phỏng vấn Vòng {interview.InterviewRound} đã được dời sang {interview.ScheduledAt:dd/MM/yyyy HH:mm}.",
+                RelatedEntityType = "INTERVIEW",
+                RelatedEntityId = interview.InterviewId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    applicationId = interview.ApplicationId,
+                    interviewId = interview.InterviewId,
+                    round = interview.InterviewRound,
+                    newScheduledAt = interview.ScheduledAt
+                }),
+                IsRead = false,
+                CreatedAt = now
+            }, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new RescheduleInterviewResponse

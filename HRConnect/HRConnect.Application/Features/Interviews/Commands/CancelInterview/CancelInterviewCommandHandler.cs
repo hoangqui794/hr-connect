@@ -20,19 +20,22 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CancelInterviewCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationRepository? _notificationRepository;
 
     public CancelInterviewCommandHandler(
         IInterviewRepository interviewRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
         ILogger<CancelInterviewCommandHandler> logger,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        INotificationRepository? notificationRepository = null)
     {
         _interviewRepository = interviewRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
         _auditLogService = auditLogService;
+        _notificationRepository = notificationRepository;
     }
 
     public async Task<CancelInterviewResponse> Handle(CancelInterviewCommand request, CancellationToken cancellationToken)
@@ -120,6 +123,29 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
                 hasReason = true
             }
         }, cancellationToken);
+
+        if (_notificationRepository != null && interview.Application?.Candidate?.UserId is { } candidateUserId)
+        {
+            await _notificationRepository.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = candidateUserId,
+                NotificationType = "INTERVIEW",
+                Title = $"Huỷ lịch phỏng vấn Vòng {interview.InterviewRound}",
+                Message = $"Lịch phỏng vấn Vòng {interview.InterviewRound} đã bị huỷ.",
+                RelatedEntityType = "INTERVIEW",
+                RelatedEntityId = interview.InterviewId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    applicationId = interview.ApplicationId,
+                    interviewId = interview.InterviewId,
+                    round = interview.InterviewRound
+                }),
+                IsRead = false,
+                CreatedAt = now
+            }, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new CancelInterviewResponse

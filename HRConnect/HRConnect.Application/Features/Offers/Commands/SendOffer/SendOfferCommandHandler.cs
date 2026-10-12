@@ -6,6 +6,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Recruitment.Common;
+using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -19,6 +20,7 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SendOfferCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationRepository? _notificationRepository;
 
     public SendOfferCommandHandler(
         IOfferRepository offerRepository,
@@ -26,7 +28,8 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
         ILogger<SendOfferCommandHandler> logger,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        INotificationRepository? notificationRepository = null)
     {
         _offerRepository = offerRepository;
         _applicationRepository = applicationRepository;
@@ -34,6 +37,7 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
         _unitOfWork = unitOfWork;
         _logger = logger;
         _auditLogService = auditLogService;
+        _notificationRepository = notificationRepository;
     }
 
     public async Task<SendOfferResponse> Handle(SendOfferCommand request, CancellationToken cancellationToken)
@@ -114,6 +118,35 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
                 expiryDate = offer.ExpiryDate
             }
         }, cancellationToken);
+
+        if (_notificationRepository != null && offer.Application?.Candidate?.UserId is { } candidateUserId)
+        {
+            var companyName = offer.Application?.Job?.Company?.CompanyName;
+            var jobTitle = offer.Application?.Job?.Title;
+            await _notificationRepository.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = candidateUserId,
+                NotificationType = "OFFER",
+                Title = "Bạn nhận được lời mời nhận việc (Offer)",
+                Message = string.IsNullOrWhiteSpace(companyName)
+                    ? $"Bạn vừa nhận được lời mời nhận việc cho vị trí {jobTitle}."
+                    : $"Bạn vừa nhận được lời mời nhận việc cho vị trí {jobTitle} từ {companyName}.",
+                RelatedEntityType = "OFFER",
+                RelatedEntityId = offer.OfferId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    applicationId = offer.ApplicationId,
+                    offerId = offer.OfferId,
+                    offerVersion = offer.OfferVersion,
+                    expiryDate = offer.ExpiryDate,
+                    startDate = offer.StartDate
+                }),
+                IsRead = false,
+                CreatedAt = now
+            }, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Đã gửi thành công offer {OfferId} phiên bản {Version} cho ứng viên.",

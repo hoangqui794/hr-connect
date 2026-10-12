@@ -14,12 +14,18 @@ public class WithdrawApplicationCommandHandler : IRequestHandler<WithdrawApplica
     private readonly IApplicationRepository _applicationRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationRepository? _notificationRepository;
 
-    public WithdrawApplicationCommandHandler(IApplicationRepository applicationRepository, IUnitOfWork unitOfWork, IAuditLogService auditLogService)
+    public WithdrawApplicationCommandHandler(
+        IApplicationRepository applicationRepository,
+        IUnitOfWork unitOfWork,
+        IAuditLogService auditLogService,
+        INotificationRepository? notificationRepository = null)
     {
         _applicationRepository = applicationRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
+        _notificationRepository = notificationRepository;
     }
 
     public async Task<WithdrawApplicationResponse> Handle(WithdrawApplicationCommand request, CancellationToken cancellationToken)
@@ -108,6 +114,30 @@ public class WithdrawApplicationCommandHandler : IRequestHandler<WithdrawApplica
             OldValues = new { status = oldStatus },
             NewValues = new { status = application.Status, sourceAction = AuditActions.ApplicationWithdrawn }
         }, cancellationToken);
+
+        if (_notificationRepository != null && application.Job?.CreatedBy is { } jobOwnerId && jobOwnerId != Guid.Empty)
+        {
+            await _notificationRepository.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = jobOwnerId,
+                NotificationType = "APPLICATION_STATUS",
+                Title = "Ứng viên đã rút hồ sơ ứng tuyển",
+                Message = $"Ứng viên {application.Candidate?.FullName} đã rút hồ sơ ứng tuyển vị trí {application.Job?.Title}.",
+                RelatedEntityType = "APPLICATION",
+                RelatedEntityId = application.ApplicationId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    applicationId = application.ApplicationId,
+                    candidateId = application.CandidateId,
+                    jobId = application.JobId,
+                    reason
+                }),
+                IsRead = false,
+                CreatedAt = now
+            }, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new WithdrawApplicationResponse(

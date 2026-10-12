@@ -230,4 +230,68 @@ public class SendOfferCommandHandlerTests
         _applicationRepositoryMock.Verify(r => r.Update(app), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_WhenOfferSent_ShouldCreateCandidateNotification()
+    {
+        var offerId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var clientUserId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+
+        var app = new Domain.Entities.Application
+        {
+            ApplicationId = Guid.NewGuid(),
+            Status = "INTERVIEW",
+            Job = new Job { CompanyId = companyId, Title = "Frontend Developer" },
+            Candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = candidateUserId }
+        };
+
+        var offer = new Offer
+        {
+            OfferId = offerId,
+            ApplicationId = app.ApplicationId,
+            Application = app,
+            Status = "DRAFT",
+            Salary = 30000000,
+            CurrencyCode = "VND",
+            ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7))
+        };
+
+        _offerRepositoryMock
+            .Setup(r => r.GetByIdWithApplicationAsync(offerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(offer);
+
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = companyId, Status = "ACTIVE" });
+
+        var notificationRepoMock = new Mock<INotificationRepository>();
+
+        var handlerWithNotification = new SendOfferCommandHandler(
+            _offerRepositoryMock.Object,
+            _applicationRepositoryMock.Object,
+            _companyUserRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            _loggerMock.Object,
+            _auditLogServiceMock.Object,
+            notificationRepoMock.Object);
+
+        var command = new SendOfferCommand(
+            OfferId: offerId,
+            ConcurrencyToken: offer.ConcurrencyToken,
+            CurrentUserId: clientUserId,
+            IsClientCompanyUser: true);
+
+        // Act
+        var result = await handlerWithNotification.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Status.Should().Be("SENT");
+        notificationRepoMock.Verify(n => n.AddAsync(
+            It.Is<Notification>(notif =>
+                notif.UserId == candidateUserId &&
+                notif.NotificationType == "OFFER"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

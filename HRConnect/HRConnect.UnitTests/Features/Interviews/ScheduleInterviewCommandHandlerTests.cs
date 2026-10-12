@@ -447,4 +447,68 @@ public class ScheduleInterviewCommandHandlerTests
         await act.Should().ThrowAsync<ForbiddenException>()
             .WithMessage("*không có quyền tạo lịch phỏng vấn*");
     }
+
+    [Fact]
+    public async Task Handle_WhenInterviewScheduled_ShouldCreateCandidateNotification()
+    {
+        // Arrange
+        var companyId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var applicationId = Guid.NewGuid();
+        var currentUserId = Guid.NewGuid();
+
+        var application = new HRConnect.Domain.Entities.Application
+        {
+            ApplicationId = applicationId,
+            Status = "SHORTLISTED",
+            Job = new Job { CompanyId = companyId, Title = "Fullstack Developer" },
+            Candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = candidateUserId },
+            Interviews = new List<Interview>()
+        };
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetByIdAsync(applicationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(application);
+
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(currentUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = companyId, UserId = currentUserId, Status = "ACTIVE" });
+
+        var notificationRepoMock = new Mock<INotificationRepository>();
+
+        var handlerWithNotification = new ScheduleInterviewCommandHandler(
+            _interviewRepositoryMock.Object,
+            _applicationRepositoryMock.Object,
+            _companyUserRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            _loggerMock.Object,
+            _auditLogServiceMock.Object,
+            notificationRepoMock.Object);
+
+        var command = new ScheduleInterviewCommand(
+            ApplicationId: applicationId,
+            ScheduledAt: DateTime.UtcNow.AddDays(3),
+            DurationMinutes: 60,
+            InterviewRound: 1,
+            InterviewType: "ONLINE",
+            Location: null,
+            MeetingLink: "https://meet.google.com/xyz",
+            Participants: null,
+            CurrentUserId: currentUserId,
+            IsClientCompanyUser: true,
+            IsInternalHrOrAdmin: false,
+            ApplicationConcurrencyToken: application.ConcurrencyToken
+        );
+
+        // Act
+        var result = await handlerWithNotification.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        notificationRepoMock.Verify(n => n.AddAsync(
+            It.Is<Notification>(notif =>
+                notif.UserId == candidateUserId &&
+                notif.NotificationType == "INTERVIEW"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

@@ -21,6 +21,7 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<WithdrawOfferCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationRepository? _notificationRepository;
 
     public WithdrawOfferCommandHandler(
         IOfferRepository offerRepository,
@@ -28,7 +29,8 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
         ILogger<WithdrawOfferCommandHandler> logger,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        INotificationRepository? notificationRepository = null)
     {
         _offerRepository = offerRepository;
         _applicationRepository = applicationRepository;
@@ -36,6 +38,7 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
         _unitOfWork = unitOfWork;
         _logger = logger;
         _auditLogService = auditLogService;
+        _notificationRepository = notificationRepository;
     }
 
     public async Task<WithdrawOfferResponse> Handle(WithdrawOfferCommand request, CancellationToken cancellationToken)
@@ -150,6 +153,34 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
                 NewValues = new { status = application.Status, sourceAction = AuditActions.OfferWithdrawn }
             }, cancellationToken);
         }
+
+        if (_notificationRepository != null && offer.Application?.Candidate?.UserId is { } candidateUserId)
+        {
+            var companyName = offer.Application?.Job?.Company?.CompanyName;
+            var jobTitle = offer.Application?.Job?.Title;
+            await _notificationRepository.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = candidateUserId,
+                NotificationType = "OFFER",
+                Title = "Lời mời nhận việc đã bị thu hồi",
+                Message = string.IsNullOrWhiteSpace(companyName)
+                    ? $"Lời mời nhận việc cho vị trí {jobTitle} đã bị thu hồi."
+                    : $"Lời mời nhận việc từ {companyName} cho vị trí {jobTitle} đã bị thu hồi.",
+                RelatedEntityType = "OFFER",
+                RelatedEntityId = offer.OfferId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    applicationId = offer.ApplicationId,
+                    offerId = offer.OfferId,
+                    offerVersion = offer.OfferVersion,
+                    reason = trimmedReason
+                }),
+                IsRead = false,
+                CreatedAt = now
+            }, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Đã thu hồi thành công offer {OfferId} phiên bản {Version}.",

@@ -24,6 +24,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ScheduleInterviewCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationRepository? _notificationRepository;
 
     public ScheduleInterviewCommandHandler(
         IInterviewRepository interviewRepository,
@@ -31,7 +32,8 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
         ILogger<ScheduleInterviewCommandHandler> logger,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        INotificationRepository? notificationRepository = null)
     {
         _interviewRepository = interviewRepository;
         _applicationRepository = applicationRepository;
@@ -39,6 +41,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
         _unitOfWork = unitOfWork;
         _logger = logger;
         _auditLogService = auditLogService;
+        _notificationRepository = notificationRepository;
     }
 
     public async Task<ScheduleInterviewResponse> Handle(ScheduleInterviewCommand request, CancellationToken cancellationToken)
@@ -230,6 +233,30 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
                 NewValues = new { status = application.Status, sourceAction = AuditActions.InterviewScheduled }
             }, cancellationToken);
         }
+
+        if (_notificationRepository != null && application.Candidate?.UserId is { } candidateUserId)
+        {
+            await _notificationRepository.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = candidateUserId,
+                NotificationType = "INTERVIEW",
+                Title = $"Lịch phỏng vấn Vòng {interview.InterviewRound}",
+                Message = $"Bạn có lịch phỏng vấn Vòng {interview.InterviewRound} vào lúc {interview.ScheduledAt:dd/MM/yyyy HH:mm}.",
+                RelatedEntityType = "INTERVIEW",
+                RelatedEntityId = interview.InterviewId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    applicationId = application.ApplicationId,
+                    interviewId = interview.InterviewId,
+                    round = interview.InterviewRound,
+                    scheduledAt = interview.ScheduledAt
+                }),
+                IsRead = false,
+                CreatedAt = now
+            }, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new ScheduleInterviewResponse
