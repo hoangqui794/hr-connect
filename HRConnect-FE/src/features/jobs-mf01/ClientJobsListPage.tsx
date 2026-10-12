@@ -187,6 +187,7 @@ export const ClientJobsListPage: React.FC = () => {
 
   const renderActions = (job: Job) => {
         const can = clientActions(job.status);
+        const needsPayment = job.postingFeeStatus === 'PENDING';
         const busy =
           (mutations.submit.isPending && mutations.submit.variables?.jobId === job.jobId) ||
           (mutations.resume.isPending && mutations.resume.variables?.jobId === job.jobId);
@@ -198,7 +199,7 @@ export const ClientJobsListPage: React.FC = () => {
         ];
         return (
           <div className="flex items-center justify-end gap-1">
-            {job.postingFeeStatus === 'PENDING' && (
+            {needsPayment && (
               <Button
                 size="small"
                 type="primary"
@@ -206,10 +207,10 @@ export const ClientJobsListPage: React.FC = () => {
                 icon={<CreditCardOutlined />}
                 onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title, amount: 1500000 })}
               >
-                Thanh toán (Demo)
+                Thanh toán
               </Button>
             )}
-            {can.canSubmit && (
+            {can.canSubmit && !needsPayment && (
               <Button size="small" type="primary" icon={<SendOutlined />} loading={busy} onClick={() => confirmSubmit(job)}>
                 Gửi duyệt
               </Button>
@@ -465,7 +466,7 @@ export const ClientJobsListPage: React.FC = () => {
                           className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600 !text-xs !h-6"
                           onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title, amount: 1500000 })}
                         >
-                          Thanh toán (Demo)
+                          Thanh toán
                         </Button>
                       </div>
                     )}

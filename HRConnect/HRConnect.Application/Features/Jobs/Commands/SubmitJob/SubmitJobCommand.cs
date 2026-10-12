@@ -165,30 +165,29 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
             }
             else if (string.Equals(package.Code, JobPostingPackageCodes.Standard, StringComparison.OrdinalIgnoreCase))
             {
-                // Tạo hoặc cập nhật bản ghi phí gói STANDARD (1.500.000 VNĐ, PENDING)
-                var standardPrice = package.Price > 0 ? package.Price : _businessSettings.StandardPostingPackagePrice;
                 var existingFee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct);
-                if (existingFee == null)
+                if (existingFee == null || existingFee.Status != JobPostingFeeStatuses.Paid)
                 {
-                    var fee = new JobPostingFee
+                    if (existingFee == null)
                     {
-                        PostingFeeId = Guid.NewGuid(),
-                        JobId = job.JobId,
-                        PackageId = package.PackageId,
-                        CompanyId = job.CompanyId,
-                        Amount = standardPrice,
-                        CurrencyCode = "VND",
-                        Status = JobPostingFeeStatuses.Pending,
-                        CreatedAt = now,
-                        UpdatedAt = now
-                    };
-                    await _jobs.AddPostingFeeAsync(fee, ct);
-                }
-                else if (existingFee.Status != JobPostingFeeStatuses.Paid)
-                {
-                    existingFee.Amount = standardPrice;
-                    existingFee.PackageId = package.PackageId;
-                    existingFee.UpdatedAt = now;
+                        var standardPrice = package.Price > 0 ? package.Price : _businessSettings.StandardPostingPackagePrice;
+                        existingFee = new JobPostingFee
+                        {
+                            PostingFeeId = Guid.NewGuid(),
+                            JobId = job.JobId,
+                            PackageId = package.PackageId,
+                            CompanyId = job.CompanyId,
+                            Amount = standardPrice,
+                            CurrencyCode = "VND",
+                            Status = JobPostingFeeStatuses.Pending,
+                            CreatedAt = now,
+                            UpdatedAt = now
+                        };
+                        await _jobs.AddPostingFeeAsync(existingFee, ct);
+                        await _uow.SaveChangesAsync(ct);
+                    }
+
+                    throw new BadRequestException("Tin tuyển dụng thuộc Gói Tiêu Chuẩn (STANDARD) phải được thanh toán phí đăng tin trước khi gửi duyệt.");
                 }
             }
         }

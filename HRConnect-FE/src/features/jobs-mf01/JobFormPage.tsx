@@ -423,7 +423,12 @@ export const JobFormPage: React.FC = () => {
   const [form] = Form.useForm<JobFormValues>();
   const [errorSummary, setErrorSummary] = useState<string[]>([]);
   const [saving, setSaving] = useState<'draft' | 'submit' | null>(null);
-  const [pendingPaymentJob, setPendingPaymentJob] = useState<{ jobId: string; title: string; amount?: number } | null>(null);
+  const [pendingPaymentJob, setPendingPaymentJob] = useState<{
+    jobId: string;
+    title: string;
+    amount?: number;
+    andSubmitAfterPay?: boolean;
+  } | null>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
 
   const serviceTypes = useServiceTypes();
@@ -540,16 +545,7 @@ export const JobFormPage: React.FC = () => {
         savedId = res.data.jobId;
       }
 
-      if (andSubmit) {
-        // Create does not return a token; read the fresh job before submitting.
-        const fresh = await jobsApi.getById(savedId);
-        const res = await jobsApi.submit(savedId, fresh.concurrencyToken);
-        message.success(res.message);
-      } else {
-        message.success('Đã lưu bản nháp.');
-      }
-
-      // Kiểm tra nếu là gói STANDARD -> hiển thị hộp nhỏ thanh toán (cả khi lưu nháp hoặc gửi duyệt)
+      // Kiểm tra nếu là gói STANDARD (cần thanh toán trước khi gửi duyệt)
       const chosenPkg = postingPackages.data?.find((p) => p.packageId === values.postingPackageId);
       const isStandardPackage =
         selectedCode === 'CV_APPLICATION' &&
@@ -562,8 +558,18 @@ export const JobFormPage: React.FC = () => {
           jobId: savedId,
           title: values.title,
           amount: chosenPkg?.price || 1500000,
+          andSubmitAfterPay: andSubmit,
         });
         return;
+      }
+
+      if (andSubmit) {
+        // Create does not return a token; read the fresh job before submitting.
+        const fresh = await jobsApi.getById(savedId);
+        const res = await jobsApi.submit(savedId, fresh.concurrencyToken);
+        message.success(res.message);
+      } else {
+        message.success('Đã lưu bản nháp.');
       }
 
       navigate('/client/jobs');
@@ -575,6 +581,33 @@ export const JobFormPage: React.FC = () => {
     } finally {
       setSaving(null);
     }
+  };
+
+  const handlePaymentSuccess = async () => {
+    if (!pendingPaymentJob) return;
+    const { jobId, andSubmitAfterPay } = pendingPaymentJob;
+    setPendingPaymentJob(null);
+
+    if (andSubmitAfterPay) {
+      try {
+        const fresh = await jobsApi.getById(jobId);
+        const res = await jobsApi.submit(jobId, fresh.concurrencyToken);
+        message.success(res.message || 'Đã thanh toán phí và gửi duyệt tin tuyển dụng thành công.');
+      } catch (err) {
+        message.error(getApiErrorMessage(err));
+      }
+    } else {
+      message.success('Đã thanh toán phí đăng tin thành công.');
+    }
+    navigate('/client/jobs');
+  };
+
+  const handlePaymentClose = () => {
+    if (pendingPaymentJob?.andSubmitAfterPay) {
+      message.info('Đã lưu bản nháp. Vui lòng thanh toán phí trước khi gửi duyệt tin tuyển dụng.');
+    }
+    setPendingPaymentJob(null);
+    navigate('/client/jobs');
   };
 
   if (isEdit && existing.isLoading) {
@@ -1088,14 +1121,8 @@ export const JobFormPage: React.FC = () => {
         jobId={pendingPaymentJob?.jobId ?? ''}
         jobTitle={pendingPaymentJob?.title ?? ''}
         amount={pendingPaymentJob?.amount}
-        onClose={() => {
-          setPendingPaymentJob(null);
-          navigate('/client/jobs');
-        }}
-        onPaymentSuccess={() => {
-          setPendingPaymentJob(null);
-          navigate('/client/jobs');
-        }}
+        onClose={handlePaymentClose}
+        onPaymentSuccess={handlePaymentSuccess}
       />
     </div>
   );

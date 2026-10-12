@@ -142,7 +142,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory
                 icon={<CreditCardOutlined />}
                 onClick={() => setShowPaymentModal(true)}
               >
-                Thanh toán ngay (Demo)
+                Thanh toán ngay
               </Button>
             }
           />

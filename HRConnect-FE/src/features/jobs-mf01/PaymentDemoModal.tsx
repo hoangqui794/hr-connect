@@ -39,9 +39,9 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
   const handlePay = async () => {
     setLoading(true);
     try {
-      const demoRef = `DEMO-PAY-${Date.now().toString().slice(-6)}`;
+      const demoRef = `PAY-${Date.now().toString().slice(-6)}`;
       await jobsApi.payPostingFee(jobId, demoRef);
-      message.success('Thanh toán mô phỏng thành công! Phí đăng tin đã được ghi nhận.');
+      message.success('Thanh toán thành công! Phí đăng tin đã được ghi nhận.');
       onSuccess?.();
       onPaymentSuccess?.();
     } catch (err) {
@@ -70,8 +70,8 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
         <Alert
           type="info"
           showIcon
-          message="Môi trường thử nghiệm (Demo)"
-          description="Hệ thống đang hoạt động ở chế độ mô phỏng thanh toán. Bạn không cần chuyển tiền thật — chỉ cần nhấn 'Xác nhận thanh toán ngay' bên dưới để kích hoạt gói."
+          message="Cổng thanh toán HR Connect"
+          description="Quý khách vui lòng kiểm tra thông tin gói đăng tin và xác nhận thanh toán để kích hoạt tin tuyển dụng."
         />
 
         <div className="rounded-xl border border-solid border-slate-200 bg-slate-50 p-4 space-y-3">
@@ -125,7 +125,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
             loading={loading}
             onClick={handlePay}
           >
-            Xác nhận thanh toán ngay (Demo)
+            Xác nhận thanh toán ngay
           </Button>
         </div>
       </div>
