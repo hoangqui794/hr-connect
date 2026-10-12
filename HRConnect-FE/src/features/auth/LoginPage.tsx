@@ -437,7 +437,7 @@ export const LoginPage: React.FC = () => {
             disabled={submitting}
             icon={<ArrowRightOutlined />}
             iconPosition="end"
-            className="h-11 rounded-xl border-0 bg-gradient-to-r from-[#163866] via-[#1d4ed8] to-[#1e40af] hover:from-[#0f2444] hover:to-[#1d4ed8] text-sm font-bold text-white shadow-md shadow-blue-900/20"
+            className="h-11 rounded-xl border-0 bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#0ea5e9] hover:from-[#1e40af] hover:via-[#1d4ed8] hover:to-[#0284c7] text-sm font-bold text-white shadow-md shadow-blue-500/25 transition-all"
           >
             {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </Button>
