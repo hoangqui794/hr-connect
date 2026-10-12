@@ -69,8 +69,12 @@ public class GetCandidateCvsQueryHandlerTests
             .ReturnsAsync(candidate);
 
         _candidateCvRepositoryMock
-            .Setup(r => r.GetByCandidateIdAsync(candidateId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<CandidateCv> { cv1, cv2 });
+            .Setup(r => r.GetPersonalCvUsageAsync(candidateId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<CandidateCvUsageRecord>
+            {
+                new(cv1, 2, 1),
+                new(cv2, 0, 0)
+            });
 
         var query = new GetCandidateCvsQuery(userId);
 
@@ -88,11 +92,17 @@ public class GetCandidateCvsQueryHandlerTests
         first.FileName.Should().Be("cv-backend.pdf");
         first.IsPrimary.Should().BeTrue();
         first.Status.Should().Be("ACTIVE");
+        first.SubmissionUsageCount.Should().Be(2);
+        first.ApplicationUsageCount.Should().Be(1);
+        first.IsReferenced.Should().BeTrue();
+        first.DeleteBehavior.Should().Be("ARCHIVE_HISTORY");
 
         var second = result.Data[1];
         second.CvId.Should().Be(cv2.CvId);
         second.Title.Should().Be("CV Frontend");
         second.IsPrimary.Should().BeFalse();
+        second.IsReferenced.Should().BeFalse();
+        second.DeleteBehavior.Should().Be("HARD_DELETE");
     }
 
     [Fact]
@@ -127,8 +137,8 @@ public class GetCandidateCvsQueryHandlerTests
             .ReturnsAsync(candidate);
 
         _candidateCvRepositoryMock
-            .Setup(r => r.GetByCandidateIdAsync(candidateId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<CandidateCv>());
+            .Setup(r => r.GetPersonalCvUsageAsync(candidateId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<CandidateCvUsageRecord>());
 
         var query = new GetCandidateCvsQuery(userId);
 

@@ -62,6 +62,20 @@ public class ApplicationRepository : IApplicationRepository
         DateTime? toDate,
         int page,
         int pageSize,
+        CancellationToken cancellationToken = default) =>
+        await GetCandidateApplicationsFilteredAsync(
+            candidateId, status, jobId, fromDate, toDate, null, null, page, pageSize, cancellationToken);
+
+    public async Task<(IReadOnlyList<JobApplication> Items, int TotalCount)> GetCandidateApplicationsFilteredAsync(
+        Guid candidateId,
+        string? status,
+        Guid? jobId,
+        DateTime? fromDate,
+        DateTime? toDate,
+        string? search,
+        string? submissionSource,
+        int page,
+        int pageSize,
         CancellationToken cancellationToken = default)
     {
         var query = _context.Applications
@@ -89,6 +103,18 @@ public class ApplicationRepository : IApplicationRepository
             query = query.Where(a => a.AppliedAt <= toDate.Value);
         }
 
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var pattern = $"%{search.Trim()}%";
+            query = query.Where(a => EF.Functions.ILike(a.Job.Title, pattern) ||
+                                     EF.Functions.ILike(a.Job.Company.CompanyName, pattern));
+        }
+
+        if (!string.IsNullOrWhiteSpace(submissionSource))
+        {
+            query = query.Where(a => a.Submission != null && a.Submission.Source == submissionSource);
+        }
+
         var totalCount = await query.CountAsync(cancellationToken);
 
         var items = await query
@@ -100,6 +126,7 @@ public class ApplicationRepository : IApplicationRepository
                 .ThenInclude(s => s!.CandidateCv)
             .Include(a => a.AiMatchResults)
             .OrderByDescending(a => a.AppliedAt)
+            .ThenByDescending(a => a.ApplicationId)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);

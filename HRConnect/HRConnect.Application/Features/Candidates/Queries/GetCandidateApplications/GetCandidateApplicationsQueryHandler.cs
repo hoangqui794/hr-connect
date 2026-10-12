@@ -38,17 +38,24 @@ public class GetCandidateApplicationsQueryHandler : IRequestHandler<GetCandidate
         // 2. Chuẩn hóa phân trang
         var page = request.Page < 1 ? 1 : request.Page;
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
+        var search = string.IsNullOrWhiteSpace(request.Search) ? null : request.Search.Trim();
+        if (search?.Length > 100)
+            throw new BadRequestException("Từ khóa tìm kiếm không được vượt quá 100 ký tự.");
+
+        var submissionSource = string.IsNullOrWhiteSpace(request.SubmissionSource)
+            ? null
+            : request.SubmissionSource.Trim().ToUpperInvariant();
+        if (submissionSource is not null && submissionSource is not ("CANDIDATE" or "AFFILIATE"))
+            throw new BadRequestException("Nguồn nộp hồ sơ chỉ nhận CANDIDATE hoặc AFFILIATE.");
 
         // 3. Truy vấn danh sách Application thuộc sở hữu của Candidate
-        var (items, totalCount) = await _applicationRepository.GetCandidateApplicationsAsync(
-            candidate.CandidateId,
-            request.Status,
-            request.JobId,
-            request.FromDate,
-            request.ToDate,
-            page,
-            pageSize,
-            cancellationToken);
+        var (items, totalCount) = search is null && submissionSource is null
+            ? await _applicationRepository.GetCandidateApplicationsAsync(
+                candidate.CandidateId, request.Status, request.JobId, request.FromDate, request.ToDate,
+                page, pageSize, cancellationToken)
+            : await _applicationRepository.GetCandidateApplicationsFilteredAsync(
+                candidate.CandidateId, request.Status, request.JobId, request.FromDate, request.ToDate,
+                search, submissionSource, page, pageSize, cancellationToken);
 
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
@@ -66,6 +73,7 @@ public class GetCandidateApplicationsQueryHandler : IRequestHandler<GetCandidate
                 CvTitle = a.Submission?.CandidateCv?.Title ?? a.Submission?.CandidateCv?.FileName,
                 Status = a.Status,
                 AiStatus = latestAi?.Status,
+                SubmissionSource = a.Submission?.Source,
                 AppliedAt = a.AppliedAt
             };
         }).ToList();
