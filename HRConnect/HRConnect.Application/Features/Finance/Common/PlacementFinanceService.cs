@@ -47,13 +47,13 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
 
     private readonly IFinanceRepository _financeRepository;
     private readonly IAuditLogService _auditLogService;
-    private readonly IBusinessSettings _settings;
+    private readonly IAdminBusinessSettings _settings;
     private readonly ILogger<PlacementFinanceService> _logger;
 
     public PlacementFinanceService(
         IFinanceRepository financeRepository,
         IAuditLogService auditLogService,
-        IBusinessSettings settings,
+        IAdminBusinessSettings settings,
         ILogger<PlacementFinanceService> logger)
     {
         _financeRepository = financeRepository;
@@ -72,20 +72,18 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
 
         var now = DateTime.UtcNow;
         var warnings = new List<string>();
-        // Admin-configurable numbers (system_setting), defaulting to the business-model documents.
-        var warrantyDays = await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays, cancellationToken);
-        var feeMultiplier = await _settings.GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier, cancellationToken);
-        var paymentDueDays = await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, cancellationToken);
 
-        var warrantyDays = (context.WarrantyDays.HasValue && context.WarrantyDays.Value > 0)
+        // Terms agreed on the job (MF-01) win; otherwise the Admin-configurable defaults
+        // (system_setting), which start from the business-model documents.
+        var warrantyDays = context.WarrantyDays is > 0
             ? context.WarrantyDays.Value
-            : _settings.WarrantyDays;
-        var feeMultiplier = (context.FeeMultiplier.HasValue && context.FeeMultiplier.Value > 0)
+            : await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays, cancellationToken);
+        var feeMultiplier = context.FeeMultiplier is > 0
             ? context.FeeMultiplier.Value
-            : _settings.HeadhuntFeeMultiplier;
-        var paymentDueDays = (context.PaymentDueDays.HasValue && context.PaymentDueDays.Value > 0)
+            : await _settings.GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier, cancellationToken);
+        var paymentDueDays = context.PaymentDueDays is > 0
             ? context.PaymentDueDays.Value
-            : _settings.PaymentDueDays;
+            : await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, cancellationToken);
 
         var warranty = new Warranty
         {

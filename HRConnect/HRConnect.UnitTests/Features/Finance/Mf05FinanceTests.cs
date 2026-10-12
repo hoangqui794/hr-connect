@@ -166,6 +166,27 @@ public class Mf05FinanceTests
     }
 
     [Fact]
+    public async Task Terms_on_the_job_win_over_admin_defaults()
+    {
+        var handlers = new BusinessSettingHandlers(new SystemSettingRepository(_context), UnitOfWork, _audit.Object);
+        await handlers.Handle(new UpdateBusinessSettingCommand(BusinessSettingKeys.HeadhuntFeeMultiplier, 2m, _actor), default);
+        var (placement, offer) = await SeedPlacementAsync();
+
+        await FinanceService().InitializeAsync(
+            placement,
+            new JobApplicationContext(placement.ApplicationId, _companyId, _serviceTypeId, ServiceTypeCodesForTest.Headhunt, offer,
+                FeeMultiplier: 1.8m, WarrantyDays: 60, PaymentDueDays: 10),
+            _actor);
+        await _context.SaveChangesAsync();
+
+        var fee = await _context.ServiceFees.SingleAsync();
+        fee.FeeMultiplier.Should().Be(1.8m);
+        fee.Amount.Should().Be(36_000_000m);
+        fee.DueDate.Should().Be(Start.AddDays(10));
+        (await _context.Warranties.SingleAsync()).EndDate.Should().Be(Start.AddDays(60));
+    }
+
+    [Fact]
     public async Task OtherServiceTypes_create_no_finance_records()
     {
         var (placement, offer) = await SeedPlacementAsync();

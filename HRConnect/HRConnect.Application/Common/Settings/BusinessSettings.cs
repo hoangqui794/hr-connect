@@ -77,7 +77,7 @@ public static class BusinessSettingKeys
 }
 
 /// <summary>Reads configurable business numbers: the Admin override if present, otherwise the documented default.</summary>
-public interface IBusinessSettings
+public interface IAdminBusinessSettings
 {
     Task<decimal> GetDecimalAsync(string key, CancellationToken cancellationToken = default);
 

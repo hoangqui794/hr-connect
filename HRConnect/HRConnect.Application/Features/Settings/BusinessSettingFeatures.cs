@@ -8,7 +8,7 @@ using MediatR;
 
 namespace HRConnect.Application.Features.Settings;
 
-public sealed class BusinessSettingsService : IBusinessSettings
+public sealed class BusinessSettingsService : IAdminBusinessSettings
 {
     private readonly ISystemSettingRepository _repository;
 
