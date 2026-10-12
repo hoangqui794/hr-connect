@@ -75,6 +75,11 @@ export interface Job {
   createdAt: string;
   updatedAt: string;
   concurrencyToken: string;
+  sourcingTarget?: number | null;
+  sourcingPricePerCv?: number | null;
+  feeMultiplier?: number | null;
+  warrantyDays?: number | null;
+  paymentDueDays?: number | null;
   requirements: JobRequirement[];
   skills: JobSkill[];
   statusHistories: JobStatusHistory[];
@@ -129,6 +134,11 @@ export interface JobUpsertInput {
   currencyCode: string;
   quantity: number;
   visibility: JobVisibility;
+  sourcingTarget?: number | null;
+  sourcingPricePerCv?: number | null;
+  feeMultiplier?: number | null;
+  warrantyDays?: number | null;
+  paymentDueDays?: number | null;
   requirements: JobRequirementInput[];
   /** Kept empty for Client: the skills catalog (GET /skills) is candidate-only today. */
   skills: { skillId: string; isMandatory: boolean; weight?: number | null }[];

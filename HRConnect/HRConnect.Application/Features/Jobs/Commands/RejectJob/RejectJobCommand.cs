@@ -18,14 +18,41 @@ public sealed class RejectJobCommandValidator : AbstractValidator<RejectJobComma
 }
 public sealed class RejectJobCommandHandler : IRequestHandler<RejectJobCommand, JobActionResponse>
 {
-    private readonly IJobRepository _jobs; private readonly IUnitOfWork _uow;
-    public RejectJobCommandHandler(IJobRepository jobs, IUnitOfWork uow) => (_jobs, _uow) = (jobs, uow);
+    private readonly IJobRepository _jobs;
+    private readonly INotificationRepository _notifications;
+    private readonly IUnitOfWork _uow;
+
+    public RejectJobCommandHandler(IJobRepository jobs, INotificationRepository notifications, IUnitOfWork uow)
+        => (_jobs, _notifications, _uow) = (jobs, notifications, uow);
+
     public async Task<JobActionResponse> Handle(RejectJobCommand request, CancellationToken ct)
     {
         var job = await JobHandlerGuards.GetJobAsync(_jobs, request.JobId, ct); JobHandlerGuards.RequireStatus(job, JobStatuses.PendingReview);
         JobTransitions.RequireCurrentToken(job, request.ConcurrencyToken);
         JobTransitions.ChangeStatus(job, JobStatuses.Rejected, request.UserId, request.ReasonCode.Trim().ToUpperInvariant(), request.ReasonText.Trim());
         await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
+
+        await _notifications.AddAsync(new HRConnect.Domain.Entities.Notification
+        {
+            NotificationId = Guid.NewGuid(),
+            UserId = job.CreatedBy,
+            NotificationType = "JOB",
+            Title = "Tin tuyển dụng bị từ chối duyệt",
+            Message = $"Tin tuyển dụng \"{job.Title}\" đã bị từ chối: {request.ReasonText.Trim()}.",
+            RelatedEntityType = "JOB",
+            RelatedEntityId = job.JobId,
+            Metadata = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                jobId = job.JobId,
+                status = JobStatuses.Rejected,
+                reasonCode = request.ReasonCode.Trim().ToUpperInvariant(),
+                reasonText = request.ReasonText.Trim(),
+                actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
+            }),
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        }, ct);
+
         await _uow.SaveChangesAsync(ct);
         return new(true, "Từ chối công việc thành công.", JobDto.From(job));
     }

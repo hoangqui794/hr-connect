@@ -31,7 +31,15 @@ public interface IPlacementFinanceService
 }
 
 /// <summary>What the placement handler already loaded; avoids reloading the application.</summary>
-public sealed record JobApplicationContext(Guid ApplicationId, Guid CompanyId, Guid ServiceTypeId, string? ServiceTypeCode, Offer Offer);
+public sealed record JobApplicationContext(
+    Guid ApplicationId,
+    Guid CompanyId,
+    Guid ServiceTypeId,
+    string? ServiceTypeCode,
+    Offer Offer,
+    decimal? FeeMultiplier = null,
+    int? WarrantyDays = null,
+    int? PaymentDueDays = null);
 
 public sealed class PlacementFinanceService : IPlacementFinanceService
 {
@@ -68,6 +76,16 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
         var warrantyDays = await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays, cancellationToken);
         var feeMultiplier = await _settings.GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier, cancellationToken);
         var paymentDueDays = await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, cancellationToken);
+
+        var warrantyDays = (context.WarrantyDays.HasValue && context.WarrantyDays.Value > 0)
+            ? context.WarrantyDays.Value
+            : _settings.WarrantyDays;
+        var feeMultiplier = (context.FeeMultiplier.HasValue && context.FeeMultiplier.Value > 0)
+            ? context.FeeMultiplier.Value
+            : _settings.HeadhuntFeeMultiplier;
+        var paymentDueDays = (context.PaymentDueDays.HasValue && context.PaymentDueDays.Value > 0)
+            ? context.PaymentDueDays.Value
+            : _settings.PaymentDueDays;
 
         var warranty = new Warranty
         {

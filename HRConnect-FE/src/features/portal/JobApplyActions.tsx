@@ -209,11 +209,11 @@ const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void }> = (
 };
 
 /** Role-aware call to action for a job page. Renders nothing for roles that cannot submit. */
-export const JobApplyActions: React.FC<{ job: Job }> = ({ job }) => {
+export const JobApplyActions: React.FC<{ job: Job; autoOpen?: boolean }> = ({ job, autoOpen = false }) => {
   const navigate = useNavigate();
   const hasAnyRole = useAuthStore((s) => s.hasAnyRole);
   const hasPermission = useAuthStore((s) => s.hasPermission);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
 
   if (job.status !== 'ACTIVE') return null;
 

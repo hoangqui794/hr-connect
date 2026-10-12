@@ -69,11 +69,11 @@
 }
 
 .candidate-console {
-  --console-accent: #0f766e;        /* white text on it: 5.5:1 */
-  --console-accent-strong: #115e59; /* text on white: 7.6:1 */
-  --console-accent-soft: #f0fdfa;
-  --console-accent-bright: #2dd4bf;
-  --console-accent-glow: rgba(45, 212, 191, 0.55);
+  --console-accent: #2563eb;        /* blue-600 */
+  --console-accent-strong: #1d4ed8; /* blue-700 */
+  --console-accent-soft: #eff6ff;
+  --console-accent-bright: #60a5fa;
+  --console-accent-glow: rgba(96, 165, 250, 0.55);
 }
 
 .affiliate-console {

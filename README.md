@@ -293,7 +293,13 @@ public static IServiceCollection AddInfrastructureServices(this IServiceCollecti
 > **HƯỚNG DẪN CHO DEV & AI:**  
 > Mỗi khi tạo mới một Repository hoặc một dịch vụ hạ tầng bên ngoài (ví dụ: Cloudinary Service, S3 Service, Notification Hub...), bạn **PHẢI** vào file này để khai báo `services.AddScoped<IMyRepository, MyRepository>()`. Tuyệt đối không khai báo thủ công rải rác bên trong `Program.cs`.
 
-### 5.7. File `HRConnect.Application/DependencyInjection.cs` (Nạp Tự Động CQRS & Validation)
+### 5.7. Health Check khi triển khai
+
+- **`GET /health/live`**: kiểm tra tiến trình API đang hoạt động. Endpoint này không phụ thuộc database, dùng cho liveness probe.
+- **`GET /health/ready`**: kiểm tra API có kết nối được PostgreSQL hay không. Trả HTTP `200` khi sẵn sàng và `503` khi database không khả dụng.
+- Hai endpoint không yêu cầu đăng nhập, không cache response và không trả exception, hostname hoặc chuỗi kết nối ra ngoài.
+
+### 5.8. File `HRConnect.Application/DependencyInjection.cs` (Nạp Tự Động CQRS & Validation)
 Tương tự tầng Infrastructure, tầng Application có file `DependencyInjection.cs` riêng để tự quản lý:
 ```csharp
 public static IServiceCollection AddApplicationServices(this IServiceCollection services)

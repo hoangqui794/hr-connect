@@ -7,7 +7,8 @@ import durationPlugin from 'dayjs/plugin/duration';
 import { useNavigate, useParams } from 'react-router-dom';
 import { candidateConsentApi } from '@/services/api/mf02Api';
 import { getApiError } from '@/services/apiClient';
-import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { StatusDot } from '@/features/admin-console/ui';
+import { CandidatePageHeader, CandidateSurface } from './candidate/CandidateUi';
 
 dayjs.extend(durationPlugin);
 
@@ -99,8 +100,8 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-5">
-      <PageHero
+    <div className="candidate-page candidate-consent-page">
+      <CandidatePageHeader
         eyebrow="Xác nhận hồ sơ"
         title="Affiliate muốn giới thiệu bạn vào một công việc"
         description="Hãy kiểm tra kỹ thông tin và CV trước khi cho phép gửi hồ sơ đến doanh nghiệp."
@@ -115,7 +116,7 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
         description="Chỉ khi bạn đồng ý, hệ thống mới tạo đơn ứng tuyển, ghi nhận nguồn giới thiệu và chuyển CV sang MF03 để đánh giá."
       />
 
-      <Surface className="space-y-5 p-6">
+      <CandidateSurface className="candidate-consent-surface space-y-5 p-6">
         <dl className="grid grid-cols-1 gap-5 text-sm sm:grid-cols-2">
           <div><dt className="text-slate-500">Candidate</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{consent.candidateName}</dd></div>
           <div><dt className="text-slate-500">Công việc</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{consent.jobTitle}</dd></div>
@@ -152,7 +153,7 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
             <Button danger size="large" disabled={respond.isPending}>Từ chối</Button>
           </Popconfirm>
         </div>
-      </Surface>
+      </CandidateSurface>
     </div>
   );
 };

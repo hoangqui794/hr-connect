@@ -12,7 +12,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Input,
   Button,
-  Typography,
   message,
   Alert,
 } from 'antd';
@@ -30,8 +29,7 @@ import {
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { authService } from '@/services/authService';
 import { getApiErrorMessage } from '@/services/apiClient';
-
-const { Title, Text, Paragraph } = Typography;
+import { AuthPageShell, AUTH_INPUT_CLASS } from './AuthPageShell';
 
 export const VerifyOtpPage: React.FC = () => {
   const navigate = useNavigate();
@@ -226,241 +224,120 @@ export const VerifyOtpPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden">
-      {/* Background ambient glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-blue-600/15 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-[350px] h-[300px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
-
-      <div className="w-full max-w-md relative z-10">
-        {/* Brand Header */}
-        <div
-          onClick={() => navigate('/')}
-          className="text-center mb-6 cursor-pointer select-none group"
-          title="Quay về trang chủ"
-        >
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-extrabold text-2xl mx-auto mb-3 shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform duration-200">
-            H
+    <AuthPageShell
+      eyebrow="Bảo vệ tài khoản"
+      title={approvalPending ? 'Hồ sơ đã được gửi xét duyệt' : 'Xác thực email của bạn'}
+      description={approvalPending ? 'Bạn đã hoàn tất bước xác thực email. Hệ thống sẽ thông báo khi hồ sơ được duyệt.' : 'Nhập mã gồm 6 chữ số trong email để hoàn tất bước đăng ký.'}
+      sideTitle="Chỉ còn một bước để hoàn tất đăng ký."
+      sideDescription="Xác thực email giúp bảo vệ danh tính và đảm bảo mọi thông báo tuyển dụng được gửi đúng người."
+      benefits={[
+        'Mã xác thực chỉ có hiệu lực trong thời gian giới hạn',
+        'Có thể yêu cầu gửi lại nếu bạn chưa nhận được email',
+        'Client và Affiliate sẽ được thông báo sau khi Admin xét duyệt',
+      ]}
+    >
+      {approvalPending ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center sm:p-8">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl text-amber-500 shadow-sm">
+            <ClockCircleOutlined />
           </div>
-          <Title
-            level={3}
-            style={{
-              color: '#ffffff',
-              margin: '0 0 4px',
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              fontSize: '24px',
-            }}
-          >
-            Xác thực tài khoản
-          </Title>
-          <Text style={{ color: '#94a3b8', fontSize: '14px' }}>
-            Nhập mã OTP 6 chữ số được gửi tới email của bạn
-          </Text>
+          <h2 className="m-0 text-xl font-black text-slate-900">Email đã được xác thực</h2>
+          <p className="mx-auto mb-5 mt-3 max-w-md text-sm leading-6 text-slate-600">
+            {roleParam === 'CLIENT'
+              ? 'Ban quản trị đang kiểm tra thông tin doanh nghiệp. Bạn sẽ nhận email ngay khi tài khoản được kích hoạt.'
+              : 'Ban quản trị đang xem xét hồ sơ Affiliate Recruiter. Bạn sẽ nhận email ngay khi tài khoản được kích hoạt.'}
+          </p>
+          <div className="mb-6 rounded-xl border border-amber-200 bg-white p-4 text-left text-sm">
+            <div className="flex flex-wrap justify-between gap-2 border-b border-slate-100 pb-3">
+              <span className="text-slate-500">Email</span>
+              <strong className="break-all text-slate-800">{email}</strong>
+            </div>
+            <div className="flex flex-wrap justify-between gap-2 pt-3">
+              <span className="text-slate-500">Trạng thái</span>
+              <strong className="text-amber-700">Đang chờ Admin xét duyệt</strong>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button size="large" onClick={() => navigate('/')} className="h-12 rounded-xl border-slate-300 font-bold">Về trang chủ</Button>
+            <Button type="primary" size="large" onClick={() => navigate(`/login?email=${encodeURIComponent(email)}`)} className="h-12 rounded-xl border-0 bg-blue-600 font-bold hover:!bg-blue-700">Đến trang đăng nhập</Button>
+          </div>
         </div>
-
-        {/* Verification Card / Approval Card */}
-        {approvalPending ? (
-          <div className="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-md text-center">
-            <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-4 text-amber-400 text-3xl">
-              <ClockCircleOutlined />
-            </div>
-            <Title level={4} style={{ color: '#ffffff', margin: '0 0 8px', fontWeight: 700 }}>
-              Xác thực email thành công!
-            </Title>
-            <div className="inline-block px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold mb-4">
-              Trạng thái: Chờ Ban quản trị phê duyệt
-            </div>
-            <Paragraph style={{ color: '#cbd5e1', fontSize: '13px', lineHeight: 1.6 }} className="mb-4">
-              {roleParam === 'CLIENT'
-                ? 'Tài khoản Doanh nghiệp tuyển dụng của bạn đã hoàn tất xác thực email. Ban quản trị HRConnect đang tiến hành thẩm định hồ sơ công ty.'
-                : 'Tài khoản Đối tác tuyển dụng (Affiliate Recruiter) của bạn đã hoàn tất xác thực email và đang được chuyển đến Ban quản trị xem xét.'}
-            </Paragraph>
-            <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3 text-left text-xs text-slate-400 space-y-2 mb-6">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Email:</span>
-                <span className="text-slate-200 font-medium">{email}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Loại tài khoản:</span>
-                <span className="text-blue-400 font-medium">
-                  {roleParam === 'CLIENT' ? 'Doanh nghiệp (Client)' : 'Cộng tác viên (Affiliate Recruiter)'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Thời gian xử lý:</span>
-                <span className="text-slate-200 font-medium">Trong vòng 24 giờ làm việc</span>
-              </div>
-            </div>
-            <div className="space-y-2.5">
-              <Button
-                type="primary"
-                size="large"
-                onClick={() => navigate('/')}
-                className="w-full h-11 rounded-xl font-bold text-sm bg-gradient-to-r from-blue-600 to-indigo-600 border-none"
-              >
-                Về trang chủ
-              </Button>
-              <Button
-                size="large"
-                onClick={() => navigate(`/login?email=${encodeURIComponent(email)}`)}
-                className="w-full h-11 rounded-xl text-sm bg-slate-800 text-slate-300 border-slate-700 hover:text-white"
-              >
-                Đến trang đăng nhập
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-md">
-            {/* Email Info Display & Edit */}
-            <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 mb-6">
-              <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                <span className="flex items-center gap-1.5">
-                  <MailOutlined className="text-blue-400" />
-                  Email nhận mã OTP:
-                </span>
-                {!isEditingEmail && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTempEmail(email);
-                      setIsEditingEmail(true);
-                    }}
-                    className="text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
-                  >
-                    <EditOutlined /> Thay đổi
-                  </button>
-                )}
-              </div>
-
-              {isEditingEmail ? (
-                <div className="flex items-center gap-2 mt-2">
-                  <Input
-                    size="middle"
-                    value={tempEmail}
-                    onChange={(e) => setTempEmail(e.target.value)}
-                    placeholder="name@example.com"
-                    className="rounded-lg !bg-slate-900 !border-slate-700 !text-slate-100"
-                  />
-                  <Button
-                    size="middle"
-                    type="primary"
-                    icon={<CheckOutlined />}
-                    onClick={() => {
-                      if (tempEmail.trim()) {
-                        setEmail(tempEmail.trim());
-                        setIsEditingEmail(false);
-                      }
-                    }}
-                    className="rounded-lg bg-blue-600"
-                  >
-                    Lưu
-                  </Button>
-                </div>
-              ) : (
-                <div className="font-semibold text-slate-200 text-sm truncate select-all">
-                  {email || 'Chưa cung cấp email'}
-                </div>
-              )}
-            </div>
-
-            {/* Backend Error Alert */}
-            {errorMessage && (
-              <Alert
-                message={errorMessage}
-                type="error"
-                showIcon
-                closable
-                onClose={() => setErrorMessage(null)}
-                className="mb-5 text-xs rounded-xl"
-              />
-            )}
-
-            {/* ─── 6-Digit OTP Boxes ─── */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold text-slate-300 mb-3 text-center">
-                Mã xác thực OTP (6 chữ số)
-              </label>
-              <div className="flex justify-between gap-2 sm:gap-2.5">
-                {otpValues.map((val, idx) => (
-                  <input
-                    key={idx}
-                    ref={(el) => {
-                      inputRefs.current[idx] = el;
-                    }}
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={1}
-                    value={val}
-                    onChange={(e) => handleDigitChange(idx, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(idx, e)}
-                    onPaste={handlePaste}
-                    disabled={isVerifying}
-                    className={`w-12 h-14 sm:w-13 sm:h-15 text-center text-2xl font-bold rounded-xl transition-all duration-200 outline-none select-all ${
-                      val
-                        ? 'bg-blue-950/40 border-2 border-blue-500 text-white shadow-sm shadow-blue-500/20'
-                        : 'bg-slate-950 border border-slate-800 text-slate-200 hover:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-                    }`}
-                  />
-                ))}
-              </div>
-              <div className="text-[11px] text-slate-500 text-center mt-2.5">
-                Hỗ trợ phím mũi tên, xóa lùi và dán (Paste) nhanh cả 6 số
-              </div>
-            </div>
-
-            {/* Submit Verification Button */}
-            <Button
-              type="primary"
-              size="large"
-              onClick={handleVerify}
-              loading={isVerifying}
-              disabled={isVerifying || fullOtp.length !== 6}
-              className="w-full h-11 rounded-xl font-bold text-sm bg-gradient-to-r from-blue-600 to-indigo-600 border-none shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.99]"
-            >
-              <SafetyCertificateOutlined />
-              <span>Xác nhận kích hoạt tài khoản</span>
-            </Button>
-
-            {/* Resend OTP Section */}
-            <div className="flex items-center justify-center gap-2 mt-5 text-xs text-slate-400">
-              <span>Chưa nhận được mã?</span>
-              {resendCooldown > 0 ? (
-                <span className="text-slate-500 font-medium">
-                  Gửi lại sau <strong className="text-blue-400">{resendCooldown}s</strong>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleResend}
-                  disabled={isResending}
-                  className="text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
-                >
-                  <ReloadOutlined spin={isResending} />
-                  <span>Gửi lại mã ngay</span>
+      ) : (
+        <>
+          <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+            <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+              <span className="flex items-center gap-2 font-semibold text-blue-900"><MailOutlined /> Email nhận mã</span>
+              {!isEditingEmail && (
+                <button type="button" onClick={() => { setTempEmail(email); setIsEditingEmail(true); }} className="cursor-pointer border-0 bg-transparent p-0 text-sm font-bold text-blue-700 hover:text-blue-900">
+                  <EditOutlined /> Thay đổi
                 </button>
               )}
             </div>
-
-            {/* Back to Login / Register Navigation */}
-            <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-800 text-xs text-slate-400">
-              <Link
-                to="/register"
-                className="text-slate-400 hover:text-slate-200 flex items-center gap-1"
-              >
-                <ArrowLeftOutlined /> Đăng ký lại
-              </Link>
-              <Link
-                to="/login"
-                className="text-blue-400 hover:text-blue-300 font-semibold"
-              >
-                Đăng nhập ngay
-              </Link>
-            </div>
+            {isEditingEmail ? (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input size="large" type="email" value={tempEmail} onChange={(event) => setTempEmail(event.target.value)} placeholder="ten@email.com" className={AUTH_INPUT_CLASS} />
+                <Button size="large" type="primary" icon={<CheckOutlined />} onClick={() => { if (tempEmail.trim()) { setEmail(tempEmail.trim()); setIsEditingEmail(false); } }} className="h-12 rounded-xl bg-blue-600 font-bold">Lưu email</Button>
+              </div>
+            ) : (
+              <strong className="block break-all text-sm text-slate-800">{email || 'Chưa cung cấp email'}</strong>
+            )}
           </div>
-        )}
-      </div>
-    </div>
+
+          {errorMessage && (
+            <Alert message="Mã xác thực chưa hợp lệ" description={errorMessage} type="error" showIcon closable onClose={() => setErrorMessage(null)} className="mb-5 rounded-xl" />
+          )}
+
+          <div className="mb-6">
+            <label className="mb-3 block text-center text-sm font-bold text-slate-700">Nhập mã xác thực gồm 6 chữ số</label>
+            <div className="flex justify-center gap-2 sm:gap-3">
+              {otpValues.map((value, index) => (
+                <input
+                  key={index}
+                  ref={(element) => { inputRefs.current[index] = element; }}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  aria-label={`Số thứ ${index + 1} của mã OTP`}
+                  maxLength={1}
+                  value={value}
+                  onChange={(event) => handleDigitChange(index, event.target.value)}
+                  onKeyDown={(event) => handleKeyDown(index, event)}
+                  onPaste={handlePaste}
+                  disabled={isVerifying}
+                  className={`h-14 w-11 rounded-xl border text-center text-2xl font-black outline-none transition sm:h-16 sm:w-14 ${
+                    value
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-100'
+                      : 'border-slate-200 bg-white text-slate-900 hover:border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                  }`}
+                />
+              ))}
+            </div>
+            <p className="mb-0 mt-3 text-center text-xs text-slate-500">Bạn có thể dán toàn bộ mã OTP vào bất kỳ ô nào.</p>
+          </div>
+
+          <Button type="primary" size="large" onClick={handleVerify} loading={isVerifying} disabled={isVerifying || fullOtp.length !== 6} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border-0 bg-blue-600 font-bold shadow-lg shadow-blue-600/20 hover:!bg-blue-700">
+            <SafetyCertificateOutlined />
+            <span>Xác thực email</span>
+          </Button>
+
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm text-slate-500">
+            <span>Chưa nhận được mã?</span>
+            {resendCooldown > 0 ? (
+              <span>Gửi lại sau <strong className="text-blue-700">{resendCooldown}s</strong></span>
+            ) : (
+              <button type="button" onClick={handleResend} disabled={isResending} className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 font-bold text-blue-700 hover:text-blue-900 disabled:opacity-50">
+                <ReloadOutlined spin={isResending} /> Gửi lại mã
+              </button>
+            )}
+          </div>
+
+          <div className="mt-7 flex items-center justify-between border-t border-slate-100 pt-5 text-sm">
+            <Link to="/register" className="font-semibold text-slate-500 hover:text-slate-800"><ArrowLeftOutlined /> Đăng ký lại</Link>
+            <Link to="/login" className="font-bold text-blue-700 hover:text-blue-900">Đăng nhập</Link>
+          </div>
+        </>
+      )}
+    </AuthPageShell>
   );
 };
 

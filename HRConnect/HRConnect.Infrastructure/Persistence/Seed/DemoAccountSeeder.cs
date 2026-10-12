@@ -109,6 +109,32 @@ public static class DemoAccountSeeder
                 adminUser.UserId, Client2Email, "Demo Client 2", Client2Phone,
                 DemoCompany2Name, DemoCompany2TaxCode, now, logger, cancellationToken);
 
+            // Demo accounts may be created after the candidate identity migration has already
+            // backfilled existing users. Keep the login email and user_email_identity invariant
+            // intact on every seed run, including databases that already contain demo accounts.
+            var demoEmails = new[]
+            {
+                AdminEmail,
+                InternalHrEmail,
+                InternalHr2Email,
+                CandidateEmail,
+                Candidate2Email,
+                AffiliateEmail,
+                Affiliate2Email,
+                ClientEmail,
+                Client2Email
+            };
+
+            var demoUsers = await context.AppUsers
+                .Where(user => demoEmails.Contains(user.Email))
+                .ToListAsync(cancellationToken);
+
+            foreach (var demoUser in demoUsers)
+            {
+                await EnsurePrimaryEmailIdentityAsync(
+                    context, demoUser, emailNormalizer, now, logger, cancellationToken);
+            }
+
             logger?.LogInformation("Demo accounts seeding completed successfully (9 accounts).");
         }
         catch (DbUpdateException ex)
@@ -655,5 +681,78 @@ public static class DemoAccountSeeder
             await context.SaveChangesAsync(cancellationToken);
             logger?.LogInformation("Re-activated role {RoleCode} for UserId {UserId}", roleCode, userId);
         }
+    }
+
+    /// <summary>
+    /// Ensures every demo account has exactly one active PRIMARY identity matching its login email.
+    /// This also repairs demo users created after the identity migration's one-time backfill.
+    /// </summary>
+    private static async Task EnsurePrimaryEmailIdentityAsync(
+        ApplicationDbContext context,
+        AppUser user,
+        IEmailNormalizer emailNormalizer,
+        DateTime now,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        var normalizedEmail = emailNormalizer.Normalize(user.Email);
+        var identityForEmail = await context.UserEmailIdentities
+            .FirstOrDefaultAsync(
+                identity => identity.NormalizedEmail == normalizedEmail && identity.Status != "REVOKED",
+                cancellationToken);
+
+        if (identityForEmail is not null && identityForEmail.UserId != user.UserId)
+        {
+            throw new InvalidOperationException(
+                $"Cannot seed PRIMARY email identity for demo user {user.UserId}: " +
+                $"email {normalizedEmail} is already linked to another account.");
+        }
+
+        var primaryIdentity = await context.UserEmailIdentities
+            .FirstOrDefaultAsync(
+                identity => identity.UserId == user.UserId &&
+                            identity.Kind == "PRIMARY" &&
+                            identity.Status != "REVOKED",
+                cancellationToken);
+
+        if (primaryIdentity is not null &&
+            identityForEmail is not null &&
+            primaryIdentity.EmailIdentityId != identityForEmail.EmailIdentityId)
+        {
+            throw new InvalidOperationException(
+                $"Cannot seed PRIMARY email identity for demo user {user.UserId}: " +
+                $"login email {normalizedEmail} is already linked as another active identity.");
+        }
+
+        if (primaryIdentity is null)
+        {
+            primaryIdentity = identityForEmail;
+            if (primaryIdentity is null)
+            {
+                primaryIdentity = new UserEmailIdentity
+                {
+                    EmailIdentityId = Guid.NewGuid(),
+                    UserId = user.UserId,
+                    CreatedAt = now,
+                    ConcurrencyToken = Guid.NewGuid()
+                };
+                await context.UserEmailIdentities.AddAsync(primaryIdentity, cancellationToken);
+            }
+        }
+
+        primaryIdentity.Email = user.Email.Trim();
+        primaryIdentity.NormalizedEmail = normalizedEmail;
+        primaryIdentity.Kind = "PRIMARY";
+        primaryIdentity.Status = user.EmailVerifiedAt.HasValue ? "VERIFIED" : "PENDING";
+        primaryIdentity.VerificationSource = "DEMO_SEED";
+        primaryIdentity.VerifiedAt = user.EmailVerifiedAt;
+        primaryIdentity.RevokedAt = null;
+        primaryIdentity.UpdatedAt = now;
+
+        await context.SaveChangesAsync(cancellationToken);
+        logger?.LogInformation(
+            "Ensured PRIMARY email identity for demo account {Email} ({UserId}).",
+            user.Email,
+            user.UserId);
     }
 }

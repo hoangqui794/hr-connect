@@ -17,8 +17,9 @@ export const jobQueryKeys = {
   all: ['mf01-jobs'] as const,
   mine: (status?: JobStatus) => [...jobQueryKeys.all, 'mine', status ?? 'ALL'] as const,
   search: (params: JobSearchParams) => [...jobQueryKeys.all, 'search', params] as const,
+  publicSearch: (params: JobSearchParams) => [...jobQueryKeys.all, 'public-search', params] as const,
   detail: (jobId: string) => [...jobQueryKeys.all, 'detail', jobId] as const,
-  review: () => [...jobQueryKeys.all, 'review'] as const,
+  review: (status?: string) => [...jobQueryKeys.all, 'review', status ?? 'ALL'] as const,
   serviceTypes: ['mf01-service-types'] as const,
 };
 
@@ -33,6 +34,14 @@ export const useJobSearch = (params: JobSearchParams, enabled = true) =>
     placeholderData: (previous) => previous,
   });
 
+export const usePublicJobSearch = (params: JobSearchParams, enabled = true) =>
+  useQuery({
+    queryKey: jobQueryKeys.publicSearch(params),
+    queryFn: () => jobsApi.searchPublic(params),
+    enabled,
+    placeholderData: (previous) => previous,
+  });
+
 export const useJobDetail = (jobId: string | undefined) =>
   useQuery({
     queryKey: jobQueryKeys.detail(jobId ?? ''),
@@ -40,8 +49,8 @@ export const useJobDetail = (jobId: string | undefined) =>
     enabled: Boolean(jobId),
   });
 
-export const useJobReviewQueue = () =>
-  useQuery({ queryKey: jobQueryKeys.review(), queryFn: () => jobsApi.getReviewQueue() });
+export const useJobReviewQueue = (status?: string) =>
+  useQuery({ queryKey: jobQueryKeys.review(status), queryFn: () => jobsApi.getReviewQueue(status) });
 
 export const useServiceTypes = () =>
   useQuery({

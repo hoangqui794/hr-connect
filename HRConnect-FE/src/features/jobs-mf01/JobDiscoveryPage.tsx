@@ -5,13 +5,12 @@
  * Filters live in the URL so results can be shared and survive Back.
  */
 import React, { useMemo } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Alert, Button, Card, Empty, Input, Pagination, Select, Skeleton, Tag, Typography } from 'antd';
-import { EnvironmentOutlined, LoginOutlined, SearchOutlined } from '@ant-design/icons';
+import { EnvironmentOutlined, SearchOutlined } from '@ant-design/icons';
 import type { EmploymentType, Job, JobSearchParams } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { useAuthStore } from '@/stores/authStore';
-import { useJobSearch, useServiceTypes } from './useJobQueries';
+import { useJobSearch, usePublicJobSearch, useServiceTypes } from './useJobQueries';
 import { EMPLOYMENT_TYPE_LABEL, SERVICE_TYPE_LABEL, formatDate, formatExperience, formatSalary } from './jobDisplay';
 
 const { Title, Text } = Typography;
@@ -25,14 +24,14 @@ const JobCard: React.FC<{ job: Job; detailBasePath: string }> = ({ job, detailBa
   >
     <Link
       to={`${detailBasePath}/${job.jobId}`}
-      className="font-semibold text-slate-900 hover:text-emerald-700 line-clamp-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700 rounded"
+      className="font-semibold text-slate-900 hover:text-blue-700 line-clamp-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700 rounded"
     >
       {job.title}
     </Link>
     <Text type="secondary" className="text-sm">
       {job.companyName ?? '—'}
     </Text>
-    <div className="text-sm font-medium text-emerald-800">{formatSalary(job)}</div>
+    <div className="text-sm font-medium text-blue-800">{formatSalary(job)}</div>
     <div className="flex flex-wrap gap-1.5">
       {job.location && (
         <Tag className="m-0" icon={<EnvironmentOutlined aria-hidden />}>
@@ -52,11 +51,11 @@ const JobCard: React.FC<{ job: Job; detailBasePath: string }> = ({ job, detailBa
 interface JobDiscoveryPageProps {
   /** Where job cards link to, e.g. "/jobs" (public) or "/affiliate/jobs" (in-app). */
   detailBasePath?: string;
+  /** Use the anonymous endpoint fixed to Candidate visibility and service permissions. */
+  publicAccess?: boolean;
 }
 
-export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePath = '/jobs' }) => {
-  const navigate = useNavigate();
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePath = '/jobs', publicAccess = false }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const serviceTypes = useServiceTypes();
 
@@ -72,7 +71,9 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
     [searchParams]
   );
 
-  const { data, isLoading, isError, error, isFetching } = useJobSearch(params, isAuthenticated);
+  const authenticatedJobs = useJobSearch(params, !publicAccess);
+  const publicJobs = usePublicJobSearch(params, publicAccess);
+  const { data, isLoading, isError, error, isFetching } = publicAccess ? publicJobs : authenticatedJobs;
 
   const setParam = (key: string, value: string | undefined) => {
     const next = new URLSearchParams(searchParams);
@@ -82,26 +83,13 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
     setSearchParams(next);
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="rounded-xl border border-solid border-slate-200 bg-white px-6 py-14 text-center">
-        <Title level={4}>Đăng nhập để xem việc làm</Title>
-        <Text type="secondary" className="block mb-5">
-          Danh sách việc làm hiển thị theo vai trò của bạn: ứng viên, cộng tác viên hay doanh nghiệp.
-        </Text>
-        <Button type="primary" icon={<LoginOutlined />} onClick={() => navigate('/login')}>
-          Đăng nhập
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-5">
       {/* key remounts the uncontrolled inputs when the URL filters change (e.g. "Xóa bộ lọc"). */}
       <div key={searchParams.toString()} className="rounded-xl border border-solid border-slate-200 bg-white p-4">
         <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <Input.Search
+            size="large"
             allowClear
             defaultValue={params.search}
             placeholder="Tên vị trí, kỹ năng, công ty..."
@@ -110,6 +98,7 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
             aria-label="Từ khóa tìm việc"
           />
           <Input
+            size="large"
             allowClear
             defaultValue={params.location}
             placeholder="Địa điểm"
@@ -119,6 +108,7 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
             aria-label="Địa điểm"
           />
           <Select
+            size="large"
             allowClear
             value={params.employmentType}
             placeholder="Hình thức"
@@ -127,6 +117,7 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
             aria-label="Hình thức làm việc"
           />
           <Select
+            size="large"
             allowClear
             value={params.serviceTypeId}
             placeholder="Loại dịch vụ"

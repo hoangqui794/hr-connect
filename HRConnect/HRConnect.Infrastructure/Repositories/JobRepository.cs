@@ -82,15 +82,29 @@ public class JobRepository : IJobRepository
             .OrderByDescending(job => job.UpdatedAt)
             .ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<Job>> GetPendingReviewAsync(CancellationToken cancellationToken = default) =>
-        await _context.Jobs.AsNoTracking()
+    public async Task<IReadOnlyList<Job>> GetForReviewAsync(string? status = null, CancellationToken cancellationToken = default)
+    {
+        var query = _context.Jobs.AsNoTracking()
             .Include(job => job.ServiceType)
             .Include(job => job.Company)
             .Include(job => job.JobRequirements)
             .Include(job => job.JobSkills).ThenInclude(jobSkill => jobSkill.Skill)
-            .Where(job => job.Status == "PENDING_REVIEW")
-            .OrderBy(job => job.UpdatedAt)
+            .Include(job => job.JobStatusHistories)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status) && !status.Equals("ALL", StringComparison.OrdinalIgnoreCase))
+        {
+            var normalizedStatus = status.Trim().ToUpperInvariant();
+            query = query.Where(job => job.Status == normalizedStatus);
+        }
+
+        return await query
+            .OrderByDescending(job => job.UpdatedAt)
             .ToListAsync(cancellationToken);
+    }
+
+    public Task<IReadOnlyList<Job>> GetPendingReviewAsync(CancellationToken cancellationToken = default) =>
+        GetForReviewAsync("PENDING_REVIEW", cancellationToken);
 
     public async Task<(IReadOnlyList<Job> Items, int TotalCount)> GetVisibleJobsAsync(
         IReadOnlyCollection<string> roleCodes,

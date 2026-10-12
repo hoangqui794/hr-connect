@@ -301,6 +301,45 @@ public class DemoAccountSeederTests
     }
 
     [Fact]
+    public async Task SeedAsync_ShouldCreateAndRepairPrimaryEmailIdentities_ForDemoAccounts()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+        await SeedDefaultRolesAsync(context);
+
+        await DemoAccountSeeder.SeedAsync(context);
+
+        var candidate = await context.AppUsers
+            .SingleAsync(user => user.Email == DemoAccountSeeder.CandidateEmail);
+        var candidatePrimary = await context.UserEmailIdentities.SingleAsync(identity =>
+            identity.UserId == candidate.UserId &&
+            identity.Kind == "PRIMARY" &&
+            identity.Status != "REVOKED");
+
+        context.UserEmailIdentities.Remove(candidatePrimary);
+        await context.SaveChangesAsync();
+
+        // Act - simulate the next application startup against an existing database.
+        await DemoAccountSeeder.SeedAsync(context);
+
+        // Assert
+        var activePrimaryIdentities = await context.UserEmailIdentities
+            .Where(identity => identity.Kind == "PRIMARY" && identity.Status != "REVOKED")
+            .ToListAsync();
+
+        activePrimaryIdentities.Should().HaveCount(9);
+        activePrimaryIdentities.Should().OnlyContain(identity => identity.Status == "VERIFIED");
+        activePrimaryIdentities.Select(identity => identity.UserId).Should().OnlyHaveUniqueItems();
+
+        var repairedCandidatePrimary = activePrimaryIdentities.Single(identity =>
+            identity.UserId == candidate.UserId);
+        repairedCandidatePrimary.Email.Should().Be(DemoAccountSeeder.CandidateEmail);
+        repairedCandidatePrimary.NormalizedEmail.Should().Be(DemoAccountSeeder.CandidateEmail);
+        repairedCandidatePrimary.VerificationSource.Should().Be("DEMO_SEED");
+        repairedCandidatePrimary.VerifiedAt.Should().Be(candidate.EmailVerifiedAt);
+    }
+
+    [Fact]
     public async Task SeedAsync_ShouldNotOverwriteExistingPassword_WhenUserAlreadyExists()
     {
         // Arrange

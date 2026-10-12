@@ -62,6 +62,31 @@ public partial class Job
     public string Visibility { get; set; } = null!;
 
     public string? StatusReason { get; set; }
+ 
+    /// <summary>
+    /// Sourcing Target: Số lượng Qualified CV Client mua (dịch vụ CV_SOURCING).
+    /// </summary>
+    public int? SourcingTarget { get; set; }
+
+    /// <summary>
+    /// Đơn giá cho mỗi Qualified CV (dịch vụ CV_SOURCING).
+    /// </summary>
+    public decimal? SourcingPricePerCv { get; set; }
+
+    /// <summary>
+    /// Hệ số phí tuyển dụng (dịch vụ HEADHUNT_COD, ví dụ 1.5). Cho phép ghi đè theo hợp đồng thỏa thuận với Client.
+    /// </summary>
+    public decimal? FeeMultiplier { get; set; }
+
+    /// <summary>
+    /// Số ngày bảo hành theo Job (dịch vụ HEADHUNT_COD, ví dụ 30 ngày).
+    /// </summary>
+    public int? WarrantyDays { get; set; }
+
+    /// <summary>
+    /// Số ngày đến hạn thanh toán phí sau ngày ứng viên đi làm (dịch vụ HEADHUNT_COD, ví dụ 14 ngày).
+    /// </summary>
+    public int? PaymentDueDays { get; set; }
 
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
 

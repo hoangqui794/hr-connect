@@ -25,6 +25,13 @@ const cleanParams = <T extends object>(params: T): Partial<T> =>
   ) as Partial<T>;
 
 export const jobsApi = {
+  // ── Guest / public Candidate scope ──────────────────────────────────────────
+  /** GET /public/jobs — ACTIVE/PUBLIC jobs visible to the Candidate role. */
+  async searchPublic(params: JobSearchParams): Promise<JobPage> {
+    const res = await apiClient.get<JobPage>('/public/jobs', { params: cleanParams(params) });
+    return res.data;
+  },
+
   // ── Client Company ──────────────────────────────────────────────────────────
   /** GET /jobs/mine — jobs of the caller's company. */
   async getMine(status?: JobStatus): Promise<Job[]> {
@@ -95,9 +102,11 @@ export const jobsApi = {
   },
 
   // ── Internal HR ─────────────────────────────────────────────────────────────
-  /** GET /internal/jobs/review — PENDING_REVIEW queue. */
-  async getReviewQueue(): Promise<Job[]> {
-    const res = await apiClient.get<Job[]>('/internal/jobs/review');
+  /** GET /internal/jobs/review — job review list with optional status filter (PENDING_REVIEW, ACTIVE, REJECTED, ALL). */
+  async getReviewQueue(status?: string): Promise<Job[]> {
+    const res = await apiClient.get<Job[]>('/internal/jobs/review', {
+      params: cleanParams({ status }),
+    });
     return res.data;
   },
 
