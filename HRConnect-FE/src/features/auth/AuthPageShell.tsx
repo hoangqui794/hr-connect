@@ -32,12 +32,12 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
     <main
       className={`relative w-full text-slate-900 ${
         fitScreen
-          ? 'h-screen h-[100dvh] overflow-hidden bg-slate-100/90 px-3 py-2 sm:px-6 sm:py-4 flex items-center justify-center'
+          ? 'h-screen h-[100dvh] overflow-hidden bg-gradient-to-br from-[#E2F3FB]/60 via-slate-50 to-[#B1E0F4]/35 px-3 py-2 sm:px-6 sm:py-4 flex items-center justify-center'
           : 'min-h-screen overflow-hidden bg-slate-50 px-4 py-5 sm:px-6 lg:flex lg:items-center lg:py-8'
       }`}
     >
       {/* Background radial highlights */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(30,58,138,0.08),_transparent_36%),radial-gradient(circle_at_bottom_right,_rgba(37,99,235,0.06),_transparent_32%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(30,158,219,0.10),_transparent_40%),radial-gradient(circle_at_bottom_right,_rgba(83,183,232,0.10),_transparent_36%)]" />
 
       <section
         className={`relative mx-auto grid w-full overflow-hidden rounded-2xl sm:rounded-[28px] border border-slate-200/90 bg-white shadow-[0_24px_70px_-24px_rgba(15,23,42,0.22)] ${
@@ -46,12 +46,11 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
             : 'lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[0.88fr_1.12fr]'
         } ${wide ? 'max-w-[1240px]' : 'max-w-[1100px]'}`}
       >
-        {/* Left Side: Fresh, Vibrant Pastel Ombre Blue Gradient with High Aesthetics */}
-        <aside className="relative hidden overflow-hidden bg-[linear-gradient(140deg,#1e3a8a_0%,#2563eb_40%,#0ea5e9_75%,#7dd3fc_100%)] p-7 text-white lg:flex lg:flex-col lg:justify-between xl:p-10">
-          {/* Pastel luminous ambient orbs */}
-          <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-cyan-300/25 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-indigo-400/30 blur-3xl" />
-          <div className="pointer-events-none absolute top-1/2 left-1/3 h-48 w-48 rounded-full bg-white/15 blur-2xl" />
+        {/* Left Side: Exact User Pastel Ombre Blue Gradient (#1E9EDB -> #53B7E8 -> #80CCEE -> #B1E0F4 -> #E2F3FB) */}
+        <aside className="relative hidden overflow-hidden bg-[linear-gradient(155deg,#1E9EDB_0%,#53B7E8_28%,#80CCEE_58%,#B1E0F4_84%,#E2F3FB_100%)] p-7 text-slate-900 lg:flex lg:flex-col lg:justify-between xl:p-10">
+          {/* Subtle luminous ambient rings */}
+          <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/25 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-[#80CCEE]/30 blur-3xl" />
 
           {/* Logo brand */}
           <button
@@ -60,32 +59,32 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
             className="relative z-10 flex w-fit cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left text-white"
             aria-label="Về trang chủ HR Connect"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-lg font-black text-[#1d4ed8] shadow-lg shadow-blue-950/25">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-lg font-black text-[#1E9EDB] shadow-md shadow-[#1E9EDB]/30">
               H
             </span>
             <span>
-              <strong className="block text-base font-extrabold leading-none tracking-tight">HR Connect</strong>
-              <span className="mt-1 block text-[11px] font-medium text-blue-100">Kết nối đúng người, đúng cơ hội</span>
+              <strong className="block text-base font-extrabold leading-none tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.15)]">HR Connect</strong>
+              <span className="mt-1 block text-[11px] font-medium text-white/90">Kết nối đúng người, đúng cơ hội</span>
             </span>
           </button>
 
           {/* Hero text & benefits */}
           <div className={`relative ${fitScreen ? 'my-auto py-2' : 'my-8'} max-w-md`}>
-            <span className="mb-3.5 inline-flex rounded-full border border-white/25 bg-white/15 px-3 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white backdrop-blur-md shadow-sm">
+            <span className="mb-3.5 inline-flex rounded-full border border-white/60 bg-white/30 px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white backdrop-blur-md shadow-sm">
               Tuyển dụng rõ ràng hơn
             </span>
-            <h2 className="m-0 text-2xl font-black leading-[1.18] tracking-[-0.03em] text-white xl:text-[32px]">
+            <h2 className="m-0 text-2xl font-black leading-[1.18] tracking-[-0.03em] text-white drop-shadow-[0_2px_4px_rgba(10,50,85,0.25)] xl:text-[32px]">
               {sideTitle}
             </h2>
-            <p className="mb-0 mt-3 max-w-sm text-xs sm:text-[13px] leading-6 text-blue-50/95 font-normal">{sideDescription}</p>
+            <p className="mb-0 mt-3 max-w-sm text-xs sm:text-[13px] leading-6 text-white/95 font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.1)]">{sideDescription}</p>
 
             <div className={`mt-5 ${fitScreen ? 'space-y-2' : 'space-y-3'}`}>
               {benefits.map((benefit) => (
                 <div
                   key={benefit}
-                  className="flex items-start gap-2.5 rounded-xl border border-white/20 bg-white/15 px-3.5 py-2 text-xs sm:text-[13px] font-semibold text-white backdrop-blur-md shadow-sm shadow-blue-950/10"
+                  className="flex items-start gap-2.5 rounded-xl border border-white/90 bg-white/85 px-3.5 py-2.5 text-xs sm:text-[13px] font-bold text-[#0c365a] backdrop-blur-md shadow-sm shadow-[#1E9EDB]/15"
                 >
-                  <CheckCircleFilled className="mt-0.5 shrink-0 text-cyan-200 text-sm" />
+                  <CheckCircleFilled className="mt-0.5 shrink-0 text-[#1E9EDB] text-sm" />
                   <span>{benefit}</span>
                 </div>
               ))}
@@ -93,8 +92,8 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
           </div>
 
           {/* Security footnote */}
-          <div className="relative flex items-center gap-2 text-[11px] text-blue-100/90 font-medium">
-            <SafetyCertificateOutlined className="text-cyan-200" />
+          <div className="relative flex items-center gap-2 text-[11px] text-[#0c365a] font-bold">
+            <SafetyCertificateOutlined className="text-[#1E9EDB] text-sm" />
             <span>Dữ liệu tài khoản được bảo vệ trong suốt quá trình sử dụng.</span>
           </div>
         </aside>
