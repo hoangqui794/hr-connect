@@ -234,12 +234,17 @@ export const RegisterPage: React.FC = () => {
     }
   };
 
+  const COMPACT_INPUT_CLASS =
+    'h-10 text-xs sm:text-sm rounded-xl border-slate-200 bg-white text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-[#53B7E8] focus:border-[#1E9EDB] transition-colors';
+  const COMPACT_LABEL_CLASS = 'text-xs font-bold text-slate-700';
+
   return (
     <AuthPageShell
+      fitScreen
       wide
       eyebrow="Bắt đầu cùng HR Connect"
-      title="Tạo tài khoản phù hợp với bạn"
-      description="Chọn đúng vai trò để hệ thống chuẩn bị không gian làm việc và quy trình xác thực phù hợp."
+      title="Tạo tài khoản HR Connect"
+      description="Chọn vai trò và hoàn tất thông tin để bắt đầu không gian làm việc của bạn."
       sideTitle="Một tài khoản, đúng trải nghiệm cho từng vai trò."
       sideDescription="Dù bạn đang tìm việc, tuyển người hay giới thiệu ứng viên, HR Connect giúp mọi bước rõ ràng và dễ theo dõi."
       benefits={[
@@ -247,10 +252,77 @@ export const RegisterPage: React.FC = () => {
         'Doanh nghiệp theo dõi ứng viên theo từng Job',
         'Affiliate Recruiter ghi nhận nguồn giới thiệu minh bạch',
       ]}
+      extraVisual={
+        <div className="space-y-2.5">
+          {/* Stickers: Topic features */}
+          <div className="flex flex-wrap gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/80 bg-white/75 px-2.5 py-0.5 text-[11px] font-extrabold text-[#0c365a] shadow-sm backdrop-blur-md">
+              🤖 AI CV Match 98%
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/80 bg-white/75 px-2.5 py-0.5 text-[11px] font-extrabold text-[#0c365a] shadow-sm backdrop-blur-md">
+              🛡️ Bảo hành ứng viên 60 ngày
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/80 bg-white/75 px-2.5 py-0.5 text-[11px] font-extrabold text-[#0c365a] shadow-sm backdrop-blur-md">
+              💰 Hoa hồng Affiliate tức thì
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/80 bg-white/75 px-2.5 py-0.5 text-[11px] font-extrabold text-[#0c365a] shadow-sm backdrop-blur-md">
+              ⚡ ATS Standard Builder
+            </span>
+          </div>
+
+          {/* Mini Interactive Preview Card: AI Connected Candidate */}
+          <div className="overflow-hidden rounded-xl border border-white/90 bg-white/85 p-3 shadow-sm shadow-[#1E9EDB]/15 backdrop-blur-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-white text-[11px] font-black shadow-sm">
+                  AI
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <strong className="text-xs text-slate-800">Lê Hoàng Nam</strong>
+                    <span className="rounded bg-blue-100 px-1 py-0.2 text-[9px] font-bold text-blue-700">Verified</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-medium">Senior React & .NET Developer</span>
+                </div>
+              </div>
+              <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">
+                ★ 98% Match
+              </span>
+            </div>
+
+            <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-200/60 pt-1.5 text-[10px]">
+              <div className="flex items-center gap-1 text-slate-600 font-medium">
+                <SafetyCertificateOutlined className="text-[#1E9EDB]" />
+                <span>Bảo hành: <strong>60 ngày</strong></span>
+              </div>
+              <div className="text-right font-bold text-amber-600">
+                Hoa hồng: 12.000.000đ
+              </div>
+            </div>
+          </div>
+
+          {/* Platform Quick Stats */}
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl border border-white/70 bg-white/60 p-1.5 backdrop-blur-sm">
+              <strong className="block text-xs font-black text-[#0c365a]">5.000+</strong>
+              <span className="text-[9px] text-[#0c365a]/80 font-medium">Việc làm IT</span>
+            </div>
+            <div className="rounded-xl border border-white/70 bg-white/60 p-1.5 backdrop-blur-sm">
+              <strong className="block text-xs font-black text-[#0c365a]">800+</strong>
+              <span className="text-[9px] text-[#0c365a]/80 font-medium">Doanh nghiệp</span>
+            </div>
+            <div className="rounded-xl border border-white/70 bg-white/60 p-1.5 backdrop-blur-sm">
+              <strong className="block text-xs font-black text-[#0c365a]">100%</strong>
+              <span className="text-[9px] text-[#0c365a]/80 font-medium">Minh bạch</span>
+            </div>
+          </div>
+        </div>
+      }
     >
-      <div className="mb-7">
-        <p className="mb-3 text-sm font-bold text-slate-700">Bạn đăng ký với vai trò nào?</p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* Role Selection Tabs */}
+      <div className="mb-2.5">
+        <p className="mb-1 text-xs font-bold text-slate-700">Bạn đăng ký với vai trò nào?</p>
+        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
           {ROLE_OPTIONS.map((option) => {
             const isSelected = selectedRole === option.role;
             return (
@@ -261,30 +333,26 @@ export const RegisterPage: React.FC = () => {
                   setSelectedRole(option.role);
                   setErrorMessage(null);
                 }}
-                className={`relative cursor-pointer rounded-2xl border p-4 text-left transition ${
+                className={`relative flex items-center gap-2 cursor-pointer rounded-xl border p-2 text-left transition ${
                   isSelected
-                    ? 'border-blue-500 bg-blue-50 shadow-sm ring-2 ring-blue-100'
-                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
+                    ? 'border-[#1E9EDB] bg-[#E2F3FB]/70 shadow-sm ring-2 ring-[#53B7E8]/25'
+                    : 'border-slate-200 bg-white hover:border-[#80CCEE] hover:bg-slate-50'
                 }`}
                 aria-pressed={isSelected}
               >
-                <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                  isSelected ? 'bg-white shadow-sm' : 'bg-slate-100'
+                }`}>
                   {option.icon}
                 </span>
-                <strong className="block text-sm text-slate-900">{option.title}</strong>
-                <span className="mt-1 block text-xs leading-5 text-slate-500">{option.subtitle}</span>
-                {isSelected && <CheckCircleFilled className="absolute right-3 top-3 text-blue-600" />}
+                <div className="min-w-0 flex-1">
+                  <strong className="block truncate text-xs text-slate-900">{option.title}</strong>
+                  <span className="block truncate text-[10px] text-slate-500 leading-tight">{option.subtitle}</span>
+                </div>
+                {isSelected && <CheckCircleFilled className="shrink-0 text-[#1E9EDB] text-xs" />}
               </button>
             );
           })}
-        </div>
-      </div>
-
-      <div className="mb-5 flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm">{activeOption.icon}</span>
-        <div>
-          <strong className="block text-sm text-blue-950">Đăng ký {activeOption.title}</strong>
-          <span className="text-xs text-blue-700">{activeOption.subtitle}</span>
         </div>
       </div>
 
@@ -296,96 +364,108 @@ export const RegisterPage: React.FC = () => {
           showIcon
           closable
           onClose={() => setErrorMessage(null)}
-          className="mb-5 rounded-xl"
+          className="mb-2.5 rounded-xl py-1.5 px-3 text-xs"
         />
       )}
 
-      <Form form={form} layout="vertical" onFinish={onFinish} requiredMark={false} scrollToFirstError>
+      <Form form={form} layout="vertical" onFinish={onFinish} requiredMark={false} scrollToFirstError className="[&_.ant-form-item]:mb-2 sm:[&_.ant-form-item]:mb-2">
         {selectedRole === UserRole.CLIENT && (
-          <Row gutter={14}>
+          <Row gutter={10}>
             <Col xs={24} sm={14}>
               <Form.Item
                 name="companyName"
-                label={<span className={AUTH_LABEL_CLASS}>Tên doanh nghiệp</span>}
+                label={<span className={COMPACT_LABEL_CLASS}>Tên doanh nghiệp</span>}
                 rules={[
                   { required: true, message: 'Vui lòng nhập tên doanh nghiệp.' },
                   { min: 3, message: 'Tên doanh nghiệp cần ít nhất 3 ký tự.' },
                 ]}
               >
-                <Input size="large" prefix={<BankOutlined className="mr-1 text-slate-400" />} placeholder="Công ty Cổ phần Công nghệ XYZ" className={AUTH_INPUT_CLASS} disabled={submitting} />
+                <Input prefix={<BankOutlined className="mr-1 text-slate-400" />} placeholder="Công ty Cổ phần Công nghệ XYZ" className={COMPACT_INPUT_CLASS} disabled={submitting} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={10}>
               <Form.Item
                 name="taxCode"
-                label={<span className={AUTH_LABEL_CLASS}>Mã số thuế</span>}
+                label={<span className={COMPACT_LABEL_CLASS}>Mã số thuế</span>}
                 rules={[
                   { required: true, message: 'Vui lòng nhập mã số thuế.' },
                   { pattern: /^[0-9]{10}(-[0-9]{3})?$/, message: 'Mã số thuế gồm 10 hoặc 13 số.' },
                 ]}
               >
-                <Input size="large" prefix={<IdcardOutlined className="mr-1 text-slate-400" />} placeholder="0312345678" maxLength={14} className={AUTH_INPUT_CLASS} disabled={submitting} />
+                <Input prefix={<IdcardOutlined className="mr-1 text-slate-400" />} placeholder="0312345678" maxLength={14} className={COMPACT_INPUT_CLASS} disabled={submitting} />
               </Form.Item>
             </Col>
           </Row>
         )}
 
-        <Row gutter={14}>
+        <Row gutter={10}>
           <Col xs={24} sm={13}>
             <Form.Item
               name="fullName"
-              label={<span className={AUTH_LABEL_CLASS}>{selectedRole === UserRole.CLIENT ? 'Người đại diện tuyển dụng' : 'Họ và tên'}</span>}
+              label={<span className={COMPACT_LABEL_CLASS}>{selectedRole === UserRole.CLIENT ? 'Người đại diện' : 'Họ và tên'}</span>}
               rules={[
                 { required: true, message: 'Vui lòng nhập họ và tên.' },
                 { min: 2, message: 'Họ tên cần ít nhất 2 ký tự.' },
               ]}
             >
-              <Input size="large" autoComplete="name" prefix={<UserOutlined className="mr-1 text-slate-400" />} placeholder={selectedRole === UserRole.CLIENT ? 'Nguyễn Văn An' : 'Nguyễn Văn An'} className={AUTH_INPUT_CLASS} disabled={submitting} />
+              <Input autoComplete="name" prefix={<UserOutlined className="mr-1 text-slate-400" />} placeholder="Nguyễn Văn An" className={COMPACT_INPUT_CLASS} disabled={submitting} />
             </Form.Item>
           </Col>
           <Col xs={24} sm={11}>
             <Form.Item
               name="phone"
-              label={<span className={AUTH_LABEL_CLASS}>Số điện thoại</span>}
+              label={<span className={COMPACT_LABEL_CLASS}>Số điện thoại</span>}
               rules={[
                 { required: true, message: 'Vui lòng nhập số điện thoại.' },
                 { pattern: /(84|0[3|5|7|8|9])+([0-9]{8})\b/, message: 'Số điện thoại Việt Nam chưa hợp lệ.' },
               ]}
             >
-              <Input size="large" autoComplete="tel" prefix={<PhoneOutlined className="mr-1 text-slate-400" />} placeholder="0912 345 678" maxLength={11} className={AUTH_INPUT_CLASS} disabled={submitting} />
+              <Input autoComplete="tel" prefix={<PhoneOutlined className="mr-1 text-slate-400" />} placeholder="0912 345 678" maxLength={11} className={COMPACT_INPUT_CLASS} disabled={submitting} />
             </Form.Item>
           </Col>
         </Row>
 
         <Form.Item
           name="email"
-          label={<span className={AUTH_LABEL_CLASS}>{selectedRole === UserRole.CLIENT ? 'Email doanh nghiệp' : 'Email'}</span>}
+          label={<span className={COMPACT_LABEL_CLASS}>{selectedRole === UserRole.CLIENT ? 'Email doanh nghiệp' : 'Email'}</span>}
           rules={[
             { required: true, message: 'Vui lòng nhập địa chỉ email.' },
             { type: 'email', message: 'Email chưa đúng định dạng.' },
           ]}
         >
-          <Input size="large" type="email" autoComplete="email" prefix={<MailOutlined className="mr-1 text-slate-400" />} placeholder={selectedRole === UserRole.CLIENT ? 'tuyendung@congty.com' : 'ten@email.com'} className={AUTH_INPUT_CLASS} disabled={submitting} />
+          <Input type="email" autoComplete="email" prefix={<MailOutlined className="mr-1 text-slate-400" />} placeholder={selectedRole === UserRole.CLIENT ? 'tuyendung@congty.com' : 'ten@email.com'} className={COMPACT_INPUT_CLASS} disabled={submitting} />
         </Form.Item>
 
-        <Row gutter={14}>
+        <Row gutter={10}>
           <Col xs={24} sm={12}>
             <Form.Item
               name="password"
-              label={<span className={AUTH_LABEL_CLASS}>Mật khẩu</span>}
+              label={<span className={COMPACT_LABEL_CLASS}>Mật khẩu</span>}
               rules={[
                 { required: true, message: 'Vui lòng nhập mật khẩu.' },
                 { min: 6, message: 'Mật khẩu cần ít nhất 6 ký tự.' },
               ]}
             >
-              <Input.Password size="large" autoComplete="new-password" prefix={<LockOutlined className="mr-1 text-slate-400" />} placeholder="Tạo mật khẩu" onChange={(event) => setPasswordValue(event.target.value)} className={AUTH_INPUT_CLASS} disabled={submitting} />
+              <Input.Password autoComplete="new-password" prefix={<LockOutlined className="mr-1 text-slate-400" />} placeholder="Tạo mật khẩu" onChange={(event) => setPasswordValue(event.target.value)} className={COMPACT_INPUT_CLASS} disabled={submitting} />
             </Form.Item>
+            {passwordValue && (
+              <div className="-mt-1 mb-1.5 flex items-center gap-1.5 text-[10px]">
+                <span className="text-slate-400">Độ mạnh:</span>
+                <span className="font-bold" style={{ color: passwordStrength.color }}>{passwordStrength.label}</span>
+                <div className="flex-1 h-1 rounded-full bg-slate-200 overflow-hidden">
+                  <div
+                    className="h-full transition-all duration-300"
+                    style={{ width: `${passwordStrength.percent}%`, backgroundColor: passwordStrength.color }}
+                  />
+                </div>
+              </div>
+            )}
           </Col>
           <Col xs={24} sm={12}>
             <Form.Item
               name="confirmPassword"
               dependencies={['password']}
-              label={<span className={AUTH_LABEL_CLASS}>Nhập lại mật khẩu</span>}
+              label={<span className={COMPACT_LABEL_CLASS}>Nhập lại mật khẩu</span>}
               rules={[
                 { required: true, message: 'Vui lòng nhập lại mật khẩu.' },
                 ({ getFieldValue }) => ({
@@ -396,20 +476,10 @@ export const RegisterPage: React.FC = () => {
                 }),
               ]}
             >
-              <Input.Password size="large" autoComplete="new-password" prefix={<SafetyCertificateOutlined className="mr-1 text-slate-400" />} placeholder="Nhập lại mật khẩu" className={AUTH_INPUT_CLASS} disabled={submitting} />
+              <Input.Password autoComplete="new-password" prefix={<SafetyCertificateOutlined className="mr-1 text-slate-400" />} placeholder="Nhập lại mật khẩu" className={COMPACT_INPUT_CLASS} disabled={submitting} />
             </Form.Item>
           </Col>
         </Row>
-
-        {passwordValue && (
-          <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div className="mb-1.5 flex items-center justify-between text-xs">
-              <span className="font-medium text-slate-500">Độ an toàn mật khẩu</span>
-              <strong style={{ color: passwordStrength.color }}>{passwordStrength.label}</strong>
-            </div>
-            <Progress percent={passwordStrength.percent} strokeColor={passwordStrength.color} showInfo={false} size="small" className="m-0" />
-          </div>
-        )}
 
         <Form.Item
           name="terms"
@@ -417,20 +487,20 @@ export const RegisterPage: React.FC = () => {
           rules={[{
             validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('Vui lòng đồng ý với điều khoản sử dụng.')),
           }]}
-          className="mb-5"
+          className="!mb-2.5"
         >
-          <Checkbox className="text-sm leading-6 text-slate-600">
-            Tôi đồng ý với <a href="#terms" onClick={(event) => event.preventDefault()} className="font-semibold text-blue-700">Điều khoản dịch vụ</a> và <a href="#privacy" onClick={(event) => event.preventDefault()} className="font-semibold text-blue-700">Chính sách bảo mật</a>.
+          <Checkbox className="text-xs leading-5 text-slate-600">
+            Tôi đồng ý với <a href="#terms" onClick={(event) => event.preventDefault()} className="font-semibold text-[#1E9EDB]">Điều khoản dịch vụ</a> và <a href="#privacy" onClick={(event) => event.preventDefault()} className="font-semibold text-[#1E9EDB]">Chính sách bảo mật</a>.
           </Checkbox>
         </Form.Item>
 
-        <Button type="primary" htmlType="submit" size="large" loading={submitting} disabled={submitting} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border-0 bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-sm font-bold text-white shadow-lg shadow-[#1E9EDB]/30 hover:opacity-95 transition-all">
+        <Button type="primary" htmlType="submit" size="large" loading={submitting} disabled={submitting} className="flex h-10 sm:h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-sm font-bold text-white shadow-md shadow-[#1E9EDB]/30 hover:opacity-95 transition-all">
           <span>{submitting ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}</span>
           {!submitting && <ArrowRightOutlined />}
         </Button>
       </Form>
 
-      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-600">
+      <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 py-1.5 px-3 text-center text-xs text-slate-600">
         Đã có tài khoản?{' '}
         <Link to="/login" className="font-bold text-[#1E9EDB] hover:text-[#168ec6]">Đăng nhập</Link>
       </div>
