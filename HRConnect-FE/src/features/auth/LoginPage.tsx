@@ -411,7 +411,7 @@ export const LoginPage: React.FC = () => {
                 const currentEmail = form.getFieldValue('email');
                 if (currentEmail) forgotForm.setFieldsValue({ email: currentEmail });
               }}
-              className="cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold text-blue-600 hover:text-blue-800"
+              className="cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold text-[#1E9EDB] hover:text-[#168ec6]"
             >
               Quên mật khẩu?
             </button>
@@ -437,7 +437,7 @@ export const LoginPage: React.FC = () => {
             disabled={submitting}
             icon={<ArrowRightOutlined />}
             iconPosition="end"
-            className="h-11 rounded-xl border-0 bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#0ea5e9] hover:from-[#1e40af] hover:via-[#1d4ed8] hover:to-[#0284c7] text-sm font-bold text-white shadow-md shadow-blue-500/25 transition-all"
+            className="h-11 rounded-xl border-0 bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] hover:bg-[linear-gradient(135deg,#168ec6_0%,#43abd8_100%)] text-sm font-bold text-white shadow-md shadow-[#1E9EDB]/30 transition-all"
           >
             {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </Button>
@@ -445,7 +445,7 @@ export const LoginPage: React.FC = () => {
 
         <div className="mt-3.5 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2 text-center text-xs text-slate-600">
           Chưa có tài khoản?{' '}
-          <Link to="/register" className="font-bold text-blue-700 hover:text-blue-900">
+          <Link to="/register" className="font-bold text-[#1E9EDB] hover:text-[#168ec6]">
             Tạo tài khoản miễn phí
           </Link>
         </div>
