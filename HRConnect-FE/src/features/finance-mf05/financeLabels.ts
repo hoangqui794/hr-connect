@@ -1,5 +1,5 @@
 import type { Tone } from '@/features/admin-console/ui';
-import type { CommissionStatus, PayoutStatus, ServiceFeeStatus } from '@/types/api/finance';
+import type { CommissionStatus, PayoutStatus, ServiceFeeStatus, WarrantyStatus } from '@/types/api/finance';
 
 interface StatusLabel {
   label: string;
@@ -30,7 +30,7 @@ export const PAYOUT_STATUS: Record<PayoutStatus, StatusLabel> = {
   CANCELLED: { label: 'Đã hủy', tone: 'neutral' },
 };
 
-export const WARRANTY_STATUS: Record<string, StatusLabel> = {
+export const WARRANTY_STATUS: Record<WarrantyStatus, StatusLabel> = {
   ACTIVE: { label: 'Đang bảo hành', tone: 'info' },
   CLAIMED: { label: 'Báo nghỉ — chờ xác minh', tone: 'warning' },
   PASSED: { label: 'Đã qua bảo hành', tone: 'success' },
