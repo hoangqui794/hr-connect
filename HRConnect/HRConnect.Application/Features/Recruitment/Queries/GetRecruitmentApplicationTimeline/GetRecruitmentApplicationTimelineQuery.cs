@@ -8,5 +8,6 @@ public record GetRecruitmentApplicationTimelineQuery(
     Guid UserId,
     bool IsClientCompanyUser,
     bool IsInternalHrOrAdmin,
-    bool Ascending = true
+    bool Ascending = true,
+    bool IsCandidate = false
 ) : IRequest<RecruitmentApplicationTimelineResponse>;

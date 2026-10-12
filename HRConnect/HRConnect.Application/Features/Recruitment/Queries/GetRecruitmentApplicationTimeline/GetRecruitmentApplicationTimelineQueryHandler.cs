@@ -54,6 +54,14 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                 throw new NotFoundException("Không tìm thấy thông tin hồ sơ ứng tuyển.");
             }
         }
+        else if (request.IsCandidate)
+        {
+            if (app.Candidate?.UserId != request.UserId)
+            {
+                _logger.LogWarning("Ứng viên {UserId} không có quyền xem timeline hồ sơ của ứng viên khác.", request.UserId);
+                throw new ForbiddenException("Bạn không có quyền xem dòng thời gian hồ sơ tuyển dụng này.");
+            }
+        }
         else if (!request.IsInternalHrOrAdmin)
         {
             _logger.LogWarning("Người dùng {UserId} không có quyền xem dòng thời gian hồ sơ tuyển dụng.", request.UserId);
@@ -89,10 +97,10 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                         ? h.Reason
                         : $"Trạng thái chuyển từ {h.OldStatus ?? "Mới"} sang {h.NewStatus}.",
                     Timestamp = h.ChangedAt,
-                    ActorUserId = h.ChangedBy,
-                    ActorName = h.ChangedByNavigation?.DisplayName ?? h.ChangedByNavigation?.Email,
+                    ActorUserId = request.IsCandidate ? null : h.ChangedBy,
+                    ActorName = request.IsCandidate ? null : (h.ChangedByNavigation?.DisplayName ?? h.ChangedByNavigation?.Email),
                     Status = h.NewStatus,
-                    ReasonCode = h.ReasonCode
+                    ReasonCode = request.IsCandidate ? null : h.ReasonCode
                 });
             }
         }
@@ -108,8 +116,8 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                     Title = $"Lên lịch phỏng vấn Vòng {i.InterviewRound}",
                     Description = $"Thời gian: {i.ScheduledAt:yyyy-MM-dd HH:mm} - Hình thức: {i.InterviewType ?? "Trực tiếp"}.",
                     Timestamp = i.CreatedAt,
-                    ActorUserId = i.CreatedBy,
-                    ActorName = i.CreatedByNavigation?.DisplayName ?? i.CreatedByNavigation?.Email,
+                    ActorUserId = request.IsCandidate ? null : i.CreatedBy,
+                    ActorName = request.IsCandidate ? null : (i.CreatedByNavigation?.DisplayName ?? i.CreatedByNavigation?.Email),
                     Status = i.Status
                 });
 
@@ -123,14 +131,14 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                             Title = $"Cập nhật phỏng vấn Vòng {i.InterviewRound}: {sh.NewStatus}",
                             Description = sh.Reason,
                             Timestamp = sh.ChangedAt,
-                            ActorUserId = sh.ChangedBy,
-                            ActorName = sh.ChangedByNavigation?.DisplayName ?? sh.ChangedByNavigation?.Email,
+                            ActorUserId = request.IsCandidate ? null : sh.ChangedBy,
+                            ActorName = request.IsCandidate ? null : (sh.ChangedByNavigation?.DisplayName ?? sh.ChangedByNavigation?.Email),
                             Status = sh.NewStatus
                         });
                     }
                 }
 
-                if (i.RecordedAt.HasValue)
+                if (i.RecordedAt.HasValue && !request.IsCandidate)
                 {
                     events.Add(new ApplicationTimelineEventDto
                     {
@@ -151,16 +159,19 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
         {
             foreach (var o in app.Offers)
             {
-                events.Add(new ApplicationTimelineEventDto
+                if (!request.IsCandidate)
                 {
-                    EventType = "OFFER_CREATED",
-                    Title = $"Tạo Offer v{o.OfferVersion}",
-                    Description = $"Mức lương: {o.Salary:N0} {o.CurrencyCode} - Dự kiến nhận việc: {o.StartDate:yyyy-MM-dd}.",
-                    Timestamp = o.CreatedAt,
-                    ActorUserId = o.CreatedBy,
-                    ActorName = o.CreatedByNavigation?.DisplayName ?? o.CreatedByNavigation?.Email,
-                    Status = o.Status
-                });
+                    events.Add(new ApplicationTimelineEventDto
+                    {
+                        EventType = "OFFER_CREATED",
+                        Title = $"Tạo Offer v{o.OfferVersion}",
+                        Description = $"Mức lương: {o.Salary:N0} {o.CurrencyCode} - Dự kiến nhận việc: {o.StartDate:yyyy-MM-dd}.",
+                        Timestamp = o.CreatedAt,
+                        ActorUserId = o.CreatedBy,
+                        ActorName = o.CreatedByNavigation?.DisplayName ?? o.CreatedByNavigation?.Email,
+                        Status = o.Status
+                    });
+                }
 
                 if (o.SentAt.HasValue)
                 {
@@ -170,6 +181,8 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                         Title = $"Gửi Offer v{o.OfferVersion}",
                         Description = $"Offer đã được gửi đến ứng viên {candidateName}.",
                         Timestamp = o.SentAt.Value,
+                        ActorUserId = request.IsCandidate ? null : o.CreatedBy,
+                        ActorName = request.IsCandidate ? null : (o.CreatedByNavigation?.DisplayName ?? o.CreatedByNavigation?.Email),
                         Status = "SENT"
                     });
                 }
@@ -194,14 +207,18 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
         if (app.Placement != null)
         {
             var p = app.Placement;
+            var desc = request.IsCandidate
+                ? $"Vị trí: {p.Position} - Bộ phận: {p.Department} - Ngày bắt đầu: {p.ActualStartDate:yyyy-MM-dd}."
+                : $"Vị trí: {p.Position} - Bộ phận: {p.Department} - Ngày bắt đầu: {p.ActualStartDate:yyyy-MM-dd}. {(string.IsNullOrWhiteSpace(p.ConfirmationNote) ? "" : $"Ghi chú: {p.ConfirmationNote}")}".Trim();
+
             events.Add(new ApplicationTimelineEventDto
             {
                 EventType = "PLACEMENT_CONFIRMED",
                 Title = "Xác nhận nhận việc thành công",
-                Description = $"Vị trí: {p.Position} - Bộ phận: {p.Department} - Ngày bắt đầu: {p.ActualStartDate:yyyy-MM-dd}. {(string.IsNullOrWhiteSpace(p.ConfirmationNote) ? "" : $"Ghi chú: {p.ConfirmationNote}")}".Trim(),
+                Description = desc,
                 Timestamp = p.ConfirmedAt != default ? p.ConfirmedAt : p.CreatedAt,
-                ActorUserId = p.ConfirmedBy,
-                ActorName = p.ConfirmedByNavigation?.DisplayName ?? p.ConfirmedByNavigation?.Email,
+                ActorUserId = request.IsCandidate ? null : p.ConfirmedBy,
+                ActorName = request.IsCandidate ? null : (p.ConfirmedByNavigation?.DisplayName ?? p.ConfirmedByNavigation?.Email),
                 Status = p.Status
             });
         }

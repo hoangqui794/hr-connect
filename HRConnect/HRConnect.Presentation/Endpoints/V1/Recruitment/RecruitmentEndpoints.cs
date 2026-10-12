@@ -30,6 +30,7 @@ public static class RecruitmentEndpoints
     private const string PlacementConfirmPermission = "placement.confirm";
     private const string MarkNotStartedPermission = "application.mark_not_started";
     private const string WithdrawOwnPermission = "application.withdraw_own";
+    private const string ViewOwnPermission = "application.view_own";
     private const string ReviewCompanyPermission = "candidate.review_company";
     private const string ScreenApplicationPermission = "application.screen";
 
@@ -245,14 +246,23 @@ public static class RecruitmentEndpoints
             var isInternal = user.IsInRole("INTERNAL_HR")
                 && PermissionAuthorization.HasPermission(user, ViewAllPermission);
             var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+            var isCandidate = (user.IsInRole("CANDIDATE") || PermissionAuthorization.HasPermission(user, ViewOwnPermission))
+                && !isClient && !isInternal && !isAdmin;
 
-            if (!isClient && !isInternal && !isAdmin)
+            if (!isClient && !isInternal && !isAdmin && !isCandidate)
             {
                 return PermissionAuthorization.Forbidden(ViewAllPermission);
             }
 
             try
             {
+                if (isCandidate)
+                {
+                    var candidateQuery = new GetCandidateRecruitmentApplicationDetailQuery(applicationId, userId.Value);
+                    var candidateResponse = await sender.Send(candidateQuery, cancellationToken);
+                    return Results.Ok(candidateResponse);
+                }
+
                 var query = new GetRecruitmentApplicationDetailQuery(
                     applicationId,
                     userId.Value,
@@ -279,8 +289,9 @@ public static class RecruitmentEndpoints
         })
         .WithName("GetRecruitmentApplicationDetail")
         .WithSummary("Lấy chi tiết hồ sơ tuyển dụng")
-        .WithDescription("Dành cho Client Company (chỉ xem hồ sơ của công ty mình qua quyền application.view_company), Internal HR và Admin (xem qua quyền application.view). Trả về thông tin ứng viên, CV, tóm tắt phỏng vấn, offer, thông tin tiếp nhận việc và allowedActions theo đúng phạm vi actor; dữ liệu liên hệ/CV của HEADHUNT_COD và CV_SOURCING được che theo chính sách hiển thị.")
+        .WithDescription("Dành cho Client Company (chỉ xem hồ sơ của công ty mình qua quyền application.view_company), Internal HR và Admin (xem qua quyền application.view), hoặc Candidate (xem hồ sơ của mình qua quyền application.view_own). Trả về thông tin ứng viên, CV, tóm tắt phỏng vấn, offer, thông tin tiếp nhận việc và allowedActions theo đúng phạm vi actor; dữ liệu liên hệ/CV của HEADHUNT_COD và CV_SOURCING được che theo chính sách hiển thị.")
         .Produces<RecruitmentApplicationDetailResponse>(StatusCodes.Status200OK)
+        .Produces<CandidateRecruitmentApplicationDetailResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
@@ -304,8 +315,10 @@ public static class RecruitmentEndpoints
             var isInternal = user.IsInRole("INTERNAL_HR")
                 && PermissionAuthorization.HasPermission(user, ViewAllPermission);
             var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+            var isCandidate = (user.IsInRole("CANDIDATE") || PermissionAuthorization.HasPermission(user, ViewOwnPermission))
+                && !isClient && !isInternal && !isAdmin;
 
-            if (!isClient && !isInternal && !isAdmin)
+            if (!isClient && !isInternal && !isAdmin && !isCandidate)
             {
                 return PermissionAuthorization.Forbidden(ViewAllPermission);
             }
@@ -316,7 +329,8 @@ public static class RecruitmentEndpoints
                     applicationId,
                     userId.Value,
                     IsClientCompanyUser: isClient && !isInternal && !isAdmin,
-                    IsInternalHrOrAdmin: isInternal || isAdmin);
+                    IsInternalHrOrAdmin: isInternal || isAdmin,
+                    IsCandidate: isCandidate);
 
                 return Results.Ok(await sender.Send(query, cancellationToken));
             }
@@ -354,8 +368,10 @@ public static class RecruitmentEndpoints
             var isClient = PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
             var isInternal = PermissionAuthorization.HasPermission(user, ViewAllPermission);
             var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+            var isCandidate = (user.IsInRole("CANDIDATE") || PermissionAuthorization.HasPermission(user, ViewOwnPermission))
+                && !isClient && !isInternal && !isAdmin;
 
-            if (!isClient && !isInternal && !isAdmin)
+            if (!isClient && !isInternal && !isAdmin && !isCandidate)
             {
                 return PermissionAuthorization.Forbidden(ViewAllPermission);
             }
@@ -367,7 +383,8 @@ public static class RecruitmentEndpoints
                     userId.Value,
                     IsClientCompanyUser: isClient && !isInternal && !isAdmin,
                     IsInternalHrOrAdmin: isInternal || isAdmin,
-                    Ascending: ascending
+                    Ascending: ascending,
+                    IsCandidate: isCandidate
                 );
 
                 var response = await sender.Send(query, cancellationToken);

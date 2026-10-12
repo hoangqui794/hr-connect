@@ -225,6 +225,121 @@ public class GetRecruitmentApplicationTimelineQueryHandlerTests
             .WithMessage("Bạn không có quyền xem dòng thời gian hồ sơ tuyển dụng.");
     }
 
+    [Fact]
+    public async Task Handle_WhenUserIsCandidateOwner_ShouldMaskActorsAndOmitInternalFeedbackAndDraftOffers()
+    {
+        // Arrange
+        var appId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var app = CreateSampleApplication(appId, Guid.NewGuid(), "INTERVIEW");
+        app.Candidate.UserId = candidateUserId;
+
+        // Add internal actor history
+        app.ApplicationStatusHistories.Add(new ApplicationStatusHistory
+        {
+            ApplicationStatusHistoryId = Guid.NewGuid(),
+            ApplicationId = appId,
+            OldStatus = "SCREENING",
+            NewStatus = "INTERVIEW",
+            ChangedAt = DateTime.UtcNow.AddDays(-2),
+            ChangedBy = Guid.NewGuid(),
+            ChangedByNavigation = new AppUser { DisplayName = "Internal HR Staff" }
+        });
+
+        // Add Interview with feedback
+        app.Interviews.Add(new Interview
+        {
+            InterviewId = Guid.NewGuid(),
+            ApplicationId = appId,
+            InterviewRound = 1,
+            InterviewType = "TECHNICAL",
+            ScheduledAt = DateTime.UtcNow.AddDays(-1),
+            Status = "COMPLETED",
+            Result = "PASS",
+            Feedback = "Detailed internal evaluation scores 9/10",
+            CreatedAt = DateTime.UtcNow.AddDays(-3)
+        });
+
+        // Add DRAFT offer (should be omitted for candidate)
+        app.Offers.Add(new Offer
+        {
+            OfferId = Guid.NewGuid(),
+            ApplicationId = appId,
+            OfferVersion = 1,
+            Status = "DRAFT",
+            Salary = 30000000,
+            CreatedAt = DateTime.UtcNow.AddHours(-5)
+        });
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetApplicationTimelineDataAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        var query = new GetRecruitmentApplicationTimelineQuery(
+            ApplicationId: appId,
+            UserId: candidateUserId,
+            IsClientCompanyUser: false,
+            IsInternalHrOrAdmin: false,
+            IsCandidate: true
+        );
+
+        // Act
+        var result = await CreateHandler().Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.Data.Events.Should().NotBeEmpty();
+
+        // Internal staff events for candidate must have ActorUserId and ActorName stripped
+        var statusChangedEvent = result.Data.Events.First(e => e.EventType == "APPLICATION_STATUS_CHANGED");
+        statusChangedEvent.ActorUserId.Should().BeNull();
+        statusChangedEvent.ActorName.Should().BeNull();
+
+        var interviewScheduledEvent = result.Data.Events.First(e => e.EventType == "INTERVIEW_SCHEDULED");
+        interviewScheduledEvent.ActorUserId.Should().BeNull();
+        interviewScheduledEvent.ActorName.Should().BeNull();
+
+        // Draft offer event must NOT be in timeline
+        result.Data.Events.Should().NotContain(e => e.EventType == "OFFER_CREATED");
+
+        // Interview event description must NOT contain internal feedback
+        var interviewEvent = result.Data.Events.FirstOrDefault(e => e.EventType == "INTERVIEW_CONDUCTED");
+        if (interviewEvent != null)
+        {
+            interviewEvent.Description.Should().NotContain("Detailed internal evaluation");
+        }
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidateDoesNotOwnApplication_ShouldThrowForbiddenException()
+    {
+        // Arrange
+        var appId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var callerCandidateUserId = Guid.NewGuid();
+        var app = CreateSampleApplication(appId, Guid.NewGuid(), "INTERVIEW");
+        app.Candidate.UserId = candidateUserId;
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetApplicationTimelineDataAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        var query = new GetRecruitmentApplicationTimelineQuery(
+            ApplicationId: appId,
+            UserId: callerCandidateUserId,
+            IsClientCompanyUser: false,
+            IsInternalHrOrAdmin: false,
+            IsCandidate: true
+        );
+
+        // Act
+        var act = () => CreateHandler().Handle(query, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Bạn không có quyền xem dòng thời gian hồ sơ tuyển dụng này.");
+    }
+
     private static Domain.Entities.Application CreateSampleApplication(Guid applicationId, Guid companyId, string status)
     {
         var company = new Company { CompanyId = companyId, CompanyName = "Tech Corp" };

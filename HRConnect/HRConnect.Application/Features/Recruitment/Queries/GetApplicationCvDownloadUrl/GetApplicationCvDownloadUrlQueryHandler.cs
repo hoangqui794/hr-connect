@@ -70,6 +70,14 @@ public class GetApplicationCvDownloadUrlQueryHandler
                 throw new ForbiddenException("CV của ứng viên dịch vụ Headhunt được hiển thị sau khi ứng viên đi làm.");
             }
         }
+        else if (request.IsCandidate)
+        {
+            if (app.Candidate?.UserId != request.UserId)
+            {
+                _logger.LogWarning("Ứng viên {UserId} xin xem CV của hồ sơ thuộc ứng viên khác {CandidateUserId}", request.UserId, app.Candidate?.UserId);
+                throw new ForbiddenException("Bạn không có quyền xem CV của hồ sơ ứng tuyển này.");
+            }
+        }
         else if (!request.IsInternalHrOrAdmin)
         {
             throw new ForbiddenException("Bạn không có quyền xem CV của hồ sơ tuyển dụng.");
@@ -90,7 +98,7 @@ public class GetApplicationCvDownloadUrlQueryHandler
             {
                 cv.CvId,
                 app.CandidateId,
-                viewer = request.IsClientCompanyUser ? "CLIENT_COMPANY" : "INTERNAL",
+                viewer = request.IsCandidate ? "CANDIDATE" : (request.IsClientCompanyUser ? "CLIENT_COMPANY" : "INTERNAL"),
                 link.ExpiresAt
             }
         }, cancellationToken);

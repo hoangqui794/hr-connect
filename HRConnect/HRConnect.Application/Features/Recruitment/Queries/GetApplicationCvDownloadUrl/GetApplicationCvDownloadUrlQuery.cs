@@ -11,5 +11,6 @@ public record GetApplicationCvDownloadUrlQuery(
     Guid ApplicationId,
     Guid UserId,
     bool IsClientCompanyUser,
-    bool IsInternalHrOrAdmin
+    bool IsInternalHrOrAdmin,
+    bool IsCandidate = false
 ) : IRequest<GetApplicationCvDownloadUrlResponse>;
