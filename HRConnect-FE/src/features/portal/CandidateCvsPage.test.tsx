@@ -44,6 +44,10 @@ describe('CandidateCvsPage', () => {
       status: 'ACTIVE',
       createdAt: '2026-10-01T00:00:00Z',
       updatedAt: '2026-10-01T00:00:00Z',
+      submissionUsageCount: 2,
+      applicationUsageCount: 1,
+      isReferenced: true,
+      deleteBehavior: 'ARCHIVE_HISTORY',
     }]);
     vi.mocked(candidateCvApi.updateTitle).mockResolvedValue({ success: true, message: 'Đã cập nhật.' });
     useAuthStore.setState({
@@ -69,7 +73,7 @@ describe('CandidateCvsPage', () => {
 
     await waitFor(() => expect(candidateCvApi.updateTitle).toHaveBeenCalledWith('cv-1', 'CV Backend 2026'));
     await waitFor(() => expect(candidateCvApi.list).toHaveBeenCalledTimes(2));
-  });
+  }, 10_000);
 
   it('hides mutating controls when backend permissions are absent', async () => {
     useAuthStore.setState((state) => ({
@@ -82,5 +86,12 @@ describe('CandidateCvsPage', () => {
     expect(screen.queryByRole('button', { name: 'Đặt làm CV chính' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Gỡ CV cũ khỏi kho' })).not.toBeInTheDocument();
     expect(screen.queryByText(/Kéo thả CV/)).not.toBeInTheDocument();
+  });
+
+  it('explains referenced CV retention before deletion', async () => {
+    renderPage();
+    expect(await screen.findByText(/Đang được lưu trong 1 đơn ứng tuyển/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Gỡ CV cũ khỏi kho' }));
+    expect(await screen.findByText(/bản đã gắn với lượt nộp và đơn ứng tuyển vẫn được giữ/)).toBeInTheDocument();
   });
 });

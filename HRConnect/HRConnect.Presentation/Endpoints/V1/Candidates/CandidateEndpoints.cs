@@ -20,6 +20,7 @@ using HRConnect.Application.Features.Candidates.Identity.GetCandidateEmailIdenti
 using HRConnect.Application.Features.Candidates.Identity.StartCandidateIdentityClaim;
 using HRConnect.Application.Features.Candidates.Identity.ResendCandidateIdentityClaimOtp;
 using HRConnect.Application.Features.Candidates.Identity.VerifyCandidateIdentityClaim;
+using HRConnect.Application.Features.Candidates.Identity.RevokeCandidateEmailIdentity;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using HRConnect.Presentation.Authorization;
@@ -229,6 +230,46 @@ public static class CandidateEndpoints
         .WithSummary("Candidate xem các email đã liên kết với tài khoản")
         .WithDescription("Yêu cầu permission candidate.identity.manage_own. Trả email đăng nhập chính và các email phụ đã xác minh của chính Candidate; email phụ không thể dùng để đăng nhập hoặc khôi phục mật khẩu.")
         .Produces<GetCandidateEmailIdentitiesResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
+        identityGroup.MapPost("/{emailIdentityId:guid}/revoke", async (
+            Guid emailIdentityId,
+            RevokeCandidateEmailIdentityRequest request,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<RevokeCandidateEmailIdentityCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "candidate.identity.manage_own"))
+                return PermissionAuthorization.Forbidden("candidate.identity.manage_own");
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            var command = new RevokeCandidateEmailIdentityCommand(
+                userId.Value, emailIdentityId, request.ConcurrencyToken);
+            var validation = await validator.ValidateAsync(command, cancellationToken);
+            if (!validation.IsValid) return Results.ValidationProblem(validation.ToDictionary());
+            try
+            {
+                return Results.Ok(await sender.Send(command, cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
+            }
+        })
+        .WithName("RevokeCandidateEmailIdentity")
+        .WithSummary("Candidate thu hồi email phụ đã liên kết")
+        .WithDescription("Yêu cầu permission candidate.identity.manage_own. Chỉ thu hồi email ALIAS VERIFIED của chính tài khoản; không xóa hồ sơ, CV hay lịch sử ứng tuyển.")
+        .Produces<RevokeCandidateEmailIdentityResponse>()
+        .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
@@ -1052,6 +1093,8 @@ public static class CandidateEndpoints
             [FromQuery] Guid? jobId,
             [FromQuery] DateTime? fromDate,
             [FromQuery] DateTime? toDate,
+            [FromQuery] string? search,
+            [FromQuery] string? submissionSource,
             [FromQuery] int? page,
             [FromQuery] int? pageSize,
             [FromServices] ISender sender,
@@ -1076,6 +1119,8 @@ public static class CandidateEndpoints
                     jobId,
                     fromDate,
                     toDate,
+                    search,
+                    submissionSource,
                     page ?? 1,
                     pageSize ?? 20);
 
@@ -1090,6 +1135,10 @@ public static class CandidateEndpoints
             {
                 return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
             }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 return Results.Problem(detail: ex.Message, statusCode: 500);
@@ -1097,11 +1146,12 @@ public static class CandidateEndpoints
         })
         .WithName("GetCandidateApplications")
         .WithSummary("Lấy lịch sử ứng tuyển của ứng viên hiện tại")
-        .WithDescription("Yêu cầu permission application.view_own. Lấy danh sách lịch sử các công việc đã ứng tuyển của ứng viên đang đăng nhập, kèm thông tin công việc, CV và trạng thái.")
+        .WithDescription("Yêu cầu permission application.view_own. Hỗ trợ tìm theo tên Job/doanh nghiệp và lọc nguồn CANDIDATE hoặc AFFILIATE. Kết quả kèm CV, trạng thái và nguồn nộp hồ sơ.")
         .Produces<HRConnect.Application.Features.Candidates.Queries.GetCandidateApplications.CandidateApplicationsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status500InternalServerError);
 
         // GET /api/v1/candidates/applications/{applicationId} - Lấy chi tiết hồ sơ ứng tuyển của ứng viên hiện tại
@@ -1168,4 +1218,6 @@ public static class CandidateEndpoints
 
         return null;
     }
+
+    public sealed record RevokeCandidateEmailIdentityRequest(Guid ConcurrencyToken);
 }

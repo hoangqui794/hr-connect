@@ -14,6 +14,10 @@ public class CandidateCvItemResponse
     public string Status { get; set; } = "ACTIVE";
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public int SubmissionUsageCount { get; set; }
+    public int ApplicationUsageCount { get; set; }
+    public bool IsReferenced { get; set; }
+    public string DeleteBehavior { get; set; } = "HARD_DELETE";
 }
 
 public class GetCandidateCvsResponse

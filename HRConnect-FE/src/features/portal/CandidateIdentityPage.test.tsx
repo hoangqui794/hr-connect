@@ -14,6 +14,7 @@ vi.mock('@/services/api/mf02/candidateIdentityApi', () => ({
     start: vi.fn(),
     resend: vi.fn(),
     verify: vi.fn(),
+    revoke: vi.fn(),
   },
 }));
 
@@ -21,6 +22,7 @@ const listMock = vi.mocked(candidateIdentityApi.listEmailIdentities);
 const startMock = vi.mocked(candidateIdentityApi.start);
 const resendMock = vi.mocked(candidateIdentityApi.resend);
 const verifyMock = vi.mocked(candidateIdentityApi.verify);
+const revokeMock = vi.mocked(candidateIdentityApi.revoke);
 const syncCurrentUser = vi.fn().mockResolvedValue(null);
 
 Object.defineProperty(window, 'matchMedia', {
@@ -138,5 +140,36 @@ describe('CandidateIdentityPage', () => {
     await waitFor(() => expect(verifyMock).toHaveBeenCalledWith('claim-1', '123456', 'token-2'));
     expect(await screen.findByText('Đang chờ Admin đối chiếu')).toBeInTheDocument();
     expect(sessionStorage.getItem('hrconnect:candidate-identity-claim')).toBeNull();
+  });
+
+  it('revokes only a removable alias with its concurrency token', async () => {
+    listMock.mockResolvedValue([
+      {
+        emailIdentityId: 'email-primary', email: 'new@example.com', kind: 'PRIMARY', status: 'VERIFIED',
+        verificationSource: 'REGISTRATION', verifiedAt: '2026-10-09T00:00:00Z', revokedAt: null,
+        createdAt: '2026-10-09T00:00:00Z', concurrencyToken: 'primary-token', canRevoke: false, canMakePrimary: false,
+      },
+      {
+        emailIdentityId: 'email-alias', email: 'old@example.com', kind: 'ALIAS', status: 'VERIFIED',
+        verificationSource: 'IDENTITY_CLAIM', verifiedAt: '2026-10-10T00:00:00Z', revokedAt: null,
+        createdAt: '2026-10-10T00:00:00Z', concurrencyToken: 'alias-token', canRevoke: true, canMakePrimary: false,
+      },
+    ]);
+    revokeMock.mockResolvedValue({
+      success: true,
+      emailIdentityId: 'email-alias',
+      status: 'REVOKED',
+      revokedAt: '2026-10-12T00:00:00Z',
+      concurrencyToken: 'new-token',
+    });
+
+    renderPage();
+    await screen.findByText('old@example.com');
+    expect(screen.queryByRole('button', { name: 'Thu hồi email new@example.com' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Thu hồi email old@example.com' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Thu hồi' }));
+
+    await waitFor(() => expect(revokeMock).toHaveBeenCalledWith('email-alias', 'alias-token'));
+    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
   });
 });

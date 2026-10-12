@@ -43,5 +43,7 @@ public class CandidateApplicationItemDto
 
     public string? AiStatus { get; set; }
 
+    public string? SubmissionSource { get; set; }
+
     public DateTime AppliedAt { get; set; }
 }

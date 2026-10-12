@@ -52,7 +52,11 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
       candidateConsentApi.respond(submissionId, decision, allowFutureReuse),
     onSuccess: async (result) => {
       message.success(result.message);
-      await queryClient.invalidateQueries({ queryKey: consentKey(submissionId) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: consentKey(submissionId) }),
+        queryClient.invalidateQueries({ queryKey: ['candidate-submission-consents'] }),
+        queryClient.invalidateQueries({ queryKey: ['candidate-applications'] }),
+      ]);
     },
     onError: async (error) => {
       const apiError = getApiError(error, 'Không thể ghi nhận lựa chọn của bạn.');
