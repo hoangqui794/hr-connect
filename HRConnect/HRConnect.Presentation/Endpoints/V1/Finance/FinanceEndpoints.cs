@@ -88,7 +88,9 @@ public static class FinanceEndpoints
             Execute(user, [CommissionManage, CommissionView, CommissionViewOwn], userId =>
             {
                 var platform = Has(user, CommissionManage) || Has(user, CommissionView);
-                return sender.Send(new GetCommissionsQuery(platform ? null : userId, status, page, pageSize), ct);
+                return sender.Send(new GetCommissionsQuery(platform ? null : userId, status, page, pageSize,
+                    // Bank details are only needed (and shown) to whoever records payouts.
+                    IncludeBankDetails: Has(user, PayoutManage)), ct);
             }))
             .WithName("GetCommissions")
             .WithSummary("Danh sách hoa hồng Affiliate")

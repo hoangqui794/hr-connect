@@ -14,7 +14,11 @@ public sealed record ServiceFeeDto(
 public sealed record CommissionDto(
     Guid CommissionId, Guid PlacementId, Guid AttributionId, Guid AffiliateId, string? AffiliateName, string? JobTitle,
     string? CandidateName, decimal Amount, decimal? BaseAmount, string Status, string? MilestoneType,
-    DateOnly? WarrantyEndDate, string? WarrantyStatus, string? ServiceFeeStatus, DateTime? ApprovedAt, DateTime CreatedAt);
+    DateOnly? WarrantyEndDate, string? WarrantyStatus, string? ServiceFeeStatus, DateTime? ApprovedAt, DateTime CreatedAt,
+    AffiliateBankDto? AffiliateBank = null);
+
+/// <summary>Where to transfer the commission. Only returned to users who record payouts.</summary>
+public sealed record AffiliateBankDto(string? BankName, string? BankAccountNumber, string? BankAccountHolder, string? BankBranch);
 
 public sealed record WarrantyDto(
     Guid WarrantyId, Guid PlacementId, string? CompanyName, string? JobTitle, string? CandidateName, string? Position,
@@ -29,7 +33,8 @@ public sealed record PayoutDto(
 public sealed record GetServiceFeesQuery(Guid? CompanyUserId, string? Status, int Page, int PageSize) : IRequest<PagedResult<ServiceFeeDto>>;
 
 /// <summary>AffiliateUserId limits the list to the affiliate's own commissions.</summary>
-public sealed record GetCommissionsQuery(Guid? AffiliateUserId, string? Status, int Page, int PageSize) : IRequest<PagedResult<CommissionDto>>;
+public sealed record GetCommissionsQuery(Guid? AffiliateUserId, string? Status, int Page, int PageSize, bool IncludeBankDetails = false)
+    : IRequest<PagedResult<CommissionDto>>;
 
 /// <summary>CompanyUserId limits the list to that Client's company; null lists every warranty.</summary>
 public sealed record GetWarrantiesQuery(Guid? CompanyUserId, string? Status, int Page, int PageSize) : IRequest<PagedResult<WarrantyDto>>;
@@ -79,7 +84,10 @@ public sealed class FinanceQueryHandlers :
             c.Placement?.Application?.Job?.Title, c.Placement?.Application?.Candidate?.FullName,
             c.Amount, c.BaseAmount, c.Status, c.MilestoneType,
             c.Placement?.Warranty?.EndDate, c.Placement?.Warranty?.Status, c.Placement?.ServiceFee?.Status,
-            c.ApprovedAt, c.CreatedAt)).ToList(), total, page, pageSize);
+            c.ApprovedAt, c.CreatedAt,
+            request.IncludeBankDetails && c.Attribution.Affiliate is { } affiliate
+                ? new AffiliateBankDto(affiliate.BankName, affiliate.BankAccountNumber, affiliate.BankAccountHolder, affiliate.BankBranch)
+                : null)).ToList(), total, page, pageSize);
     }
 
     public async Task<PagedResult<PayoutDto>> Handle(GetPayoutsQuery request, CancellationToken cancellationToken)

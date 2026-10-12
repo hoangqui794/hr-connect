@@ -1,6 +1,7 @@
 import { apiClient } from '../apiClient';
 import type { ApiEnvelope } from '@/types/api/admin';
 import type {
+  AffiliateBankAccount,
   BusinessSetting,
   Commission,
   CommissionStatus,
@@ -62,5 +63,21 @@ export const financeApi = {
   },
   async resolveResignation(placementId: string, input: { confirmed: boolean; note?: string }) {
     return (await apiClient.post<ApiEnvelope<unknown>>(`/placements/${placementId}/resignation/resolve`, input)).data;
+  },
+};
+
+/** The affiliate's own payout account (needed before MF-05 payouts can be made). */
+export const affiliateBankApi = {
+  async get(): Promise<AffiliateBankAccount | null> {
+    try {
+      return (await apiClient.get<AffiliateBankAccount>('/affiliates/profile/me/bank-account')).data;
+    } catch (error) {
+      // 404 means no account has been saved yet.
+      if ((error as { response?: { status?: number } })?.response?.status === 404) return null;
+      throw error;
+    }
+  },
+  async update(input: { bankName: string; bankAccountNumber: string; bankAccountHolder: string; bankBranch?: string }) {
+    return (await apiClient.put<{ success: boolean; message?: string }>('/affiliates/profile/me/bank-account', input)).data;
   },
 };

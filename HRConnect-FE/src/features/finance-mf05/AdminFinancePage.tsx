@@ -276,6 +276,18 @@ export const AdminFinancePage: React.FC = () => {
           {dialog?.kind === 'payout' && (
             <>
               <Alert className="mb-4" type="info" showIcon message={`Số tiền chi: ${money(dialog.commission.amount)} cho ${dialog.commission.affiliateName ?? 'Affiliate'}. Việc chuyển khoản thực hiện ngoài hệ thống.`} />
+              {dialog.commission.affiliateBank?.bankAccountNumber ? (
+                <dl className="mb-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg bg-slate-50 p-3 text-[13.5px]">
+                  <dt className="text-slate-500">Ngân hàng</dt>
+                  <dd className="m-0 font-medium">{dialog.commission.affiliateBank.bankName}{dialog.commission.affiliateBank.bankBranch ? ` — ${dialog.commission.affiliateBank.bankBranch}` : ''}</dd>
+                  <dt className="text-slate-500">Số tài khoản</dt>
+                  <dd className="m-0 font-semibold tabular-nums">{dialog.commission.affiliateBank.bankAccountNumber}</dd>
+                  <dt className="text-slate-500">Chủ tài khoản</dt>
+                  <dd className="m-0 font-medium">{dialog.commission.affiliateBank.bankAccountHolder}</dd>
+                </dl>
+              ) : (
+                <Alert className="mb-4" type="warning" showIcon message="Affiliate chưa khai báo tài khoản nhận tiền. Liên hệ Affiliate trước khi chuyển khoản." />
+              )}
               <Form.Item name="result" label="Kết quả chuyển khoản" rules={[{ required: true }]}>
                 <Radio.Group>
                   <Radio value="success">Thành công</Radio>

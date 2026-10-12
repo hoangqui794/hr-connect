@@ -339,6 +339,29 @@ public class Mf05FinanceTests
         (await HandlersFor(Guid.NewGuid()).Handle(Query(null), default)).TotalCount.Should().Be(0);
     }
 
+    [Fact]
+    public async Task Bank_details_are_only_listed_when_requested()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        var attribution = await _context.Attributions.SingleAsync();
+        var user = new AppUser { UserId = Guid.NewGuid(), Email = "aff@example.com", PasswordHash = "x", Status = "ACTIVE", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        _context.Add(user);
+        _context.Add(new AffiliateProfile
+        {
+            AffiliateId = attribution.AffiliateId, UserId = user.UserId, AffiliateType = "INDIVIDUAL", Status = "ACTIVE", BankName = "Vietcombank", BankAccountNumber = "0123456789",
+            BankAccountHolder = "NGUYEN VAN HUNG", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        });
+        await _context.SaveChangesAsync();
+        await InitializeAsync(placement, offer);
+        var handlers = new FinanceQueryHandlers(Repository, Mock.Of<ICompanyUserRepository>());
+
+        var withBank = await handlers.Handle(new GetCommissionsQuery(null, null, 1, 20, IncludeBankDetails: true), default);
+        var withoutBank = await handlers.Handle(new GetCommissionsQuery(null, null, 1, 20), default);
+
+        withBank.Items.Single().AffiliateBank!.BankAccountNumber.Should().Be("0123456789");
+        withoutBank.Items.Single().AffiliateBank.Should().BeNull();
+    }
+
     // ---- approval and payout ----------------------------------------------------------------
 
     private async Task<Commission> EarnedCommissionAsync()

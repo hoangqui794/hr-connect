@@ -63,6 +63,22 @@ export interface Commission {
   serviceFeeStatus?: ServiceFeeStatus | null;
   approvedAt?: string | null;
   createdAt: string;
+  /** Only returned to users who record payouts (payout.manage). */
+  affiliateBank?: AffiliateBank | null;
+}
+
+export interface AffiliateBank {
+  bankName?: string | null;
+  bankAccountNumber?: string | null;
+  bankAccountHolder?: string | null;
+  bankBranch?: string | null;
+}
+
+/** GET/PUT /affiliates/profile/me/bank-account (the GET response is not wrapped in an envelope). */
+export interface AffiliateBankAccount extends AffiliateBank {
+  affiliateId?: string;
+  displayName?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface Payout {

@@ -4,11 +4,11 @@
  * warranty, and is paid after the Client has paid the service fee.
  */
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Table, Tooltip } from 'antd';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert, App, Button, Form, Input, Modal, Skeleton, Table, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined } from '@ant-design/icons';
-import { financeApi } from '@/services/api/financeApi';
+import { BankOutlined, ReloadOutlined } from '@ant-design/icons';
+import { affiliateBankApi, financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Commission, CommissionStatus, Payout } from '@/types/api/finance';
 import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
@@ -16,6 +16,95 @@ import { COMMISSION_STATUS, PAYOUT_STATUS, date, labelOf, money } from './financ
 
 const PAGE_SIZE = 20;
 type Tab = 'commissions' | 'payouts';
+
+/** Where HR Connect transfers the commission; payouts cannot be made without it. */
+const PayoutAccountCard: React.FC = () => {
+  const { message } = App.useApp();
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [form] = Form.useForm();
+  const account = useQuery({ queryKey: ['mf05-my-bank-account'], queryFn: () => affiliateBankApi.get() });
+  const save = useMutation({
+    mutationFn: async () => affiliateBankApi.update(await form.validateFields()),
+    onSuccess: () => {
+      message.success('Đã lưu tài khoản nhận tiền.');
+      setEditing(false);
+      queryClient.invalidateQueries({ queryKey: ['mf05-my-bank-account'] });
+    },
+    onError: (error) => {
+      if (!(error && typeof error === 'object' && 'errorFields' in error)) message.error(getApiErrorMessage(error));
+    },
+  });
+  const data = account.data;
+  const hasAccount = Boolean(data?.bankAccountNumber);
+
+  return (
+    <Surface padded className="mb-5">
+      <div className="flex flex-wrap items-center gap-4">
+        <BankOutlined className="text-2xl text-[color:var(--console-accent)]" aria-hidden />
+        <div className="min-w-[220px] flex-1">
+          <div className="text-[15px] font-semibold text-slate-900">Tài khoản nhận tiền</div>
+          {account.isLoading ? (
+            <Skeleton active paragraph={false} />
+          ) : account.isError ? (
+            <div className="text-[13.5px] text-red-700">{getApiErrorMessage(account.error)}</div>
+          ) : hasAccount ? (
+            <div className="text-[13.5px] text-slate-600">
+              {data?.bankName}
+              {data?.bankBranch ? ` — ${data.bankBranch}` : ''} · <span className="font-semibold tabular-nums text-slate-900">{data?.bankAccountNumber}</span> ·{' '}
+              {data?.bankAccountHolder}
+            </div>
+          ) : (
+            <div className="text-[13.5px] text-amber-700">Chưa khai báo. HR Connect cần tài khoản này để chuyển hoa hồng cho bạn.</div>
+          )}
+        </div>
+        <Button
+          type={hasAccount ? 'default' : 'primary'}
+          onClick={() => {
+            form.setFieldsValue({
+              bankName: data?.bankName ?? '',
+              bankAccountNumber: data?.bankAccountNumber ?? '',
+              bankAccountHolder: data?.bankAccountHolder ?? '',
+              bankBranch: data?.bankBranch ?? '',
+            });
+            setEditing(true);
+          }}
+        >
+          {hasAccount ? 'Sửa' : 'Khai báo tài khoản'}
+        </Button>
+      </div>
+      <Modal
+        open={editing}
+        title="Tài khoản nhận hoa hồng"
+        okText="Lưu"
+        cancelText="Hủy"
+        confirmLoading={save.isPending}
+        onOk={() => save.mutate()}
+        onCancel={() => setEditing(false)}
+        destroyOnClose
+      >
+        <Form form={form} layout="vertical" preserve={false}>
+          <Form.Item name="bankName" label="Ngân hàng" rules={[{ required: true, whitespace: true, message: 'Nhập tên ngân hàng.' }, { min: 2, max: 100, message: 'Từ 2 đến 100 ký tự.' }]}>
+            <Input placeholder="Vietcombank" />
+          </Form.Item>
+          <Form.Item
+            name="bankAccountNumber"
+            label="Số tài khoản"
+            rules={[{ required: true, message: 'Nhập số tài khoản.' }, { pattern: /^[a-zA-Z0-9]{5,50}$/, message: 'Từ 5 đến 50 ký tự, chỉ gồm chữ và số.' }]}
+          >
+            <Input placeholder="0123456789" />
+          </Form.Item>
+          <Form.Item name="bankAccountHolder" label="Chủ tài khoản" rules={[{ required: true, whitespace: true, message: 'Nhập tên chủ tài khoản.' }, { min: 2, max: 180, message: 'Từ 2 đến 180 ký tự.' }]}>
+            <Input placeholder="NGUYEN VAN A" />
+          </Form.Item>
+          <Form.Item name="bankBranch" label="Chi nhánh" rules={[{ max: 180 }]}>
+            <Input placeholder="Không bắt buộc" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </Surface>
+  );
+};
 
 export const AffiliateCommissionsPage: React.FC = () => {
   const [tab, setTab] = useState<Tab>('commissions');
@@ -78,6 +167,8 @@ export const AffiliateCommissionsPage: React.FC = () => {
         description="Bạn nhận 100% hoa hồng khi ứng viên mình giới thiệu đi làm đủ thời hạn bảo hành. Hoa hồng được chi sau khi doanh nghiệp đã thanh toán phí dịch vụ."
         actions={<Button icon={<ReloadOutlined />} onClick={() => active.refetch()} loading={active.isFetching}>Làm mới</Button>}
       />
+
+      <PayoutAccountCard />
 
       {tab === 'commissions' && items.length > 0 && (
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
