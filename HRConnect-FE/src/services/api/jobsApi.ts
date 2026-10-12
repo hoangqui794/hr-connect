@@ -11,6 +11,9 @@ import type {
   JobActionResponse,
   JobCloseReasonCode,
   JobPage,
+  JobPostingEligibility,
+  JobPostingFee,
+  JobPostingPackage,
   JobRejectReasonCode,
   JobSearchParams,
   JobStatus,
@@ -101,6 +104,31 @@ export const jobsApi = {
     return res.data;
   },
 
+  // ── Posting Packages & Fees (MF-01 B1 & B2) ───────────────────────────────
+  /** GET /jobs/posting-packages — available CV_APPLICATION packages. */
+  async getPostingPackages(): Promise<JobPostingPackage[]> {
+    const res = await apiClient.get<JobPostingPackage[]>('/jobs/posting-packages');
+    return res.data;
+  },
+
+  /** GET /jobs/posting-eligibility — check if company can use FREE posting package. */
+  async getPostingEligibility(): Promise<JobPostingEligibility> {
+    const res = await apiClient.get<JobPostingEligibility>('/jobs/posting-eligibility');
+    return res.data;
+  },
+
+  /** GET /jobs/{id}/posting-fee — fee details of the job. */
+  async getPostingFee(jobId: string): Promise<JobPostingFee> {
+    const res = await apiClient.get<JobPostingFee>(`/jobs/${jobId}/posting-fee`);
+    return res.data;
+  },
+
+  /** POST /jobs/{id}/posting-fee/pay — record payment for posting fee. */
+  async payPostingFee(jobId: string, paymentReference?: string): Promise<JobPostingFee> {
+    const res = await apiClient.post<JobPostingFee>(`/jobs/${jobId}/posting-fee/pay`, { paymentReference });
+    return res.data;
+  },
+
   // ── Internal HR ─────────────────────────────────────────────────────────────
   /** GET /internal/jobs/review — job review list with optional status filter (PENDING_REVIEW, ACTIVE, REJECTED, ALL). */
   async getReviewQueue(status?: string): Promise<Job[]> {
@@ -110,10 +138,10 @@ export const jobsApi = {
     return res.data;
   },
 
-  /** POST /internal/jobs/{id}/approve — PENDING_REVIEW → ACTIVE; token in the query string. */
-  async approve(jobId: string, concurrencyToken: string): Promise<JobActionResponse> {
+  /** POST /internal/jobs/{id}/approve — PENDING_REVIEW → ACTIVE; token and paymentReference in query string. */
+  async approve(jobId: string, concurrencyToken: string, paymentReference?: string): Promise<JobActionResponse> {
     const res = await apiClient.post<JobActionResponse>(`/internal/jobs/${jobId}/approve`, null, {
-      params: { concurrencyToken },
+      params: cleanParams({ concurrencyToken, paymentReference }),
     });
     return res.data;
   },

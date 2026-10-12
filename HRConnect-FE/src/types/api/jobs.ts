@@ -80,9 +80,49 @@ export interface Job {
   feeMultiplier?: number | null;
   warrantyDays?: number | null;
   paymentDueDays?: number | null;
+  postingPackageId?: string | null;
+  postingPackageCode?: 'FREE' | 'STANDARD' | null;
+  postingPackageName?: string | null;
+  postingFeeStatus?: 'PENDING' | 'PAID' | 'CANCELLED' | null;
+  expiresAt?: string | null;
   requirements: JobRequirement[];
   skills: JobSkill[];
   statusHistories: JobStatusHistory[];
+}
+
+export interface JobPostingEligibility {
+  canUseFreePackage: boolean;
+  reason?: string | null;
+  activeJobsCount: number;
+  freeActiveLimit: number;
+  lastPostedAt?: string | null;
+  nextFreeAvailableDate?: string | null;
+}
+
+export interface JobPostingPackage {
+  packageId: string;
+  code: 'FREE' | 'STANDARD';
+  name: string;
+  description: string | null;
+  price: number;
+  durationDays: number;
+  isActive: boolean;
+}
+
+export interface JobPostingFee {
+  postingFeeId: string;
+  jobId: string;
+  packageId: string;
+  packageCode: string | null;
+  packageName: string | null;
+  amount: number;
+  currencyCode: string;
+  status: 'PENDING' | 'PAID' | 'CANCELLED';
+  paidAt: string | null;
+  paymentReference: string | null;
+  activatedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
 }
 
 /** JobPageDto — GET /jobs */
@@ -139,6 +179,7 @@ export interface JobUpsertInput {
   feeMultiplier?: number | null;
   warrantyDays?: number | null;
   paymentDueDays?: number | null;
+  postingPackageId?: string | null;
   requirements: JobRequirementInput[];
   /** Kept empty for Client: the skills catalog (GET /skills) is candidate-only today. */
   skills: { skillId: string; isMandatory: boolean; weight?: number | null }[];

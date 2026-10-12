@@ -54,6 +54,8 @@ public class JobRepository : IJobRepository
         _context.Jobs
             .Include(job => job.ServiceType)
             .Include(job => job.Company)
+            .Include(job => job.PostingPackage)
+            .Include(job => job.JobPostingFees)
             .Include(job => job.JobRequirements)
             .Include(job => job.JobSkills).ThenInclude(jobSkill => jobSkill.Skill)
             .Include(job => job.JobStatusHistories)
@@ -76,6 +78,8 @@ public class JobRepository : IJobRepository
     public async Task<IReadOnlyList<Job>> GetByCompanyIdAsync(Guid companyId, CancellationToken cancellationToken = default) =>
         await _context.Jobs.AsNoTracking()
             .Include(job => job.ServiceType)
+            .Include(job => job.PostingPackage)
+            .Include(job => job.JobPostingFees)
             .Include(job => job.JobRequirements)
             .Include(job => job.JobSkills).ThenInclude(jobSkill => jobSkill.Skill)
             .Where(job => job.CompanyId == companyId)
@@ -87,6 +91,8 @@ public class JobRepository : IJobRepository
         var query = _context.Jobs.AsNoTracking()
             .Include(job => job.ServiceType)
             .Include(job => job.Company)
+            .Include(job => job.PostingPackage)
+            .Include(job => job.JobPostingFees)
             .Include(job => job.JobRequirements)
             .Include(job => job.JobSkills).ThenInclude(jobSkill => jobSkill.Skill)
             .Include(job => job.JobStatusHistories)
@@ -199,6 +205,80 @@ public class JobRepository : IJobRepository
             mapping => mapping.ServiceTypeId == serviceTypeId && mapping.CanSubmit &&
                        mapping.Role.IsActive && roleIds.Contains(mapping.RoleId),
             cancellationToken);
+
+    public async Task<IReadOnlyList<JobPostingPackage>> GetPostingPackagesAsync(
+        bool activeOnly = true,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.JobPostingPackages.AsNoTracking();
+        if (activeOnly)
+        {
+            query = query.Where(p => p.IsActive);
+        }
+        return await query.OrderBy(p => p.Price).ToListAsync(cancellationToken);
+    }
+
+    public Task<JobPostingPackage?> GetPostingPackageByIdAsync(
+        Guid packageId,
+        CancellationToken cancellationToken = default) =>
+        _context.JobPostingPackages.FirstOrDefaultAsync(p => p.PackageId == packageId, cancellationToken);
+
+    public Task<JobPostingPackage?> GetPostingPackageByCodeAsync(
+        string code,
+        CancellationToken cancellationToken = default) =>
+        _context.JobPostingPackages.FirstOrDefaultAsync(
+            p => p.Code.ToUpper() == code.ToUpper(), cancellationToken);
+
+    public async Task AddPostingFeeAsync(
+        JobPostingFee fee,
+        CancellationToken cancellationToken = default)
+    {
+        await _context.JobPostingFees.AddAsync(fee, cancellationToken);
+    }
+
+    public Task<JobPostingFee?> GetPostingFeeByJobIdAsync(
+        Guid jobId,
+        CancellationToken cancellationToken = default) =>
+        _context.JobPostingFees
+            .Include(f => f.Package)
+            .Include(f => f.Job)
+            .OrderByDescending(f => f.CreatedAt)
+            .FirstOrDefaultAsync(f => f.JobId == jobId, cancellationToken);
+
+    public async Task<IReadOnlyList<Job>> GetExpiredActiveJobsAsync(
+        DateTime now,
+        int take = 100,
+        CancellationToken cancellationToken = default) =>
+        await _context.Jobs
+            .Include(j => j.JobStatusHistories)
+            .Include(j => j.PostingPackage)
+            .Where(j => j.Status == JobStatuses.Active && j.ExpiresAt != null && j.ExpiresAt <= now)
+            .OrderBy(j => j.ExpiresAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+    public Task<int> CountActiveJobsByCompanyIdAsync(
+        Guid companyId,
+        CancellationToken cancellationToken = default) =>
+        _context.Jobs
+            .AsNoTracking()
+            .CountAsync(j => j.CompanyId == companyId && j.Status == JobStatuses.Active, cancellationToken);
+
+    public Task<Job?> GetLastPostedJobByCompanyIdAsync(
+        Guid companyId,
+        string? packageCode = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Jobs.AsNoTracking()
+            .Where(j => j.CompanyId == companyId && j.PostedAt != null);
+
+        if (!string.IsNullOrWhiteSpace(packageCode))
+        {
+            query = query.Where(j => j.PostingPackage != null && j.PostingPackage.Code.ToUpper() == packageCode.ToUpper());
+        }
+
+        return query.OrderByDescending(j => j.PostedAt).FirstOrDefaultAsync(cancellationToken);
+    }
 
     public void Update(Job job) => _context.Jobs.Update(job);
 }

@@ -41,10 +41,11 @@ public static class JobReasonCodes
     public const string ResumedByClient = "RESUMED_BY_CLIENT";
     public const string ClosedPositionFilled = "CLOSED_POSITION_FILLED";
     public const string ClosedByClient = "CLOSED_BY_CLIENT";
+    public const string ClosedExpired = "CLOSED_EXPIRED";
     public const string ClosedOther = "CLOSED_OTHER";
 
     public static readonly string[] RejectionCodes = [RejectedIncompleteDescription, RejectedIncompleteRequirements, RejectedOther];
-    public static readonly string[] CloseCodes = [ClosedPositionFilled, ClosedByClient, ClosedOther];
+    public static readonly string[] CloseCodes = [ClosedPositionFilled, ClosedByClient, ClosedExpired, ClosedOther];
 }
 
 public static class JobVisibilities
@@ -55,3 +56,21 @@ public static class JobVisibilities
 
     public static readonly string[] All = [Public, PartnerOnly, InternalOnly];
 }
+
+public static class JobPostingPackageCodes
+{
+    public const string Free = "FREE";
+    public const string Standard = "STANDARD";
+
+    public static readonly string[] All = [Free, Standard];
+}
+
+public static class JobPostingFeeStatuses
+{
+    public const string Pending = "PENDING";
+    public const string Paid = "PAID";
+    public const string Cancelled = "CANCELLED";
+
+    public static readonly string[] All = [Pending, Paid, Cancelled];
+}
+

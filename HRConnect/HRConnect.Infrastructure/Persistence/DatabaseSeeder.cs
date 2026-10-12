@@ -15,6 +15,7 @@ public static class DatabaseSeeder
         IPasswordHasher? passwordHasher = null,
         IEmailNormalizer? emailNormalizer = null,
         IPhoneNormalizer? phoneNormalizer = null,
+        IBusinessSettings? businessSettings = null,
         CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
@@ -52,7 +53,10 @@ public static class DatabaseSeeder
         // 2. Khởi tạo danh mục loại dịch vụ (Service Type) nếu chưa có (Idempotent seed)
         await ServiceTypeSeeder.SeedAsync(context, logger, cancellationToken);
 
-        // 3. Khởi tạo ma trận quyền xem/nộp theo Service Type và Role.
+        // 3. Khởi tạo danh mục gói đăng tin (Job Posting Package)
+        await JobPostingPackageSeeder.SeedAsync(context, businessSettings, logger, cancellationToken);
+
+        // 4. Khởi tạo ma trận quyền xem/nộp theo Service Type và Role.
         await ServiceTypeAllowedRoleSeeder.SeedAsync(context, logger, cancellationToken);
 
         await CommissionMilestoneSeeder.SeedAsync(context, logger, cancellationToken);

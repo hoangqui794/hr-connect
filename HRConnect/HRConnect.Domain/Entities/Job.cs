@@ -88,6 +88,16 @@ public partial class Job
     /// </summary>
     public int? PaymentDueDays { get; set; }
 
+    /// <summary>
+    /// Gói đăng tin tuyển dụng gắn với Job (dịch vụ CV_APPLICATION).
+    /// </summary>
+    public Guid? PostingPackageId { get; set; }
+
+    /// <summary>
+    /// Thời điểm hết hạn hiển thị của tin tuyển dụng theo gói.
+    /// </summary>
+    public DateTime? ExpiresAt { get; set; }
+
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
 
     public virtual ICollection<CandidateJobMatch> CandidateJobMatches { get; set; } = new List<CandidateJobMatch>();
@@ -105,5 +115,9 @@ public partial class Job
     public virtual ServiceType ServiceType { get; set; } = null!;
 
     public virtual ICollection<Submission> Submissions { get; set; } = new List<Submission>();
+
+    public virtual JobPostingPackage? PostingPackage { get; set; }
+
+    public virtual ICollection<JobPostingFee> JobPostingFees { get; set; } = new List<JobPostingFee>();
 }
 

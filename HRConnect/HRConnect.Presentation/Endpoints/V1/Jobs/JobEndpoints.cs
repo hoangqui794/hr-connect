@@ -16,6 +16,10 @@ using HRConnect.Application.Features.Jobs.Queries.GetJobDetail;
 using HRConnect.Application.Features.Jobs.Queries.GetJobsForReview;
 using HRConnect.Application.Features.Jobs.Queries.GetMyJobs;
 using HRConnect.Application.Features.Jobs.Queries.GetPublicJobs;
+using HRConnect.Application.Features.Jobs.Queries.GetJobPostingPackages;
+using HRConnect.Application.Features.Jobs.Queries.GetJobPostingFee;
+using HRConnect.Application.Features.Jobs.Queries.GetJobPostingEligibility;
+using HRConnect.Application.Features.Jobs.Commands.RecordJobPostingFeePayment;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -87,6 +91,34 @@ public static class JobEndpoints
         }
         ).WithName("CloseJob").WithSummary("Đóng Job")
         .WithDescription("Chỉ Client sở hữu Job. Chỉ đóng được Job ACTIVE hoặc PAUSED; gửi ReasonCode (CLOSED_POSITION_FILLED, CLOSED_BY_CLIENT hoặc CLOSED_OTHER) và ReasonText; chuyển sang CLOSED.");
+
+        jobs.MapGet("/posting-packages", async (ISender sender, CancellationToken ct) =>
+        {
+            return await Run(async Task<IResult> () => Results.Ok(await sender.Send(new GetJobPostingPackagesQuery(), ct)));
+        }).WithName("GetJobPostingPackages").WithSummary("Lấy danh sách các gói đăng tin CV_APPLICATION").AllowAnonymous();
+
+        jobs.MapGet("/posting-eligibility", async (ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+        {
+            var id = UserId(user); if (id == null) return Results.Unauthorized();
+            return await Run(async Task<IResult> () => Results.Ok(await sender.Send(new GetJobPostingEligibilityQuery(id.Value), ct)));
+        }).WithName("GetJobPostingEligibility").WithSummary("Kiểm tra tính hợp lệ sử dụng gói đăng tin FREE cho doanh nghiệp");
+
+        jobs.MapGet("/{jobId:guid}/posting-fee", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+        {
+            var id = UserId(user); if (id == null) return Results.Unauthorized();
+            return await Run(async Task<IResult> () => Results.Ok(await sender.Send(new GetJobPostingFeeQuery(jobId), ct)));
+        }).WithName("GetJobPostingFee").WithSummary("Lấy thông tin phí đăng tin của Job");
+
+        jobs.MapPost("/{jobId:guid}/posting-fee/pay", async (Guid jobId, ClaimsPrincipal user, [FromBody] PayPostingFeeRequest? request, ISender sender, CancellationToken ct) =>
+        {
+            var id = UserId(user); if (id == null) return Results.Unauthorized();
+            return await Run(async Task<IResult> () => Results.Ok(await sender.Send(new RecordJobPostingFeePaymentCommand
+            {
+                JobId = jobId,
+                PaymentReference = request?.PaymentReference ?? string.Empty,
+                UserId = id.Value
+            }, ct)));
+        }).WithName("RecordJobPostingFeePayment").WithSummary("Ghi nhận thanh toán phí đăng tin CV_APPLICATION");
 
         jobs.MapGet("/mine", async (ClaimsPrincipal user, string? status, ISender sender, CancellationToken ct) =>
         {
@@ -261,13 +293,19 @@ public static class JobEndpoints
         review.MapGet("/review", async (string? status, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         { if (!ReviewerCan(user, "job.review")) return Forbidden(); return await Run(async () => Results.Ok(await sender.Send(new GetJobsForReviewQuery(status), ct))); }
         ).WithName("GetJobsForReview").WithSummary("Lấy danh sách Job cho Internal HR theo trạng thái xét duyệt (mặc định PENDING_REVIEW, hoặc ACTIVE, REJECTED, ALL...)");
-        review.MapPost("/{jobId:guid}/approve", async (Guid jobId, Guid concurrencyToken, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+        review.MapPost("/{jobId:guid}/approve", async (Guid jobId, Guid concurrencyToken, [FromQuery] string? paymentReference, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.publish")) return Forbidden();
-            return await Run(async () => Results.Ok(await sender.Send(new ApproveJobCommand { JobId = jobId, UserId = id.Value, ConcurrencyToken = concurrencyToken }, ct)));
+            return await Run(async () => Results.Ok(await sender.Send(new ApproveJobCommand
+            {
+                JobId = jobId,
+                UserId = id.Value,
+                ConcurrencyToken = concurrencyToken,
+                PaymentReference = paymentReference
+            }, ct)));
         }
         ).WithName("ApproveJob").WithSummary("Duyệt và công bố Job")
-        .WithDescription("Yêu cầu permission job.publish. Chỉ duyệt Job PENDING_REVIEW và chuyển sang ACTIVE.");
+        .WithDescription("Yêu cầu permission job.publish. Chỉ duyệt Job PENDING_REVIEW và chuyển sang ACTIVE. Với gói STANDARD, yêu cầu đã thanh toán hoặc truyền paymentReference.");
         review.MapPost("/{jobId:guid}/reject", async (Guid jobId, ClaimsPrincipal user, [FromBody] RejectJobCommand command, ISender sender, IValidator<RejectJobCommand> validator, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.review")) return Forbidden(); command.JobId = jobId; command.UserId = id.Value;
@@ -277,6 +315,8 @@ public static class JobEndpoints
         .WithDescription("Yêu cầu permission job.review. Chỉ từ chối Job PENDING_REVIEW; gửi ReasonCode (REJECTED_INCOMPLETE_DESCRIPTION, REJECTED_INCOMPLETE_REQUIREMENTS hoặc REJECTED_OTHER) và ReasonText. Job chuyển sang REJECTED và Client có thể sửa rồi gửi duyệt lại.");
         return app;
     }
+
+    public record PayPostingFeeRequest(string? PaymentReference);
 
     private static async Task<IResult> ClientAction<T>(ClaimsPrincipal user, string permission, Func<Guid, Task<T>> action)
     { var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, permission)) return Forbidden(); return await Run(async () => Results.Ok(await action(id.Value))); }

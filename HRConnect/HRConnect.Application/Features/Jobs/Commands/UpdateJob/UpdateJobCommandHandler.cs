@@ -55,6 +55,7 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
         job.FeeMultiplier = request.FeeMultiplier;
         job.WarrantyDays = request.WarrantyDays;
         job.PaymentDueDays = request.PaymentDueDays;
+        job.PostingPackageId = request.PostingPackageId;
         job.UpdatedAt = now; job.ConcurrencyToken = Guid.NewGuid(); job.StatusReason = null;
         var existingRequirements = job.JobRequirements.OrderBy(item => item.CreatedAt).ToList();
         for (var index = 0; index < request.Requirements.Count; index++)
