@@ -17,6 +17,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 import type { Job } from '@/types/api/jobs';
 import { candidateKeys, useCandidateCvs } from './CandidatePages';
+import { useCandidateAppliedJobs } from './candidate/useCandidateAppliedJobs';
 import { MAX_CV_MB, cvFileError, fileSize } from './mf02Labels';
 
 type Source = { kind: 'vault'; cvId: string } | { kind: 'file'; file: File };
@@ -213,11 +214,35 @@ export const JobApplyActions: React.FC<{ job: Job; autoOpen?: boolean }> = ({ jo
   const navigate = useNavigate();
   const hasAnyRole = useAuthStore((s) => s.hasAnyRole);
   const hasPermission = useAuthStore((s) => s.hasPermission);
+  const { isApplied, getApplication } = useCandidateAppliedJobs();
   const [open, setOpen] = useState(autoOpen);
 
   if (job.status !== 'ACTIVE') return null;
 
   if (hasAnyRole([UserRole.CANDIDATE])) {
+    const applied = isApplied(job.jobId);
+    const appliedApp = applied ? getApplication(job.jobId) : undefined;
+
+    if (applied) {
+      return (
+        <Button
+          type="default"
+          size="large"
+          icon={<CheckCircleFilled className="text-emerald-600" />}
+          className="!border-emerald-300 !bg-emerald-50/70 !text-emerald-800 hover:!border-emerald-500 font-semibold shadow-2xs"
+          onClick={() => {
+            if (appliedApp?.applicationId) {
+              navigate(`/candidate/applications/${appliedApp.applicationId}`);
+            } else {
+              navigate('/candidate/applications');
+            }
+          }}
+        >
+          Đã ứng tuyển · Xem đơn
+        </Button>
+      );
+    }
+
     const allowed = hasPermission('application.create');
     return (
       <>

@@ -13,10 +13,10 @@ namespace HRConnect.Infrastructure.Persistence.Seed;
 
 public static class JobPostingPackageSeeder
 {
-    public static readonly (string Code, string Name, string Description, decimal DefaultPrice, int DefaultDurationDays)[] ExpectedPackages =
+    public static readonly (string Code, string Name, string Description, decimal DefaultPrice, int DefaultDurationDays, int? DefaultMaxApplications)[] ExpectedPackages =
     [
-        (JobPostingPackageCodes.Free, "Gói Miễn Phí (Trải nghiệm)", "Đăng 1 tin tuyển dụng hiển thị 30 ngày, tối đa 1 tin mở đồng thời, chu kỳ 2 tháng.", 0m, 30),
-        (JobPostingPackageCodes.Standard, "Gói Tiêu Chuẩn 30 Ngày", "Đăng tin công khai 30 ngày, ứng viên nộp hồ sơ không giới hạn, chấm điểm ứng viên bằng AI.", 1500000m, 30)
+        (JobPostingPackageCodes.Free, "Gói Miễn Phí (Trải nghiệm)", "Đăng 1 tin tuyển dụng hiển thị 30 ngày, tối đa 50 hồ sơ hợp lệ, 1 tin mở đồng thời, chu kỳ 2 tháng.", 0m, 30, 50),
+        (JobPostingPackageCodes.Standard, "Gói Tiêu Chuẩn 30 Ngày", "Đăng tin công khai 30 ngày, tối đa 50 hồ sơ hợp lệ, chấm điểm ứng viên bằng AI.", 1500000m, 30, 50)
     ];
 
     public static async Task SeedAsync(
@@ -38,7 +38,7 @@ public static class JobPostingPackageSeeder
         var changed = false;
         var now = DateTime.UtcNow;
 
-        foreach (var (code, name, desc, defPrice, defDays) in ExpectedPackages)
+        foreach (var (code, name, desc, defPrice, defDays, defMaxApps) in ExpectedPackages)
         {
             var price = code == JobPostingPackageCodes.Standard ? standardPrice : defPrice;
             var duration = code == JobPostingPackageCodes.Standard ? standardDuration : defDays;
@@ -53,6 +53,7 @@ public static class JobPostingPackageSeeder
                     Description = desc,
                     Price = price,
                     DurationDays = duration,
+                    MaxApplications = defMaxApps,
                     IsActive = true,
                     CreatedAt = now,
                     UpdatedAt = now
@@ -62,11 +63,12 @@ public static class JobPostingPackageSeeder
             }
             else
             {
-                // Đồng bộ cấu hình giá/thời hạn nếu có thay đổi từ businessSettings
-                if (existing.Price != price || existing.DurationDays != duration)
+                // Đồng bộ cấu hình giá/thời hạn/max hồ sơ
+                if (existing.Price != price || existing.DurationDays != duration || existing.MaxApplications != defMaxApps)
                 {
                     existing.Price = price;
                     existing.DurationDays = duration;
+                    existing.MaxApplications = defMaxApps;
                     existing.UpdatedAt = now;
                     changed = true;
                 }

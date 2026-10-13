@@ -25,6 +25,9 @@ public partial class JobPostingPackage
     /// <summary>Thời gian hiển thị tin tuyển dụng (số ngày, ví dụ 30 ngày).</summary>
     public int DurationDays { get; set; }
 
+    /// <summary>Số lượng hồ sơ tối đa nhận trong gói (ví dụ 50 hồ sơ). Null nếu không giới hạn.</summary>
+    public int? MaxApplications { get; set; } = 50;
+
     /// <summary>Gói có đang được phép sử dụng không.</summary>
     public bool IsActive { get; set; } = true;
 

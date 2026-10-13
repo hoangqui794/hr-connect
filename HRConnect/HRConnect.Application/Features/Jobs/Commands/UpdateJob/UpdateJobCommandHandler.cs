@@ -54,8 +54,19 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
         job.SourcingPricePerCv = request.SourcingPricePerCv;
         job.FeeMultiplier = request.FeeMultiplier;
         job.WarrantyDays = request.WarrantyDays;
-        job.PaymentDueDays = request.PaymentDueDays;
-        job.PostingPackageId = request.PostingPackageId;
+        if (job.PostingPackageId != request.PostingPackageId)
+        {
+            job.PostingPackageId = request.PostingPackageId;
+            if (request.PostingPackageId.HasValue)
+            {
+                var pkg = await _jobs.GetPostingPackageByIdAsync(request.PostingPackageId.Value, ct);
+                job.MaxApplications = pkg?.MaxApplications;
+            }
+            else
+            {
+                job.MaxApplications = null;
+            }
+        }
         job.ApplicationDeadline = request.ApplicationDeadline;
         job.UpdatedAt = now; job.ConcurrencyToken = Guid.NewGuid(); job.StatusReason = null;
         var existingRequirements = job.JobRequirements.OrderBy(item => item.CreatedAt).ToList();

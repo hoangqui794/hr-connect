@@ -42,7 +42,7 @@ export const CandidateJobDetailPage: React.FC = () => {
             <div className="mb-5 flex justify-end">
               <JobApplyActions job={detail.data} />
             </div>
-            <JobDetailPanel job={detail.data} />
+            <JobDetailPanel job={detail.data} isApplicantView />
           </>
         )}
       </CandidateSurface>

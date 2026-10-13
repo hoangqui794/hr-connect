@@ -32,6 +32,7 @@ import {
   DeleteOutlined,
   EnvironmentOutlined,
   ExclamationCircleOutlined,
+  InfoCircleOutlined,
   PlusOutlined,
   TeamOutlined,
   WalletOutlined,
@@ -262,7 +263,16 @@ function ChoiceCards<T extends string>({
 }: {
   value?: T;
   onChange?: (v: T) => void;
-  options: { value: T; title: string; summary: string; disabled?: boolean; badge?: string }[];
+  options: {
+    value: T;
+    title: string;
+    summary?: React.ReactNode;
+    disabled?: boolean;
+    badge?: string;
+    badgeColor?: string;
+    price?: string;
+    features?: string[];
+  }[];
   disabled?: boolean;
   columns?: string;
   name: string;
@@ -275,11 +285,11 @@ function ChoiceCards<T extends string>({
         return (
           <label
             key={o.value}
-            className={`group relative flex cursor-pointer flex-col gap-1 rounded-xl border border-solid p-4 transition-all duration-150 ${
+            className={`group relative flex cursor-pointer flex-col gap-2 rounded-xl border border-solid p-4 transition-all duration-150 ${
               selected
                 ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)] shadow-[0_0_0_1px_var(--console-accent)]'
-                : 'border-slate-200 bg-white hover:border-slate-400'
-            } ${itemDisabled ? 'cursor-not-allowed opacity-60 bg-slate-50' : ''} has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--console-accent)]`}
+                : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-2xs'
+            } ${itemDisabled ? 'cursor-not-allowed opacity-55 bg-slate-50' : ''} has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--console-accent)]`}
           >
             <input
               type="radio"
@@ -290,21 +300,49 @@ function ChoiceCards<T extends string>({
               onChange={() => !itemDisabled && onChange?.(o.value)}
               className="sr-only"
             />
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold text-slate-900 flex items-center gap-1.5">
-                {o.title}
-                {o.badge && <Tag color="warning" className="m-0 text-[11px] leading-tight px-1.5 py-0">{o.badge}</Tag>}
-              </span>
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-0.5">
+                <div className="font-semibold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                  <span>{o.title}</span>
+                  {o.badge && (
+                    <Tag
+                      color={o.badgeColor || (itemDisabled ? 'default' : 'warning')}
+                      className="m-0 text-[11px] leading-tight px-1.5 py-0 font-medium rounded"
+                    >
+                      {o.badge}
+                    </Tag>
+                  )}
+                </div>
+                {o.price && (
+                  <div className={`text-base font-bold ${selected ? 'text-indigo-700' : 'text-slate-800'}`}>
+                    {o.price}
+                  </div>
+                )}
+              </div>
               <span
                 aria-hidden
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-solid ${
-                  selected ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent)]' : 'border-slate-300 bg-white'
+                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-solid transition-colors ${
+                  selected
+                    ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent)]'
+                    : 'border-slate-300 bg-white'
                 }`}
               >
                 {selected && <span className="h-2 w-2 rounded-full bg-white" />}
               </span>
             </div>
-            <span className="text-[13px] leading-snug text-slate-600">{o.summary}</span>
+
+            {o.features && o.features.length > 0 ? (
+              <ul className="m-0 pl-0 list-none space-y-1 text-xs text-slate-600 mt-0.5">
+                {o.features.map((f, i) => (
+                  <li key={i} className="flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : o.summary ? (
+              <span className="text-[13px] leading-snug text-slate-600">{o.summary}</span>
+            ) : null}
           </label>
         );
       })}
@@ -545,29 +583,11 @@ export const JobFormPage: React.FC = () => {
         savedId = res.data.jobId;
       }
 
-      // Kiểm tra nếu là gói STANDARD (cần thanh toán trước khi gửi duyệt)
-      const chosenPkg = postingPackages.data?.find((p) => p.packageId === values.postingPackageId);
-      const isStandardPackage =
-        selectedCode === 'CV_APPLICATION' &&
-        (chosenPkg?.code === 'STANDARD' ||
-          values.postingPackageId === 'std' ||
-          (!postingEligibility.data?.canUseFreePackage && Boolean(values.postingPackageId)));
-
-      if (isStandardPackage) {
-        setPendingPaymentJob({
-          jobId: savedId,
-          title: values.title,
-          amount: chosenPkg?.price || 1500000,
-          andSubmitAfterPay: andSubmit,
-        });
-        return;
-      }
-
       if (andSubmit) {
         // Create does not return a token; read the fresh job before submitting.
         const fresh = await jobsApi.getById(savedId);
         const res = await jobsApi.submit(savedId, fresh.concurrencyToken);
-        message.success(res.message);
+        message.success(res.message || 'Đã gửi duyệt tin tuyển dụng thành công. Internal HR sẽ xét duyệt nội dung trước khi tạo đơn thanh toán.');
       } else {
         message.success('Đã lưu bản nháp.');
       }
@@ -584,28 +604,12 @@ export const JobFormPage: React.FC = () => {
   };
 
   const handlePaymentSuccess = async () => {
-    if (!pendingPaymentJob) return;
-    const { jobId, andSubmitAfterPay } = pendingPaymentJob;
     setPendingPaymentJob(null);
-
-    if (andSubmitAfterPay) {
-      try {
-        const fresh = await jobsApi.getById(jobId);
-        const res = await jobsApi.submit(jobId, fresh.concurrencyToken);
-        message.success(res.message || 'Đã thanh toán phí và gửi duyệt tin tuyển dụng thành công.');
-      } catch (err) {
-        message.error(getApiErrorMessage(err));
-      }
-    } else {
-      message.success('Đã thanh toán phí đăng tin thành công.');
-    }
+    message.success('Đã thanh toán phí đăng tin thành công.');
     navigate('/client/jobs');
   };
 
   const handlePaymentClose = () => {
-    if (pendingPaymentJob?.andSubmitAfterPay) {
-      message.info('Đã lưu bản nháp. Vui lòng thanh toán phí trước khi gửi duyệt tin tuyển dụng.');
-    }
     setPendingPaymentJob(null);
     navigate('/client/jobs');
   };
@@ -716,23 +720,21 @@ export const JobFormPage: React.FC = () => {
               )}
               <Form.Item
                 name="visibility"
-                label="Ai được thấy tin"
+                label="Phạm vi hiển thị"
                 className="mb-0"
                 rules={[{ required: true, message: 'Chọn phạm vi hiển thị.' }]}
-                extra={
-                  !selectedCode
-                    ? 'Chọn loại dịch vụ trước.'
-                    : savedAsInternal
-                      ? undefined
-                      : 'Tin "Nội bộ" tạm ẩn: hiện chưa có cách nhận hồ sơ cho tin chỉ nội bộ thấy.'
-                }
+                extra={!selectedCode ? 'Chọn loại dịch vụ trước.' : undefined}
               >
                 {selectedCode ? (
                   <ChoiceCards
                     name="visibility"
                     columns={visibilityOptions.length > 1 ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}
                     disabled={!editable}
-                    options={visibilityOptions.map((v) => ({ value: v, title: VISIBILITY_LABEL[v].label, summary: VISIBILITY_LABEL[v].summary }))}
+                    options={visibilityOptions.map((v) => ({
+                      value: v,
+                      title: VISIBILITY_LABEL[v].label,
+                      summary: VISIBILITY_LABEL[v].summary,
+                    }))}
                   />
                 ) : (
                   <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-[13px] text-slate-500">Phạm vi hiển thị phụ thuộc loại dịch vụ.</div>
@@ -743,16 +745,14 @@ export const JobFormPage: React.FC = () => {
                 <div className="mt-4">
                   {postingEligibility.data && !postingEligibility.data.canUseFreePackage && (
                     <Alert
-                      type="warning"
+                      type="info"
                       showIcon
-                      className="mb-3"
-                      message="Hết hạn mức Gói Miễn Phí (FREE) — Chuyển sang Gói Tiêu Chuẩn (STANDARD)"
+                      className="mb-3.5 rounded-xl border border-solid border-amber-200/80 bg-amber-50/70"
+                      message={<span className="font-semibold text-amber-900 text-sm">Đã hết lượt đăng tin miễn phí</span>}
                       description={
-                        <div className="space-y-1 text-[13px]">
-                          <div>{postingEligibility.data.reason || 'Doanh nghiệp đã có 1 tin đang mở hoặc chưa đủ chu kỳ 2 tháng.'}</div>
-                          <div className="font-medium text-slate-700">
-                            Hệ thống đã tự động chọn Gói Tiêu Chuẩn (STANDARD). Quý khách sẽ thực hiện xác nhận thanh toán phí đăng tin khi gửi duyệt.
-                          </div>
+                        <div className="text-xs text-amber-800 leading-relaxed mt-0.5">
+                          {postingEligibility.data.reason || 'Doanh nghiệp đã có tin tuyển dụng đang mở.'}{' '}
+                          Hệ thống đã tự động chọn <strong>Gói Tiêu Chuẩn</strong> (phí đăng tin được thanh toán sau khi HR duyệt nội dung).
                         </div>
                       }
                     />
@@ -761,23 +761,42 @@ export const JobFormPage: React.FC = () => {
                     name="postingPackageId"
                     label="Gói đăng tin tuyển dụng"
                     rules={[{ required: true, message: 'Vui lòng chọn gói đăng tin.' }]}
-                    extra="Gói Miễn phí (FREE) chỉ cho phép tối đa 1 tin mở đồng thời, chu kỳ mở lại 2 tháng/lần. Gói Tiêu chuẩn (STANDARD) không giới hạn số tin mở đồng thời."
+                    extra={
+                      <div className="mt-2 text-xs text-slate-500 flex items-center gap-1.5">
+                        <InfoCircleOutlined className="text-blue-500 text-sm shrink-0" />
+                        <span>Phí dịch vụ thanh toán sau khi HR Connect phê duyệt nội dung tin để kích hoạt công khai.</span>
+                      </div>
+                    }
                   >
                     <ChoiceCards
                       name="postingPackageId"
                       columns="sm:grid-cols-2"
                       disabled={!editable}
                       options={(postingPackages.data ?? [
-                        { packageId: 'free', code: 'FREE', name: 'Gói Miễn Phí (FREE)', price: 0, durationDays: 30, description: '0 đ / 30 ngày (Tối đa 1 tin mở đồng thời, chu kỳ 2 tháng)' },
-                        { packageId: 'std', code: 'STANDARD', name: 'Gói Tiêu Chuẩn (STANDARD)', price: 1500000, durationDays: 30, description: '1.500.000 đ / 30 ngày (Không giới hạn tin mở đồng thời)' },
+                        { packageId: 'free', code: 'FREE', name: 'Gói Miễn Phí', price: 0, durationDays: 30, maxApplications: 50, description: '' },
+                        { packageId: 'std', code: 'STANDARD', name: 'Gói Tiêu Chuẩn', price: 1500000, durationDays: 30, maxApplications: 50, description: '' },
                       ]).map((p) => {
-                        const isFreeBlocked = p.code === 'FREE' && postingEligibility.data && !postingEligibility.data.canUseFreePackage;
+                        const isFree = p.code === 'FREE';
+                        const isFreeBlocked = isFree && postingEligibility.data && !postingEligibility.data.canUseFreePackage;
+
                         return {
                           value: p.packageId,
                           disabled: Boolean(isFreeBlocked),
-                          badge: isFreeBlocked ? 'Hết hạn mức' : undefined,
-                          title: `${p.name} — ${p.price === 0 ? '0 đ' : p.price.toLocaleString('vi-VN') + ' đ'}`,
-                          summary: `${p.durationDays} ngày hiển thị • ${p.description ?? (p.code === 'FREE' ? 'Giới hạn 1 tin mở, chu kỳ 2 tháng' : 'Không giới hạn tin mở đồng thời')}`,
+                          title: isFree ? 'Gói Miễn Phí' : 'Gói Tiêu Chuẩn',
+                          price: p.price === 0 ? '0 VNĐ' : `${p.price.toLocaleString('vi-VN')} VNĐ`,
+                          badge: isFreeBlocked ? 'Hết hạn mức' : isFree ? 'Dùng thử' : 'Phổ biến',
+                          badgeColor: isFreeBlocked ? 'default' : isFree ? 'blue' : 'success',
+                          features: isFree
+                            ? [
+                                'Thời hạn hiển thị 30 ngày',
+                                'Tiếp nhận tối đa 50 hồ sơ',
+                                'Giới hạn 1 tin mở / chu kỳ 2 tháng',
+                              ]
+                            : [
+                                'Thời hạn hiển thị 30 ngày',
+                                'Tiếp nhận tối đa 50 hồ sơ',
+                                'AI tự động phân tích & chấm điểm CV',
+                              ],
                         };
                       })}
                     />

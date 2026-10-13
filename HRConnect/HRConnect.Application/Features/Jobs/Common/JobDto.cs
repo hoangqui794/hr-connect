@@ -109,6 +109,7 @@ public sealed record JobDto(
     DateTime? ClosedAt, DateTime CreatedAt, DateTime UpdatedAt, Guid ConcurrencyToken,
     int? SourcingTarget, decimal? SourcingPricePerCv, decimal? FeeMultiplier, int? WarrantyDays, int? PaymentDueDays,
     Guid? PostingPackageId, string? PostingPackageCode, string? PostingPackageName, DateTime? ExpiresAt,
+    int? MaxApplications,
     string? PostingFeeStatus,
     DateTime? ApplicationDeadline, bool IsAcceptingApplications,
     IReadOnlyList<JobRequirementDto> Requirements,
@@ -124,6 +125,7 @@ public sealed record JobDto(
         job.PostedAt, job.ClosedAt, job.CreatedAt, job.UpdatedAt, job.ConcurrencyToken,
         job.SourcingTarget, job.SourcingPricePerCv, job.FeeMultiplier, job.WarrantyDays, job.PaymentDueDays,
         job.PostingPackageId, job.PostingPackage?.Code, job.PostingPackage?.Name, job.ExpiresAt,
+        job.MaxApplications ?? job.PostingPackage?.MaxApplications,
         job.JobPostingFees.OrderByDescending(x => x.CreatedAt).FirstOrDefault()?.Status,
         job.ApplicationDeadline,
         JobAccessPolicy.IsAcceptingApplications(job),
@@ -147,6 +149,7 @@ public sealed record JobDetailDto(
     DateTime? ClosedAt, DateTime CreatedAt, DateTime UpdatedAt, Guid ConcurrencyToken,
     int? SourcingTarget, decimal? SourcingPricePerCv, decimal? FeeMultiplier, int? WarrantyDays, int? PaymentDueDays,
     Guid? PostingPackageId, string? PostingPackageCode, string? PostingPackageName, DateTime? ExpiresAt,
+    int? MaxApplications,
     string? PostingFeeStatus,
     DateTime? ApplicationDeadline, bool IsAcceptingApplications,
     IReadOnlyList<JobRequirementDto> Requirements,
@@ -163,6 +166,7 @@ public sealed record JobDetailDto(
         job.PostedAt, job.ClosedAt, job.CreatedAt, job.UpdatedAt, job.ConcurrencyToken,
         job.SourcingTarget, job.SourcingPricePerCv, job.FeeMultiplier, job.WarrantyDays, job.PaymentDueDays,
         job.PostingPackageId, job.PostingPackage?.Code, job.PostingPackage?.Name, job.ExpiresAt,
+        job.MaxApplications ?? job.PostingPackage?.MaxApplications,
         job.JobPostingFees.OrderByDescending(x => x.CreatedAt).FirstOrDefault()?.Status,
         job.ApplicationDeadline,
         JobAccessPolicy.IsAcceptingApplications(job),
@@ -184,6 +188,7 @@ public sealed record JobPostingPackageDto(
     string? Description,
     decimal Price,
     int DurationDays,
+    int? MaxApplications,
     bool IsActive);
 
 public sealed record JobPostingFeeDto(
@@ -216,7 +221,13 @@ public static class JobTransitions
             [JobStatuses.PendingReview] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 JobStatuses.Active,
+                JobStatuses.PendingPayment,
                 JobStatuses.Rejected
+            },
+            [JobStatuses.PendingPayment] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                JobStatuses.Active,
+                JobStatuses.Closed
             },
             [JobStatuses.Rejected] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {

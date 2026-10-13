@@ -17,7 +17,8 @@ import {
   RightOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useAlertStore, type AlertType, type RealtimeAlert } from '@/stores/alertStore';
+import { useAlertStore, type AlertType, type AlertRole, type RealtimeAlert } from '@/stores/alertStore';
+import { useAuthStore, UserRole } from '@/stores/authStore';
 
 const formatTimeAgo = (isoString: string): string => {
   try {
@@ -61,13 +62,40 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
-  const { alerts, unreadCount, markRead, markAllRead, dismissAlert, clearAll } = useAlertStore();
+  const currentRole = useAuthStore((s) => s.role);
+  const activeAlertRole: AlertRole =
+    currentRole === UserRole.INTERNAL_HR || currentRole === UserRole.ADMIN
+      ? 'INTERNAL_HR'
+      : currentRole === UserRole.CLIENT
+      ? 'CLIENT'
+      : currentRole === UserRole.AFFILIATE
+      ? 'AFFILIATE'
+      : currentRole === UserRole.CANDIDATE
+      ? 'CANDIDATE'
+      : 'CLIENT';
 
-  const filteredAlerts = filter === 'unread' ? alerts.filter((a) => !a.read) : alerts;
+  const { alerts, markRead, markAllRead, dismissAlert, clearAll } = useAlertStore();
+
+  const isAlertVisible = (item: RealtimeAlert): boolean => {
+    if (!item.targetRole || item.targetRole === 'ALL') return true;
+    if (item.targetRole === activeAlertRole) return true;
+    if ((currentRole === UserRole.ADMIN || currentRole === UserRole.INTERNAL_HR) && item.targetRole === 'INTERNAL_HR') return true;
+    return false;
+  };
+
+  const isAlertRead = (item: RealtimeAlert): boolean => {
+    if (item.readByRoles && item.readByRoles.includes(activeAlertRole)) return true;
+    if (item.targetRole === activeAlertRole && item.read) return true;
+    return false;
+  };
+
+  const roleAlerts = alerts.filter(isAlertVisible);
+  const unreadCount = roleAlerts.filter((a) => !isAlertRead(a)).length;
+  const filteredAlerts = filter === 'unread' ? roleAlerts.filter((a) => !isAlertRead(a)) : roleAlerts;
 
   const handleAlertClick = (alert: RealtimeAlert) => {
-    if (!alert.read) {
-      markRead(alert.id);
+    if (!isAlertRead(alert)) {
+      markRead(alert.id, activeAlertRole);
     }
     if (alert.actionRoute) {
       setOpen(false);
@@ -107,20 +135,20 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
                 type="text"
                 size="small"
                 icon={<CheckOutlined />}
-                onClick={() => markAllRead()}
+                onClick={() => markAllRead(activeAlertRole)}
                 className="text-xs text-blue-600 hover:text-blue-700"
               >
                 Đã đọc tất cả
               </Button>
             </Tooltip>
           )}
-          {alerts.length > 0 && (
+          {roleAlerts.length > 0 && (
             <Tooltip title="Xóa tất cả thông báo">
               <Button
                 type="text"
                 size="small"
                 icon={<DeleteOutlined />}
-                onClick={() => clearAll()}
+                onClick={() => clearAll(activeAlertRole)}
                 className="text-xs text-slate-400 hover:text-red-500"
               />
             </Tooltip>
@@ -136,7 +164,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
           value={filter}
           onChange={(val) => setFilter(val as 'all' | 'unread')}
           options={[
-            { label: `Tất cả (${alerts.length})`, value: 'all' },
+            { label: `Tất cả (${roleAlerts.length})`, value: 'all' },
             { label: `Chưa đọc (${unreadCount})`, value: 'unread' },
           ]}
         />
@@ -157,27 +185,29 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
           </div>
         ) : (
           <div className="space-y-1.5">
-            {filteredAlerts.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => handleAlertClick(item)}
-                className={`group relative flex cursor-pointer items-start gap-3 rounded-xl p-3 transition-colors ${
-                  item.read
-                    ? 'bg-white hover:bg-slate-50 text-slate-600'
-                    : 'bg-blue-50/60 hover:bg-blue-50 text-slate-900 border border-solid border-blue-100/80 shadow-xs'
-                }`}
-              >
-                <div className="mt-0.5 shrink-0">{renderAlertIcon(item.type)}</div>
-                <div className="flex-1 min-w-0 pr-4">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-[13px] leading-snug line-clamp-1 ${item.read ? 'font-medium text-slate-800' : 'font-bold text-slate-900'}`}>
-                      {item.title}
-                    </span>
-                    {!item.read && <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500 inline-block" />}
-                  </div>
-                  <p className="mt-1 text-xs text-slate-600 leading-relaxed line-clamp-2 m-0">
-                    {item.message}
-                  </p>
+            {filteredAlerts.map((item) => {
+              const read = isAlertRead(item);
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => handleAlertClick(item)}
+                  className={`group relative flex cursor-pointer items-start gap-3 rounded-xl p-3 transition-colors ${
+                    read
+                      ? 'bg-white hover:bg-slate-50 text-slate-600'
+                      : 'bg-blue-50/60 hover:bg-blue-50 text-slate-900 border border-solid border-blue-100/80 shadow-xs'
+                  }`}
+                >
+                  <div className="mt-0.5 shrink-0">{renderAlertIcon(item.type)}</div>
+                  <div className="flex-1 min-w-0 pr-4">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[13px] leading-snug line-clamp-1 ${read ? 'font-medium text-slate-800' : 'font-bold text-slate-900'}`}>
+                        {item.title}
+                      </span>
+                      {!read && <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500 inline-block" />}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-600 leading-relaxed line-clamp-2 m-0">
+                      {item.message}
+                    </p>
                   <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-400">
                     <span>{formatTimeAgo(item.timestamp)}</span>
                     {item.actionLabel && (
@@ -201,7 +231,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
                   ✕
                 </button>
               </div>
-            ))}
+            );
+          })}
           </div>
         )}
       </div>

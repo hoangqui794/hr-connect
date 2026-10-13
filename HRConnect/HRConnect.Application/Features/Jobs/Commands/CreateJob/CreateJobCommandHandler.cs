@@ -64,6 +64,13 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
 
         var now = DateTime.UtcNow;
         var jobId = Guid.NewGuid();
+        int? maxApplications = null;
+        if (request.PostingPackageId.HasValue)
+        {
+            var package = await _jobRepository.GetPostingPackageByIdAsync(request.PostingPackageId.Value, cancellationToken);
+            maxApplications = package?.MaxApplications;
+        }
+
         var job = new Job
         {
             JobId = jobId,
@@ -98,6 +105,7 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             WarrantyDays = request.WarrantyDays,
             PaymentDueDays = request.PaymentDueDays,
             PostingPackageId = request.PostingPackageId,
+            MaxApplications = maxApplications,
             ApplicationDeadline = request.ApplicationDeadline
         };
 

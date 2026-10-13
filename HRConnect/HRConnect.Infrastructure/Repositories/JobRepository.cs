@@ -314,5 +314,11 @@ public class JobRepository : IJobRepository
         return query.OrderByDescending(j => j.PostedAt).FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<int> CountAcceptedApplicationsByJobIdAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Applications.AsNoTracking()
+            .CountAsync(a => a.JobId == jobId, cancellationToken);
+    }
+
     public void Update(Job job) => _context.Jobs.Update(job);
 }

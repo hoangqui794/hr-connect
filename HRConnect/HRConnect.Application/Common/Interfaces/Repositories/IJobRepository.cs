@@ -71,5 +71,7 @@ public interface IJobRepository
 
     Task<Job?> GetLastPostedJobByCompanyIdAsync(Guid companyId, string? packageCode = null, CancellationToken cancellationToken = default);
 
+    Task<int> CountAcceptedApplicationsByJobIdAsync(Guid jobId, CancellationToken cancellationToken = default);
+
     void Update(Job job);
 }

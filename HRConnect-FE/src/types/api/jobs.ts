@@ -5,7 +5,7 @@
  * camelCase JSON the API returns — the backend is the source of truth.
  */
 
-export type JobStatus = 'DRAFT' | 'PENDING_REVIEW' | 'REJECTED' | 'ACTIVE' | 'PAUSED' | 'CLOSED';
+export type JobStatus = 'DRAFT' | 'PENDING_REVIEW' | 'PENDING_PAYMENT' | 'REJECTED' | 'ACTIVE' | 'PAUSED' | 'CLOSED';
 export type JobVisibility = 'PUBLIC' | 'PARTNER_ONLY' | 'INTERNAL_ONLY';
 export type EmploymentType = 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'INTERNSHIP' | 'FREELANCE';
 export type JobRequirementType = 'MUST_HAVE' | 'SHOULD_HAVE';
@@ -16,7 +16,12 @@ export type JobRejectReasonCode =
   | 'REJECTED_INCOMPLETE_REQUIREMENTS'
   | 'REJECTED_OTHER';
 
-export type JobCloseReasonCode = 'CLOSED_POSITION_FILLED' | 'CLOSED_BY_CLIENT' | 'CLOSED_OTHER';
+export type JobCloseReasonCode =
+  | 'CLOSED_POSITION_FILLED'
+  | 'CLOSED_BY_CLIENT'
+  | 'CLOSED_EXPIRED'
+  | 'CLOSED_QUOTA_REACHED'
+  | 'CLOSED_OTHER';
 
 /** JobRequirementDto */
 export interface JobRequirement {
@@ -85,6 +90,7 @@ export interface Job {
   postingPackageName?: string | null;
   postingFeeStatus?: 'PENDING' | 'PAID' | 'CANCELLED' | null;
   expiresAt?: string | null;
+  maxApplications?: number | null;
   requirements: JobRequirement[];
   skills: JobSkill[];
   statusHistories: JobStatusHistory[];
@@ -106,6 +112,7 @@ export interface JobPostingPackage {
   description: string | null;
   price: number;
   durationDays: number;
+  maxApplications?: number | null;
   isActive: boolean;
 }
 

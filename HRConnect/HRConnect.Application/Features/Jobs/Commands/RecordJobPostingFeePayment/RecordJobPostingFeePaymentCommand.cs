@@ -102,25 +102,46 @@ public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<R
         // Kích hoạt ngày hết hạn trên Job
         job.ExpiresAt = fee.ExpiresAt;
 
-        // Nếu job đang ở trạng thái PENDING_REVIEW và đã được duyệt nội dung, hoặc nếu kích hoạt thì công bố
-        // Cập nhật job nếu cần
+        var becameActive = false;
+        if (job.Status == JobStatuses.PendingPayment)
+        {
+            JobTransitions.ChangeStatus(
+                job,
+                JobStatuses.Active,
+                request.UserId,
+                JobReasonCodes.Approved,
+                "Đã thanh toán phí sử dụng nền tảng thành công. Tin tuyển dụng đã được công bố.");
+            await _jobRepository.AddStatusHistoryAsync(job.JobStatusHistories.Last(), cancellationToken);
+            job.PostedAt = now;
+            job.ClosedAt = null;
+            becameActive = true;
+        }
+
         _jobRepository.Update(job);
 
         // Gửi thông báo cho Client
+        var notificationTitle = becameActive
+            ? "Tin tuyển dụng đã được kích hoạt và công bố"
+            : "Phí đăng tin đã được ghi nhận thanh toán";
+        var notificationMessage = becameActive
+            ? $"Tin tuyển dụng \"{job.Title}\" đã được thanh toán và công bố công khai (Hạn hiển thị: {fee.ExpiresAt:dd/MM/yyyy})."
+            : $"Gói đăng tin cho tin \"{job.Title}\" đã được kích hoạt thành công (Hạn hiển thị: {fee.ExpiresAt:dd/MM/yyyy}).";
+
         await _notifications.AddAsync(new Domain.Entities.Notification
         {
             NotificationId = Guid.NewGuid(),
             UserId = job.CreatedBy,
             NotificationType = "JOB",
-            Title = "Phí đăng tin đã được ghi nhận thanh toán",
-            Message = $"Gói đăng tin cho tin \"{job.Title}\" đã được kích hoạt thành công (Hạn hiển thị: {fee.ExpiresAt:dd/MM/yyyy}).",
+            Title = notificationTitle,
+            Message = notificationMessage,
             RelatedEntityType = "JOB",
             RelatedEntityId = job.JobId,
             Metadata = System.Text.Json.JsonSerializer.Serialize(new
             {
                 jobId = job.JobId,
                 status = job.Status,
-                expiresAt = fee.ExpiresAt
+                expiresAt = fee.ExpiresAt,
+                actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
             }),
             IsRead = false,
             CreatedAt = now

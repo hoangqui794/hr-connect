@@ -38,6 +38,8 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
 
         var serviceTypeCode = job.ServiceType?.Code ?? await _jobs.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, ct);
         var now = DateTime.UtcNow;
+        var requiresPayment = false;
+        decimal standardPrice = 0m;
 
         if (string.Equals(serviceTypeCode, ServiceTypeCodes.CvApplication, StringComparison.OrdinalIgnoreCase))
         {
@@ -57,15 +59,33 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                 }
             }
 
+            job.MaxApplications = package?.MaxApplications;
             var fee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct);
 
             if (package != null && string.Equals(package.Code, JobPostingPackageCodes.Standard, StringComparison.OrdinalIgnoreCase))
             {
-                var standardPrice = package.Price > 0 ? package.Price : _businessSettings.StandardPostingPackagePrice;
+                standardPrice = package.Price > 0 ? package.Price : _businessSettings.StandardPostingPackagePrice;
 
-                // Nếu chưa thanh toán và có mã tham chiếu thanh toán từ Admin -> tự động ghi nhận thanh toán
-                if (fee != null && fee.Status != JobPostingFeeStatuses.Paid)
+                if (fee == null)
                 {
+                    fee = new JobPostingFee
+                    {
+                        PostingFeeId = Guid.NewGuid(),
+                        JobId = job.JobId,
+                        PackageId = package.PackageId,
+                        CompanyId = job.CompanyId,
+                        Amount = standardPrice,
+                        CurrencyCode = "VND",
+                        Status = JobPostingFeeStatuses.Pending,
+                        CreatedAt = now,
+                        UpdatedAt = now
+                    };
+                    await _jobs.AddPostingFeeAsync(fee, ct);
+                }
+
+                if (fee.Status != JobPostingFeeStatuses.Paid)
+                {
+                    // Nếu Admin cung cấp mã thanh toán tại thời điểm duyệt -> ghi nhận thanh toán luôn và công bố
                     if (!string.IsNullOrWhiteSpace(request.PaymentReference))
                     {
                         fee.Status = JobPostingFeeStatuses.Paid;
@@ -76,23 +96,62 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                     }
                     else
                     {
-                        throw new BadRequestException(
-                            $"Tin tuyển dụng gói Tiêu Chuẩn (STANDARD) chưa thanh toán phí đăng tin ({standardPrice:N0} đ). Vui lòng ghi nhận thanh toán trước khi duyệt công bố.");
+                        // Luồng chuẩn: Duyệt nội dung trước, chuyển sang PENDING_PAYMENT để Client thanh toán sau
+                        requiresPayment = true;
                     }
                 }
             }
 
             var duration = package?.DurationDays > 0 ? package.DurationDays : _businessSettings.StandardPostingDurationDays;
-            job.ExpiresAt = now.AddDays(duration);
 
-            if (fee != null)
+            if (!requiresPayment)
             {
-                fee.ActivatedAt = now;
-                fee.ExpiresAt = job.ExpiresAt;
-                fee.UpdatedAt = now;
+                job.ExpiresAt = now.AddDays(duration);
+                if (fee != null)
+                {
+                    fee.ActivatedAt = now;
+                    fee.ExpiresAt = job.ExpiresAt;
+                    fee.UpdatedAt = now;
+                }
             }
         }
 
+        if (requiresPayment)
+        {
+            // Chuyển sang Chờ thanh toán
+            JobTransitions.ChangeStatus(
+                job,
+                JobStatuses.PendingPayment,
+                request.UserId,
+                JobReasonCodes.Approved,
+                "Nội dung tin tuyển dụng đã được duyệt. Vui lòng thanh toán phí dịch vụ để công bố.");
+            await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
+
+            await _notifications.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = job.CreatedBy,
+                NotificationType = "JOB",
+                Title = "Tin tuyển dụng đã được duyệt nội dung",
+                Message = $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng thanh toán phí đăng tin ({standardPrice:N0} đ) để công bố.",
+                RelatedEntityType = "JOB",
+                RelatedEntityId = job.JobId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    jobId = job.JobId,
+                    status = JobStatuses.PendingPayment,
+                    amount = standardPrice,
+                    actionRoute = $"/client/jobs?highlight={job.JobId}&openPayment=true"
+                }),
+                IsRead = false,
+                CreatedAt = now
+            }, ct);
+
+            await _uow.SaveChangesAsync(ct);
+            return new(true, "Duyệt nội dung thành công. Tin tuyển dụng đã chuyển sang trạng thái Chờ thanh toán.", JobDto.From(job));
+        }
+
+        // Trường hợp miễn phí hoặc đã thanh toán: Kích hoạt ACTIVE ngay
         JobTransitions.ChangeStatus(job, JobStatuses.Active, request.UserId, JobReasonCodes.Approved);
         await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
         job.PostedAt = now;

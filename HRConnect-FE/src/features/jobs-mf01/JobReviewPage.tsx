@@ -12,6 +12,7 @@ import {
   Button,
   Empty,
   Input,
+  Modal,
   Segmented,
   Skeleton,
   Tag,
@@ -20,15 +21,22 @@ import {
 import { PageHero } from '@/features/admin-console/ui';
 import '@/features/admin-console/admin-console.css';
 import {
+  AuditOutlined,
   CheckCircleFilled,
   CheckOutlined,
+  ClockCircleOutlined,
   CloseCircleFilled,
   CloseOutlined,
+  CreditCardOutlined,
   ExclamationCircleOutlined,
+  FileDoneOutlined,
+  InfoCircleOutlined,
   ReloadOutlined,
   SearchOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import type { Job, JobRejectReasonCode, JobStatus } from '@/types/api/jobs';
+import { jobsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAlertStore } from '@/stores/alertStore';
 import { useJobDetail, useJobMutations, useJobReviewQueue } from './useJobQueries';
@@ -40,10 +48,11 @@ const { Text } = Typography;
 
 const waitingSince = (job: Job) => job.updatedAt;
 
-type StatusFilter = 'PENDING_REVIEW' | 'ACTIVE' | 'REJECTED' | 'ALL';
+type StatusFilter = 'PENDING_REVIEW' | 'PENDING_PAYMENT' | 'ACTIVE' | 'REJECTED' | 'ALL';
 
 const STATUS_TABS: { label: string; value: StatusFilter }[] = [
   { label: 'Chờ duyệt', value: 'PENDING_REVIEW' },
+  { label: 'Chờ thanh toán', value: 'PENDING_PAYMENT' },
   { label: 'Đang tuyển', value: 'ACTIVE' },
   { label: 'Bị từ chối', value: 'REJECTED' },
   { label: 'Tất cả tin', value: 'ALL' },
@@ -58,38 +67,43 @@ const QueueItem: React.FC<{ job: Job; selected: boolean; onSelect: () => void }>
         type="button"
         onClick={onSelect}
         aria-current={selected ? 'true' : undefined}
-        className={`w-full cursor-pointer rounded-lg border border-solid p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
+        className={`w-full cursor-pointer rounded-xl border p-3.5 text-left transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${
           selected
-            ? 'border-blue-500 bg-blue-50/70 shadow-sm'
-            : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
+            ? 'border-blue-500 bg-blue-50/80 shadow-xs ring-2 ring-blue-500/20'
+            : 'border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/60 hover:shadow-2xs'
         }`}
       >
-        <div className="flex items-start justify-between gap-1.5">
-          <div className="font-semibold text-slate-900 line-clamp-2 leading-tight">
+        <div className="flex items-start justify-between gap-2">
+          <div className={`font-semibold text-sm line-clamp-2 leading-snug ${selected ? 'text-blue-900' : 'text-slate-800'}`}>
             {job.title || 'Vị trí chưa đặt tên'}
           </div>
-          <Tag color={statusMeta.color} className="m-0 shrink-0 text-[10px] font-medium leading-4">
+          <Tag color={statusMeta.color} className="m-0 shrink-0 text-[11px] font-medium leading-4 rounded-md">
             {statusMeta.label}
           </Tag>
         </div>
 
-        <div className="mt-1 text-xs text-slate-600 line-clamp-1">
+        <div className="mt-1 text-xs text-slate-500 line-clamp-1">
           {job.companyName ?? '—'}
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs">
           {job.serviceTypeCode && (
-            <Tag className="m-0 text-[11px] bg-slate-100 text-slate-700 border-slate-200">
+            <Tag className="m-0 text-[11px] bg-slate-100 text-slate-600 border-slate-200/80 rounded font-normal">
               {SERVICE_TYPE_LABEL[job.serviceTypeCode]?.label ?? job.serviceTypeCode}
             </Tag>
           )}
-          <Text type="secondary" className="text-[11px]">
-            Cập nhật: {formatDateTime(waitingSince(job))}
-          </Text>
+          {job.status === 'PENDING_PAYMENT' && (
+            <Tag color="warning" className="m-0 text-[10px] font-medium rounded">
+              Chờ nộp phí
+            </Tag>
+          )}
+          <span className="text-[11px] text-slate-400 ml-auto">
+            {formatDateTime(waitingSince(job))}
+          </span>
         </div>
 
         {job.status === 'REJECTED' && job.statusReason && (
-          <div className="mt-2 rounded bg-rose-50 px-2 py-1 text-[11px] text-rose-700 border border-solid border-rose-200 line-clamp-2">
+          <div className="mt-2 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] text-rose-700 border border-solid border-rose-200/80 line-clamp-2">
             <span className="font-semibold">Lý do: </span>
             {job.statusReason}
           </div>
@@ -111,6 +125,9 @@ export const JobReviewPage: React.FC = () => {
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string>();
   const [rejectOpen, setRejectOpen] = useState(false);
+  const [manualPayOpen, setManualPayOpen] = useState(false);
+  const [manualPayRef, setManualPayRef] = useState('');
+  const [manualPayLoading, setManualPayLoading] = useState(false);
 
   // Hook lấy danh sách theo trạng thái filter
   const queue = useJobReviewQueue(statusFilter);
@@ -159,28 +176,114 @@ export const JobReviewPage: React.FC = () => {
   const job = detail.data;
   const busy = approve.isPending || reject.isPending;
 
-  const confirmApprove = () =>
+  const isStandardUnpaid = Boolean(
     job &&
-    modal.confirm({
-      title: 'Duyệt và công bố tin này?',
-      content: `"${job.title}" sẽ chuyển sang trạng thái Đang tuyển và hiển thị theo phạm vi doanh nghiệp đã chọn.`,
-      okText: 'Duyệt và công bố',
-      cancelText: 'Hủy',
-      onOk: () =>
-        approve
-          .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken })
-          .then((res) => {
-            message.success(res.message);
-            useAlertStore.getState().addAlert({
-              type: 'success',
-              title: 'Tin tuyển dụng đã được duyệt',
-              message: `Tin tuyển dụng "${job.title}" đã được Internal HR phê duyệt và công bố công khai.`,
-              actionLabel: 'Xem tin tuyển dụng',
-              actionRoute: `/client/jobs?highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
-            });
-          })
-          .catch((err) => message.error(getApiErrorMessage(err))),
-    });
+      (job.serviceTypeCode === 'CV_APPLICATION' || job.postingPackageCode === 'STANDARD') &&
+      (!job.postingFeeStatus || job.postingFeeStatus === 'PENDING')
+  );
+
+  const confirmApprove = () => {
+    if (!job) return;
+
+    if (isStandardUnpaid) {
+      modal.confirm({
+        title: 'Duyệt nội dung & Tạo yêu cầu thanh toán?',
+        icon: <FileDoneOutlined className="text-indigo-600 text-xl" />,
+        width: 500,
+        content: (
+          <div className="py-2 space-y-3 text-xs leading-relaxed text-slate-700">
+            <div className="rounded-xl bg-slate-50 p-3 border border-solid border-slate-200 space-y-1">
+              <div className="font-semibold text-slate-900 text-sm">{job.title}</div>
+              <div className="text-slate-600">{job.companyName ?? '—'}</div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <Tag color="blue" className="m-0 font-medium">Gói Tiêu Chuẩn</Tag>
+                <Tag color="cyan" className="m-0 font-medium">1.500.000 VNĐ</Tag>
+                <Tag color="purple" className="m-0 font-medium">Tối đa 50 hồ sơ • AI gợi ý match</Tag>
+              </div>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-3 border border-solid border-slate-200 text-slate-700 space-y-1">
+              <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                <InfoCircleOutlined className="text-blue-500" /> Lưu ý quy trình kích hoạt:
+              </div>
+              <ul className="m-0 pl-4 space-y-1 text-[12px] text-slate-600">
+                <li>Nội dung tin đã đạt tiêu chuẩn kiểm duyệt.</li>
+                <li>Hệ thống tạo yêu cầu thanh toán <strong>1.500.000 VNĐ</strong> và gửi thông báo tới Doanh nghiệp.</li>
+                <li>Tin sẽ tự động kích hoạt công khai ngay khi Doanh nghiệp thanh toán.</li>
+              </ul>
+            </div>
+          </div>
+        ),
+        okText: 'Duyệt & Gửi yêu cầu thanh toán',
+        okButtonProps: { className: '!bg-indigo-600 hover:!bg-indigo-500 font-semibold' },
+        cancelText: 'Hủy bỏ',
+        onOk: () =>
+          approve
+            .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken })
+            .then((res) => {
+              message.success(res.message);
+
+              // 1. Thông báo cho Internal HR
+              useAlertStore.getState().addAlert({
+                targetRole: 'INTERNAL_HR',
+                type: 'info',
+                title: 'Đã duyệt nội dung & tạo đơn thanh toán',
+                message: `Tin "${job.title}" của ${job.companyName} đã duyệt thành công. Đang chờ Doanh nghiệp thanh toán 1.500.000 đ.`,
+                actionLabel: 'Xem tin',
+                actionRoute: `/internal/jobs/review?status=PENDING_PAYMENT&highlight=${encodeURIComponent(job.jobId)}`,
+                relatedEntityId: job.jobId,
+              });
+
+              // 2. Thông báo trực tiếp cho Client (kèm link mở thẳng popup thanh toán)
+              useAlertStore.getState().addAlert({
+                targetRole: 'CLIENT',
+                type: 'warning',
+                title: 'Yêu cầu thanh toán phí đăng tin',
+                message: `Tin tuyển dụng "${job.title}" đã được duyệt nội dung! Vui lòng hoàn tất thanh toán 1.500.000 đ để kích hoạt và công khai tin.`,
+                actionLabel: 'Thanh toán ngay',
+                actionRoute: `/client/jobs?status=PENDING_PAYMENT&highlight=${encodeURIComponent(job.jobId)}&openPayment=true`,
+                relatedEntityId: job.jobId,
+              });
+            })
+            .catch((err) => message.error(getApiErrorMessage(err))),
+      });
+    } else {
+      modal.confirm({
+        title: 'Duyệt và công bố tin này?',
+        content: `"${job.title}" sẽ chuyển sang trạng thái Đang tuyển (ACTIVE) và hiển thị công khai trên hệ thống.`,
+        okText: 'Duyệt và công bố',
+        cancelText: 'Hủy',
+        onOk: () =>
+          approve
+            .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken })
+            .then((res) => {
+              message.success(res.message);
+
+              // 1. Thông báo cho Internal HR
+              useAlertStore.getState().addAlert({
+                targetRole: 'INTERNAL_HR',
+                type: 'success',
+                title: 'Tin tuyển dụng đã được duyệt',
+                message: `Tin tuyển dụng "${job.title}" đã được Internal HR phê duyệt và công bố công khai.`,
+                actionLabel: 'Xem tin tuyển dụng',
+                actionRoute: `/internal/jobs/review?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}`,
+                relatedEntityId: job.jobId,
+              });
+
+              // 2. Thông báo cho Client
+              useAlertStore.getState().addAlert({
+                targetRole: 'CLIENT',
+                type: 'success',
+                title: 'Tin tuyển dụng đã được công khai',
+                message: `Tin "${job.title}" đã được duyệt và chính thức hiển thị công khai để nhận hồ sơ ứng viên.`,
+                actionLabel: 'Xem tin tuyển dụng',
+                actionRoute: `/client/jobs?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
+                relatedEntityId: job.jobId,
+              });
+            })
+            .catch((err) => message.error(getApiErrorMessage(err))),
+      });
+    }
+  };
 
   const handleStatusChange = (val: StatusFilter) => {
     setStatusFilter(val);
@@ -236,10 +339,10 @@ export const JobReviewPage: React.FC = () => {
       ) : queue.isLoading ? (
         <Skeleton active paragraph={{ rows: 8 }} />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)] items-start">
           {/* ── Cột danh sách bên trái ── */}
-          <aside className="admin-surface p-2.5" aria-label="Danh sách tin tuyển dụng">
-            <div className="flex items-center justify-between px-2 py-1.5 border-0 border-b border-solid border-slate-100 mb-2">
+          <aside className="admin-surface p-3" aria-label="Danh sách tin tuyển dụng">
+            <div className="flex items-center justify-between px-1.5 py-1.5 border-0 border-b border-solid border-slate-100 mb-2.5">
               <Text strong className="text-sm text-slate-700">
                 {STATUS_TABS.find((t) => t.value === statusFilter)?.label}
               </Text>
@@ -255,12 +358,14 @@ export const JobReviewPage: React.FC = () => {
                       ? 'Không tìm thấy tin nào khớp từ khóa.'
                       : statusFilter === 'PENDING_REVIEW'
                       ? 'Không có tin nào đang chờ duyệt.'
+                      : statusFilter === 'PENDING_PAYMENT'
+                      ? 'Không có tin nào đang chờ thanh toán.'
                       : 'Không có tin tuyển dụng nào trong mục này.'
                   }
                 />
               </div>
             ) : (
-              <ul className="m-0 list-none space-y-2 p-0 lg:max-h-[calc(100vh-280px)] lg:overflow-y-auto pr-1">
+              <ul className="m-0 list-none space-y-2.5 p-0">
                 {jobs.map((j) => (
                   <QueueItem
                     key={j.jobId}
@@ -287,31 +392,96 @@ export const JobReviewPage: React.FC = () => {
               <>
                 {/* ── Action bar theo trạng thái của Job ── */}
                 {job.status === 'PENDING_REVIEW' ? (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-2xl border-0 border-b border-solid border-amber-200 bg-amber-50/70 px-6 py-3.5 backdrop-blur">
-                    <div className="flex items-center gap-2 text-amber-900 text-sm font-medium">
-                      <ExclamationCircleOutlined className="text-amber-600 text-base" />
-                      <span>Tin đang chờ duyệt. Kiểm tra kỹ mô tả, yêu cầu và quyền lợi trước khi công bố.</span>
+                  <div className="flex flex-col gap-3 rounded-t-2xl border-0 border-b border-solid border-slate-200 bg-slate-50/70 px-6 py-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-700 flex items-center justify-center shrink-0 mt-0.5 border border-solid border-amber-200/60">
+                          <AuditOutlined className="text-base" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-slate-800">
+                              Duyệt nội dung tin tuyển dụng
+                            </span>
+                            {isStandardUnpaid ? (
+                              <Tag color="blue" className="m-0 font-medium text-xs">
+                                Gói Tiêu chuẩn · 1.500.000 VNĐ
+                              </Tag>
+                            ) : (
+                              <Tag color="gold" className="m-0 font-medium text-xs">
+                                Cần phê duyệt
+                              </Tag>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 m-0 leading-relaxed max-w-2xl">
+                            {isStandardUnpaid
+                              ? 'Kiểm tra thông tin mô tả và yêu cầu ứng tuyển. Sau khi duyệt, hệ thống sẽ gửi thông báo yêu cầu thanh toán để doanh nghiệp kích hoạt tin công khai.'
+                              : 'Kiểm tra thông tin mô tả và yêu cầu tuyển dụng trước khi công bố tin công khai trên hệ thống.'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+                        <Button danger icon={<CloseOutlined />} disabled={busy} onClick={() => setRejectOpen(true)}>
+                          Từ chối tin
+                        </Button>
+                        <Button
+                          type="primary"
+                          className={
+                            isStandardUnpaid
+                              ? '!bg-indigo-600 hover:!bg-indigo-500 !border-indigo-600 font-semibold shadow-xs'
+                              : 'font-semibold shadow-xs'
+                          }
+                          icon={isStandardUnpaid ? <SendOutlined /> : <CheckOutlined />}
+                          loading={approve.isPending}
+                          disabled={reject.isPending}
+                          onClick={confirmApprove}
+                        >
+                          {isStandardUnpaid ? 'Duyệt & Gửi yêu cầu thanh toán' : 'Duyệt và công bố tin'}
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button danger icon={<CloseOutlined />} disabled={busy} onClick={() => setRejectOpen(true)}>
-                        Từ chối
-                      </Button>
-                      <Button
-                        type="primary"
-                        icon={<CheckOutlined />}
-                        loading={approve.isPending}
-                        disabled={reject.isPending}
-                        onClick={confirmApprove}
-                      >
-                        Duyệt và công bố
-                      </Button>
+                  </div>
+                ) : job.status === 'PENDING_PAYMENT' ? (
+                  <div className="flex flex-col gap-3 rounded-t-2xl border-0 border-b border-solid border-slate-200 bg-slate-50/70 px-6 py-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-700 flex items-center justify-center shrink-0 mt-0.5 border border-solid border-blue-200/60">
+                          <ClockCircleOutlined className="text-base" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-slate-800">
+                              Đã duyệt nội dung · Chờ doanh nghiệp thanh toán
+                            </span>
+                            <Tag color="processing" className="m-0 font-medium text-xs">
+                              Chờ thanh toán
+                            </Tag>
+                          </div>
+                          <p className="text-xs text-slate-500 m-0 leading-relaxed max-w-2xl">
+                            Đã tạo yêu cầu thanh toán <strong>1.500.000 VNĐ</strong> gửi tới Doanh nghiệp. Tin sẽ tự động chuyển sang trạng thái <strong>Đang tuyển</strong> ngay khi doanh nghiệp hoàn tất phí.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        <Button
+                          type="default"
+                          className="!border-indigo-300 !text-indigo-700 hover:!border-indigo-500 font-medium text-xs shadow-2xs"
+                          icon={<CreditCardOutlined />}
+                          onClick={() => {
+                            setManualPayRef(`UNC-${Date.now().toString().slice(-6)}`);
+                            setManualPayOpen(true);
+                          }}
+                        >
+                          Ghi nhận thanh toán thủ công
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ) : job.status === 'ACTIVE' ? (
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-2xl border-0 border-b border-solid border-emerald-200 bg-emerald-50/80 px-6 py-3.5">
                     <div className="flex items-center gap-2 text-emerald-900 text-sm font-medium">
                       <CheckCircleFilled className="text-emerald-600 text-base" />
-                      <span>Tin tuyển dụng đã được duyệt và đang hoạt động công khai trên hệ thống.</span>
+                      <span>Tin tuyển dụng đã hoàn tất duyệt và thanh toán, đang hoạt động công khai trên hệ thống.</span>
                     </div>
                     <Tag color="success" className="m-0 font-semibold px-2.5 py-0.5">
                       Đang tuyển (ACTIVE)
@@ -345,7 +515,7 @@ export const JobReviewPage: React.FC = () => {
                 )}
 
                 <div className="p-6">
-                  <JobDetailPanel job={job} showHistory />
+                  <JobDetailPanel job={job} showHistory isInternalReview />
                 </div>
               </>
             )}
@@ -374,18 +544,99 @@ export const JobReviewPage: React.FC = () => {
             })
             .then((res) => {
               message.success(res.message);
+              // 1. Thông báo cho Internal HR
               useAlertStore.getState().addAlert({
+                targetRole: 'INTERNAL_HR',
+                type: 'info',
+                title: 'Đã từ chối duyệt tin tuyển dụng',
+                message: `Đã từ chối tin "${job.title}" của ${job.companyName}. Lý do: ${reasonText || 'Không đạt chuẩn'}.`,
+                actionLabel: 'Xem tin',
+                actionRoute: `/internal/jobs/review?status=REJECTED&highlight=${encodeURIComponent(job.jobId)}`,
+                relatedEntityId: job.jobId,
+              });
+
+              // 2. Thông báo cho Client
+              useAlertStore.getState().addAlert({
+                targetRole: 'CLIENT',
                 type: 'error',
-                title: 'Tin tuyển dụng bị từ chối duyệt',
-                message: `Tin tuyển dụng "${job.title}" đã bị từ chối: ${reasonText || 'Vui lòng kiểm tra lại yêu cầu'}.`,
-                actionLabel: 'Xem tin tuyển dụng',
-                actionRoute: `/client/jobs?highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
+                title: 'Tin tuyển dụng cần chỉnh sửa',
+                message: `Tin "${job.title}" chưa được duyệt. Lý do: ${reasonText || 'Vui lòng kiểm tra lại yêu cầu'}. Vui lòng cập nhật lại.`,
+                actionLabel: 'Xem chi tiết',
+                actionRoute: `/client/jobs?status=REJECTED&highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
+                relatedEntityId: job.jobId,
               });
               setRejectOpen(false);
             })
             .catch((err) => message.error(getApiErrorMessage(err)))
         }
       />
+
+      <Modal
+        open={manualPayOpen}
+        title="Ghi nhận thu phí thủ công (Admin/HR)"
+        okText="Xác nhận đã thu & Kích hoạt tin"
+        cancelText="Hủy bỏ"
+        confirmLoading={manualPayLoading}
+        onCancel={() => setManualPayOpen(false)}
+        onOk={async () => {
+          if (!job) return;
+          setManualPayLoading(true);
+          try {
+            await jobsApi.payPostingFee(job.jobId, manualPayRef || `MANUAL-${Date.now().toString().slice(-6)}`);
+            message.success('Đã ghi nhận thanh toán thành công! Tin tuyển dụng đã được kích hoạt công khai (ACTIVE).');
+
+            // 1. Thông báo cho Internal HR
+            useAlertStore.getState().addAlert({
+              targetRole: 'INTERNAL_HR',
+              type: 'success',
+              title: 'Đã thu phí & Kích hoạt tin',
+              message: `Đã ghi nhận thanh toán thành công cho tin "${job.title}". Tin đã chuyển sang trạng thái Đang tuyển (ACTIVE).`,
+              actionLabel: 'Xem tin',
+              actionRoute: `/internal/jobs/review?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}`,
+              relatedEntityId: job.jobId,
+            });
+
+            // 2. Thông báo cho Client
+            useAlertStore.getState().addAlert({
+              targetRole: 'CLIENT',
+              type: 'success',
+              title: 'Tin tuyển dụng đã kích hoạt công khai',
+              message: `Phí đăng tin "${job.title}" đã được xác nhận thanh toán! Tin đã hiển thị công khai để nhận hồ sơ.`,
+              actionLabel: 'Xem tin tuyển dụng',
+              actionRoute: `/client/jobs?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
+              relatedEntityId: job.jobId,
+            });
+
+            setManualPayOpen(false);
+            detail.refetch();
+            queue.refetch();
+          } catch (err) {
+            message.error(getApiErrorMessage(err));
+          } finally {
+            setManualPayLoading(false);
+          }
+        }}
+      >
+        <div className="py-2 space-y-3 text-xs leading-relaxed text-slate-700">
+          <Alert
+            type="info"
+            showIcon
+            message="Kích hoạt tin cho Doanh nghiệp thanh toán ngoài hệ thống"
+            description="Chức năng này dùng khi Doanh nghiệp thanh toán trực tiếp qua chuyển khoản ngân hàng (UNC), tiền mặt hoặc hợp đồng riêng với HR Connect."
+          />
+          <div>
+            <div className="font-semibold text-slate-800 mb-1">Mã tham chiếu / Số biên lai:</div>
+            <Input
+              value={manualPayRef}
+              onChange={(e) => setManualPayRef(e.target.value)}
+              placeholder="Ví dụ: UNC-123456 hoặc VCB-987654"
+            />
+          </div>
+          <div className="text-slate-500">
+            Số tiền cần thu: <strong className="text-indigo-700 font-bold">1.500.000 VNĐ</strong> (Gói Tiêu chuẩn STANDARD).
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

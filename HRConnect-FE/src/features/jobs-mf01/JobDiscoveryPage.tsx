@@ -7,27 +7,35 @@
 import React, { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Alert, Button, Card, Empty, Input, Pagination, Select, Skeleton, Tag, Typography } from 'antd';
-import { EnvironmentOutlined, SearchOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, EnvironmentOutlined, SearchOutlined } from '@ant-design/icons';
 import type { EmploymentType, Job, JobSearchParams } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
+import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
 import { useJobSearch, usePublicJobSearch, useServiceTypes } from './useJobQueries';
 import { EMPLOYMENT_TYPE_LABEL, SERVICE_TYPE_LABEL, formatDate, formatExperience, formatSalary } from './jobDisplay';
 
 const { Title, Text } = Typography;
 const PAGE_SIZE = 12;
 
-const JobCard: React.FC<{ job: Job; detailBasePath: string }> = ({ job, detailBasePath }) => (
+const JobCard: React.FC<{ job: Job; detailBasePath: string; isApplied?: boolean }> = ({ job, detailBasePath, isApplied }) => (
   <Card
     hoverable
-    className="h-full transition-shadow duration-200"
+    className={`h-full transition-shadow duration-200 ${isApplied ? 'border-emerald-300/80 bg-emerald-50/15' : ''}`}
     styles={{ body: { padding: 16, display: 'flex', flexDirection: 'column', gap: 8, height: '100%' } }}
   >
-    <Link
-      to={`${detailBasePath}/${job.jobId}`}
-      className="font-semibold text-slate-900 hover:text-blue-700 line-clamp-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700 rounded"
-    >
-      {job.title}
-    </Link>
+    <div className="flex items-start justify-between gap-2">
+      <Link
+        to={`${detailBasePath}/${job.jobId}`}
+        className="font-semibold text-slate-900 hover:text-blue-700 line-clamp-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700 rounded flex-1"
+      >
+        {job.title}
+      </Link>
+      {isApplied && (
+        <Tag color="success" icon={<CheckCircleFilled />} className="m-0 shrink-0 font-medium text-[11px]">
+          Đã ứng tuyển
+        </Tag>
+      )}
+    </div>
     <Text type="secondary" className="text-sm">
       {job.companyName ?? '—'}
     </Text>
@@ -58,6 +66,7 @@ interface JobDiscoveryPageProps {
 export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePath = '/jobs', publicAccess = false }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const serviceTypes = useServiceTypes();
+  const { isApplied } = useCandidateAppliedJobs();
 
   const params: JobSearchParams = useMemo(
     () => ({
@@ -154,7 +163,12 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy={isFetching}>
             {data.items.map((job) => (
-              <JobCard key={job.jobId} job={job} detailBasePath={detailBasePath} />
+              <JobCard
+                key={job.jobId}
+                job={job}
+                detailBasePath={detailBasePath}
+                isApplied={isApplied(job.jobId)}
+              />
             ))}
           </div>
           {data.totalPages > 1 && (
