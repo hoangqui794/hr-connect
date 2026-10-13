@@ -7,7 +7,26 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Button, DatePicker, Input, Modal, Pagination, Popconfirm, Select, Skeleton, Tooltip, Upload } from 'antd';
+import {
+  Alert,
+  App as AntApp,
+  Button,
+  Card,
+  DatePicker,
+  Divider,
+  Input,
+  Modal,
+  Pagination,
+  Popconfirm,
+  Radio,
+  Select,
+  Skeleton,
+  Space,
+  Tag,
+  Timeline,
+  Tooltip,
+  Upload,
+} from 'antd';
 import {
   CheckCircleFilled,
   DeleteOutlined,
@@ -19,11 +38,20 @@ import {
   ArrowLeftOutlined,
   StarFilled,
   StarOutlined,
+  DownloadOutlined,
+  CloseCircleOutlined,
+  VideoCameraOutlined,
+  EnvironmentOutlined,
+  GiftOutlined,
+  CalendarOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
 import { candidateApplicationsApi, candidateConsentApi, candidateCvApi } from '@/services/api/mf02Api';
+import { mf04Api } from '@/services/api/mf04Api';
+import type { CandidateOfferSummaryDto } from '@/types/api/mf04';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { CandidateApplication } from '@/types/api/mf02';
@@ -38,6 +66,7 @@ export const candidateKeys = {
   cvs: ['candidate-cvs'] as const,
   applications: ['candidate-applications'] as const,
   applicationDetail: (applicationId: string) => ['candidate-applications', applicationId] as const,
+  applicationTimeline: (applicationId: string) => ['candidate-application-timeline', applicationId] as const,
   submissionConsents: (status: string) => ['candidate-submission-consents', status] as const,
 };
 
@@ -386,11 +415,109 @@ export const CandidateApplicationsPage: React.FC = () => {
 
 export const CandidateApplicationDetailPage: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { message } = AntApp.useApp();
   const { applicationId = '' } = useParams();
+
+  // Primary Detail Query (MF-04 with fallback to MF-02 for backwards compatibility)
   const detail = useQuery({
     queryKey: candidateKeys.applicationDetail(applicationId),
-    queryFn: () => candidateApplicationsApi.detail(applicationId),
+    queryFn: async () => {
+      try {
+        return await mf04Api.getApplicationDetail(applicationId);
+      } catch (err: any) {
+        // Fallback to legacy MF-02 endpoint if recruitment detail is unavailable
+        return await candidateApplicationsApi.detail(applicationId);
+      }
+    },
     enabled: Boolean(applicationId),
+  });
+
+  // Public Sanitized Timeline Query
+  const timelineQuery = useQuery({
+    queryKey: candidateKeys.applicationTimeline(applicationId),
+    queryFn: () => mf04Api.getApplicationTimeline(applicationId),
+    enabled: Boolean(applicationId),
+  });
+
+  // State for CV download
+  const [isDownloadingCv, setIsDownloadingCv] = useState(false);
+  const handleDownloadCv = async () => {
+    try {
+      setIsDownloadingCv(true);
+      const res = await mf04Api.getApplicationCvDownloadUrl(applicationId);
+      if (res?.downloadUrl) {
+        window.open(res.downloadUrl, '_blank');
+      } else {
+        message.error('Không thể tạo liên kết tải CV.');
+      }
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || 'Không thể tải CV đã nộp.');
+    } finally {
+      setIsDownloadingCv(false);
+    }
+  };
+
+  // State for Withdraw Application Modal
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [withdrawReason, setWithdrawReason] = useState('');
+  const withdrawMutation = useMutation({
+    mutationFn: async () => {
+      const appData = detail.data as any;
+      return await mf04Api.withdrawApplication(applicationId, {
+        reason: withdrawReason.trim() || undefined,
+        concurrencyToken: appData?.concurrencyToken,
+      });
+    },
+    onSuccess: (res) => {
+      message.success(res?.message || 'Đã rút đơn ứng tuyển thành công.');
+      setIsWithdrawModalOpen(false);
+      setWithdrawReason('');
+      queryClient.invalidateQueries({ queryKey: candidateKeys.applicationDetail(applicationId) });
+      queryClient.invalidateQueries({ queryKey: candidateKeys.applicationTimeline(applicationId) });
+    },
+    onError: (err: any) => {
+      if (err?.response?.status === 409) {
+        message.warning('Dữ liệu đơn ứng tuyển đã được cập nhật từ hệ thống. Đang tải lại dữ liệu...');
+        setIsWithdrawModalOpen(false);
+        queryClient.invalidateQueries({ queryKey: candidateKeys.applicationDetail(applicationId) });
+        queryClient.invalidateQueries({ queryKey: candidateKeys.applicationTimeline(applicationId) });
+        return;
+      }
+      message.error(err?.response?.data?.message || 'Không thể rút đơn ứng tuyển.');
+    },
+  });
+
+  // State for Offer Response Modal
+  const [selectedOffer, setSelectedOffer] = useState<CandidateOfferSummaryDto | null>(null);
+  const [offerResponseChoice, setOfferResponseChoice] = useState<'Accepted' | 'Declined'>('Accepted');
+  const [declineReason, setDeclineReason] = useState('');
+  const respondOfferMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedOffer) return;
+      return await mf04Api.respondOffer(selectedOffer.offerId, {
+        response: offerResponseChoice,
+        declineReason: offerResponseChoice === 'Declined' ? declineReason.trim() || undefined : undefined,
+        concurrencyToken: selectedOffer.concurrencyToken,
+      });
+    },
+    onSuccess: (res) => {
+      message.success(res?.message || 'Đã phản hồi lời mời nhận việc thành công.');
+      setSelectedOffer(null);
+      setDeclineReason('');
+      queryClient.invalidateQueries({ queryKey: candidateKeys.applicationDetail(applicationId) });
+      queryClient.invalidateQueries({ queryKey: candidateKeys.applicationTimeline(applicationId) });
+    },
+    onError: (err: any) => {
+      if (err?.response?.status === 409) {
+        message.warning('Trạng thái lời mời nhận việc đã thay đổi trên hệ thống. Đang tải lại...');
+        setSelectedOffer(null);
+        queryClient.invalidateQueries({ queryKey: candidateKeys.applicationDetail(applicationId) });
+        queryClient.invalidateQueries({ queryKey: candidateKeys.applicationTimeline(applicationId) });
+        return;
+      }
+      message.error(err?.response?.data?.message || 'Không thể gửi phản hồi lời mời nhận việc.');
+    },
   });
 
   if (detail.isLoading) return <Skeleton active paragraph={{ rows: 8 }} />;
@@ -409,26 +536,67 @@ export const CandidateApplicationDetailPage: React.FC = () => {
     );
   }
 
-  const application = detail.data;
+  const application: any = detail.data;
   const stage = candidateStage(application.status);
+  const allowedActions: string[] = application.allowedActions || [];
+  const canWithdraw = allowedActions.includes('WITHDRAW_APPLICATION');
+
+  const interviews: any[] = application.interviews || [];
+  const offers: any[] = application.offers || [];
+  const placement: any = application.placement || null;
+  const timelineEvents: any[] = timelineQuery.data?.events || [];
 
   return (
-    <div className="candidate-page candidate-application-detail-page">
-      <Button className="candidate-detail-back" icon={<ArrowLeftOutlined />} onClick={() => navigate('/candidate/applications')}>
-        Đơn ứng tuyển
-      </Button>
+    <div className="candidate-page candidate-application-detail-page space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <Button
+          className="candidate-detail-back"
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/candidate/applications')}
+        >
+          Đơn ứng tuyển
+        </Button>
+
+        {/* Server-Driven Action Buttons */}
+        <Space>
+          {canWithdraw && (
+            <Button
+              danger
+              icon={<CloseCircleOutlined />}
+              onClick={() => setIsWithdrawModalOpen(true)}
+            >
+              Rút đơn ứng tuyển
+            </Button>
+          )}
+        </Space>
+      </div>
+
       <CandidatePageHeader
         eyebrow="Chi tiết ứng tuyển"
         title={application.jobTitle}
         description={application.companyName}
         actions={<StatusDot tone={stage.tone}>{stage.label}</StatusDot>}
       />
+
+      {/* Main Info Surface */}
       <CandidateSurface className="space-y-5 p-6">
         <StageTracker status={application.status} />
         <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-slate-500">CV đã nộp</dt>
-            <dd className="m-0 mt-1 font-medium text-slate-900">{application.cvTitle || application.cvFileName || 'Không có tên CV'}</dd>
+            <dd className="m-0 mt-1 font-medium text-slate-900 flex items-center gap-2">
+              <span>{application.submittedCv?.title || application.submittedCv?.fileName || application.cvTitle || application.cvFileName || 'Không có tên CV'}</span>
+              <Button
+                size="small"
+                type="link"
+                icon={<DownloadOutlined />}
+                loading={isDownloadingCv}
+                onClick={handleDownloadCv}
+                className="p-0 font-normal"
+              >
+                Tải CV đã nộp
+              </Button>
+            </dd>
           </div>
           <div>
             <dt className="text-slate-500">Nguồn hồ sơ</dt>
@@ -444,17 +612,274 @@ export const CandidateApplicationDetailPage: React.FC = () => {
             <dt className="text-slate-500">Cập nhật gần nhất</dt>
             <dd className="m-0 mt-1 font-medium text-slate-900">{dayjs(application.updatedAt).format('HH:mm DD/MM/YYYY')}</dd>
           </div>
+          {application.plannedStartDate && (
+            <div>
+              <dt className="text-slate-500">Ngày nhận việc dự kiến</dt>
+              <dd className="m-0 mt-1 font-medium text-slate-900">{dayjs(application.plannedStartDate).format('DD/MM/YYYY')}</dd>
+            </div>
+          )}
         </dl>
         {application.statusReason && <Alert type="info" showIcon message="Thông tin trạng thái" description={application.statusReason} />}
       </CandidateSurface>
-      <CandidateSurface className="p-6">
-        <h2 className="m-0 text-base font-bold text-slate-900">Kết quả AI</h2>
-        <div className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-          <div><span className="text-slate-500">Trạng thái</span><strong className="mt-1 block text-slate-900">{application.aiStatus || 'Chưa có kết quả'}</strong></div>
-          <div><span className="text-slate-500">Điểm phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchScore == null ? '—' : `${application.aiMatchScore}%`}</strong></div>
-          <div><span className="text-slate-500">Mức phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchTier || '—'}</strong></div>
+
+      {/* Interviews Section */}
+      {interviews.length > 0 && (
+        <CandidateSurface className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <VideoCameraOutlined className="text-blue-600 text-lg" />
+            <h2 className="m-0 text-base font-bold text-slate-900">Lịch phỏng vấn ({interviews.length})</h2>
+          </div>
+          <div className="space-y-4">
+            {interviews.map((iv: any) => (
+              <Card
+                key={iv.interviewId}
+                size="small"
+                className="border border-slate-200 rounded-xl bg-slate-50/50"
+              >
+                <div className="flex items-start justify-between flex-wrap gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900">Vòng {iv.interviewRound}: {iv.interviewType || 'Phỏng vấn'}</span>
+                      <Tag color={iv.status === 'SCHEDULED' ? 'blue' : iv.status === 'COMPLETED' ? 'green' : 'default'}>
+                        {iv.status}
+                      </Tag>
+                    </div>
+                    <div className="mt-2 text-xs text-slate-600 flex flex-wrap gap-4">
+                      {iv.scheduledAt && (
+                        <span>
+                          <CalendarOutlined className="mr-1" />
+                          {dayjs(iv.scheduledAt).format('HH:mm - DD/MM/YYYY')}
+                        </span>
+                      )}
+                      {iv.durationMinutes && <span>Thời lượng: {iv.durationMinutes} phút</span>}
+                      {iv.location && (
+                        <span>
+                          <EnvironmentOutlined className="mr-1" />
+                          {iv.location}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {iv.meetingLink && (
+                    <Button
+                      type="primary"
+                      size="small"
+                      href={iv.meetingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      icon={<VideoCameraOutlined />}
+                    >
+                      Vào phòng họp
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </CandidateSurface>
+      )}
+
+      {/* Offers Section */}
+      {offers.length > 0 && (
+        <CandidateSurface className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <GiftOutlined className="text-emerald-600 text-lg" />
+            <h2 className="m-0 text-base font-bold text-slate-900">Thư mời nhận việc (Offers)</h2>
+          </div>
+          <div className="space-y-4">
+            {offers.map((offer: any) => (
+              <Card
+                key={offer.offerId}
+                size="small"
+                className="border border-emerald-200 rounded-xl bg-emerald-50/30"
+              >
+                <div className="flex items-start justify-between flex-wrap gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900">Phiên bản #{offer.offerVersion}</span>
+                      <Tag color={offer.status === 'ACCEPTED' ? 'green' : offer.status === 'DECLINED' ? 'red' : 'blue'}>
+                        {offer.status}
+                      </Tag>
+                    </div>
+                    <div className="mt-2 text-sm text-slate-800">
+                      Mức lương:{' '}
+                      <strong className="text-emerald-700">
+                        {offer.salary != null ? `${offer.salary.toLocaleString('vi-VN')} ${offer.currencyCode || 'VND'}` : 'Thương lượng'}
+                      </strong>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-600 flex flex-wrap gap-4">
+                      {offer.startDate && <span>Bắt đầu: {dayjs(offer.startDate).format('DD/MM/YYYY')}</span>}
+                      {offer.expiryDate && <span>Hạn phản hồi: {dayjs(offer.expiryDate).format('DD/MM/YYYY')}</span>}
+                    </div>
+                    {offer.declineReason && (
+                      <div className="mt-2 text-xs text-rose-600">
+                        Lý do từ chối: {offer.declineReason}
+                      </div>
+                    )}
+                  </div>
+
+                  <Space>
+                    {offer.offerDocumentUrl && (
+                      <Button
+                        size="small"
+                        href={offer.offerDocumentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        icon={<DownloadOutlined />}
+                      >
+                        Tài liệu Offer
+                      </Button>
+                    )}
+                    {offer.canRespond && (
+                      <Button
+                        type="primary"
+                        size="small"
+                        onClick={() => {
+                          setSelectedOffer(offer);
+                          setOfferResponseChoice('Accepted');
+                          setDeclineReason('');
+                        }}
+                      >
+                        Phản hồi Offer
+                      </Button>
+                    )}
+                  </Space>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </CandidateSurface>
+      )}
+
+      {/* Placement Section */}
+      {placement && (
+        <CandidateSurface className="p-6">
+          <h2 className="m-0 text-base font-bold text-slate-900">Thông tin Tiếp nhận việc làm (Placement)</h2>
+          <div className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+            <div>
+              <span className="text-slate-500">Vị trí</span>
+              <strong className="mt-1 block text-slate-900">{placement.position || application.jobTitle}</strong>
+            </div>
+            <div>
+              <span className="text-slate-500">Phòng ban</span>
+              <strong className="mt-1 block text-slate-900">{placement.department || 'Đang cập nhật'}</strong>
+            </div>
+            <div>
+              <span className="text-slate-500">Ngày bắt đầu thực tế</span>
+              <strong className="mt-1 block text-slate-900">{dayjs(placement.actualStartDate).format('DD/MM/YYYY')}</strong>
+            </div>
+          </div>
+        </CandidateSurface>
+      )}
+
+      {/* Public Sanitized Timeline */}
+      {timelineEvents.length > 0 && (
+        <CandidateSurface className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <HistoryOutlined className="text-slate-600 text-lg" />
+            <h2 className="m-0 text-base font-bold text-slate-900">Dòng thời gian tuyển dụng</h2>
+          </div>
+          <Timeline
+            className="mt-4"
+            items={timelineEvents.map((evt: any) => ({
+              children: (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-900">{evt.title}</span>
+                    <span className="text-xs text-slate-400">
+                      {dayjs(evt.timestamp).format('HH:mm DD/MM/YYYY')}
+                    </span>
+                  </div>
+                  {evt.description && <div className="text-xs text-slate-600 mt-1">{evt.description}</div>}
+                </div>
+              ),
+            }))}
+          />
+        </CandidateSurface>
+      )}
+
+      {/* AI Result Section (if available from legacy or model) */}
+      {(application.aiStatus || application.aiMatchScore != null) && (
+        <CandidateSurface className="p-6">
+          <h2 className="m-0 text-base font-bold text-slate-900">Kết quả AI</h2>
+          <div className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+            <div><span className="text-slate-500">Trạng thái</span><strong className="mt-1 block text-slate-900">{application.aiStatus || 'Chưa có kết quả'}</strong></div>
+            <div><span className="text-slate-500">Điểm phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchScore == null ? '—' : `${application.aiMatchScore}%`}</strong></div>
+            <div><span className="text-slate-500">Mức phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchTier || '—'}</strong></div>
+          </div>
+        </CandidateSurface>
+      )}
+
+      {/* Modal 1: Withdraw Application */}
+      <Modal
+        title="Rút đơn ứng tuyển"
+        open={isWithdrawModalOpen}
+        onCancel={() => setIsWithdrawModalOpen(false)}
+        onOk={() => withdrawMutation.mutate()}
+        okText="Xác nhận rút đơn"
+        cancelText="Đóng"
+        okButtonProps={{ danger: true, loading: withdrawMutation.isPending }}
+      >
+        <p className="text-sm text-slate-600">
+          Bạn có chắc chắn muốn rút đơn ứng tuyển cho vị trí <strong>{application.jobTitle}</strong>? Sau khi rút đơn, nhà tuyển dụng sẽ không thể xử lý tiếp hồ sơ của bạn.
+        </p>
+        <div className="mt-3">
+          <label className="text-xs font-semibold text-slate-700 block mb-1">
+            Lý do rút đơn (tùy chọn):
+          </label>
+          <Input.TextArea
+            rows={3}
+            placeholder="VD: Đã nhận được lời mời làm việc từ đơn vị khác..."
+            value={withdrawReason}
+            onChange={(e) => setWithdrawReason(e.target.value)}
+          />
         </div>
-      </CandidateSurface>
+      </Modal>
+
+      {/* Modal 2: Respond Offer */}
+      <Modal
+        title={`Phản hồi Thư nhận việc #${selectedOffer?.offerVersion || ''}`}
+        open={Boolean(selectedOffer)}
+        onCancel={() => setSelectedOffer(null)}
+        onOk={() => respondOfferMutation.mutate()}
+        okText="Gửi phản hồi"
+        cancelText="Hủy"
+        okButtonProps={{ loading: respondOfferMutation.isPending }}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Vui lòng chọn quyết định của bạn đối với lời mời nhận việc này:
+          </p>
+          <Radio.Group
+            value={offerResponseChoice}
+            onChange={(e) => setOfferResponseChoice(e.target.value)}
+            className="space-y-2 block"
+          >
+            <Radio value="Accepted" className="block">
+              <span className="font-semibold text-emerald-700">Đồng ý nhận việc (Accepted)</span>
+              <p className="text-xs text-slate-500 m-0 ml-6">Tôi đồng ý với các điều khoản đãi ngộ và thời gian bắt đầu công việc.</p>
+            </Radio>
+            <Radio value="Declined" className="block">
+              <span className="font-semibold text-rose-700">Từ chối nhận việc (Declined)</span>
+              <p className="text-xs text-slate-500 m-0 ml-6">Tôi xin phép từ chối cơ hội làm việc này.</p>
+            </Radio>
+          </Radio.Group>
+
+          {offerResponseChoice === 'Declined' && (
+            <div className="mt-3">
+              <label className="text-xs font-semibold text-slate-700 block mb-1">
+                Lý do từ chối (giúp nhà tuyển dụng cải thiện quy trình):
+              </label>
+              <Input.TextArea
+                rows={3}
+                placeholder="VD: Mức đãi ngộ chưa đạt kỳ vọng / Khoảng cách địa lý..."
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };
