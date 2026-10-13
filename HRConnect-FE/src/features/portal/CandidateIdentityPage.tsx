@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Button, Form, Input, Skeleton, Tag } from 'antd';
-import { CheckCircleOutlined, LinkOutlined, MailOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { Alert, App as AntApp, Button, Form, Input, Popconfirm, Skeleton, Tag } from 'antd';
+import { CheckCircleOutlined, DeleteOutlined, LinkOutlined, MailOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { candidateIdentityApi } from '@/services/api/mf02/candidateIdentityApi';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
@@ -130,6 +130,20 @@ export const CandidateIdentityPage: React.FC = () => {
     },
   });
 
+  const revoke = useMutation({
+    mutationFn: (identity: { emailIdentityId: string; concurrencyToken: string }) =>
+      candidateIdentityApi.revoke(identity.emailIdentityId, identity.concurrencyToken),
+    onSuccess: async () => {
+      message.success('Đã thu hồi email phụ khỏi hồ sơ Candidate.');
+      await queryClient.invalidateQueries({ queryKey: candidateIdentityKeys.all });
+    },
+    onError: async (error) => {
+      const apiError = getApiError(error, 'Chưa thể thu hồi email liên kết.');
+      message.error(apiError.message);
+      if (apiError.status === 409) await queryClient.invalidateQueries({ queryKey: candidateIdentityKeys.all });
+    },
+  });
+
   if (!canManage) return <Alert type="error" showIcon message="Bạn không có quyền quản lý email liên kết." />;
 
   return (
@@ -176,6 +190,28 @@ export const CandidateIdentityPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Tag color={identity.kind === 'PRIMARY' ? 'blue' : 'cyan'}>{identity.kind === 'PRIMARY' ? 'Email chính' : 'Email phụ'}</Tag>
                   <StatusDot tone={identity.status === 'VERIFIED' ? 'success' : 'neutral'}>{identity.status}</StatusDot>
+                  {identity.canRevoke && identity.status === 'VERIFIED' && (
+                    <Popconfirm
+                      title="Thu hồi email phụ?"
+                      description="Email này sẽ không còn được dùng để nhận diện và khôi phục dữ liệu Candidate. CV và đơn ứng tuyển đã liên kết vẫn được giữ."
+                      okText="Thu hồi"
+                      okButtonProps={{ danger: true }}
+                      cancelText="Giữ lại"
+                      onConfirm={() => revoke.mutate({
+                        emailIdentityId: identity.emailIdentityId,
+                        concurrencyToken: identity.concurrencyToken,
+                      })}
+                    >
+                      <Button
+                        danger
+                        icon={<DeleteOutlined />}
+                        loading={revoke.isPending && revoke.variables?.emailIdentityId === identity.emailIdentityId}
+                        aria-label={`Thu hồi email ${identity.email}`}
+                      >
+                        Thu hồi
+                      </Button>
+                    </Popconfirm>
+                  )}
                 </div>
               </li>
             ))}

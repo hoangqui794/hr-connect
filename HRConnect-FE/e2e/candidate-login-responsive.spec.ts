@@ -72,6 +72,18 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
     fullPage: true,
   });
 
+  await page.goto('/candidate/applications');
+  await expect(page.getByRole('heading', { name: 'Đơn ứng tuyển của tôi' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Đang chờ bạn xác nhận' })).toBeVisible();
+  await expect(page.getByText('Backend Developer')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Xem và xác nhận' })).toBeVisible();
+  const applicationsBrandX = (await brandLink.boundingBox())?.x;
+  expect(Math.abs((applicationsBrandX ?? 0) - (initialBrandX ?? 0))).toBeLessThan(1);
+  await page.screenshot({
+    path: testInfo.outputPath(`candidate-applications-${testInfo.project.name}.png`),
+    fullPage: true,
+  });
+
   await page.goto('/candidate/profile');
   await expect(page.getByRole('heading', { name: 'Candidate E2E' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Hồ sơ & CV', exact: true })).not.toHaveAttribute('aria-current', 'page');

@@ -23,6 +23,9 @@ import {
   KeyOutlined,
   ReloadOutlined,
   SettingOutlined,
+  ApartmentOutlined,
+  TeamOutlined,
+  SolutionOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore, type UserProfile, getInitials } from '@/stores/authStore';
@@ -334,16 +337,55 @@ export const LoginPage: React.FC = () => {
   return (
     <>
       <AuthPageShell
+        fitScreen
         eyebrow="Chào mừng bạn trở lại"
         title="Đăng nhập HR Connect"
         description="Tiếp tục quản lý cơ hội nghề nghiệp, ứng viên và quy trình tuyển dụng của bạn."
-        sideTitle="Mọi hành trình tuyển dụng bắt đầu từ một kết nối đáng tin cậy."
-        sideDescription="Một không gian làm việc chung cho Candidate, Affiliate Recruiter, doanh nghiệp và đội ngũ HR."
+        sideTitle="Kết nối tuyển dụng thông minh"
+        sideDescription="Hệ sinh thái kết nối Doanh nghiệp, Headhunter và Ứng viên."
         benefits={[
-          'Theo dõi hồ sơ và trạng thái tuyển dụng rõ ràng',
-          'Quản lý CV, ứng viên và nguồn giới thiệu tập trung',
-          'Bảo vệ tài khoản bằng xác thực và phân quyền theo vai trò',
+          {
+            icon: <ApartmentOutlined className="text-blue-600" />,
+            title: 'Doanh nghiệp tuyển dụng',
+            desc: 'Quản trị tin đăng & ứng viên tập trung',
+          },
+          {
+            icon: <TeamOutlined className="text-emerald-600" />,
+            title: 'Mạng lưới Headhunter',
+            desc: 'Giới thiệu nhân tài, hoa hồng minh bạch',
+          },
+          {
+            icon: <SafetyCertificateOutlined className="text-indigo-600" />,
+            title: 'Bảo mật & Phân quyền',
+            desc: 'Bảo vệ dữ liệu, kiểm soát theo vai trò',
+          },
         ]}
+        extraVisual={
+          <div className="mt-4 overflow-hidden rounded-2xl border border-white/70 bg-white/50 p-3.5 text-slate-800 backdrop-blur-md shadow-md shadow-[#1E9EDB]/15">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-white text-sm font-black shadow-sm">
+                  HR
+                </span>
+                <div>
+                  <strong className="block text-xs font-bold text-slate-900">HR Connect Ecosystem</strong>
+                  <span className="text-[11px] font-medium text-slate-600">Không gian làm việc đồng bộ & chuẩn xác</span>
+                </div>
+              </div>
+              <span className="rounded-full border border-sky-400/60 bg-sky-50 px-2.5 py-0.5 text-[10px] font-extrabold text-[#1E9EDB]">
+                RBAC Hub
+              </span>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between border-t border-white/60 pt-2.5 text-[11px] text-slate-600 font-medium">
+              <span className="flex items-center gap-1.5">
+                <SafetyCertificateOutlined className="text-[#1E9EDB] text-xs" />
+                <span>Xác thực bảo mật đa phân quyền</span>
+              </span>
+              <span className="font-bold text-slate-800">Đồng bộ tức thì</span>
+            </div>
+          </div>
+        }
       >
         {verifiedSuccessNotice && (
           <Alert
@@ -353,7 +395,7 @@ export const LoginPage: React.FC = () => {
             showIcon
             closable
             onClose={() => setVerifiedSuccessNotice(null)}
-            className="mb-5 rounded-xl"
+            className="mb-3 rounded-xl py-2"
           />
         )}
 
@@ -365,7 +407,7 @@ export const LoginPage: React.FC = () => {
             showIcon
             closable
             onClose={() => setErrorMessage(null)}
-            className="mb-5 rounded-xl border-amber-200 bg-amber-50"
+            className="mb-3 rounded-xl border-amber-200 bg-amber-50 py-2"
           />
         ) : errorMessage ? (
           <Alert
@@ -375,7 +417,7 @@ export const LoginPage: React.FC = () => {
             showIcon
             closable
             onClose={() => setErrorMessage(null)}
-            className="mb-5 rounded-xl"
+            className="mb-3 rounded-xl py-2"
           />
         ) : null}
 
@@ -387,6 +429,7 @@ export const LoginPage: React.FC = () => {
               { required: true, message: 'Vui lòng nhập địa chỉ email.' },
               { type: 'email', message: 'Email chưa đúng định dạng.' },
             ]}
+            className="mb-3"
           >
             <Input
               size="large"
@@ -399,7 +442,7 @@ export const LoginPage: React.FC = () => {
             />
           </Form.Item>
 
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-1.5 flex items-center justify-between">
             <label htmlFor="password" className={AUTH_LABEL_CLASS}>Mật khẩu</label>
             <button
               type="button"
@@ -409,12 +452,12 @@ export const LoginPage: React.FC = () => {
                 const currentEmail = form.getFieldValue('email');
                 if (currentEmail) forgotForm.setFieldsValue({ email: currentEmail });
               }}
-              className="cursor-pointer border-0 bg-transparent p-0 text-sm font-semibold text-blue-600 hover:text-blue-800"
+              className="cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold text-[#1E9EDB] hover:text-[#168ec6]"
             >
               Quên mật khẩu?
             </button>
           </div>
-          <Form.Item name="password" rules={[{ required: true, message: 'Vui lòng nhập mật khẩu.' }]} className="mb-6">
+          <Form.Item name="password" rules={[{ required: true, message: 'Vui lòng nhập mật khẩu.' }]} className="mb-4">
             <Input.Password
               id="password"
               size="large"
@@ -435,35 +478,35 @@ export const LoginPage: React.FC = () => {
             disabled={submitting}
             icon={<ArrowRightOutlined />}
             iconPosition="end"
-            className="h-12 rounded-xl border-0 bg-blue-600 text-sm font-bold shadow-lg shadow-blue-600/20 hover:!bg-blue-700"
+            className="h-11 rounded-xl border-0 bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] hover:bg-[linear-gradient(135deg,#168ec6_0%,#43abd8_100%)] text-sm font-bold text-white shadow-md shadow-[#1E9EDB]/30 transition-all"
           >
             {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </Button>
         </Form>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-600">
+        <div className="mt-3.5 rounded-xl border border-white/70 bg-white/60 backdrop-blur-md px-3.5 py-2 text-center text-xs text-slate-600">
           Chưa có tài khoản?{' '}
-          <Link to="/register" className="font-bold text-blue-700 hover:text-blue-900">
+          <Link to="/register" className="font-bold text-[#1E9EDB] hover:text-[#168ec6]">
             Tạo tài khoản miễn phí
           </Link>
         </div>
 
         {SHOW_DEMO_ACCOUNTS && (
-          <details className="group mt-5 rounded-2xl border border-dashed border-slate-300 bg-white">
-            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-bold text-slate-700">
-              <span className="flex items-center gap-2"><ThunderboltOutlined className="text-amber-500" /> Tài khoản kiểm thử</span>
-              <span className="text-xs font-medium text-slate-400 group-open:hidden">Mở danh sách</span>
+          <details className="group mt-3 rounded-xl border border-dashed border-slate-300/80 bg-white/70 backdrop-blur-md">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-3.5 py-2 text-xs font-bold text-slate-700">
+              <span className="flex items-center gap-1.5"><ThunderboltOutlined className="text-amber-500" /> Tài khoản kiểm thử</span>
+              <span className="text-[11px] font-medium text-slate-400 group-open:hidden">Mở danh sách</span>
             </summary>
-            <div className="grid grid-cols-1 gap-2 border-t border-slate-100 p-3 sm:grid-cols-2">
+            <div className="max-h-[145px] overflow-y-auto border-t border-slate-100 p-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
               {DEMO_ACCOUNTS.map((demo) => (
                 <button
                   key={demo.role}
                   type="button"
                   disabled={submitting}
                   onClick={() => handleQuickFill(demo)}
-                  className={`${demo.role === UserRole.ADMIN ? 'sm:col-span-2 ' : ''}flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50`}
+                  className={`${demo.role === UserRole.ADMIN ? 'sm:col-span-2 ' : ''}flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 bg-white p-2 text-left transition hover:border-blue-300 hover:bg-blue-50/60 disabled:cursor-not-allowed disabled:opacity-50`}
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: demo.badgeBg, color: demo.accentColor }}>
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs" style={{ background: demo.badgeBg, color: demo.accentColor }}>
                     {demo.icon}
                   </span>
                   <span className="min-w-0">

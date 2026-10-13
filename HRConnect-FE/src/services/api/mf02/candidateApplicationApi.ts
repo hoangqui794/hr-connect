@@ -5,7 +5,7 @@ import type { ApplyJobResult, CandidateApplication, CandidateApplicationDetail }
 import { cleanParams, createMultipartBody } from './shared';
 
 export const candidateApplicationsApi = {
-  async list(params: { status?: string; jobId?: string; fromDate?: string; toDate?: string; page: number; pageSize: number }): Promise<PagedItems<CandidateApplication>> {
+  async list(params: { status?: string; jobId?: string; fromDate?: string; toDate?: string; search?: string; submissionSource?: 'CANDIDATE' | 'AFFILIATE'; page: number; pageSize: number }): Promise<PagedItems<CandidateApplication>> {
     return (await apiClient.get<ApiEnvelope<PagedItems<CandidateApplication>>>('/candidates/applications', { params: cleanParams(params) })).data.data;
   },
   async detail(applicationId: string): Promise<CandidateApplicationDetail> {

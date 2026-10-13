@@ -51,7 +51,7 @@ Internal HR thuộc phía đơn vị vận hành dịch vụ HR Connect.
 
 Internal HR:
 
-* review Job;  
+* review Job và **chốt điều khoản phí với Client** khi duyệt Job (Fee Multiplier, Warranty, Payment Due);  
 * screening Candidate;  
 * điều phối Interview;  
 * theo dõi Offer;  
@@ -141,6 +141,62 @@ Công thức:
 Đây là một business rule có benchmark thực tế khá tốt: JobSeeker.vn hiện công khai hệ số 1.5 và công thức Service Fee \= monthly gross salary × 1.5. [JobSeeker](https://jobseeker.vn/?utm_source=chatgpt.com)
 
 Tuy nhiên, HR Connect nên lưu `FeeMultiplier` thay vì hard-code `1.5`, để hợp đồng khác có thể sử dụng mức khác. Manpower Việt Nam cũng lưu ý cấu trúc phí có thể theo tỷ lệ hoặc mức cố định tùy thỏa thuận. [Manpower](https://www.manpower.com.vn/vi/for-employers/our-solutions/permanent-recruitment?utm_source=chatgpt.com)
+
+> **Cập nhật 2026-10-12 — ai nhập điều khoản phí:** giá do **Internal HR thỏa thuận với Client**, Client **không tự nhập**. Khi duyệt Job, Internal HR nhập `FeeMultiplier`, `WarrantyDays`, `PaymentDueDays`; các ô được điền sẵn mặc định do Platform Admin cấu hình (1.5 / 30 / 20). Điều khoản được **lưu trên Job** lúc duyệt; đổi mặc định sau đó không ảnh hưởng Job đã duyệt. Client chỉ xem điều khoản đã chốt.
+
+## **4.1. Internal HR thỏa thuận điều khoản phí với Client như thế nào**
+
+> Cập nhật 2026-10-12. Mục này mô tả **quy trình nghiệp vụ**. Việc đàm phán diễn ra **ngoài hệ thống**; hệ thống chỉ **ghi nhận kết quả** đã chốt.
+
+### **a) Thỏa thuận những gì**
+
+| Điều khoản | Mặc định (Admin cấu hình) | Có thể đàm phán? | Ghi chú |
+| ----- | ----- | ----- | ----- |
+| Fee Multiplier | 1.5 | Có | Hệ số nhân với lương gross tháng của từng ứng viên đi làm |
+| Warranty Days | 30 ngày | Có | Ngày đủ điều kiện để Affiliate nhận 100% Commission |
+| Payment Due Days | 20 ngày | Có | Tính từ ngày ứng viên thực tế đi làm |
+| Số lượng cần tuyển, mức lương dự kiến | — | Không phải giá | Client nhập khi tạo Job (nhu cầu tuyển dụng) |
+| Affiliate Commission | Theo Commission Rule | **Không** | Chi phí nội bộ của HR Connect, Client không thấy và không đàm phán |
+
+Lương thực tế của từng ứng viên **không** đàm phán ở bước này. Lương được chốt trong **Offer** của từng ứng viên, và phí tính theo lương đó.
+
+### **b) Các yếu tố HR cân nhắc khi đàm phán**
+
+* **Hợp đồng khung có sẵn:** nếu Client đã ký hợp đồng khung với HR Connect thì dùng đúng điều khoản trong hợp đồng, không đàm phán lại cho từng Job.
+* **Độ khó vị trí:** vị trí hiếm, cấp cao, cần tuyển gấp → hệ số có thể cao hơn 1.5.
+* **Số lượng tuyển:** Job tuyển nhiều người → có thể giảm hệ số.
+* **Client lâu năm / thanh toán tốt** → có thể nới hạn thanh toán hoặc giảm hệ số.
+* **Bảo hành dài hơn** (ví dụ 60 ngày): Client được bảo vệ lâu hơn, nhưng Affiliate phải chờ lâu hơn mới nhận Commission. Nên đi kèm hệ số cao hơn.
+
+Khoảng hợp lệ hệ thống chấp nhận: Fee Multiplier 0.1 – 10; Warranty 1 – 365 ngày; Payment Due 1 – 120 ngày. Mức giảm sâu dưới mặc định nên được quản lý cấp trên đồng ý trước **[CẦN XÁC NHẬN: có cần bước Admin duyệt trong hệ thống không]**.
+
+### **c) Quy trình từng bước**
+
+| Bước | Ai | Ở đâu | Làm gì | Trạng thái Job |
+| ----- | ----- | ----- | ----- | ----- |
+| 1 | Client | Hệ thống | Tạo Job HEADHUNT_COD: mô tả, yêu cầu, số lượng, khoảng lương. **Không có ô giá.** Gửi duyệt | `PENDING_REVIEW` |
+| 2 | Internal HR | Hệ thống | Mở Job, kiểm tra nội dung. Màn duyệt hiện sẵn điều khoản mặc định (1.5 / 30 / 20) | `PENDING_REVIEW` |
+| 3 | Internal HR ↔ Client | **Ngoài hệ thống** (điện thoại, email, họp) | Gửi báo giá theo mặc định; Client đồng ý hoặc đề nghị mức khác; hai bên chốt. Kết quả chốt phải có **bằng chứng**: email xác nhận, phụ lục hoặc hợp đồng | `PENDING_REVIEW` |
+| 4a | Internal HR | Hệ thống | Đã chốt: nhập điều khoản đã thỏa thuận, ghi **mã tham chiếu** (số hợp đồng / tiêu đề email) vào ghi chú duyệt, bấm **Duyệt và công bố** | `ACTIVE` |
+| 4b | Internal HR | Hệ thống | Không chốt được, hoặc nội dung Job chưa đạt: **Từ chối** kèm lý do. Client sửa và gửi lại thì quay về bước 2 | `REJECTED` |
+| 5 | Client | Hệ thống | Xem điều khoản đã chốt trên chi tiết Job (chỉ đọc) | `ACTIVE` |
+| 6 | Hệ thống (MF-05) | Hệ thống | Mỗi ứng viên đi làm: tính phí theo điều khoản **lưu trên Job** | — |
+
+### **d) Quy tắc ghi nhận**
+
+* Điều khoản được **chốt tại thời điểm duyệt** và lưu trên Job. Admin đổi mặc định sau đó **không** làm đổi Job đã duyệt.
+* Audit log khi duyệt phải lưu: người duyệt, thời điểm, **giá trị mặc định lúc đó**, **giá trị HR nhập**, mã tham chiếu thỏa thuận.
+* Client **không** được sửa điều khoản. Nếu Client muốn đổi sau khi Job đã chạy, Internal HR đàm phán lại ngoài hệ thống. Chức năng sửa điều khoản Job đang chạy **chưa hỗ trợ** trong đợt này **[CẦN XÁC NHẬN]**. Nếu làm, chỉ áp dụng cho Placement phát sinh **sau** khi sửa.
+* Nếu có tranh chấp về phí, căn cứ là **điều khoản lưu trên Job** cùng bằng chứng ngoài hệ thống theo mã tham chiếu.
+
+### **e) Ví dụ**
+
+ABC Technology tạo Job "Senior .NET Developer", cần 2 người, lương 28–35M.
+
+1. Internal HR mở Job, thấy mặc định 1.5 / 30 / 20.
+2. HR gọi ABC báo giá 1.5. ABC đề nghị 1.3 vì tuyển 2 người. Hai bên chốt **1.4**, bảo hành **30 ngày**, thanh toán **20 ngày**. ABC gửi email xác nhận.
+3. HR nhập 1.4 / 30 / 20, ghi chú "Theo email ABC xác nhận ngày 12/10/2026", rồi duyệt.
+4. Nam đi làm với lương 30M → Service Fee = 30M × **1.4** = **42M**, đến hạn sau 20 ngày.
 
 ---
 
@@ -361,7 +417,7 @@ Candidate thực tế bắt đầu làm việc.
 
 Ví dụ:
 
-> Candidate đạt milestone tương ứng.
+> Candidate đi làm đủ thời gian Warranty (mặc định 30 ngày).
 
 **Điều kiện 5 – Không có trạng thái vi phạm/cancel theo business rule.**
 
@@ -430,7 +486,7 @@ Vì mỗi Candidate có:
 > salary khác nhau;  
 > Placement khác nhau;  
 > warranty khác nhau;  
-> milestone khác nhau.
+> ngày đủ điều kiện nhận Commission khác nhau.
 
 ---
 
@@ -543,7 +599,7 @@ Nam đã làm 30 ngày.
 
 Hùng đã đạt:
 
-> Earned Commission \= **7.5M**
+> Earned Commission \= **15M** (100%)
 
 Nhưng ABC:
 
@@ -601,13 +657,13 @@ Ví dụ:
 
 Total Commission     \= 15M
 
-Earned Commission    \= 7.5M
+Earned Commission    \= 15M  (Nam đã đi làm đủ 30 ngày)
 
-Payable Commission   \= 7.5M
+Payable Commission   \= 15M  (ABC đã trả phí, Admin đã duyệt)
 
-Paid                 \= 3.75M
+Paid                 \= 0    (chưa ghi nhận chi trả)
 
-Remaining            \= 3.75M
+Remaining            \= 15M
 
 Điều này giải thích tại sao DB của HR Connect cần cả:
 
@@ -628,13 +684,13 @@ Admin xuất hiện ở bước tài chính/quản trị.
 Ví dụ hệ thống tính:
 
 > Commission Hùng \= 15M  
-> Current Earned \= 7.5M
+> Current Earned \= 15M (Nam đã đi làm đủ 30 ngày)
 
 Admin kiểm tra:
 
 > Attribution có hợp lệ không?  
 > Placement có hợp lệ không?  
-> Milestone đã đạt chưa?  
+> Candidate đã đi làm đủ 30 ngày chưa?  
 > Có adjustment/dispute không?  
 > Điều kiện Client Payment đã đạt chưa?
 
@@ -694,7 +750,11 @@ Quantity: 2
 
 Fee Multiplier: 1.5
 
-Warranty: 60 days
+Warranty: 30 days
+
+Payment Due: 20 days
+
+(Các con số trên do Internal HR chốt với ABC khi duyệt Job.)
 
 ---
 
@@ -714,11 +774,12 @@ Affiliate Commission:
 
 > **15M**
 
-Milestones:
+Payment Due: 21/11/2026
 
-> Day 15 → 3.75M  
-> Day 30 → \+3.75M  
-> Day 60 → \+7.5M
+Commission:
+
+> Ngày 01/12/2026 (đủ 30 ngày) → Earned **15M (100%)**  
+> Nếu Nam nghỉ trước ngày này → Commission bị cancelled
 
 ---
 
@@ -738,11 +799,12 @@ Affiliate Commission:
 
 > **16M**
 
-Milestones:
+Payment Due: 05/12/2026
 
-> Day 15 → 4M  
-> Day 30 → \+4M  
-> Day 60 → \+8M
+Commission:
+
+> Ngày 15/12/2026 (đủ 30 ngày) → Earned **16M (100%)**  
+> Nếu An nghỉ trước ngày này → Commission bị cancelled
 
 ---
 
@@ -843,7 +905,7 @@ Commission Hùng   Commission Hoa
 
        │             │
 
-   Milestones     Milestones
+  Đủ 30 ngày     Đủ 30 ngày
 
        │             │
 
@@ -880,11 +942,17 @@ Nếu Job có Quantity \> 1, mỗi successful Placement phát sinh Service Fee �
 **BR-HH-FEE-07 — Partial Filling**  
 Client chỉ chịu phí đối với số lượng Candidate đã tạo successful Placement.
 
+**BR-HH-FEE-08 — Commercial Terms Owner**  
+Fee Multiplier, Warranty và Payment Due do **Internal HR** thỏa thuận với Client và nhập khi duyệt Job (điền sẵn mặc định do Platform Admin cấu hình). Client không tự nhập; điều khoản được lưu trên Job lúc duyệt.
+
+**BR-HH-FEE-09 — Payment Due**  
+Service Fee đến hạn sau **20 ngày** (mặc định, cấu hình được) kể từ Actual Start Date. Trạng thái: PENDING → DUE → PAID; quá hạn → OVERDUE.
+
 **BR-HH-COM-01 — Attribution Requirement**  
 Affiliate chỉ được xét Commission khi có Attribution hợp lệ.
 
 **BR-HH-COM-02 — Placement Requirement**  
-Submission, Interview hoặc Offer chưa tạo quyền hưởng toàn bộ Commission; Candidate phải đạt các trigger/milestone theo Commission Rule.
+Submission, Interview hoặc Offer chưa tạo quyền hưởng toàn bộ Commission; Candidate phải đi làm đủ Warranty theo Commission Rule.
 
 **BR-HH-COM-03 — Commission Configuration**  
 Commission có thể là `FIXED_AMOUNT` hoặc `PERCENTAGE`, tùy Commission Rule.
@@ -892,7 +960,7 @@ Commission có thể là `FIXED_AMOUNT` hoặc `PERCENTAGE`, tùy Commission Rul
 **BR-HH-COM-04 — Independent Commission**  
 Commission được quản lý theo từng Candidate/Placement, không phải một Commission chung cho toàn Job.
 
-**BR-HH-COM-05 — Milestones**  
+**BR-HH-COM-05 — Earning Point**  
 Commission được earned **100% một lần** khi Candidate đi làm đủ 30 ngày (cập nhật 2026-10-09, thay cho 25% → 25% → 50%).
 
 **BR-HH-COM-06 — Warranty**  
@@ -916,11 +984,11 @@ HR Connect quản lý record và trạng thái thanh toán; actual bank transfer
 
 Quí có thể dùng câu này trong Report:
 
-> **HEADHUNT\_COD is a success-based recruitment service in which the Client Company pays a service fee for each successful candidate placement. The service fee is calculated based on the placed candidate's agreed gross monthly salary and the applicable fee multiplier. If the candidate was introduced by an eligible Affiliate, the system determines the Affiliate's commission based on valid attribution, commission rules, achieved milestones, warranty conditions, and payment eligibility.**
+> **HEADHUNT\_COD is a success-based recruitment service in which the Client Company pays a service fee for each successful candidate placement. The service fee is calculated based on the placed candidate's agreed gross monthly salary and the applicable fee multiplier. If the candidate was introduced by an eligible Affiliate, the system determines the Affiliate's commission based on valid attribution, commission rules, warranty completion (30 days), and payment eligibility.**
 
 Nếu nói bằng tiếng Việt khi bảo vệ:
 
-> **“Đối với HEADHUNT\_COD, HR Connect áp dụng mô hình tính phí theo kết quả tuyển dụng. Client không trả phí theo số CV được gửi mà phí được tính riêng cho từng Candidate thực tế bắt đầu làm việc. Nếu Candidate đến từ Affiliate có Attribution hợp lệ, Affiliate được ghi nhận Commission theo các milestone và điều kiện warranty. Service Fee là khoản Client trả cho dịch vụ, còn Commission là quyền lợi của Affiliate, hai khoản này được quản lý độc lập.”**
+> **“Đối với HEADHUNT\_COD, HR Connect áp dụng mô hình tính phí theo kết quả tuyển dụng. Client không trả phí theo số CV được gửi mà phí được tính riêng cho từng Candidate thực tế bắt đầu làm việc. Nếu Candidate đến từ Affiliate có Attribution hợp lệ, Affiliate được ghi nhận Commission toàn bộ một lần khi Candidate đi làm đủ 30 ngày. Service Fee là khoản Client trả cho dịch vụ, còn Commission là quyền lợi của Affiliate, hai khoản này được quản lý độc lập.”**
 
 Phần này hiện đã đủ chắc để dùng làm **baseline cho HEADHUNT\_COD**. Tuy nhiên, các mức **1.5 và 30 ngày (Commission 100% khi hết Warranty)** nên được ghi là **business rules do HR Connect lựa chọn dựa trên benchmark**, không ghi thành “quy định chung của ngành tuyển dụng Việt Nam”. [JobSeeker](https://jobseeker.vn/?utm_source=chatgpt.com)
 

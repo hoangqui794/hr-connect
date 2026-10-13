@@ -50,6 +50,8 @@ public class CreateJobCommand : IRequest<CreateJobResponse>
 
     public int? PaymentDueDays { get; set; }
 
+    public Guid? PostingPackageId { get; set; }
+
     public List<CreateJobRequirementRequest> Requirements { get; set; } = [];
 
     public List<JobSkillRequest> Skills { get; set; } = [];

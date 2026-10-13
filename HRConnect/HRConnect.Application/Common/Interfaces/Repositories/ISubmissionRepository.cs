@@ -64,7 +64,31 @@ public interface ISubmissionRepository
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
+
+    Task<(IReadOnlyList<CandidateSubmissionConsentRecord> Items, int TotalCount)> GetCandidateSubmissionConsentsAsync(
+        Guid candidateId,
+        string status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 }
+
+public sealed record CandidateSubmissionConsentRecord(
+    Guid SubmissionId,
+    string ConsentStatus,
+    string SubmissionStatus,
+    Guid JobId,
+    string JobTitle,
+    Guid CompanyId,
+    string CompanyName,
+    Guid CvId,
+    string CvTitle,
+    string? CvFileName,
+    Guid AffiliateUserId,
+    string AffiliateDisplayName,
+    DateTime RequestedAt,
+    DateTime ExpiresAt,
+    DateTime? RespondedAt);
 
 public sealed record CandidateAffiliateCvRecord(
     Guid CvId,

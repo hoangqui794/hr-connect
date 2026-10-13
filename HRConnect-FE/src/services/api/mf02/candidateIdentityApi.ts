@@ -6,6 +6,12 @@ export const candidateIdentityApi = {
   async listEmailIdentities(): Promise<CandidateEmailIdentity[]> {
     return (await apiClient.get<ApiEnvelope<{ items: CandidateEmailIdentity[] }>>('/candidates/me/email-identities')).data.data.items;
   },
+  async revoke(emailIdentityId: string, concurrencyToken: string) {
+    return (await apiClient.post<{ success: boolean; emailIdentityId: string; status: string; revokedAt: string; concurrencyToken: string }>(
+      `/candidates/me/email-identities/${emailIdentityId}/revoke`,
+      { concurrencyToken }
+    )).data;
+  },
   async start(email: string): Promise<{ success: boolean; message: string; data: CandidateIdentityClaimState }> {
     return (await apiClient.post<{ success: boolean; message: string; data: CandidateIdentityClaimState }>('/candidates/me/identity-claims', { email })).data;
   },

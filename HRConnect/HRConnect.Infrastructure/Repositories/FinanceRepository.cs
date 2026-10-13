@@ -133,6 +133,35 @@ public class FinanceRepository : IFinanceRepository
         return (items, total);
     }
 
+    public async Task<(IReadOnlyList<Warranty> Items, int TotalCount)> GetWarrantiesAsync(
+        Guid? companyId, string? status, int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var query = _context.Warranties.AsNoTracking();
+        if (companyId.HasValue)
+        {
+            query = query.Where(w => w.Placement.Application.Job.CompanyId == companyId.Value);
+        }
+
+        if (status != null)
+        {
+            query = query.Where(w => w.Status == status);
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Include(w => w.Placement).ThenInclude(p => p.Application).ThenInclude(a => a.Job).ThenInclude(j => j.Company)
+            .Include(w => w.Placement).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
+            .Include(w => w.Placement).ThenInclude(p => p.ServiceFee)
+            .Include(w => w.Placement).ThenInclude(p => p.Commissions)
+            // Claims waiting for verification first, then the nearest end dates.
+            .OrderBy(w => w.Status == "CLAIMED" ? 0 : 1)
+            .ThenBy(w => w.EndDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+        return (items, total);
+    }
+
     public async Task<(IReadOnlyList<Payout> Items, int TotalCount)> GetPayoutsAsync(
         Guid? affiliateUserId, int page, int pageSize, CancellationToken cancellationToken = default)
     {

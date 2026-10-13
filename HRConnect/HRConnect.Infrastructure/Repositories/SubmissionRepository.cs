@@ -494,4 +494,44 @@ public class SubmissionRepository : ISubmissionRepository
             row.Application?.AiMatchTier,
             row.Application?.AiCompletedAt)).ToList(), totalCount);
     }
+
+    public async Task<(IReadOnlyList<CandidateSubmissionConsentRecord> Items, int TotalCount)> GetCandidateSubmissionConsentsAsync(
+        Guid candidateId,
+        string status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.SubmissionConsents
+            .AsNoTracking()
+            .Where(consent => consent.Submission.CandidateId == candidateId && consent.Status == status);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var ordered = status == "PENDING"
+            ? query.OrderBy(consent => consent.ExpiresAt).ThenBy(consent => consent.SubmissionId)
+            : query.OrderByDescending(consent => consent.RequestedAt).ThenByDescending(consent => consent.SubmissionId);
+
+        var items = await ordered
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(consent => new CandidateSubmissionConsentRecord(
+                consent.SubmissionId,
+                consent.Status,
+                consent.Submission.Status,
+                consent.Submission.JobId,
+                consent.Submission.Job.Title,
+                consent.Submission.Job.CompanyId,
+                consent.Submission.Job.Company.CompanyName,
+                consent.Submission.CvId,
+                consent.Submission.CandidateCv.Title,
+                consent.Submission.CandidateCv.FileName,
+                consent.Submission.SubmittedBy,
+                consent.Submission.SubmittedByNavigation.DisplayName ?? consent.Submission.SubmittedByNavigation.Email,
+                consent.RequestedAt,
+                consent.ExpiresAt,
+                consent.RespondedAt))
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
 }

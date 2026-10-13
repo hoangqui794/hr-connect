@@ -20,6 +20,8 @@ public sealed record JobDto(
     string Status, string Visibility, string? StatusReason, DateTime? PostedAt,
     DateTime? ClosedAt, DateTime CreatedAt, DateTime UpdatedAt, Guid ConcurrencyToken,
     int? SourcingTarget, decimal? SourcingPricePerCv, decimal? FeeMultiplier, int? WarrantyDays, int? PaymentDueDays,
+    Guid? PostingPackageId, string? PostingPackageCode, string? PostingPackageName, DateTime? ExpiresAt,
+    string? PostingFeeStatus,
     IReadOnlyList<JobRequirementDto> Requirements,
     IReadOnlyList<JobSkillDto> Skills,
     IReadOnlyList<JobStatusHistoryDto> StatusHistories)
@@ -32,6 +34,8 @@ public sealed record JobDto(
         job.CurrencyCode.Trim(), job.Quantity, job.Status, job.Visibility, job.StatusReason,
         job.PostedAt, job.ClosedAt, job.CreatedAt, job.UpdatedAt, job.ConcurrencyToken,
         job.SourcingTarget, job.SourcingPricePerCv, job.FeeMultiplier, job.WarrantyDays, job.PaymentDueDays,
+        job.PostingPackageId, job.PostingPackage?.Code, job.PostingPackage?.Name, job.ExpiresAt,
+        job.JobPostingFees.OrderByDescending(x => x.CreatedAt).FirstOrDefault()?.Status,
         job.JobRequirements.OrderBy(x => x.CreatedAt).Select(x => new JobRequirementDto(
             x.RequirementId, x.RequirementType, x.Category, x.Content, x.Weight)).ToList(),
         job.JobSkills.OrderBy(x => x.SkillId).Select(x => new JobSkillDto(
@@ -41,6 +45,31 @@ public sealed record JobDto(
                 x.JobStatusHistoryId, x.OldStatus, x.NewStatus, x.ChangedBy, x.ReasonCode, x.ReasonText, x.ChangedAt)).ToList()
             : []);
 }
+
+public sealed record JobPostingPackageDto(
+    Guid PackageId,
+    string Code,
+    string Name,
+    string? Description,
+    decimal Price,
+    int DurationDays,
+    bool IsActive);
+
+public sealed record JobPostingFeeDto(
+    Guid PostingFeeId,
+    Guid JobId,
+    Guid PackageId,
+    string? PackageCode,
+    string? PackageName,
+    decimal Amount,
+    string CurrencyCode,
+    string Status,
+    DateTime? PaidAt,
+    string? PaymentReference,
+    DateTime? ActivatedAt,
+    DateTime? ExpiresAt,
+    DateTime CreatedAt);
+
 
 public sealed record JobActionResponse(bool Success, string Message, JobDto Data);
 

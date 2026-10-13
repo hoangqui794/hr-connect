@@ -23,6 +23,7 @@ import {
   Select,
   Skeleton,
   Switch,
+  Tag,
 } from 'antd';
 import type { FormInstance } from 'antd';
 import {
@@ -45,7 +46,8 @@ import type {
 } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { jobsApi } from '@/services/api/jobsApi';
-import { useJobDetail, useJobMutations, useServiceTypes } from './useJobQueries';
+import { useJobDetail, useJobMutations, useServiceTypes, usePostingPackages, usePostingEligibility } from './useJobQueries';
+import { PaymentDemoModal } from './PaymentDemoModal';
 import {
   EMPLOYMENT_TYPE_LABEL,
   SERVICE_TYPE_LABEL,
@@ -63,6 +65,7 @@ interface RequirementRow {
 interface JobFormValues {
   serviceTypeId: string;
   visibility: JobVisibility;
+  postingPackageId?: string;
   title: string;
   employmentType?: EmploymentType;
   location?: string;
@@ -95,6 +98,7 @@ const EMPTY_VALUES: Partial<JobFormValues> = {
 const toFormValues = (job: Job): JobFormValues => ({
   serviceTypeId: job.serviceTypeId,
   visibility: job.visibility,
+  postingPackageId: job.postingPackageId ?? undefined,
   title: job.title,
   employmentType: job.employmentType ?? undefined,
   location: job.location ?? undefined,
@@ -134,7 +138,11 @@ const submitBlockers = (v: JobFormValues, selectedCode?: string): { field: (stri
   need('benefits', 'Nhập quyền lợi.');
   need('location', 'Nhập địa điểm làm việc.');
   if (!v.employmentType) missing.push({ field: ['employmentType'], message: 'Chọn hình thức làm việc.' });
-  if (selectedCode === 'CV_SOURCING') {
+  if (selectedCode === 'CV_APPLICATION') {
+    if (!v.postingPackageId) {
+      missing.push({ field: ['postingPackageId'], message: 'Chọn gói đăng tin tuyển dụng.' });
+    }
+  } else if (selectedCode === 'CV_SOURCING') {
     if (!v.sourcingTarget || v.sourcingTarget <= 0) {
       missing.push({ field: ['sourcingTarget'], message: 'Nhập Sourcing Target (số CV đạt chuẩn mua) lớn hơn 0.' });
     }
@@ -163,6 +171,7 @@ const SubmitHint: React.FC = () => <span className="ml-1.5 rounded bg-amber-50 p
 const toInput = (v: JobFormValues): JobUpsertInput => ({
   serviceTypeId: v.serviceTypeId,
   visibility: v.visibility,
+  postingPackageId: v.postingPackageId ?? null,
   title: v.title.trim(),
   employmentType: v.employmentType ?? null,
   location: trimOrNull(v.location),
@@ -253,7 +262,7 @@ function ChoiceCards<T extends string>({
 }: {
   value?: T;
   onChange?: (v: T) => void;
-  options: { value: T; title: string; summary: string }[];
+  options: { value: T; title: string; summary: string; disabled?: boolean; badge?: string }[];
   disabled?: boolean;
   columns?: string;
   name: string;
@@ -262,6 +271,7 @@ function ChoiceCards<T extends string>({
     <div role="radiogroup" className={`grid gap-3 ${columns}`}>
       {options.map((o) => {
         const selected = value === o.value;
+        const itemDisabled = Boolean(disabled || o.disabled);
         return (
           <label
             key={o.value}
@@ -269,19 +279,22 @@ function ChoiceCards<T extends string>({
               selected
                 ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)] shadow-[0_0_0_1px_var(--console-accent)]'
                 : 'border-slate-200 bg-white hover:border-slate-400'
-            } ${disabled ? 'cursor-not-allowed opacity-60' : ''} has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--console-accent)]`}
+            } ${itemDisabled ? 'cursor-not-allowed opacity-60 bg-slate-50' : ''} has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--console-accent)]`}
           >
             <input
               type="radio"
               name={name}
               value={o.value}
               checked={selected}
-              disabled={disabled}
-              onChange={() => onChange?.(o.value)}
+              disabled={itemDisabled}
+              onChange={() => !itemDisabled && onChange?.(o.value)}
               className="sr-only"
             />
-            <span className="flex items-center justify-between gap-2">
-              <span className="font-semibold text-slate-900">{o.title}</span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold text-slate-900 flex items-center gap-1.5">
+                {o.title}
+                {o.badge && <Tag color="warning" className="m-0 text-[11px] leading-tight px-1.5 py-0">{o.badge}</Tag>}
+              </span>
               <span
                 aria-hidden
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-solid ${
@@ -290,7 +303,7 @@ function ChoiceCards<T extends string>({
               >
                 {selected && <span className="h-2 w-2 rounded-full bg-white" />}
               </span>
-            </span>
+            </div>
             <span className="text-[13px] leading-snug text-slate-600">{o.summary}</span>
           </label>
         );
@@ -410,9 +423,17 @@ export const JobFormPage: React.FC = () => {
   const [form] = Form.useForm<JobFormValues>();
   const [errorSummary, setErrorSummary] = useState<string[]>([]);
   const [saving, setSaving] = useState<'draft' | 'submit' | null>(null);
+  const [pendingPaymentJob, setPendingPaymentJob] = useState<{
+    jobId: string;
+    title: string;
+    amount?: number;
+    andSubmitAfterPay?: boolean;
+  } | null>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
 
   const serviceTypes = useServiceTypes();
+  const postingPackages = usePostingPackages();
+  const postingEligibility = usePostingEligibility();
   const existing = useJobDetail(jobId);
   const { create, update } = useJobMutations();
 
@@ -436,6 +457,24 @@ export const JobFormPage: React.FC = () => {
     if (existing.data) form.setFieldsValue(toFormValues(existing.data));
   }, [existing.data, form]);
 
+  useEffect(() => {
+    if (selectedCode === 'CV_APPLICATION' && postingPackages.data?.length) {
+      const canUseFree = postingEligibility.data ? postingEligibility.data.canUseFreePackage : true;
+      const currentPkgId = form.getFieldValue('postingPackageId');
+      const freePkg = postingPackages.data.find((p) => p.code === 'FREE');
+      const stdPkg = postingPackages.data.find((p) => p.code === 'STANDARD');
+
+      if (!canUseFree) {
+        // Hết hạn mức gói FREE -> Tự động chuyển và giữ ở gói STANDARD
+        if (stdPkg && (!currentPkgId || (freePkg && currentPkgId === freePkg.packageId))) {
+          form.setFieldValue('postingPackageId', stdPkg.packageId);
+        }
+      } else if (!currentPkgId && freePkg) {
+        form.setFieldValue('postingPackageId', freePkg.packageId);
+      }
+    }
+  }, [selectedCode, postingEligibility.data, postingPackages.data, form]);
+
   // Keep visibility valid for the chosen service type (backend rejects other combinations).
   useEffect(() => {
     const current = form.getFieldValue('visibility') as JobVisibility | undefined;
@@ -450,6 +489,9 @@ export const JobFormPage: React.FC = () => {
   // Readiness = the backend's submit rules (submitBlockers) plus the always-required fields.
   const checklist = [
     { label: 'Chọn loại dịch vụ', done: Boolean(watched.serviceTypeId), section: 'job-service' },
+    ...(selectedCode === 'CV_APPLICATION'
+      ? [{ label: 'Gói đăng tin', done: Boolean(watched.postingPackageId), section: 'job-service' }]
+      : []),
     { label: 'Tên vị trí', done: Boolean(watched.title?.trim()), section: 'job-position' },
     { label: 'Hình thức làm việc', done: Boolean(watched.employmentType), section: 'job-position' },
     { label: 'Địa điểm', done: Boolean(watched.location?.trim()), section: 'job-position' },
@@ -503,6 +545,24 @@ export const JobFormPage: React.FC = () => {
         savedId = res.data.jobId;
       }
 
+      // Kiểm tra nếu là gói STANDARD (cần thanh toán trước khi gửi duyệt)
+      const chosenPkg = postingPackages.data?.find((p) => p.packageId === values.postingPackageId);
+      const isStandardPackage =
+        selectedCode === 'CV_APPLICATION' &&
+        (chosenPkg?.code === 'STANDARD' ||
+          values.postingPackageId === 'std' ||
+          (!postingEligibility.data?.canUseFreePackage && Boolean(values.postingPackageId)));
+
+      if (isStandardPackage) {
+        setPendingPaymentJob({
+          jobId: savedId,
+          title: values.title,
+          amount: chosenPkg?.price || 1500000,
+          andSubmitAfterPay: andSubmit,
+        });
+        return;
+      }
+
       if (andSubmit) {
         // Create does not return a token; read the fresh job before submitting.
         const fresh = await jobsApi.getById(savedId);
@@ -511,6 +571,7 @@ export const JobFormPage: React.FC = () => {
       } else {
         message.success('Đã lưu bản nháp.');
       }
+
       navigate('/client/jobs');
     } catch (err) {
       const mapped = applyServerFieldErrors(form, err);
@@ -520,6 +581,33 @@ export const JobFormPage: React.FC = () => {
     } finally {
       setSaving(null);
     }
+  };
+
+  const handlePaymentSuccess = async () => {
+    if (!pendingPaymentJob) return;
+    const { jobId, andSubmitAfterPay } = pendingPaymentJob;
+    setPendingPaymentJob(null);
+
+    if (andSubmitAfterPay) {
+      try {
+        const fresh = await jobsApi.getById(jobId);
+        const res = await jobsApi.submit(jobId, fresh.concurrencyToken);
+        message.success(res.message || 'Đã thanh toán phí và gửi duyệt tin tuyển dụng thành công.');
+      } catch (err) {
+        message.error(getApiErrorMessage(err));
+      }
+    } else {
+      message.success('Đã thanh toán phí đăng tin thành công.');
+    }
+    navigate('/client/jobs');
+  };
+
+  const handlePaymentClose = () => {
+    if (pendingPaymentJob?.andSubmitAfterPay) {
+      message.info('Đã lưu bản nháp. Vui lòng thanh toán phí trước khi gửi duyệt tin tuyển dụng.');
+    }
+    setPendingPaymentJob(null);
+    navigate('/client/jobs');
   };
 
   if (isEdit && existing.isLoading) {
@@ -650,6 +738,52 @@ export const JobFormPage: React.FC = () => {
                   <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-[13px] text-slate-500">Phạm vi hiển thị phụ thuộc loại dịch vụ.</div>
                 )}
               </Form.Item>
+
+              {selectedCode === 'CV_APPLICATION' && (
+                <div className="mt-4">
+                  {postingEligibility.data && !postingEligibility.data.canUseFreePackage && (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      className="mb-3"
+                      message="Hết hạn mức Gói Miễn Phí (FREE) — Chuyển sang Gói Tiêu Chuẩn (STANDARD)"
+                      description={
+                        <div className="space-y-1 text-[13px]">
+                          <div>{postingEligibility.data.reason || 'Doanh nghiệp đã có 1 tin đang mở hoặc chưa đủ chu kỳ 2 tháng.'}</div>
+                          <div className="font-medium text-slate-700">
+                            Hệ thống đã tự động chọn Gói Tiêu Chuẩn (STANDARD). Quý khách sẽ thực hiện xác nhận thanh toán phí đăng tin khi gửi duyệt.
+                          </div>
+                        </div>
+                      }
+                    />
+                  )}
+                  <Form.Item
+                    name="postingPackageId"
+                    label="Gói đăng tin tuyển dụng"
+                    rules={[{ required: true, message: 'Vui lòng chọn gói đăng tin.' }]}
+                    extra="Gói Miễn phí (FREE) chỉ cho phép tối đa 1 tin mở đồng thời, chu kỳ mở lại 2 tháng/lần. Gói Tiêu chuẩn (STANDARD) không giới hạn số tin mở đồng thời."
+                  >
+                    <ChoiceCards
+                      name="postingPackageId"
+                      columns="sm:grid-cols-2"
+                      disabled={!editable}
+                      options={(postingPackages.data ?? [
+                        { packageId: 'free', code: 'FREE', name: 'Gói Miễn Phí (FREE)', price: 0, durationDays: 30, description: '0 đ / 30 ngày (Tối đa 1 tin mở đồng thời, chu kỳ 2 tháng)' },
+                        { packageId: 'std', code: 'STANDARD', name: 'Gói Tiêu Chuẩn (STANDARD)', price: 1500000, durationDays: 30, description: '1.500.000 đ / 30 ngày (Không giới hạn tin mở đồng thời)' },
+                      ]).map((p) => {
+                        const isFreeBlocked = p.code === 'FREE' && postingEligibility.data && !postingEligibility.data.canUseFreePackage;
+                        return {
+                          value: p.packageId,
+                          disabled: Boolean(isFreeBlocked),
+                          badge: isFreeBlocked ? 'Hết hạn mức' : undefined,
+                          title: `${p.name} — ${p.price === 0 ? '0 đ' : p.price.toLocaleString('vi-VN') + ' đ'}`,
+                          summary: `${p.durationDays} ngày hiển thị • ${p.description ?? (p.code === 'FREE' ? 'Giới hạn 1 tin mở, chu kỳ 2 tháng' : 'Không giới hạn tin mở đồng thời')}`,
+                        };
+                      })}
+                    />
+                  </Form.Item>
+                </div>
+              )}
             </Section>
 
             {/* 2. Position */}
@@ -981,6 +1115,15 @@ export const JobFormPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <PaymentDemoModal
+        visible={Boolean(pendingPaymentJob)}
+        jobId={pendingPaymentJob?.jobId ?? ''}
+        jobTitle={pendingPaymentJob?.title ?? ''}
+        amount={pendingPaymentJob?.amount}
+        onClose={handlePaymentClose}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
     </div>
   );
 };

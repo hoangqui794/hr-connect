@@ -3,15 +3,19 @@
  * @description Read-only view of one JobDto, shared by the Client list, the HR review
  * queue and job discovery. Shows exactly what the backend stores — nothing invented.
  */
-import React from 'react';
-import { Descriptions, Empty, Tag, Timeline, Typography } from 'antd';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Alert, Button, Descriptions, Empty, Tag, Timeline, Typography } from 'antd';
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
+  CreditCardOutlined,
   EnvironmentOutlined,
+  PlusOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
 import type { Job, JobRequirement } from '@/types/api/jobs';
+import { PaymentDemoModal } from './PaymentDemoModal';
 import {
   EMPLOYMENT_TYPE_LABEL,
   JOB_STATUS,
@@ -79,12 +83,19 @@ interface JobDetailPanelProps {
   job: Job;
   /** Status history is only useful to the owner and reviewers. */
   showHistory?: boolean;
+  onPaySuccess?: () => void;
 }
 
-export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory = false }) => {
+export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory = false, onPaySuccess }) => {
+  const navigate = useNavigate();
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const mustHave = job.requirements.filter((r) => r.requirementType === 'MUST_HAVE');
   const shouldHave = job.requirements.filter((r) => r.requirementType === 'SHOULD_HAVE');
   const service = job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode] : null;
+
+  const isExpired =
+    (job.expiresAt && new Date(job.expiresAt) <= new Date()) ||
+    (job.status === 'CLOSED' && Boolean(job.statusReason?.toLowerCase().includes('hết hạn')));
 
   return (
     <div className="space-y-6">
@@ -93,6 +104,16 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory
           <JobStatusTag status={job.status} />
           {service && <Tag className="m-0">{service.label}</Tag>}
           <Tag className="m-0">{VISIBILITY_LABEL[job.visibility].label}</Tag>
+          {job.postingFeeStatus === 'PENDING' && (
+            <Tag color="warning" className="m-0 font-medium">
+              Chờ thanh toán phí đăng tin
+            </Tag>
+          )}
+          {job.postingFeeStatus === 'PAID' && (
+            <Tag color="success" className="m-0 font-medium">
+              Đã thanh toán phí
+            </Tag>
+          )}
         </div>
         <Title level={4} className="!mb-0">
           {job.title || 'Vị trí chưa đặt tên'}
@@ -105,6 +126,46 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory
             </Text>
             {job.statusReason}
           </div>
+        )}
+
+        {/* Thông báo chờ thanh toán phí đăng tin */}
+        {job.postingFeeStatus === 'PENDING' && (
+          <Alert
+            type="warning"
+            showIcon
+            message="Tin đang chờ thanh toán phí đăng tin (Gói Tiêu Chuẩn: 1.500.000 đ)"
+            description="Tin tuyển dụng sẽ được hoàn tất kích hoạt và hiển thị cho ứng viên sau khi thanh toán phí."
+            action={
+              <Button
+                type="primary"
+                size="small"
+                icon={<CreditCardOutlined />}
+                onClick={() => setShowPaymentModal(true)}
+              >
+                Thanh toán ngay
+              </Button>
+            }
+          />
+        )}
+
+        {/* Thông báo khi hết hạn hiển thị */}
+        {isExpired && (
+          <Alert
+            type="info"
+            showIcon
+            message="Tin tuyển dụng đã hết hạn hiển thị (30 ngày)"
+            description="Thời hạn hiển thị của tin đã kết thúc theo quy định của gói. Quý khách có thể đăng tin mới với Gói Tiêu Chuẩn (STANDARD) để tiếp tục tuyển dụng."
+            action={
+              <Button
+                type="primary"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={() => navigate('/client/jobs/create')}
+              >
+                Đăng tin mới (Standard)
+              </Button>
+            }
+          />
         )}
       </header>
 
@@ -127,6 +188,16 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory
         <Descriptions.Item label="Thời gian làm việc">{job.workingTime ?? '—'}</Descriptions.Item>
         {job.salaryNote && <Descriptions.Item label="Ghi chú lương">{job.salaryNote}</Descriptions.Item>}
         <Descriptions.Item label="Ngày đăng">{formatDate(job.postedAt)}</Descriptions.Item>
+        {job.postingPackageName && (
+          <Descriptions.Item label="Gói đăng tin">{job.postingPackageName}</Descriptions.Item>
+        )}
+        {job.expiresAt && (
+          <Descriptions.Item label="Hạn hiển thị">
+            <span className={isExpired ? 'text-red-600 font-semibold' : ''}>
+              {formatDateTime(job.expiresAt)} {isExpired ? '(Đã hết hạn)' : ''}
+            </span>
+          </Descriptions.Item>
+        )}
       </Descriptions>
 
       <section aria-label="Mô tả công việc">
@@ -190,6 +261,18 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory
           )}
         </section>
       )}
+
+      <PaymentDemoModal
+        visible={showPaymentModal}
+        jobId={job.jobId}
+        jobTitle={job.title}
+        amount={1500000}
+        onClose={() => setShowPaymentModal(false)}
+        onPaymentSuccess={() => {
+          setShowPaymentModal(false);
+          onPaySuccess?.();
+        }}
+      />
     </div>
   );
 };

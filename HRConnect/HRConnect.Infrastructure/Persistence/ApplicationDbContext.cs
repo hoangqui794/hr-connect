@@ -82,6 +82,10 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<JobStatusHistory> JobStatusHistories { get; set; }
 
+    public virtual DbSet<JobPostingPackage> JobPostingPackages { get; set; }
+
+    public virtual DbSet<JobPostingFee> JobPostingFees { get; set; }
+
     public virtual DbSet<MatchTierConfig> MatchTierConfigs { get; set; }
 
     public virtual DbSet<Notification> Notifications { get; set; }
@@ -97,6 +101,8 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<Placement> Placements { get; set; }
 
     public virtual DbSet<ServiceFee> ServiceFees { get; set; }
+
+    public virtual DbSet<SystemSetting> SystemSettings { get; set; }
 
     public virtual DbSet<Probation> Probations { get; set; }
 
@@ -1798,6 +1804,8 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.FeeMultiplier).HasPrecision(5, 2).HasColumnName("fee_multiplier");
             entity.Property(e => e.WarrantyDays).HasColumnName("warranty_days");
             entity.Property(e => e.PaymentDueDays).HasColumnName("payment_due_days");
+            entity.Property(e => e.PostingPackageId).HasColumnName("posting_package_id");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
 
             entity.HasOne(d => d.Company).WithMany(p => p.Jobs)
                 .HasForeignKey(d => d.CompanyId)
@@ -1813,6 +1821,110 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.ServiceTypeId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("job_service_type_id_fkey");
+
+            entity.HasOne(d => d.PostingPackage).WithMany(p => p.Jobs)
+                .HasForeignKey(d => d.PostingPackageId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("job_posting_package_id_fkey");
+        });
+
+        modelBuilder.Entity<JobPostingPackage>(entity =>
+        {
+            entity.HasKey(e => e.PackageId).HasName("job_posting_package_pkey");
+
+            entity.ToTable("job_posting_package", "public");
+
+            entity.HasIndex(e => e.Code, "idx_job_posting_package_code").IsUnique();
+
+            entity.Property(e => e.PackageId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("package_id");
+            entity.Property(e => e.Code)
+                .HasMaxLength(50)
+                .HasColumnName("code");
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .HasColumnName("name");
+            entity.Property(e => e.Description)
+                .HasColumnName("description");
+            entity.Property(e => e.Price)
+                .HasPrecision(18, 2)
+                .HasDefaultValue(0m)
+                .HasColumnName("price");
+            entity.Property(e => e.DurationDays)
+                .HasDefaultValue(30)
+                .HasColumnName("duration_days");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<JobPostingFee>(entity =>
+        {
+            entity.HasKey(e => e.PostingFeeId).HasName("job_posting_fee_pkey");
+
+            entity.ToTable("job_posting_fee", "public");
+
+            entity.HasIndex(e => e.JobId, "idx_job_posting_fee_job_id");
+            entity.HasIndex(e => new { e.CompanyId, e.Status }, "idx_job_posting_fee_company_status");
+
+            entity.Property(e => e.PostingFeeId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("posting_fee_id");
+            entity.Property(e => e.JobId).HasColumnName("job_id");
+            entity.Property(e => e.PackageId).HasColumnName("package_id");
+            entity.Property(e => e.CompanyId).HasColumnName("company_id");
+            entity.Property(e => e.Amount)
+                .HasPrecision(18, 2)
+                .HasDefaultValue(0m)
+                .HasColumnName("amount");
+            entity.Property(e => e.CurrencyCode)
+                .HasMaxLength(10)
+                .HasDefaultValue("VND")
+                .HasColumnName("currency_code");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasDefaultValue("PENDING")
+                .HasColumnName("status");
+            entity.Property(e => e.PaidAt).HasColumnName("paid_at");
+            entity.Property(e => e.PaymentReference)
+                .HasMaxLength(200)
+                .HasColumnName("payment_reference");
+            entity.Property(e => e.RecordedBy).HasColumnName("recorded_by");
+            entity.Property(e => e.ActivatedAt).HasColumnName("activated_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Job).WithMany(p => p.JobPostingFees)
+                .HasForeignKey(d => d.JobId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("job_posting_fee_job_id_fkey");
+
+            entity.HasOne(d => d.Package).WithMany(p => p.JobPostingFees)
+                .HasForeignKey(d => d.PackageId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("job_posting_fee_package_id_fkey");
+
+            entity.HasOne(d => d.Company).WithMany()
+                .HasForeignKey(d => d.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("job_posting_fee_company_id_fkey");
+
+            entity.HasOne(d => d.RecordedByNavigation).WithMany()
+                .HasForeignKey(d => d.RecordedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("job_posting_fee_recorded_by_fkey");
         });
 
         modelBuilder.Entity<JobRequirement>(entity =>
@@ -2171,6 +2283,30 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<SystemSetting>(entity =>
+        {
+            entity.HasKey(e => e.SettingKey).HasName("system_setting_pkey");
+
+            entity.ToTable("system_setting", "public", tb => tb.HasComment(
+                "Admin overrides of configurable business numbers. Keys, defaults and ranges are declared in code (BusinessSettingKeys); no row means the documented default applies."));
+
+            entity.Property(e => e.SettingKey)
+                .HasMaxLength(100)
+                .HasColumnName("setting_key");
+            entity.Property(e => e.Value)
+                .HasMaxLength(100)
+                .HasColumnName("value");
+            entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.UpdatedByNavigation).WithMany()
+                .HasForeignKey(d => d.UpdatedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("system_setting_updated_by_fkey");
         });
 
         modelBuilder.Entity<ServiceFee>(entity =>

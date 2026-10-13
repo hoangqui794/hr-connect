@@ -30,6 +30,22 @@ public class JobManagementCommandHandlerTests
         _businessSettings.Setup(x => x.DefaultWarrantyDays).Returns(30);
         _businessSettings.Setup(x => x.DefaultPaymentDueDays).Returns(14);
         _businessSettings.Setup(x => x.DefaultSourcingPricePerCv).Returns(100_000m);
+        _businessSettings.Setup(x => x.FreeActiveJobLimit).Returns(1);
+        _businessSettings.Setup(x => x.FreeCooldownMonths).Returns(2);
+        _businessSettings.Setup(x => x.StandardPostingPackagePrice).Returns(1_500_000m);
+        _businessSettings.Setup(x => x.StandardPostingDurationDays).Returns(30);
+
+        var defaultFreePackage = new JobPostingPackage
+        {
+            PackageId = Guid.NewGuid(),
+            Code = JobPostingPackageCodes.Free,
+            Name = "Gói Miễn Phí",
+            Price = 0,
+            DurationDays = 30,
+            IsActive = true
+        };
+        _jobs.Setup(x => x.GetPostingPackageByCodeAsync(JobPostingPackageCodes.Free, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(defaultFreePackage);
     }
 
     [Fact]
@@ -256,7 +272,7 @@ public class JobManagementCommandHandlerTests
             Skills = [new JobSkillRequest { SkillId = job.JobSkills.Single().SkillId, IsMandatory = true, Weight = 0.8m }]
         }, default);
         await submit.Handle(new SubmitJobCommand { JobId = job.JobId, UserId = owner, ConcurrencyToken = job.ConcurrencyToken }, default);
-        await new ApproveJobCommandHandler(_jobs.Object, _notifications.Object, _uow.Object).Handle(
+        await new ApproveJobCommandHandler(_jobs.Object, _businessSettings.Object, _notifications.Object, _uow.Object).Handle(
             new ApproveJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), ConcurrencyToken = job.ConcurrencyToken }, default);
 
         job.Status.Should().Be(JobStatuses.Active);
@@ -270,7 +286,7 @@ public class JobManagementCommandHandlerTests
     public async Task Approve_ShouldPublishPendingJob()
     {
         var job = SetupJob(JobStatuses.PendingReview); var reviewer = Guid.NewGuid();
-        var result = await new ApproveJobCommandHandler(_jobs.Object, _notifications.Object, _uow.Object)
+        var result = await new ApproveJobCommandHandler(_jobs.Object, _businessSettings.Object, _notifications.Object, _uow.Object)
             .Handle(new ApproveJobCommand { JobId = job.JobId, UserId = reviewer }, default);
         result.Data.Status.Should().Be(JobStatuses.Active); job.PostedAt.Should().NotBeNull();
         _notifications.Verify(x => x.AddAsync(It.Is<Notification>(n => n.NotificationType == "JOB" && n.UserId == job.CreatedBy && n.RelatedEntityId == job.JobId), It.IsAny<CancellationToken>()), Times.Once);
@@ -293,7 +309,7 @@ public class JobManagementCommandHandlerTests
         await new PauseJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
             .Handle(new PauseJobCommand { JobId = job.JobId, UserId = user, ConcurrencyToken = job.ConcurrencyToken, ReasonText = "Đủ CV" }, default);
         job.Status.Should().Be(JobStatuses.Paused);
-        await new ResumeJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
+        await new ResumeJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
             .Handle(new ResumeJobCommand { JobId = job.JobId, UserId = user, ConcurrencyToken = job.ConcurrencyToken }, default);
         job.Status.Should().Be(JobStatuses.Active);
         await new CloseJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
@@ -315,7 +331,7 @@ public class JobManagementCommandHandlerTests
     public async Task ClosedJob_ShouldRejectFurtherTransition()
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Closed);
-        var action = () => new ResumeJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
+        var action = () => new ResumeJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
             .Handle(new ResumeJobCommand { JobId = job.JobId, UserId = user }, default);
         await action.Should().ThrowAsync<ConflictException>();
     }
@@ -437,6 +453,202 @@ public class JobManagementCommandHandlerTests
             .WithMessage("*Fee Multiplier*");
     }
 
+    [Fact]
+    public async Task Submit_CvApplication_FreePackage_ShouldSucceed_WhenWithinLimits()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "Frontend Dev Free"; job.Description = "React JD"; job.Benefits = "Lunch";
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.Public;
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+
+        var freePkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Free, Name = "Gói Miễn Phí", Price = 0, DurationDays = 30, IsActive = true };
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvApplication);
+        _jobs.Setup(x => x.GetPostingPackageByCodeAsync(JobPostingPackageCodes.Free, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(freePkg);
+        _jobs.Setup(x => x.CountActiveJobsByCompanyIdAsync(job.CompanyId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+        _jobs.Setup(x => x.GetLastPostedJobByCompanyIdAsync(job.CompanyId, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Job?)null);
+
+        var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        result.Data.Status.Should().Be(JobStatuses.PendingReview);
+        job.PostingPackageId.Should().Be(freePkg.PackageId);
+        _jobs.Verify(x => x.AddPostingFeeAsync(It.Is<JobPostingFee>(f => f.Amount == 0 && f.Status == JobPostingFeeStatuses.Paid), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Submit_CvApplication_FreePackage_ShouldFail_WhenActiveJobLimitExceeded()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "Frontend Dev Free"; job.Description = "React JD"; job.Benefits = "Lunch";
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.Public;
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+
+        var freePkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Free, Name = "Gói Miễn Phí", Price = 0, DurationDays = 30, IsActive = true };
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvApplication);
+        _jobs.Setup(x => x.GetPostingPackageByCodeAsync(JobPostingPackageCodes.Free, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(freePkg);
+        _jobs.Setup(x => x.CountActiveJobsByCompanyIdAsync(job.CompanyId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1); // Đã có 1 job active
+
+        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*tối đa 1 tin*");
+    }
+
+    [Fact]
+    public async Task Submit_CvApplication_FreePackage_ShouldFail_WhenCooldownNotMet()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "Frontend Dev Free"; job.Description = "React JD"; job.Benefits = "Lunch";
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.Public;
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+
+        var freePkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Free, Name = "Gói Miễn Phí", Price = 0, DurationDays = 30, IsActive = true };
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvApplication);
+        _jobs.Setup(x => x.GetPostingPackageByCodeAsync(JobPostingPackageCodes.Free, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(freePkg);
+        _jobs.Setup(x => x.CountActiveJobsByCompanyIdAsync(job.CompanyId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        var prevJob = new Job { JobId = Guid.NewGuid(), PostedAt = DateTime.UtcNow.AddDays(-20) };
+        _jobs.Setup(x => x.GetLastPostedJobByCompanyIdAsync(job.CompanyId, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(prevJob);
+
+        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*chu kỳ*");
+    }
+
+    [Fact]
+    public async Task Submit_CvApplication_StandardPackage_ShouldFail_WhenNotPaid()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "Frontend Dev Standard"; job.Description = "React JD"; job.Benefits = "Lunch";
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.Public;
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+
+        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, Name = "Gói Trả Phí", Price = 1_500_000m, DurationDays = 30, IsActive = true };
+        job.PostingPackageId = stdPkg.PackageId;
+
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvApplication);
+        _jobs.Setup(x => x.GetPostingPackageByIdAsync(stdPkg.PackageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(stdPkg);
+
+        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*phải được thanh toán phí đăng tin trước khi gửi duyệt*");
+    }
+
+    [Fact]
+    public async Task Submit_CvApplication_StandardPackage_ShouldSucceed_WhenPaid()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "Frontend Dev Standard"; job.Description = "React JD"; job.Benefits = "Lunch";
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.Public;
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+
+        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, Name = "Gói Trả Phí", Price = 1_500_000m, DurationDays = 30, IsActive = true };
+        job.PostingPackageId = stdPkg.PackageId;
+
+        var paidFee = new JobPostingFee { JobId = job.JobId, PackageId = stdPkg.PackageId, Status = JobPostingFeeStatuses.Paid, Amount = 1_500_000m };
+
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvApplication);
+        _jobs.Setup(x => x.GetPostingPackageByIdAsync(stdPkg.PackageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(stdPkg);
+        _jobs.Setup(x => x.GetPostingFeeByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(paidFee);
+
+        var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        result.Data.Status.Should().Be(JobStatuses.PendingReview);
+    }
+
+    [Fact]
+    public async Task Approve_StandardPackage_ShouldFail_WhenNotPaid()
+    {
+        var job = SetupJob(JobStatuses.PendingReview);
+        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, DurationDays = 30 };
+        job.PostingPackageId = stdPkg.PackageId;
+        job.PostingPackage = stdPkg;
+
+        var fee = new JobPostingFee { JobId = job.JobId, PackageId = stdPkg.PackageId, Status = JobPostingFeeStatuses.Pending, Amount = 1_500_000m };
+        _jobs.Setup(x => x.GetPostingFeeByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fee);
+
+        var action = () => new ApproveJobCommandHandler(_jobs.Object, _businessSettings.Object, _notifications.Object, _uow.Object)
+            .Handle(new ApproveJobCommand { JobId = job.JobId, UserId = Guid.NewGuid() }, default);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*chưa thanh toán phí đăng tin*");
+    }
+
+    [Fact]
+    public async Task Approve_StandardPackage_ShouldSucceed_WhenPaid()
+    {
+        var job = SetupJob(JobStatuses.PendingReview);
+        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, DurationDays = 30 };
+        job.PostingPackageId = stdPkg.PackageId;
+        job.PostingPackage = stdPkg;
+
+        var fee = new JobPostingFee { JobId = job.JobId, PackageId = stdPkg.PackageId, Status = JobPostingFeeStatuses.Paid, Amount = 1_500_000m };
+        _jobs.Setup(x => x.GetPostingFeeByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fee);
+
+        var result = await new ApproveJobCommandHandler(_jobs.Object, _businessSettings.Object, _notifications.Object, _uow.Object)
+            .Handle(new ApproveJobCommand { JobId = job.JobId, UserId = Guid.NewGuid() }, default);
+
+        result.Data.Status.Should().Be(JobStatuses.Active);
+        job.ExpiresAt.Should().NotBeNull();
+        job.ExpiresAt.Should().BeCloseTo(DateTime.UtcNow.AddDays(30), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task Resume_FreeJob_ShouldFail_WhenAnotherJobActive()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Paused);
+        var freePkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Free };
+        job.PostingPackageId = freePkg.PackageId;
+        job.PostingPackage = freePkg;
+        job.ExpiresAt = DateTime.UtcNow.AddDays(10);
+
+        _jobs.Setup(x => x.CountActiveJobsByCompanyIdAsync(job.CompanyId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var action = () => new ResumeJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
+            .Handle(new ResumeJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*tối đa 1 tin*");
+    }
+
+    [Fact]
+    public async Task Resume_Job_ShouldFail_WhenExpired()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Paused);
+        job.ExpiresAt = DateTime.UtcNow.AddDays(-1); // Hết hạn hôm qua
+
+        var action = () => new ResumeJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
+            .Handle(new ResumeJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*đã hết hạn*");
+    }
+
     private (Job Job, Guid User) SetupOwnedJob(string status)
     {
         var job = SetupJob(status); var user = Guid.NewGuid();
@@ -459,7 +671,15 @@ public class JobManagementCommandHandlerTests
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job); return job;
+        job.ServiceType = new ServiceType
+        {
+            ServiceTypeId = job.ServiceTypeId,
+            Code = ServiceTypeCodes.CvApplication,
+            Name = "Đăng tin ứng tuyển"
+        };
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
+        return job;
     }
     private static CompanyUser Member(Guid user, Guid company) => new() { CompanyUserId = Guid.NewGuid(), UserId = user, CompanyId = company, Status = "ACTIVE" };
     private static JobRequirement Requirement(Guid job, string type) => new() { RequirementId = Guid.NewGuid(), JobId = job, RequirementType = type, Content = "3 years", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };

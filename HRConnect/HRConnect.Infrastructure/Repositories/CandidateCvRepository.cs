@@ -47,6 +47,24 @@ public class CandidateCvRepository : ICandidateCvRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<CandidateCvUsageRecord>> GetPersonalCvUsageAsync(
+        Guid candidateId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.CandidateCvs
+            .AsNoTracking()
+            .Where(cv => cv.CandidateId == candidateId &&
+                         cv.Status == "ACTIVE" &&
+                         cv.CreationMethod != "AFFILIATE_UPLOAD")
+            .OrderByDescending(cv => cv.IsPrimary)
+            .ThenByDescending(cv => cv.CreatedAt)
+            .Select(cv => new CandidateCvUsageRecord(
+                cv,
+                cv.Submissions.Count,
+                cv.Submissions.SelectMany(submission => submission.Applications).Count()))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<CandidateCv?> GetAdoptedBySourceCvIdAsync(
         Guid candidateId,
         Guid sourceCvId,

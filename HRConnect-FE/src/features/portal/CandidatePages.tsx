@@ -23,7 +23,7 @@ import {
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
-import { candidateApplicationsApi, candidateCvApi } from '@/services/api/mf02Api';
+import { candidateApplicationsApi, candidateConsentApi, candidateCvApi } from '@/services/api/mf02Api';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { CandidateApplication } from '@/types/api/mf02';
@@ -38,6 +38,7 @@ export const candidateKeys = {
   cvs: ['candidate-cvs'] as const,
   applications: ['candidate-applications'] as const,
   applicationDetail: (applicationId: string) => ['candidate-applications', applicationId] as const,
+  submissionConsents: (status: string) => ['candidate-submission-consents', status] as const,
 };
 
 export const useCandidateCvs = () => useQuery({ queryKey: candidateKeys.cvs, queryFn: () => candidateCvApi.list() });
@@ -216,13 +217,20 @@ export const CandidateApplicationsPage: React.FC = () => {
   const jobId = searchParams.get('jobId') || undefined;
   const fromDate = searchParams.get('fromDate') || undefined;
   const toDate = searchParams.get('toDate') || undefined;
-  const filters = { status, jobId, fromDate, toDate, page, pageSize: 10 };
+  const search = searchParams.get('search') || undefined;
+  const submissionSource = (searchParams.get('submissionSource') || undefined) as 'CANDIDATE' | 'AFFILIATE' | undefined;
+  const [searchDraft, setSearchDraft] = useState(search ?? '');
+  const filters = { status, jobId, fromDate, toDate, search, submissionSource, page, pageSize: 10 };
   const apps = useQuery({
     queryKey: [...candidateKeys.applications, filters],
     queryFn: () => candidateApplicationsApi.list(filters),
     placeholderData: (previous) => previous,
   });
   const items = apps.data?.items ?? [];
+  const pendingConsents = useQuery({
+    queryKey: candidateKeys.submissionConsents('PENDING'),
+    queryFn: () => candidateConsentApi.list({ status: 'PENDING', page: 1, pageSize: 5 }),
+  });
 
   const updateFilters = (updates: Record<string, string | undefined>) => {
     const next = new URLSearchParams(searchParams);
@@ -246,7 +254,55 @@ export const CandidateApplicationsPage: React.FC = () => {
           </Button>
         }
       />
+      {pendingConsents.isError ? (
+        <Alert
+          type="warning"
+          showIcon
+          message="Chưa tải được yêu cầu xác nhận hồ sơ"
+          description={getApiErrorMessage(pendingConsents.error)}
+          action={<Button onClick={() => pendingConsents.refetch()}>Thử lại</Button>}
+        />
+      ) : pendingConsents.isLoading ? (
+        <CandidateSurface className="p-5"><Skeleton active paragraph={{ rows: 2 }} /></CandidateSurface>
+      ) : (pendingConsents.data?.items.length ?? 0) > 0 ? (
+        <CandidateSurface className="overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <div>
+              <h2 className="m-0 text-base font-bold text-slate-900">Đang chờ bạn xác nhận</h2>
+              <p className="m-0 mt-1 text-sm text-slate-500">Affiliate chỉ có thể gửi hồ sơ đến doanh nghiệp sau khi bạn đồng ý.</p>
+            </div>
+            <StatusDot tone="warning">{pendingConsents.data?.total ?? 0} yêu cầu</StatusDot>
+          </div>
+          <ul className="m-0 list-none divide-y divide-slate-100 p-0">
+            {pendingConsents.data?.items.map((consent) => (
+              <li key={consent.submissionId} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
+                <div className="min-w-0">
+                  <div className="font-semibold text-slate-900">{consent.jobTitle}</div>
+                  <div className="mt-1 text-sm text-slate-500">
+                    {consent.companyName} · do {consent.affiliateDisplayName} giới thiệu · hết hạn {dayjs(consent.expiresAt).format('HH:mm DD/MM/YYYY')}
+                  </div>
+                </div>
+                <Button type="primary" onClick={() => navigate(`/candidate/submission-consents/${consent.submissionId}`)}>
+                  Xem và xác nhận
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </CandidateSurface>
+      ) : null}
       <CandidateSurface className="candidate-filter-bar">
+        <Input.Search
+          aria-label="Tìm theo công việc hoặc doanh nghiệp"
+          allowClear
+          value={searchDraft}
+          placeholder="Tên công việc hoặc doanh nghiệp"
+          className="min-w-64 flex-1"
+          onChange={(event) => {
+            setSearchDraft(event.target.value);
+            if (!event.target.value) updateFilters({ search: undefined });
+          }}
+          onSearch={(value) => updateFilters({ search: value.trim() || undefined })}
+        />
         <Select
           aria-label="Lọc theo trạng thái"
           allowClear
@@ -266,6 +322,18 @@ export const CandidateApplicationsPage: React.FC = () => {
             ['WITHDRAWN', 'Đã rút đơn'],
           ].map(([value, label]) => ({ value, label }))}
         />
+        <Select
+          aria-label="Lọc theo nguồn ứng tuyển"
+          allowClear
+          placeholder="Tất cả nguồn"
+          value={submissionSource}
+          onChange={(value) => updateFilters({ submissionSource: value })}
+          className="min-w-48"
+          options={[
+            { value: 'CANDIDATE', label: 'Tôi tự ứng tuyển' },
+            { value: 'AFFILIATE', label: 'Affiliate giới thiệu' },
+          ]}
+        />
         <DatePicker.RangePicker
           aria-label="Lọc theo ngày ứng tuyển"
           format="DD/MM/YYYY"
@@ -277,7 +345,9 @@ export const CandidateApplicationsPage: React.FC = () => {
             })
           }
         />
-        {(status || fromDate || toDate || jobId) && <Button onClick={() => setSearchParams({})}>Xóa bộ lọc</Button>}
+        {(status || fromDate || toDate || jobId || search || submissionSource) && (
+          <Button onClick={() => { setSearchDraft(''); setSearchParams({}); }}>Xóa bộ lọc</Button>
+        )}
       </CandidateSurface>
       {apps.isLoading ? (
         <Skeleton active paragraph={{ rows: 6 }} />
@@ -285,8 +355,8 @@ export const CandidateApplicationsPage: React.FC = () => {
         <Alert type="error" showIcon message="Không tải được đơn ứng tuyển" description={getApiErrorMessage(apps.error)} />
       ) : items.length === 0 ? (
         <CandidateSurface className="candidate-empty-surface p-10 text-center">
-          <p className="m-0 text-sm text-slate-600">{status || fromDate || toDate || jobId ? 'Không có đơn nào phù hợp bộ lọc.' : 'Bạn chưa ứng tuyển công việc nào.'}</p>
-          {!status && !fromDate && !toDate && !jobId && (
+          <p className="m-0 text-sm text-slate-600">{status || fromDate || toDate || jobId || search || submissionSource ? 'Không có đơn nào phù hợp bộ lọc.' : 'Bạn chưa ứng tuyển công việc nào.'}</p>
+          {!status && !fromDate && !toDate && !jobId && !search && !submissionSource && (
             <Button type="primary" className="mt-3" icon={<SearchOutlined />} onClick={() => navigate('/candidate/jobs')}>
               Tìm việc làm
             </Button>
@@ -500,6 +570,13 @@ export const CandidateCvsPage: React.FC = () => {
                   <div className="truncate text-xs text-slate-500">
                     {cv.fileName} · {fileSize(cv.fileSizeBytes)} · cập nhật {dayjs(cv.updatedAt).format('DD/MM/YYYY')}
                   </div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {cv.applicationUsageCount > 0
+                      ? `Đang được lưu trong ${cv.applicationUsageCount} đơn ứng tuyển${cv.submissionUsageCount > cv.applicationUsageCount ? ` và ${cv.submissionUsageCount - cv.applicationUsageCount} lượt nộp khác` : ''}.`
+                      : cv.submissionUsageCount > 0
+                        ? `Đã được dùng trong ${cv.submissionUsageCount} lượt nộp hồ sơ.`
+                        : 'Chưa được dùng trong lượt nộp nào.'}
+                  </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   {canView && (
@@ -527,7 +604,9 @@ export const CandidateCvsPage: React.FC = () => {
                   )}
                   {canDelete && <Popconfirm
                     title="Gỡ CV khỏi kho?"
-                    description="CV đã dùng trong đơn ứng tuyển vẫn được giữ cho nhà tuyển dụng."
+                    description={cv.deleteBehavior === 'ARCHIVE_HISTORY'
+                      ? 'CV sẽ ẩn khỏi kho cá nhân nhưng bản đã gắn với lượt nộp và đơn ứng tuyển vẫn được giữ làm lịch sử.'
+                      : 'CV chưa được sử dụng nên sẽ được xóa khỏi kho.'}
                     okText="Gỡ khỏi kho"
                     okButtonProps={{ danger: true }}
                     cancelText="Hủy"

@@ -56,7 +56,7 @@ public class GetCandidateApplicationsQueryHandlerTests
         var company = new Company { CompanyName = "Tech Corp" };
         var job = new Job { JobId = jobId, Title = "Senior .NET Developer", Company = company };
         var candidateCv = new CandidateCv { CvId = cvId, Title = "My CV 2026.pdf" };
-        var submission = new Submission { CvId = cvId, CandidateCv = candidateCv };
+        var submission = new Submission { CvId = cvId, CandidateCv = candidateCv, Source = "CANDIDATE" };
         var aiMatch = new AiMatchResult { AttemptNo = 1, Status = "COMPLETED" };
 
         var application = new JobApplication
@@ -96,6 +96,7 @@ public class GetCandidateApplicationsQueryHandlerTests
         item.CvTitle.Should().Be("My CV 2026.pdf");
         item.Status.Should().Be("SUBMITTED");
         item.AiStatus.Should().Be("COMPLETED");
+        item.SubmissionSource.Should().Be("CANDIDATE");
         item.AppliedAt.Should().Be(application.AppliedAt);
     }
 
@@ -190,5 +191,37 @@ public class GetCandidateApplicationsQueryHandlerTests
 
         _applicationRepositoryMock.Verify(r => r.GetCandidateApplicationsAsync(
             candidateId, "SUBMITTED", filterJobId, fromDate, toDate, 1, 100, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPassSearchAndNormalizedSubmissionSource()
+    {
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate { CandidateId = candidateId, UserId = userId });
+        _applicationRepositoryMock.Setup(r => r.GetCandidateApplicationsFilteredAsync(
+                candidateId, null, null, null, null, "Backend", "AFFILIATE", 1, 20,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<JobApplication>(), 0));
+
+        await _handler.Handle(new GetCandidateApplicationsQuery(
+            UserId: userId, Search: " Backend ", SubmissionSource: "affiliate"), CancellationToken.None);
+
+        _applicationRepositoryMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRejectInvalidSubmissionSource()
+    {
+        var userId = Guid.NewGuid();
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate { CandidateId = Guid.NewGuid(), UserId = userId });
+
+        Func<Task> action = () => _handler.Handle(
+            new GetCandidateApplicationsQuery(UserId: userId, SubmissionSource: "UNKNOWN"),
+            CancellationToken.None);
+
+        await action.Should().ThrowAsync<BadRequestException>();
     }
 }

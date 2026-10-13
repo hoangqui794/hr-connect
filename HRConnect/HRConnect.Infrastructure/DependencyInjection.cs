@@ -94,6 +94,7 @@ public static class DependencyInjection
         services.AddScoped<IOfferRepository, OfferRepository>();
         services.AddScoped<IPlacementRepository, PlacementRepository>();
         services.AddScoped<IFinanceRepository, FinanceRepository>();
+        services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
         services.AddScoped<IAttributionRepository, AttributionRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAdminApprovalService, HRConnect.Infrastructure.Services.Admin.AdminApprovalService>();
@@ -190,6 +191,9 @@ public static class DependencyInjection
         // 7. Business Settings (MF-01 Section C, B1, B2, B3)
         services.Configure<BusinessSettingsOptions>(configuration.GetSection(BusinessSettingsOptions.SectionName));
         services.AddSingleton<IBusinessSettings, HRConnect.Infrastructure.Services.BusinessSettings>();
+
+        // 8. Background Workers (MF-01 Expiration Worker)
+        services.AddHostedService<HRConnect.Infrastructure.Services.Jobs.JobExpirationWorker>();
 
         return services;
 
