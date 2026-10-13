@@ -95,6 +95,11 @@ public sealed class SettlementCommandHandlers :
     public async Task<CommissionActionResponse> Handle(ApproveCommissionCommand request, CancellationToken cancellationToken)
     {
         var commission = await LoadCommissionAsync(request.CommissionId, cancellationToken);
+        if (commission.Status == CommissionStates.OnHold)
+        {
+            throw new ConflictException(
+                "Hoa hồng đang trong thời hạn bảo hành 60 ngày (ON_HOLD). Chỉ có thể duyệt chi trả sau khi ứng viên hoàn thành thời hạn bảo hành.");
+        }
         if (commission.Status != CommissionStates.Earned)
         {
             throw new ConflictException(

@@ -140,7 +140,7 @@ public sealed class ResolveResignationCommandHandler : IRequestHandler<ResolveRe
             warranty.Status = WarrantyStates.Active;
             foreach (var commission in held)
             {
-                commission.Status = CommissionStates.Pending;
+                commission.Status = CommissionStates.OnHold;
                 commission.UpdatedAt = now;
             }
         }

@@ -162,9 +162,9 @@ export const AffiliateCommissionsPage: React.FC = () => {
   return (
     <div>
       <PageHero
-        eyebrow="Headhunt"
+        eyebrow="Headhunt · MF-05"
         title="Hoa hồng & chi trả"
-        description="Bạn nhận 100% hoa hồng khi ứng viên mình giới thiệu đi làm đủ thời hạn bảo hành. Hoa hồng được chi sau khi doanh nghiệp đã thanh toán phí dịch vụ."
+        description="Hoa hồng Headhunt minh bạch qua 5 giai đoạn: PENDING (ghi nhận ứng viên) → EARNED (ứng viên đi làm) → ON_HOLD (bảo lưu trong thời gian bảo hành) → PAYABLE (qua bảo hành & DN thanh toán) → PAID (đã chuyển khoản)."
         actions={<Button icon={<ReloadOutlined />} onClick={() => active.refetch()} loading={active.isFetching}>Làm mới</Button>}
       />
 
@@ -173,9 +173,9 @@ export const AffiliateCommissionsPage: React.FC = () => {
       {tab === 'commissions' && items.length > 0 && (
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
           {[
-            { label: 'Đang chờ đủ thời hạn', value: sum(['PENDING', 'ON_HOLD']) },
-            { label: 'Đã đạt, chờ chi', value: sum(['EARNED', 'PAYABLE']) },
-            { label: 'Đã nhận', value: sum(['PAID']) },
+            { label: 'Bảo lưu trong bảo hành', value: sum(['PENDING', 'ON_HOLD']) },
+            { label: 'Đạt điều kiện, chờ chi', value: sum(['EARNED', 'PAYABLE']) },
+            { label: 'Đã nhận thành công', value: sum(['PAID']) },
           ].map((k) => (
             <Surface key={k.label} padded>
               <div className="text-[13px] text-slate-500">{k.label}</div>

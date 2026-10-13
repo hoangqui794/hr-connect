@@ -467,6 +467,8 @@ export const JobFormPage: React.FC = () => {
     amount?: number;
     andSubmitAfterPay?: boolean;
   } | null>(null);
+  const [headhuntPricingMode, setHeadhuntPricingMode] = useState<'MONTHLY_GROSS' | 'ANNUAL_PERCENT'>('MONTHLY_GROSS');
+  const [annualPercent, setAnnualPercent] = useState<number>(15);
   const summaryRef = useRef<HTMLDivElement>(null);
 
   const serviceTypes = useServiceTypes();
@@ -520,6 +522,17 @@ export const JobFormPage: React.FC = () => {
       form.setFieldValue('visibility', visibilityOptions[0]);
     }
   }, [selectedCode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (selectedCode === 'HEADHUNT_COD') {
+      if (form.getFieldValue('warrantyDays') == null) {
+        form.setFieldValue('warrantyDays', 30);
+      }
+      if (form.getFieldValue('paymentDueDays') == null) {
+        form.setFieldValue('paymentDueDays', 14);
+      }
+    }
+  }, [selectedCode, form]);
 
   const editable = !isEdit || (existing.data ? clientActions(existing.data.status).canEdit : false);
   const serviceTypeLocked = isEdit && existing.data?.status !== 'DRAFT';
@@ -903,35 +916,115 @@ export const JobFormPage: React.FC = () => {
 
               {/* Commercial terms for HEADHUNT_COD */}
               {selectedCode === 'HEADHUNT_COD' && (
-                <div className="mt-5 rounded-xl border border-solid border-indigo-200 bg-indigo-50/60 p-4">
-                  <div className="mb-3 text-[14px] font-semibold text-indigo-900">
-                    Điều khoản thương mại Headhunt COD (Thỏa thuận hợp đồng)
+                <div className="mt-5 rounded-xl border border-solid border-indigo-200 bg-indigo-50/40 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-100 pb-2.5">
+                    <div>
+                      <div className="text-[14px] font-bold text-indigo-950 flex items-center gap-2">
+                        <span>🎯 Thỏa thuận phí dịch vụ Headhunt</span>
+                        <Tag color="purple">Phí tuyển dụng thành công</Tag>
+                      </div>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Nhập các điều khoản thương mại đã thống nhất trong báo giá hoặc hợp đồng dịch vụ riêng.
+                      </p>
+                    </div>
                   </div>
-                  <div className="grid gap-x-4 md:grid-cols-3">
-                    <Form.Item
-                      name="feeMultiplier"
-                      label="Hệ số phí tuyển dụng"
-                      extra="Hệ số nhân lương tháng offer (mặc định 1.5× nếu để trống)."
-                      rules={[{ type: 'number', min: 0.1, max: 10, message: 'Hệ số từ 0.1 đến 10.' }]}
+
+                  {/* Pricing Mode Toggle */}
+                  <div className="mt-3.5 mb-2.5 flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-medium text-slate-600">Cách tính phí thành công:</span>
+                    <Radio.Group
+                      size="small"
+                      value={headhuntPricingMode}
+                      onChange={(e) => {
+                        const mode = e.target.value as 'MONTHLY_GROSS' | 'ANNUAL_PERCENT';
+                        setHeadhuntPricingMode(mode);
+                        if (mode === 'ANNUAL_PERCENT') {
+                          if (annualPercent) {
+                            const mult = Number(((annualPercent * 12) / 100).toFixed(1));
+                            form.setFieldValue('feeMultiplier', mult);
+                          }
+                        }
+                      }}
                     >
-                      <InputNumber size="large" min={0.1} max={10} step={0.1} className="w-full" placeholder="1.5" addonAfter="× lương" />
-                    </Form.Item>
+                      <Radio.Button value="MONTHLY_GROSS">Số tháng lương Gross</Radio.Button>
+                      <Radio.Button value="ANNUAL_PERCENT">% Tổng lương năm đầu</Radio.Button>
+                    </Radio.Group>
+                  </div>
+
+                  {/* Input parameters */}
+                  <div className="grid gap-x-4 md:grid-cols-3 bg-white p-3.5 rounded-lg border border-indigo-100">
+                    {headhuntPricingMode === 'MONTHLY_GROSS' ? (
+                      <Form.Item
+                        name="feeMultiplier"
+                        label="Phí thành công"
+                        rules={[{ required: true, message: 'Nhập số tháng lương.' }, { type: 'number', min: 0.1, max: 10, message: 'Từ 0.1 đến 10.' }]}
+                      >
+                        <InputNumber
+                          size="large"
+                          min={0.1}
+                          max={10}
+                          step={0.1}
+                          className="w-full"
+                          placeholder="Ví dụ: 1.5, 2.0"
+                          addonAfter="tháng lương"
+                        />
+                      </Form.Item>
+                    ) : (
+                      <div>
+                        <div className="mb-2 text-sm text-slate-700">Phí thành công</div>
+                        <InputNumber
+                          size="large"
+                          min={1}
+                          max={100}
+                          step={1}
+                          value={annualPercent || undefined}
+                          onChange={(val) => {
+                            setAnnualPercent(val ?? 0);
+                            if (val) {
+                              const mult = Number(((val * 12) / 100).toFixed(1));
+                              form.setFieldValue('feeMultiplier', mult);
+                            } else {
+                              form.setFieldValue('feeMultiplier', undefined);
+                            }
+                          }}
+                          className="w-full"
+                          placeholder="Ví dụ: 15, 20"
+                          addonAfter="% lương năm"
+                        />
+                        {Boolean(annualPercent) && (
+                          <div className="mt-1 text-xs text-slate-500">
+                            Quy đổi: <strong className="text-indigo-700">{((annualPercent * 12) / 100).toFixed(1)}×</strong> tháng lương
+                          </div>
+                        )}
+                        <Form.Item name="feeMultiplier" hidden>
+                          <InputNumber />
+                        </Form.Item>
+                      </div>
+                    )}
+
                     <Form.Item
                       name="warrantyDays"
-                      label="Thời hạn bảo hành"
-                      extra="Số ngày bảo hành vị trí (mặc định 30 ngày nếu để trống)."
-                      rules={[{ type: 'number', min: 1, max: 365, message: 'Từ 1 đến 365 ngày.' }]}
+                      label="Bảo hành thay thế"
+                      rules={[{ required: true, message: 'Nhập số ngày bảo hành.' }, { type: 'number', min: 1, max: 365, message: 'Từ 1 đến 365 ngày.' }]}
                     >
                       <InputNumber size="large" min={1} max={365} className="w-full" placeholder="30" addonAfter="ngày" />
                     </Form.Item>
+
                     <Form.Item
                       name="paymentDueDays"
-                      label="Hạn thanh toán phí"
-                      extra="Số ngày thanh toán sau khi nhận việc (mặc định 14 ngày)."
-                      rules={[{ type: 'number', min: 1, max: 90, message: 'Từ 1 đến 90 ngày.' }]}
+                      label="Hạn thanh toán"
+                      rules={[{ required: true, message: 'Nhập hạn thanh toán.' }, { type: 'number', min: 1, max: 90, message: 'Từ 1 đến 90 ngày.' }]}
                     >
                       <InputNumber size="large" min={1} max={90} className="w-full" placeholder="14" addonAfter="ngày" />
                     </Form.Item>
+                  </div>
+
+                  {/* Concise note */}
+                  <div className="mt-2.5 rounded-lg bg-indigo-50/80 px-3 py-2 text-xs text-indigo-900 border border-solid border-indigo-100 flex items-center gap-2">
+                    <InfoCircleOutlined className="text-indigo-600 shrink-0 text-sm" />
+                    <span>
+                      Phí phát sinh khi ứng viên bắt đầu làm việc. Hỗ trợ tìm ứng viên thay thế trong thời hạn bảo hành đã thỏa thuận theo hợp đồng.
+                    </span>
                   </div>
                 </div>
               )}

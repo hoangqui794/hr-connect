@@ -8,12 +8,12 @@ interface StatusLabel {
 }
 
 export const COMMISSION_STATUS: Record<CommissionStatus, StatusLabel> = {
-  PENDING: { label: 'Chờ đủ 30 ngày', tone: 'neutral', hint: 'Ứng viên chưa đi làm đủ thời hạn bảo hành.' },
-  EARNED: { label: 'Đã đạt', tone: 'info', hint: 'Đủ thời hạn bảo hành; chờ Client trả phí và Admin duyệt.' },
-  PAYABLE: { label: 'Chờ chi', tone: 'warning', hint: 'Admin đã duyệt, chờ chuyển khoản.' },
-  PAID: { label: 'Đã chi', tone: 'success' },
-  ON_HOLD: { label: 'Tạm giữ', tone: 'warning', hint: 'Client báo ứng viên nghỉ; chờ Internal HR xác minh.' },
-  CANCELLED: { label: 'Đã hủy', tone: 'danger' },
+  PENDING: { label: 'Mới ghi nhận', tone: 'neutral', hint: 'Mới có giới thiệu/Attribution hợp lệ, chờ ứng viên đi làm.' },
+  EARNED: { label: 'Đã đạt mốc đi làm', tone: 'info', hint: 'Ứng viên đã chính thức nhận việc và bắt đầu làm việc.' },
+  ON_HOLD: { label: 'Đang trong bảo hành', tone: 'warning', hint: 'Đang trong thời gian bảo hành thử việc, hoa hồng được tạm giữ bảo lưu.' },
+  PAYABLE: { label: 'Chờ chi trả', tone: 'warning', hint: 'Đã qua thời hạn bảo hành và Client đã thanh toán phí dịch vụ, đủ điều kiện payout.' },
+  PAID: { label: 'Đã thanh toán', tone: 'success', hint: 'HR Connect đã chuyển khoản hoa hồng cho Affiliate.' },
+  CANCELLED: { label: 'Đã hủy', tone: 'danger', hint: 'Ứng viên nghỉ trong bảo hành hoặc hợp đồng bị hủy theo quy định.' },
 };
 
 export const SERVICE_FEE_STATUS: Record<ServiceFeeStatus, StatusLabel> = {

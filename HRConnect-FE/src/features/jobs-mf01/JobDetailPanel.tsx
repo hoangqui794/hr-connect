@@ -16,6 +16,7 @@ import {
   EnvironmentOutlined,
   InfoCircleOutlined,
   PlusOutlined,
+  SafetyCertificateOutlined,
   TeamOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
@@ -341,6 +342,65 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             <InfoCircleOutlined className="text-blue-500 shrink-0 text-sm" />
             <span>
               Tin tuyển dụng sẽ được tự động kích hoạt công khai và mở nhận hồ sơ ngay khi Doanh nghiệp hoàn tất thanh toán phí.
+            </span>
+          </div>
+        </section>
+      )}
+
+      {/* ── Thông tin dịch vụ HEADHUNT (CHỈ hiển thị cho Doanh nghiệp & Quản trị/HR, KHÔNG hiển thị cho Ứng viên) ── */}
+      {!isApplicant && job.serviceTypeCode === 'HEADHUNT_COD' && (
+        <section aria-label="Điều khoản dịch vụ Headhunt" className="rounded-xl border border-solid border-indigo-200/90 bg-indigo-50/40 p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-0 border-b border-solid border-indigo-200/70 pb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
+                <SafetyCertificateOutlined className="text-sm" />
+              </span>
+              <div>
+                <span className="font-bold text-indigo-950 text-sm">Dịch Vụ Headhunt — Thỏa Thuận Riêng</span>
+                <span className="text-xs text-indigo-700/80 ml-2">Phí tuyển dụng thành công</span>
+              </div>
+            </div>
+            <Tag color="purple" className="m-0 font-medium rounded-full px-2.5">
+              Bảo hành {job.warrantyDays ?? 30} ngày
+            </Tag>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="rounded-lg bg-white p-3 border border-solid border-slate-200/80 shadow-2xs">
+              <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <DollarCircleOutlined className="text-indigo-500" /> Phí thành công (Success Fee)
+              </div>
+              <div className="font-bold text-indigo-700 text-[13px] mt-1">
+                {job.feeMultiplier ? `${job.feeMultiplier}× tháng lương` : 'Theo thỏa thuận hợp đồng'}
+              </div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Chỉ trả khi ứng viên đi làm</div>
+            </div>
+
+            <div className="rounded-lg bg-white p-3 border border-solid border-slate-200/80 shadow-2xs">
+              <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <SafetyCertificateOutlined className="text-emerald-500" /> Bảo hành thay thế
+              </div>
+              <div className="font-bold text-emerald-700 text-[13px] mt-1">
+                {job.warrantyDays ?? 30} ngày
+              </div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Tìm ứng viên thay thế miễn phí</div>
+            </div>
+
+            <div className="rounded-lg bg-white p-3 border border-solid border-slate-200/80 shadow-2xs">
+              <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <CalendarOutlined className="text-blue-500" /> Hạn thanh toán
+              </div>
+              <div className="font-bold text-slate-800 text-[13px] mt-1">
+                {job.paymentDueDays ? `${job.paymentDueDays} ngày` : 'Theo thỏa thuận'}
+              </div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Kể từ ngày bắt đầu đi làm</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-lg bg-white/90 px-3 py-2 text-xs text-slate-600 border border-solid border-indigo-100">
+            <InfoCircleOutlined className="text-indigo-500 shrink-0 text-sm" />
+            <span>
+              Phí phát sinh khi ứng viên chính thức đi làm. Áp dụng chính sách bảo hành thay thế ứng viên trong thời hạn đã thỏa thuận theo hợp đồng.
             </span>
           </div>
         </section>

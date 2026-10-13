@@ -35,11 +35,11 @@ public static class BusinessSettingKeys
     public static readonly IReadOnlyList<BusinessSettingDefinition> All =
     [
         new(HeadhuntFeeMultiplier, "HEADHUNT_COD", "Hệ số phí dịch vụ",
-            "Phí dịch vụ = lương gross tháng trong offer × hệ số này, tính cho từng người đi làm.",
-            BusinessSettingType.Decimal, 1.5m, 0.1m, 10m, "× lương", "HEADHUNT_COD model, mục 4"),
+            "Phí dịch vụ thành công = lương gross tháng trong offer × hệ số này (ví dụ 2 tháng lương gross hoặc ~15-17% lương năm), tính khi ứng viên bắt đầu đi làm.",
+            BusinessSettingType.Decimal, 2.0m, 0.1m, 10m, "× lương", "HEADHUNT_COD model, mục 4"),
         new(HeadhuntWarrantyDays, "HEADHUNT_COD", "Số ngày bảo hành",
-            "Ứng viên đi làm đủ số ngày này thì bảo hành qua và Affiliate nhận 100% hoa hồng.",
-            BusinessSettingType.Integer, 30m, 1m, 365m, "ngày", "Quyết định nhóm 2026-10-09"),
+            "Thời hạn bảo hành thay thế ứng viên (mặc định 30 ngày hoặc theo thỏa thuận hợp đồng riêng).",
+            BusinessSettingType.Integer, 30m, 1m, 365m, "ngày", "HEADHUNT_COD model, bảo hành 30 ngày"),
         new(HeadhuntPaymentDueDays, "HEADHUNT_COD", "Hạn thanh toán phí",
             "Số ngày Client phải trả phí, tính từ ngày ứng viên đi làm; quá hạn thì công nợ chuyển OVERDUE.",
             BusinessSettingType.Integer, 20m, 1m, 120m, "ngày", "HEADHUNT_COD model, mục 8"),

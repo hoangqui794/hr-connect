@@ -32,6 +32,7 @@ import {
   FileDoneOutlined,
   InfoCircleOutlined,
   ReloadOutlined,
+  SafetyCertificateOutlined,
   SearchOutlined,
   SendOutlined,
 } from '@ant-design/icons';
@@ -241,6 +242,67 @@ export const JobReviewPage: React.FC = () => {
                 message: `Tin tuyển dụng "${job.title}" đã được duyệt nội dung! Vui lòng hoàn tất thanh toán 1.500.000 đ để kích hoạt và công khai tin.`,
                 actionLabel: 'Thanh toán ngay',
                 actionRoute: `/client/jobs?status=PENDING_PAYMENT&highlight=${encodeURIComponent(job.jobId)}&openPayment=true`,
+                relatedEntityId: job.jobId,
+              });
+            })
+            .catch((err) => message.error(getApiErrorMessage(err))),
+      });
+    } else if (job.serviceTypeCode === 'HEADHUNT_COD') {
+      modal.confirm({
+        title: 'Duyệt yêu cầu & Kích hoạt hợp đồng Headhunt?',
+        icon: <SafetyCertificateOutlined className="text-purple-600 text-xl" />,
+        width: 520,
+        content: (
+          <div className="py-2 space-y-3 text-xs leading-relaxed text-slate-700">
+            <div className="rounded-xl bg-purple-50/60 p-3 border border-solid border-purple-200 space-y-1">
+              <div className="font-semibold text-purple-950 text-sm">{job.title}</div>
+              <div className="text-slate-600">{job.companyName ?? '—'}</div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <Tag color="purple" className="m-0 font-medium">Headhunt COD (Thành công)</Tag>
+                <Tag color="blue" className="m-0 font-medium">{job.feeMultiplier ? `Phí: ${job.feeMultiplier}× tháng lương` : 'Phí: Theo thỏa thuận'}</Tag>
+                <Tag color="emerald" className="m-0 font-medium">Bảo hành {job.warrantyDays ?? 30} ngày</Tag>
+              </div>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-3 border border-solid border-slate-200 text-slate-700 space-y-1">
+              <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                <InfoCircleOutlined className="text-purple-500" /> Điều khoản thương mại dịch vụ:
+              </div>
+              <ul className="m-0 pl-4 space-y-1 text-[12px] text-slate-600">
+                <li><strong>Phí tuyển dụng:</strong> Chỉ phát sinh khi ứng viên nhận việc và bắt đầu ngày làm việc đầu tiên.</li>
+                <li><strong>Bảo hành:</strong> {job.warrantyDays ?? 30} ngày (cam kết tìm ứng viên thay thế theo thỏa thuận).</li>
+                <li><strong>Mở tuyển:</strong> Sau khi duyệt, vị trí sẽ mở cho mạng lưới Affiliate / Recruiter giới thiệu ứng viên.</li>
+              </ul>
+            </div>
+          </div>
+        ),
+        okText: 'Duyệt & Mở cho Recruiter/Affiliate',
+        okButtonProps: { className: '!bg-purple-600 hover:!bg-purple-500 font-semibold' },
+        cancelText: 'Hủy bỏ',
+        onOk: () =>
+          approve
+            .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken })
+            .then((res) => {
+              message.success(res.message);
+
+              // 1. Thông báo cho Internal HR
+              useAlertStore.getState().addAlert({
+                targetRole: 'INTERNAL_HR',
+                type: 'success',
+                title: 'Đã duyệt yêu cầu tuyển Headhunt',
+                message: `Vị trí "${job.title}" của ${job.companyName} đã được phê duyệt hợp đồng và mở cho mạng lưới Affiliate/Recruiter.`,
+                actionLabel: 'Xem chi tiết',
+                actionRoute: `/internal/jobs/review?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}`,
+                relatedEntityId: job.jobId,
+              });
+
+              // 2. Thông báo cho Client
+              useAlertStore.getState().addAlert({
+                targetRole: 'CLIENT',
+                type: 'success',
+                title: 'Hợp đồng Headhunt đã được kích hoạt',
+                message: `Yêu cầu tuyển dụng "${job.title}" đã được duyệt. Đội ngũ Headhunter của HR Connect và mạng lưới Affiliate đã bắt đầu tìm kiếm ứng viên cho quý công ty.`,
+                actionLabel: 'Theo dõi tiến độ',
+                actionRoute: `/client/jobs?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
                 relatedEntityId: job.jobId,
               });
             })

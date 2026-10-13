@@ -45,7 +45,9 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
         warranty.ResultNote = $"Ứng viên đã làm đủ thời hạn bảo hành đến {endDate:yyyy-MM-dd}.";
         warranty.UpdatedAt = now;
 
-        var earned = placement.Commissions.Where(c => c.Status == CommissionStates.Pending).ToList();
+        var earned = placement.Commissions
+            .Where(c => c.Status == CommissionStates.OnHold || c.Status == CommissionStates.Pending)
+            .ToList();
         foreach (var commission in earned)
         {
             commission.Status = CommissionStates.Earned;

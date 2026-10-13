@@ -151,7 +151,7 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
                     MilestoneType = CommissionMilestoneCodes.WarrantyPassed,
                     BaseAmount = IsPercent(rule) ? fee?.Amount : null,
                     Amount = amount.Value,
-                    Status = CommissionStates.Pending,
+                    Status = CommissionStates.OnHold,
                     RuleSnapshot = JsonSerializer.Serialize(new
                     {
                         rule.CommissionRuleId,
@@ -168,6 +168,7 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
                         rateType = rule.RateType,
                         rateValue = rule.RateValue,
                         commissionAmount = amount.Value,
+                        stage = "candidate_started_work_on_hold_during_warranty",
                         earnedWhen = $"warranty passed ({warrantyDays} days after {placement.ActualStartDate:yyyy-MM-dd})",
                     }, SnapshotJson),
                     CalculatedAt = now,

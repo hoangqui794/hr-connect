@@ -127,7 +127,7 @@ public class Mf05FinanceTests
     // ---- placement start ------------------------------------------------------------------
 
     [Fact]
-    public async Task HeadhuntPlacement_creates_30_day_warranty_fee_and_pending_commission()
+    public async Task HeadhuntPlacement_creates_30_day_warranty_fee_and_on_hold_commission()
     {
         var (placement, offer) = await SeedPlacementAsync();
 
@@ -139,11 +139,11 @@ public class Mf05FinanceTests
         warranty.Status.Should().Be(WarrantyStates.Active);
         warranty.EndDate.Should().Be(Start.AddDays(30));
         var fee = await _context.ServiceFees.SingleAsync();
-        fee.Amount.Should().Be(30_000_000m); // 20M × 1.5
+        fee.Amount.Should().Be(40_000_000m); // 20M × 2.0
         fee.Status.Should().Be(ServiceFeeStates.Pending);
         var commission = await CommissionAsync();
-        commission.Amount.Should().Be(9_000_000m); // 30% of the fee, all at once
-        commission.Status.Should().Be(CommissionStates.Pending);
+        commission.Amount.Should().Be(12_000_000m); // 30% of the 40M fee
+        commission.Status.Should().Be(CommissionStates.OnHold);
         commission.MilestoneType.Should().Be(CommissionMilestoneCodes.WarrantyPassed);
     }
 
@@ -241,7 +241,7 @@ public class Mf05FinanceTests
         (await _context.Warranties.SingleAsync()).Status.Should().Be(WarrantyStates.Passed);
         var commission = await CommissionAsync();
         commission.Status.Should().Be(CommissionStates.Earned);
-        commission.Amount.Should().Be(9_000_000m);
+        commission.Amount.Should().Be(12_000_000m);
     }
 
     [Fact]
@@ -299,7 +299,7 @@ public class Mf05FinanceTests
             new ResolveResignationCommand(placement.PlacementId, false, "Ứng viên vẫn đi làm", _actor), default);
 
         resolved.WarrantyStatus.Should().Be(WarrantyStates.Active);
-        (await CommissionAsync()).Status.Should().Be(CommissionStates.Pending);
+        (await CommissionAsync()).Status.Should().Be(CommissionStates.OnHold);
     }
 
     [Fact]
@@ -312,7 +312,7 @@ public class Mf05FinanceTests
             .Invoking(h => h.Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(5), "x", _actor), default))
             .Should().ThrowAsync<NotFoundException>();
         await ReportHandler()
-            .Invoking(h => h.Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(30), "x", _actor), default))
+            .Invoking(h => h.Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(60), "x", _actor), default))
             .Should().ThrowAsync<BadRequestException>();
     }
 
@@ -368,7 +368,7 @@ public class Mf05FinanceTests
     {
         var (placement, offer) = await SeedPlacementAsync();
         await InitializeAsync(placement, offer);
-        await Progress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(30));
+        await Progress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(60));
         return await CommissionAsync();
     }
 
@@ -407,7 +407,7 @@ public class Mf05FinanceTests
         paid.PayoutStatus.Should().Be(PayoutStates.Completed);
         paid.CommissionStatus.Should().Be(CommissionStates.Paid);
         paid.AttemptNo.Should().Be(2);
-        paid.Amount.Should().Be(9_000_000m);
+        paid.Amount.Should().Be(12_000_000m);
     }
 
     [Fact]
@@ -420,7 +420,7 @@ public class Mf05FinanceTests
 
         adjusted.Amount.Should().Be(8_000_000m);
         var adjustment = await _context.CommissionAdjustments.SingleAsync();
-        adjustment.OldAmount.Should().Be(9_000_000m);
+        adjustment.OldAmount.Should().Be(12_000_000m);
         adjustment.NewAmount.Should().Be(8_000_000m);
     }
 }

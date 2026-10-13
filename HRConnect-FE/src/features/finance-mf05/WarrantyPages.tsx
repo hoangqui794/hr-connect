@@ -192,7 +192,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
                   className="mb-4"
                   type="warning"
                   showIcon
-                  message={`${target.candidateName ?? 'Ứng viên'} — bảo hành đến ${date(target.endDate)}. Internal HR sẽ xác minh; nếu đúng, bạn được tuyển thay thế theo chính sách bảo hành.`}
+                  message={`${target.candidateName ?? 'Ứng viên'} — bảo hành đến ${date(target.endDate)}. Internal HR sẽ xác minh; nếu đúng, HR Connect áp dụng chính sách tìm ứng viên thay thế miễn phí theo hợp đồng Headhunt hoặc điều chỉnh phí.`}
                 />
                 <Form.Item name="lastWorkingDate" label="Ngày làm việc cuối cùng" rules={[{ required: true, message: 'Chọn ngày.' }]}>
                   <DatePicker
@@ -207,21 +207,21 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
               </>
             ) : (
               <>
-                <Alert className="mb-4" type="info" showIcon message={target.resultNote ?? 'Client đã báo ứng viên nghỉ việc.'} />
+                <Alert className="mb-4" type="info" showIcon message={target.resultNote ?? 'Client đã báo ứng viên nghỉ việc trong thời gian bảo hành.'} />
                 <Form.Item name="decision" label="Kết quả xác minh" rules={[{ required: true }]}>
                   <Radio.Group>
-                    <Radio value="confirm">Đúng, ứng viên đã nghỉ (hủy hoa hồng)</Radio>
-                    <Radio value="reject">Không đúng, ứng viên vẫn đi làm</Radio>
+                    <Radio value="confirm">Đúng, ứng viên đã nghỉ (Kích hoạt thay thế ứng viên / Xử lý theo hợp đồng)</Radio>
+                    <Radio value="reject">Không đúng, ứng viên vẫn đi làm (Tiếp tục bảo lưu ON_HOLD)</Radio>
                   </Radio.Group>
                 </Form.Item>
                 <Form.Item noStyle shouldUpdate={(a, b) => a.decision !== b.decision}>
                   {({ getFieldValue }) => (
                     <Form.Item
                       name="note"
-                      label="Ghi chú"
+                      label="Ghi chú & Phương án xử lý"
                       rules={[{ required: getFieldValue('decision') === 'reject', whitespace: true, message: 'Bác bỏ cần ghi chú lý do.' }]}
                     >
-                      <Input.TextArea rows={3} placeholder="Đã xác minh với ứng viên và Client ngày…" />
+                      <Input.TextArea rows={3} placeholder="Ghi chú xác minh và phương án: Tìm ứng viên thay thế / gia hạn bảo hành / điều chỉnh phí…" />
                     </Form.Item>
                   )}
                 </Form.Item>
