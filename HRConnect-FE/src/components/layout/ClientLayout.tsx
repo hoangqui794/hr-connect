@@ -234,7 +234,7 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
               width: 34,
               height: 34,
               borderRadius: 10,
-              background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+              background: 'linear-gradient(135deg, #1E9EDB 0%, #53B7E8 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -242,7 +242,7 @@ export const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
               fontWeight: 800,
               color: '#fff',
               flexShrink: 0,
-              boxShadow: '0 2px 10px rgba(37,99,235,0.4)',
+              boxShadow: '0 2px 10px rgba(30, 158, 219, 0.35)',
             }}
           >
             H

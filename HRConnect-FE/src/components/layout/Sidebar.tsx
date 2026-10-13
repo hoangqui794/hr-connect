@@ -55,8 +55,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
   // a customer area; every other role keeps the light sidebar. Pairs meet WCAG AA.
   const isAdminConsole = role === UserRole.ADMIN;
   const pal = isAdminConsole
-    ? { bg: '#0F172A', border: 'rgba(148, 163, 184, 0.16)', title: '#F8FAFC', group: '#94A3B8', name: '#F8FAFC', email: '#94A3B8', trigger: '#94A3B8', triggerHover: '#F8FAFC', logo: '#047857' }
-    : { bg: '#ffffff', border: 'rgba(226, 232, 240, 0.85)', title: '#0f172a', group: '#94a3b8', name: '#0f172a', email: '#64748b', trigger: '#94a3b8', triggerHover: '#0f172a', logo: 'linear-gradient(135deg, #2563eb, #3b82f6)' };
+    ? { bg: '#0F172A', border: 'rgba(148, 163, 184, 0.16)', title: '#F8FAFC', group: '#94A3B8', name: '#F8FAFC', email: '#94A3B8', trigger: '#94A3B8', triggerHover: '#F8FAFC', logo: 'linear-gradient(135deg, #1E9EDB 0%, #53B7E8 100%)' }
+    : { bg: '#ffffff', border: 'rgba(226, 232, 240, 0.85)', title: '#0f172a', group: '#94a3b8', name: '#0f172a', email: '#64748b', trigger: '#94a3b8', triggerHover: '#0f172a', logo: 'linear-gradient(135deg, #1E9EDB 0%, #53B7E8 100%)' };
 
   const transformMenuItem = (item: SidebarMenuItem): any => {
     if (item.type === 'group') {
@@ -136,7 +136,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
             fontWeight: 800,
             color: '#fff',
             flexShrink: 0,
-            boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)',
+            boxShadow: '0 2px 8px rgba(30, 158, 219, 0.35)',
             transition: 'transform 0.2s',
           }}
         >
