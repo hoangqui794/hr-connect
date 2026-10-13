@@ -4,10 +4,12 @@
  * Cho phép Client thực hiện thao tác demo thanh toán 1.500.000 đ để kích hoạt tin đăng.
  */
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Alert, App, Button, Divider, Modal, Space, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, CreditCardOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { jobsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
+import { jobQueryKeys } from './useJobQueries';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -33,6 +35,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
   onClose,
 }) => {
   const { message } = App.useApp();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const isOpen = Boolean(open ?? visible);
 
@@ -41,7 +44,8 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
     try {
       const demoRef = `PAY-${Date.now().toString().slice(-6)}`;
       await jobsApi.payPostingFee(jobId, demoRef);
-      message.success('Thanh toán thành công! Phí đăng tin đã được ghi nhận.');
+      message.success('Thanh toán thành công! Phí đăng tin đã được ghi nhận và tin đã được kích hoạt.');
+      queryClient.invalidateQueries({ queryKey: jobQueryKeys.all });
       onSuccess?.();
       onPaymentSuccess?.();
     } catch (err) {
@@ -91,9 +95,9 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
               <div className="font-medium text-slate-800">Gói Tiêu Chuẩn (30 ngày)</div>
             </div>
             <div>
-              <Text type="secondary" className="text-xs">Quyền lợi hiển thị:</Text>
+              <Text type="secondary" className="text-xs">Quyền lợi gói:</Text>
               <div className="font-medium text-emerald-700 flex items-center gap-1">
-                <CheckCircleOutlined /> Không giới hạn tin mở
+                <CheckCircleOutlined /> Tối đa 50 hồ sơ & AI chấm điểm CV
               </div>
             </div>
           </div>
@@ -111,7 +115,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
             <SafetyCertificateOutlined className="text-emerald-600" /> Thanh toán an toàn qua cổng HRConnect
           </div>
           <p className="m-0">
-            Sau khi thanh toán thành công, tin tuyển dụng sẽ được chuyển tiếp cho Internal HR duyệt và thời hạn 30 ngày sẽ bắt đầu tính từ ngày duyệt công bố.
+            Sau khi thanh toán thành công, tin tuyển dụng đã duyệt nội dung sẽ được kích hoạt công khai ngay lập tức, bắt đầu tính thời hạn 30 ngày và mở nhận hồ sơ ứng viên.
           </p>
         </div>
 

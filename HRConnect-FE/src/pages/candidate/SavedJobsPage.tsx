@@ -13,9 +13,11 @@ import { JobCardHorizontal } from '@/components/common/JobCardHorizontal';
 import { JobDetailModal } from '@/components/common/JobDetailModal';
 import { ApplyJobModal } from '@/features/candidates/ApplyJobModal';
 import { JobCardData } from '@/components/common/JobCard';
+import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
 
 export const SavedJobsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { isApplied } = useCandidateAppliedJobs();
 
   // 1. Single Source of Truth từ useSavedJobs() (mặc định mảng rỗng [] cho tài khoản mới)
   const { savedJobs = [], isSaved, toggleSaveJob } = useSavedJobs();
@@ -118,6 +120,7 @@ export const SavedJobsPage: React.FC = () => {
               key={job?.id || Math.random()}
               job={job as unknown as JobCardData}
               isSaved={true}
+              isApplied={isApplied(job?.id)}
               onToggleSave={() => toggleSaveJob?.(job)}
               onViewDetail={handleOpenDetail}
               onQuickApply={handleQuickApply}

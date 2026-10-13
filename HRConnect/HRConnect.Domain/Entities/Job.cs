@@ -99,6 +99,11 @@ public partial class Job
     public DateTime? ExpiresAt { get; set; }
 
     /// <summary>
+    /// Số lượng hồ sơ tối đa nhận cho tin tuyển dụng theo gói (ví dụ 50 hồ sơ).
+    /// </summary>
+    public int? MaxApplications { get; set; }
+
+    /// <summary>
     /// Hạn nhận hồ sơ ứng tuyển của công việc (MF-01).
     /// </summary>
     public DateTime? ApplicationDeadline { get; set; }

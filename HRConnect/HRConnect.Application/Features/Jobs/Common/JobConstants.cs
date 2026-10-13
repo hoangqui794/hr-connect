@@ -4,6 +4,7 @@ public static class JobStatuses
 {
     public const string Draft = "DRAFT";
     public const string PendingReview = "PENDING_REVIEW";
+    public const string PendingPayment = "PENDING_PAYMENT";
     public const string Rejected = "REJECTED";
     public const string Active = "ACTIVE";
     public const string Paused = "PAUSED";
@@ -42,10 +43,11 @@ public static class JobReasonCodes
     public const string ClosedPositionFilled = "CLOSED_POSITION_FILLED";
     public const string ClosedByClient = "CLOSED_BY_CLIENT";
     public const string ClosedExpired = "CLOSED_EXPIRED";
+    public const string ClosedQuotaReached = "CLOSED_QUOTA_REACHED";
     public const string ClosedOther = "CLOSED_OTHER";
 
     public static readonly string[] RejectionCodes = [RejectedIncompleteDescription, RejectedIncompleteRequirements, RejectedOther];
-    public static readonly string[] CloseCodes = [ClosedPositionFilled, ClosedByClient, ClosedExpired, ClosedOther];
+    public static readonly string[] CloseCodes = [ClosedPositionFilled, ClosedByClient, ClosedExpired, ClosedQuotaReached, ClosedOther];
 }
 
 public static class JobVisibilities

@@ -78,7 +78,7 @@ export const PublicJobDetailPage: React.FC = () => {
                 </Button>
               )}
             </div>
-            <JobDetailPanel job={detail.data} />
+            <JobDetailPanel job={detail.data} isApplicantView />
           </>
         )}
       </div>

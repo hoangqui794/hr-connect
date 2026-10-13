@@ -7,14 +7,21 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Button, Descriptions, Empty, Tag, Timeline, Typography } from 'antd';
 import {
+  AuditOutlined,
+  CalendarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   CreditCardOutlined,
+  DollarCircleOutlined,
   EnvironmentOutlined,
+  InfoCircleOutlined,
   PlusOutlined,
   TeamOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import type { Job, JobRequirement } from '@/types/api/jobs';
+import { useAuthStore, UserRole } from '@/stores/authStore';
+import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
 import { PaymentDemoModal } from './PaymentDemoModal';
 import {
   EMPLOYMENT_TYPE_LABEL,
@@ -34,6 +41,7 @@ const { Paragraph, Text, Title } = Typography;
 const STATUS_TAG_CLASS: Record<Job['status'], string> = {
   DRAFT: 'border-slate-200 bg-slate-50 text-slate-700',
   PENDING_REVIEW: 'border-sky-200 bg-sky-50 text-sky-800',
+  PENDING_PAYMENT: 'border-blue-200 bg-blue-50 text-blue-800',
   REJECTED: 'border-red-200 bg-red-50 text-red-800',
   ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-800',
   PAUSED: 'border-amber-200 bg-amber-50 text-amber-800',
@@ -83,11 +91,27 @@ interface JobDetailPanelProps {
   job: Job;
   /** Status history is only useful to the owner and reviewers. */
   showHistory?: boolean;
+  /** Whether the panel is rendered inside Internal HR review view. */
+  isInternalReview?: boolean;
   onPaySuccess?: () => void;
+  /** Whether the panel is rendered for an applicant (candidate or public visitor). */
+  isApplicantView?: boolean;
 }
 
-export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory = false, onPaySuccess }) => {
+export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
+  job,
+  showHistory = false,
+  isInternalReview = false,
+  onPaySuccess,
+  isApplicantView,
+}) => {
   const navigate = useNavigate();
+  const currentRole = useAuthStore((s) => s.role);
+  const isApplicant = isApplicantView ?? (currentRole === UserRole.CANDIDATE || currentRole === UserRole.GUEST);
+  const { isApplied, getApplication } = useCandidateAppliedJobs();
+  const applied = isApplicant && isApplied(job.jobId);
+  const appliedApp = applied ? getApplication(job.jobId) : undefined;
+
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const mustHave = job.requirements.filter((r) => r.requirementType === 'MUST_HAVE');
   const shouldHave = job.requirements.filter((r) => r.requirementType === 'SHOULD_HAVE');
@@ -102,14 +126,21 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <JobStatusTag status={job.status} />
-          {service && <Tag className="m-0">{service.label}</Tag>}
-          <Tag className="m-0">{VISIBILITY_LABEL[job.visibility].label}</Tag>
-          {job.postingFeeStatus === 'PENDING' && (
+          {applied && (
+            <Tag color="success" icon={<CheckCircleOutlined />} className="m-0 font-medium">
+              Đã ứng tuyển
+            </Tag>
+          )}
+          {service && !isApplicant && <Tag className="m-0 font-medium">{service.label}</Tag>}
+          {job.status === 'ACTIVE' && !isApplicant && (
+            <Tag className="m-0">{VISIBILITY_LABEL[job.visibility]?.label ?? 'Công khai'}</Tag>
+          )}
+          {!isApplicant && job.status === 'PENDING_PAYMENT' && (
             <Tag color="warning" className="m-0 font-medium">
               Chờ thanh toán phí đăng tin
             </Tag>
           )}
-          {job.postingFeeStatus === 'PAID' && (
+          {!isApplicant && job.postingFeeStatus === 'PAID' && (
             <Tag color="success" className="m-0 font-medium">
               Đã thanh toán phí
             </Tag>
@@ -119,7 +150,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory
           {job.title || 'Vị trí chưa đặt tên'}
         </Title>
         <Text type="secondary">{job.companyName ?? '—'}</Text>
-        {job.status === 'REJECTED' && job.statusReason && (
+        {!isApplicant && job.status === 'REJECTED' && job.statusReason && (
           <div role="note" className="rounded-lg border border-solid border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
             <Text strong className="text-red-800">
               Lý do từ chối:{' '}
@@ -128,44 +159,95 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory
           </div>
         )}
 
-        {/* Thông báo chờ thanh toán phí đăng tin */}
-        {job.postingFeeStatus === 'PENDING' && (
+        {/* Thông báo chờ thanh toán phí đăng tin - CHỈ hiển thị khi đã được duyệt và cho Client/HR */}
+        {!isApplicant && job.status === 'PENDING_PAYMENT' && (
           <Alert
-            type="warning"
+            type={isInternalReview ? 'info' : 'warning'}
             showIcon
-            message="Tin đang chờ thanh toán phí đăng tin (Gói Tiêu Chuẩn: 1.500.000 đ)"
-            description="Tin tuyển dụng sẽ được hoàn tất kích hoạt và hiển thị cho ứng viên sau khi thanh toán phí."
-            action={
-              <Button
-                type="primary"
-                size="small"
-                icon={<CreditCardOutlined />}
-                onClick={() => setShowPaymentModal(true)}
-              >
-                Thanh toán ngay
-              </Button>
+            message={
+              isInternalReview
+                ? 'Đang chờ Doanh nghiệp thanh toán (1.500.000 VNĐ)'
+                : 'Tin đã được duyệt · Chờ thanh toán phí đăng tin (1.500.000 VNĐ)'
             }
+            description={
+              isInternalReview
+                ? 'Nội dung tin tuyển dụng đã đạt yêu cầu. Đã gửi thông báo yêu cầu thanh toán tới Doanh nghiệp. Tin sẽ tự động công khai ngay sau khi nhận được thanh toán.'
+                : 'Quý khách vui lòng hoàn tất thanh toán 1.500.000 VNĐ để tin tuyển dụng được công khai trên hệ thống và bắt đầu nhận hồ sơ ứng viên (kèm AI chấm điểm CV).'
+            }
+            action={
+              !isInternalReview ? (
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<CreditCardOutlined />}
+                  onClick={() => setShowPaymentModal(true)}
+                >
+                  Thanh toán ngay
+                </Button>
+              ) : undefined
+            }
+          />
+        )}
+
+        {/* Thông báo khi đóng tin do đủ hồ sơ hoặc lý do khác */}
+        {job.status === 'CLOSED' && job.statusReason && !isExpired && (
+          <Alert
+            type="info"
+            showIcon
+            message="Tin tuyển dụng đã đóng"
+            description={job.statusReason}
           />
         )}
 
         {/* Thông báo khi hết hạn hiển thị */}
         {isExpired && (
           <Alert
-            type="info"
+            type={isApplicant ? 'warning' : 'info'}
             showIcon
-            message="Tin tuyển dụng đã hết hạn hiển thị (30 ngày)"
-            description="Thời hạn hiển thị của tin đã kết thúc theo quy định của gói. Quý khách có thể đăng tin mới với Gói Tiêu Chuẩn (STANDARD) để tiếp tục tuyển dụng."
+            message={isApplicant ? 'Tin tuyển dụng đã hết hạn tiếp nhận hồ sơ' : 'Tin tuyển dụng đã hết hạn hiển thị (30 ngày)'}
+            description={
+              isApplicant
+                ? 'Vị trí này hiện đã dừng tiếp nhận hồ sơ ứng tuyển mới.'
+                : 'Thời hạn hiển thị của tin đã kết thúc theo quy định của gói. Quý khách có thể đăng tin mới với Gói Tiêu Chuẩn (STANDARD) để tiếp tục tuyển dụng.'
+            }
             action={
+              !isApplicant ? (
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() => navigate('/client/jobs/create')}
+                >
+                  Đăng tin mới (Standard)
+                </Button>
+              ) : undefined
+            }
+          />
+        )}
+
+        {applied && (
+          <div className="rounded-xl border border-solid border-emerald-200 bg-emerald-50/80 p-3.5 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2.5 text-xs text-emerald-900">
+              <CheckCircleOutlined className="text-emerald-600 text-base shrink-0" />
+              <div>
+                <span className="font-semibold text-sm block text-emerald-950">Bạn đã ứng tuyển vào vị trí này</span>
+                <span className="text-emerald-800">
+                  Hồ sơ ứng tuyển đã được ghi nhận trên hệ thống
+                  {appliedApp?.appliedAt ? ` vào ngày ${formatDateTime(appliedApp.appliedAt)}` : ''}.
+                </span>
+              </div>
+            </div>
+            {appliedApp?.applicationId && (
               <Button
                 type="primary"
                 size="small"
-                icon={<PlusOutlined />}
-                onClick={() => navigate('/client/jobs/create')}
+                className="!bg-emerald-600 hover:!bg-emerald-500 !border-emerald-600 font-medium text-xs shadow-2xs"
+                onClick={() => navigate(`/candidate/applications/${appliedApp.applicationId}`)}
               >
-                Đăng tin mới (Standard)
+                Xem chi tiết đơn
               </Button>
-            }
-          />
+            )}
+          </div>
         )}
       </header>
 
@@ -188,17 +270,81 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ job, showHistory
         <Descriptions.Item label="Thời gian làm việc">{job.workingTime ?? '—'}</Descriptions.Item>
         {job.salaryNote && <Descriptions.Item label="Ghi chú lương">{job.salaryNote}</Descriptions.Item>}
         <Descriptions.Item label="Ngày đăng">{formatDate(job.postedAt)}</Descriptions.Item>
-        {job.postingPackageName && (
+        {!isApplicant && job.postingPackageName && (
           <Descriptions.Item label="Gói đăng tin">{job.postingPackageName}</Descriptions.Item>
         )}
+        {!isApplicant && job.maxApplications && (
+          <Descriptions.Item label="Hạn mức hồ sơ">Tối đa {job.maxApplications} hồ sơ hợp lệ</Descriptions.Item>
+        )}
         {job.expiresAt && (
-          <Descriptions.Item label="Hạn hiển thị">
+          <Descriptions.Item label={isApplicant ? 'Hạn nộp hồ sơ' : 'Hạn hiển thị'}>
             <span className={isExpired ? 'text-red-600 font-semibold' : ''}>
               {formatDateTime(job.expiresAt)} {isExpired ? '(Đã hết hạn)' : ''}
             </span>
           </Descriptions.Item>
         )}
       </Descriptions>
+
+      {/* ── Thông tin dịch vụ & Phí đăng tin (CHỈ hiển thị cho Doanh nghiệp & Quản trị/HR, KHÔNG hiển thị cho Ứng viên) ── */}
+      {!isApplicant && job.serviceTypeCode === 'CV_APPLICATION' && (
+        <section aria-label="Gói dịch vụ tuyển dụng" className="rounded-xl border border-solid border-slate-200/90 bg-slate-50/60 p-4 space-y-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-0 border-b border-solid border-slate-200/70 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+                <AuditOutlined className="text-sm" />
+              </span>
+              <div>
+                <span className="font-bold text-slate-800 text-sm">Gói Dịch Vụ Đăng Tin Tiêu Chuẩn</span>
+                <span className="text-xs text-slate-500 ml-2">Đăng tin trực tiếp & tiếp nhận hồ sơ</span>
+              </div>
+            </div>
+            <Tag color="blue" className="m-0 font-medium rounded-full px-2.5">
+              30 ngày hiển thị
+            </Tag>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="rounded-lg bg-white p-3 border border-solid border-slate-200/80 shadow-2xs">
+              <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <DollarCircleOutlined className="text-indigo-500" /> Phí dịch vụ
+              </div>
+              <div className="font-bold text-slate-900 text-[13px] mt-1 text-indigo-700">
+                {job.serviceTypeCode === 'CV_APPLICATION' || job.postingPackageCode === 'STANDARD' ? '1.500.000 VNĐ' : 'Miễn phí'}
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-white p-3 border border-solid border-slate-200/80 shadow-2xs">
+              <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <CalendarOutlined className="text-slate-500" /> Thời hạn tin
+              </div>
+              <div className="font-bold text-slate-800 text-[13px] mt-1">30 ngày</div>
+            </div>
+
+            <div className="rounded-lg bg-white p-3 border border-solid border-slate-200/80 shadow-2xs">
+              <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <TeamOutlined className="text-emerald-500" /> Hạn mức nhận hồ sơ
+              </div>
+              <div className="font-bold text-emerald-700 text-[13px] mt-1">
+                Tối đa {job.maxApplications ?? 50} hồ sơ
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-white p-3 border border-solid border-slate-200/80 shadow-2xs">
+              <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <ThunderboltOutlined className="text-sky-500" /> Đánh giá ứng viên
+              </div>
+              <div className="font-bold text-sky-700 text-[13px] mt-1">AI hỗ trợ chấm điểm</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-lg bg-white/90 px-3 py-2 text-xs text-slate-600 border border-solid border-slate-200/70">
+            <InfoCircleOutlined className="text-blue-500 shrink-0 text-sm" />
+            <span>
+              Tin tuyển dụng sẽ được tự động kích hoạt công khai và mở nhận hồ sơ ngay khi Doanh nghiệp hoàn tất thanh toán phí.
+            </span>
+          </div>
+        </section>
+      )}
 
       <section aria-label="Mô tả công việc">
         <Text strong className="block mb-2">

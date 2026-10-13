@@ -1840,6 +1840,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.PaymentDueDays).HasColumnName("payment_due_days");
             entity.Property(e => e.PostingPackageId).HasColumnName("posting_package_id");
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.MaxApplications).HasColumnName("max_applications");
 
             entity.HasOne(d => d.Company).WithMany(p => p.Jobs)
                 .HasForeignKey(d => d.CompanyId)
@@ -1888,6 +1889,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.DurationDays)
                 .HasDefaultValue(30)
                 .HasColumnName("duration_days");
+            entity.Property(e => e.MaxApplications)
+                .HasDefaultValue(50)
+                .HasColumnName("max_applications");
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");

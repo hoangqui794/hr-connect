@@ -10,6 +10,7 @@ using HRConnect.Application.Features.Jobs.Commands.ResumeJob;
 using HRConnect.Application.Features.Jobs.Commands.SubmitJob;
 using HRConnect.Application.Features.Jobs.Commands.UpdateJob;
 using HRConnect.Application.Features.Jobs.Commands.CreateJob;
+using HRConnect.Application.Features.Jobs.Commands.RecordJobPostingFeePayment;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Entities;
 using Moq;
@@ -530,59 +531,34 @@ public class JobManagementCommandHandlerTests
     }
 
     [Fact]
-    public async Task Submit_CvApplication_StandardPackage_ShouldFail_WhenNotPaid()
+    public async Task Submit_CvApplication_StandardPackage_ShouldSucceed_WithoutPrePayment()
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
         job.Title = "Frontend Dev Standard"; job.Description = "React JD"; job.Benefits = "Lunch";
         job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.Public;
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
 
-        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, Name = "Gói Trả Phí", Price = 1_500_000m, DurationDays = 30, IsActive = true };
+        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, Name = "Gói Trả Phí", Price = 1_500_000m, DurationDays = 30, MaxApplications = 50, IsActive = true };
         job.PostingPackageId = stdPkg.PackageId;
 
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ServiceTypeCodes.CvApplication);
         _jobs.Setup(x => x.GetPostingPackageByIdAsync(stdPkg.PackageId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(stdPkg);
-
-        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
-            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
-
-        await action.Should().ThrowAsync<BadRequestException>()
-            .WithMessage("*phải được thanh toán phí đăng tin trước khi gửi duyệt*");
-    }
-
-    [Fact]
-    public async Task Submit_CvApplication_StandardPackage_ShouldSucceed_WhenPaid()
-    {
-        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
-        job.Title = "Frontend Dev Standard"; job.Description = "React JD"; job.Benefits = "Lunch";
-        job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.Public;
-        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
-
-        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, Name = "Gói Trả Phí", Price = 1_500_000m, DurationDays = 30, IsActive = true };
-        job.PostingPackageId = stdPkg.PackageId;
-
-        var paidFee = new JobPostingFee { JobId = job.JobId, PackageId = stdPkg.PackageId, Status = JobPostingFeeStatuses.Paid, Amount = 1_500_000m };
-
-        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ServiceTypeCodes.CvApplication);
-        _jobs.Setup(x => x.GetPostingPackageByIdAsync(stdPkg.PackageId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(stdPkg);
-        _jobs.Setup(x => x.GetPostingFeeByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(paidFee);
 
         var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _businessSettings.Object, _uow.Object)
             .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
 
         result.Data.Status.Should().Be(JobStatuses.PendingReview);
+        job.MaxApplications.Should().Be(50);
+        _jobs.Verify(x => x.AddPostingFeeAsync(It.Is<JobPostingFee>(f => f.Status == JobPostingFeeStatuses.Pending), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Approve_StandardPackage_ShouldFail_WhenNotPaid()
+    public async Task Approve_StandardPackage_ShouldTransitionToPendingPayment_WhenUnpaid()
     {
         var job = SetupJob(JobStatuses.PendingReview);
-        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, DurationDays = 30 };
+        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, DurationDays = 30, MaxApplications = 50 };
         job.PostingPackageId = stdPkg.PackageId;
         job.PostingPackage = stdPkg;
 
@@ -590,15 +566,36 @@ public class JobManagementCommandHandlerTests
         _jobs.Setup(x => x.GetPostingFeeByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(fee);
 
-        var action = () => new ApproveJobCommandHandler(_jobs.Object, _businessSettings.Object, _notifications.Object, _uow.Object)
-            .Handle(new ApproveJobCommand { JobId = job.JobId, UserId = Guid.NewGuid() }, default);
+        var result = await new ApproveJobCommandHandler(_jobs.Object, _businessSettings.Object, _notifications.Object, _uow.Object)
+            .Handle(new ApproveJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), ConcurrencyToken = job.ConcurrencyToken }, default);
 
-        await action.Should().ThrowAsync<BadRequestException>()
-            .WithMessage("*chưa thanh toán phí đăng tin*");
+        result.Data.Status.Should().Be(JobStatuses.PendingPayment);
+        job.Status.Should().Be(JobStatuses.PendingPayment);
+        _notifications.Verify(x => x.AddAsync(It.Is<Notification>(n => n.Title.Contains("duyệt nội dung")), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Approve_StandardPackage_ShouldSucceed_WhenPaid()
+    public async Task Approve_StandardPackage_ShouldTransitionToActive_WhenPaymentReferenceProvided()
+    {
+        var job = SetupJob(JobStatuses.PendingReview);
+        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, DurationDays = 30, MaxApplications = 50 };
+        job.PostingPackageId = stdPkg.PackageId;
+        job.PostingPackage = stdPkg;
+
+        var fee = new JobPostingFee { JobId = job.JobId, PackageId = stdPkg.PackageId, Status = JobPostingFeeStatuses.Pending, Amount = 1_500_000m };
+        _jobs.Setup(x => x.GetPostingFeeByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fee);
+
+        var result = await new ApproveJobCommandHandler(_jobs.Object, _businessSettings.Object, _notifications.Object, _uow.Object)
+            .Handle(new ApproveJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), ConcurrencyToken = job.ConcurrencyToken, PaymentReference = "REF_123456" }, default);
+
+        result.Data.Status.Should().Be(JobStatuses.Active);
+        fee.Status.Should().Be(JobPostingFeeStatuses.Paid);
+        job.ExpiresAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Approve_StandardPackage_ShouldSucceed_WhenAlreadyPaid()
     {
         var job = SetupJob(JobStatuses.PendingReview);
         var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, DurationDays = 30 };
@@ -610,11 +607,47 @@ public class JobManagementCommandHandlerTests
             .ReturnsAsync(fee);
 
         var result = await new ApproveJobCommandHandler(_jobs.Object, _businessSettings.Object, _notifications.Object, _uow.Object)
-            .Handle(new ApproveJobCommand { JobId = job.JobId, UserId = Guid.NewGuid() }, default);
+            .Handle(new ApproveJobCommand { JobId = job.JobId, UserId = Guid.NewGuid(), ConcurrencyToken = job.ConcurrencyToken }, default);
 
         result.Data.Status.Should().Be(JobStatuses.Active);
         job.ExpiresAt.Should().NotBeNull();
         job.ExpiresAt.Should().BeCloseTo(DateTime.UtcNow.AddDays(30), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task RecordPayment_WhenPendingPayment_ShouldActivateJob()
+    {
+        var job = SetupJob(JobStatuses.PendingPayment);
+        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, DurationDays = 30 };
+        job.PostingPackageId = stdPkg.PackageId;
+        job.PostingPackage = stdPkg;
+
+        var fee = new JobPostingFee
+        {
+            PostingFeeId = Guid.NewGuid(),
+            JobId = job.JobId,
+            PackageId = stdPkg.PackageId,
+            CompanyId = job.CompanyId,
+            Status = JobPostingFeeStatuses.Pending,
+            Amount = 1_500_000m,
+            Package = stdPkg
+        };
+        _jobs.Setup(x => x.GetPostingFeeByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fee);
+
+        var handler = new RecordJobPostingFeePaymentCommandHandler(_jobs.Object, _businessSettings.Object, _notifications.Object, _uow.Object);
+        var result = await handler.Handle(new RecordJobPostingFeePaymentCommand
+        {
+            JobId = job.JobId,
+            UserId = Guid.NewGuid(),
+            PaymentReference = "PAY_SUCCESS_123"
+        }, default);
+
+        result.Status.Should().Be(JobPostingFeeStatuses.Paid);
+        job.Status.Should().Be(JobStatuses.Active);
+        job.PostedAt.Should().NotBeNull();
+        job.ExpiresAt.Should().NotBeNull();
+        _notifications.Verify(x => x.AddAsync(It.Is<Notification>(n => n.Title.Contains("kích hoạt")), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

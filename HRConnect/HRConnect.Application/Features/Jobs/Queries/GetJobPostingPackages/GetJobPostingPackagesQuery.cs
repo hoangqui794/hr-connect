@@ -39,6 +39,7 @@ public sealed class GetJobPostingPackagesQueryHandler : IRequestHandler<GetJobPo
                 p.Description,
                 price,
                 duration,
+                p.MaxApplications,
                 p.IsActive);
         }).ToList();
     }

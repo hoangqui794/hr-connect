@@ -530,6 +530,61 @@ public class ApplyJobCommandHandlerTests
         _cvStorageServiceMock.VerifyNoOtherCalls();
     }
 
+    [Fact]
+    public async Task Handle_WhenMaxApplicationsQuotaReached_ThrowsBadRequestException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+
+        var candidate = new Candidate
+        {
+            CandidateId = candidateId,
+            UserId = userId,
+            Status = "ACTIVE"
+        };
+        var user = CreateActiveCandidateUser();
+        user.UserId = userId;
+
+        var job = new Job
+        {
+            JobId = jobId,
+            ServiceTypeId = serviceTypeId,
+            Status = "ACTIVE",
+            Visibility = "PUBLIC",
+            ApplicationDeadline = DateTime.UtcNow.AddDays(7),
+            MaxApplications = 50
+        };
+
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+        _userRepositoryMock.Setup(r => r.GetByIdWithActiveRolesAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _jobRepositoryMock.Setup(r => r.CountAcceptedApplicationsByJobIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(50); // Reached quota
+
+        var command = new ApplyJobCommand
+        {
+            JobId = jobId,
+            UserId = userId,
+            CvId = Guid.NewGuid(),
+            RoleCodes = new[] { "CANDIDATE" }
+        };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*đã nhận đủ số lượng hồ sơ tối đa*");
+    }
+
     private static AppUser CreateActiveCandidateUser(
         string status = "ACTIVE",
         bool hasCandidateRole = true,

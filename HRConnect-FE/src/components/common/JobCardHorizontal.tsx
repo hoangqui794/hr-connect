@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import {
+  CheckCircleFilled,
   DollarOutlined,
   HeartOutlined,
   HeartFilled,
@@ -19,6 +20,7 @@ import { BookmarkButton } from './BookmarkButton';
 interface JobCardHorizontalProps {
   job: JobCardData;
   isSaved?: boolean;
+  isApplied?: boolean;
   onToggleSave?: (jobId: string, e: React.MouseEvent) => void;
   onViewDetail?: (job: JobCardData) => void;
   onQuickApply?: (job: JobCardData, e: React.MouseEvent) => void;
@@ -28,6 +30,7 @@ interface JobCardHorizontalProps {
 export const JobCardHorizontal: React.FC<JobCardHorizontalProps> = ({
   job,
   isSaved = false,
+  isApplied = false,
   onToggleSave,
   onViewDetail,
   onQuickApply,
@@ -134,6 +137,12 @@ export const JobCardHorizontal: React.FC<JobCardHorizontalProps> = ({
 
           {/* HR Connect Special Badges */}
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap sm:justify-end">
+            {isApplied && (
+              <span className="inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">
+                <CheckCircleFilled className="text-emerald-600 text-3xs" />
+                Đã ứng tuyển
+              </span>
+            )}
             {isCOD && (
               <span className="inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/80">
                 <GiftOutlined className="text-amber-600 text-3xs" />

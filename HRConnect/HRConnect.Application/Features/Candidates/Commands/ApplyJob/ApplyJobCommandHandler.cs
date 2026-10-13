@@ -100,6 +100,16 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             throw new BadRequestException("Công việc đã hết hạn nhận hồ sơ ứng tuyển.");
         }
 
+        if (job.MaxApplications.HasValue && job.MaxApplications.Value > 0)
+        {
+            var acceptedCount = await _jobRepository.CountAcceptedApplicationsByJobIdAsync(job.JobId, cancellationToken);
+            if (acceptedCount >= job.MaxApplications.Value)
+            {
+                _logger.LogWarning("JobId {JobId} đã đạt giới hạn tối đa hồ sơ ({Quota}).", job.JobId, job.MaxApplications.Value);
+                throw new BadRequestException("Tin tuyển dụng đã nhận đủ số lượng hồ sơ tối đa theo gói đăng tin.");
+            }
+        }
+
         // 3. Phân quyền can_submit dựa trên Service Type và Roles
         if (!JobAccessPolicy.CanCandidateApply(job, request.RoleCodes))
         {
