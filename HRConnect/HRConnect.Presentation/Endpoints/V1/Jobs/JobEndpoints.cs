@@ -37,13 +37,15 @@ public static class JobEndpoints
 
         publicJobs.MapGet("", async (string? search, string? location, string? employmentType,
             Guid? serviceTypeId, decimal? salaryMin, decimal? salaryMax, int? page, int? pageSize,
+            string? sortBy, string? sortDirection,
             ISender sender, CancellationToken ct) =>
             await Run(async () => Results.Ok(await sender.Send(new GetPublicJobsQuery(
                 [JobAccessPolicy.CandidateRole], false, search, location, employmentType, serviceTypeId,
-                salaryMin, salaryMax, page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : 20), ct))))
+                salaryMin, salaryMax, page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : 20,
+                sortBy, sortDirection), ct))))
         .WithName("GetGuestCandidateJobs")
         .WithSummary("Guest tìm Job Candidate được phép xem")
-        .WithDescription("Không cần đăng nhập. API cố định phạm vi CANDIDATE: chỉ trả Job ACTIVE, PUBLIC và thuộc Service Type có can_view cho role CANDIDATE. Không trả Job PARTNER_ONLY dành cho Affiliate.")
+        .WithDescription("Không cần đăng nhập. API cố định phạm vi CANDIDATE: chỉ trả Job ACTIVE, PUBLIC và thuộc Service Type có can_view cho role CANDIDATE. Không trả Job PARTNER_ONLY dành cho Affiliate. Hỗ trợ sắp xếp sortBy=POSTED_AT|SALARY và sortDirection=DESC|ASC.")
         .RequireRateLimiting("public-read")
         .Produces<JobPageDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
@@ -127,15 +129,22 @@ public static class JobEndpoints
         }
         ).WithName("GetMyJobs").WithSummary("Lấy danh sách Job của doanh nghiệp hiện tại");
         jobs.MapGet("", async (ClaimsPrincipal user, string? search, string? location, string? employmentType,
-            Guid? serviceTypeId, decimal? salaryMin, decimal? salaryMax, int? page, int? pageSize, ISender sender, CancellationToken ct) =>
+            Guid? serviceTypeId, decimal? salaryMin, decimal? salaryMax, int? page, int? pageSize,
+            string? sortBy, string? sortDirection, ISender sender, CancellationToken ct) =>
         {
             if (!user.HasClaim("permission", "job.view")) return Forbidden();
             var internalAccess = ReviewerCan(user, "job.review");
             return await Run(async () => Results.Ok(await sender.Send(new GetPublicJobsQuery(
                 RoleCodes(user), internalAccess, search, location, employmentType, serviceTypeId, salaryMin, salaryMax,
-                page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : 20), ct)));
+                page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : 20,
+                sortBy, sortDirection), ct)));
         }).WithName("GetPublicJobs").WithSummary("Tìm Job đang hoạt động theo quyền xem của Service Type")
-        .WithDescription("Yêu cầu đăng nhập và permission job.view. Kết quả được lọc theo role thật và Service Type. Hỗ trợ search, location, employmentType, serviceTypeId, salaryMin, salaryMax; page mặc định 1, pageSize mặc định 20 và tối đa 100.");
+        .WithDescription("Yêu cầu đăng nhập và permission job.view. Kết quả được lọc theo role thật và Service Type. Hỗ trợ search, location, employmentType, serviceTypeId, salaryMin, salaryMax; sortBy=POSTED_AT|SALARY; sortDirection=DESC|ASC; page mặc định 1, pageSize mặc định 20 và tối đa 100.")
+        .Produces<JobPageDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden);
+
         jobs.MapGet("/{jobId:guid}", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         {
             var isAuthenticated = user.Identity?.IsAuthenticated == true;
@@ -148,7 +157,11 @@ public static class JobEndpoints
         }
         ).AllowAnonymous()
         .WithName("GetJobDetail").WithSummary("Lấy chi tiết Job")
-        .WithDescription("Guest được xem chi tiết theo đúng phạm vi Candidate. Job chỉ dành cho Affiliate hoặc Internal không được trả về cho Guest.");
+        .WithDescription("Guest được xem chi tiết theo đúng phạm vi Candidate. Trả về thông tin chi tiết Job kèm thông tin công khai đã lọc an toàn của doanh nghiệp (PublicCompanyDto). Job chỉ dành cho Affiliate hoặc Internal không được trả về cho Guest.")
+        .Produces<JobDetailDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
 
         // POST /api/v1/jobs/{jobId}/apply - Ứng viên tự ứng tuyển vào công việc
         jobs.MapPost("/{jobId:guid}/apply", async (

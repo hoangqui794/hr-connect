@@ -68,6 +68,7 @@ public static class DependencyInjection
         services.AddScoped<ICandidateRepository, CandidateRepository>();
         services.AddScoped<ISkillRepository, SkillRepository>();
         services.AddScoped<ICandidateCvRepository, CandidateCvRepository>();
+        services.AddScoped<ICandidateSavedJobRepository, CandidateSavedJobRepository>();
         services.AddScoped<IAffiliateApplicationRepository, AffiliateApplicationRepository>();
         services.AddScoped<IAffiliateProfileRepository, AffiliateProfileRepository>();
         services.AddScoped<ICompanyRepository, CompanyRepository>();

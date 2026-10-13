@@ -35,7 +35,8 @@ public sealed class UpdateJobCommandValidator : AbstractValidator<UpdateJobComma
                     Quantity = x.Quantity,
                     Visibility = x.Visibility,
                     Requirements = x.Requirements,
-                    Skills = x.Skills
+                    Skills = x.Skills,
+                    ApplicationDeadline = x.ApplicationDeadline
                 };
                 var result = new CreateJobCommandValidator().Validate(command);
                 foreach (var error in result.Errors)

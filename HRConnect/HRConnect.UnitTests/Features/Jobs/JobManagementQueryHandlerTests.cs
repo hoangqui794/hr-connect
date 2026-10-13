@@ -80,6 +80,7 @@ public class JobManagementQueryHandlerTests
                     visibilities.Contains(JobVisibilities.Public) &&
                     visibilities.Contains(JobVisibilities.PartnerOnly)),
                 false, "dotnet", null, null, null, null, null, 1, 20,
+                null, null,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(([visibleJob], 1));
 
@@ -101,6 +102,7 @@ public class JobManagementQueryHandlerTests
                 It.Is<IReadOnlyCollection<string>>(visibilities =>
                     visibilities.Count == 1 && visibilities.Contains(JobVisibilities.Public)),
                 false, null, null, null, null, null, null, 1, 12,
+                null, null,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(([visibleJob], 1));
 

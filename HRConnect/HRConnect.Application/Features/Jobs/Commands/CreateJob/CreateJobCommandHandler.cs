@@ -97,7 +97,8 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             FeeMultiplier = request.FeeMultiplier,
             WarrantyDays = request.WarrantyDays,
             PaymentDueDays = request.PaymentDueDays,
-            PostingPackageId = request.PostingPackageId
+            PostingPackageId = request.PostingPackageId,
+            ApplicationDeadline = request.ApplicationDeadline
         };
 
         foreach (var requirement in request.Requirements)

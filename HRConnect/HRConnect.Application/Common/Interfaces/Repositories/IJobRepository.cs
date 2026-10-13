@@ -36,6 +36,8 @@ public interface IJobRepository
         decimal? salaryMax,
         int page,
         int pageSize,
+        string? sortBy = null,
+        string? sortDirection = null,
         CancellationToken cancellationToken = default);
 
     Task<bool> CanAnyRoleViewJobAsync(

@@ -46,6 +46,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<CandidateSkill> CandidateSkills { get; set; }
 
+    public virtual DbSet<CandidateSavedJob> CandidateSavedJobs { get; set; }
+
     public virtual DbSet<Commission> Commissions { get; set; }
 
     public virtual DbSet<CommissionAdjustment> CommissionAdjustments { get; set; }
@@ -1075,6 +1077,34 @@ public partial class ApplicationDbContext : DbContext
                 .HasConstraintName("candidate_skill_skill_id_fkey");
         });
 
+        modelBuilder.Entity<CandidateSavedJob>(entity =>
+        {
+            entity.HasKey(e => e.CandidateSavedJobId).HasName("candidate_saved_job_pkey");
+
+            entity.ToTable("candidate_saved_job", "public");
+
+            entity.HasIndex(e => new { e.CandidateId, e.JobId }, "uq_candidate_saved_job").IsUnique();
+
+            entity.Property(e => e.CandidateSavedJobId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("candidate_saved_job_id");
+            entity.Property(e => e.CandidateId).HasColumnName("candidate_id");
+            entity.Property(e => e.JobId).HasColumnName("job_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.Candidate).WithMany(p => p.CandidateSavedJobs)
+                .HasForeignKey(d => d.CandidateId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("candidate_saved_job_candidate_id_fkey");
+
+            entity.HasOne(d => d.Job).WithMany(p => p.CandidateSavedJobs)
+                .HasForeignKey(d => d.JobId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("candidate_saved_job_job_id_fkey");
+        });
+
         modelBuilder.Entity<Commission>(entity =>
         {
             entity.HasKey(e => e.CommissionId).HasName("commission_pkey");
@@ -1732,9 +1762,13 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => new { e.Visibility, e.Status, e.PostedAt }, "idx_job_visibility_status").IsDescending(false, false, true);
 
+            entity.HasIndex(e => new { e.Status, e.ApplicationDeadline }, "idx_job_active_deadline")
+                .HasFilter("((status)::text = 'ACTIVE'::text)");
+
             entity.Property(e => e.JobId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("job_id");
+            entity.Property(e => e.ApplicationDeadline).HasColumnName("application_deadline");
             entity.Property(e => e.ClosedAt).HasColumnName("closed_at");
             entity.Property(e => e.CompanyId).HasColumnName("company_id");
             entity.Property(e => e.CreatedAt)

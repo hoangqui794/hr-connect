@@ -29,14 +29,18 @@ public static class JobAccessPolicy
                    job.Visibility, StringComparer.OrdinalIgnoreCase);
     }
 
+    public static bool IsAcceptingApplications(Job job) =>
+        string.Equals(job.Status, JobStatuses.Active, StringComparison.OrdinalIgnoreCase) &&
+        (!job.ApplicationDeadline.HasValue || job.ApplicationDeadline.Value > DateTime.UtcNow);
+
     public static bool CanCandidateApply(Job job, IReadOnlyCollection<string>? roleCodes) =>
         HasRole(roleCodes, CandidateRole) &&
-        string.Equals(job.Status, JobStatuses.Active, StringComparison.OrdinalIgnoreCase) &&
+        IsAcceptingApplications(job) &&
         string.Equals(job.Visibility, JobVisibilities.Public, StringComparison.OrdinalIgnoreCase);
 
     public static bool CanAffiliateSubmit(Job job, IReadOnlyCollection<string>? roleCodes) =>
         HasPartnerRole(roleCodes) &&
-        string.Equals(job.Status, JobStatuses.Active, StringComparison.OrdinalIgnoreCase) &&
+        IsAcceptingApplications(job) &&
         (string.Equals(job.Visibility, JobVisibilities.Public, StringComparison.OrdinalIgnoreCase) ||
          string.Equals(job.Visibility, JobVisibilities.PartnerOnly, StringComparison.OrdinalIgnoreCase));
 

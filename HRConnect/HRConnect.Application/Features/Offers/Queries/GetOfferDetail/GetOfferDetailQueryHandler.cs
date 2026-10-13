@@ -78,7 +78,7 @@ public class GetOfferDetailQueryHandler : IRequestHandler<GetOfferDetailQuery, G
         {
             OfferId = offer.OfferId,
             ApplicationId = offer.ApplicationId,
-            Job = new JobDetailDto
+            Job = new OfferJobSummaryDto
             {
                 JobId = offer.Application.JobId,
                 Title = offer.Application.Job?.Title ?? string.Empty,

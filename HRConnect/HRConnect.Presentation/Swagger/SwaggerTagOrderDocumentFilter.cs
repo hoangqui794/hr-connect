@@ -15,14 +15,17 @@ public sealed class SwaggerTagOrderDocumentFilter : IDocumentFilter
         // 01. Authentication and shared resources
         new() { Name = "Auth", Description = "01 · Xác thực — Đăng ký, OTP, đăng nhập, refresh token, đổi hoặc đặt lại mật khẩu và quản lý phiên." },
         new() { Name = "Users", Description = "01 · Dùng chung — Tiện ích cho mọi tài khoản đã đăng nhập, gồm quản lý ảnh đại diện." },
+        new() { Name = "Notifications", Description = "01 · Dùng chung — Xem danh sách thông báo, số lượng chưa đọc và đánh dấu đã đọc thông báo." },
 
         // 02. Public discovery and master data
+        new() { Name = "Public Jobs", Description = "02 · Khám phá việc làm — Tìm kiếm và lọc tin tuyển dụng công khai cho ứng viên và khách vãng lai." },
         new() { Name = "Service Types", Description = "02 · Danh mục công khai — Loại dịch vụ tuyển dụng và phạm vi vai trò được phép xem hoặc nộp hồ sơ." },
         new() { Name = "Skills", Description = "02 · Danh mục công khai — Tra cứu kỹ năng dùng cho hồ sơ Candidate và yêu cầu công việc." },
         new() { Name = "Jobs", Description = "02 · Việc làm — Tìm kiếm, xem chi tiết, tạo và quản lý Job theo quyền của người dùng." },
 
         // 03. Candidate journey
         new() { Name = "Candidate Profile", Description = "03 · Candidate — Xem và cập nhật hồ sơ cá nhân." },
+        new() { Name = "Candidate Saved Jobs", Description = "03 · Candidate — Quản lý danh sách tin tuyển dụng đã lưu (lưu và hủy lưu công việc)." },
         new() { Name = "Candidate Skills", Description = "03 · Candidate — Quản lý danh sách kỹ năng trong hồ sơ ứng viên." },
         new() { Name = "Candidate CV", Description = "03 · Candidate — Quản lý kho CV cá nhân: tải lên, cập nhật, đặt CV chính, tải xuống và xóa." },
         new() { Name = "Candidate Affiliate CVs", Description = "03 · Candidate — Xem CV do Affiliate tải lên, kiểm soát quyền tái sử dụng và nhận CV vào kho cá nhân." },
