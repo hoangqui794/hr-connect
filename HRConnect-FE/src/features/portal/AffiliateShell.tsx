@@ -103,7 +103,7 @@ export const AffiliateShell: React.FC = () => {
         aria-label="Điều hướng Affiliate"
       >
         <div className="flex h-16 items-center gap-3 px-5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color:var(--console-accent)] text-base font-extrabold text-white">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-base font-black text-white shadow-md shadow-[#1E9EDB]/30">
             H
           </span>
           {!collapsed && (

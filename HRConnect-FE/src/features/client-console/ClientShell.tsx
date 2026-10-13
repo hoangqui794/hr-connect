@@ -81,7 +81,7 @@ export const ClientShell: React.FC = () => {
           )}
 
           <NavLink to="/client/dashboard" className="flex shrink-0 items-center gap-2.5 no-underline" aria-label="HR Connect, về tổng quan">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-base font-extrabold text-white shadow-[0_6px_16px_-6px_rgba(37,99,235,0.6)]">H</span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-base font-black text-white shadow-md shadow-[#1E9EDB]/30">H</span>
             <span className="leading-tight">
               <span className="block text-[15px] font-bold text-slate-900">HR Connect</span>
               <span className="hidden text-[11px] font-medium tracking-wide text-[color:var(--console-accent-strong)] sm:block">Doanh nghiệp tuyển dụng</span>
