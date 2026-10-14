@@ -2485,6 +2485,23 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("job_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<DateTime?>("AgreedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("agreed_at");
+
+                    b.Property<Guid?>("AgreedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agreed_by");
+
+                    b.Property<string>("AgreementNote")
+                        .HasColumnType("text")
+                        .HasColumnName("agreement_note");
+
+                    b.Property<string>("AgreementReference")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("agreement_reference");
+
                     b.Property<DateTime?>("ApplicationDeadline")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("application_deadline");
@@ -2526,6 +2543,11 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("currency_code")
                         .HasDefaultValueSql("'VND'::bpchar")
                         .IsFixedLength();
+
+                    b.Property<decimal?>("DepositPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("deposit_percent");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
@@ -2574,11 +2596,38 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("posting_package_id");
 
+                    b.Property<decimal?>("ProposedFeeMultiplier")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("proposed_fee_multiplier");
+
+                    b.Property<string>("ProposedFeeNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("proposed_fee_note");
+
+                    b.Property<int?>("ProposedPaymentDueDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("proposed_payment_due_days");
+
+                    b.Property<decimal?>("ProposedPricePerCv")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("proposed_price_per_cv");
+
+                    b.Property<int?>("ProposedWarrantyDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("proposed_warranty_days");
+
                     b.Property<int>("Quantity")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(1)
                         .HasColumnName("quantity");
+
+                    b.Property<int?>("ReviewDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("review_days");
 
                     b.Property<decimal?>("SalaryMax")
                         .HasPrecision(18, 2)
@@ -2659,6 +2708,8 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasKey("JobId")
                         .HasName("job_pkey");
+
+                    b.HasIndex("AgreedBy");
 
                     b.HasIndex("CreatedBy");
 
@@ -5152,6 +5203,12 @@ namespace HRConnect.Infrastructure.Migrations
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Job", b =>
                 {
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "AgreedByNavigation")
+                        .WithMany()
+                        .HasForeignKey("AgreedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("job_agreed_by_fkey");
+
                     b.HasOne("HRConnect.Domain.Entities.Company", "Company")
                         .WithMany("Jobs")
                         .HasForeignKey("CompanyId")
@@ -5178,6 +5235,8 @@ namespace HRConnect.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("job_service_type_id_fkey");
+
+                    b.Navigation("AgreedByNavigation");
 
                     b.Navigation("Company");
 

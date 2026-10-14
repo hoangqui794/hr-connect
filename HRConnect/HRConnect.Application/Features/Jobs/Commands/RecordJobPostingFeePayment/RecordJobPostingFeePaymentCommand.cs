@@ -25,18 +25,15 @@ public sealed record RecordJobPostingFeePaymentCommand : IRequest<JobPostingFeeD
 public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<RecordJobPostingFeePaymentCommand, JobPostingFeeDto>
 {
     private readonly IJobRepository _jobRepository;
-    private readonly IBusinessSettings _businessSettings;
     private readonly INotificationRepository _notifications;
     private readonly IUnitOfWork _uow;
 
     public RecordJobPostingFeePaymentCommandHandler(
         IJobRepository jobRepository,
-        IBusinessSettings businessSettings,
         INotificationRepository notifications,
         IUnitOfWork uow)
     {
         _jobRepository = jobRepository;
-        _businessSettings = businessSettings;
         _notifications = notifications;
         _uow = uow;
     }
@@ -74,7 +71,7 @@ public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<R
                 JobId = job.JobId,
                 PackageId = package.PackageId,
                 CompanyId = job.CompanyId,
-                Amount = package.Price > 0 ? package.Price : _businessSettings.StandardPostingPackagePrice,
+                Amount = package.Price,
                 CurrencyCode = "VND",
                 Status = JobPostingFeeStatuses.Pending,
                 CreatedAt = now,
@@ -95,7 +92,7 @@ public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<R
         fee.RecordedBy = request.UserId;
         fee.UpdatedAt = now;
 
-        var duration = fee.Package?.DurationDays ?? _businessSettings.StandardPostingDurationDays;
+        var duration = fee.Package?.DurationDays ?? job.PostingPackage?.DurationDays ?? 30;
         fee.ActivatedAt = now;
         fee.ExpiresAt = now.AddDays(duration);
 

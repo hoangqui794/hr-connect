@@ -71,6 +71,14 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             maxApplications = package?.MaxApplications;
         }
 
+        var proposed = CommercialTermsHelper.ResolveProposedTerms(
+            serviceTypeCode,
+            request.ProposedTerms,
+            request.FeeMultiplier,
+            request.WarrantyDays,
+            request.PaymentDueDays,
+            request.SourcingPricePerCv);
+
         var job = new Job
         {
             JobId = jobId,
@@ -100,10 +108,15 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             Visibility = request.Visibility.Trim().ToUpperInvariant(),
             StatusReason = null,
             SourcingTarget = request.SourcingTarget,
-            SourcingPricePerCv = request.SourcingPricePerCv,
-            FeeMultiplier = request.FeeMultiplier,
-            WarrantyDays = request.WarrantyDays,
-            PaymentDueDays = request.PaymentDueDays,
+            SourcingPricePerCv = null,
+            FeeMultiplier = null,
+            WarrantyDays = null,
+            PaymentDueDays = null,
+            ProposedFeeMultiplier = proposed.FeeMultiplier,
+            ProposedWarrantyDays = proposed.WarrantyDays,
+            ProposedPaymentDueDays = proposed.PaymentDueDays,
+            ProposedPricePerCv = proposed.PricePerCv,
+            ProposedFeeNote = proposed.Note,
             PostingPackageId = request.PostingPackageId,
             MaxApplications = maxApplications,
             ApplicationDeadline = request.ApplicationDeadline
