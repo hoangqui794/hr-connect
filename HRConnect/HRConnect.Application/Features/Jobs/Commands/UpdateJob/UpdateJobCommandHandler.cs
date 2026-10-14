@@ -50,10 +50,20 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
         job.MinExperienceYears = request.MinExperienceYears; job.MaxExperienceYears = request.MaxExperienceYears;
         job.CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(); job.Quantity = request.Quantity;
         job.Visibility = request.Visibility.Trim().ToUpperInvariant();
+        var proposed = CommercialTermsHelper.ResolveProposedTerms(
+            serviceTypeCode,
+            request.ProposedTerms,
+            request.FeeMultiplier,
+            request.WarrantyDays,
+            request.PaymentDueDays,
+            request.SourcingPricePerCv);
+
         job.SourcingTarget = request.SourcingTarget;
-        job.SourcingPricePerCv = request.SourcingPricePerCv;
-        job.FeeMultiplier = request.FeeMultiplier;
-        job.WarrantyDays = request.WarrantyDays;
+        job.ProposedFeeMultiplier = proposed.FeeMultiplier;
+        job.ProposedWarrantyDays = proposed.WarrantyDays;
+        job.ProposedPaymentDueDays = proposed.PaymentDueDays;
+        job.ProposedPricePerCv = proposed.PricePerCv;
+        job.ProposedFeeNote = proposed.Note;
         if (job.PostingPackageId != request.PostingPackageId)
         {
             job.PostingPackageId = request.PostingPackageId;

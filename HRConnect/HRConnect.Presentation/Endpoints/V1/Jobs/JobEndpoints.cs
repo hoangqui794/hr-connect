@@ -19,6 +19,7 @@ using HRConnect.Application.Features.Jobs.Queries.GetPublicJobs;
 using HRConnect.Application.Features.Jobs.Queries.GetJobPostingPackages;
 using HRConnect.Application.Features.Jobs.Queries.GetJobPostingFee;
 using HRConnect.Application.Features.Jobs.Queries.GetJobPostingEligibility;
+using HRConnect.Application.Features.Jobs.Queries.GetJobCommercialTermsDefaults;
 using HRConnect.Application.Features.Jobs.Commands.RecordJobPostingFeePayment;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -306,23 +307,37 @@ public static class JobEndpoints
         review.MapGet("/review", async (string? status, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         { if (!ReviewerCan(user, "job.review")) return Forbidden(); return await Run(async () => Results.Ok(await sender.Send(new GetJobsForReviewQuery(status), ct))); }
         ).WithName("GetJobsForReview").WithSummary("Lấy danh sách Job cho Internal HR theo trạng thái xét duyệt (mặc định PENDING_REVIEW, hoặc ACTIVE, REJECTED, ALL...)");
-        review.MapPost("/{jobId:guid}/approve", async (Guid jobId, Guid concurrencyToken, [FromQuery] string? paymentReference, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+
+        review.MapGet("/{jobId:guid}/commercial-terms/defaults", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+        {
+            if (!ReviewerCan(user, "job.review")) return Forbidden();
+            return await Run(async Task<IResult> () => Results.Ok(await sender.Send(new GetJobCommercialTermsDefaultsQuery(jobId), ct)));
+        }
+        ).WithName("GetJobCommercialTermsDefaults").WithSummary("Lấy giá trị đề xuất và mặc định điều khoản thương mại cho màn duyệt Job")
+        .WithDescription("Yêu cầu permission job.review (INTERNAL_HR, PLATFORM_ADMIN). Trả về đề xuất của Client, mặc định Admin, giá trị điền sẵn và khoảng hợp lệ.");
+
+        review.MapPost("/{jobId:guid}/approve", async (Guid jobId, [FromBody] ApproveJobRequestBody? body, [FromQuery] Guid? concurrencyToken, [FromQuery] string? paymentReference, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.publish")) return Forbidden();
-            return await Run(async () => Results.Ok(await sender.Send(new ApproveJobCommand
+            var token = body?.ConcurrencyToken ?? concurrencyToken ?? Guid.Empty;
+            var payRef = body?.PaymentReference ?? paymentReference;
+            return await Run(async Task<IResult> () => Results.Ok(await sender.Send(new ApproveJobCommand
             {
                 JobId = jobId,
                 UserId = id.Value,
-                ConcurrencyToken = concurrencyToken,
-                PaymentReference = paymentReference
+                ConcurrencyToken = token,
+                CommercialTerms = body?.CommercialTerms,
+                AgreementReference = body?.AgreementReference,
+                Note = body?.Note,
+                PaymentReference = payRef
             }, ct)));
         }
-        ).WithName("ApproveJob").WithSummary("Duyệt và công bố Job")
-        .WithDescription("Yêu cầu permission job.publish. Chỉ duyệt Job PENDING_REVIEW và chuyển sang ACTIVE. Với gói STANDARD, yêu cầu đã thanh toán hoặc truyền paymentReference.");
+        ).WithName("ApproveJob").WithSummary("Duyệt và công bố Job kèm điều khoản thương mại")
+        .WithDescription("Yêu cầu permission job.publish. Duyệt Job PENDING_REVIEW và chốt điều khoản thương mại chính thức.");
         review.MapPost("/{jobId:guid}/reject", async (Guid jobId, ClaimsPrincipal user, [FromBody] RejectJobCommand command, ISender sender, IValidator<RejectJobCommand> validator, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.review")) return Forbidden(); command.JobId = jobId; command.UserId = id.Value;
-            var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async () => Results.Ok(await sender.Send(command, ct)));
+            var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async Task<IResult> () => Results.Ok(await sender.Send(command, ct)));
         }
         ).WithName("RejectJob").WithSummary("Từ chối Job và trả lý do")
         .WithDescription("Yêu cầu permission job.review. Chỉ từ chối Job PENDING_REVIEW; gửi ReasonCode (REJECTED_INCOMPLETE_DESCRIPTION, REJECTED_INCOMPLETE_REQUIREMENTS hoặc REJECTED_OTHER) và ReasonText. Job chuyển sang REJECTED và Client có thể sửa rồi gửi duyệt lại.");
@@ -330,6 +345,12 @@ public static class JobEndpoints
     }
 
     public record PayPostingFeeRequest(string? PaymentReference);
+    public record ApproveJobRequestBody(
+        Guid? ConcurrencyToken,
+        CommercialTermsApprovalRequest? CommercialTerms,
+        string? AgreementReference,
+        string? Note,
+        string? PaymentReference);
 
     private static async Task<IResult> ClientAction<T>(ClaimsPrincipal user, string permission, Func<Guid, Task<T>> action)
     { var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, permission)) return Forbidden(); return await Run(async () => Results.Ok(await action(id.Value))); }
@@ -342,7 +363,7 @@ public static class JobEndpoints
         catch (ForbiddenException ex) { return Results.Json(new { success = false, errorCode = ex.ErrorCode, message = ex.Message }, statusCode: 403); }
         catch (ConflictException ex) { return Results.Conflict(new { success = false, message = ex.Message }); }
         catch (DbUpdateConcurrencyException) { return Results.Conflict(new { success = false, message = "Job đã được thay đổi bởi người dùng khác. Hãy tải lại dữ liệu và thử lại." }); }
-        catch (BadRequestException ex) { return Results.BadRequest(new { success = false, message = ex.Message }); }
+        catch (BadRequestException ex) { return Results.BadRequest(new { success = false, errorCode = ex.ErrorCode, message = ex.Message }); }
     }
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
     private static bool ClientCan(ClaimsPrincipal user, string permission) => user.IsInRole("CLIENT_COMPANY_USER") && user.HasClaim("permission", permission);

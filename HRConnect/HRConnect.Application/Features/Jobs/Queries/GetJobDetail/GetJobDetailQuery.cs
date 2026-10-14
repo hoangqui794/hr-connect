@@ -25,6 +25,6 @@ public sealed class GetJobDetailQueryHandler : IRequestHandler<GetJobDetailQuery
                        await _jobs.CanAnyRoleViewJobAsync(job.ServiceTypeId, request.RoleCodes, ct));
         if (!canView) throw new ForbiddenException("Bạn không có quyền xem công việc này.");
 
-        return JobDetailDto.From(job, includeStatusHistories: isOwner || request.HasInternalAccess);
+        return JobDetailDto.From(job, includeStatusHistories: isOwner || request.HasInternalAccess, isReviewer: request.HasInternalAccess);
     }
 }

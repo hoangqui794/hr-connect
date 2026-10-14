@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Jobs.Common;
 using MediatR;
 
@@ -18,15 +19,15 @@ public sealed class ResumeJobCommandHandler : IRequestHandler<ResumeJobCommand, 
 {
     private readonly IJobRepository _jobs;
     private readonly ICompanyUserRepository _members;
-    private readonly IBusinessSettings _businessSettings;
+    private readonly IAdminBusinessSettings _settings;
     private readonly IUnitOfWork _uow;
 
     public ResumeJobCommandHandler(
         IJobRepository jobs,
         ICompanyUserRepository members,
-        IBusinessSettings businessSettings,
+        IAdminBusinessSettings settings,
         IUnitOfWork uow)
-        => (_jobs, _members, _businessSettings, _uow) = (jobs, members, businessSettings, uow);
+        => (_jobs, _members, _settings, _uow) = (jobs, members, settings, uow);
 
     public async Task<JobActionResponse> Handle(ResumeJobCommand request, CancellationToken ct)
     {
@@ -46,10 +47,11 @@ public sealed class ResumeJobCommandHandler : IRequestHandler<ResumeJobCommand, 
             if (package != null && string.Equals(package.Code, JobPostingPackageCodes.Free, StringComparison.OrdinalIgnoreCase))
             {
                 var activeCount = await _jobs.CountActiveJobsByCompanyIdAsync(job.CompanyId, ct);
-                if (activeCount >= _businessSettings.FreeActiveJobLimit)
+                var freeLimit = await _settings.GetIntAsync(BusinessSettingKeys.CvApplicationFreeActiveLimit, ct);
+                if (activeCount >= freeLimit)
                 {
                     throw new BadRequestException(
-                        $"Doanh nghiệp đã có {activeCount} tin tuyển dụng đang mở. Gói Miễn Phí (FREE) chỉ cho phép tối đa {_businessSettings.FreeActiveJobLimit} tin mở tại một thời điểm.");
+                        $"Doanh nghiệp đã có {activeCount} tin tuyển dụng đang mở. Gói Miễn Phí (FREE) chỉ cho phép tối đa {freeLimit} tin mở tại một thời điểm.");
                 }
             }
         }

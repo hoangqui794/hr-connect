@@ -2,7 +2,10 @@ using System.Text.Json.Serialization;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
 
@@ -13,22 +16,33 @@ public sealed class ApproveJobCommand : IRequest<JobActionResponse>
     [JsonIgnore] public Guid JobId { get; set; }
     [JsonIgnore] public Guid UserId { get; set; }
     public Guid ConcurrencyToken { get; set; }
+    public CommercialTermsApprovalRequest? CommercialTerms { get; set; }
+    public string? AgreementReference { get; set; }
+    public string? Note { get; set; }
     public string? PaymentReference { get; set; }
 }
 
 public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand, JobActionResponse>
 {
     private readonly IJobRepository _jobs;
-    private readonly IBusinessSettings _businessSettings;
+    private readonly IAdminBusinessSettings _adminSettings;
     private readonly INotificationRepository _notifications;
+    private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _uow;
 
     public ApproveJobCommandHandler(
         IJobRepository jobs,
-        IBusinessSettings businessSettings,
+        IAdminBusinessSettings adminSettings,
         INotificationRepository notifications,
+        IAuditLogService auditLogService,
         IUnitOfWork uow)
-        => (_jobs, _businessSettings, _notifications, _uow) = (jobs, businessSettings, notifications, uow);
+    {
+        _jobs = jobs;
+        _adminSettings = adminSettings;
+        _notifications = notifications;
+        _auditLogService = auditLogService;
+        _uow = uow;
+    }
 
     public async Task<JobActionResponse> Handle(ApproveJobCommand request, CancellationToken ct)
     {
@@ -41,8 +55,187 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
         var requiresPayment = false;
         decimal standardPrice = 0m;
 
-        if (string.Equals(serviceTypeCode, ServiceTypeCodes.CvApplication, StringComparison.OrdinalIgnoreCase))
+        object? adminDefaultsAtApproval = null;
+        object? approvedTerms = null;
+        var proposedTerms = new
         {
+            feeMultiplier = job.ProposedFeeMultiplier,
+            warrantyDays = job.ProposedWarrantyDays,
+            paymentDueDays = job.ProposedPaymentDueDays,
+            pricePerCv = job.ProposedPricePerCv,
+            sourcingTarget = job.SourcingTarget,
+            note = job.ProposedFeeNote
+        };
+
+        if (string.Equals(serviceTypeCode, ServiceTypeCodes.HeadhuntCod, StringComparison.OrdinalIgnoreCase))
+        {
+            if (request.CommercialTerms != null)
+            {
+                if (request.CommercialTerms.SourcingTarget.HasValue ||
+                    request.CommercialTerms.PricePerCv.HasValue ||
+                    request.CommercialTerms.DepositPercent.HasValue ||
+                    request.CommercialTerms.ReviewDays.HasValue)
+                {
+                    throw new BadRequestException("Điều khoản thương mại gửi lên không áp dụng cho dịch vụ HEADHUNT_COD.", "TERM_NOT_APPLICABLE");
+                }
+            }
+
+            var defaultFeeMultiplier = await _adminSettings.GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier, ct);
+            var defaultWarrantyDays = await _adminSettings.GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays, ct);
+            var defaultPaymentDueDays = await _adminSettings.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, ct);
+
+            adminDefaultsAtApproval = new
+            {
+                feeMultiplier = defaultFeeMultiplier,
+                warrantyDays = defaultWarrantyDays,
+                paymentDueDays = defaultPaymentDueDays
+            };
+
+            var feeMultiplier = request.CommercialTerms?.FeeMultiplier ?? job.ProposedFeeMultiplier ?? defaultFeeMultiplier;
+            var warrantyDays = request.CommercialTerms?.WarrantyDays ?? job.ProposedWarrantyDays ?? defaultWarrantyDays;
+            var paymentDueDays = request.CommercialTerms?.PaymentDueDays ?? job.ProposedPaymentDueDays ?? defaultPaymentDueDays;
+
+            if (feeMultiplier < 0.1m || feeMultiplier > 10m)
+            {
+                throw new BadRequestException($"Điều khoản feeMultiplier không hợp lệ ({feeMultiplier}). Khoảng cho phép: 0.1 - 10.", "TERM_OUT_OF_RANGE");
+            }
+
+            if (warrantyDays < 1 || warrantyDays > 365)
+            {
+                throw new BadRequestException($"Điều khoản warrantyDays không hợp lệ ({warrantyDays}). Khoảng cho phép: 1 - 365 ngày.", "TERM_OUT_OF_RANGE");
+            }
+
+            if (paymentDueDays < 1 || paymentDueDays > 120)
+            {
+                throw new BadRequestException($"Điều khoản paymentDueDays không hợp lệ ({paymentDueDays}). Khoảng cho phép: 1 - 120 ngày.", "TERM_OUT_OF_RANGE");
+            }
+
+            var differsFromProposed = (job.ProposedFeeMultiplier.HasValue && job.ProposedFeeMultiplier.Value != feeMultiplier)
+                || (job.ProposedWarrantyDays.HasValue && job.ProposedWarrantyDays.Value != warrantyDays)
+                || (job.ProposedPaymentDueDays.HasValue && job.ProposedPaymentDueDays.Value != paymentDueDays);
+
+            if (differsFromProposed && string.IsNullOrWhiteSpace(request.AgreementReference))
+            {
+                throw new BadRequestException("Số tiền/điều khoản chốt khác với đề xuất của Client, bắt buộc phải cung cấp thông tin thỏa thuận (agreementReference).", "AGREEMENT_REFERENCE_REQUIRED");
+            }
+
+            job.FeeMultiplier = feeMultiplier;
+            job.WarrantyDays = warrantyDays;
+            job.PaymentDueDays = paymentDueDays;
+            job.AgreementReference = string.IsNullOrWhiteSpace(request.AgreementReference) ? null : request.AgreementReference.Trim();
+            job.AgreementNote = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+            job.AgreedAt = now;
+            job.AgreedBy = request.UserId;
+
+            approvedTerms = new
+            {
+                serviceTypeCode = ServiceTypeCodes.HeadhuntCod,
+                feeMultiplier,
+                warrantyDays,
+                paymentDueDays
+            };
+        }
+        else if (string.Equals(serviceTypeCode, ServiceTypeCodes.CvSourcing, StringComparison.OrdinalIgnoreCase))
+        {
+            if (request.CommercialTerms != null)
+            {
+                if (request.CommercialTerms.FeeMultiplier.HasValue || request.CommercialTerms.WarrantyDays.HasValue)
+                {
+                    throw new BadRequestException("Điều khoản thương mại gửi lên không áp dụng cho dịch vụ CV_SOURCING.", "TERM_NOT_APPLICABLE");
+                }
+            }
+
+            var defaultPricePerCv = await _adminSettings.GetDecimalAsync(BusinessSettingKeys.CvSourcingPricePerCv, ct);
+            var defaultDepositPercent = await _adminSettings.GetDecimalAsync(BusinessSettingKeys.CvSourcingDepositPercent, ct);
+            var defaultReviewDays = await _adminSettings.GetIntAsync(BusinessSettingKeys.CvSourcingReviewDays, ct);
+            var defaultPaymentDueDays = await _adminSettings.GetIntAsync(BusinessSettingKeys.CvSourcingPaymentDueDays, ct);
+
+            adminDefaultsAtApproval = new
+            {
+                pricePerCv = defaultPricePerCv,
+                depositPercent = defaultDepositPercent,
+                reviewDays = defaultReviewDays,
+                paymentDueDays = defaultPaymentDueDays
+            };
+
+            var sourcingTarget = request.CommercialTerms?.SourcingTarget ?? job.SourcingTarget ?? 10;
+            var pricePerCv = request.CommercialTerms?.PricePerCv ?? job.ProposedPricePerCv ?? defaultPricePerCv;
+            var depositPercent = request.CommercialTerms?.DepositPercent ?? defaultDepositPercent;
+            var reviewDays = request.CommercialTerms?.ReviewDays ?? defaultReviewDays;
+            var paymentDueDays = request.CommercialTerms?.PaymentDueDays ?? job.ProposedPaymentDueDays ?? defaultPaymentDueDays;
+
+            if (sourcingTarget < 1 || sourcingTarget > 1000)
+            {
+                throw new BadRequestException($"Điều khoản sourcingTarget không hợp lệ ({sourcingTarget}). Khoảng cho phép: 1 - 1000.", "TERM_OUT_OF_RANGE");
+            }
+
+            if (pricePerCv < 1000m || pricePerCv > 100000000m)
+            {
+                throw new BadRequestException($"Điều khoản pricePerCv không hợp lệ ({pricePerCv:N0}). Khoảng cho phép: 1.000 - 100.000.000 VNĐ.", "TERM_OUT_OF_RANGE");
+            }
+
+            if (depositPercent < 0m || depositPercent > 100m)
+            {
+                throw new BadRequestException($"Điều khoản depositPercent không hợp lệ ({depositPercent}%). Khoảng cho phép: 0 - 100%.", "TERM_OUT_OF_RANGE");
+            }
+
+            if (reviewDays < 1 || reviewDays > 30)
+            {
+                throw new BadRequestException($"Điều khoản reviewDays không hợp lệ ({reviewDays}). Khoảng cho phép: 1 - 30 ngày.", "TERM_OUT_OF_RANGE");
+            }
+
+            if (paymentDueDays < 1 || paymentDueDays > 120)
+            {
+                throw new BadRequestException($"Điều khoản paymentDueDays không hợp lệ ({paymentDueDays}). Khoảng cho phép: 1 - 120 ngày.", "TERM_OUT_OF_RANGE");
+            }
+
+            if (job.SourcingTarget.HasValue && sourcingTarget < job.SourcingTarget.Value && string.IsNullOrWhiteSpace(request.Note))
+            {
+                throw new BadRequestException("Khi giảm số lượng CV mục tiêu so với yêu cầu của Client, bắt buộc phải có ghi chú lý do.", "NOTE_REQUIRED");
+            }
+
+            var differsFromProposed = (job.ProposedPricePerCv.HasValue && job.ProposedPricePerCv.Value != pricePerCv)
+                || (job.ProposedPaymentDueDays.HasValue && job.ProposedPaymentDueDays.Value != paymentDueDays);
+
+            if (differsFromProposed && string.IsNullOrWhiteSpace(request.AgreementReference))
+            {
+                throw new BadRequestException("Số tiền/điều khoản chốt khác với đề xuất của Client, bắt buộc phải cung cấp thông tin thỏa thuận (agreementReference).", "AGREEMENT_REFERENCE_REQUIRED");
+            }
+
+            job.SourcingTarget = sourcingTarget;
+            job.SourcingPricePerCv = pricePerCv;
+            job.DepositPercent = depositPercent;
+            job.ReviewDays = reviewDays;
+            job.PaymentDueDays = paymentDueDays;
+            job.AgreementReference = string.IsNullOrWhiteSpace(request.AgreementReference) ? null : request.AgreementReference.Trim();
+            job.AgreementNote = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+            job.AgreedAt = now;
+            job.AgreedBy = request.UserId;
+
+            approvedTerms = new
+            {
+                serviceTypeCode = ServiceTypeCodes.CvSourcing,
+                sourcingTarget,
+                pricePerCv,
+                depositPercent,
+                reviewDays,
+                paymentDueDays
+            };
+        }
+        else if (string.Equals(serviceTypeCode, ServiceTypeCodes.CvApplication, StringComparison.OrdinalIgnoreCase))
+        {
+            if (request.CommercialTerms != null &&
+                (request.CommercialTerms.FeeMultiplier.HasValue ||
+                 request.CommercialTerms.WarrantyDays.HasValue ||
+                 request.CommercialTerms.PaymentDueDays.HasValue ||
+                 request.CommercialTerms.SourcingTarget.HasValue ||
+                 request.CommercialTerms.PricePerCv.HasValue ||
+                 request.CommercialTerms.DepositPercent.HasValue ||
+                 request.CommercialTerms.ReviewDays.HasValue))
+            {
+                throw new BadRequestException("Dịch vụ CV_APPLICATION không áp dụng điều khoản thương mại thương lượng.", "TERM_NOT_APPLICABLE");
+            }
+
             var package = job.PostingPackage;
             if (package == null && job.PostingPackageId.HasValue)
             {
@@ -64,7 +257,7 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
 
             if (package != null && string.Equals(package.Code, JobPostingPackageCodes.Standard, StringComparison.OrdinalIgnoreCase))
             {
-                standardPrice = package.Price > 0 ? package.Price : _businessSettings.StandardPostingPackagePrice;
+                standardPrice = package.Price;
 
                 if (fee == null)
                 {
@@ -85,7 +278,6 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
 
                 if (fee.Status != JobPostingFeeStatuses.Paid)
                 {
-                    // Nếu Admin cung cấp mã thanh toán tại thời điểm duyệt -> ghi nhận thanh toán luôn và công bố
                     if (!string.IsNullOrWhiteSpace(request.PaymentReference))
                     {
                         fee.Status = JobPostingFeeStatuses.Paid;
@@ -96,13 +288,12 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                     }
                     else
                     {
-                        // Luồng chuẩn: Duyệt nội dung trước, chuyển sang PENDING_PAYMENT để Client thanh toán sau
                         requiresPayment = true;
                     }
                 }
             }
 
-            var duration = package?.DurationDays > 0 ? package.DurationDays : _businessSettings.StandardPostingDurationDays;
+            var duration = package?.DurationDays > 0 ? package.DurationDays : 30;
 
             if (!requiresPayment)
             {
@@ -118,7 +309,6 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
 
         if (requiresPayment)
         {
-            // Chuyển sang Chờ thanh toán
             JobTransitions.ChangeStatus(
                 job,
                 JobStatuses.PendingPayment,
@@ -147,11 +337,11 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                 CreatedAt = now
             }, ct);
 
+            await AuditApprovalAsync(job, request, proposedTerms, adminDefaultsAtApproval, approvedTerms, ct);
             await _uow.SaveChangesAsync(ct);
-            return new(true, "Duyệt nội dung thành công. Tin tuyển dụng đã chuyển sang trạng thái Chờ thanh toán.", JobDto.From(job));
+            return new(true, "Duyệt nội dung thành công. Tin tuyển dụng đã chuyển sang trạng thái Chờ thanh toán.", JobDto.From(job, isReviewer: true));
         }
 
-        // Trường hợp miễn phí hoặc đã thanh toán: Kích hoạt ACTIVE ngay
         JobTransitions.ChangeStatus(job, JobStatuses.Active, request.UserId, JobReasonCodes.Approved);
         await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
         job.PostedAt = now;
@@ -177,7 +367,36 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
             CreatedAt = now
         }, ct);
 
+        await AuditApprovalAsync(job, request, proposedTerms, adminDefaultsAtApproval, approvedTerms, ct);
         await _uow.SaveChangesAsync(ct);
-        return new(true, "Duyệt và công bố công việc thành công.", JobDto.From(job));
+        return new(true, "Duyệt và công bố công việc thành công.", JobDto.From(job, isReviewer: true));
+    }
+
+    private Task AuditApprovalAsync(
+        Job job,
+        ApproveJobCommand request,
+        object proposedTerms,
+        object? adminDefaultsAtApproval,
+        object? approvedTerms,
+        CancellationToken ct)
+    {
+        return _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.JobApproved,
+            EntityType = "JOB",
+            EntityId = job.JobId,
+            ActorUserId = request.UserId,
+            NewValues = new
+            {
+                jobId = job.JobId,
+                status = job.Status,
+                proposedTerms,
+                adminDefaultsAtApproval,
+                approvedTerms,
+                agreementReference = request.AgreementReference,
+                note = request.Note,
+                paymentReference = request.PaymentReference
+            }
+        }, ct);
     }
 }

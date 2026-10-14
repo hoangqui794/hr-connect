@@ -37,6 +37,7 @@ public static class JobReasonCodes
     public const string Approved = "APPROVED";
     public const string RejectedIncompleteDescription = "REJECTED_INCOMPLETE_DESCRIPTION";
     public const string RejectedIncompleteRequirements = "REJECTED_INCOMPLETE_REQUIREMENTS";
+    public const string RejectedTermsNotAgreed = "REJECTED_TERMS_NOT_AGREED";
     public const string RejectedOther = "REJECTED_OTHER";
     public const string PausedByClient = "PAUSED_BY_CLIENT";
     public const string ResumedByClient = "RESUMED_BY_CLIENT";
@@ -46,7 +47,7 @@ public static class JobReasonCodes
     public const string ClosedQuotaReached = "CLOSED_QUOTA_REACHED";
     public const string ClosedOther = "CLOSED_OTHER";
 
-    public static readonly string[] RejectionCodes = [RejectedIncompleteDescription, RejectedIncompleteRequirements, RejectedOther];
+    public static readonly string[] RejectionCodes = [RejectedIncompleteDescription, RejectedIncompleteRequirements, RejectedTermsNotAgreed, RejectedOther];
     public static readonly string[] CloseCodes = [ClosedPositionFilled, ClosedByClient, ClosedExpired, ClosedQuotaReached, ClosedOther];
 }
 

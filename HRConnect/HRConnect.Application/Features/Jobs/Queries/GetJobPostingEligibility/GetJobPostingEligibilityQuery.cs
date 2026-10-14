@@ -2,8 +2,8 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
-using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Jobs.Common;
 using MediatR;
 
@@ -23,16 +23,16 @@ public sealed class GetJobPostingEligibilityQueryHandler : IRequestHandler<GetJo
 {
     private readonly IJobRepository _jobRepository;
     private readonly ICompanyUserRepository _members;
-    private readonly IBusinessSettings _businessSettings;
+    private readonly IAdminBusinessSettings _settings;
 
     public GetJobPostingEligibilityQueryHandler(
         IJobRepository jobRepository,
         ICompanyUserRepository members,
-        IBusinessSettings businessSettings)
+        IAdminBusinessSettings settings)
     {
         _jobRepository = jobRepository;
         _members = members;
-        _businessSettings = businessSettings;
+        _settings = settings;
     }
 
     public async Task<JobPostingEligibilityDto> Handle(GetJobPostingEligibilityQuery request, CancellationToken cancellationToken)
@@ -45,7 +45,7 @@ public sealed class GetJobPostingEligibilityQueryHandler : IRequestHandler<GetJo
 
         var companyId = member.CompanyId;
         var activeCount = await _jobRepository.CountActiveJobsByCompanyIdAsync(companyId, cancellationToken);
-        var freeLimit = _businessSettings.FreeActiveJobLimit;
+        var freeLimit = await _settings.GetIntAsync(BusinessSettingKeys.CvApplicationFreeActiveLimit, cancellationToken);
 
         // 1. Kiểm tra giới hạn số tin mở đồng thời
         if (activeCount >= freeLimit)
@@ -63,7 +63,7 @@ public sealed class GetJobPostingEligibilityQueryHandler : IRequestHandler<GetJo
         var lastPosted = await _jobRepository.GetLastPostedJobByCompanyIdAsync(companyId, JobPostingPackageCodes.Free, cancellationToken);
         if (lastPosted?.PostedAt != null)
         {
-            var cooldownMonths = _businessSettings.FreeCooldownMonths;
+            var cooldownMonths = await _settings.GetIntAsync(BusinessSettingKeys.CvApplicationFreeCooldownMonths, cancellationToken);
             var cooldownEnd = lastPosted.PostedAt.Value.AddMonths(cooldownMonths);
             var now = DateTime.UtcNow;
 
