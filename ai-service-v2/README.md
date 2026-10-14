@@ -1,4 +1,4 @@
-# HR Connect AI Service v2 (thử nghiệm)
+# HR Connect AI Service v2
 
 Bản thử nghiệm thay thế `ai-service` (v1). Dùng **LLM (Claude) để đọc CV và đánh giá từng yêu cầu**, giữ
 **Sentence-BERT** cho điểm ngữ nghĩa (yêu cầu đề tài), và **điểm số do code tính**, không do LLM tự cho.
@@ -69,3 +69,19 @@ So với HR (gọi LLM thật, tốn phí theo số CV):
   nhiều CV cho cùng một job rẻ hơn. Đổi `LLM_MODEL` để cân bằng chất lượng và chi phí; đo bằng `tools/evaluate.py`.
 - CV (có thông tin liên hệ) được gửi tới Anthropic. Điều khoản consent của ứng viên phải nêu rõ việc này
   (Nghị định 13/2023).
+
+## Nối với backend HR Connect (thay v1)
+
+v2 nhận việc chấm điểm từ backend **giống hệt v1**, nên backend không phải sửa gì:
+
+1. Backend gọi `POST /api/v1/scoring-jobs` (header `X-Service-Token`) → v2 trả `202 ACCEPTED`, đưa vào hàng chờ.
+2. Worker tải JD (`/api/v1/internal/jobs/{jobId}/jd`) và CV (`/api/v1/internal/cvs/{cvId}/download-url`).
+3. Chấm điểm, rồi gửi kết quả về `POST /api/v1/internal/ai-results`:
+   - `COMPLETED`: điểm, `mustHaveResult` / `shouldHaveResult` (giữ các key của v1 và thêm câu trích, lý do),
+     `candidateHighlights` (tóm tắt + mức phù hợp tổng thể + câu trích), `missingRequirements`, `matchingReasons`.
+   - `FAILED` với `AI_PROVIDER_UNAVAILABLE` khi LLM hết quota hoặc lỗi: hồ sơ chuyển cho HR xem tay, **không bị loại**.
+
+Chạy cùng cổng 8001 như v1, nên `Mf03Integration:BaseUrl` của backend giữ nguyên. Chỉ chạy **một** trong hai
+service (v1 hoặc v2) ở cổng này. Biến môi trường: xem `.env.example` (`HRCONNECT_BASE_URL`, `HRCONNECT_SERVICE_TOKEN`).
+
+v1 (`ai-service/`) vẫn được giữ trong repo để tham khảo, không còn phát triển tiếp.

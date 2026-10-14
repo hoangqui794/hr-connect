@@ -71,8 +71,18 @@ class MatchingPipeline:
             candidateSummary=assessment.candidate_summary,
             requiresManualReview=manual_review,
             reviewReasons=review_reasons,
-            modelName=f"{self._settings.active_model} + {self._settings.embedding_model}",
+            modelName=f"{self._model_used()} + {self._settings.embedding_model}",
         )
+
+    def _model_used(self) -> str:
+        """With fallback providers, record the one that actually answered."""
+        model = getattr(self._assessor, "last_model", "")
+        if model:
+            return model
+        provider = getattr(self._assessor, "last_provider", "")
+        if not provider:
+            return self._settings.active_model
+        return self._settings.model_copy(update={"llm_provider": provider}).active_model
 
     def _verify_fit(self, assessment: LlmCvAssessment, source: str) -> OverallFit:
         fit = assessment.overall_fit
@@ -105,9 +115,14 @@ class MatchingPipeline:
             manual = True
 
         years = judgement.relevant_years
-        if requirement.min_years is not None and status == MatchStatus.MATCHED:
+        if requirement.min_years is not None and status in (MatchStatus.MATCHED, MatchStatus.PARTIAL) and verified:
             # Re-check the year threshold in code instead of trusting the model's comparison.
-            if years is None or years < requirement.min_years:
+            if years is not None and years >= requirement.min_years:
+                status = MatchStatus.MATCHED
+            elif years is not None and years >= requirement.min_years - self._settings.years_tolerance:
+                status = MatchStatus.MATCHED
+                method = "LLM_YEARS_WITHIN_TOLERANCE"
+            else:
                 status = MatchStatus.PARTIAL
                 method = "LLM_YEARS_BELOW_MIN"
 

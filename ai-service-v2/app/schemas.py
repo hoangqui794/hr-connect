@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class RequirementType(str, Enum):
@@ -20,7 +20,8 @@ class Requirement(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, extra="ignore")
 
-    id: str
+    id: str = ""
+    """Optional: the HR Connect /internal/jobs/{id}/jd endpoint sends none, so Job assigns r1, r2, ..."""
     type: RequirementType
     category: str = "OTHER"
     content: str
@@ -36,6 +37,20 @@ class Job(BaseModel):
     title: str
     description: str = ""
     requirements: list[Requirement]
+
+    @model_validator(mode="after")
+    def _assign_missing_ids(self) -> "Job":
+        used = {requirement.id for requirement in self.requirements if requirement.id}
+        counter = 0
+        for requirement in self.requirements:
+            if requirement.id:
+                continue
+            counter += 1
+            while f"r{counter}" in used:
+                counter += 1
+            requirement.id = f"r{counter}"
+            used.add(requirement.id)
+        return self
 
 
 class MatchingMetadata(BaseModel):
