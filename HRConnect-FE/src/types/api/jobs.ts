@@ -53,6 +53,16 @@ export interface JobStatusHistory {
   changedAt: string;
 }
 
+/** Proposed commercial terms proposed by Client (MF-01) */
+export interface ProposedTerms {
+  feeMultiplier?: number | null;
+  warrantyDays?: number | null;
+  paymentDueDays?: number | null;
+  sourcingPricePerCv?: number | null;
+  targetCandidateCount?: number | null;
+  note?: string | null;
+}
+
 /** JobDto — returned by detail, mine, review and inside action responses. */
 export interface Job {
   jobId: string;
@@ -85,6 +95,11 @@ export interface Job {
   requirements: JobRequirement[];
   skills: JobSkill[];
   statusHistories: JobStatusHistory[];
+  deadline?: string | null;
+  postingPackage?: string | null;
+  targetCandidateCount?: number | null;
+  proposedTerms?: ProposedTerms | null;
+  commercialTerms?: Record<string, unknown> | null;
 }
 
 /** JobPageDto — GET /jobs */
@@ -139,6 +154,10 @@ export interface JobUpsertInput {
   requirements: JobRequirementInput[];
   /** Kept empty for Client: the skills catalog (GET /skills) is candidate-only today. */
   skills: { skillId: string; isMandatory: boolean; weight?: number | null }[];
+  deadline?: string | null;
+  postingPackage?: string | null;
+  targetCandidateCount?: number | null;
+  proposedTerms?: ProposedTerms | null;
 }
 
 /** GET /jobs query (page and pageSize are required by the API). */
