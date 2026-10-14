@@ -7,7 +7,7 @@
 - `CV_SOURCING` giữ quỹ hoa hồng chia theo quota (chưa làm đợt này); `CV_APPLICATION` không có hoa hồng.
 - Hoa hồng `EARNED` chỉ được duyệt chi khi Client đã trả phí dịch vụ của placement đó.
 
-Tài liệu đã cập nhật: `HRConnect/docs/main-flows.md` (MF-05), `HEADHUNT_COD – SERVICE FEE & AFFILIATE COMMISSION MODEL.md`
+Tài liệu đã cập nhật: `HRConnect/docs/main-flows.md` (MF-05), `QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md` (thay tài liệu HEADHUNT_COD cũ)
 (mục 13–15, BR-HH-COM-05..07). `CommissionMilestoneSeeder` không đổi: mốc `WARRANTY_PASSED` đã có.
 
 ## Hiện trạng
