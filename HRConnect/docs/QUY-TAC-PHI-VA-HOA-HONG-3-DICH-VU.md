@@ -15,7 +15,7 @@ Ký hiệu trong file:
 | # | Nguyên tắc | Trạng thái |
 |---|---|---|
 | G1 | **Không viết cứng con số** (giá, hệ số, số ngày, %). Admin cấu hình **giá trị mặc định** ở trang Cài đặt (`/admin/settings`). | ✅ |
-| G2 | Giá do **Internal HR thỏa thuận với Client**, Client **không tự nhập giá**. Khi duyệt job, Internal HR **được tinh chỉnh** các con số; màn duyệt điền sẵn mặc định. | ✅ |
+| G2 | Giá do **Internal HR thỏa thuận với Client**. Client **được đề xuất** mức phí (không bắt buộc) để HR có căn cứ; **giá chính thức do Internal HR chốt** khi duyệt job. Màn duyệt điền sẵn mức Client đề xuất, không có thì lấy mặc định Admin. Job lưu cả hai: đề xuất và đã chốt. | ✅ |
 | G3 | Con số HR chốt được **lưu trên job lúc duyệt**. Admin đổi mặc định sau đó **không** ảnh hưởng job đã duyệt. Mọi chỉnh sửa có audit (giá trị trước, giá trị sau, người duyệt, thời điểm). | ✅ |
 | G4 | Tiền chuyển **ngoài hệ thống**. HR Connect chỉ ghi nhận số tiền, trạng thái, ngày, mã tham chiếu, chứng từ. | ✅ |
 | G5 | Hoa hồng Affiliate **chỉ được chi sau khi Client đã trả phí** và Admin duyệt. | ✅ |
@@ -139,7 +139,7 @@ Nếu ABC trả phí **sau** ngày 01/12 thì hoa hồng của Hùng nằm ở `
 
 | # | Ở đâu | Đang làm | Cần sửa thành | Người phụ trách |
 |---|---|---|---|---|
-| 1 | MF-01 `JobFormPage.tsx` | Client tự nhập hệ số phí, giá mỗi CV | Bỏ ô giá khỏi form Client (G2) | MF-01 |
+| 1 | MF-01 `JobFormPage.tsx` | Client nhập phí như giá đã chốt | Đổi thành phí **đề xuất**; HR chốt khi duyệt (G2) | MF-01 |
 | 2 | MF-01 `JobReviewPage.tsx`, `ApproveJob` | HR chỉ xem giá, không sửa | HR tinh chỉnh điều khoản khi duyệt, có audit (G2, G3) | MF-01 |
 | 3 | MF-01 `BusinessSettingsOptions` | Mặc định viết cứng: 14 ngày, 100.000đ/CV | Đọc từ trang Cài đặt Admin (G1) | MF-01 |
 | 4 | MF-01 gói đăng tin | Chặn gửi duyệt khi chưa trả tiền | Duyệt trước, trả tiền sau (mục 3) | MF-01 |
