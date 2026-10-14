@@ -10,6 +10,7 @@ import { Form, Input, Modal, Radio, Space, Typography } from 'antd';
 export interface ReasonModalValues {
   reasonCode?: string;
   reasonText: string;
+  reason?: string;
 }
 
 interface ReasonModalProps {

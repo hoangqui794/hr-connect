@@ -82,6 +82,10 @@ export const adminServiceTypesApi = {
     });
     return res.data.data.items;
   },
+  async get(id: string): Promise<AdminServiceType> {
+    const res = await apiClient.get<ApiEnvelope<AdminServiceType>>(`/service-types/${id}`);
+    return res.data.data;
+  },
   async create(input: ServiceTypeInput) {
     return (await apiClient.post<ApiEnvelope<AdminServiceType>>('/admin/service-types', input)).data;
   },
@@ -110,6 +114,10 @@ export const adminCommissionApi = {
     const res = await apiClient.get<ApiEnvelope<Paged<CommissionRule>>>('/admin/commission-rules', {
       params: cleanParams(params),
     });
+    return res.data.data;
+  },
+  async get(id: string): Promise<CommissionRule> {
+    const res = await apiClient.get<ApiEnvelope<CommissionRule>>(`/admin/commission-rules/${id}`);
     return res.data.data;
   },
   async milestones(): Promise<CommissionMilestone[]> {
