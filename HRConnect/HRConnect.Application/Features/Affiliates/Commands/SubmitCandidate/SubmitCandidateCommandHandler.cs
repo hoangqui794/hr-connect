@@ -306,7 +306,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                     now,
                     cancellationToken);
 
-                throw new ConflictException("Ứng viên này đã được nộp vào công việc này trước đó.");
+                throw CandidateAlreadySubmittedConflict();
             }
 
             var pendingSubmission = await _submissionRepository.GetPendingConsentSubmissionAsync(
@@ -315,8 +315,9 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             {
                 if (pendingConsent.Status == "PENDING" && pendingConsent.ExpiresAt > now)
                 {
-                    throw new ConflictException(
-                        $"Hồ sơ này đang chờ Candidate xác nhận đến {pendingConsent.ExpiresAt:O}.");
+                    throw CandidateAlreadySubmittedConflict(
+                        pendingSubmission.Status,
+                        pendingConsent.ExpiresAt);
                 }
 
                 await _expiryService.ExpireAsync(
@@ -544,7 +545,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 }
             }
 
-            throw new ConflictException("Ứng viên này đã được nộp vào công việc này trước đó.");
+            throw CandidateAlreadySubmittedConflict();
         }
         catch (Exception ex)
         {
@@ -636,6 +637,26 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
 
     private static string HashToken(string token) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token))).ToLowerInvariant();
+
+    private static ConflictException CandidateAlreadySubmittedConflict(
+        string? existingSubmissionStatus = null,
+        DateTime? consentExpiresAt = null)
+    {
+        const string message = "Ứng viên này đã được nộp vào công việc này trước đó.";
+        const string errorCode = "CANDIDATE_ALREADY_SUBMITTED";
+
+        if (string.IsNullOrWhiteSpace(existingSubmissionStatus) || !consentExpiresAt.HasValue)
+            return new ConflictException(message, errorCode);
+
+        return new ConflictException(
+            message,
+            errorCode,
+            new Dictionary<string, object?>
+            {
+                ["existingSubmissionStatus"] = existingSubmissionStatus,
+                ["consentExpiresAt"] = consentExpiresAt.Value
+            });
+    }
 
     private static bool IsDuplicateConstraintViolation(Exception ex)
     {

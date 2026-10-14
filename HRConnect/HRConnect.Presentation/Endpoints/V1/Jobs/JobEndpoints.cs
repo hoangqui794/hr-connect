@@ -340,7 +340,16 @@ public static class JobEndpoints
         try { return await action(); }
         catch (NotFoundException ex) { return Results.NotFound(new { success = false, message = ex.Message }); }
         catch (ForbiddenException ex) { return Results.Json(new { success = false, errorCode = ex.ErrorCode, message = ex.Message }, statusCode: 403); }
-        catch (ConflictException ex) { return Results.Conflict(new { success = false, message = ex.Message }); }
+        catch (ConflictException ex)
+        {
+            return Results.Conflict(new
+            {
+                success = false,
+                message = ex.Message,
+                errorCode = ex.ErrorCode,
+                data = ex.Details
+            });
+        }
         catch (DbUpdateConcurrencyException) { return Results.Conflict(new { success = false, message = "Job đã được thay đổi bởi người dùng khác. Hãy tải lại dữ liệu và thử lại." }); }
         catch (BadRequestException ex) { return Results.BadRequest(new { success = false, message = ex.Message }); }
     }
