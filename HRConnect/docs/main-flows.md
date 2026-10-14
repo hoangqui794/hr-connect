@@ -336,8 +336,8 @@ Sơ đồ mô tả trường hợp `HEADHUNT_COD`; toàn bộ là thiết kế �
 | Service Type | Cách tính | Thời điểm phát sinh |
 |---|---|---|
 | `HEADHUNT_COD` | Lương gross tháng × hệ số phí, tính riêng cho từng placement. Hệ số do **Internal HR tinh chỉnh khi duyệt job** theo thỏa thuận với Client; Admin chỉ cấu hình giá trị điền sẵn | Khi xác nhận đi làm thực tế |
-| `CV_SOURCING` | Số CV được tính tiền × giá mỗi CV (Internal HR chốt khi duyệt JD); đề xuất đặt cọc 50% | Khi CV được Client chấp nhận, hoặc hết thời hạn xem xét mà Client không phản hồi |
-| `CV_APPLICATION` | Giá công khai theo gói đăng tin (thời hạn, số hồ sơ tối đa) | Đề xuất: sau khi job được duyệt (`PENDING_PAYMENT` → `PAID` → job `ACTIVE`) |
+| `CV_SOURCING` | Số CV được tính tiền × giá mỗi CV (Internal HR chốt khi duyệt JD); đặt cọc 50%, thời hạn xem xét 7 ngày (đã chốt 2026-10-14) | Khi CV được Client chấp nhận, hoặc hết thời hạn xem xét mà Client không phản hồi |
+| `CV_APPLICATION` | Giá công khai theo gói đăng tin (thời hạn, số hồ sơ tối đa) | Sau khi job được duyệt (đã chốt 2026-10-14) (`PENDING_PAYMENT` → `PAID` → job `ACTIVE`) |
 
 Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ đi từ Client đến HR Connect, hoa hồng đi từ HR Connect đến Affiliate. Ứng viên không trả phí nào.
 
@@ -351,9 +351,9 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
 
 Áp dụng cho `HEADHUNT_COD`. Chạy song song với việc thu phí.
 
-1. Từ ngày đi làm, hệ thống đếm ngày bảo hành (**30 ngày**, cấu hình được) và tạo hoa hồng `PENDING` cho Affiliate có attribution.
+1. Từ ngày đi làm, hệ thống đếm ngày bảo hành (**30 ngày**, cấu hình được) và tạo hoa hồng `IN_WARRANTY` cho Affiliate có attribution.
 2. Hết 30 ngày mà không có báo cáo nghỉ việc, hệ thống tự chuyển bảo hành sang `PASSED` và ghi nhận **toàn bộ** hoa hồng là `EARNED` (không chia mốc; quyết định 2026-10-09). Internal HR không phải xác nhận, chỉ xử lý ngoại lệ.
-3. Ứng viên nghỉ việc trong thời hạn bảo hành: Client báo nghỉ (bảo hành `CLAIMED`, hoa hồng `ON_HOLD`) → Internal HR xác minh ngày nghỉ: xác nhận thì bảo hành `VOIDED`, hoa hồng `CANCELLED`, Client **không được hoàn phí** mà được HR Connect **tìm người thay thế miễn phí**; bác bỏ thì quay lại `ACTIVE` / `PENDING`.
+3. Ứng viên nghỉ việc trong thời hạn bảo hành: Client báo nghỉ (bảo hành `CLAIMED`, hoa hồng `ON_HOLD`) → Internal HR xác minh ngày nghỉ: xác nhận thì bảo hành `VOIDED`, hoa hồng `CANCELLED`, Client **không được hoàn phí** mà được HR Connect **tìm người thay thế miễn phí**; bác bỏ thì quay lại `ACTIVE` / `IN_WARRANTY`.
 4. Thử việc không dùng làm mốc tính hoa hồng, vì thời gian thử việc khác nhau theo vị trí; kết quả thử việc chỉ là thông tin theo dõi **[CẦN XÁC NHẬN]**.
 
 ## Hoa hồng
@@ -366,9 +366,10 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
 | `CV_SOURCING` | Quỹ hoa hồng = phí dịch vụ × tỷ lệ chia (mặc định 60%); chia theo số CV được tính quota của từng Affiliate |
 | `CV_APPLICATION` | Không có hoa hồng |
 
-**Trạng thái hoa hồng:** `PENDING` → `EARNED` → `PAYABLE` → `PAID`; nhánh phụ `ON_HOLD`, `CANCELLED`.
+**Trạng thái hoa hồng:** `PENDING` → `IN_WARRANTY` → `EARNED` → `PAYABLE` → `PAID`; nhánh phụ `ON_HOLD`, `CANCELLED`.
 
-- `PENDING`: đã có placement, chưa đủ 30 ngày. (Đề xuất tách thành `IN_WARRANTY` cho giai đoạn đã đi làm — xem file quy tắc phí mục 1.3. **Không** dùng `ON_HOLD` hay `EARNED` cho giai đoạn này.)
+- `PENDING`: đã giới thiệu, ứng viên chưa đi làm.
+- `IN_WARRANTY`: ứng viên đã đi làm, chưa đủ 30 ngày (đã chốt 2026-10-14). **Không** dùng `ON_HOLD` hay `EARNED` cho giai đoạn này.
 - `EARNED`: đã đủ 30 ngày, chờ Client thanh toán phí và Admin duyệt.
 - `PAYABLE`: Platform Admin đã duyệt (kiểm tra attribution, placement, mốc, tranh chấp), chờ chi.
 - `PAID`: đã ghi nhận chi.
