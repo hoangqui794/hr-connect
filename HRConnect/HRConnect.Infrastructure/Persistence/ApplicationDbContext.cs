@@ -1840,6 +1840,17 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.FeeMultiplier).HasPrecision(5, 2).HasColumnName("fee_multiplier");
             entity.Property(e => e.WarrantyDays).HasColumnName("warranty_days");
             entity.Property(e => e.PaymentDueDays).HasColumnName("payment_due_days");
+            entity.Property(e => e.DepositPercent).HasPrecision(5, 2).HasColumnName("deposit_percent");
+            entity.Property(e => e.ReviewDays).HasColumnName("review_days");
+            entity.Property(e => e.ProposedFeeMultiplier).HasPrecision(5, 2).HasColumnName("proposed_fee_multiplier");
+            entity.Property(e => e.ProposedWarrantyDays).HasColumnName("proposed_warranty_days");
+            entity.Property(e => e.ProposedPaymentDueDays).HasColumnName("proposed_payment_due_days");
+            entity.Property(e => e.ProposedPricePerCv).HasPrecision(18, 2).HasColumnName("proposed_price_per_cv");
+            entity.Property(e => e.ProposedFeeNote).HasMaxLength(1000).HasColumnName("proposed_fee_note");
+            entity.Property(e => e.AgreementReference).HasMaxLength(500).HasColumnName("agreement_reference");
+            entity.Property(e => e.AgreementNote).HasColumnName("agreement_note");
+            entity.Property(e => e.AgreedAt).HasColumnName("agreed_at");
+            entity.Property(e => e.AgreedBy).HasColumnName("agreed_by");
             entity.Property(e => e.PostingPackageId).HasColumnName("posting_package_id");
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
             entity.Property(e => e.MaxApplications).HasColumnName("max_applications");
@@ -1853,6 +1864,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("job_created_by_fkey");
+
+            entity.HasOne(d => d.AgreedByNavigation).WithMany()
+                .HasForeignKey(d => d.AgreedBy)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("job_agreed_by_fkey");
 
             entity.HasOne(d => d.ServiceType).WithMany(p => p.Jobs)
                 .HasForeignKey(d => d.ServiceTypeId)

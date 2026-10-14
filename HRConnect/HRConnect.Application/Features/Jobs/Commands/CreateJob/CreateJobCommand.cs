@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using HRConnect.Application.Features.Jobs.Common;
 using MediatR;
 
 namespace HRConnect.Application.Features.Jobs.Commands.CreateJob;
@@ -42,12 +43,18 @@ public class CreateJobCommand : IRequest<CreateJobResponse>
 
     public int? SourcingTarget { get; set; }
 
+    public JobProposedTermsRequest? ProposedTerms { get; set; }
+
+    [Obsolete("Use ProposedTerms.PricePerCv")]
     public decimal? SourcingPricePerCv { get; set; }
 
+    [Obsolete("Use ProposedTerms.FeeMultiplier")]
     public decimal? FeeMultiplier { get; set; }
 
+    [Obsolete("Use ProposedTerms.WarrantyDays")]
     public int? WarrantyDays { get; set; }
 
+    [Obsolete("Use ProposedTerms.PaymentDueDays")]
     public int? PaymentDueDays { get; set; }
 
     public Guid? PostingPackageId { get; set; }

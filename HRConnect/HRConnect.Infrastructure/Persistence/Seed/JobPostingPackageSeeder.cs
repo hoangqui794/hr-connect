@@ -21,7 +21,6 @@ public static class JobPostingPackageSeeder
 
     public static async Task SeedAsync(
         ApplicationDbContext context,
-        IBusinessSettings? businessSettings = null,
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
     {
@@ -32,16 +31,13 @@ public static class JobPostingPackageSeeder
 
         var existingMap = existingPackages.ToDictionary(p => p.Code, StringComparer.OrdinalIgnoreCase);
 
-        var standardPrice = businessSettings?.StandardPostingPackagePrice ?? 1500000m;
-        var standardDuration = businessSettings?.StandardPostingDurationDays ?? 30;
-
         var changed = false;
         var now = DateTime.UtcNow;
 
         foreach (var (code, name, desc, defPrice, defDays, defMaxApps) in ExpectedPackages)
         {
-            var price = code == JobPostingPackageCodes.Standard ? standardPrice : defPrice;
-            var duration = code == JobPostingPackageCodes.Standard ? standardDuration : defDays;
+            var price = defPrice;
+            var duration = defDays;
 
             if (!existingMap.TryGetValue(code, out var existing))
             {

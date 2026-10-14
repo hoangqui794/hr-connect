@@ -11,6 +11,6 @@ public sealed class GetJobsForReviewQueryHandler : IRequestHandler<GetJobsForRev
     {
         var status = string.IsNullOrWhiteSpace(request.Status) ? "PENDING_REVIEW" : request.Status;
         var list = await _jobs.GetForReviewAsync(status, ct);
-        return list.Select(x => JobDto.From(x, includeStatusHistories: true)).ToList();
+        return list.Select(x => JobDto.From(x, includeStatusHistories: true, isReviewer: true)).ToList();
     }
 }
