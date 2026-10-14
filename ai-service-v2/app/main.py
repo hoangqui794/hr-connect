@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Annotated
 
@@ -10,18 +11,33 @@ from pydantic import ValidationError
 
 from app.config import Settings, get_settings
 from app.documents import UnsupportedDocumentError, prepare_document
+from app.hrconnect_client import HRConnectClient
 from app.llm import LlmError, make_assessor
 from app.pipeline import MatchingPipeline
 from app.schemas import FileMatchingResponse, MatchingMetadata, ParseResult
+from app.scoring_jobs import ScoringOrchestrator, scoring_job_queue
+from app.scoring_jobs import router as scoring_router
 from app.semantic import SemanticMatcher
-
-app = FastAPI(title="HR Connect AI Service v2", version="2.0.0")
-
 
 @lru_cache
 def get_pipeline() -> MatchingPipeline:
     settings = get_settings()
     return MatchingPipeline(settings, make_assessor(settings), SemanticMatcher(settings))
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    settings = get_settings()
+    orchestrator = ScoringOrchestrator(settings, HRConnectClient(settings), get_pipeline)
+    await scoring_job_queue.start(settings, orchestrator)
+    try:
+        yield
+    finally:
+        await scoring_job_queue.stop()
+
+
+app = FastAPI(title="HR Connect AI Service v2", version="2.0.0", lifespan=lifespan)
+app.include_router(scoring_router)
 
 
 @app.get("/health")

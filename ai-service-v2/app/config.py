@@ -14,13 +14,21 @@ class Settings(BaseSettings):
     llm_provider: str = "gemini"
     gemini_model: str = "gemini-3.8-flash"
     gemini_api_key: str = ""
-    openai_model: str = "gpt-6-astra"
+    # Same key, other models (comma-separated), used in order when the model above is rate limited.
+    gemini_fallback_models: str = ""
+    openai_model: str = "gpt-5.4-mini"
+    openai_api_key: str = ""
+    # Comma-separated providers tried in order when LLM_PROVIDER fails, e.g. "openai".
+    llm_fallback_providers: str = ""
     llm_model: str = "claude-opus-5-5"
     llm_effort: str = "medium"
     llm_max_tokens: int = 16000
     llm_timeout_seconds: float = 120.0
     llm_max_attempts: int = 3
     llm_retry_wait_seconds: float = 20.0
+    # 0 = most repeatable judgements (Gemini; seed fixes the remaining sampling).
+    llm_temperature: float = 0.0
+    llm_seed: int = 7
 
     # Sentence-BERT semantic score (kept from v1, as the thesis requires embeddings).
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
@@ -37,12 +45,28 @@ class Settings(BaseSettings):
     knockout_score_cap: float = 59.0
     semantic_gated_by_must_have: bool = True
 
+    # Experience a little under the JD minimum still counts as met (0.25 = about 3 months).
+    years_tolerance: float = 0.25
+
     # Quote verification: share of quote tokens that must appear, in order, in the CV text.
     quote_min_token_ratio: float = 0.85
 
     max_upload_size_mb: int = 10
 
+    # HR Connect backend integration (same contract and env names as v1).
+    hrconnect_base_url: str = "http://127.0.0.1:5000"
+    hrconnect_service_token: str = ""
+    hrconnect_verify_ssl: bool = True
+    internal_request_timeout_seconds: float = 30.0
+    scoring_queue_size: int = 100
+    # One worker keeps LLM calls within provider rate limits.
+    scoring_worker_count: int = 1
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @property
+    def gemini_fallback_model_list(self) -> list[str]:
+        return [name.strip() for name in self.gemini_fallback_models.split(",") if name.strip()]
 
     @property
     def active_model(self) -> str:
