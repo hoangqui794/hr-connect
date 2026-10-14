@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<HRConnect.Application.Common.Settings.IAdminBusinessSettings, HRConnect.Application.Features.Settings.BusinessSettingsService>();
         services.AddScoped<HRConnect.Application.Features.Finance.Common.IPlacementFinanceService, HRConnect.Application.Features.Finance.Common.PlacementFinanceService>();
         services.AddScoped<HRConnect.Application.Features.Finance.Common.IWarrantyProgressService, HRConnect.Application.Features.Finance.Common.WarrantyProgressService>();
+        services.AddScoped<HRConnect.Application.Features.Recruitment.Sourcing.ISourcingAutoAcceptService, HRConnect.Application.Features.Recruitment.Sourcing.SourcingAutoAcceptService>();
 
         return services;
     }
