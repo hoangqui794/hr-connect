@@ -18,11 +18,14 @@ import {
   SendOutlined,
   TeamOutlined,
   UserAddOutlined,
+  UserOutlined,
+  KeyOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { Initials } from '@/features/admin-console/ui';
+import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
 import '@/features/admin-console/admin-console.css';
 
@@ -45,6 +48,12 @@ const NAV: { group: string; items: NavItem[] }[] = [
     ],
   },
   { group: 'Ghi nhận', items: [{ to: '/affiliate/attributions', label: 'Attribution', icon: <SafetyCertificateOutlined /> }] },
+  {
+    group: 'Cá nhân & Cài đặt',
+    items: [
+      { to: '/affiliate/profile', label: 'Hồ sơ & Tài khoản', icon: <UserOutlined /> },
+    ],
+  },
   { group: 'Chưa có API', items: [{ to: '/affiliate/commissions', label: 'Hoa hồng & chi trả', icon: <DollarOutlined />, muted: true }] },
 ];
 
@@ -58,6 +67,7 @@ export const AffiliateShell: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // Off-canvas menu below lg: close it on navigation and on Escape.
   useEffect(() => setMenuOpen(false), [location.pathname, compact]);
@@ -194,9 +204,16 @@ export const AffiliateShell: React.FC = () => {
             trigger={['click']}
             menu={{
               items: [
+                { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ & Tài khoản' },
+                { key: 'password', icon: <KeyOutlined />, label: 'Đổi mật khẩu' },
+                { type: 'divider' },
                 { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
               ],
-              onClick: ({ key }) => key === 'logout' && signOut(),
+              onClick: ({ key }) => {
+                if (key === 'logout') signOut();
+                else if (key === 'password') setShowPasswordModal(true);
+                else if (key === 'profile') navigate('/affiliate/profile');
+              },
             }}
           >
             <button
@@ -204,7 +221,15 @@ export const AffiliateShell: React.FC = () => {
               className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
               aria-label="Tài khoản"
             >
-              <Initials name={name} size={34} />
+              {user?.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={name}
+                  className="h-[34px] w-[34px] rounded-full object-cover border border-solid border-slate-200"
+                />
+              ) : (
+                <Initials name={name} size={34} />
+              )}
               <span className="hidden text-left leading-tight sm:block">
                 <span className="block text-sm font-semibold text-slate-900">{name}</span>
                 <span className="block text-xs text-slate-500">{user?.email}</span>
@@ -222,6 +247,10 @@ export const AffiliateShell: React.FC = () => {
           </AdminPageEnter>
         </main>
       </div>
+      <ChangePasswordModal
+        open={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+      />
     </div>
   );
 };

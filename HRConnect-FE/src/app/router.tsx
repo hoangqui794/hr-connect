@@ -201,6 +201,7 @@ export const router = createBrowserRouter([
       { path: 'applications', element: <AppRoutes.CandidateMyApplicationsPage /> },
       { path: 'applications/:applicationId', element: <AppRoutes.CandidateApplicationDetailPage /> },
       { path: 'submission-consents/:submissionId', element: <AppRoutes.CandidateSubmissionConsentPage /> },
+      { path: 'consents', element: <Navigate to="/candidate/applications?tab=consents" replace /> },
       { path: 'cvs', element: <AppRoutes.CandidateCvsPage /> },
       { path: 'affiliate-cvs', element: <AppRoutes.CandidateAffiliateCvsPage /> },
       { path: 'affiliate-cvs/:cvId', element: <AppRoutes.CandidateAffiliateCvDetailPage /> },
@@ -232,6 +233,8 @@ export const router = createBrowserRouter([
       { path: 'submissions/:submissionId', element: <AppRoutes.AffiliateSubmissionDetailPage /> },
       { path: 'candidates', element: <AppRoutes.AffiliateCandidatesPage /> },
       { path: 'attributions', element: <AppRoutes.AffiliateAttributionsPage /> },
+      { path: 'profile', element: <AppRoutes.AffiliateProfilePage /> },
+      // MF-05 commissions have no API yet.
       { path: 'commissions', element: <AppRoutes.AffiliateCommissionsPlaceholder /> },
       // Old entry points.
       { path: 'referral', element: <Navigate to="/affiliate/submit-candidate" replace /> },

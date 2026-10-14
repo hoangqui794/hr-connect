@@ -1,20 +1,30 @@
 /**
  * @file JobFormPage.tsx
  * @description MF-01 · Client Company — create (POST /jobs) or edit (PUT /jobs/{id}) a job.
- * The form contains exactly the fields of CreateJobCommand / UpdateJobCommand; nothing the
- * backend cannot store. "Lưu & gửi duyệt" saves first, then calls POST /jobs/{id}/submit.
- * Layout (ui-ux-pro-max, long-form rules): numbered sections, a sticky side rail with a live
- * readiness checklist that mirrors the backend submit rules, section links, a candidate-facing
- * preview and the save actions; a fixed action bar on small screens; focusable error summary.
+ * Form structured into 4 Ant Design Steps:
+ *   Step 1: Chọn dịch vụ (Card selection with short description and read-only fee rule)
+ *   Step 2: Mô tả công việc (Shared JD: title, quantity, visibility, desc, benefits, requirements, skills, salary, deadline)
+ *   Step 3: Nhu cầu và chi phí (Dynamic by service: CV_APPLICATION posting packages; CV_SOURCING cvCount + proposed fee; HEADHUNT_COD proposed terms)
+ *   Step 4: Xem lại và gửi duyệt (JD summary + "Về chi phí" summary + action buttons)
+ *
+ * Rules:
+ *   - Changing service in Step 1 after entering Step 3 triggers a confirm modal and clears old Step 3 data.
+ *   - Proposed fee fields in Step 3 are strictly optional; blank fields still allow submission.
+ *   - Submitted payload bundles proposed terms into `proposedTerms` (null if all blank).
+ *   - Sticky side rail with completion progress and candidate preview is preserved.
  */
 import '@/features/admin-console/admin-console.css';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import dayjs from 'dayjs';
 import {
   Alert,
   App as AntApp,
+  Badge,
   Button,
+  DatePicker,
+  Empty,
   Form,
   Input,
   InputNumber,
@@ -22,6 +32,7 @@ import {
   Radio,
   Select,
   Skeleton,
+  Steps,
   Switch,
   Tag,
 } from 'antd';
@@ -29,11 +40,15 @@ import type { FormInstance } from 'antd';
 import {
   ArrowLeftOutlined,
   CheckCircleFilled,
+  CheckCircleOutlined,
   DeleteOutlined,
+  EditOutlined,
   EnvironmentOutlined,
   ExclamationCircleOutlined,
   InfoCircleOutlined,
   PlusOutlined,
+  RocketOutlined,
+  SafetyCertificateOutlined,
   TeamOutlined,
   WalletOutlined,
 } from '@ant-design/icons';
@@ -43,12 +58,13 @@ import type {
   JobRequirementType,
   JobUpsertInput,
   JobVisibility,
+  ProposedTerms,
   ServiceType,
+  ServiceTypeCode,
 } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { jobsApi } from '@/services/api/jobsApi';
-import { useJobDetail, useJobMutations, useServiceTypes, usePostingPackages, usePostingEligibility } from './useJobQueries';
-import { PaymentDemoModal } from './PaymentDemoModal';
+import { useJobDetail, useJobMutations, useServiceTypes } from './useJobQueries';
 import {
   EMPLOYMENT_TYPE_LABEL,
   SERVICE_TYPE_LABEL,
@@ -57,6 +73,8 @@ import {
   clientActions,
 } from './jobDisplay';
 
+// ─── Interfaces & Constants ──────────────────────────────────────────────────
+
 interface RequirementRow {
   requirementType: JobRequirementType;
   content: string;
@@ -64,19 +82,17 @@ interface RequirementRow {
 }
 
 interface JobFormValues {
+  // Step 1
   serviceTypeId: string;
-  visibility: JobVisibility;
-  postingPackageId?: string;
+
+  // Step 2 (Shared JD)
   title: string;
+  quantity: number;
+  visibility: JobVisibility;
   employmentType?: EmploymentType;
   location?: string;
   workingTime?: string;
-  quantity: number;
-  sourcingTarget?: number | null;
-  sourcingPricePerCv?: number | null;
-  feeMultiplier?: number | null;
-  warrantyDays?: number | null;
-  paymentDueDays?: number | null;
+  deadline?: string;
   minExperienceYears?: number | null;
   maxExperienceYears?: number | null;
   salaryMin?: number | null;
@@ -86,271 +102,148 @@ interface JobFormValues {
   salaryNote?: string;
   description?: string;
   benefits?: string;
+  skills?: string[];
   requirements: RequirementRow[];
+
+  // Step 3 (Dynamic)
+  // CV_APPLICATION
+  postingPackage?: string;
+
+  // CV_SOURCING
+  targetCandidateCount?: number | null;
+  sourcingPricePerCv?: number | null;
+
+  // HEADHUNT_COD
+  feeMultiplier?: number | null;
+  annualSalaryPercent?: number | null;
+  warrantyDays?: number | null;
+  paymentDueDays?: number | null;
+
+  // Shared fee proposal note
+  termsNote?: string;
 }
 
 const EMPTY_VALUES: Partial<JobFormValues> = {
   quantity: 1,
   currencyCode: 'VND',
   salaryNegotiable: false,
+  postingPackage: 'STANDARD',
   requirements: [{ requirementType: 'MUST_HAVE', content: '' }],
+  skills: [],
 };
 
-const toFormValues = (job: Job): JobFormValues => ({
-  serviceTypeId: job.serviceTypeId,
-  visibility: job.visibility,
-  postingPackageId: job.postingPackageId ?? undefined,
-  title: job.title,
-  employmentType: job.employmentType ?? undefined,
-  location: job.location ?? undefined,
-  workingTime: job.workingTime ?? undefined,
-  quantity: job.quantity,
-  sourcingTarget: job.sourcingTarget,
-  sourcingPricePerCv: job.sourcingPricePerCv,
-  feeMultiplier: job.feeMultiplier,
-  warrantyDays: job.warrantyDays,
-  paymentDueDays: job.paymentDueDays,
-  minExperienceYears: job.minExperienceYears,
-  maxExperienceYears: job.maxExperienceYears,
-  salaryMin: job.salaryMin,
-  salaryMax: job.salaryMax,
-  currencyCode: job.currencyCode,
-  salaryNegotiable: job.salaryNegotiable,
-  salaryNote: job.salaryNote ?? undefined,
-  description: job.description ?? undefined,
-  benefits: job.benefits ?? undefined,
-  requirements: job.requirements.map((r) => ({
-    requirementType: r.requirementType,
-    content: r.content,
-    category: r.category ?? undefined,
-  })),
-});
+export interface PostingPackageInfo {
+  key: string;
+  name: string;
+  price: number;
+  priceText: string;
+  days: number;
+  maxCandidates: number;
+  tag?: string;
+  features: string[];
+}
+
+export const POSTING_PACKAGES: PostingPackageInfo[] = [
+  {
+    key: 'BASIC',
+    name: 'Gói BASIC',
+    price: 500000,
+    priceText: '500.000đ',
+    days: 14,
+    maxCandidates: 50,
+    features: ['Đăng tin hiển thị 14 ngày', 'Tối đa 50 hồ sơ ứng tuyển', 'Lọc và quản lý hồ sơ cơ bản'],
+  },
+  {
+    key: 'STANDARD',
+    name: 'Gói STANDARD',
+    price: 1500000,
+    priceText: '1.500.000đ',
+    days: 30,
+    maxCandidates: 150,
+    tag: 'Phổ biến nhất',
+    features: ['Đăng tin hiển thị 30 ngày', 'Tối đa 150 hồ sơ ứng tuyển', 'Vị trí nổi bật trong danh mục', 'Tự động gợi ý ứng viên phù hợp'],
+  },
+  {
+    key: 'PREMIUM',
+    name: 'Gói PREMIUM',
+    price: 3500000,
+    priceText: '3.500.000đ',
+    days: 60,
+    maxCandidates: 9999,
+    tag: 'VIP Ưu tiên',
+    features: ['Đăng tin hiển thị 60 ngày', 'Không giới hạn hồ sơ ứng tuyển', 'Đẩy top trang chủ định kỳ', 'AI sàng lọc & xếp hạng CV', 'Hỗ trợ CSKH ưu tiên 24/7'],
+  },
+];
+
+interface ServiceMeta {
+  code: ServiceTypeCode;
+  tag: string;
+  color: string;
+  icon: React.ReactNode;
+  defaultTitle: string;
+  defaultSummary: string;
+  feeRule: string;
+}
+
+const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
+  CV_APPLICATION: {
+    code: 'CV_APPLICATION',
+    tag: 'Gói đăng tin',
+    color: 'blue',
+    icon: <RocketOutlined className="text-blue-600 text-lg" />,
+    defaultTitle: 'Nhận CV ứng tuyển',
+    defaultSummary: 'Đăng tin tuyển dụng trên nền tảng, ứng viên chủ động tìm kiếm và nộp hồ sơ trực tiếp.',
+    feeRule: 'Đăng tin, ứng viên tự nộp hồ sơ. Trả theo gói, giá công khai.',
+  },
+  CV_SOURCING: {
+    code: 'CV_SOURCING',
+    tag: 'Sourcing theo số lượng',
+    color: 'purple',
+    icon: <TeamOutlined className="text-purple-600 text-lg" />,
+    defaultTitle: 'Tìm nguồn CV (CV Sourcing)',
+    defaultSummary: 'HR Connect và mạng lưới Affiliate chủ động tìm kiếm, sàng lọc hồ sơ đạt chuẩn và giao cho bạn.',
+    feeRule: 'HR Connect tìm và giao CV đạt yêu cầu. Trả theo số CV bạn chấp nhận; đặt cọc khi tin được duyệt.',
+  },
+  HEADHUNT_COD: {
+    code: 'HEADHUNT_COD',
+    tag: 'Phí thành công (COD)',
+    color: 'gold',
+    icon: <SafetyCertificateOutlined className="text-amber-600 text-lg" />,
+    defaultTitle: 'Tuyển dụng trọn gói (Headhunt COD)',
+    defaultSummary: 'Quy trình tuyển dụng chuyên sâu qua Headhunter, bảo hành thay người miễn phí, chỉ trả phí khi tuyển thành công.',
+    feeRule: 'HR Connect tuyển giúp bạn. Chỉ trả khi ứng viên bắt đầu đi làm, theo lương của người được tuyển. Bảo hành thay người miễn phí.',
+  },
+};
+
+/** Fallback service types if API list is pending or offline during dev */
+const FALLBACK_SERVICE_TYPES: ServiceType[] = [
+  {
+    id: 'st-cv-application',
+    code: 'CV_APPLICATION',
+    name: 'Nhận CV ứng tuyển',
+    description: 'Đăng tin tuyển dụng trên nền tảng, ứng viên chủ động tìm kiếm và nộp hồ sơ trực tiếp.',
+    isActive: true,
+  },
+  {
+    id: 'st-cv-sourcing',
+    code: 'CV_SOURCING',
+    name: 'Tìm nguồn CV (CV Sourcing)',
+    description: 'HR Connect và mạng lưới Affiliate chủ động tìm kiếm, sàng lọc hồ sơ đạt chuẩn và giao cho bạn.',
+    isActive: true,
+  },
+  {
+    id: 'st-headhunt-cod',
+    code: 'HEADHUNT_COD',
+    name: 'Tuyển dụng trọn gói (Headhunt COD)',
+    description: 'Quy trình tuyển dụng chuyên sâu qua Headhunter, bảo hành thay người miễn phí, chỉ trả phí khi tuyển thành công.',
+    isActive: true,
+  },
+];
 
 const trimOrNull = (v?: string | null) => (v && v.trim() ? v.trim() : null);
 
-/** Mirrors SubmitJobCommandHandler: fields the backend requires before PENDING_REVIEW. */
-const submitBlockers = (v: JobFormValues, selectedCode?: string): { field: (string | number)[]; message: string }[] => {
-  const missing: { field: (string | number)[]; message: string }[] = [];
-  const need = (field: keyof JobFormValues, message: string) => {
-    if (!trimOrNull(v[field] as string | undefined)) missing.push({ field: [field], message });
-  };
-  need('title', 'Nhập tên vị trí.');
-  need('description', 'Nhập mô tả công việc.');
-  need('benefits', 'Nhập quyền lợi.');
-  need('location', 'Nhập địa điểm làm việc.');
-  if (!v.employmentType) missing.push({ field: ['employmentType'], message: 'Chọn hình thức làm việc.' });
-  if (selectedCode === 'CV_APPLICATION') {
-    if (!v.postingPackageId) {
-      missing.push({ field: ['postingPackageId'], message: 'Chọn gói đăng tin tuyển dụng.' });
-    }
-  } else if (selectedCode === 'CV_SOURCING') {
-    if (!v.sourcingTarget || v.sourcingTarget <= 0) {
-      missing.push({ field: ['sourcingTarget'], message: 'Nhập Sourcing Target (số CV đạt chuẩn mua) lớn hơn 0.' });
-    }
-    if (v.sourcingPricePerCv != null && v.sourcingPricePerCv <= 0) {
-      missing.push({ field: ['sourcingPricePerCv'], message: 'Đơn giá CV phải lớn hơn 0.' });
-    }
-  } else if (selectedCode === 'HEADHUNT_COD') {
-    if (v.feeMultiplier != null && v.feeMultiplier <= 0) {
-      missing.push({ field: ['feeMultiplier'], message: 'Hệ số phí tuyển dụng phải lớn hơn 0.' });
-    }
-    if (v.warrantyDays != null && v.warrantyDays <= 0) {
-      missing.push({ field: ['warrantyDays'], message: 'Thời gian bảo hành phải lớn hơn 0.' });
-    }
-    if (v.paymentDueDays != null && v.paymentDueDays <= 0) {
-      missing.push({ field: ['paymentDueDays'], message: 'Hạn thanh toán phí phải lớn hơn 0.' });
-    }
-  }
-  if (!(v.requirements ?? []).some((r) => r?.requirementType === 'MUST_HAVE' && r.content?.trim()))
-    missing.push({ field: ['requirements'], message: 'Thêm ít nhất một yêu cầu bắt buộc.' });
-  return missing;
-};
-
-/** Label suffix for fields only required when submitting for review. */
-const SubmitHint: React.FC = () => <span className="ml-1.5 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">cần khi gửi duyệt</span>;
-
-const toInput = (v: JobFormValues): JobUpsertInput => ({
-  serviceTypeId: v.serviceTypeId,
-  visibility: v.visibility,
-  postingPackageId: v.postingPackageId ?? null,
-  title: v.title.trim(),
-  employmentType: v.employmentType ?? null,
-  location: trimOrNull(v.location),
-  workingTime: trimOrNull(v.workingTime),
-  quantity: v.quantity,
-  sourcingTarget: v.sourcingTarget ?? null,
-  sourcingPricePerCv: v.sourcingPricePerCv ?? null,
-  feeMultiplier: v.feeMultiplier ?? null,
-  warrantyDays: v.warrantyDays ?? null,
-  paymentDueDays: v.paymentDueDays ?? null,
-  minExperienceYears: v.minExperienceYears ?? null,
-  maxExperienceYears: v.maxExperienceYears ?? null,
-  salaryMin: v.salaryMin ?? null,
-  salaryMax: v.salaryMax ?? null,
-  currencyCode: v.currencyCode,
-  salaryNegotiable: v.salaryNegotiable,
-  salaryNote: trimOrNull(v.salaryNote),
-  description: trimOrNull(v.description),
-  benefits: trimOrNull(v.benefits),
-  requirements: (v.requirements ?? [])
-    .filter((r) => r.content?.trim())
-    .map((r) => ({ requirementType: r.requirementType, content: r.content.trim(), category: trimOrNull(r.category) })),
-  skills: [],
-});
-
-/** Maps ASP.NET ValidationProblem keys ("Title", "Requirements[0].Content") onto form fields. */
-const applyServerFieldErrors = (form: FormInstance<JobFormValues>, error: unknown): boolean => {
-  if (!axios.isAxiosError(error)) return false;
-  const errors = (error.response?.data as { errors?: Record<string, string[]> } | undefined)?.errors;
-  if (!errors) return false;
-  const fields = Object.entries(errors).map(([key, messages]) => {
-    const path = key
-      .split('.')
-      .flatMap((part) => {
-        const m = part.match(/^(\w+)\[(\d+)\]$/);
-        const camel = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
-        return m ? [camel(m[1]), Number(m[2])] : [camel(part)];
-      });
-    return { name: path as (string | number)[], errors: messages };
-  });
-  // Server paths are dynamic, so they cannot satisfy antd's literal NamePath union.
-  form.setFields(fields as Parameters<typeof form.setFields>[0]);
-  return fields.length > 0;
-};
-
-// ─── Presentation pieces ─────────────────────────────────────────────────────
-
-const SECTIONS = [
-  { id: 'job-service', title: 'Loại dịch vụ', hint: 'Cách HR Connect tìm và sàng lọc ứng viên cho tin này.' },
-  { id: 'job-position', title: 'Thông tin vị trí', hint: 'Những gì ứng viên thấy đầu tiên.' },
-  { id: 'job-salary', title: 'Mức lương', hint: 'Tin có lương rõ ràng nhận nhiều hồ sơ phù hợp hơn.' },
-  { id: 'job-content', title: 'Mô tả và quyền lợi', hint: 'Công việc hằng ngày và lý do ứng viên nên chọn bạn.' },
-  { id: 'job-requirements', title: 'Yêu cầu ứng viên', hint: 'AI dùng các yêu cầu này để chấm điểm CV.' },
-] as const;
-
-const Section: React.FC<{ index: number; children: React.ReactNode; extra?: React.ReactNode }> = ({ index, children, extra }) => {
-  const s = SECTIONS[index];
-  return (
-    <section id={s.id} aria-labelledby={`${s.id}-title`} className="admin-surface scroll-mt-24 p-5 sm:p-7">
-      <header className="mb-5 flex flex-wrap items-start gap-3">
-        <span
-          aria-hidden
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-sm font-bold text-[color:var(--console-accent-strong)]"
-        >
-          {index + 1}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 id={`${s.id}-title`} className="m-0 text-[17px] font-semibold text-slate-900">
-            {s.title}
-          </h2>
-          <p className="m-0 mt-0.5 text-[13.5px] text-slate-600">{s.hint}</p>
-        </div>
-        {extra}
-      </header>
-      {children}
-    </section>
-  );
-};
-
-/** Selectable cards; the native radio stays in the DOM for keyboard and screen readers. */
-function ChoiceCards<T extends string>({
-  value,
-  onChange,
-  options,
-  disabled,
-  columns = 'md:grid-cols-3',
-  name,
-}: {
-  value?: T;
-  onChange?: (v: T) => void;
-  options: {
-    value: T;
-    title: string;
-    summary?: React.ReactNode;
-    disabled?: boolean;
-    badge?: string;
-    badgeColor?: string;
-    price?: string;
-    features?: string[];
-  }[];
-  disabled?: boolean;
-  columns?: string;
-  name: string;
-}) {
-  return (
-    <div role="radiogroup" className={`grid gap-3 ${columns}`}>
-      {options.map((o) => {
-        const selected = value === o.value;
-        const itemDisabled = Boolean(disabled || o.disabled);
-        return (
-          <label
-            key={o.value}
-            className={`group relative flex cursor-pointer flex-col gap-2 rounded-xl border border-solid p-4 transition-all duration-150 ${
-              selected
-                ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)] shadow-[0_0_0_1px_var(--console-accent)]'
-                : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-2xs'
-            } ${itemDisabled ? 'cursor-not-allowed opacity-55 bg-slate-50' : ''} has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--console-accent)]`}
-          >
-            <input
-              type="radio"
-              name={name}
-              value={o.value}
-              checked={selected}
-              disabled={itemDisabled}
-              onChange={() => !itemDisabled && onChange?.(o.value)}
-              className="sr-only"
-            />
-            <div className="flex items-start justify-between gap-2">
-              <div className="space-y-0.5">
-                <div className="font-semibold text-slate-900 flex items-center gap-1.5 flex-wrap">
-                  <span>{o.title}</span>
-                  {o.badge && (
-                    <Tag
-                      color={o.badgeColor || (itemDisabled ? 'default' : 'warning')}
-                      className="m-0 text-[11px] leading-tight px-1.5 py-0 font-medium rounded"
-                    >
-                      {o.badge}
-                    </Tag>
-                  )}
-                </div>
-                {o.price && (
-                  <div className={`text-base font-bold ${selected ? 'text-indigo-700' : 'text-slate-800'}`}>
-                    {o.price}
-                  </div>
-                )}
-              </div>
-              <span
-                aria-hidden
-                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-solid transition-colors ${
-                  selected
-                    ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent)]'
-                    : 'border-slate-300 bg-white'
-                }`}
-              >
-                {selected && <span className="h-2 w-2 rounded-full bg-white" />}
-              </span>
-            </div>
-
-            {o.features && o.features.length > 0 ? (
-              <ul className="m-0 pl-0 list-none space-y-1 text-xs text-slate-600 mt-0.5">
-                {o.features.map((f, i) => (
-                  <li key={i} className="flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : o.summary ? (
-              <span className="text-[13px] leading-snug text-slate-600">{o.summary}</span>
-            ) : null}
-          </label>
-        );
-      })}
-    </div>
-  );
-}
-
 const money = (v?: number | null) => (v == null ? null : Number(v).toLocaleString('vi-VN'));
+
 const salaryText = (v: Partial<JobFormValues>) => {
   const unit = v.currencyCode === 'USD' ? 'USD' : '₫';
   const lo = money(v.salaryMin);
@@ -369,227 +262,478 @@ const moneyInputProps = {
   parser: (v?: string) => Number((v ?? '').replace(/\D/g, '')),
 };
 
-const STANDARD_CATEGORIES = [
-  'Kỹ thuật / Chuyên môn',
-  'Kinh nghiệm làm việc',
-  'Ngoại ngữ',
-  'Học vấn / Bằng cấp',
-  'Chứng chỉ nghề nghiệp',
-  'Kỹ năng mềm',
-] as const;
-
-const OTHER_CATEGORY_VALUE = '__OTHER__';
-
-const RequirementCategoryField: React.FC<{
-  value?: string;
-  onChange?: (val: string | undefined) => void;
-}> = ({ value, onChange }) => {
-  const isStandard = Boolean(value && (STANDARD_CATEGORIES as readonly string[]).includes(value));
-  const isCustom = Boolean(value && !isStandard);
-
-  const [selectedType, setSelectedType] = useState<string | undefined>(() => {
-    if (!value) return undefined;
-    if (isStandard) return value;
-    return OTHER_CATEGORY_VALUE;
-  });
-
-  const [customText, setCustomText] = useState<string>(() => (isCustom ? value! : ''));
-
-  useEffect(() => {
-    if (!value) {
-      setSelectedType(undefined);
-      setCustomText('');
-    } else if ((STANDARD_CATEGORIES as readonly string[]).includes(value)) {
-      setSelectedType(value);
-      setCustomText('');
-    } else {
-      setSelectedType(OTHER_CATEGORY_VALUE);
-      setCustomText(value);
-    }
-  }, [value]);
-
-  const handleSelectChange = (newVal?: string) => {
-    setSelectedType(newVal);
-    if (!newVal) {
-      onChange?.(undefined);
-    } else if (newVal === OTHER_CATEGORY_VALUE) {
-      onChange?.(customText.trim() ? customText.trim() : undefined);
-    } else {
-      onChange?.(newVal);
-    }
-  };
-
-  const handleCustomTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const text = e.target.value;
-    setCustomText(text);
-    onChange?.(text.trim() ? text.trim() : undefined);
-  };
-
-  return (
-    <div className="space-y-1.5">
-      <Select
-        placeholder="Chọn nhóm…"
-        value={selectedType}
-        onChange={handleSelectChange}
-        allowClear
-        className="w-full"
-        options={[
-          ...STANDARD_CATEGORIES.map((c) => ({ value: c, label: c })),
-          { value: OTHER_CATEGORY_VALUE, label: 'Khác (Tự nhập…)' },
-        ]}
-      />
-      {selectedType === OTHER_CATEGORY_VALUE && (
-        <Input
-          placeholder="Nhập tên nhóm khác…"
-          value={customText}
-          onChange={handleCustomTextChange}
-          className="text-xs"
-          autoFocus
-        />
-      )}
-    </div>
-  );
+const hasStep3Data = (values: Partial<JobFormValues>, code?: ServiceTypeCode): boolean => {
+  if (!code) return false;
+  if (code === 'CV_APPLICATION') {
+    return Boolean(values.postingPackage && values.postingPackage !== 'STANDARD');
+  }
+  if (code === 'CV_SOURCING') {
+    return Boolean(
+      (values.targetCandidateCount != null && values.targetCandidateCount > 0) ||
+        (values.sourcingPricePerCv != null && values.sourcingPricePerCv > 0) ||
+        Boolean(values.termsNote && values.termsNote.trim())
+    );
+  }
+  if (code === 'HEADHUNT_COD') {
+    return Boolean(
+      (values.feeMultiplier != null && values.feeMultiplier > 0) ||
+        (values.annualSalaryPercent != null && values.annualSalaryPercent > 0) ||
+        (values.warrantyDays != null && values.warrantyDays > 0) ||
+        (values.paymentDueDays != null && values.paymentDueDays > 0) ||
+        Boolean(values.termsNote && values.termsNote.trim())
+    );
+  }
+  return false;
 };
 
-// ─── Page ────────────────────────────────────────────────────────────────────
+const toFormValues = (job: Job): JobFormValues => {
+  const proposed = job.proposedTerms as ProposedTerms | undefined;
+
+  let annualSalaryPercent: number | undefined;
+  if (proposed?.feeMultiplier != null) {
+    annualSalaryPercent = Number(((proposed.feeMultiplier / 12) * 100).toFixed(1));
+  } else if ((job as any).feeMultiplier != null) {
+    annualSalaryPercent = Number((((job as any).feeMultiplier / 12) * 100).toFixed(1));
+  }
+
+  return {
+    serviceTypeId: job.serviceTypeId,
+    visibility: job.visibility,
+    title: job.title || '',
+    employmentType: job.employmentType ?? undefined,
+    location: job.location ?? undefined,
+    workingTime: job.workingTime ?? undefined,
+    deadline: job.deadline ? String(job.deadline).split('T')[0] : (job as any).deadline ?? undefined,
+    quantity: job.quantity ?? 1,
+    minExperienceYears: job.minExperienceYears,
+    maxExperienceYears: job.maxExperienceYears,
+    salaryMin: job.salaryMin,
+    salaryMax: job.salaryMax,
+    currencyCode: job.currencyCode || 'VND',
+    salaryNegotiable: Boolean(job.salaryNegotiable),
+    salaryNote: job.salaryNote ?? undefined,
+    description: job.description ?? undefined,
+    benefits: job.benefits ?? undefined,
+    requirements: (job.requirements ?? []).map((r) => ({
+      requirementType: r.requirementType,
+      content: r.content,
+      category: r.category ?? undefined,
+    })),
+    skills: (job.skills ?? []).map((s) => s.skillName || s.skillId),
+
+    // Step 3 values
+    postingPackage: job.postingPackage ?? (job as any).servicePackage ?? 'STANDARD',
+    targetCandidateCount: proposed?.targetCandidateCount ?? job.targetCandidateCount ?? (job as any).quantityCv ?? undefined,
+    sourcingPricePerCv: proposed?.sourcingPricePerCv ?? (job as any).sourcingPricePerCv ?? undefined,
+    feeMultiplier: proposed?.feeMultiplier ?? (job as any).feeMultiplier ?? undefined,
+    annualSalaryPercent,
+    warrantyDays: proposed?.warrantyDays ?? (job as any).warrantyDays ?? undefined,
+    paymentDueDays: proposed?.paymentDueDays ?? (job as any).paymentDueDays ?? undefined,
+    termsNote: proposed?.note ?? (job as any).termsNote ?? undefined,
+  };
+};
+
+const toInput = (v: JobFormValues, selectedCode?: ServiceTypeCode): JobUpsertInput => {
+  let proposedTerms: ProposedTerms | null = null;
+
+  if (selectedCode === 'HEADHUNT_COD') {
+    const hasAnyFee =
+      v.feeMultiplier != null ||
+      v.warrantyDays != null ||
+      v.paymentDueDays != null ||
+      Boolean(v.termsNote && v.termsNote.trim());
+
+    if (hasAnyFee) {
+      proposedTerms = {
+        feeMultiplier: v.feeMultiplier != null ? Number(v.feeMultiplier) : null,
+        warrantyDays: v.warrantyDays != null ? Number(v.warrantyDays) : null,
+        paymentDueDays: v.paymentDueDays != null ? Number(v.paymentDueDays) : null,
+        note: trimOrNull(v.termsNote),
+      };
+    }
+  } else if (selectedCode === 'CV_SOURCING') {
+    const hasAnyFee =
+      v.sourcingPricePerCv != null ||
+      Boolean(v.termsNote && v.termsNote.trim());
+
+    if (hasAnyFee) {
+      proposedTerms = {
+        sourcingPricePerCv: v.sourcingPricePerCv != null ? Number(v.sourcingPricePerCv) : null,
+        targetCandidateCount: v.targetCandidateCount != null ? Number(v.targetCandidateCount) : null,
+        note: trimOrNull(v.termsNote),
+      };
+    }
+  } else {
+    proposedTerms = null;
+  }
+
+  return {
+    serviceTypeId: v.serviceTypeId,
+    visibility: v.visibility,
+    title: v.title ? v.title.trim() : 'Tin tuyển dụng',
+    employmentType: v.employmentType ?? null,
+    location: trimOrNull(v.location),
+    workingTime: trimOrNull(v.workingTime),
+    quantity: v.quantity ?? 1,
+    minExperienceYears: v.minExperienceYears ?? null,
+    maxExperienceYears: v.maxExperienceYears ?? null,
+    salaryMin: v.salaryMin ?? null,
+    salaryMax: v.salaryMax ?? null,
+    currencyCode: v.currencyCode || 'VND',
+    salaryNegotiable: Boolean(v.salaryNegotiable),
+    salaryNote: trimOrNull(v.salaryNote),
+    description: trimOrNull(v.description),
+    benefits: trimOrNull(v.benefits),
+    requirements: (v.requirements ?? [])
+      .filter((r) => r && r.content?.trim())
+      .map((r) => ({
+        requirementType: r.requirementType,
+        content: r.content.trim(),
+        category: trimOrNull(r.category),
+      })),
+    skills: (v.skills ?? []).map((name) => ({
+      skillId: name,
+      skillName: name,
+      isMandatory: false,
+    })),
+    deadline: trimOrNull(v.deadline),
+    postingPackage: selectedCode === 'CV_APPLICATION' ? (v.postingPackage || 'STANDARD') : null,
+    targetCandidateCount: selectedCode === 'CV_SOURCING' ? (v.targetCandidateCount ?? null) : null,
+    proposedTerms,
+  };
+};
+
+/** Fields required before PENDING_REVIEW can be approved/submitted. */
+const submitBlockers = (
+  v: JobFormValues,
+  serviceCode?: ServiceTypeCode,
+  hasServiceSelected?: boolean
+): { field: (string | number)[]; message: string; step: number }[] => {
+  const missing: { field: (string | number)[]; message: string; step: number }[] = [];
+
+  // Step 1
+  if (!v.serviceTypeId && !hasServiceSelected) {
+    missing.push({ field: ['serviceTypeId'], message: 'Chọn loại dịch vụ.', step: 0 });
+  }
+
+  // Step 2
+  if (!trimOrNull(v.title)) {
+    missing.push({ field: ['title'], message: 'Nhập tên vị trí tuyển dụng.', step: 1 });
+  }
+  if (!v.quantity || v.quantity < 1) {
+    missing.push({ field: ['quantity'], message: 'Nhập số lượng cần tuyển (tối thiểu 1).', step: 1 });
+  }
+  if (!v.visibility) {
+    missing.push({ field: ['visibility'], message: 'Chọn phạm vi hiển thị tin.', step: 1 });
+  }
+  if (!v.employmentType) {
+    missing.push({ field: ['employmentType'], message: 'Chọn hình thức làm việc.', step: 1 });
+  }
+  if (!trimOrNull(v.location)) {
+    missing.push({ field: ['location'], message: 'Nhập địa điểm làm việc.', step: 1 });
+  }
+  if (!trimOrNull(v.description)) {
+    missing.push({ field: ['description'], message: 'Nhập mô tả công việc.', step: 1 });
+  }
+  if (!trimOrNull(v.benefits)) {
+    missing.push({ field: ['benefits'], message: 'Nhập quyền lợi cho ứng viên.', step: 1 });
+  }
+  if (!(v.requirements ?? []).some((r) => r?.requirementType === 'MUST_HAVE' && r.content?.trim())) {
+    missing.push({ field: ['requirements'], message: 'Thêm ít nhất một yêu cầu bắt buộc (Must-have).', step: 1 });
+  }
+
+  // Step 3
+  if (serviceCode === 'CV_SOURCING') {
+    if (!v.targetCandidateCount || v.targetCandidateCount < 1) {
+      missing.push({ field: ['targetCandidateCount'], message: 'Nhập số lượng CV muốn nhận (bắt buộc).', step: 2 });
+    }
+  }
+
+  return missing;
+};
+
+const applyServerFieldErrors = (form: FormInstance<JobFormValues>, error: unknown): boolean => {
+  if (!axios.isAxiosError(error)) return false;
+  const errors = (error.response?.data as { errors?: Record<string, string[]> } | undefined)?.errors;
+  if (!errors) return false;
+  const fields = Object.entries(errors).map(([key, messages]) => {
+    const path = key
+      .split('.')
+      .flatMap((part) => {
+        const m = part.match(/^(\w+)\[(\d+)\]$/);
+        const camel = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+        return m ? [camel(m[1]), Number(m[2])] : [camel(part)];
+      });
+    return { name: path as (string | number)[], errors: messages };
+  });
+  form.setFields(fields as Parameters<typeof form.setFields>[0]);
+  return fields.length > 0;
+};
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export const JobFormPage: React.FC = () => {
   const { id: jobId } = useParams<{ id: string }>();
   const isEdit = Boolean(jobId);
   const navigate = useNavigate();
-  const { message } = AntApp.useApp();
+  const { message, modal } = AntApp.useApp();
   const [form] = Form.useForm<JobFormValues>();
+
+  const [currentStep, setCurrentStep] = useState<number>(0);
   const [errorSummary, setErrorSummary] = useState<string[]>([]);
+  const [stepErrors, setStepErrors] = useState<Record<number, boolean>>({});
   const [saving, setSaving] = useState<'draft' | 'submit' | null>(null);
-  const [pendingPaymentJob, setPendingPaymentJob] = useState<{
-    jobId: string;
-    title: string;
-    amount?: number;
-    andSubmitAfterPay?: boolean;
-  } | null>(null);
-  const [headhuntPricingMode, setHeadhuntPricingMode] = useState<'MONTHLY_GROSS' | 'ANNUAL_PERCENT'>('MONTHLY_GROSS');
-  const [annualPercent, setAnnualPercent] = useState<number>(15);
   const summaryRef = useRef<HTMLDivElement>(null);
 
+  // Dedicated Component State for selected service to ensure robustness across steps
+  const [selectedServiceId, setSelectedServiceId] = useState<string>('');
+  const [selectedServiceCode, setSelectedServiceCode] = useState<ServiceTypeCode | undefined>();
+
   const serviceTypes = useServiceTypes();
-  const postingPackages = usePostingPackages();
-  const postingEligibility = usePostingEligibility();
   const existing = useJobDetail(jobId);
   const { create, update } = useJobMutations();
 
-  // Whole form, watched once: drives the readiness checklist and the preview.
+  // Unified available service types with built-in fallback
+  const availableServiceTypes = useMemo(() => {
+    if (serviceTypes.data && serviceTypes.data.length > 0) {
+      return serviceTypes.data;
+    }
+    return FALLBACK_SERVICE_TYPES;
+  }, [serviceTypes.data]);
+
+  // Watch entire form for live readiness and preview
   const watched = (Form.useWatch((v) => v, form) ?? {}) as Partial<JobFormValues>;
-  const serviceTypeId = watched.serviceTypeId;
-  const selectedCode = useMemo(
-    () => serviceTypes.data?.find((s) => s.id === serviceTypeId)?.code,
-    [serviceTypes.data, serviceTypeId]
-  );
-  // INTERNAL_ONLY is hidden until Internal HR can submit candidates on a job's behalf: today such a job
-  // is seen by no Candidate or Affiliate, so it could never receive an application. A job already saved
-  // as INTERNAL_ONLY keeps the option so editing it does not silently change who sees it.
-  const savedAsInternal = existing.data?.visibility === 'INTERNAL_ONLY';
-  const visibilityOptions = allowedVisibilities(selectedCode).filter(
-    (v) => v !== 'INTERNAL_ONLY' || savedAsInternal
-  );
+
+  // Effective Service ID and Code (from React State or form watch)
+  const effectiveServiceId = selectedServiceId || watched.serviceTypeId || '';
+  const effectiveCode: ServiceTypeCode | undefined = useMemo(() => {
+    if (selectedServiceCode) return selectedServiceCode;
+    if (effectiveServiceId) {
+      const match = availableServiceTypes.find((s) => s.id === effectiveServiceId || s.code === (effectiveServiceId as any));
+      return match?.code;
+    }
+    return undefined;
+  }, [selectedServiceCode, effectiveServiceId, availableServiceTypes]);
+
+  const visibilityOptions = allowedVisibilities(effectiveCode);
   const hasMustHave = (watched.requirements ?? []).some((r) => r?.requirementType === 'MUST_HAVE' && r.content?.trim());
 
+  // Load existing job details
   useEffect(() => {
-    if (existing.data) form.setFieldsValue(toFormValues(existing.data));
-  }, [existing.data, form]);
+    if (existing.data) {
+      const job = existing.data;
+      form.setFieldsValue(toFormValues(job));
 
-  useEffect(() => {
-    if (selectedCode === 'CV_APPLICATION' && postingPackages.data?.length) {
-      const canUseFree = postingEligibility.data ? postingEligibility.data.canUseFreePackage : true;
-      const currentPkgId = form.getFieldValue('postingPackageId');
-      const freePkg = postingPackages.data.find((p) => p.code === 'FREE');
-      const stdPkg = postingPackages.data.find((p) => p.code === 'STANDARD');
-
-      if (!canUseFree) {
-        // Hết hạn mức gói FREE -> Tự động chuyển và giữ ở gói STANDARD
-        if (stdPkg && (!currentPkgId || (freePkg && currentPkgId === freePkg.packageId))) {
-          form.setFieldValue('postingPackageId', stdPkg.packageId);
-        }
-      } else if (!currentPkgId && freePkg) {
-        form.setFieldValue('postingPackageId', freePkg.packageId);
+      if (job.serviceTypeId) {
+        setSelectedServiceId(job.serviceTypeId);
+      }
+      if (job.serviceTypeCode) {
+        setSelectedServiceCode(job.serviceTypeCode);
+      } else if (job.serviceTypeId) {
+        const found = availableServiceTypes.find((s) => s.id === job.serviceTypeId || s.code === (job.serviceTypeId as any));
+        if (found) setSelectedServiceCode(found.code);
       }
     }
-  }, [selectedCode, postingEligibility.data, postingPackages.data, form]);
+  }, [existing.data, form, availableServiceTypes]);
 
-  // Keep visibility valid for the chosen service type (backend rejects other combinations).
+  // Keep visibility valid for selected service type
   useEffect(() => {
-    const current = form.getFieldValue('visibility') as JobVisibility | undefined;
-    if (selectedCode && (!current || !visibilityOptions.includes(current))) {
+    const currentVis = form.getFieldValue('visibility') as JobVisibility | undefined;
+    if (effectiveCode && (!currentVis || !visibilityOptions.includes(currentVis))) {
       form.setFieldValue('visibility', visibilityOptions[0]);
     }
-  }, [selectedCode]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (selectedCode === 'HEADHUNT_COD') {
-      if (form.getFieldValue('warrantyDays') == null) {
-        form.setFieldValue('warrantyDays', 30);
-      }
-      if (form.getFieldValue('paymentDueDays') == null) {
-        form.setFieldValue('paymentDueDays', 14);
-      }
-    }
-  }, [selectedCode, form]);
+  }, [effectiveCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const editable = !isEdit || (existing.data ? clientActions(existing.data.status).canEdit : false);
   const serviceTypeLocked = isEdit && existing.data?.status !== 'DRAFT';
 
-  // Readiness = the backend's submit rules (submitBlockers) plus the always-required fields.
-  const checklist = [
-    { label: 'Chọn loại dịch vụ', done: Boolean(watched.serviceTypeId), section: 'job-service' },
-    ...(selectedCode === 'CV_APPLICATION'
-      ? [{ label: 'Gói đăng tin', done: Boolean(watched.postingPackageId), section: 'job-service' }]
-      : []),
-    { label: 'Tên vị trí', done: Boolean(watched.title?.trim()), section: 'job-position' },
-    { label: 'Hình thức làm việc', done: Boolean(watched.employmentType), section: 'job-position' },
-    { label: 'Địa điểm', done: Boolean(watched.location?.trim()), section: 'job-position' },
-    ...(selectedCode === 'CV_SOURCING'
-      ? [{ label: 'Sourcing Target (CV mua)', done: Boolean(watched.sourcingTarget && watched.sourcingTarget > 0), section: 'job-position' }]
-      : []),
-    { label: 'Mô tả công việc', done: Boolean(watched.description?.trim()), section: 'job-content' },
-    { label: 'Quyền lợi', done: Boolean(watched.benefits?.trim()), section: 'job-content' },
-    { label: 'Ít nhất 1 yêu cầu bắt buộc', done: hasMustHave, section: 'job-requirements' },
-  ];
+  // Checklist items mapping to steps and fields
+  const checklist = useMemo(() => {
+    const hasService = Boolean(selectedServiceId || watched.serviceTypeId || selectedServiceCode);
+    const base = [
+      { label: 'Chọn loại dịch vụ', done: hasService, step: 0, field: 'form-service-section' },
+      { label: 'Tên vị trí', done: Boolean(watched.title?.trim()), step: 1, field: 'form-title-item' },
+      { label: 'Hình thức làm việc', done: Boolean(watched.employmentType), step: 1, field: 'form-employment-item' },
+      { label: 'Địa điểm', done: Boolean(watched.location?.trim()), step: 1, field: 'form-location-item' },
+      { label: 'Mô tả công việc', done: Boolean(watched.description?.trim()), step: 1, field: 'form-desc-item' },
+      { label: 'Quyền lợi', done: Boolean(watched.benefits?.trim()), step: 1, field: 'form-benefits-item' },
+      { label: 'Ít nhất 1 yêu cầu bắt buộc', done: hasMustHave, step: 1, field: 'form-requirements-item' },
+    ];
+    if (effectiveCode === 'CV_SOURCING') {
+      base.push({
+        label: 'Số lượng CV muốn nhận',
+        done: Boolean(watched.targetCandidateCount && watched.targetCandidateCount > 0),
+        step: 2,
+        field: 'form-cv-count-item',
+      });
+    }
+    return base;
+  }, [watched, selectedServiceId, selectedServiceCode, effectiveCode, hasMustHave]);
+
   const doneCount = checklist.filter((c) => c.done).length;
   const percent = Math.round((doneCount / checklist.length) * 100);
   const ready = doneCount === checklist.length;
 
-  const goTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Jump from checklist or review to specific step & field
+  const goToStep = (stepIdx: number, fieldId?: string) => {
+    setCurrentStep(stepIdx);
+    if (fieldId) {
+      setTimeout(() => {
+        document.getElementById(fieldId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    }
+  };
+
+  // ─── Step 1 Service Selection with Change Confirmation ───────────────────────
+
+  const handleSelectService = (st: ServiceType) => {
+    if (serviceTypeLocked || !editable) return;
+    const currentId = selectedServiceId || form.getFieldValue('serviceTypeId');
+    if (currentId === st.id) return;
+
+    const currentValues = form.getFieldsValue();
+    const currentCode = effectiveCode;
+    const hasOldStep3 = hasStep3Data(currentValues, currentCode);
+
+    const applyChange = () => {
+      setSelectedServiceId(st.id);
+      setSelectedServiceCode(st.code);
+
+      form.setFieldsValue({
+        serviceTypeId: st.id,
+        postingPackage: 'STANDARD',
+        targetCandidateCount: undefined,
+        sourcingPricePerCv: undefined,
+        feeMultiplier: undefined,
+        annualSalaryPercent: undefined,
+        warrantyDays: undefined,
+        paymentDueDays: undefined,
+        termsNote: undefined,
+      });
+
+      const nextAllowedVis = allowedVisibilities(st.code);
+      const currVis = form.getFieldValue('visibility');
+      if (!nextAllowedVis.includes(currVis)) {
+        form.setFieldValue('visibility', nextAllowedVis[0]);
+      }
+    };
+
+    if (hasOldStep3) {
+      modal.confirm({
+        title: 'Xác nhận thay đổi loại dịch vụ?',
+        icon: <ExclamationCircleOutlined className="text-amber-500" />,
+        content:
+          'Bạn đã nhập thông tin nhu cầu & chi phí ở Bước 3. Nếu chuyển đổi sang dịch vụ khác, các thông tin chi phí của dịch vụ cũ sẽ bị xóa.',
+        okText: 'Đổi dịch vụ & xóa dữ liệu cũ',
+        cancelText: 'Giữ nguyên',
+        onOk: applyChange,
+      });
+    } else {
+      applyChange();
+    }
+  };
+
+  // ─── Step Navigation ────────────────────────────────────────────────────────
+
+  const validateStep = (step: number): boolean => {
+    const values = form.getFieldsValue();
+    if (step === 0) {
+      if (!selectedServiceId && !values.serviceTypeId) {
+        message.warning('Vui lòng chọn loại dịch vụ trước khi tiếp tục.');
+        return false;
+      }
+      return true;
+    }
+    if (step === 1) {
+      if (!values.title?.trim()) {
+        message.warning('Vui lòng nhập tên vị trí tuyển dụng.');
+        return false;
+      }
+      if (!values.quantity || values.quantity < 1) {
+        message.warning('Số lượng cần tuyển phải từ 1 người trở lên.');
+        return false;
+      }
+      return true;
+    }
+    if (step === 2) {
+      if (effectiveCode === 'CV_SOURCING') {
+        if (!values.targetCandidateCount || values.targetCandidateCount < 1) {
+          message.warning('Vui lòng nhập số lượng CV muốn nhận (bắt buộc với dịch vụ Sourcing).');
+          return false;
+        }
+      }
+      return true;
+    }
+    return true;
+  };
+
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep((s) => Math.min(s + 1, 3));
+    }
+  };
+
+  const handleStepClick = (target: number) => {
+    if (target === currentStep) return;
+    if (target > currentStep) {
+      if (!validateStep(currentStep)) return;
+    }
+    setCurrentStep(target);
+  };
+
+  // ─── Save & Submit ──────────────────────────────────────────────────────────
 
   const save = async (andSubmit: boolean) => {
     setErrorSummary([]);
-    let values: JobFormValues;
-    try {
-      values = await form.validateFields();
-    } catch (info) {
-      const fields = (info as { errorFields?: { errors: string[] }[] }).errorFields ?? [];
-      setErrorSummary(fields.flatMap((f) => f.errors));
-      requestAnimationFrame(() => summaryRef.current?.focus());
-      return;
+    const formValues = form.getFieldsValue();
+    const newStepErrors: Record<number, boolean> = {};
+
+    // Ensure serviceTypeId is synced from React state if needed
+    if (!formValues.serviceTypeId && effectiveServiceId) {
+      formValues.serviceTypeId = effectiveServiceId;
+      form.setFieldValue('serviceTypeId', effectiveServiceId);
     }
+
     if (andSubmit) {
-      const blockers = submitBlockers(values, selectedCode);
+      const blockers = submitBlockers(formValues, effectiveCode, Boolean(effectiveServiceId));
       if (blockers.length > 0) {
+        blockers.forEach((b) => {
+          newStepErrors[b.step] = true;
+        });
+        setStepErrors(newStepErrors);
+
         form.setFields(
           blockers
             .filter((b) => b.field[0] !== 'requirements')
             .map((b) => ({ name: b.field, errors: [b.message] })) as Parameters<typeof form.setFields>[0]
         );
-        setErrorSummary(['Chưa đủ thông tin để gửi duyệt (bạn vẫn có thể "Lưu nháp"):', ...blockers.map((b) => b.message)]);
-        requestAnimationFrame(() => summaryRef.current?.focus());
+
+        setErrorSummary([
+          'Chưa đủ thông tin bắt buộc để gửi duyệt (bạn vẫn có thể chọn "Lưu nháp"):',
+          ...blockers.map((b) => b.message),
+        ]);
+
+        const firstErrorStep = blockers[0]?.step;
+        if (firstErrorStep !== undefined && firstErrorStep !== currentStep) {
+          setCurrentStep(firstErrorStep);
+        }
+
+        requestAnimationFrame(() => summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
         return;
       }
     }
 
     setSaving(andSubmit ? 'submit' : 'draft');
     try {
-      const input = toInput(values);
+      const input = toInput(formValues, effectiveCode);
       let savedId: string;
+
       if (isEdit && existing.data) {
-        const res = await update.mutateAsync({ jobId: existing.data.jobId, input, token: existing.data.concurrencyToken });
+        const res = await update.mutateAsync({
+          jobId: existing.data.jobId,
+          input,
+          token: existing.data.concurrencyToken,
+        });
         savedId = res.data.jobId;
       } else {
         const res = await create.mutateAsync(input);
@@ -597,49 +741,47 @@ export const JobFormPage: React.FC = () => {
       }
 
       if (andSubmit) {
-        // Create does not return a token; read the fresh job before submitting.
         const fresh = await jobsApi.getById(savedId);
         const res = await jobsApi.submit(savedId, fresh.concurrencyToken);
-        message.success(res.message || 'Đã gửi duyệt tin tuyển dụng thành công. Internal HR sẽ xét duyệt nội dung trước khi tạo đơn thanh toán.');
+        message.success(res.message || 'Đã gửi duyệt tin tuyển dụng thành công.');
       } else {
-        message.success('Đã lưu bản nháp.');
+        message.success('Đã lưu bản nháp tin tuyển dụng.');
       }
-
       navigate('/client/jobs');
     } catch (err) {
       const mapped = applyServerFieldErrors(form, err);
       const text = getApiErrorMessage(err);
       setErrorSummary([mapped ? 'Một số thông tin chưa hợp lệ, xem chi tiết ở từng ô bên dưới.' : text]);
-      requestAnimationFrame(() => summaryRef.current?.focus());
+      requestAnimationFrame(() => summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
     } finally {
       setSaving(null);
     }
   };
 
-  const handlePaymentSuccess = async () => {
-    setPendingPaymentJob(null);
-    message.success('Đã thanh toán phí đăng tin thành công.');
-    navigate('/client/jobs');
-  };
-
-  const handlePaymentClose = () => {
-    setPendingPaymentJob(null);
-    navigate('/client/jobs');
-  };
+  // ─── Render States ──────────────────────────────────────────────────────────
 
   if (isEdit && existing.isLoading) {
     return <Skeleton active paragraph={{ rows: 14 }} />;
   }
   if (isEdit && existing.isError) {
-    return <Alert type="error" showIcon message="Không tải được tin tuyển dụng" description={getApiErrorMessage(existing.error)} />;
+    return (
+      <Alert
+        type="error"
+        showIcon
+        message="Không tải được tin tuyển dụng"
+        description={getApiErrorMessage(existing.error)}
+      />
+    );
   }
+
+  const selectedPkg = POSTING_PACKAGES.find((p) => p.key === (watched.postingPackage || 'STANDARD')) ?? POSTING_PACKAGES[1];
 
   const submitButton = (block?: boolean) => (
     <Button
       type="primary"
       size="large"
       block={block}
-      className="client-cta"
+      className="client-cta font-medium shadow-sm"
       onClick={() => save(true)}
       loading={saving === 'submit'}
       disabled={saving === 'draft'}
@@ -647,45 +789,107 @@ export const JobFormPage: React.FC = () => {
       Lưu và gửi duyệt
     </Button>
   );
+
   const draftButton = (block?: boolean) => (
-    <Button size="large" block={block} onClick={() => save(false)} loading={saving === 'draft'} disabled={saving === 'submit'}>
+    <Button
+      size="large"
+      block={block}
+      onClick={() => save(false)}
+      loading={saving === 'draft'}
+      disabled={saving === 'submit'}
+    >
       Lưu nháp
     </Button>
   );
 
+  // ─── Step Items ─────────────────────────────────────────────────────────────
+
+  const stepsConfig = [
+    {
+      title: 'Chọn dịch vụ',
+      description: effectiveCode ? SERVICE_META[effectiveCode]?.tag : '1 trong 3 dịch vụ',
+      status: stepErrors[0] ? ('error' as const) : undefined,
+    },
+    {
+      title: 'Mô tả công việc',
+      description: 'JD tiêu chuẩn',
+      status: stepErrors[1] ? ('error' as const) : undefined,
+    },
+    {
+      title: 'Nhu cầu & chi phí',
+      description: effectiveCode === 'CV_APPLICATION' ? 'Gói tin đăng' : 'Đề xuất & số lượng',
+      status: stepErrors[2] ? ('error' as const) : undefined,
+    },
+    {
+      title: 'Xem lại & gửi duyệt',
+      description: 'Tổng quan & xác nhận',
+      status: stepErrors[3] ? ('error' as const) : undefined,
+    },
+  ];
+
   return (
     <div className="pb-24 lg:pb-0">
-      {/* Header */}
-      <Button type="link" icon={<ArrowLeftOutlined />} className="!mb-2 !px-0" onClick={() => navigate('/client/jobs')}>
+      {/* Back button */}
+      <Button
+        type="link"
+        icon={<ArrowLeftOutlined />}
+        className="!mb-2 !px-0 text-slate-600 hover:text-slate-900"
+        onClick={() => navigate('/client/jobs')}
+      >
         Tin tuyển dụng của tôi
       </Button>
+
+      {/* Header */}
       <header className="mb-6">
-        <div className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--console-accent-strong)]">Tuyển dụng</div>
+        <div className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--console-accent-strong)]">
+          Tuyển dụng
+        </div>
         <h1 className="m-0 text-[28px] font-bold leading-tight tracking-[-0.01em] text-slate-900">
           {isEdit ? 'Sửa tin tuyển dụng' : 'Đăng tin tuyển dụng mới'}
         </h1>
         <p className="m-0 mt-1.5 max-w-2xl text-[14.5px] leading-relaxed text-slate-600">
-          Bạn có thể lưu nháp bất cứ lúc nào. Khi gửi duyệt, HR Connect kiểm tra nội dung trước khi tin được hiển thị cho ứng viên.
+          Tạo tin tuyển dụng theo 4 bước tinh gọn. Bạn có thể lưu nháp bất cứ lúc nào và gửi duyệt khi đã hoàn thiện đầy đủ.
         </p>
       </header>
 
+      {/* 4-Step Navigation Bar */}
+      <div className="mb-6 rounded-2xl border border-solid border-slate-200 bg-white p-4 shadow-sm">
+        <Steps
+          current={currentStep}
+          onChange={handleStepClick}
+          items={stepsConfig}
+          className="job-form-steps"
+        />
+      </div>
+
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        {/* ── Form column ─────────────────────────────────────────────── */}
+        {/* ── Main Form Column ────────────────────────────────────────────── */}
         <div className="min-w-0 space-y-5">
           {!editable && existing.data && (
-            <Alert type="info" showIcon message="Tin này không sửa được ở trạng thái hiện tại" description="Chỉ sửa được tin ở trạng thái Bản nháp hoặc Bị từ chối." />
+            <Alert
+              type="info"
+              showIcon
+              message="Tin này không sửa được ở trạng thái hiện tại"
+              description="Chỉ sửa được tin ở trạng thái Bản nháp hoặc Bị từ chối."
+            />
           )}
           {existing.data?.status === 'REJECTED' && existing.data.statusReason && (
-            <Alert type="warning" showIcon message="HR Connect đã từ chối tin này" description={existing.data.statusReason} />
+            <Alert
+              type="warning"
+              showIcon
+              message="HR Connect đã từ chối tin này"
+              description={existing.data.statusReason}
+            />
           )}
+
           {errorSummary.length > 0 && (
-            <div ref={summaryRef} tabIndex={-1} role="alert" aria-labelledby="job-form-errors" className="outline-none">
+            <div ref={summaryRef} tabIndex={-1} role="alert" className="outline-none">
               <Alert
                 type="error"
                 showIcon
-                message={<span id="job-form-errors">Chưa lưu được tin tuyển dụng</span>}
+                message="Chưa lưu được tin tuyển dụng"
                 description={
-                  <ul className="m-0 pl-4">
+                  <ul className="m-0 pl-4 space-y-1">
                     {errorSummary.map((e, i) => (
                       <li key={i}>{e}</li>
                     ))}
@@ -698,463 +902,1137 @@ export const JobFormPage: React.FC = () => {
           <Form<JobFormValues>
             form={form}
             layout="vertical"
+            preserve={true}
             requiredMark={false}
             initialValues={EMPTY_VALUES}
             disabled={!editable || saving !== null}
             validateTrigger="onBlur"
-            scrollToFirstError={{ behavior: 'smooth', block: 'center' }}
             className="space-y-5"
           >
-            {/* 1. Service type */}
-            <Section index={0}>
-              {serviceTypes.isError ? (
-                <Alert type="error" showIcon message={getApiErrorMessage(serviceTypes.error)} />
-              ) : (
-                <Form.Item
-                  name="serviceTypeId"
-                  label="Loại dịch vụ"
-                  rules={[{ required: true, message: 'Chọn loại dịch vụ.' }]}
-                  extra={serviceTypeLocked ? 'Chỉ đổi được loại dịch vụ khi tin còn là bản nháp.' : undefined}
-                >
+            {/* Hidden field to keep serviceTypeId registered in Form */}
+            <Form.Item name="serviceTypeId" hidden noStyle>
+              <Input type="hidden" />
+            </Form.Item>
+
+            {/* ═════════════════════════════════════════════════════════════════
+                BƯỚC 1: CHỌN DỊCH VỤ
+                ═════════════════════════════════════════════════════════════════ */}
+            <div className={currentStep === 0 ? 'space-y-5' : 'hidden'}>
+              <section id="form-service-section" className="admin-surface p-5 sm:p-7 space-y-6">
+                <header>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
+                      1
+                    </span>
+                    <h2 className="m-0 text-[18px] font-semibold text-slate-900">Chọn loại dịch vụ tuyển dụng</h2>
+                  </div>
+                  <p className="m-0 text-[13.5px] text-slate-600">
+                    Mỗi dịch vụ được thiết kế cho mục tiêu tuyển dụng riêng biệt. Vui lòng chọn dịch vụ phù hợp nhất:
+                  </p>
+                </header>
+
+                <div>
                   {serviceTypes.isLoading ? (
-                    <Skeleton.Input active block />
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <Skeleton.Button active block style={{ height: 180 }} />
+                      <Skeleton.Button active block style={{ height: 180 }} />
+                      <Skeleton.Button active block style={{ height: 180 }} />
+                    </div>
                   ) : (
-                    <ChoiceCards
-                      name="serviceTypeId"
-                      disabled={serviceTypeLocked || !editable}
-                      options={(serviceTypes.data ?? []).map((st: ServiceType) => ({
-                        value: st.id,
-                        title: SERVICE_TYPE_LABEL[st.code]?.label ?? st.name,
-                        summary: SERVICE_TYPE_LABEL[st.code]?.summary ?? st.description ?? '',
-                      }))}
-                    />
-                  )}
-                </Form.Item>
-              )}
-              <Form.Item
-                name="visibility"
-                label="Phạm vi hiển thị"
-                className="mb-0"
-                rules={[{ required: true, message: 'Chọn phạm vi hiển thị.' }]}
-                extra={!selectedCode ? 'Chọn loại dịch vụ trước.' : undefined}
-              >
-                {selectedCode ? (
-                  <ChoiceCards
-                    name="visibility"
-                    columns={visibilityOptions.length > 1 ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}
-                    disabled={!editable}
-                    options={visibilityOptions.map((v) => ({
-                      value: v,
-                      title: VISIBILITY_LABEL[v].label,
-                      summary: VISIBILITY_LABEL[v].summary,
-                    }))}
-                  />
-                ) : (
-                  <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-[13px] text-slate-500">Phạm vi hiển thị phụ thuộc loại dịch vụ.</div>
-                )}
-              </Form.Item>
-
-              {selectedCode === 'CV_APPLICATION' && (
-                <div className="mt-4">
-                  {postingEligibility.data && !postingEligibility.data.canUseFreePackage && (
-                    <Alert
-                      type="info"
-                      showIcon
-                      className="mb-3.5 rounded-xl border border-solid border-amber-200/80 bg-amber-50/70"
-                      message={<span className="font-semibold text-amber-900 text-sm">Đã hết lượt đăng tin miễn phí</span>}
-                      description={
-                        <div className="text-xs text-amber-800 leading-relaxed mt-0.5">
-                          {postingEligibility.data.reason || 'Doanh nghiệp đã có tin tuyển dụng đang mở.'}{' '}
-                          Hệ thống đã tự động chọn <strong>Gói Tiêu Chuẩn</strong> (phí đăng tin được thanh toán sau khi HR duyệt nội dung).
-                        </div>
-                      }
-                    />
-                  )}
-                  <Form.Item
-                    name="postingPackageId"
-                    label="Gói đăng tin tuyển dụng"
-                    rules={[{ required: true, message: 'Vui lòng chọn gói đăng tin.' }]}
-                    extra={
-                      <div className="mt-2 text-xs text-slate-500 flex items-center gap-1.5">
-                        <InfoCircleOutlined className="text-blue-500 text-sm shrink-0" />
-                        <span>Phí dịch vụ thanh toán sau khi HR Connect phê duyệt nội dung tin để kích hoạt công khai.</span>
-                      </div>
-                    }
-                  >
-                    <ChoiceCards
-                      name="postingPackageId"
-                      columns="sm:grid-cols-2"
-                      disabled={!editable}
-                      options={(postingPackages.data ?? [
-                        { packageId: 'free', code: 'FREE', name: 'Gói Miễn Phí', price: 0, durationDays: 30, maxApplications: 50, description: '' },
-                        { packageId: 'std', code: 'STANDARD', name: 'Gói Tiêu Chuẩn', price: 1500000, durationDays: 30, maxApplications: 50, description: '' },
-                      ]).map((p) => {
-                        const isFree = p.code === 'FREE';
-                        const isFreeBlocked = isFree && postingEligibility.data && !postingEligibility.data.canUseFreePackage;
-
-                        return {
-                          value: p.packageId,
-                          disabled: Boolean(isFreeBlocked),
-                          title: isFree ? 'Gói Miễn Phí' : 'Gói Tiêu Chuẩn',
-                          price: p.price === 0 ? '0 VNĐ' : `${p.price.toLocaleString('vi-VN')} VNĐ`,
-                          badge: isFreeBlocked ? 'Hết hạn mức' : isFree ? 'Dùng thử' : 'Phổ biến',
-                          badgeColor: isFreeBlocked ? 'default' : isFree ? 'blue' : 'success',
-                          features: isFree
-                            ? [
-                                'Thời hạn hiển thị 30 ngày',
-                                'Tiếp nhận tối đa 50 hồ sơ',
-                                'Giới hạn 1 tin mở / chu kỳ 2 tháng',
-                              ]
-                            : [
-                                'Thời hạn hiển thị 30 ngày',
-                                'Tiếp nhận tối đa 50 hồ sơ',
-                                'AI tự động phân tích & chấm điểm CV',
-                              ],
+                    <div className="grid gap-4 md:grid-cols-3">
+                      {availableServiceTypes.map((st: ServiceType) => {
+                        const meta = SERVICE_META[st.code] ?? {
+                          code: st.code,
+                          tag: 'Dịch vụ',
+                          color: 'blue',
+                          icon: <RocketOutlined />,
+                          defaultTitle: st.name,
+                          defaultSummary: st.description ?? '',
+                          feeRule: 'Theo quy định của HR Connect.',
                         };
+                        const isSelected =
+                          selectedServiceId === st.id ||
+                          selectedServiceCode === st.code ||
+                          watched.serviceTypeId === st.id;
+
+                        return (
+                          <div
+                            key={st.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => handleSelectService(st)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSelectService(st)}
+                            className={`group relative flex flex-col justify-between rounded-2xl border-2 border-solid p-5 text-left transition-all duration-200 cursor-pointer ${
+                              isSelected
+                                ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)]/40 shadow-md ring-2 ring-[color:var(--console-accent)]/20'
+                                : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                            } ${serviceTypeLocked || !editable ? 'opacity-65 cursor-not-allowed' : ''}`}
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 group-hover:bg-white transition-colors">
+                                    {meta.icon}
+                                  </div>
+                                  <Tag color={meta.color} className="m-0 font-medium">
+                                    {meta.tag}
+                                  </Tag>
+                                </div>
+                                <div
+                                  className={`flex h-5 w-5 items-center justify-center rounded-full border-2 border-solid transition-colors ${
+                                    isSelected
+                                      ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent)]'
+                                      : 'border-slate-300 bg-white'
+                                  }`}
+                                >
+                                  {isSelected && <span className="h-2 w-2 rounded-full bg-white" />}
+                                </div>
+                              </div>
+
+                              <h3 className="m-0 text-[16px] font-bold text-slate-900 leading-snug">
+                                {st.name || meta.defaultTitle}
+                              </h3>
+                              <p className="mt-2 text-[13px] text-slate-600 leading-relaxed min-h-[40px]">
+                                {meta.defaultSummary}
+                              </p>
+                            </div>
+
+                            {/* Read-only Fee Rule Block */}
+                            <div className="mt-4 rounded-xl border border-solid border-slate-200/90 bg-white/90 p-3 text-[12px] text-slate-700">
+                              <span className="font-semibold text-slate-900 flex items-center gap-1.5 mb-1">
+                                <WalletOutlined className="text-[color:var(--console-accent)]" />
+                                Cách tính phí (chỉ đọc):
+                              </span>
+                              <span className="text-slate-600 leading-normal">{meta.feeRule}</span>
+                            </div>
+                          </div>
+                        );
                       })}
-                    />
+                    </div>
+                  )}
+                  {serviceTypeLocked && (
+                    <div className="mt-2 text-xs text-slate-500">Chỉ đổi được loại dịch vụ khi tin còn là bản nháp.</div>
+                  )}
+                </div>
+
+                <div className="flex justify-end pt-4 border-0 border-t border-solid border-slate-100">
+                  <Button
+                    type="primary"
+                    size="large"
+                    className="client-cta px-8"
+                    onClick={handleNext}
+                    disabled={!effectiveServiceId}
+                  >
+                    Tiếp tục sang Mô tả công việc
+                  </Button>
+                </div>
+              </section>
+            </div>
+
+            {/* ═════════════════════════════════════════════════════════════════
+                BƯỚC 2: MÔ TẢ CÔNG VIỆC (JD DÙNG CHUNG)
+                ═════════════════════════════════════════════════════════════════ */}
+            <div className={currentStep === 1 ? 'space-y-5' : 'hidden'}>
+              {/* 1. Basic Info */}
+              <section className="admin-surface p-5 sm:p-7 space-y-5">
+                <header className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
+                    2.1
+                  </span>
+                  <h2 className="m-0 text-[17px] font-semibold text-slate-900">Thông tin vị trí tuyển dụng</h2>
+                </header>
+
+                <div id="form-title-item">
+                  <Form.Item
+                    name="title"
+                    label="Tên vị trí tuyển dụng"
+                    rules={[
+                      { required: true, whitespace: true, message: 'Vui lòng nhập tên vị trí.' },
+                      { max: 255, message: 'Tối đa 255 ký tự.' },
+                    ]}
+                  >
+                    <Input size="large" placeholder="Ví dụ: Kỹ sư Backend .NET (Senior) hoặc Chuyên viên Marketing" />
                   </Form.Item>
                 </div>
-              )}
-            </Section>
 
-            {/* 2. Position */}
-            <Section index={1}>
-              <Form.Item
-                name="title"
-                label="Tên vị trí"
-                rules={[
-                  { required: true, whitespace: true, message: 'Nhập tên vị trí.' },
-                  { max: 255, message: 'Tối đa 255 ký tự.' },
-                ]}
-              >
-                <Input size="large" placeholder="Ví dụ: Kỹ sư Backend .NET (Senior)" />
-              </Form.Item>
-              <div className="grid gap-x-4 md:grid-cols-2">
-                <Form.Item name="employmentType" label={<>Hình thức làm việc<SubmitHint /></>}>
-                  <Select
-                    size="large"
-                    allowClear
-                    placeholder="Chọn hình thức"
-                    options={(Object.keys(EMPLOYMENT_TYPE_LABEL) as EmploymentType[]).map((k) => ({ value: k, label: EMPLOYMENT_TYPE_LABEL[k] }))}
-                  />
-                </Form.Item>
+                <div className="grid gap-x-4 md:grid-cols-2">
+                  <div id="form-employment-item">
+                    <Form.Item
+                      name="employmentType"
+                      label="Hình thức làm việc"
+                      rules={[{ required: true, message: 'Chọn hình thức làm việc.' }]}
+                    >
+                      <Select
+                        size="large"
+                        placeholder="Chọn hình thức làm việc"
+                        options={(Object.keys(EMPLOYMENT_TYPE_LABEL) as EmploymentType[]).map((k) => ({
+                          value: k,
+                          label: EMPLOYMENT_TYPE_LABEL[k],
+                        }))}
+                      />
+                    </Form.Item>
+                  </div>
+
+                  <Form.Item
+                    name="quantity"
+                    label="Số lượng cần tuyển"
+                    rules={[{ required: true, type: 'number', min: 1, max: 1000, message: 'Từ 1 đến 1000 người.' }]}
+                  >
+                    <InputNumber size="large" min={1} max={1000} className="w-full" addonAfter="người" />
+                  </Form.Item>
+
+                  <div id="form-location-item">
+                    <Form.Item
+                      name="location"
+                      label="Địa điểm làm việc"
+                      rules={[
+                        { required: true, message: 'Vui lòng nhập địa điểm làm việc.' },
+                        { max: 255, message: 'Tối đa 255 ký tự.' },
+                      ]}
+                    >
+                      <Input
+                        size="large"
+                        prefix={<EnvironmentOutlined className="text-slate-400" />}
+                        placeholder="Ví dụ: Quận 1, TP. Hồ Chí Minh (hoặc Hybrid)"
+                      />
+                    </Form.Item>
+                  </div>
+
+                  <Form.Item name="workingTime" label="Thời gian làm việc" rules={[{ max: 2000, message: 'Tối đa 2000 ký tự.' }]}>
+                    <Input size="large" placeholder="Ví dụ: Thứ 2 – Thứ 6, 8:30 – 17:30" />
+                  </Form.Item>
+                </div>
+
+                <div className="grid gap-x-4 md:grid-cols-2">
+                  <Form.Item
+                    name="deadline"
+                    label="Hạn nhận hồ sơ"
+                    getValueProps={(val) => ({
+                      value: val ? (dayjs.isDayjs(val) ? val : dayjs(val)) : null,
+                    })}
+                    normalize={(val) => (val ? val.format('YYYY-MM-DD') : null)}
+                  >
+                    <DatePicker
+                      size="large"
+                      className="w-full"
+                      format="DD/MM/YYYY"
+                      placeholder="Chọn ngày hết hạn nhận hồ sơ"
+                      disabledDate={(cur) => cur && cur.isBefore(dayjs().startOf('day'))}
+                    />
+                  </Form.Item>
+
+                  <div>
+                    <label className="mb-2 block text-sm text-slate-900 font-medium">Yêu cầu số năm kinh nghiệm</label>
+                    <div className="grid grid-cols-2 gap-x-3">
+                      <Form.Item name="minExperienceYears" className="mb-0" rules={[{ type: 'number', min: 0, max: 50, message: '0-50.' }]}>
+                        <InputNumber size="large" min={0} max={50} className="w-full" addonBefore="Từ" placeholder="0" />
+                      </Form.Item>
+                      <Form.Item
+                        name="maxExperienceYears"
+                        className="mb-0"
+                        dependencies={['minExperienceYears']}
+                        rules={[
+                          { type: 'number', min: 0, max: 50, message: '0-50.' },
+                          ({ getFieldValue }) => ({
+                            validator: (_, v) => {
+                              const min = getFieldValue('minExperienceYears');
+                              return v == null || min == null || v >= min
+                                ? Promise.resolve()
+                                : Promise.reject(new Error('Phải ≥ mức tối thiểu.'));
+                            },
+                          }),
+                        ]}
+                      >
+                        <InputNumber size="large" min={0} max={50} className="w-full" addonBefore="Đến" placeholder="10" />
+                      </Form.Item>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Visibility */}
                 <Form.Item
-                  name="quantity"
-                  label="Số lượng cần tuyển"
-                  rules={[{ required: true, type: 'number', min: 1, max: 1000, message: 'Từ 1 đến 1000 người.' }]}
+                  name="visibility"
+                  label="Phạm vi hiển thị tin"
+                  rules={[{ required: true, message: 'Chọn phạm vi hiển thị.' }]}
+                  extra={`Dựa theo dịch vụ "${SERVICE_TYPE_LABEL[effectiveCode || 'CV_APPLICATION']?.label}".`}
+                  className="mb-0"
                 >
-                  <InputNumber size="large" min={1} max={1000} className="w-full" addonAfter="người" />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {visibilityOptions.map((v) => {
+                      const isVisSelected = watched.visibility === v;
+                      return (
+                        <div
+                          key={v}
+                          onClick={() => form.setFieldValue('visibility', v)}
+                          className={`flex cursor-pointer flex-col rounded-xl border border-solid p-3.5 transition-all ${
+                            isVisSelected
+                              ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)] shadow-sm'
+                              : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-slate-900 text-sm">{VISIBILITY_LABEL[v].label}</span>
+                            <Radio checked={isVisSelected} className="pointer-events-none" />
+                          </div>
+                          <span className="mt-1 text-xs text-slate-600">{VISIBILITY_LABEL[v].summary}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </Form.Item>
-                <Form.Item name="location" label={<>Địa điểm<SubmitHint /></>} rules={[{ max: 255, message: 'Tối đa 255 ký tự.' }]}>
-                  <Input size="large" prefix={<EnvironmentOutlined className="text-slate-400" />} placeholder="Ví dụ: Quận 1, TP. Hồ Chí Minh" />
-                </Form.Item>
-                <Form.Item name="workingTime" label="Thời gian làm việc" rules={[{ max: 2000, message: 'Tối đa 2000 ký tự.' }]}>
-                  <Input size="large" placeholder="Ví dụ: Thứ 2 – Thứ 6, 9:00 – 18:00" />
-                </Form.Item>
-              </div>
-              <fieldset className="m-0 border-0 p-0">
-                <legend className="mb-2 p-0 text-sm text-slate-900">Kinh nghiệm yêu cầu (năm)</legend>
-                <div className="grid grid-cols-2 gap-x-4">
-                  <Form.Item name="minExperienceYears" className="mb-0" rules={[{ type: 'number', min: 0, max: 50, message: 'Từ 0 đến 50.' }]}>
-                    <InputNumber size="large" min={0} max={50} className="w-full" addonBefore="Từ" aria-label="Kinh nghiệm tối thiểu (năm)" />
+              </section>
+
+              {/* 2. Salary */}
+              <section className="admin-surface p-5 sm:p-7 space-y-4">
+                <header className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
+                    2.2
+                  </span>
+                  <h2 className="m-0 text-[17px] font-semibold text-slate-900">Mức lương và chế độ đãi ngộ</h2>
+                </header>
+
+                <div className="grid gap-x-4 md:grid-cols-[1fr_1fr_120px]">
+                  <Form.Item name="salaryMin" label="Mức lương từ" rules={[{ type: 'number', min: 0, message: 'Không âm.' }]}>
+                    <InputNumber<number> size="large" {...moneyInputProps} placeholder="15.000.000" />
                   </Form.Item>
                   <Form.Item
-                    name="maxExperienceYears"
-                    className="mb-0"
-                    dependencies={['minExperienceYears']}
+                    name="salaryMax"
+                    label="Đến mức"
+                    dependencies={['salaryMin']}
                     rules={[
-                      { type: 'number', min: 0, max: 50, message: 'Từ 0 đến 50.' },
+                      { type: 'number', min: 0, message: 'Không âm.' },
                       ({ getFieldValue }) => ({
                         validator: (_, v) => {
-                          const min = getFieldValue('minExperienceYears');
-                          return v == null || min == null || v >= min ? Promise.resolve() : Promise.reject(new Error('Phải lớn hơn hoặc bằng mức tối thiểu.'));
+                          const min = getFieldValue('salaryMin');
+                          return v == null || min == null || v >= min
+                            ? Promise.resolve()
+                            : Promise.reject(new Error('Phải ≥ mức "Từ".'));
                         },
                       }),
                     ]}
                   >
-                    <InputNumber size="large" min={0} max={50} className="w-full" addonBefore="Đến" aria-label="Kinh nghiệm tối đa (năm)" />
+                    <InputNumber<number> size="large" {...moneyInputProps} placeholder="30.000.000" />
+                  </Form.Item>
+                  <Form.Item name="currencyCode" label="Tiền tệ" rules={[{ required: true, message: 'Chọn tiền tệ.' }]}>
+                    <Select size="large" options={['VND', 'USD'].map((c) => ({ value: c, label: c }))} />
                   </Form.Item>
                 </div>
-              </fieldset>
 
-              {/* Commercial terms for CV_SOURCING */}
-              {selectedCode === 'CV_SOURCING' && (
-                <div className="mt-5 rounded-xl border border-solid border-blue-200 bg-blue-50/60 p-4">
-                  <div className="mb-3 text-[14px] font-semibold text-blue-900">
-                    Thông số dịch vụ CV Sourcing
+                <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3 border border-solid border-slate-100">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">Mức lương có thể thỏa thuận</div>
+                    <div className="text-[13px] text-slate-600">Hiển thị nhãn “Thỏa thuận” bên cạnh mức lương đối với ứng viên.</div>
                   </div>
-                  <div className="grid gap-x-4 md:grid-cols-2">
+                  <Form.Item name="salaryNegotiable" valuePropName="checked" noStyle>
+                    <Switch aria-label="Mức lương có thể thỏa thuận" />
+                  </Form.Item>
+                </div>
+
+                <Form.Item name="salaryNote" label="Ghi chú về lương" className="mb-0" rules={[{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}>
+                  <Input size="large" placeholder="Ví dụ: Lương Gross, thưởng hiệu suất hàng quý, tháng 13..." />
+                </Form.Item>
+              </section>
+
+              {/* 3. Description & Benefits */}
+              <section className="admin-surface p-5 sm:p-7 space-y-4">
+                <header className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
+                    2.3
+                  </span>
+                  <h2 className="m-0 text-[17px] font-semibold text-slate-900">Mô tả công việc & Quyền lợi</h2>
+                </header>
+
+                <div id="form-desc-item">
+                  <Form.Item
+                    name="description"
+                    label="Mô tả công việc (Job Description)"
+                    rules={[{ required: true, message: 'Vui lòng nhập mô tả công việc.' }]}
+                  >
+                    <Input.TextArea
+                      rows={6}
+                      showCount
+                      placeholder={'• Công việc hàng ngày của vị trí\n• Dự án và đội ngũ làm việc cùng\n• Kết quả mong đợi trong 3 - 6 tháng đầu'}
+                    />
+                  </Form.Item>
+                </div>
+
+                <div id="form-benefits-item">
+                  <Form.Item
+                    name="benefits"
+                    label="Quyền lợi ứng viên"
+                    className="mb-0"
+                    rules={[
+                      { required: true, message: 'Vui lòng nhập quyền lợi ứng viên.' },
+                      { max: 10000, message: 'Tối đa 10000 ký tự.' },
+                    ]}
+                  >
+                    <Input.TextArea
+                      rows={5}
+                      showCount
+                      maxLength={10000}
+                      placeholder={'• Chế độ bảo hiểm sức khỏe cao cấp\n• 15 ngày phép/năm, review lương định kỳ\n• Môi trường làm việc năng động, lộ trình thăng tiến rõ ràng'}
+                    />
+                  </Form.Item>
+                </div>
+              </section>
+
+              {/* 4. Requirements & Skills */}
+              <section id="form-requirements-item" className="admin-surface p-5 sm:p-7 space-y-5">
+                <header className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
+                      2.4
+                    </span>
+                    <h2 className="m-0 text-[17px] font-semibold text-slate-900">Yêu cầu tuyển dụng & Kỹ năng</h2>
+                  </div>
+                  <Tag color={hasMustHave ? 'green' : 'orange'} className="m-0 font-medium">
+                    {hasMustHave ? 'Đã có yêu cầu bắt buộc' : 'Cần ít nhất 1 yêu cầu bắt buộc'}
+                  </Tag>
+                </header>
+
+                <Form.Item
+                  name="skills"
+                  label="Kỹ năng chính (Skills Tag)"
+                  extra="Nhập kỹ năng và nhấn Enter hoặc chọn từ danh sách gợi ý."
+                >
+                  <Select
+                    mode="tags"
+                    size="large"
+                    placeholder="Ví dụ: ReactJS, ASP.NET Core, SQL Server, Docker, English..."
+                    options={[
+                      { value: 'ASP.NET Core', label: 'ASP.NET Core' },
+                      { value: 'C#', label: 'C#' },
+                      { value: 'ReactJS', label: 'ReactJS' },
+                      { value: 'TypeScript', label: 'TypeScript' },
+                      { value: 'Java', label: 'Java' },
+                      { value: 'Python', label: 'Python' },
+                      { value: 'SQL / PostgreSQL', label: 'SQL / PostgreSQL' },
+                      { value: 'Docker & DevOps', label: 'Docker & DevOps' },
+                      { value: 'Tiếng Anh giao tiếp', label: 'Tiếng Anh giao tiếp' },
+                      { value: 'Kỹ năng giao tiếp', label: 'Kỹ năng giao tiếp' },
+                    ]}
+                  />
+                </Form.Item>
+
+                <div className="space-y-3">
+                  <div className="text-sm font-semibold text-slate-900">Danh sách tiêu chí yêu cầu ứng viên:</div>
+                  <Form.List name="requirements">
+                    {(fields, { add, remove }) => (
+                      <div className="space-y-3">
+                        {fields.map((field, index) => (
+                          <div key={field.key} className="rounded-xl border border-solid border-slate-200 bg-slate-50/70 p-3.5">
+                            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 md:grid-cols-[140px_minmax(0,1fr)_160px_auto]">
+                              <Form.Item
+                                name={[field.name, 'requirementType']}
+                                label="Mức độ"
+                                className="mb-2 md:mb-0"
+                                rules={[{ required: true, message: 'Chọn mức độ.' }]}
+                              >
+                                <Radio.Group optionType="button" buttonStyle="solid" size="middle">
+                                  <Radio.Button value="MUST_HAVE">Bắt buộc</Radio.Button>
+                                  <Radio.Button value="SHOULD_HAVE">Ưu tiên</Radio.Button>
+                                </Radio.Group>
+                              </Form.Item>
+
+                              <div className="order-3 col-span-2 md:order-none md:col-span-1">
+                                <Form.Item
+                                  name={[field.name, 'content']}
+                                  label={`Nội dung yêu cầu ${index + 1}`}
+                                  className="mb-2 md:mb-0"
+                                  rules={[{ required: true, whitespace: true, message: 'Nhập nội dung yêu cầu hoặc xóa dòng này.' }]}
+                                >
+                                  <Input placeholder="Ví dụ: Tối thiểu 3 năm kinh nghiệm xây dựng RESTful API" />
+                                </Form.Item>
+                              </div>
+
+                              <div className="order-4 col-span-2 md:order-none md:col-span-1">
+                                <Form.Item name={[field.name, 'category']} label="Phân nhóm" className="mb-0">
+                                  <Input placeholder="Kỹ năng, Kinh nghiệm..." />
+                                </Form.Item>
+                              </div>
+
+                              <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                aria-label={`Xóa yêu cầu ${index + 1}`}
+                                onClick={() => remove(field.name)}
+                                className="order-2 mt-7 md:order-none"
+                              />
+                            </div>
+                          </div>
+                        ))}
+
+                        <Button
+                          icon={<PlusOutlined />}
+                          onClick={() => add({ requirementType: 'SHOULD_HAVE', content: '' })}
+                          block
+                          type="dashed"
+                          size="large"
+                          className="text-slate-700"
+                        >
+                          Thêm tiêu chí yêu cầu
+                        </Button>
+                      </div>
+                    )}
+                  </Form.List>
+                </div>
+              </section>
+
+              {/* Bottom Step Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
+                <Button size="large" onClick={() => setCurrentStep(0)}>
+                  Quay lại: Chọn dịch vụ
+                </Button>
+                <div className="flex items-center gap-2">
+                  {draftButton()}
+                  <Button type="primary" size="large" className="client-cta px-6" onClick={handleNext}>
+                    Tiếp tục: Nhu cầu & Chi phí
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* ═════════════════════════════════════════════════════════════════
+                BƯỚC 3: NHU CẦU VÀ CHI PHÍ (ĐỘNG THEO DỊCH VỤ)
+                ═════════════════════════════════════════════════════════════════ */}
+            <div className={currentStep === 2 ? 'space-y-5' : 'hidden'}>
+              {/* Fallback if user somehow reached Step 3 without selecting service */}
+              {!effectiveCode && (
+                <section className="admin-surface p-8 text-center space-y-4">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 text-amber-600 mb-2">
+                    <ExclamationCircleOutlined className="text-2xl" />
+                  </div>
+                  <h3 className="m-0 text-[18px] font-bold text-slate-900">Vui lòng chọn loại dịch vụ ở Bước 1 trước</h3>
+                  <p className="m-0 max-w-md mx-auto text-sm text-slate-600 leading-relaxed">
+                    Nội dung về gói đăng tin, hạn mức tuyển dụng và đề xuất chi phí sẽ được tải tự động dựa trên dịch vụ bạn lựa chọn (Nhận CV ứng tuyển, Tìm nguồn CV, hoặc Headhunt COD).
+                  </p>
+                  <Button
+                    type="primary"
+                    size="large"
+                    className="client-cta px-8 mt-2"
+                    onClick={() => setCurrentStep(0)}
+                  >
+                    Quay lại Bước 1: Chọn loại dịch vụ
+                  </Button>
+                </section>
+              )}
+
+              {/* Case 1: CV_APPLICATION */}
+              {effectiveCode === 'CV_APPLICATION' && (
+                <section className="admin-surface p-5 sm:p-7 space-y-6">
+                  <header>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
+                        3
+                      </span>
+                      <h2 className="m-0 text-[18px] font-semibold text-slate-900">Chọn gói đăng tin tuyển dụng</h2>
+                    </div>
+                    <p className="m-0 text-[13.5px] text-slate-600">
+                      Chọn gói dịch vụ hiển thị phù hợp với nhu cầu tiếp cận ứng viên. Bạn thanh toán <b>sau khi tin được duyệt</b>.
+                    </p>
+                  </header>
+
+                  <Form.Item name="postingPackage" className="mb-0">
+                    <div className="grid gap-4 md:grid-cols-3">
+                      {POSTING_PACKAGES.map((pkg) => {
+                        const isPkgSelected = (watched.postingPackage || 'STANDARD') === pkg.key;
+                        return (
+                          <div
+                            key={pkg.key}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => form.setFieldValue('postingPackage', pkg.key)}
+                            onKeyDown={(e) => e.key === 'Enter' && form.setFieldValue('postingPackage', pkg.key)}
+                            className={`relative flex flex-col justify-between rounded-2xl border-2 border-solid p-5 text-left transition-all cursor-pointer ${
+                              isPkgSelected
+                                ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)]/40 shadow-md ring-2 ring-[color:var(--console-accent)]/20'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                          >
+                            <div>
+                              {pkg.tag && (
+                                <div className="absolute -top-3 right-4">
+                                  <span className="rounded-full bg-[color:var(--console-accent-strong)] px-3 py-0.5 text-xs font-semibold text-white shadow-sm">
+                                    {pkg.tag}
+                                  </span>
+                                </div>
+                              )}
+
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-bold text-slate-900 text-[16px]">{pkg.name}</span>
+                                <Radio checked={isPkgSelected} className="pointer-events-none" />
+                              </div>
+
+                              <div className="my-3 pb-3 border-0 border-b border-solid border-slate-200">
+                                <div className="text-[24px] font-extrabold text-slate-900">{pkg.priceText}</div>
+                                <div className="text-xs text-slate-600">Thời hạn {pkg.days} ngày · Tối đa {pkg.maxCandidates} hồ sơ</div>
+                              </div>
+
+                              <ul className="m-0 p-0 list-none space-y-2 text-[12.5px] text-slate-700">
+                                {pkg.features.map((feat, idx) => (
+                                  <li key={idx} className="flex items-start gap-2">
+                                    <CheckCircleOutlined className="text-emerald-600 mt-0.5 shrink-0" />
+                                    <span>{feat}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            <div className="mt-5 text-center">
+                              <Button
+                                type={isPkgSelected ? 'primary' : 'default'}
+                                block
+                                className={isPkgSelected ? 'client-cta' : ''}
+                              >
+                                {isPkgSelected ? 'Đang chọn gói này' : 'Chọn gói'}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Form.Item>
+
+                  <Alert
+                    type="info"
+                    showIcon
+                    icon={<InfoCircleOutlined />}
+                    message="Quy tắc thanh toán gói đăng tin"
+                    description="Với dịch vụ Nhận CV ứng tuyển, giá dịch vụ là công khai và không có ô đề xuất phí. Khoản phí sẽ được kích hoạt thanh toán khi tin tuyển dụng của bạn được HR Connect xét duyệt."
+                  />
+                </section>
+              )}
+
+              {/* Case 2: CV_SOURCING */}
+              {effectiveCode === 'CV_SOURCING' && (
+                <section className="admin-surface p-5 sm:p-7 space-y-6">
+                  <header>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
+                        3
+                      </span>
+                      <h2 className="m-0 text-[18px] font-semibold text-slate-900">Nhu cầu cung cấp hồ sơ ứng viên</h2>
+                    </div>
+                    <p className="m-0 text-[13.5px] text-slate-600">
+                      Nhập số lượng hồ sơ bạn cần và đề xuất mức phí mong muốn cho mỗi CV tiếp nhận.
+                    </p>
+                  </header>
+
+                  {/* Target CV Count (Required) */}
+                  <div id="form-cv-count-item" className="rounded-2xl border border-solid border-slate-200 bg-slate-50/60 p-5">
+                    <div className="mb-2 flex items-center justify-between">
+                      <label className="text-sm font-bold text-slate-900">
+                        Số lượng CV bạn muốn nhận <span className="text-red-500 font-bold">*</span>
+                      </label>
+                      <span className="rounded-full bg-slate-200/80 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                        Bắt buộc
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 mb-3">
+                      HR Connect sẽ cam kết tìm kiếm và giao đủ số lượng hồ sơ đạt yêu cầu theo tiêu chuẩn đã thỏa thuận.
+                    </p>
                     <Form.Item
-                      name="sourcingTarget"
-                      label={<>Sourcing Target (Số CV đạt chuẩn mua)<SubmitHint /></>}
-                      extra="Số lượng Qualified CV bạn muốn HR Connect bàn giao (khác với số người cần tuyển)."
-                      rules={[{ type: 'number', min: 1, message: 'Tối thiểu 1 CV đạt chuẩn.' }]}
+                      name="targetCandidateCount"
+                      rules={[
+                        { required: true, message: 'Vui lòng nhập số CV muốn nhận.' },
+                        { type: 'number', min: 1, max: 1000, message: 'Số lượng từ 1 đến 1000 CV.' },
+                      ]}
+                      className="mb-0"
                     >
-                      <InputNumber size="large" min={1} max={1000} className="w-full" placeholder="Ví dụ: 10" addonAfter="CV" />
-                    </Form.Item>
-                    <Form.Item
-                      name="sourcingPricePerCv"
-                      label="Đơn giá mỗi CV đạt chuẩn (VNĐ)"
-                      extra="Đơn giá theo thỏa thuận (mặc định 100.000đ / CV nếu để trống)."
-                      rules={[{ type: 'number', min: 1000, message: 'Đơn giá tối thiểu 1.000 VNĐ.' }]}
-                    >
-                      <InputNumber<number>
+                      <InputNumber
                         size="large"
-                        min={1000}
-                        step={10000}
-                        formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                        parser={(value) => (value ? Number(value.replace(/\D/g, '')) : undefined) as unknown as number}
-                        className="w-full"
-                        placeholder="100,000"
-                        addonAfter="VNĐ"
+                        min={1}
+                        max={1000}
+                        className="w-full max-w-xs"
+                        placeholder="Ví dụ: 10"
+                        addonAfter="hồ sơ CV"
                       />
                     </Form.Item>
                   </div>
-                </div>
-              )}
 
-              {/* Commercial terms for HEADHUNT_COD */}
-              {selectedCode === 'HEADHUNT_COD' && (
-                <div className="mt-5 rounded-xl border border-solid border-indigo-200 bg-indigo-50/40 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-100 pb-2.5">
+                  {/* Proposed Fee Block (Optional) */}
+                  <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-5 sm:p-6 space-y-4">
                     <div>
-                      <div className="text-[14px] font-bold text-indigo-950 flex items-center gap-2">
-                        <span>🎯 Thỏa thuận phí dịch vụ Headhunt</span>
-                        <Tag color="purple">Phí tuyển dụng thành công</Tag>
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="m-0 text-[16px] font-bold text-slate-900">Mức phí bạn đề xuất (không bắt buộc)</h3>
+                        <Badge count="Tùy chọn" style={{ backgroundColor: '#64748b' }} />
                       </div>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        Nhập các điều khoản thương mại đã thống nhất trong báo giá hoặc hợp đồng dịch vụ riêng.
+                      <p className="m-0 mt-1.5 text-[13px] text-slate-600 leading-relaxed italic">
+                        Chuyên viên HR Connect sẽ liên hệ để thống nhất mức phí trước khi đăng tin. Mức phí chính thức là mức được xác nhận khi tin được duyệt.
                       </p>
                     </div>
-                  </div>
 
-                  {/* Pricing Mode Toggle */}
-                  <div className="mt-3.5 mb-2.5 flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-medium text-slate-600">Cách tính phí thành công:</span>
-                    <Radio.Group
-                      size="small"
-                      value={headhuntPricingMode}
-                      onChange={(e) => {
-                        const mode = e.target.value as 'MONTHLY_GROSS' | 'ANNUAL_PERCENT';
-                        setHeadhuntPricingMode(mode);
-                        if (mode === 'ANNUAL_PERCENT') {
-                          if (annualPercent) {
-                            const mult = Number(((annualPercent * 12) / 100).toFixed(1));
-                            form.setFieldValue('feeMultiplier', mult);
-                          }
-                        }
-                      }}
+                    <div className="grid gap-x-4 md:grid-cols-2">
+                      <Form.Item
+                        name="sourcingPricePerCv"
+                        label="Mức phí bạn đề xuất cho mỗi CV (VNĐ)"
+                        rules={[{ type: 'number', min: 0, message: 'Không được âm.' }]}
+                      >
+                        <InputNumber<number>
+                          size="large"
+                          {...moneyInputProps}
+                          placeholder="Ví dụ: 500.000"
+                          addonAfter="₫ / CV"
+                        />
+                      </Form.Item>
+
+                      {/* Quick Estimated Calculation */}
+                      <div className="rounded-xl border border-solid border-slate-100 bg-slate-50 p-3.5 flex flex-col justify-center">
+                        <span className="text-xs text-slate-600">Ước tính tổng chi phí đề xuất:</span>
+                        <span className="text-lg font-bold text-[color:var(--console-accent-strong)] mt-0.5">
+                          {watched.targetCandidateCount && watched.sourcingPricePerCv
+                            ? `${(watched.targetCandidateCount * watched.sourcingPricePerCv).toLocaleString('vi-VN')} ₫`
+                            : 'Chưa có đề xuất'}
+                        </span>
+                        <span className="text-[11px] text-slate-500 mt-1">
+                          Tiền đặt cọc và mức phí chính thức sẽ được xác nhận khi duyệt tin.
+                        </span>
+                      </div>
+                    </div>
+
+                    <Form.Item
+                      name="termsNote"
+                      label="Ghi chú đề xuất phí hoặc yêu cầu bổ sung"
+                      className="mb-0"
+                      rules={[{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}
                     >
-                      <Radio.Button value="MONTHLY_GROSS">Số tháng lương Gross</Radio.Button>
-                      <Radio.Button value="ANNUAL_PERCENT">% Tổng lương năm đầu</Radio.Button>
-                    </Radio.Group>
+                      <Input.TextArea
+                        rows={3}
+                        placeholder="Ví dụ: Mong muốn nhận đợt 1 trong 5 ngày đầu tiên, ưu tiên ứng viên có thể phỏng vấn ngay..."
+                      />
+                    </Form.Item>
                   </div>
+                </section>
+              )}
 
-                  {/* Input parameters */}
-                  <div className="grid gap-x-4 md:grid-cols-3 bg-white p-3.5 rounded-lg border border-indigo-100">
-                    {headhuntPricingMode === 'MONTHLY_GROSS' ? (
+              {/* Case 3: HEADHUNT_COD */}
+              {effectiveCode === 'HEADHUNT_COD' && (
+                <section className="admin-surface p-5 sm:p-7 space-y-6">
+                  <header>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
+                        3
+                      </span>
+                      <h2 className="m-0 text-[18px] font-semibold text-slate-900">Điều khoản chi phí tuyển dụng Headhunt</h2>
+                    </div>
+                    <p className="m-0 text-[13.5px] text-slate-600">
+                      Dịch vụ Headhunt COD tính phí dựa trên mức lương thực tế khi ứng viên nhận việc. Bạn có thể đề xuất mức phí mong muốn bên dưới:
+                    </p>
+                  </header>
+
+                  {/* Proposed Fee Block (Optional) */}
+                  <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-5 sm:p-6 space-y-5">
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="m-0 text-[16px] font-bold text-slate-900">Mức phí bạn đề xuất (không bắt buộc)</h3>
+                        <Badge count="Tùy chọn" style={{ backgroundColor: '#64748b' }} />
+                      </div>
+                      <p className="m-0 mt-1.5 text-[13px] text-slate-600 leading-relaxed italic">
+                        Chuyên viên HR Connect sẽ liên hệ để thống nhất mức phí trước khi đăng tin. Mức phí chính thức là mức được xác nhận khi tin được duyệt.
+                      </p>
+                    </div>
+
+                    {/* Fee Multiplier & Annual Salary Percent (Synchronized) */}
+                    <div className="grid gap-x-4 md:grid-cols-2">
                       <Form.Item
                         name="feeMultiplier"
-                        label="Phí thành công"
-                        rules={[{ required: true, message: 'Nhập số tháng lương.' }, { type: 'number', min: 0.1, max: 10, message: 'Từ 0.1 đến 10.' }]}
+                        label="Mức phí đề xuất (Số tháng lương)"
+                        rules={[{ type: 'number', min: 0, max: 12, message: 'Từ 0 đến 12 tháng.' }]}
+                        extra="Số tháng lương theo mức offer của ứng viên đi làm."
                       >
                         <InputNumber
                           size="large"
-                          min={0.1}
-                          max={10}
+                          min={0}
+                          max={12}
                           step={0.1}
                           className="w-full"
-                          placeholder="Ví dụ: 1.5, 2.0"
+                          placeholder="Ví dụ: 1.5"
                           addonAfter="tháng lương"
+                          onChange={(val) => {
+                            if (val != null) {
+                              form.setFieldValue('annualSalaryPercent', Number(((val / 12) * 100).toFixed(1)));
+                            } else {
+                              form.setFieldValue('annualSalaryPercent', undefined);
+                            }
+                          }}
                         />
                       </Form.Item>
-                    ) : (
-                      <div>
-                        <div className="mb-2 text-sm text-slate-700">Phí thành công</div>
+
+                      <Form.Item
+                        name="annualSalaryPercent"
+                        label="Quy đổi tương đương (% lương năm)"
+                        rules={[{ type: 'number', min: 0, max: 100, message: 'Từ 0% đến 100%.' }]}
+                        extra="Tự động đồng bộ theo số tháng lương (1.5 tháng = 12.5% năm)."
+                      >
                         <InputNumber
                           size="large"
-                          min={1}
+                          min={0}
                           max={100}
-                          step={1}
-                          value={annualPercent || undefined}
+                          step={0.5}
+                          className="w-full"
+                          placeholder="Ví dụ: 12.5"
+                          addonAfter="% lương năm"
                           onChange={(val) => {
-                            setAnnualPercent(val ?? 0);
-                            if (val) {
-                              const mult = Number(((val * 12) / 100).toFixed(1));
-                              form.setFieldValue('feeMultiplier', mult);
+                            if (val != null) {
+                              form.setFieldValue('feeMultiplier', Number(((val * 12) / 100).toFixed(2)));
                             } else {
                               form.setFieldValue('feeMultiplier', undefined);
                             }
                           }}
-                          className="w-full"
-                          placeholder="Ví dụ: 15, 20"
-                          addonAfter="% lương năm"
                         />
-                        {Boolean(annualPercent) && (
-                          <div className="mt-1 text-xs text-slate-500">
-                            Quy đổi: <strong className="text-indigo-700">{((annualPercent * 12) / 100).toFixed(1)}×</strong> tháng lương
-                          </div>
-                        )}
-                        <Form.Item name="feeMultiplier" hidden>
-                          <InputNumber />
-                        </Form.Item>
-                      </div>
-                    )}
+                      </Form.Item>
+                    </div>
+
+                    {/* Warranty Days & Payment Due Days */}
+                    <div className="grid gap-x-4 md:grid-cols-2">
+                      <Form.Item
+                        name="warrantyDays"
+                        label="Thời hạn bảo hành đề xuất (ngày)"
+                        rules={[{ type: 'number', min: 0, max: 365, message: 'Từ 0 đến 365 ngày.' }]}
+                        extra="Bảo hành tuyển thay thế miễn phí nếu ứng viên nghỉ việc."
+                      >
+                        <InputNumber
+                          size="large"
+                          min={0}
+                          max={365}
+                          className="w-full"
+                          placeholder="Ví dụ: 60"
+                          addonAfter="ngày"
+                        />
+                      </Form.Item>
+
+                      <Form.Item
+                        name="paymentDueDays"
+                        label="Hạn thanh toán đề xuất (ngày)"
+                        rules={[{ type: 'number', min: 0, max: 180, message: 'Từ 0 đến 180 ngày.' }]}
+                        extra="Số ngày thanh toán kể từ ngày ứng viên bắt đầu đi làm."
+                      >
+                        <InputNumber
+                          size="large"
+                          min={0}
+                          max={180}
+                          className="w-full"
+                          placeholder="Ví dụ: 20"
+                          addonAfter="ngày"
+                        />
+                      </Form.Item>
+                    </div>
 
                     <Form.Item
-                      name="warrantyDays"
-                      label="Bảo hành thay thế"
-                      rules={[{ required: true, message: 'Nhập số ngày bảo hành.' }, { type: 'number', min: 1, max: 365, message: 'Từ 1 đến 365 ngày.' }]}
+                      name="termsNote"
+                      label="Ghi chú đề xuất phí hoặc điều khoản thỏa thuận"
+                      className="mb-0"
+                      rules={[{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}
                     >
-                      <InputNumber size="large" min={1} max={365} className="w-full" placeholder="30" addonAfter="ngày" />
-                    </Form.Item>
-
-                    <Form.Item
-                      name="paymentDueDays"
-                      label="Hạn thanh toán"
-                      rules={[{ required: true, message: 'Nhập hạn thanh toán.' }, { type: 'number', min: 1, max: 90, message: 'Từ 1 đến 90 ngày.' }]}
-                    >
-                      <InputNumber size="large" min={1} max={90} className="w-full" placeholder="14" addonAfter="ngày" />
+                      <Input.TextArea
+                        rows={3}
+                        placeholder="Ví dụ: Mong muốn phí 1,5 tháng vì tuyển số lượng 2 người, cần bảo hành 60 ngày..."
+                      />
                     </Form.Item>
                   </div>
-
-                  {/* Concise note */}
-                  <div className="mt-2.5 rounded-lg bg-indigo-50/80 px-3 py-2 text-xs text-indigo-900 border border-solid border-indigo-100 flex items-center gap-2">
-                    <InfoCircleOutlined className="text-indigo-600 shrink-0 text-sm" />
-                    <span>
-                      Phí phát sinh khi ứng viên bắt đầu làm việc. Hỗ trợ tìm ứng viên thay thế trong thời hạn bảo hành đã thỏa thuận theo hợp đồng.
-                    </span>
-                  </div>
-                </div>
+                </section>
               )}
-            </Section>
 
-            {/* 3. Salary */}
-            <Section index={2}>
-              <div className="grid gap-x-4 md:grid-cols-[1fr_1fr_120px]">
-                <Form.Item name="salaryMin" label="Từ" rules={[{ type: 'number', min: 0, message: 'Không được âm.' }]}>
-                  <InputNumber<number> size="large" {...moneyInputProps} placeholder="15.000.000" />
-                </Form.Item>
-                <Form.Item
-                  name="salaryMax"
-                  label="Đến"
-                  dependencies={['salaryMin']}
-                  rules={[
-                    { type: 'number', min: 0, message: 'Không được âm.' },
-                    ({ getFieldValue }) => ({
-                      validator: (_, v) => {
-                        const min = getFieldValue('salaryMin');
-                        return v == null || min == null || v >= min ? Promise.resolve() : Promise.reject(new Error('Phải lớn hơn hoặc bằng mức "Từ".'));
-                      },
-                    }),
-                  ]}
-                >
-                  <InputNumber<number> size="large" {...moneyInputProps} placeholder="25.000.000" />
-                </Form.Item>
-                <Form.Item name="currencyCode" label="Tiền tệ" rules={[{ required: true, message: 'Chọn tiền tệ.' }]}>
-                  <Select size="large" options={['VND', 'USD'].map((c) => ({ value: c, label: c }))} />
-                </Form.Item>
-              </div>
-              <div className="mb-6 flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3">
-                <div>
-                  <div className="text-sm font-medium text-slate-900">Có thể thỏa thuận</div>
-                  <div className="text-[13px] text-slate-600">Ứng viên thấy nhãn “Thỏa thuận” bên cạnh mức lương.</div>
+              {/* Bottom Step Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
+                <Button size="large" onClick={() => setCurrentStep(1)}>
+                  Quay lại: Mô tả công việc
+                </Button>
+                <div className="flex items-center gap-2">
+                  {draftButton()}
+                  <Button type="primary" size="large" className="client-cta px-6" onClick={handleNext}>
+                    Tiếp tục: Xem lại & Gửi duyệt
+                  </Button>
                 </div>
-                <Form.Item name="salaryNegotiable" valuePropName="checked" noStyle>
-                  <Switch aria-label="Có thể thỏa thuận" />
-                </Form.Item>
               </div>
-              <Form.Item name="salaryNote" label="Ghi chú về lương" className="mb-0" rules={[{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}>
-                <Input size="large" placeholder="Ví dụ: Gross, thêm thưởng hiệu suất theo quý" />
-              </Form.Item>
-            </Section>
+            </div>
 
-            {/* 4. Description & benefits */}
-            <Section index={3}>
-              <Form.Item name="description" label={<>Mô tả công việc<SubmitHint /></>}>
-                <Input.TextArea rows={7} showCount placeholder={'• Công việc hằng ngày\n• Đội ngũ bạn sẽ làm cùng\n• Mục tiêu của vị trí trong 6 tháng đầu'} />
-              </Form.Item>
-              <Form.Item name="benefits" label={<>Quyền lợi<SubmitHint /></>} className="mb-0" rules={[{ max: 10000, message: 'Tối đa 10000 ký tự.' }]}>
-                <Input.TextArea rows={5} showCount maxLength={10000} placeholder={'• Bảo hiểm sức khỏe\n• 15 ngày phép/năm\n• Ngân sách học tập'} />
-              </Form.Item>
-            </Section>
+            {/* ═════════════════════════════════════════════════════════════════
+                BƯỚC 4: XEM LẠI VÀ GỬI DUYỆT (TỔNG HỢP)
+                ═════════════════════════════════════════════════════════════════ */}
+            <div className={currentStep === 3 ? 'space-y-5' : 'hidden'}>
+              {/* 1. Job Description Summary */}
+              <section className="admin-surface p-5 sm:p-7 space-y-5">
+                <div className="flex items-center justify-between border-0 border-b border-solid border-slate-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
+                      4.1
+                    </span>
+                    <h2 className="m-0 text-[17px] font-semibold text-slate-900">Tóm tắt tin tuyển dụng (JD)</h2>
+                  </div>
+                  <Button
+                    type="link"
+                    icon={<EditOutlined />}
+                    onClick={() => goToStep(1)}
+                    className="text-sm font-medium"
+                  >
+                    Sửa JD
+                  </Button>
+                </div>
 
-            {/* 5. Requirements */}
-            <Section
-              index={4}
-              extra={
-                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${hasMustHave ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
-                  {hasMustHave ? 'Đã có yêu cầu bắt buộc' : 'Cần ≥ 1 yêu cầu bắt buộc'}
-                </span>
-              }
-            >
-              <Form.List name="requirements">
-                {(fields, { add, remove }) => (
-                  <div className="space-y-3">
-                    {fields.map((field, index) => (
-                      <div key={field.key} className="rounded-xl bg-slate-50 p-3 sm:p-4">
-                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 md:grid-cols-[max-content_minmax(0,1fr)_205px_auto]">
-                          <Form.Item name={[field.name, 'requirementType']} label="Mức độ" className="mb-2 md:mb-0" rules={[{ required: true, message: 'Chọn mức độ.' }]}>
-                            <Radio.Group optionType="button" buttonStyle="solid" size="middle" className="flex whitespace-nowrap">
-                              <Radio.Button value="MUST_HAVE">Bắt buộc</Radio.Button>
-                              <Radio.Button value="SHOULD_HAVE">Ưu tiên</Radio.Button>
-                            </Radio.Group>
-                          </Form.Item>
-                          <div className="order-3 col-span-2 md:order-none md:col-span-1">
-                            <Form.Item
-                              name={[field.name, 'content']}
-                              label={`Yêu cầu ${index + 1}`}
-                              className="mb-2 md:mb-0"
-                              rules={[{ required: true, whitespace: true, message: 'Nhập nội dung yêu cầu hoặc xóa dòng này.' }]}
-                            >
-                              <Input placeholder="Ví dụ: 3+ năm kinh nghiệm ASP.NET Core" />
-                            </Form.Item>
-                          </div>
-                          <div className="order-4 col-span-2 md:order-none md:col-span-1">
-                            <Form.Item name={[field.name, 'category']} label="Nhóm" className="mb-0">
-                              <RequirementCategoryField />
-                            </Form.Item>
-                          </div>
-                          <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                            aria-label={`Xóa yêu cầu ${index + 1}`}
-                            onClick={() => remove(field.name)}
-                            className="order-2 mt-7 md:order-none"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    <Button icon={<PlusOutlined />} onClick={() => add({ requirementType: 'SHOULD_HAVE', content: '' })} block type="dashed" size="large">
-                      Thêm yêu cầu
-                    </Button>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    {effectiveCode && (
+                      <Tag color={SERVICE_META[effectiveCode]?.color} className="m-0 font-medium text-xs">
+                        {SERVICE_TYPE_LABEL[effectiveCode]?.label}
+                      </Tag>
+                    )}
+                    {watched.visibility && (
+                      <Tag className="m-0 text-xs">
+                        {VISIBILITY_LABEL[watched.visibility]?.label}
+                      </Tag>
+                    )}
+                    {watched.employmentType && (
+                      <Tag className="m-0 text-xs">
+                        {EMPLOYMENT_TYPE_LABEL[watched.employmentType]}
+                      </Tag>
+                    )}
+                  </div>
+
+                  <h3 className="m-0 text-[20px] font-bold text-slate-900">
+                    {watched.title?.trim() || 'Chưa đặt tên vị trí'}
+                  </h3>
+
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 text-[13.5px] text-slate-700 bg-slate-50 p-4 rounded-xl border border-solid border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <WalletOutlined className="text-slate-400" />
+                      <span>Mức lương: <b>{salaryText(watched)}</b></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <TeamOutlined className="text-slate-400" />
+                      <span>Số lượng tuyển: <b>{watched.quantity ?? 1} người</b></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <EnvironmentOutlined className="text-slate-400" />
+                      <span>Địa điểm: {watched.location?.trim() || 'Chưa cập nhật'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400 font-bold">📅</span>
+                      <span>Hạn nộp: {watched.deadline || 'Không giới hạn'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {watched.description?.trim() && (
+                  <div>
+                    <div className="font-semibold text-slate-900 text-sm mb-1">Mô tả công việc:</div>
+                    <div className="whitespace-pre-line text-sm text-slate-700 bg-slate-50/60 p-3.5 rounded-xl border border-solid border-slate-100">
+                      {watched.description}
+                    </div>
                   </div>
                 )}
-              </Form.List>
-            </Section>
+
+                {watched.benefits?.trim() && (
+                  <div>
+                    <div className="font-semibold text-slate-900 text-sm mb-1">Quyền lợi:</div>
+                    <div className="whitespace-pre-line text-sm text-slate-700 bg-slate-50/60 p-3.5 rounded-xl border border-solid border-slate-100">
+                      {watched.benefits}
+                    </div>
+                  </div>
+                )}
+
+                {/* Requirements List */}
+                {(watched.requirements ?? []).filter((r) => r.content?.trim()).length > 0 && (
+                  <div>
+                    <div className="font-semibold text-slate-900 text-sm mb-2">Yêu cầu ứng viên:</div>
+                    <ul className="m-0 pl-0 list-none space-y-1.5 text-sm text-slate-700">
+                      {(watched.requirements ?? [])
+                        .filter((r) => r.content?.trim())
+                        .map((r, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <CheckCircleFilled
+                              className={r.requirementType === 'MUST_HAVE' ? 'text-emerald-600 mt-1' : 'text-slate-400 mt-1'}
+                            />
+                            <div>
+                              <span className={r.requirementType === 'MUST_HAVE' ? 'font-medium text-slate-900' : 'text-slate-700'}>
+                                {r.content}
+                              </span>
+                              <span className="ml-2 text-xs text-slate-500">
+                                ({r.requirementType === 'MUST_HAVE' ? 'Bắt buộc' : 'Ưu tiên'}
+                                {r.category ? ` · ${r.category}` : ''})
+                              </span>
+                            </div>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Skills tags */}
+                {(watched.skills ?? []).length > 0 && (
+                  <div>
+                    <div className="font-semibold text-slate-900 text-sm mb-1.5">Kỹ năng yêu cầu:</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(watched.skills ?? []).map((skill, idx) => (
+                        <Tag key={idx} color="processing" className="m-0">
+                          {skill}
+                        </Tag>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* 2. Commercial Terms Summary Block (Về chi phí) */}
+              <section className="rounded-2xl border-2 border-solid border-[color:var(--console-accent)] bg-emerald-50/20 p-5 sm:p-7 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between border-0 border-b border-solid border-emerald-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[color:var(--console-accent)] text-white">
+                      <WalletOutlined />
+                    </div>
+                    <h2 className="m-0 text-[18px] font-bold text-slate-900">Về chi phí</h2>
+                  </div>
+                  <Button
+                    type="link"
+                    icon={<EditOutlined />}
+                    onClick={() => goToStep(2)}
+                    className="text-sm font-medium"
+                  >
+                    Sửa chi phí
+                  </Button>
+                </div>
+
+                {/* Fallback if no service selected */}
+                {!effectiveCode && (
+                  <Empty
+                    description="Chưa chọn loại dịch vụ tuyển dụng"
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  />
+                )}
+
+                {/* CV_APPLICATION Summary */}
+                {effectiveCode === 'CV_APPLICATION' && (
+                  <div className="space-y-3">
+                    <div className="rounded-xl bg-white p-4 border border-solid border-slate-200">
+                      <div className="text-base font-bold text-slate-900">
+                        {selectedPkg.name}: {selectedPkg.priceText} / {selectedPkg.days} ngày
+                      </div>
+                      <p className="mt-1.5 text-sm font-medium text-emerald-800 m-0">
+                        Bạn thanh toán <b>sau khi tin được duyệt</b>.
+                      </p>
+                    </div>
+                    <p className="text-xs text-slate-600 m-0">
+                      Dịch vụ đăng tin áp dụng theo bảng giá công khai. Sau khi chuyên viên HR Connect duyệt tin tuyển dụng, quý công ty sẽ nhận thông báo hoàn tất thanh toán để tin hiển thị công khai.
+                    </p>
+                  </div>
+                )}
+
+                {/* CV_SOURCING Summary */}
+                {effectiveCode === 'CV_SOURCING' && (
+                  <div className="space-y-3">
+                    <div className="rounded-xl bg-white p-4 border border-solid border-slate-200 space-y-2">
+                      <p className="text-sm text-slate-800 leading-relaxed m-0">
+                        Bạn muốn nhận <b>{watched.targetCandidateCount ?? '—'} CV</b>. Giá mỗi CV và tiền đặt cọc sẽ được chuyên viên HR Connect xác nhận với bạn trước khi đăng tin.
+                      </p>
+                      {watched.sourcingPricePerCv ? (
+                        <div className="pt-2 border-0 border-t border-solid border-slate-100">
+                          <span className="text-sm text-slate-900">
+                            Bạn đề xuất: <b>{watched.sourcingPricePerCv.toLocaleString('vi-VN')}đ / CV</b>.
+                          </span>
+                          {watched.targetCandidateCount && (
+                            <div className="text-xs text-slate-600 mt-0.5">
+                              Tổng chi phí đề xuất ước tính: <b>{(watched.targetCandidateCount * watched.sourcingPricePerCv).toLocaleString('vi-VN')}đ</b>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="pt-2 border-0 border-t border-solid border-slate-100 text-xs text-slate-500 italic">
+                          Bạn không đề xuất mức phí cụ thể. Chuyên viên HR Connect sẽ liên hệ tư vấn mức phí theo tiêu chuẩn ngành.
+                        </div>
+                      )}
+                      {watched.termsNote?.trim() && (
+                        <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-solid border-slate-100">
+                          <b>Ghi chú đề xuất:</b> {watched.termsNote}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* HEADHUNT_COD Summary */}
+                {effectiveCode === 'HEADHUNT_COD' && (
+                  <div className="space-y-3">
+                    <div className="rounded-xl bg-white p-4 border border-solid border-slate-200 space-y-2">
+                      <p className="text-sm text-slate-800 leading-relaxed m-0">
+                        Phí tính khi ứng viên bắt đầu đi làm, theo lương trong offer. Chuyên viên HR Connect sẽ liên hệ thống nhất mức phí, bảo hành và hạn thanh toán trước khi đăng tin.
+                      </p>
+                      {watched.feeMultiplier != null || watched.warrantyDays != null || watched.paymentDueDays != null ? (
+                        <div className="pt-2 border-0 border-t border-solid border-slate-100 space-y-1">
+                          {watched.feeMultiplier != null && (
+                            <div className="text-sm text-slate-900">
+                              Bạn đề xuất: <b>{watched.feeMultiplier} tháng lương</b>
+                              {watched.annualSalaryPercent ? ` (tương đương ${watched.annualSalaryPercent}% lương năm)` : ''}.
+                            </div>
+                          )}
+                          {watched.warrantyDays != null && (
+                            <div className="text-xs text-slate-700">
+                              Thời gian bảo hành đề xuất: <b>{watched.warrantyDays} ngày</b>.
+                            </div>
+                          )}
+                          {watched.paymentDueDays != null && (
+                            <div className="text-xs text-slate-700">
+                              Hạn thanh toán đề xuất: <b>{watched.paymentDueDays} ngày</b> sau khi nhận việc.
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="pt-2 border-0 border-t border-solid border-slate-100 text-xs text-slate-500 italic">
+                          Bạn không đề xuất mức phí cụ thể. Mức phí và các điều khoản bảo hành sẽ được HR Connect thống nhất chi tiết qua email hoặc hợp đồng.
+                        </div>
+                      )}
+                      {watched.termsNote?.trim() && (
+                        <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-solid border-slate-100">
+                          <b>Ghi chú đề xuất:</b> {watched.termsNote}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* Bottom Step Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
+                <Button size="large" onClick={() => setCurrentStep(2)}>
+                  Quay lại: Nhu cầu & Chi phí
+                </Button>
+                <div className="flex items-center gap-2">
+                  {draftButton()}
+                  {submitButton()}
+                </div>
+              </div>
+            </div>
           </Form>
         </div>
 
-        {/* ── Side rail (sticky) ──────────────────────────────────────── */}
+        {/* ── Side Rail (Sticky Progress & Preview) ────────────────────────── */}
         <aside aria-label="Tiến độ và xem trước" className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          {/* Progress & Checklist Card */}
           <div className="admin-surface p-5">
             <div className="flex items-center gap-4">
-              <Progress type="circle" percent={percent} size={64} strokeColor="var(--console-accent)" format={(p) => <span className="text-sm font-bold text-slate-900">{p}%</span>} />
+              <Progress
+                type="circle"
+                percent={percent}
+                size={64}
+                strokeColor="var(--console-accent)"
+                format={(p) => <span className="text-sm font-bold text-slate-900">{p}%</span>}
+              />
               <div>
-                <div className="text-[15px] font-semibold text-slate-900">{ready ? 'Sẵn sàng gửi duyệt' : 'Mức độ hoàn thiện'}</div>
+                <div className="text-[15px] font-semibold text-slate-900">
+                  {ready ? 'Sẵn sàng gửi duyệt' : 'Mức độ hoàn thiện'}
+                </div>
                 <div className="text-[13px] text-slate-600">
                   {doneCount}/{checklist.length} mục cần khi gửi duyệt
                 </div>
               </div>
             </div>
+
             <ul className="m-0 mt-4 list-none space-y-0.5 p-0">
               {checklist.map((c) => (
                 <li key={c.label}>
                   <button
                     type="button"
-                    onClick={() => goTo(c.section)}
+                    onClick={() => goToStep(c.step, c.field)}
                     className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-0 bg-transparent px-2 py-1.5 text-left text-[13.5px] transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
                   >
                     {c.done ? (
@@ -1162,24 +2040,24 @@ export const JobFormPage: React.FC = () => {
                     ) : (
                       <ExclamationCircleOutlined className="text-amber-700" aria-label="Còn thiếu" />
                     )}
-                    <span className={c.done ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-900'}>{c.label}</span>
+                    <span className={c.done ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-900'}>
+                      {c.label}
+                    </span>
                   </button>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Candidate-facing preview */}
+          {/* Candidate-Facing Preview */}
           <div className="admin-surface overflow-hidden">
             <div className="border-0 border-b border-solid border-slate-100 px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-              {watched.visibility === 'PARTNER_ONLY'
-                ? 'Affiliate sẽ thấy'
-                : watched.visibility === 'INTERNAL_ONLY'
-                ? 'Chỉ nội bộ thấy'
-                : 'Ứng viên và khách sẽ thấy'}
+              Ứng viên sẽ thấy
             </div>
             <div className="p-5">
-              <div className="text-[16px] font-semibold leading-snug text-slate-900">{watched.title?.trim() || 'Tên vị trí'}</div>
+              <div className="text-[16px] font-semibold leading-snug text-slate-900">
+                {watched.title?.trim() || 'Tên vị trí tuyển dụng'}
+              </div>
               <div className="mt-3 space-y-1.5 text-[13.5px] text-slate-700">
                 <div className="flex items-center gap-2">
                   <WalletOutlined className="text-slate-400" aria-hidden />
@@ -1187,19 +2065,23 @@ export const JobFormPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <EnvironmentOutlined className="text-slate-400" aria-hidden />
-                  {watched.location?.trim() || 'Địa điểm'}
+                  {watched.location?.trim() || 'Địa điểm làm việc'}
                 </div>
                 <div className="flex items-center gap-2">
                   <TeamOutlined className="text-slate-400" aria-hidden />
-                  {watched.employmentType ? EMPLOYMENT_TYPE_LABEL[watched.employmentType] : 'Hình thức'} · {watched.quantity ?? 1} người
+                  {watched.employmentType ? EMPLOYMENT_TYPE_LABEL[watched.employmentType] : 'Hình thức'} ·{' '}
+                  {watched.quantity ?? 1} người
                 </div>
               </div>
-              {selectedCode && (
-                <span className="mt-3 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{SERVICE_TYPE_LABEL[selectedCode]?.label}</span>
+              {effectiveCode && (
+                <span className="mt-3 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                  {SERVICE_TYPE_LABEL[effectiveCode]?.label}
+                </span>
               )}
             </div>
           </div>
 
+          {/* Desktop Save Actions */}
           {editable && (
             <div className="hidden space-y-2 lg:block">
               {submitButton(true)}
@@ -1211,7 +2093,6 @@ export const JobFormPage: React.FC = () => {
               </div>
             </div>
           )}
-
         </aside>
       </div>
 
@@ -1227,15 +2108,6 @@ export const JobFormPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      <PaymentDemoModal
-        visible={Boolean(pendingPaymentJob)}
-        jobId={pendingPaymentJob?.jobId ?? ''}
-        jobTitle={pendingPaymentJob?.title ?? ''}
-        amount={pendingPaymentJob?.amount}
-        onClose={handlePaymentClose}
-        onPaymentSuccess={handlePaymentSuccess}
-      />
     </div>
   );
 };

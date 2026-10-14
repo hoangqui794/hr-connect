@@ -205,6 +205,9 @@ const AffiliateCandidatesPage = React.lazy(() => import('@/features/portal/Affil
 const AffiliateAttributionsPage = React.lazy(() =>
   import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateAttributionsPage }))
 );
+const AffiliateProfilePage = React.lazy(() =>
+  import('@/features/portal/AffiliateProfilePage').then((m) => ({ default: m.AffiliateProfilePage }))
+);
 const AffiliateCommissionsPlaceholder = React.lazy(() =>
   import('@/features/finance-mf05/AffiliateCommissionsPage').then((m) => ({ default: m.AffiliateCommissionsPage }))
 );
@@ -429,6 +432,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/candidate/affiliate-cvs/:cvId': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/settings/email-identities': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/affiliate/attributions': [UserRole.AFFILIATE, UserRole.ADMIN],
+  '/affiliate/profile': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/jobs': [
     UserRole.CLIENT,
     UserRole.AFFILIATE,
@@ -548,6 +552,7 @@ export const AppRoutes = {
   AffiliateSubmissionDetailPage,
   AffiliateCandidatesPage,
   AffiliateAttributionsPage,
+  AffiliateProfilePage,
   AffiliateCommissionsPlaceholder,
   ClientOverviewPage,
   ClientCandidatesPage,

@@ -110,6 +110,62 @@ export class CandidateService {
     const response = await apiClient.patch<UpdateProfileVisibilityResponse>('/candidates/profile/me/visibility', command);
     return response.data;
   }
+
+  // ── Candidate Skills Management ──────────────────────────────────────────
+
+  /**
+   * GET /api/v1/skills
+   * Danh mục kỹ năng hệ thống đang hoạt động để ứng viên tìm kiếm và chọn.
+   */
+  public async getCatalogSkills(params?: { search?: string; page?: number; pageSize?: number }): Promise<any> {
+    const response = await apiClient.get('/skills', { params });
+    return response.data;
+  }
+
+  /**
+   * GET /api/v1/candidates/profile/me/skills
+   * Lấy danh sách kỹ năng hiện tại trong hồ sơ ứng viên.
+   */
+  public async getMySkills(): Promise<CandidateSkillItemDto[]> {
+    const response = await apiClient.get<any>('/candidates/profile/me/skills');
+    return response.data?.data || response.data || [];
+  }
+
+  /**
+   * PUT /api/v1/candidates/profile/me/skills
+   * Cập nhật toàn bộ danh sách kỹ năng (atomic replace, mảng rỗng để xóa tất cả).
+   */
+  public async setMySkills(skills: { skillId: string; proficiencyLevel?: string; yearsOfExperience?: number }[]): Promise<any> {
+    const response = await apiClient.put('/candidates/profile/me/skills', skills);
+    return response.data;
+  }
+
+  /**
+   * POST /api/v1/candidates/profile/me/skills
+   * Thêm một kỹ năng mới vào hồ sơ ứng viên.
+   */
+  public async addSkill(skill: { skillId: string; proficiencyLevel?: string; yearsOfExperience?: number }): Promise<any> {
+    const response = await apiClient.post('/candidates/profile/me/skills', skill);
+    return response.data;
+  }
+
+  /**
+   * PATCH /api/v1/candidates/profile/me/skills/{skillId}
+   * Sửa mức thành thạo hoặc số năm kinh nghiệm của kỹ năng.
+   */
+  public async updateSkill(skillId: string, data: { proficiencyLevel?: string; yearsOfExperience?: number }): Promise<any> {
+    const response = await apiClient.patch(`/candidates/profile/me/skills/${skillId}`, data);
+    return response.data;
+  }
+
+  /**
+   * DELETE /api/v1/candidates/profile/me/skills/{skillId}
+   * Xóa một kỹ năng khỏi hồ sơ ứng viên.
+   */
+  public async removeSkill(skillId: string): Promise<any> {
+    const response = await apiClient.delete(`/candidates/profile/me/skills/${skillId}`);
+    return response.data;
+  }
 }
 
 export const candidateService = new CandidateService();
