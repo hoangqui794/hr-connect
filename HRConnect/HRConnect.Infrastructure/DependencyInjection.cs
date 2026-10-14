@@ -95,6 +95,7 @@ public static class DependencyInjection
         services.AddScoped<IOfferRepository, OfferRepository>();
         services.AddScoped<IPlacementRepository, PlacementRepository>();
         services.AddScoped<IFinanceRepository, FinanceRepository>();
+        services.AddScoped<ISourcingDeliveryRepository, SourcingDeliveryRepository>();
         services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
         services.AddScoped<IAttributionRepository, AttributionRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -121,6 +122,7 @@ public static class DependencyInjection
         services.AddHostedService<AccountLifecycleEmailOutboxWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Offers.OfferExpiryWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Finance.WarrantyProgressWorker>();
+        services.AddHostedService<HRConnect.Infrastructure.Services.Recruitment.SourcingAutoAcceptWorker>();
 
         // 5. Cloudflare R2 Object Storage & CV Storage
         var r2Settings = new R2Settings();

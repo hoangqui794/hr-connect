@@ -31,6 +31,7 @@ public static class BusinessSettingKeys
     public const string HeadhuntWarrantyDays = "mf05.headhunt.warranty_days";
     public const string HeadhuntPaymentDueDays = "mf05.headhunt.payment_due_days";
     public const string CvSourcingAffiliateSharePercent = "mf05.cv_sourcing.affiliate_share_percent";
+    public const string CvSourcingReviewDays = "mf05.cv_sourcing.review_days";
 
     public static readonly IReadOnlyList<BusinessSettingDefinition> All =
     [
@@ -46,6 +47,9 @@ public static class BusinessSettingKeys
         new(CvSourcingAffiliateSharePercent, "CV_SOURCING", "Tỷ lệ quỹ hoa hồng Affiliate",
             "Quỹ hoa hồng = phí dịch vụ CV_SOURCING × tỷ lệ này, chia theo số CV được tính quota.",
             BusinessSettingType.Decimal, 60m, 0m, 100m, "%", "CV_SOURCING model, mục 5 (BR-CVS-09)"),
+        new(CvSourcingReviewDays, "CV_SOURCING", "Thời hạn Client xem xét CV",
+            "Số ngày Client được chấp nhận hoặc từ chối một CV đã giao; hết hạn mà không phản hồi thì CV được tính là đã chấp nhận.",
+            BusinessSettingType.Integer, 7m, 1m, 30m, "ngày", "Quy tắc phí, mục 2"),
     ];
 
     public static BusinessSettingDefinition Get(string key) =>

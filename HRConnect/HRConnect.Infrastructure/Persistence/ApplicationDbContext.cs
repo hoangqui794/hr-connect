@@ -106,6 +106,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<SystemSetting> SystemSettings { get; set; }
 
+    public virtual DbSet<SourcingDelivery> SourcingDeliveries { get; set; }
+
     public virtual DbSet<Probation> Probations { get; set; }
 
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
@@ -2345,6 +2347,62 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.UpdatedBy)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("system_setting_updated_by_fkey");
+        });
+
+        modelBuilder.Entity<SourcingDelivery>(entity =>
+        {
+            entity.HasKey(e => e.DeliveryId).HasName("sourcing_delivery_pkey");
+
+            entity.ToTable("sourcing_delivery", "public", tb =>
+            {
+                tb.HasComment("MF-03 CV_SOURCING: a qualified CV handed to the Client. Only ACCEPTED and AUTO_ACCEPTED are billed (MF-05).");
+                tb.HasCheckConstraint("ck_sourcing_delivery_status", "status IN ('DELIVERED','ACCEPTED','REJECTED','AUTO_ACCEPTED','REPLACED')");
+                tb.HasCheckConstraint("ck_sourcing_delivery_reject_reason",
+                    "reject_reason_code IS NULL OR reject_reason_code IN ('DUPLICATE_ALREADY_OWNED','FALSE_INFORMATION','UNREACHABLE','WRONG_JOB','OTHER')");
+                tb.HasCheckConstraint("ck_sourcing_delivery_review_due", "review_due_at > delivered_at");
+            });
+
+            entity.HasIndex(e => new { e.JobId, e.Status }, "idx_sourcing_delivery_job_status");
+            entity.HasIndex(e => new { e.Status, e.ReviewDueAt }, "idx_sourcing_delivery_status_review_due");
+            entity.HasIndex(e => e.ApplicationId, "uq_sourcing_delivery_application_active")
+                .IsUnique()
+                .HasFilter("status <> 'REPLACED'");
+
+            entity.Property(e => e.DeliveryId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("delivery_id");
+            entity.Property(e => e.JobId).HasColumnName("job_id");
+            entity.Property(e => e.ApplicationId).HasColumnName("application_id");
+            entity.Property(e => e.Status)
+                .HasMaxLength(30)
+                .HasColumnName("status");
+            entity.Property(e => e.DeliveredAt).HasColumnName("delivered_at");
+            entity.Property(e => e.DeliveredBy).HasColumnName("delivered_by");
+            entity.Property(e => e.ReviewDueAt).HasColumnName("review_due_at");
+            entity.Property(e => e.DecidedAt).HasColumnName("decided_at");
+            entity.Property(e => e.DecidedBy).HasColumnName("decided_by");
+            entity.Property(e => e.RejectReasonCode)
+                .HasMaxLength(50)
+                .HasColumnName("reject_reason_code");
+            entity.Property(e => e.RejectNote)
+                .HasMaxLength(2000)
+                .HasColumnName("reject_note");
+            entity.Property(e => e.ReplacedByDeliveryId).HasColumnName("replaced_by_delivery_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Job).WithMany()
+                .HasForeignKey(d => d.JobId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("sourcing_delivery_job_id_fkey");
+            entity.HasOne(d => d.Application).WithMany()
+                .HasForeignKey(d => d.ApplicationId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("sourcing_delivery_application_id_fkey");
         });
 
         modelBuilder.Entity<ServiceFee>(entity =>
