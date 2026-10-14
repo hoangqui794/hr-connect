@@ -51,7 +51,8 @@ Rules:
   use PARTIAL and name the missing ones in the reason.
 - Experience requirements (category EXPERIENCE): count only roles in the field the requirement describes, not
   every job. Set relevant_years to the total years in those roles up to today (overlapping periods count once;
-  internships count at half). Use PARTIAL when there is relevant experience but fewer years than required.
+  internships count at half; student clubs, unions and volunteer activities are not work experience and count 0).
+  Use PARTIAL when there is relevant experience but fewer years than required.
 - Keep each reason to one short sentence in Vietnamese.
 - candidate_summary: two sentences in Vietnamese describing the candidate's field and seniority.
 - overall_fit: how well the candidate fits THIS job overall, as an experienced recruiter would judge it from
@@ -216,6 +217,7 @@ class GeminiCvAssessor:
             raise LlmError("GEMINI_API_KEY is not set.")
         self._settings = settings
         self._client = client or genai.Client(api_key=settings.gemini_api_key)
+        self.last_model = ""
 
     def assess(self, job: Job, document: PreparedDocument, today: str) -> LlmCvAssessment:
         if document.kind == "text":
@@ -224,7 +226,6 @@ class GeminiCvAssessor:
             cv_item = {"type": "document" if document.kind == "pdf" else "image",
                        "data": document.base64_data, "mime_type": document.media_type}
         request = {
-            "model": self._settings.gemini_model,
             "input": [
                 {"type": "text", "text": SYSTEM_PROMPT},
                 {"type": "text", "text": job_prompt(job)},
@@ -233,19 +234,30 @@ class GeminiCvAssessor:
             ],
             "response_format": {"type": "text", "mime_type": "application/json",
                                 "schema": LlmCvAssessment.model_json_schema()},
+            # Same CV + JD should give the same judgement: screening must be repeatable.
+            "generation_config": {"temperature": self._settings.llm_temperature, "seed": self._settings.llm_seed},
         }
-        for attempt in range(1, self._settings.llm_max_attempts + 1):
-            try:
-                interaction = self._client.interactions.create(**request)
-                return _parse(getattr(interaction, "output_text", None))
-            except LlmError:
-                raise
-            except Exception as exc:  # the SDK raises several transport/API error types
-                if attempt < self._settings.llm_max_attempts and _is_rate_limit(exc):
-                    # Free tier allows a few requests per minute: wait for the window to reset.
+        # Quota is counted per model, so a rate-limited model hands over to the next one on the same key.
+        models = list(dict.fromkeys([self._settings.gemini_model, *self._settings.gemini_fallback_model_list]))
+        for index, model in enumerate(models):
+            is_last = index == len(models) - 1
+            for attempt in range(1, self._settings.llm_max_attempts + 1):
+                try:
+                    interaction = self._client.interactions.create(model=model, **request)
+                    result = _parse(getattr(interaction, "output_text", None))
+                    self.last_model = model
+                    return result
+                except LlmError:
+                    raise
+                except Exception as exc:  # the SDK raises several transport/API error types
+                    if not _is_rate_limit(exc):
+                        raise LlmError(f"Gemini request failed: {type(exc).__name__}: {str(exc)[:200]}") from exc
+                    if not is_last:
+                        break  # switch model now instead of waiting
+                    if attempt == self._settings.llm_max_attempts:
+                        raise LlmError(f"All Gemini models are rate limited ({', '.join(models)}).") from exc
+                    # Last model: wait for the per-minute window to reset.
                     time.sleep(self._settings.llm_retry_wait_seconds * attempt)
-                    continue
-                raise LlmError(f"Gemini request failed: {type(exc).__name__}: {str(exc)[:200]}") from exc
         raise LlmError("Gemini request failed after retries.")
 
 
@@ -256,7 +268,9 @@ class OpenAiCvAssessor:
         from openai import OpenAI
 
         self._settings = settings
-        self._client = client or OpenAI(timeout=settings.llm_timeout_seconds)
+        if client is None and not settings.openai_api_key:
+            raise LlmError("OPENAI_API_KEY is not set.")
+        self._client = client or OpenAI(api_key=settings.openai_api_key, timeout=settings.llm_timeout_seconds)
 
     def assess(self, job: Job, document: PreparedDocument, today: str) -> LlmCvAssessment:
         if document.kind == "pdf":
@@ -285,6 +299,25 @@ class OpenAiCvAssessor:
         return _parse(getattr(response, "output_text", None))
 
 
+class FallbackCvAssessor:
+    """Tries each provider in order; the next one runs only when the previous raised LlmError."""
+
+    def __init__(self, assessors: list[tuple[str, CvAssessor]]) -> None:
+        self._assessors = assessors
+        self.last_provider = ""
+
+    def assess(self, job: Job, document: PreparedDocument, today: str) -> LlmCvAssessment:
+        errors = []
+        for name, assessor in self._assessors:
+            try:
+                result = assessor.assess(job, document, today)
+                self.last_provider = name
+                return result
+            except LlmError as exc:
+                errors.append(f"{name}: {exc}")
+        raise LlmError(" | ".join(errors))
+
+
 def _is_rate_limit(exc: Exception) -> bool:
     text = f"{type(exc).__name__} {exc}".upper()
     return "429" in text or "RESOURCE_EXHAUSTED" in text or "RATE" in text and "LIMIT" in text
@@ -299,12 +332,25 @@ def _parse(text: str | None) -> LlmCvAssessment:
         raise LlmError("The model returned JSON that does not match the schema.") from exc
 
 
+_PROVIDERS = {
+    "gemini": GeminiCvAssessor,
+    "openai": OpenAiCvAssessor,
+    "anthropic": ClaudeCvAssessor,
+}
+
+
+def _single(provider: str, settings: Settings) -> CvAssessor:
+    try:
+        return _PROVIDERS[provider](settings)
+    except KeyError:
+        raise ValueError(f"Unknown LLM provider '{provider}'. Use {', '.join(_PROVIDERS)}.") from None
+
+
 def make_assessor(settings: Settings) -> CvAssessor:
-    provider = settings.llm_provider.strip().lower()
-    if provider == "gemini":
-        return GeminiCvAssessor(settings)
-    if provider == "openai":
-        return OpenAiCvAssessor(settings)
-    if provider == "anthropic":
-        return ClaudeCvAssessor(settings)
-    raise ValueError(f"Unknown LLM_PROVIDER '{settings.llm_provider}'. Use gemini, openai or anthropic.")
+    """LLM_PROVIDER first, then each LLM_FALLBACK_PROVIDERS entry (comma-separated) when it fails."""
+    names = [settings.llm_provider.strip().lower()]
+    names += [name.strip().lower() for name in settings.llm_fallback_providers.split(",") if name.strip()]
+    names = list(dict.fromkeys(names))
+    if len(names) == 1:
+        return _single(names[0], settings)
+    return FallbackCvAssessor([(name, _single(name, settings)) for name in names])

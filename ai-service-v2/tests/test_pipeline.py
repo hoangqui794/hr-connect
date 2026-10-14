@@ -118,6 +118,30 @@ def test_years_threshold_is_rechecked_in_code():
     assert years.match_method == "LLM_YEARS_BELOW_MIN"
 
 
+@pytest.mark.parametrize("model_status", ["MATCHED", "PARTIAL"])
+def test_years_just_under_minimum_count_as_met(model_status):
+    result = run([
+        j("dotnet", "MATCHED", ["Built REST APIs with ASP.NET Core and C# for an ERP system."]),
+        j("years", model_status, ["Software Engineer, ABC Corp, 01/2021 – nay"], years=4.8),
+        j("clean", "MATCHED", ["Applied Clean Architecture and design patterns."]),
+        j("mentoring", "NOT_FOUND"),
+    ])
+    years = next(r for r in result.must_have_result if r.requirement.id == "years")
+    assert years.match_status == MatchStatus.MATCHED  # 4.8 >= 5 - 0.25
+    assert years.match_method == "LLM_YEARS_WITHIN_TOLERANCE"
+
+
+def test_years_tolerance_is_configurable():
+    result = run([
+        j("dotnet", "MATCHED", ["Built REST APIs with ASP.NET Core and C# for an ERP system."]),
+        j("years", "MATCHED", ["Software Engineer, ABC Corp, 01/2021 – nay"], years=4.8),
+        j("clean", "MATCHED", ["Applied Clean Architecture and design patterns."]),
+        j("mentoring", "NOT_FOUND"),
+    ], settings=Settings(_env_file=None, years_tolerance=0.0))
+    years = next(r for r in result.must_have_result if r.requirement.id == "years")
+    assert years.match_status == MatchStatus.PARTIAL
+
+
 def test_missing_must_have_caps_the_score():
     result = run([
         j("dotnet", "NOT_FOUND"),
@@ -198,3 +222,74 @@ def test_transcription_is_requested_only_when_pages_are_images():
     assert needs_transcription(scan) is True
     assert needs_transcription(mixed) is True
     assert '""' in instruction("2026-10-14", transcribe=False)
+
+
+def test_fallback_provider_answers_when_primary_fails():
+    from app.llm import FallbackCvAssessor, LlmError
+
+    class Down:
+        def assess(self, *args):
+            raise LlmError("quota")
+
+    backup = FakeAssessor([j("dotnet", "MATCHED", ["Built REST APIs with ASP.NET Core and C# for an ERP system."])])
+    settings = Settings(_env_file=None, llm_provider="gemini", openai_model="gpt-5.4-mini")
+    pipeline = MatchingPipeline(settings, FallbackCvAssessor([("gemini", Down()), ("openai", backup)]), FakeSemantic())
+    result = pipeline.run(metadata(REQS), pdf_document(), today=date(2026, 10, 14))
+    assert backup.calls == 1
+    assert result.model_name.startswith("gpt-5.4-mini")
+
+
+def test_all_providers_failing_raises_llm_error():
+    from app.llm import FallbackCvAssessor, LlmError
+
+    class Down:
+        def assess(self, *args):
+            raise LlmError("down")
+
+    with pytest.raises(LlmError, match="gemini: down | openai: down"):
+        FallbackCvAssessor([("gemini", Down()), ("openai", Down())]).assess(None, None, "")
+
+
+
+class FakeGeminiClient:
+    """interactions.create fails with 429 for the models in `limited`."""
+
+    def __init__(self, limited):
+        self.limited = set(limited)
+        self.models = []
+        self.interactions = self
+
+    def create(self, model, **request):
+        self.models.append(model)
+        if model in self.limited:
+            raise RuntimeError("429 RESOURCE_EXHAUSTED")
+
+        class Reply:
+            output_text = LlmCvAssessment(candidate_summary="s", cv_text="", unreadable_parts="", requirements=[],
+                                          overall_fit=LlmOverallFit(level=1, reason="r", evidence_quotes=[])
+                                          ).model_dump_json()
+        return Reply()
+
+
+def gemini(limited, fallbacks="gemini-b"):
+    from app.llm import GeminiCvAssessor
+
+    settings = Settings(_env_file=None, gemini_model="gemini-a", gemini_fallback_models=fallbacks,
+                        llm_retry_wait_seconds=0)
+    return GeminiCvAssessor(settings, client=FakeGeminiClient(limited))
+
+
+def test_rate_limited_gemini_model_switches_to_fallback_model_on_same_key():
+    assessor = gemini(limited=["gemini-a"])
+    assessor.assess(metadata(REQS).job, pdf_document(), "2026-10-14")
+    assert assessor._client.models == ["gemini-a", "gemini-b"]  # switched at once, no waiting
+    assert assessor.last_model == "gemini-b"
+
+
+def test_all_gemini_models_limited_raises_after_retrying_the_last():
+    from app.llm import LlmError
+
+    assessor = gemini(limited=["gemini-a", "gemini-b"])
+    with pytest.raises(LlmError, match="All Gemini models are rate limited"):
+        assessor.assess(metadata(REQS).job, pdf_document(), "2026-10-14")
+    assert assessor._client.models == ["gemini-a"] + ["gemini-b"] * 3
