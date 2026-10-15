@@ -208,10 +208,15 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
             ) : (
               <>
                 <Alert className="mb-4" type="info" showIcon message={target.resultNote ?? 'Client đã báo ứng viên nghỉ việc trong thời gian bảo hành.'} />
-                <Form.Item name="decision" label="Kết quả xác minh" rules={[{ required: true }]}>
+                <Form.Item
+                  name="decision"
+                  label="Kết quả xác minh"
+                  rules={[{ required: true }]}
+                  extra="Đúng: bảo hành chấm dứt, hoa hồng của Affiliate bị hủy, xử lý thay thế theo hợp đồng. Không đúng: bảo hành tiếp tục, hoa hồng trở lại trạng thái đang trong thời gian bảo hành."
+                >
                   <Radio.Group>
-                    <Radio value="confirm">Đúng, ứng viên đã nghỉ (Kích hoạt thay thế ứng viên / Xử lý theo hợp đồng)</Radio>
-                    <Radio value="reject">Không đúng, ứng viên vẫn đi làm (Tiếp tục bảo lưu ON_HOLD)</Radio>
+                    <Radio value="confirm">Đúng, ứng viên đã nghỉ</Radio>
+                    <Radio value="reject">Không đúng, ứng viên vẫn đi làm</Radio>
                   </Radio.Group>
                 </Form.Item>
                 <Form.Item noStyle shouldUpdate={(a, b) => a.decision !== b.decision}>

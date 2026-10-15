@@ -4024,7 +4024,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                             t.HasCheckConstraint("ck_service_fee_paid", "(status = 'PAID') = (paid_at IS NOT NULL)");
 
-                            t.HasCheckConstraint("ck_service_fee_status", "status IN ('PENDING','PAID','OVERDUE','CANCELLED')");
+                            t.HasCheckConstraint("ck_service_fee_status", "status IN ('PENDING','DUE','PAID','OVERDUE','CANCELLED')");
                         });
                 });
 

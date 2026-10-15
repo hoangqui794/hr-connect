@@ -63,6 +63,7 @@ public static class AuditActions
     public const string WarrantyClaimReported = "WARRANTY_CLAIM_REPORTED";
     public const string WarrantyClaimResolved = "WARRANTY_CLAIM_RESOLVED";
     public const string ServiceFeeOverdue = "SERVICE_FEE_OVERDUE";
+    public const string ServiceFeeDue = "SERVICE_FEE_DUE";
     public const string ServiceFeePaymentRecorded = "SERVICE_FEE_PAYMENT_RECORDED";
     public const string CommissionEarned = "COMMISSION_EARNED";
     public const string CommissionApproved = "COMMISSION_APPROVED";
