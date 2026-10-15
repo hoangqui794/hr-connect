@@ -70,6 +70,7 @@ import {
   EMPLOYMENT_TYPE_LABEL,
   SERVICE_TYPE_LABEL,
   VISIBILITY_LABEL,
+  REQUIREMENT_CATEGORY_OPTIONS,
   allowedVisibilities,
   clientActions,
 } from './jobDisplay';
@@ -1370,7 +1371,7 @@ export const JobFormPage: React.FC = () => {
                       <div className="space-y-3">
                         {fields.map((field, index) => (
                           <div key={field.key} className="rounded-xl border border-solid border-slate-200 bg-slate-50/70 p-3.5">
-                            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 md:grid-cols-[auto_minmax(0,1fr)_160px_auto]">
+                            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 md:grid-cols-[auto_minmax(0,1fr)_185px_auto]">
                               <Form.Item
                                 name={[field.name, 'requirementType']}
                                 label="Mức độ"
@@ -1396,7 +1397,16 @@ export const JobFormPage: React.FC = () => {
 
                               <div className="order-4 col-span-2 md:order-none md:col-span-1">
                                 <Form.Item name={[field.name, 'category']} label="Phân nhóm" className="mb-0">
-                                  <Input placeholder="Kỹ năng, Kinh nghiệm..." />
+                                  <Select
+                                    placeholder="Chọn phân nhóm"
+                                    allowClear
+                                    showSearch
+                                    options={REQUIREMENT_CATEGORY_OPTIONS}
+                                    filterOption={(input, option) =>
+                                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase()) ||
+                                      (option?.value ?? '').toLowerCase().includes(input.toLowerCase())
+                                    }
+                                  />
                                 </Form.Item>
                               </div>
 

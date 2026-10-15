@@ -81,6 +81,13 @@ export const JOB_TEMPLATE_CATEGORY_LABEL: Record<string, string> = {
   OTHER: 'Khác',
 };
 
+export const REQUIREMENT_CATEGORY_OPTIONS: { value: string; label: string }[] = [
+  { value: 'EXPERIENCE', label: 'Kinh nghiệm (EXPERIENCE)' },
+  { value: 'SKILL', label: 'Kỹ năng (SKILL)' },
+  { value: 'EDUCATION', label: 'Học vấn (EDUCATION)' },
+  { value: 'OTHER', label: 'Khác (OTHER)' },
+];
+
 export const formatTemplateIndustry = (industry: string | null | undefined): string => {
   if (!industry) return '—';
   return JOB_TEMPLATE_INDUSTRY_LABEL[industry] || industry;

@@ -21,6 +21,7 @@ import {
   Modal,
   Popconfirm,
   Row,
+  Segmented,
   Select,
   Space,
   Switch,
@@ -850,23 +851,42 @@ export const JobTemplatesAdminPage: React.FC = () => {
                     />
 
                     <div className="flex flex-wrap items-center gap-2">
-                      <Select
-                        value={req.requirementType}
-                        onChange={(val) => handleUpdateRequirement(req.key, 'requirementType', val)}
-                        className="w-[100px]"
+                      <Segmented
                         size="small"
-                      >
-                        <Option value="MUST_HAVE">
-                          <Tag color="red" className="m-0 text-[10px]">
-                            Bắt buộc
-                          </Tag>
-                        </Option>
-                        <Option value="SHOULD_HAVE">
-                          <Tag color="orange" className="m-0 text-[10px]">
-                            Ưu tiên
-                          </Tag>
-                        </Option>
-                      </Select>
+                        value={req.requirementType}
+                        onChange={(val) => handleUpdateRequirement(req.key, 'requirementType', val as JobRequirementType)}
+                        className="bg-slate-200/70 p-0.5 rounded-lg text-xs"
+                        options={[
+                          {
+                            label: (
+                              <span
+                                className={`px-1 text-[11px] transition-colors ${
+                                  req.requirementType === 'MUST_HAVE'
+                                    ? 'font-bold text-rose-600'
+                                    : 'font-medium text-slate-500'
+                                }`}
+                              >
+                                Bắt buộc
+                              </span>
+                            ),
+                            value: 'MUST_HAVE',
+                          },
+                          {
+                            label: (
+                              <span
+                                className={`px-1 text-[11px] transition-colors ${
+                                  req.requirementType === 'SHOULD_HAVE'
+                                    ? 'font-bold text-amber-600'
+                                    : 'font-medium text-slate-500'
+                                }`}
+                              >
+                                Ưu tiên
+                              </span>
+                            ),
+                            value: 'SHOULD_HAVE',
+                          },
+                        ]}
+                      />
 
                       <Select
                         value={req.category}
