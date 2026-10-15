@@ -48,6 +48,11 @@ public partial class Submission
 
     public virtual Job Job { get; set; } = null!;
 
+    /// <summary>MF-05 replacement slot this record belongs to; null for a normal hire.</summary>
+    public Guid? ReplacementSlotId { get; set; }
+
+    public virtual ReplacementSlot? ReplacementSlot { get; set; }
+
     public virtual AppUser SubmittedByNavigation { get; set; } = null!;
 }
 

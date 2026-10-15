@@ -64,6 +64,10 @@ public static class AuditActions
     public const string WarrantyClaimResolved = "WARRANTY_CLAIM_RESOLVED";
     public const string ServiceFeeOverdue = "SERVICE_FEE_OVERDUE";
     public const string ServiceFeeDue = "SERVICE_FEE_DUE";
+    public const string ReplacementSlotOpened = "REPLACEMENT_SLOT_OPENED";
+    public const string ReplacementSlotCancelled = "REPLACEMENT_SLOT_CANCELLED";
+    public const string ReplacementSlotExpired = "REPLACEMENT_SLOT_EXPIRED";
+    public const string ReplacementNotAllowed = "REPLACEMENT_NOT_ALLOWED";
     public const string ServiceFeePaymentRecorded = "SERVICE_FEE_PAYMENT_RECORDED";
     public const string CommissionEarned = "COMMISSION_EARNED";
     public const string CommissionApproved = "COMMISSION_APPROVED";

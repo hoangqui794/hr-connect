@@ -57,6 +57,8 @@ public sealed class WarrantyProgressWorker : BackgroundService
         IReadOnlyList<Guid> placementIds;
         IReadOnlyList<Guid> feeIds;
         IReadOnlyList<Guid> dueSoonIds;
+        IReadOnlyList<Guid> expiredSlotIds;
+        var now = DateTime.UtcNow;
         int reminderDays;
         await using (var discovery = _scopeFactory.CreateAsyncScope())
         {
@@ -66,6 +68,7 @@ public sealed class WarrantyProgressWorker : BackgroundService
             reminderDays = await discovery.ServiceProvider.GetRequiredService<IAdminBusinessSettings>()
                 .GetIntAsync(BusinessSettingKeys.FeeDueReminderDays, cancellationToken);
             dueSoonIds = await repository.GetServiceFeeIdsDueSoonAsync(today, today.AddDays(reminderDays), BatchSize, cancellationToken);
+            expiredSlotIds = await repository.GetExpiredReplacementSlotIdsAsync(now, BatchSize, cancellationToken);
         }
 
         var passed = 0;
@@ -86,9 +89,17 @@ public sealed class WarrantyProgressWorker : BackgroundService
             overdue += await RunItemAsync(service => service.MarkServiceFeeOverdueAsync(feeId, today, cancellationToken), feeId) ? 1 : 0;
         }
 
-        if (passed + due + overdue > 0)
+        var expired = 0;
+        foreach (var slotId in expiredSlotIds)
         {
-            _logger.LogInformation("MF-05: {Passed} bảo hành đã qua (hoa hồng EARNED), {Due} công nợ sắp đến hạn, {Overdue} công nợ quá hạn.", passed, due, overdue);
+            expired += await RunItemAsync(service => service.ExpireReplacementSlotAsync(slotId, now, cancellationToken), slotId) ? 1 : 0;
+        }
+
+        if (passed + due + overdue + expired > 0)
+        {
+            _logger.LogInformation(
+                "MF-05: {Passed} bảo hành đã qua (hoa hồng EARNED), {Due} công nợ sắp đến hạn, {Overdue} công nợ quá hạn, {Expired} suất thay thế hết hạn.",
+                passed, due, overdue, expired);
         }
     }
 

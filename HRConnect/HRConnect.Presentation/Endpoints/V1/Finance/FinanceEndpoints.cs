@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Finance.Commands.Settlement;
 using HRConnect.Application.Features.Finance.Commands.WarrantyClaims;
 using HRConnect.Application.Features.Finance.Queries;
+using HRConnect.Application.Features.Finance.ReplacementSlots;
 using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -30,6 +31,7 @@ public static class FinanceEndpoints
     public sealed record RecordServiceFeePaymentRequest(DateTime PaidAt, string PaymentReference);
     public sealed record ReasonRequest(string Reason);
     public sealed record AdjustCommissionRequest(decimal NewAmount, string Reason);
+    public sealed record CancelReplacementSlotRequest(string Reason, Guid ConcurrencyToken);
     public sealed record RecordPayoutRequest(bool Succeeded, DateTime PayoutDate, string? Method, string? TransactionReference, string? EvidenceUrl);
 
     public static IEndpointRouteBuilder MapFinanceEndpoints(this IEndpointRouteBuilder app)
@@ -50,7 +52,26 @@ public static class FinanceEndpoints
                 new ResolveResignationCommand(placementId, body.Confirmed, body.Note, userId), ct)))
             .WithName("ResolvePlacementResignation")
             .WithSummary("Internal HR xác minh báo nghỉ việc")
-            .WithDescription("Xác nhận: bảo hành VOIDED, hoa hồng CANCELLED, Client được tuyển thay thế. Bác bỏ (cần ghi chú): bảo hành ACTIVE, hoa hồng PENDING. Quyền warranty.manage.");
+            .WithDescription("Xác nhận: bảo hành VOIDED, hoa hồng CANCELLED, phí giữ nguyên và mở suất thay thế (OPEN nếu phí đã trả, WAITING_PAYMENT nếu chưa; response.replacement). Người nghỉ là người thay thế thì không mở suất (replacement = null). Bác bỏ (cần ghi chú): bảo hành ACTIVE, hoa hồng IN_WARRANTY. Quyền warranty.manage.");
+
+        group.MapGet("/jobs/{jobId:guid}/replacement-slots", (
+                Guid jobId, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>
+            Execute(user, [WarrantyManage, CommissionManage, CommissionView, PlacementConfirm], userId =>
+            {
+                var platform = Has(user, WarrantyManage) || Has(user, CommissionManage) || Has(user, CommissionView);
+                return sender.Send(new GetJobReplacementSlotsQuery(jobId, platform ? null : userId), ct);
+            }))
+            .WithName("GetJobReplacementSlots")
+            .WithSummary("Danh sách suất tuyển thay thế của job")
+            .WithDescription("Internal HR / Admin xem mọi job; Client (placement.confirm) chỉ xem job của doanh nghiệp mình. Trạng thái: WAITING_PAYMENT, OPEN, FILLED, CANCELLED, EXPIRED.");
+
+        group.MapPost("/internal/replacement-slots/{replacementSlotId:guid}/cancel", (
+                Guid replacementSlotId, [FromBody] CancelReplacementSlotRequest body, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>
+            Execute(user, [WarrantyManage], userId => sender.Send(
+                new CancelReplacementSlotCommand(replacementSlotId, body.Reason, body.ConcurrencyToken, userId), ct)))
+            .WithName("CancelReplacementSlot")
+            .WithSummary("Internal HR hủy suất tuyển thay thế")
+            .WithDescription("Chỉ hủy suất WAITING_PAYMENT hoặc OPEN, cần lý do và concurrencyToken. Không hoàn phí. Lỗi 409: REPLACEMENT_SLOT_NOT_CANCELLABLE, REPLACEMENT_SLOT_CONCURRENCY_CONFLICT. Quyền warranty.manage.");
 
         group.MapGet("/warranties", (
                 ClaimsPrincipal user, [FromServices] ISender sender, [FromQuery] string? status, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>

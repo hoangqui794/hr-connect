@@ -8,6 +8,7 @@ using HRConnect.Application.Features.Finance.Commands.Settlement;
 using HRConnect.Application.Features.Finance.Commands.WarrantyClaims;
 using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Finance.Queries;
+using HRConnect.Application.Features.Finance.ReplacementSlots;
 using HRConnect.Application.Features.Settings;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
@@ -41,6 +42,9 @@ public class Mf05FinanceTests
     private SettlementCommandHandlers Settlement() => new(Repository, UnitOfWork, _audit.Object);
 
     private WarrantyProgressService Progress() => new(Repository, UnitOfWork, _audit.Object);
+
+    private ResolveResignationCommandHandler Resolve() => new(
+        Repository, UnitOfWork, _audit.Object, new BusinessSettingsService(new SystemSettingRepository(_context)));
 
     // ---- setup ---------------------------------------------------------------------------
 
@@ -280,7 +284,7 @@ public class Mf05FinanceTests
         // A claimed warranty is never passed by the worker.
         (await Progress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(40))).Should().BeFalse();
 
-        var resolved = await new ResolveResignationCommandHandler(Repository, UnitOfWork, _audit.Object).Handle(
+        var resolved = await Resolve().Handle(
             new ResolveResignationCommand(placement.PlacementId, true, "Đã xác minh với ứng viên", _actor), default);
 
         resolved.WarrantyStatus.Should().Be(WarrantyStates.Voided);
@@ -295,7 +299,7 @@ public class Mf05FinanceTests
         await InitializeAsync(placement, offer);
         await ReportHandler().Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(5), "Nghỉ", _actor), default);
 
-        var resolved = await new ResolveResignationCommandHandler(Repository, UnitOfWork, _audit.Object).Handle(
+        var resolved = await Resolve().Handle(
             new ResolveResignationCommand(placement.PlacementId, false, "Ứng viên vẫn đi làm", _actor), default);
 
         resolved.WarrantyStatus.Should().Be(WarrantyStates.Active);
@@ -383,7 +387,7 @@ public class Mf05FinanceTests
         var (placement, offer) = await SeedPlacementAsync();
         await InitializeAsync(placement, offer);
         await ReportHandler().Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(5), "Nghỉ", _actor), default);
-        await new ResolveResignationCommandHandler(Repository, UnitOfWork, _audit.Object).Handle(
+        await Resolve().Handle(
             new ResolveResignationCommand(placement.PlacementId, false, "Ứng viên vẫn đi làm", _actor), default);
 
         (await Progress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(30))).Should().BeTrue();
@@ -398,7 +402,7 @@ public class Mf05FinanceTests
         await InitializeAsync(placement, offer);
         await ReportHandler().Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(5), "Nghỉ", _actor), default);
 
-        await new ResolveResignationCommandHandler(Repository, UnitOfWork, _audit.Object).Handle(
+        await Resolve().Handle(
             new ResolveResignationCommand(placement.PlacementId, true, "Đã xác minh", _actor), default);
 
         (await CommissionAsync()).Status.Should().Be(CommissionStates.Cancelled);
@@ -494,6 +498,168 @@ public class Mf05FinanceTests
         reminder.DefaultValue.Should().Be(5m);
         reminder.Min.Should().Be(1m);
         reminder.Max.Should().Be(30m);
+    }
+
+    // ---- replacement slots (docs/MF05/mf05-thiet-ke-suat-thay-the.md) -----------------------
+
+    /// <summary>Placement started, Client reported the resignation; the fee is paid when <paramref name="feePaid"/>.</summary>
+    private async Task<(Placement Placement, ServiceFee Fee)> ResignationReportedAsync(bool feePaid, string jobStatus = "ACTIVE")
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        var fee = await _context.ServiceFees.SingleAsync();
+        if (feePaid)
+        {
+            fee.Status = ServiceFeeStates.Paid;
+            fee.PaidAt = DateTime.UtcNow;
+        }
+
+        placement.Application.Job.Status = jobStatus;
+        await _context.SaveChangesAsync();
+        await ReportHandler().Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(5), "Nghỉ", _actor), default);
+        return (placement, fee);
+    }
+
+    private Task<WarrantyClaimResponse> ConfirmResignationAsync(Guid placementId) =>
+        Resolve().Handle(new ResolveResignationCommand(placementId, true, "Đã xác minh", _actor), default);
+
+    [Fact]
+    public async Task Confirmed_resignation_with_paid_fee_opens_a_slot_for_the_configured_window()
+    {
+        var (placement, fee) = await ResignationReportedAsync(feePaid: true);
+
+        var resolved = await ConfirmResignationAsync(placement.PlacementId);
+
+        var slot = await _context.ReplacementSlots.SingleAsync();
+        slot.Status.Should().Be(ReplacementSlotStates.Open);
+        slot.ServiceFeeId.Should().Be(fee.ServiceFeeId);
+        slot.OriginalPlacementId.Should().Be(placement.PlacementId);
+        slot.FillWindowDays.Should().Be(30);
+        slot.ExpiresAt.Should().Be(slot.OpenedAt!.Value.AddDays(30));
+        resolved.Replacement.Should().NotBeNull();
+        resolved.Replacement!.Status.Should().Be(ReplacementSlotStates.Open);
+        // R4: the fee is kept, not refunded.
+        (await _context.ServiceFees.SingleAsync()).Status.Should().Be(ServiceFeeStates.Paid);
+    }
+
+    [Fact]
+    public async Task Confirmed_resignation_with_unpaid_fee_waits_for_payment_then_opens()
+    {
+        var (placement, fee) = await ResignationReportedAsync(feePaid: false);
+
+        var resolved = await ConfirmResignationAsync(placement.PlacementId);
+
+        resolved.Replacement!.Status.Should().Be(ReplacementSlotStates.WaitingPayment);
+        resolved.Replacement.ExpiresAt.Should().BeNull();
+
+        await Settlement().Handle(new RecordServiceFeePaymentCommand(fee.ServiceFeeId, DateTime.UtcNow, "VCB-REPL", _actor), default);
+
+        var slot = await _context.ReplacementSlots.SingleAsync();
+        slot.Status.Should().Be(ReplacementSlotStates.Open);
+        slot.OpenedAt.Should().NotBeNull();
+        slot.ExpiresAt.Should().Be(slot.OpenedAt!.Value.AddDays(30));
+    }
+
+    [Fact]
+    public async Task Opening_a_slot_reopens_a_closed_job_with_a_history_row()
+    {
+        var (placement, _) = await ResignationReportedAsync(feePaid: true, jobStatus: "CLOSED");
+
+        await ConfirmResignationAsync(placement.PlacementId);
+
+        var job = await _context.Jobs.Include(j => j.JobStatusHistories).SingleAsync();
+        job.Status.Should().Be("ACTIVE");
+        job.JobStatusHistories.Should().ContainSingle(h =>
+            h.OldStatus == "CLOSED" && h.NewStatus == "ACTIVE" && h.ReasonCode == ReplacementSlotErrorCodes.JobReopenedReason);
+    }
+
+    [Fact]
+    public async Task Replacement_who_also_leaves_gets_no_second_slot()
+    {
+        var (placement, _) = await ResignationReportedAsync(feePaid: true);
+        placement.ReplacementSlotId = Guid.NewGuid(); // this leaver was already the replacement (R1)
+        await _context.SaveChangesAsync();
+
+        var resolved = await ConfirmResignationAsync(placement.PlacementId);
+
+        resolved.Replacement.Should().BeNull();
+        (await _context.ReplacementSlots.AnyAsync()).Should().BeFalse();
+        _audit.Verify(a => a.AddAsync(It.Is<AuditEntry>(e => e.Action == AuditActions.ReplacementNotAllowed), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Rejected_resignation_opens_no_slot()
+    {
+        var (placement, _) = await ResignationReportedAsync(feePaid: true);
+
+        var resolved = await Resolve().Handle(new ResolveResignationCommand(placement.PlacementId, false, "Vẫn đi làm", _actor), default);
+
+        resolved.Replacement.Should().BeNull();
+        (await _context.ReplacementSlots.AnyAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Open_slot_expires_only_after_its_deadline()
+    {
+        var (placement, _) = await ResignationReportedAsync(feePaid: true);
+        await ConfirmResignationAsync(placement.PlacementId);
+        var slot = await _context.ReplacementSlots.SingleAsync();
+
+        (await Progress().ExpireReplacementSlotAsync(slot.ReplacementSlotId, slot.ExpiresAt!.Value.AddMinutes(-1))).Should().BeFalse();
+        (await Repository.GetExpiredReplacementSlotIdsAsync(slot.ExpiresAt!.Value, 10)).Should().Contain(slot.ReplacementSlotId);
+        (await Progress().ExpireReplacementSlotAsync(slot.ReplacementSlotId, slot.ExpiresAt!.Value)).Should().BeTrue();
+
+        (await _context.ReplacementSlots.SingleAsync()).Status.Should().Be(ReplacementSlotStates.Expired);
+    }
+
+    [Fact]
+    public async Task Cancel_needs_the_current_token_and_an_open_or_waiting_slot()
+    {
+        var (placement, _) = await ResignationReportedAsync(feePaid: true);
+        await ConfirmResignationAsync(placement.PlacementId);
+        var slot = await _context.ReplacementSlots.SingleAsync();
+        var handler = new CancelReplacementSlotCommandHandler(Repository, UnitOfWork, _audit.Object);
+
+        var stale = () => handler.Handle(new CancelReplacementSlotCommand(slot.ReplacementSlotId, "Client không cần", Guid.NewGuid(), _actor), default);
+        (await stale.Should().ThrowAsync<ConflictException>()).Which.ErrorCode.Should().Be(ReplacementSlotErrorCodes.ConcurrencyConflict);
+
+        var cancelled = await handler.Handle(
+            new CancelReplacementSlotCommand(slot.ReplacementSlotId, "Client không cần", slot.ConcurrencyToken, _actor), default);
+        cancelled.Status.Should().Be(ReplacementSlotStates.Cancelled);
+        cancelled.CancelReason.Should().Be("Client không cần");
+
+        var again = () => handler.Handle(
+            new CancelReplacementSlotCommand(slot.ReplacementSlotId, "Lần nữa", cancelled.ConcurrencyToken, _actor), default);
+        (await again.Should().ThrowAsync<ConflictException>()).Which.ErrorCode.Should().Be(ReplacementSlotErrorCodes.NotCancellable);
+    }
+
+    [Fact]
+    public async Task Client_only_sees_slots_of_its_own_company()
+    {
+        var (placement, _) = await ResignationReportedAsync(feePaid: true);
+        await ConfirmResignationAsync(placement.PlacementId);
+        var otherCompanyUser = new Mock<ICompanyUserRepository>();
+        otherCompanyUser.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = Guid.NewGuid(), UserId = _actor, Status = "ACTIVE" });
+        var ownCompanyUser = new Mock<ICompanyUserRepository>();
+        ownCompanyUser.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = _companyId, UserId = _actor, Status = "ACTIVE" });
+        var query = new GetJobReplacementSlotsQuery(placement.Application.JobId, _actor);
+
+        var hidden = () => new GetJobReplacementSlotsQueryHandler(Repository, otherCompanyUser.Object).Handle(query, default);
+        await hidden.Should().ThrowAsync<NotFoundException>();
+
+        var slots = await new GetJobReplacementSlotsQueryHandler(Repository, ownCompanyUser.Object).Handle(query, default);
+        slots.Should().ContainSingle().Which.OriginalCandidateName.Should().Be("Nguyễn Văn Nam");
+    }
+
+    [Fact]
+    public void Fill_window_is_a_configurable_setting()
+    {
+        var setting = BusinessSettingKeys.All.Single(s => s.Key == BusinessSettingKeys.ReplacementFillWindowDays);
+        setting.DefaultValue.Should().Be(30m);
+        setting.Min.Should().Be(1m);
+        setting.Max.Should().Be(180m);
     }
 
     // ---- approval and payout ----------------------------------------------------------------

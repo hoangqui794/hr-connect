@@ -2,6 +2,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -52,12 +53,16 @@ public sealed class SettlementCommandHandlers :
     private readonly IFinanceRepository _financeRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationRepository? _notificationRepository;
 
-    public SettlementCommandHandlers(IFinanceRepository financeRepository, IUnitOfWork unitOfWork, IAuditLogService auditLogService)
+    public SettlementCommandHandlers(
+        IFinanceRepository financeRepository, IUnitOfWork unitOfWork, IAuditLogService auditLogService,
+        INotificationRepository? notificationRepository = null)
     {
         _financeRepository = financeRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
+        _notificationRepository = notificationRepository;
     }
 
     public async Task<ServiceFeePaymentResponse> Handle(RecordServiceFeePaymentCommand request, CancellationToken cancellationToken)
@@ -88,6 +93,17 @@ public sealed class SettlementCommandHandlers :
 
         await AuditAsync(AuditActions.ServiceFeePaymentRecorded, "SERVICE_FEE", fee.ServiceFeeId, request.CurrentUserId,
             new { status = oldStatus }, new { status = fee.Status, fee.PaidAt, fee.PaymentReference, fee.Amount }, cancellationToken);
+
+        // S2: a replacement slot waiting for this payment opens now (docs/MF05/mf05-thiet-ke-suat-thay-the.md).
+        var slot = await _financeRepository.GetReplacementSlotByServiceFeeForUpdateAsync(fee.ServiceFeeId, cancellationToken);
+        if (slot is { Status: ReplacementSlotStates.WaitingPayment })
+        {
+            await ReplacementSlotLifecycle.OpenAsync(
+                slot, slot.Job, fee.UpdatedAt, request.CurrentUserId, _financeRepository, _notificationRepository, cancellationToken);
+            await AuditAsync(AuditActions.ReplacementSlotOpened, "REPLACEMENT_SLOT", slot.ReplacementSlotId, request.CurrentUserId,
+                new { status = ReplacementSlotStates.WaitingPayment }, new { slot.Status, slot.OpenedAt, slot.ExpiresAt }, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return new ServiceFeePaymentResponse(fee.ServiceFeeId, fee.Status, fee.PaidAt, fee.PaymentReference);
     }

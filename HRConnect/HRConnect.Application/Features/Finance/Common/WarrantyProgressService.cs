@@ -23,6 +23,9 @@ public interface IWarrantyProgressService
     /// active users. Returns false when there is nothing to do.
     /// </summary>
     Task<bool> MarkServiceFeeDueAsync(Guid serviceFeeId, DateOnly today, int reminderDays, CancellationToken cancellationToken = default);
+
+    /// <summary>OPEN replacement slot past its deadline -> EXPIRED, and tells the Client. Returns false when there is nothing to do.</summary>
+    Task<bool> ExpireReplacementSlotAsync(Guid replacementSlotId, DateTime now, CancellationToken cancellationToken = default);
 }
 
 public sealed class WarrantyProgressService : IWarrantyProgressService
@@ -161,6 +164,35 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
                 }, cancellationToken);
             }
         }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> ExpireReplacementSlotAsync(Guid replacementSlotId, DateTime now, CancellationToken cancellationToken = default)
+    {
+        var slot = await _financeRepository.GetReplacementSlotForUpdateAsync(replacementSlotId, cancellationToken);
+        if (slot == null || slot.Status != ReplacementSlotStates.Open || slot.ExpiresAt == null || slot.ExpiresAt > now)
+        {
+            return false;
+        }
+
+        slot.Status = ReplacementSlotStates.Expired;
+        slot.ClosedAt = now;
+        slot.ConcurrencyToken = Guid.NewGuid();
+        slot.UpdatedAt = now;
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.ReplacementSlotExpired,
+            EntityType = "REPLACEMENT_SLOT",
+            EntityId = slot.ReplacementSlotId,
+            ActorType = AuditActorTypes.Service,
+            OldValues = new { status = ReplacementSlotStates.Open },
+            NewValues = new { status = slot.Status, slot.ExpiresAt },
+        }, cancellationToken);
+        await ReplacementSlotLifecycle.NotifyClientAsync(slot.Job, slot, "Suất tuyển người thay thế đã hết hạn",
+            $"Suất thay thế của job \"{slot.Job.Title}\" đã hết hạn ngày {slot.ExpiresAt:dd/MM/yyyy} mà chưa có người đi làm.",
+            now, _financeRepository, _notificationRepository, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
