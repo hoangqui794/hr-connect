@@ -82,6 +82,8 @@ Ký hiệu: 🔴 làm trước (đang chặn người khác hoặc sai nghiệp 
 
 ### B4. 🟠 Hồ sơ người thay thế (mục 1.2)
 
+> Theo dõi phần còn lại và điều kiện bắt đầu tại [`MF02-PENDING-MF05-REPLACEMENT.md`](./MF02-PENDING-MF05-REPLACEMENT.md).
+
 **Quy tắc:** ứng viên nghỉ trong 30 ngày → HR Connect tìm người thay thế miễn phí cho Client; Affiliate giới thiệu người thay thế được hoa hồng khi người đó đi làm đủ 30 ngày.
 
 **Cần làm (phối hợp MF-05):**
