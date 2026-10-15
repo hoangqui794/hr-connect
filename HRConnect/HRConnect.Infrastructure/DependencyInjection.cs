@@ -148,6 +148,9 @@ public static class DependencyInjection
         if (int.TryParse(configuration["MAX_CV_FILE_SIZE_MB"], out var maxMb) && maxMb > 0)
             r2Settings.MaxCvFileSizeMb = maxMb;
 
+        if (int.TryParse(configuration["MAX_CV_PDF_PAGES"], out var maxPdfPages) && maxPdfPages > 0)
+            r2Settings.MaxCvPdfPages = maxPdfPages;
+
         if (int.TryParse(configuration["MAX_PRESIGNED_URL_EXPIRY_MINUTES"], out var maxExpiryMinutes) && maxExpiryMinutes > 0)
             r2Settings.MaxPresignedUrlExpiryMinutes = maxExpiryMinutes;
 
@@ -170,6 +173,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IFileStorageService, HRConnect.Infrastructure.Services.Storage.CloudflareR2StorageService>();
+        services.AddSingleton<HRConnect.Infrastructure.Services.Storage.PdfCvValidator>();
         services.AddScoped<ICvStorageService, HRConnect.Infrastructure.Services.Storage.CvStorageService>();
 
         // 6. Dịch vụ AI & HRConnect Client (MF-03 Integration)
