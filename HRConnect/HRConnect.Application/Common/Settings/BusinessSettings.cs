@@ -27,6 +27,7 @@ public sealed record BusinessSettingDefinition(
 /// </summary>
 public static class BusinessSettingKeys
 {
+    public const string Mf02ClientOwnershipDays = "mf02.client_ownership_days";
     public const string HeadhuntFeeMultiplier = "mf05.headhunt.fee_multiplier";
     public const string HeadhuntWarrantyDays = "mf05.headhunt.warranty_days";
     public const string HeadhuntPaymentDueDays = "mf05.headhunt.payment_due_days";
@@ -35,6 +36,9 @@ public static class BusinessSettingKeys
 
     public static readonly IReadOnlyList<BusinessSettingDefinition> All =
     [
+        new(Mf02ClientOwnershipDays, "MF02", "Thời hạn doanh nghiệp sở hữu Candidate",
+            "Số ngày một doanh nghiệp được ưu tiên xử lý Candidate sau khi đã nhận hồ sơ qua HEADHUNT_COD hoặc CV_SOURCING. Trong thời hạn này Affiliate khác không thể giới thiệu lại Candidate cho cùng doanh nghiệp.",
+            BusinessSettingType.Integer, 30m, 1m, 365m, "ngày", "Quy tắc phí, quyền sở hữu Candidate 30 ngày"),
         new(HeadhuntFeeMultiplier, "HEADHUNT_COD", "Hệ số phí dịch vụ",
             "Phí dịch vụ thành công = lương gross tháng trong offer × hệ số này (ví dụ 2 tháng lương gross hoặc ~15-17% lương năm), tính khi ứng viên bắt đầu đi làm.",
             BusinessSettingType.Decimal, 2.0m, 0.1m, 10m, "× lương", "HEADHUNT_COD model, mục 4"),

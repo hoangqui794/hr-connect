@@ -281,6 +281,21 @@ public class ApplicationRepository : IApplicationRepository
             .AnyAsync(a => a.CandidateId == candidateId && a.JobId == jobId, cancellationToken);
     }
 
+    public Task<bool> ExistsForCandidateAndCompanySinceAsync(
+        Guid candidateId,
+        Guid companyId,
+        DateTime sinceUtc,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.Applications
+            .AsNoTracking()
+            .AnyAsync(application =>
+                    application.CandidateId == candidateId &&
+                    application.Job.CompanyId == companyId &&
+                    application.AppliedAt >= sinceUtc,
+                cancellationToken);
+    }
+
     public async Task AddAsync(JobApplication application, CancellationToken cancellationToken = default)
     {
         await _context.Applications.AddAsync(application, cancellationToken);

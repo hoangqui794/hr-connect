@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.SubmissionConsents.RespondSubmissionConsent;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -24,6 +25,16 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
     private readonly Mock<IMf03ScoringTrigger> _scoring = new();
     private readonly Mock<IAuditLogService> _audit = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ICandidateCompanyTransactionLock> _candidateCompanyLock = new();
+    private readonly Mock<IAdminBusinessSettings> _businessSettings = new();
+
+    public RespondSubmissionConsentCommandHandlerTests()
+    {
+        _businessSettings.Setup(settings => settings.GetIntAsync(
+                BusinessSettingKeys.Mf02ClientOwnershipDays,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(30);
+    }
 
     [Fact]
     public async Task Confirm_CreatesApplicationAttributionAndMf03Work()
@@ -323,6 +334,43 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
             entry.EntityId == fixture.Cv.CvId), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task Confirm_WhenCandidateIsOwnedByClient_BlocksBeforeCreatingApplication()
+    {
+        var fixture = CreateConsent(serviceCode: "HEADHUNT_COD");
+        SetupPendingConfirmation(fixture);
+        _affiliates.Setup(x => x.GetByUserIdWithDetailsAsync(
+                fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateEligibleAffiliate(fixture.Submission.SubmittedBy));
+        _applications.Setup(x => x.ExistsForCandidateAndCompanySinceAsync(
+                fixture.Candidate.CandidateId,
+                fixture.Job.CompanyId,
+                It.Is<DateTime>(since => since >= DateTime.UtcNow.AddDays(-30).AddMinutes(-1)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var action = () => Handler().Handle(new RespondSubmissionConsentCommand
+        {
+            Token = "valid-token",
+            Decision = "CONFIRM",
+            RequesterUserId = fixture.Candidate.UserId
+        }, CancellationToken.None);
+
+        var conflict = await action.Should().ThrowAsync<ConflictException>();
+        conflict.Which.ErrorCode.Should().Be("CANDIDATE_OWNED_BY_CLIENT");
+        conflict.Which.Details.Should().ContainKey("ownershipDays").WhoseValue.Should().Be(30);
+        fixture.Consent.Status.Should().Be("CANCELLED");
+        fixture.Submission.Status.Should().Be("BLOCKED_CLIENT_OWNED");
+        fixture.Cv.Status.Should().Be("ARCHIVED");
+        _candidateCompanyLock.Verify(x => x.AcquireAsync(
+            fixture.Candidate.CandidateId, fixture.Job.CompanyId, It.IsAny<CancellationToken>()), Times.Once);
+        _applications.Verify(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
+        _attributions.Verify(x => x.AddAsync(It.IsAny<Attribution>(), It.IsAny<CancellationToken>()), Times.Never);
+        _scoring.Verify(x => x.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private void SetupPendingConfirmation(Fixture fixture)
     {
         _consents.Setup(x => x.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -397,9 +445,11 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         _scoring.Object,
         _audit.Object,
         _unitOfWork.Object,
-        Mock.Of<ILogger<RespondSubmissionConsentCommandHandler>>());
+        Mock.Of<ILogger<RespondSubmissionConsentCommandHandler>>(),
+        _candidateCompanyLock.Object,
+        _businessSettings.Object);
 
-    private static Fixture CreateConsent(bool candidateHasAccount = true)
+    private static Fixture CreateConsent(bool candidateHasAccount = true, string? serviceCode = null)
     {
         var candidate = new Candidate
         {
@@ -419,12 +469,17 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
             AffiliateReuseConcurrencyToken = Guid.NewGuid(),
             FileName = "cv.pdf"
         };
+        var companyId = Guid.NewGuid();
         var job = new Job
         {
             JobId = Guid.NewGuid(),
+            CompanyId = companyId,
             Status = "ACTIVE",
             Title = "Backend Developer",
-            Company = new Company { CompanyId = Guid.NewGuid(), CompanyName = "Example Co" }
+            Company = new Company { CompanyId = companyId, CompanyName = "Example Co" },
+            ServiceType = serviceCode == null
+                ? null!
+                : new ServiceType { ServiceTypeId = Guid.NewGuid(), Code = serviceCode, Name = serviceCode }
         };
         var submission = new Submission
         {

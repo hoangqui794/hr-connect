@@ -98,6 +98,7 @@ public static class DependencyInjection
         services.AddScoped<ISourcingDeliveryRepository, SourcingDeliveryRepository>();
         services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
         services.AddScoped<IAttributionRepository, AttributionRepository>();
+        services.AddScoped<ICandidateCompanyTransactionLock, CandidateCompanyTransactionLock>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAdminApprovalService, HRConnect.Infrastructure.Services.Admin.AdminApprovalService>();
         services.AddScoped<IMf03ScoringTrigger, HRConnect.Infrastructure.Services.Integration.Mf03ScoringTrigger>();

@@ -2,6 +2,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.SubmissionConsents.Common;
 using HRConnect.Domain.Entities;
@@ -37,6 +38,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
     private readonly SubmissionConsentSettings _consentSettings;
     private readonly ILogger<SubmitCandidateCommandHandler> _logger;
     private readonly ISubmissionConsentExpiryService _expiryService;
+    private readonly IAdminBusinessSettings _businessSettings;
 
     public SubmitCandidateCommandHandler(
         IAffiliateProfileRepository affiliateProfileRepository,
@@ -58,7 +60,8 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         IAuditLogService auditLogService,
         IOptions<SubmissionConsentSettings> consentSettings,
         ILogger<SubmitCandidateCommandHandler> logger,
-        ISubmissionConsentExpiryService expiryService)
+        ISubmissionConsentExpiryService expiryService,
+        IAdminBusinessSettings businessSettings)
     {
         _affiliateProfileRepository = affiliateProfileRepository;
         _candidateRepository = candidateRepository;
@@ -80,6 +83,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         _consentSettings = consentSettings.Value;
         _logger = logger;
         _expiryService = expiryService;
+        _businessSettings = businessSettings;
     }
 
     public async Task<SubmitCandidateResponse> Handle(SubmitCandidateCommand request, CancellationToken cancellationToken)
@@ -326,6 +330,25 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                     request.UserId,
                     "AFFILIATE_RESUBMISSION",
                     cancellationToken);
+            }
+
+            if (IsClientOwnershipService(job.ServiceType?.Code))
+            {
+                var ownershipDays = await _businessSettings.GetIntAsync(
+                    BusinessSettingKeys.Mf02ClientOwnershipDays,
+                    cancellationToken);
+                var isOwnedByClient = await _applicationRepository.ExistsForCandidateAndCompanySinceAsync(
+                    candidate.CandidateId,
+                    job.CompanyId,
+                    now.AddDays(-ownershipDays),
+                    cancellationToken);
+                if (isOwnedByClient)
+                {
+                    throw new ConflictException(
+                        "Candidate đang trong thời hạn được doanh nghiệp này ưu tiên xử lý.",
+                        "CANDIDATE_OWNED_BY_CLIENT",
+                        new Dictionary<string, object?> { ["ownershipDays"] = ownershipDays });
+                }
             }
         }
 
@@ -657,6 +680,10 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 ["consentExpiresAt"] = consentExpiresAt.Value
             });
     }
+
+    private static bool IsClientOwnershipService(string? serviceTypeCode) =>
+        string.Equals(serviceTypeCode, "HEADHUNT_COD", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(serviceTypeCode, "CV_SOURCING", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsDuplicateConstraintViolation(Exception ex)
     {
