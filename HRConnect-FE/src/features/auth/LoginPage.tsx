@@ -442,8 +442,21 @@ export const LoginPage: React.FC = () => {
             />
           </Form.Item>
 
-          <div className="mb-1.5 flex items-center justify-between">
+          <div className="mb-1.5">
             <label htmlFor="password" className={AUTH_LABEL_CLASS}>Mật khẩu</label>
+          </div>
+          <Form.Item name="password" rules={[{ required: true, message: 'Vui lòng nhập mật khẩu.' }]} className="mb-2">
+            <Input.Password
+              id="password"
+              size="large"
+              autoComplete="current-password"
+              prefix={<LockOutlined className="mr-1 text-slate-400" />}
+              placeholder="Nhập mật khẩu"
+              disabled={submitting}
+              className={AUTH_INPUT_CLASS}
+            />
+          </Form.Item>
+          <div className="mb-4 flex justify-end">
             <button
               type="button"
               onClick={() => {
@@ -457,17 +470,6 @@ export const LoginPage: React.FC = () => {
               Quên mật khẩu?
             </button>
           </div>
-          <Form.Item name="password" rules={[{ required: true, message: 'Vui lòng nhập mật khẩu.' }]} className="mb-4">
-            <Input.Password
-              id="password"
-              size="large"
-              autoComplete="current-password"
-              prefix={<LockOutlined className="mr-1 text-slate-400" />}
-              placeholder="Nhập mật khẩu"
-              disabled={submitting}
-              className={AUTH_INPUT_CLASS}
-            />
-          </Form.Item>
 
           <Button
             type="primary"

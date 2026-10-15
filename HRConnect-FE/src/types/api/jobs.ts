@@ -166,6 +166,7 @@ export interface Job {
   isAcceptingApplications?: boolean;
   proposedTerms?: ProposedTerms | null;
   commercialTerms?: CommercialTerms | null;
+  templateId?: string | null;
 }
 
 export interface JobPostingEligibility {
@@ -261,6 +262,7 @@ export interface JobUpsertInput {
   skills: { skillId: string; isMandatory: boolean; weight?: number | null }[];
   applicationDeadline?: string | null;
   proposedTerms?: ProposedTerms | null;
+  templateId?: string | null;
 }
 
 /** GET /jobs query (page and pageSize are required by the API). */
@@ -283,3 +285,78 @@ export interface ServiceType {
   description: string | null;
   isActive: boolean;
 }
+
+// ── Job Templates (MF-01 F1, F2 & F3) ───────────────────────────────────────
+export type JobTemplateIndustry = 'IT' | 'MARKETING' | 'SALES' | 'ACCOUNTING' | 'HR' | 'ADMIN';
+export type JobTemplateLevel = 'INTERN' | 'JUNIOR' | 'MIDDLE' | 'SENIOR' | 'LEAD';
+
+export interface JobTemplateRequirement {
+  requirementType: JobRequirementType;
+  /** EXPERIENCE | SKILL | EDUCATION | OTHER; SKILL = kỹ năng, hiện ở ô "Kỹ năng chính". */
+  category: string | null;
+  content: string;
+}
+
+/** GET /job-templates và /internal/job-templates → data.items[] */
+export interface JobTemplateSummary {
+  templateId: string;
+  code: string;
+  name: string;
+  /** Mã ngành; backend có thể thêm ngành mới nên vẫn để kiểu string. */
+  industry: JobTemplateIndustry | string;
+  level: JobTemplateLevel | null;
+  summary: string | null;
+  requirementCount: number;
+  usageCount: number;
+  isActive: boolean;
+  updatedAt: string;
+}
+
+export interface JobTemplatePage {
+  items: JobTemplateSummary[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+/** GET /job-templates/{id} và /internal/job-templates/{id} → data */
+export interface JobTemplate {
+  templateId: string;
+  code: string;
+  name: string;
+  industry: JobTemplateIndustry | string;
+  level: JobTemplateLevel | null;
+  keywords: string | null;
+  summary: string | null;
+  title: string;
+  description: string;
+  benefits: string | null;
+  employmentType: EmploymentType | null;
+  minExperienceYears: number | null;
+  maxExperienceYears: number | null;
+  requirements: JobTemplateRequirement[];
+  isActive: boolean;
+  usageCount: number;
+  updatedAt: string;
+  /** null ở API của Client; có giá trị ở /internal/job-templates/{id} và sau khi tạo/sửa. */
+  concurrencyToken: string | null;
+}
+
+/** Body POST /internal/job-templates và trường `template` của PUT. */
+export interface JobTemplateUpsertInput {
+  code: string;
+  name: string;
+  industry: string;
+  level?: JobTemplateLevel | null;
+  keywords?: string | null;
+  summary?: string | null;
+  title: string;
+  description: string;
+  benefits?: string | null;
+  employmentType?: EmploymentType | null;
+  minExperienceYears?: number | null;
+  maxExperienceYears?: number | null;
+  requirements: JobTemplateRequirement[];
+}
+

@@ -11,6 +11,7 @@ import {
   AppstoreOutlined,
   AuditOutlined,
   BankOutlined,
+  BookOutlined,
   DashboardOutlined,
   DollarOutlined,
   FileTextOutlined,
@@ -87,9 +88,39 @@ export const AdminLayout: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [menuOpen]);
 
+  const canManageTemplates = useAuthStore((s) => s.hasPermission('job_template.manage'));
+
+  const navGroups = useMemo(() => {
+    return NAV.map((group) => {
+      if (group.group === 'Vận hành') {
+        const items = [...group.items];
+        if (canManageTemplates) {
+          const jobIndex = items.findIndex((i) => i.to === '/admin/jobs');
+          const templateItem: NavItem = {
+            to: '/admin/job-templates',
+            label: 'Mẫu JD',
+            icon: <BookOutlined />,
+          };
+          if (jobIndex >= 0) {
+            items.splice(jobIndex + 1, 0, templateItem);
+          } else {
+            items.push(templateItem);
+          }
+        }
+        return { ...group, items };
+      }
+      return group;
+    });
+  }, [canManageTemplates]);
+
+  const allItems = useMemo(
+    () => navGroups.flatMap((g) => g.items.map((i) => ({ ...i, group: g.group }))),
+    [navGroups]
+  );
+
   const current = useMemo(
-    () => ALL_ITEMS.find((i) => location.pathname.startsWith(i.to)) ?? (location.pathname === '/admin/profile' ? { label: 'Hồ sơ', group: 'Tài khoản' } : null),
-    [location.pathname]
+    () => allItems.find((i) => location.pathname.startsWith(i.to)) ?? (location.pathname === '/admin/profile' ? { label: 'Hồ sơ', group: 'Tài khoản' } : null),
+    [allItems, location.pathname]
   );
 
   const signOut = async () => {
@@ -132,7 +163,7 @@ export const AdminLayout: React.FC = () => {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 pb-4">
-          {NAV.map((g) => (
+          {navGroups.map((g) => (
             <div key={g.group} className="mt-5 first:mt-2">
               {!collapsed && (
                 <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{g.group}</div>

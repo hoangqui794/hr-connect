@@ -8,12 +8,47 @@ export type SubmitCandidateInput =
   | { candidateId: string; cvId: string; fullName?: never; email?: never; phone?: never; file?: never; note?: string }
   | { candidateId?: never; cvId?: never; fullName: string; email: string; phone?: string; file: File; note?: string };
 
+export interface UpdateAffiliateProfileInput {
+  displayName: string;
+  contactPerson?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  taxInformation?: string | null;
+}
+
+export interface UpdateAffiliateBankAccountInput {
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountHolder: string;
+  bankBranch?: string | null;
+}
+
+export interface AffiliateBankAccountData {
+  affiliateId: string;
+  displayName?: string | null;
+  bankName?: string | null;
+  bankAccountNumber?: string | null;
+  bankAccountHolder?: string | null;
+  bankBranch?: string | null;
+  isConfigured: boolean;
+  updatedAt: string;
+}
+
 export const affiliateApi = {
   async profile(): Promise<AffiliateProfile> {
     return (await apiClient.get<ApiEnvelope<AffiliateProfile>>('/affiliates/profile/me')).data.data;
   },
+  async updateProfile(input: UpdateAffiliateProfileInput) {
+    return (await apiClient.put<{ success: boolean; message: string; data?: unknown }>('/affiliates/profile/me', input)).data;
+  },
   async performance(): Promise<AffiliatePerformance> {
     return (await apiClient.get<ApiEnvelope<AffiliatePerformance>>('/affiliates/profile/me/performance')).data.data;
+  },
+  async getBankAccount(): Promise<AffiliateBankAccountData> {
+    return (await apiClient.get<{ success: boolean; message: string; data: AffiliateBankAccountData }>('/affiliates/profile/me/bank-account')).data.data;
+  },
+  async updateBankAccount(input: UpdateAffiliateBankAccountInput) {
+    return (await apiClient.put<{ success: boolean; message: string; data: AffiliateBankAccountData }>('/affiliates/profile/me/bank-account', input)).data;
   },
   async submit(jobId: string, input: SubmitCandidateInput) {
     const body = 'candidateId' in input

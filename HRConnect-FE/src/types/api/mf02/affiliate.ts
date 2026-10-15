@@ -116,6 +116,11 @@ export interface AffiliateProfile {
   phone: string | null;
   status: string;
   verifiedAt: string | null;
+  contactPerson?: string | null;
+  address?: string | null;
+  taxInformation?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface AffiliatePerformance {
