@@ -41,7 +41,7 @@ import { jobsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAlertStore } from '@/stores/alertStore';
 import { formatMoney, useJobDetail, useJobFeeInfo, useJobMutations, useJobReviewQueue } from './useJobQueries';
-import { JobDetailPanel } from './JobDetailPanel';
+import { JobDetailPanel, JobTemplateOriginTag } from './JobDetailPanel';
 import { ReasonModal } from './ReasonModal';
 import { CommercialTermsApprovalModal } from './CommercialTermsApprovalModal';
 import { JOB_STATUS, REJECT_REASONS, SERVICE_TYPE_LABEL, formatDateTime } from './jobDisplay';
@@ -92,6 +92,11 @@ const QueueItem: React.FC<{ job: Job; selected: boolean; onSelect: () => void }>
           {job.serviceTypeCode && (
             <Tag className="m-0 text-[11px] bg-slate-100 text-slate-600 border-slate-200/80 rounded font-normal">
               {SERVICE_TYPE_LABEL[job.serviceTypeCode]?.label ?? job.serviceTypeCode}
+            </Tag>
+          )}
+          {job.templateId && (
+            <Tag color="cyan" className="m-0 text-[11px] font-medium rounded">
+              Có mẫu JD
             </Tag>
           )}
           {job.status === 'PENDING_PAYMENT' && (
@@ -454,6 +459,7 @@ export const JobReviewPage: React.FC = () => {
                                 Cần phê duyệt
                               </Tag>
                             )}
+                            {job.templateId && <JobTemplateOriginTag templateId={job.templateId} />}
                           </div>
                           <p className="text-xs text-slate-500 m-0 leading-relaxed max-w-2xl">
                             {isStandardUnpaid

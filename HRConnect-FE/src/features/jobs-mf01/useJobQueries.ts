@@ -12,6 +12,7 @@ import type {
   JobRejectReasonCode,
   JobSearchParams,
   JobStatus,
+  JobTemplateUpsertInput,
   JobUpsertInput,
 } from '@/types/api/jobs';
 
@@ -25,6 +26,12 @@ export const jobQueryKeys = {
   serviceTypes: ['mf01-service-types'] as const,
   postingPackages: ['mf01-posting-packages'] as const,
   postingEligibility: ['mf01-posting-eligibility'] as const,
+  templates: (keyword?: string, industry?: string) =>
+    [...jobQueryKeys.all, 'templates', keyword ?? '', industry ?? ''] as const,
+  templateDetail: (templateId: string) => [...jobQueryKeys.all, 'template-detail', templateId] as const,
+  internalTemplates: (params: { keyword?: string; industry?: string; isActive?: boolean; page?: number; pageSize?: number }) =>
+    [...jobQueryKeys.all, 'internal-templates', params] as const,
+  internalTemplateDetail: (templateId: string) => [...jobQueryKeys.all, 'internal-template-detail', templateId] as const,
 };
 
 export const useMyJobs = (status?: JobStatus) =>
@@ -121,6 +128,67 @@ export const usePostingEligibility = () =>
     queryFn: () => jobsApi.getPostingEligibility(),
     staleTime: 60 * 1000,
   });
+
+export const useJobTemplates = (keyword?: string, industry?: string, enabled = true) =>
+  useQuery({
+    queryKey: jobQueryKeys.templates(keyword, industry),
+    queryFn: () => jobsApi.searchTemplates({ keyword, industry, pageSize: 20 }),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const useJobTemplate = (templateId: string | undefined, enabled = true) =>
+  useQuery({
+    queryKey: jobQueryKeys.templateDetail(templateId ?? ''),
+    queryFn: () => jobsApi.getTemplate(templateId as string),
+    enabled: Boolean(templateId) && enabled,
+    staleTime: 10 * 60 * 1000,
+  });
+
+export const useInternalJobTemplates = (
+  params: { keyword?: string; industry?: string; isActive?: boolean; page?: number; pageSize?: number },
+  enabled = true
+) =>
+  useQuery({
+    queryKey: jobQueryKeys.internalTemplates(params),
+    queryFn: () => jobsApi.getInternalTemplates(params),
+    enabled,
+    placeholderData: (previous) => previous,
+  });
+
+export const useInternalJobTemplate = (templateId: string | undefined, enabled = true) =>
+  useQuery({
+    queryKey: jobQueryKeys.internalTemplateDetail(templateId ?? ''),
+    queryFn: () => jobsApi.getInternalTemplate(templateId as string),
+    enabled: Boolean(templateId) && enabled,
+  });
+
+export const useJobTemplateMutations = () => {
+  const queryClient = useQueryClient();
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: [...jobQueryKeys.all, 'templates'] });
+    queryClient.invalidateQueries({ queryKey: [...jobQueryKeys.all, 'internal-templates'] });
+    queryClient.invalidateQueries({ queryKey: [...jobQueryKeys.all, 'template-detail'] });
+    queryClient.invalidateQueries({ queryKey: [...jobQueryKeys.all, 'internal-template-detail'] });
+  };
+
+  return {
+    create: useMutation({
+      mutationFn: (data: JobTemplateUpsertInput) => jobsApi.createInternalTemplate(data),
+      onSuccess: refresh,
+    }),
+    update: useMutation({
+      mutationFn: (v: { id: string; concurrencyToken: string; template: JobTemplateUpsertInput }) =>
+        jobsApi.updateInternalTemplate(v.id, { concurrencyToken: v.concurrencyToken, template: v.template }),
+      onSuccess: refresh,
+    }),
+    toggleActive: useMutation({
+      mutationFn: (v: { id: string; activate: boolean }) => jobsApi.toggleTemplateActive(v.id, v.activate),
+      onSuccess: refresh,
+    }),
+  };
+};
+
 
 /** All write operations, each refreshing every MF-01 cache on success. */
 export const useJobMutations = () => {

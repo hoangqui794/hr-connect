@@ -56,6 +56,7 @@ import type {
   EmploymentType,
   Job,
   JobRequirementType,
+  JobTemplate,
   JobUpsertInput,
   JobVisibility,
   ProposedTerms,
@@ -72,6 +73,7 @@ import {
   allowedVisibilities,
   clientActions,
 } from './jobDisplay';
+import { JobTemplatePicker } from './JobTemplatePicker';
 
 // ─── Interfaces & Constants ──────────────────────────────────────────────────
 
@@ -121,15 +123,20 @@ interface JobFormValues {
 
   // Shared fee proposal note
   termsNote?: string;
+
+  // MF-01 Template ID (if created/filled from a template)
+  templateId?: string | null;
 }
 
 const EMPTY_VALUES: Partial<JobFormValues> = {
+  visibility: 'PUBLIC',
   quantity: 1,
   currencyCode: 'VND',
   salaryNegotiable: false,
   postingPackage: 'STANDARD',
   requirements: [{ requirementType: 'MUST_HAVE', content: '' }],
   skills: [],
+  templateId: undefined,
 };
 
 export interface PostingPackageInfo {
@@ -286,6 +293,7 @@ const toFormValues = (job: Job): JobFormValues => {
     warrantyDays: proposed?.warrantyDays ?? (job as any).warrantyDays ?? undefined,
     paymentDueDays: proposed?.paymentDueDays ?? (job as any).paymentDueDays ?? undefined,
     termsNote: proposed?.note ?? (job as any).termsNote ?? undefined,
+    templateId: job.templateId ?? undefined,
   };
 };
 
@@ -325,7 +333,7 @@ const toInput = (v: JobFormValues, selectedCode?: ServiceTypeCode, postingPackag
 
   return {
     serviceTypeId: v.serviceTypeId,
-    visibility: v.visibility,
+    visibility: v.visibility || (allowedVisibilities(selectedCode)[0] ?? 'PUBLIC'),
     title: v.title ? v.title.trim() : 'Tin tuyển dụng',
     employmentType: v.employmentType ?? null,
     location: trimOrNull(v.location),
@@ -362,6 +370,7 @@ const toInput = (v: JobFormValues, selectedCode?: ServiceTypeCode, postingPackag
     postingPackageId: selectedCode === 'CV_APPLICATION' ? postingPackageId ?? null : null,
     sourcingTarget: selectedCode === 'CV_SOURCING' ? (v.targetCandidateCount ?? null) : null,
     proposedTerms,
+    templateId: v.templateId ?? null,
   };
 };
 
@@ -386,7 +395,7 @@ const submitBlockers = (
     missing.push({ field: ['quantity'], message: 'Nhập số lượng cần tuyển (tối thiểu 1).', step: 1 });
   }
   if (!v.visibility) {
-    missing.push({ field: ['visibility'], message: 'Chọn phạm vi hiển thị tin.', step: 1 });
+    v.visibility = allowedVisibilities(serviceCode)[0] || 'PUBLIC';
   }
   if (!v.employmentType) {
     missing.push({ field: ['employmentType'], message: 'Chọn hình thức làm việc.', step: 1 });
@@ -432,6 +441,20 @@ const applyServerFieldErrors = (form: FormInstance<JobFormValues>, error: unknow
   return fields.length > 0;
 };
 
+export const hasStep2Content = (values: Partial<JobFormValues>): boolean => {
+  if (values.title && values.title.trim().length > 0) return true;
+  if (values.description && values.description.trim().length > 0) return true;
+  if (values.benefits && values.benefits.trim().length > 0) return true;
+  if (values.skills && values.skills.length > 0) return true;
+  if (
+    values.requirements &&
+    values.requirements.some((r) => r && r.content && r.content.trim().length > 0)
+  ) {
+    return true;
+  }
+  return false;
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export const JobFormPage: React.FC = () => {
@@ -446,6 +469,31 @@ export const JobFormPage: React.FC = () => {
   const [stepErrors, setStepErrors] = useState<Record<number, boolean>>({});
   const [saving, setSaving] = useState<'draft' | 'submit' | null>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
+
+  const handleApplyTemplate = (template: JobTemplate, mergedSkills: string[]) => {
+    const nonSkillRequirements = (template.requirements ?? [])
+      .filter((r) => (r.category || '').toUpperCase() !== 'SKILL')
+      .map((r) => ({
+        requirementType: r.requirementType,
+        content: r.content,
+        category: r.category ?? undefined,
+      }));
+
+    form.setFieldsValue({
+      title: template.title || '',
+      employmentType: template.employmentType ?? undefined,
+      minExperienceYears: template.minExperienceYears,
+      maxExperienceYears: template.maxExperienceYears,
+      description: template.description || '',
+      benefits: template.benefits || '',
+      requirements:
+        nonSkillRequirements.length > 0
+          ? nonSkillRequirements
+          : [{ requirementType: 'MUST_HAVE', content: '' }],
+      skills: mergedSkills,
+      templateId: template.templateId,
+    });
+  };
 
   // Dedicated Component State for selected service to ensure robustness across steps
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
@@ -893,14 +941,25 @@ export const JobFormPage: React.FC = () => {
             form={form}
             layout="vertical"
             preserve={true}
-            requiredMark={false}
+            requiredMark={(label, info) =>
+              info.required ? (
+                <span>
+                  {label} <span className="text-red-500 font-bold ml-0.5">*</span>
+                </span>
+              ) : (
+                label
+              )
+            }
             initialValues={EMPTY_VALUES}
             disabled={!editable || saving !== null}
             validateTrigger="onBlur"
             className="space-y-5"
           >
-            {/* Hidden field to keep serviceTypeId registered in Form */}
+            {/* Hidden fields to keep serviceTypeId & visibility registered in Form */}
             <Form.Item name="serviceTypeId" hidden noStyle>
+              <Input type="hidden" />
+            </Form.Item>
+            <Form.Item name="visibility" hidden noStyle>
               <Input type="hidden" />
             </Form.Item>
 
@@ -914,7 +973,9 @@ export const JobFormPage: React.FC = () => {
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
                       1
                     </span>
-                    <h2 className="m-0 text-[18px] font-semibold text-slate-900">Chọn loại dịch vụ tuyển dụng</h2>
+                    <h2 className="m-0 text-[18px] font-semibold text-slate-900">
+                      Chọn loại dịch vụ tuyển dụng <span className="text-red-500 font-bold ml-1">*</span>
+                    </h2>
                   </div>
                   <p className="m-0 text-[13.5px] text-slate-600">
                     Mỗi dịch vụ được thiết kế cho mục tiêu tuyển dụng riêng biệt. Vui lòng chọn dịch vụ phù hợp nhất:
@@ -1041,6 +1102,16 @@ export const JobFormPage: React.FC = () => {
                 BƯỚC 2: MÔ TẢ CÔNG VIỆC (JD DÙNG CHUNG)
                 ═════════════════════════════════════════════════════════════════ */}
             <div className={currentStep === 1 ? 'space-y-5' : 'hidden'}>
+              {/* F1 & F2: Bắt đầu nhanh từ mẫu JD */}
+              <JobTemplatePicker
+                editable={editable}
+                hasStep2Content={() => hasStep2Content(form.getFieldsValue())}
+                currentSkills={watched.skills ?? []}
+                currentTemplateId={watched.templateId}
+                onApplyTemplate={handleApplyTemplate}
+                defaultOpen={!isEdit && !hasStep2Content(existing.data ? toFormValues(existing.data) : {})}
+              />
+
               {/* 1. Basic Info */}
               <section className="admin-surface p-5 sm:p-7 space-y-5">
                 <header className="flex items-center gap-2">
@@ -1156,38 +1227,6 @@ export const JobFormPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
-                {/* Visibility */}
-                <Form.Item
-                  name="visibility"
-                  label="Phạm vi hiển thị tin"
-                  rules={[{ required: true, message: 'Chọn phạm vi hiển thị.' }]}
-                  extra={`Dựa theo dịch vụ "${SERVICE_TYPE_LABEL[effectiveCode || 'CV_APPLICATION']?.label}".`}
-                  className="mb-0"
-                >
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {visibilityOptions.map((v) => {
-                      const isVisSelected = watched.visibility === v;
-                      return (
-                        <div
-                          key={v}
-                          onClick={() => form.setFieldValue('visibility', v)}
-                          className={`flex cursor-pointer flex-col rounded-xl border border-solid p-3.5 transition-all ${
-                            isVisSelected
-                              ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)] shadow-sm'
-                              : 'border-slate-200 bg-white hover:border-slate-300'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-slate-900 text-sm">{VISIBILITY_LABEL[v].label}</span>
-                            <Radio checked={isVisSelected} className="pointer-events-none" />
-                          </div>
-                          <span className="mt-1 text-xs text-slate-600">{VISIBILITY_LABEL[v].summary}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Form.Item>
               </section>
 
               {/* 2. Salary */}
@@ -1323,22 +1362,24 @@ export const JobFormPage: React.FC = () => {
                 </Form.Item>
 
                 <div className="space-y-3">
-                  <div className="text-sm font-semibold text-slate-900">Danh sách tiêu chí yêu cầu ứng viên:</div>
+                  <div className="text-sm font-semibold text-slate-900">
+                    Danh sách tiêu chí yêu cầu ứng viên <span className="text-red-500 font-bold ml-0.5">*</span>:
+                  </div>
                   <Form.List name="requirements">
                     {(fields, { add, remove }) => (
                       <div className="space-y-3">
                         {fields.map((field, index) => (
                           <div key={field.key} className="rounded-xl border border-solid border-slate-200 bg-slate-50/70 p-3.5">
-                            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 md:grid-cols-[140px_minmax(0,1fr)_160px_auto]">
+                            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 md:grid-cols-[auto_minmax(0,1fr)_160px_auto]">
                               <Form.Item
                                 name={[field.name, 'requirementType']}
                                 label="Mức độ"
                                 className="mb-2 md:mb-0"
                                 rules={[{ required: true, message: 'Chọn mức độ.' }]}
                               >
-                                <Radio.Group optionType="button" buttonStyle="solid" size="middle">
-                                  <Radio.Button value="MUST_HAVE">Bắt buộc</Radio.Button>
-                                  <Radio.Button value="SHOULD_HAVE">Ưu tiên</Radio.Button>
+                                <Radio.Group optionType="button" buttonStyle="solid" size="middle" className="inline-flex whitespace-nowrap">
+                                  <Radio.Button value="MUST_HAVE" className="px-3 text-center">Bắt buộc</Radio.Button>
+                                  <Radio.Button value="SHOULD_HAVE" className="px-3 text-center">Ưu tiên</Radio.Button>
                                 </Radio.Group>
                               </Form.Item>
 
@@ -1434,7 +1475,9 @@ export const JobFormPage: React.FC = () => {
                       <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
                         3
                       </span>
-                      <h2 className="m-0 text-[18px] font-semibold text-slate-900">Chọn gói đăng tin tuyển dụng</h2>
+                      <h2 className="m-0 text-[18px] font-semibold text-slate-900">
+                        Chọn gói đăng tin tuyển dụng <span className="text-red-500 font-bold ml-1">*</span>
+                      </h2>
                     </div>
                     <p className="m-0 text-[13.5px] text-slate-600">
                       Chọn gói dịch vụ hiển thị phù hợp với nhu cầu tiếp cận ứng viên. Bạn thanh toán <b>sau khi tin được duyệt</b>.

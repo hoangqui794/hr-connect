@@ -12,6 +12,7 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CreditCardOutlined,
+  BookOutlined,
   DollarCircleOutlined,
   EnvironmentOutlined,
   InfoCircleOutlined,
@@ -24,7 +25,7 @@ import type { Job, JobRequirement } from '@/types/api/jobs';
 import { useAuthStore, UserRole } from '@/stores/authStore';
 import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
 import { PaymentDemoModal } from './PaymentDemoModal';
-import { formatMoney, useJobFeeInfo } from './useJobQueries';
+import { formatMoney, useJobFeeInfo, useJobTemplate } from './useJobQueries';
 import {
   EMPLOYMENT_TYPE_LABEL,
   JOB_STATUS,
@@ -54,6 +55,17 @@ const STATUS_TAG_CLASS: Record<Job['status'], string> = {
 export const JobStatusTag: React.FC<{ status: Job['status'] }> = ({ status }) => (
   <Tag className={`m-0 border border-solid font-medium ${STATUS_TAG_CLASS[status]}`}>{JOB_STATUS[status].label}</Tag>
 );
+
+export const JobTemplateOriginTag: React.FC<{ templateId: string }> = ({ templateId }) => {
+  const { data: template, isLoading } = useJobTemplate(templateId);
+  const displayName = template?.name || template?.title || template?.code || (isLoading ? 'Đang tải...' : templateId);
+
+  return (
+    <Tag color="cyan" icon={<BookOutlined />} className="m-0 font-medium">
+      Tạo từ mẫu: {displayName}
+    </Tag>
+  );
+};
 
 const RequirementList: React.FC<{ title: string; items: JobRequirement[]; emptyText: string }> = ({
   title,
@@ -139,6 +151,10 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <JobStatusTag status={job.status} />
+          {/* F4: Hiện nguồn mẫu ở trang duyệt job — chỉ hiển thị với Internal HR / Admin ở trang duyệt, Client và ứng viên không thấy */}
+          {(isInternalReview || currentRole === UserRole.INTERNAL_HR || currentRole === UserRole.ADMIN) &&
+            !isApplicant &&
+            job.templateId && <JobTemplateOriginTag templateId={job.templateId} />}
           {applied && (
             <Tag color="success" icon={<CheckCircleOutlined />} className="m-0 font-medium">
               Đã ứng tuyển

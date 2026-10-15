@@ -170,6 +170,7 @@ export const router = createBrowserRouter([
       { path: 'affiliates', element: <AppRoutes.ConsoleApprovalsPage presetType="AFFILIATE" /> },
       // Admin can review jobs just like Internal HR (MF-01).
       { path: 'jobs', element: <AppRoutes.Mf01JobReviewPage /> },
+      { path: 'job-templates', element: <AppRoutes.Mf01JobTemplatesAdminPage /> },
       { path: 'users', element: <AppRoutes.ConsoleUsersPage /> },
       { path: 'service-types', element: <AppRoutes.ConsoleServiceTypesPage /> },
       { path: 'commission-rules', element: <AppRoutes.ConsoleCommissionRulesPage /> },
@@ -289,6 +290,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/hr/dashboard" replace /> },
       { path: 'dashboard', element: <AppRoutes.HrOverviewPage /> },
       { path: 'jobs', element: <AppRoutes.Mf01JobReviewPage /> },
+      { path: 'job-templates', element: <AppRoutes.Mf01JobTemplatesAdminPage /> },
       { path: 'screening', element: <AppRoutes.HrScreeningPage /> },
       { path: 'pipeline', element: <AppRoutes.HrPipelinePage /> },
       { path: 'profile', element: <AppRoutes.HrProfilePage /> },
