@@ -1,6 +1,7 @@
 # MF-01 (Giao diện): thư viện mẫu JD
 
-> **Dành cho:** Sang, giao diện MF-01. Phần backend do Mi làm, xem [`mf01-be-thu-vien-mau-jd.md`](mf01-be-thu-vien-mau-jd.md).
+> **Dành cho:** Sang, giao diện MF-01.
+> **Backend: ✅ đã xong trên `dev`** (commit `443d337`, ngày 15/10). Làm giao diện và **gắn API thật luôn**, không cần dữ liệu giả.
 > **Ngày:** 2026-10-15.
 > **Hiện trạng:** bước 2 "Mô tả công việc" của `JobFormPage.tsx` chỉ có ô trống kèm chữ gợi ý (placeholder). Không có mẫu và không có chức năng dùng lại tin cũ.
 
@@ -14,7 +15,10 @@ Ký hiệu: 🔴 làm trước · 🟠 cần làm · ⚪ để giai đoạn 2, c
    - Ô **Kỹ năng chính** được gửi lên dạng yêu cầu `SHOULD_HAVE` có `category = SKILL`. Xem `toInput`, `toFormValues`, `isSkillTag`, `SKILL_CATEGORY` trong `JobFormPage.tsx`.
    - Hạn nộp hồ sơ được gửi là `applicationDeadline` theo giờ UTC. Các tên trường khác cũng đã đổi cho khớp backend: `proposedTerms.pricePerCv`, `sourcingTarget`, `postingPackageId`.
    - Nếu làm trên code cũ, ô kỹ năng sẽ lỗi (backend cần GUID) và chắc chắn bị xung đột khi merge `JobFormPage.tsx`.
-2. **Chờ Mi xong B2, B3 và seed** (tài liệu backend) mới gắn API thật. Trong lúc chờ có thể dựng giao diện trước, xem mục "Thứ tự gợi ý" ở cuối.
+2. **Chạy backend từ nhánh `dev`.** Khi khởi động, backend tự chạy migration `AddJobTemplates` và nạp sẵn **13 mẫu JD**, nên có dữ liệu thật để làm ngay.
+   - Muốn frontend gọi backend ở máy: đặt `VITE_API_PROXY_TARGET=http://127.0.0.1:5041` trong `HRConnect-FE/.env`.
+   - Backend trên Render **chỉ có API mẫu JD sau khi `dev` được merge vào `main`**. Trước lúc đó, gọi Render sẽ ra 404.
+3. Tài khoản test (mật khẩu `111111Aa@`): `client@gmail.com` (tìm và dùng mẫu), `internalhr@gmail.com` và `admin@gmail.com` (quản lý mẫu, có quyền `job_template.manage`).
 
 ## Ý tưởng chính
 
@@ -43,33 +47,51 @@ Nguyên tắc:
 - Dùng mẫu xong, Client **sửa thoải mái**. Tin vẫn qua Internal HR duyệt như bình thường.
 - Toàn bộ dữ liệu mẫu **lấy từ API**. Không ghi cứng mẫu nào trong code giao diện.
 
-## API giao diện cần dùng (Mi làm)
+## API đã có (backend trên `dev`)
 
-| API | Dùng ở | Ghi chú |
-|---|---|---|
-| `GET /job-templates?keyword=&industry=&page=&pageSize=` | Ô tìm mẫu ở bước 2 | Trả danh sách rút gọn: `name`, `industry`, `level`, `summary`, `requirementCount`, `usageCount` |
-| `GET /job-templates/{id}` | Khung xem trước, nút "Dùng mẫu này" | Trả đủ nội dung, cấu trúc xem B3 trong tài liệu backend |
-| `POST /jobs` thêm `templateId` | Lưu job | Không bắt buộc, dùng để thống kê |
-| `GET/POST/PUT /internal/job-templates…` | Màn quản lý mẫu (F3) | Chỉ Internal HR và Admin |
+Mọi API trả về dạng **`{ success: true, data: ... }`**. Lỗi trả về `{ success: false, errorCode, message }`.
+
+| API | Quyền | Dùng ở | Ghi chú |
+|---|---|---|---|
+| `GET /job-templates?keyword=&industry=&page=&pageSize=` | `job.create` (Client), `job.review`, `job_template.manage` | Ô tìm mẫu ở bước 2 (F1) | Tìm không dấu, mọi từ đều phải khớp. Mẫu khớp tên lên trước, rồi tới mẫu dùng nhiều. `keyword` rỗng thì trả mẫu dùng nhiều nhất. `pageSize` mặc định 8, tối đa 20 (backend tự giới hạn). Chỉ trả mẫu đang hiện |
+| `GET /job-templates/{id}` | như trên | Khung xem trước, nút "Dùng mẫu này" (F2) | Mẫu đã ẩn trả **404 `TEMPLATE_NOT_FOUND`** với Client. `concurrencyToken` luôn là `null` ở API này |
+| `POST /jobs` thêm trường `templateId` | `job.create` | Lưu job | Không bắt buộc. `templateId` sai hoặc mẫu đã bị xóa thì job **vẫn tạo được**, chỉ không ghi nhận mẫu. `GET /jobs/{id}` trả lại `templateId` |
+| `GET /internal/job-templates?keyword=&industry=&isActive=&page=&pageSize=` | `job_template.manage` | Danh sách ở màn quản lý (F3) | Có cả mẫu đã ẩn. `isActive` bỏ trống thì lấy tất cả |
+| `GET /internal/job-templates/{id}` | `job_template.manage` | Mở form sửa (F3) | Có `concurrencyToken` để gửi lại khi sửa |
+| `POST /internal/job-templates` | `job_template.manage` | Tạo mẫu (F3) | Body: `JobTemplateUpsertInput` |
+| `PUT /internal/job-templates/{id}` | `job_template.manage` | Sửa mẫu (F3) | Body: **`{ concurrencyToken, template: JobTemplateUpsertInput }`**. Ghi đè toàn bộ danh sách yêu cầu |
+| `POST /internal/job-templates/{id}/deactivate` · `/activate` | `job_template.manage` | Ẩn hoặc hiện mẫu (F3) | Trả lại mẫu sau khi đổi trạng thái |
+
+Gọi thử các API này ở Swagger của backend (`/swagger`), nhóm **"MF-01 Job Templates"**.
 
 ### Kiểu dữ liệu (thêm vào `src/types/api/jobs.ts`)
 
-Tên trường giữ **đúng camelCase backend trả về**. Nếu Mi đổi tên thì sửa theo backend.
+Khớp **đúng** với response backend hiện tại.
 
 ```ts
 export type JobTemplateIndustry = 'IT' | 'MARKETING' | 'SALES' | 'ACCOUNTING' | 'HR' | 'ADMIN';
 export type JobTemplateLevel = 'INTERN' | 'JUNIOR' | 'MIDDLE' | 'SENIOR' | 'LEAD';
 
-/** GET /job-templates → items[] (danh sách rút gọn). */
+export interface JobTemplateRequirement {
+  requirementType: JobRequirementType;
+  /** EXPERIENCE | SKILL | EDUCATION | OTHER; SKILL = kỹ năng, hiện ở ô "Kỹ năng chính". */
+  category: string | null;
+  content: string;
+}
+
+/** GET /job-templates và /internal/job-templates → data.items[] */
 export interface JobTemplateSummary {
   templateId: string;
   code: string;
   name: string;
-  industry: JobTemplateIndustry;
+  /** Mã ngành; backend có thể thêm ngành mới nên vẫn để kiểu string. */
+  industry: JobTemplateIndustry | string;
   level: JobTemplateLevel | null;
   summary: string | null;
   requirementCount: number;
   usageCount: number;
+  isActive: boolean;
+  updatedAt: string;
 }
 
 export interface JobTemplatePage {
@@ -80,27 +102,34 @@ export interface JobTemplatePage {
   totalPages: number;
 }
 
-/** GET /job-templates/{id} — nội dung đầy đủ để xem trước và điền form. */
-export interface JobTemplate extends JobTemplateSummary {
+/** GET /job-templates/{id} và /internal/job-templates/{id} → data */
+export interface JobTemplate {
+  templateId: string;
+  code: string;
+  name: string;
+  industry: JobTemplateIndustry | string;
+  level: JobTemplateLevel | null;
   keywords: string | null;
+  summary: string | null;
   title: string;
   description: string;
   benefits: string | null;
   employmentType: EmploymentType | null;
   minExperienceYears: number | null;
   maxExperienceYears: number | null;
-  requirements: { requirementType: JobRequirementType; category: string | null; content: string }[];
+  requirements: JobTemplateRequirement[];
   isActive: boolean;
+  usageCount: number;
   updatedAt: string;
-  /** Chỉ có ở API quản lý (/internal/job-templates), dùng khi sửa. */
-  concurrencyToken?: string;
+  /** null ở API của Client; có giá trị ở /internal/job-templates/{id} và sau khi tạo/sửa. */
+  concurrencyToken: string | null;
 }
 
-/** Body tạo / sửa mẫu (F3). */
+/** Body POST /internal/job-templates và trường `template` của PUT. */
 export interface JobTemplateUpsertInput {
   code: string;
   name: string;
-  industry: JobTemplateIndustry;
+  industry: string;
   level?: JobTemplateLevel | null;
   keywords?: string | null;
   summary?: string | null;
@@ -110,8 +139,19 @@ export interface JobTemplateUpsertInput {
   employmentType?: EmploymentType | null;
   minExperienceYears?: number | null;
   maxExperienceYears?: number | null;
-  requirements: { requirementType: JobRequirementType; category: string | null; content: string }[];
+  requirements: JobTemplateRequirement[];
 }
+```
+
+Ví dụ response thật của `GET /job-templates?keyword=react`:
+
+```json
+{ "success": true, "data": { "items": [
+  { "templateId": "…", "code": "IT_FRONTEND_REACT", "name": "Lập trình viên Frontend ReactJS",
+    "industry": "IT", "level": "MIDDLE", "summary": "Phát triển giao diện web bằng ReactJS và TypeScript, kết nối API backend.",
+    "requirementCount": 7, "usageCount": 0, "isActive": true, "updatedAt": "2026-10-15T04:12:59Z" },
+  { "templateId": "…", "code": "IT_FULLSTACK", "name": "Lập trình viên Fullstack", "…": "…" }
+], "page": 1, "pageSize": 8, "totalCount": 2, "totalPages": 1 } }
 ```
 
 `JobUpsertInput` thêm `templateId?: string | null`. `Job` thêm `templateId?: string | null`.
@@ -140,7 +180,7 @@ Gặp mã lạ (backend thêm ngành mới) thì hiện nguyên mã, không đ�
 | `TEMPLATE_NOT_FOUND` (404) | Client xem trước hoặc bấm dùng một mẫu vừa bị ẩn | "Mẫu này không còn được sử dụng. Vui lòng chọn mẫu khác." Đóng khung xem trước và tải lại danh sách |
 | `TEMPLATE_CODE_DUPLICATE` | F3, tạo hoặc sửa mẫu | Lỗi ngay dưới ô `code`: "Mã mẫu đã tồn tại." |
 | `TEMPLATE_MUST_HAVE_REQUIRED` | F3, lưu mẫu không có yêu cầu bắt buộc | Lỗi ngay dưới danh sách yêu cầu: "Mẫu cần ít nhất 1 yêu cầu bắt buộc." |
-| 409 (`concurrencyToken`) | F3, hai người cùng sửa một mẫu | "Mẫu vừa được người khác cập nhật. Tải lại để xem bản mới." kèm nút Tải lại |
+| 409 `TEMPLATE_CONCURRENCY_CONFLICT` | F3, hai người cùng sửa một mẫu | "Mẫu vừa được người khác cập nhật. Tải lại để xem bản mới." kèm nút Tải lại |
 | 403 | Tài khoản không có quyền `job_template.manage` mở F3 | Chuyển về trang tổng quan, giống các trang có phân quyền khác |
 
 Lỗi khác dùng `getApiErrorMessage(err)` (`services/apiClient.ts`) như các màn MF-01 hiện có.
@@ -249,5 +289,5 @@ Khi tìm không ra mẫu, hiện thêm nút "Để AI viết nháp". Kết quả
 
 ## Thứ tự gợi ý
 
-Chờ Mi xong B2 + B3 và seed → F1 → F2 → F4 → F3.
-Trong lúc chờ, có thể dựng giao diện F1, F2 với dữ liệu giả **trong file test**, nhưng khi merge phải gọi API thật.
+Backend đã sẵn sàng, nên làm theo thứ tự **F1 → F2 → F4 → F3**, gắn API thật ngay từ đầu.
+Dữ liệu giả chỉ dùng **trong file test** (Vitest), không đưa vào code giao diện.
