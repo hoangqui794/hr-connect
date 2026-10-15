@@ -59,14 +59,63 @@ export interface JobStatusHistory {
   changedAt: string;
 }
 
-/** Proposed commercial terms proposed by Client (MF-01) */
+/** JobProposedTermsRequest / JobProposedTermsDto — fees the Client proposes (MF-01 A2). */
 export interface ProposedTerms {
   feeMultiplier?: number | null;
   warrantyDays?: number | null;
   paymentDueDays?: number | null;
-  sourcingPricePerCv?: number | null;
-  targetCandidateCount?: number | null;
+  /** CV_SOURCING price per CV. */
+  pricePerCv?: number | null;
   note?: string | null;
+}
+
+/** JobCommercialTermsDto — terms Internal HR agreed at approval (MF-01 A5). */
+export interface CommercialTerms {
+  serviceTypeCode: ServiceTypeCode | null;
+  feeMultiplier: number | null;
+  warrantyDays: number | null;
+  paymentDueDays: number | null;
+  sourcingTarget: number | null;
+  pricePerCv: number | null;
+  depositPercent: number | null;
+  reviewDays: number | null;
+  agreedAt: string | null;
+  agreedBy: string | null;
+  agreementReference?: string | null;
+  agreementNote?: string | null;
+}
+
+/** CommercialTermsApprovalRequest — numbers Internal HR finalizes (MF-01 A4.2). */
+export interface CommercialTermsInput {
+  feeMultiplier?: number | null;
+  warrantyDays?: number | null;
+  paymentDueDays?: number | null;
+  sourcingTarget?: number | null;
+  pricePerCv?: number | null;
+  depositPercent?: number | null;
+  reviewDays?: number | null;
+}
+
+export interface ApproveJobInput {
+  commercialTerms?: CommercialTermsInput | null;
+  /** Required by the API when the agreed numbers differ from the Client's proposal. */
+  agreementReference?: string | null;
+  note?: string | null;
+  paymentReference?: string | null;
+}
+
+type TermValues = Partial<Record<keyof CommercialTermsInput, number | null>>;
+type TermRange = { min: number; max: number };
+
+/** GET /internal/jobs/{id}/commercial-terms/defaults → data (MF-01 A4.1). */
+export interface CommercialTermsDefaults {
+  serviceTypeCode: ServiceTypeCode;
+  proposed?: TermValues & { note?: string | null };
+  adminDefaults?: TermValues;
+  prefill: TermValues | null;
+  ranges?: Partial<Record<keyof CommercialTermsInput, TermRange>>;
+  estimatedTotal?: number;
+  estimatedDeposit?: number;
 }
 
 /** JobDto — returned by detail, mine, review and inside action responses. */
@@ -112,11 +161,10 @@ export interface Job {
   requirements: JobRequirement[];
   skills: JobSkill[];
   statusHistories: JobStatusHistory[];
-  deadline?: string | null;
-  postingPackage?: string | null;
-  targetCandidateCount?: number | null;
+  applicationDeadline?: string | null;
+  isAcceptingApplications?: boolean;
   proposedTerms?: ProposedTerms | null;
-  commercialTerms?: Record<string, unknown> | null;
+  commercialTerms?: CommercialTerms | null;
 }
 
 export interface JobPostingEligibility {
@@ -204,18 +252,13 @@ export interface JobUpsertInput {
   currencyCode: string;
   quantity: number;
   visibility: JobVisibility;
+  /** CV_SOURCING: number of CVs the Client wants. */
   sourcingTarget?: number | null;
-  sourcingPricePerCv?: number | null;
-  feeMultiplier?: number | null;
-  warrantyDays?: number | null;
-  paymentDueDays?: number | null;
   postingPackageId?: string | null;
   requirements: JobRequirementInput[];
   /** Kept empty for Client: the skills catalog (GET /skills) is candidate-only today. */
   skills: { skillId: string; isMandatory: boolean; weight?: number | null }[];
-  deadline?: string | null;
-  postingPackage?: string | null;
-  targetCandidateCount?: number | null;
+  applicationDeadline?: string | null;
   proposedTerms?: ProposedTerms | null;
 }
 

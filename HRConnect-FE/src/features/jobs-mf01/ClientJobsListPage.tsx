@@ -79,7 +79,7 @@ export const ClientJobsListPage: React.FC = () => {
   };
   const [detailJobId, setDetailJobId] = useState<string>();
   const [pending, setPending] = useState<PendingAction>(null);
-  const [paymentModalJob, setPaymentModalJob] = useState<{ jobId: string; title: string; amount?: number } | null>(null);
+  const [paymentModalJob, setPaymentModalJob] = useState<{ jobId: string; title: string } | null>(null);
 
   const highlightParam = searchParams.get('highlight') || searchParams.get('jobId');
   const openDetailParam = searchParams.get('openDetail') === 'true';
@@ -129,7 +129,7 @@ export const ClientJobsListPage: React.FC = () => {
       }
 
       if (openPaymentParam) {
-        setPaymentModalJob({ jobId: targetJob.jobId, title: targetJob.title, amount: 1500000 });
+        setPaymentModalJob({ jobId: targetJob.jobId, title: targetJob.title });
       }
 
       // Cuộn mượt đến thẻ bài viết sau khi render
@@ -218,7 +218,7 @@ export const ClientJobsListPage: React.FC = () => {
                 type="primary"
                 className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600 font-medium"
                 icon={<CreditCardOutlined />}
-                onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title, amount: 1500000 })}
+                onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
               >
                 Thanh toán
               </Button>
@@ -366,7 +366,7 @@ export const ClientJobsListPage: React.FC = () => {
           showIcon
           closable
           className="mb-4"
-          message={`Bạn có ${expiredJobs.length} tin tuyển dụng đã hết hạn hiển thị (30 ngày)`}
+          message={`Bạn có ${expiredJobs.length} tin tuyển dụng đã hết hạn hiển thị`}
           description="Các tin tuyển dụng theo gói đã kết thúc thời hạn hiển thị và tự động đóng. Bạn có thể đăng tin mới với Gói Tiêu Chuẩn (STANDARD) để tiếp tục tuyển dụng không giới hạn."
           action={
             <Button size="small" type="primary" onClick={() => navigate('/client/jobs/create')}>
@@ -494,7 +494,7 @@ export const ClientJobsListPage: React.FC = () => {
                           type="primary"
                           size="small"
                           className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600 !text-xs !h-6"
-                          onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title, amount: 1500000 })}
+                          onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
                         >
                           Thanh toán ngay
                         </Button>
@@ -622,7 +622,6 @@ export const ClientJobsListPage: React.FC = () => {
         visible={Boolean(paymentModalJob)}
         jobId={paymentModalJob?.jobId ?? ''}
         jobTitle={paymentModalJob?.title ?? ''}
-        amount={paymentModalJob?.amount}
         onClose={() => {
           setPaymentModalJob(null);
           if (searchParams.has('openPayment')) {

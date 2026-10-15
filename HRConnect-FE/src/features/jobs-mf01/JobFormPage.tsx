@@ -64,7 +64,7 @@ import type {
 } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { jobsApi } from '@/services/api/jobsApi';
-import { useJobDetail, useJobMutations, useServiceTypes } from './useJobQueries';
+import { useJobDetail, useJobMutations, usePostingEligibility, usePostingPackages, useServiceTypes } from './useJobQueries';
 import {
   EMPLOYMENT_TYPE_LABEL,
   SERVICE_TYPE_LABEL,
@@ -143,37 +143,6 @@ export interface PostingPackageInfo {
   features: string[];
 }
 
-export const POSTING_PACKAGES: PostingPackageInfo[] = [
-  {
-    key: 'BASIC',
-    name: 'Gói BASIC',
-    price: 500000,
-    priceText: '500.000đ',
-    days: 14,
-    maxCandidates: 50,
-    features: ['Đăng tin hiển thị 14 ngày', 'Tối đa 50 hồ sơ ứng tuyển', 'Lọc và quản lý hồ sơ cơ bản'],
-  },
-  {
-    key: 'STANDARD',
-    name: 'Gói STANDARD',
-    price: 1500000,
-    priceText: '1.500.000đ',
-    days: 30,
-    maxCandidates: 150,
-    tag: 'Phổ biến nhất',
-    features: ['Đăng tin hiển thị 30 ngày', 'Tối đa 150 hồ sơ ứng tuyển', 'Vị trí nổi bật trong danh mục', 'Tự động gợi ý ứng viên phù hợp'],
-  },
-  {
-    key: 'PREMIUM',
-    name: 'Gói PREMIUM',
-    price: 3500000,
-    priceText: '3.500.000đ',
-    days: 60,
-    maxCandidates: 9999,
-    tag: 'VIP Ưu tiên',
-    features: ['Đăng tin hiển thị 60 ngày', 'Không giới hạn hồ sơ ứng tuyển', 'Đẩy top trang chủ định kỳ', 'AI sàng lọc & xếp hạng CV', 'Hỗ trợ CSKH ưu tiên 24/7'],
-  },
-];
 
 interface ServiceMeta {
   code: ServiceTypeCode;
@@ -215,30 +184,9 @@ const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
   },
 };
 
-/** Fallback service types if API list is pending or offline during dev */
-const FALLBACK_SERVICE_TYPES: ServiceType[] = [
-  {
-    id: 'st-cv-application',
-    code: 'CV_APPLICATION',
-    name: 'Nhận CV ứng tuyển',
-    description: 'Đăng tin tuyển dụng trên nền tảng, ứng viên chủ động tìm kiếm và nộp hồ sơ trực tiếp.',
-    isActive: true,
-  },
-  {
-    id: 'st-cv-sourcing',
-    code: 'CV_SOURCING',
-    name: 'Tìm nguồn CV (CV Sourcing)',
-    description: 'HR Connect và mạng lưới Affiliate chủ động tìm kiếm, sàng lọc hồ sơ đạt chuẩn và giao cho bạn.',
-    isActive: true,
-  },
-  {
-    id: 'st-headhunt-cod',
-    code: 'HEADHUNT_COD',
-    name: 'Tuyển dụng trọn gói (Headhunt COD)',
-    description: 'Quy trình tuyển dụng chuyên sâu qua Headhunter, bảo hành thay người miễn phí, chỉ trả phí khi tuyển thành công.',
-    isActive: true,
-  },
-];
+const SKILL_CATEGORY = 'SKILL';
+const isSkillTag = (r: { requirementType: string; category: string | null }) =>
+  r.requirementType === 'SHOULD_HAVE' && r.category === SKILL_CATEGORY;
 
 const trimOrNull = (v?: string | null) => (v && v.trim() ? v.trim() : null);
 
@@ -303,7 +251,7 @@ const toFormValues = (job: Job): JobFormValues => {
     employmentType: job.employmentType ?? undefined,
     location: job.location ?? undefined,
     workingTime: job.workingTime ?? undefined,
-    deadline: job.deadline ? String(job.deadline).split('T')[0] : (job as any).deadline ?? undefined,
+    deadline: job.applicationDeadline ? dayjs(job.applicationDeadline).format('YYYY-MM-DD') : undefined,
     quantity: job.quantity ?? 1,
     minExperienceYears: job.minExperienceYears,
     maxExperienceYears: job.maxExperienceYears,
@@ -314,17 +262,25 @@ const toFormValues = (job: Job): JobFormValues => {
     salaryNote: job.salaryNote ?? undefined,
     description: job.description ?? undefined,
     benefits: job.benefits ?? undefined,
-    requirements: (job.requirements ?? []).map((r) => ({
-      requirementType: r.requirementType,
-      content: r.content,
-      category: r.category ?? undefined,
-    })),
-    skills: (job.skills ?? []).map((s) => s.skillName || s.skillId),
+    requirements: (job.requirements ?? [])
+      .filter((r) => !isSkillTag(r))
+      .map((r) => ({
+        requirementType: r.requirementType,
+        content: r.content,
+        category: r.category ?? undefined,
+      })),
+    // Skill tags are stored as SHOULD_HAVE requirements of category SKILL (see toInput).
+    skills: Array.from(
+      new Set([
+        ...(job.requirements ?? []).filter(isSkillTag).map((r) => r.content),
+        ...(job.skills ?? []).map((s) => s.skillName || s.skillId),
+      ])
+    ),
 
     // Step 3 values
-    postingPackage: job.postingPackage ?? (job as any).servicePackage ?? 'STANDARD',
-    targetCandidateCount: proposed?.targetCandidateCount ?? job.targetCandidateCount ?? (job as any).quantityCv ?? undefined,
-    sourcingPricePerCv: proposed?.sourcingPricePerCv ?? (job as any).sourcingPricePerCv ?? undefined,
+    postingPackage: job.postingPackageCode ?? 'STANDARD',
+    targetCandidateCount: job.sourcingTarget ?? undefined,
+    sourcingPricePerCv: proposed?.pricePerCv ?? undefined,
     feeMultiplier: proposed?.feeMultiplier ?? (job as any).feeMultiplier ?? undefined,
     annualSalaryPercent,
     warrantyDays: proposed?.warrantyDays ?? (job as any).warrantyDays ?? undefined,
@@ -333,7 +289,8 @@ const toFormValues = (job: Job): JobFormValues => {
   };
 };
 
-const toInput = (v: JobFormValues, selectedCode?: ServiceTypeCode): JobUpsertInput => {
+/** Form values → POST/PUT /jobs body, using the backend field names (proposedTerms.pricePerCv, sourcingTarget, ...). */
+const toInput = (v: JobFormValues, selectedCode?: ServiceTypeCode, postingPackageId?: string | null): JobUpsertInput => {
   let proposedTerms: ProposedTerms | null = null;
 
   if (selectedCode === 'HEADHUNT_COD') {
@@ -358,8 +315,7 @@ const toInput = (v: JobFormValues, selectedCode?: ServiceTypeCode): JobUpsertInp
 
     if (hasAnyFee) {
       proposedTerms = {
-        sourcingPricePerCv: v.sourcingPricePerCv != null ? Number(v.sourcingPricePerCv) : null,
-        targetCandidateCount: v.targetCandidateCount != null ? Number(v.targetCandidateCount) : null,
+        pricePerCv: v.sourcingPricePerCv != null ? Number(v.sourcingPricePerCv) : null,
         note: trimOrNull(v.termsNote),
       };
     }
@@ -384,21 +340,27 @@ const toInput = (v: JobFormValues, selectedCode?: ServiceTypeCode): JobUpsertInp
     salaryNote: trimOrNull(v.salaryNote),
     description: trimOrNull(v.description),
     benefits: trimOrNull(v.benefits),
-    requirements: (v.requirements ?? [])
-      .filter((r) => r && r.content?.trim())
-      .map((r) => ({
-        requirementType: r.requirementType,
-        content: r.content.trim(),
-        category: trimOrNull(r.category),
+    requirements: [
+      ...(v.requirements ?? [])
+        .filter((r) => r && r.content?.trim())
+        .map((r) => ({
+          requirementType: r.requirementType,
+          content: r.content.trim(),
+          category: trimOrNull(r.category),
+        })),
+      // The skills catalog (GET /skills) is candidate-only, so a Client cannot send skill ids.
+      // Each tag becomes a SHOULD_HAVE SKILL requirement: kept with the job and read by AI scoring.
+      ...Array.from(new Set((v.skills ?? []).map((name) => name.trim()).filter(Boolean))).map((name) => ({
+        requirementType: 'SHOULD_HAVE' as const,
+        content: name,
+        category: SKILL_CATEGORY,
       })),
-    skills: (v.skills ?? []).map((name) => ({
-      skillId: name,
-      skillName: name,
-      isMandatory: false,
-    })),
-    deadline: trimOrNull(v.deadline),
-    postingPackage: selectedCode === 'CV_APPLICATION' ? (v.postingPackage || 'STANDARD') : null,
-    targetCandidateCount: selectedCode === 'CV_SOURCING' ? (v.targetCandidateCount ?? null) : null,
+    ],
+    skills: [],
+    // End of the chosen local day, sent as UTC: the API stores timestamptz and rejects dates without an offset.
+    applicationDeadline: trimOrNull(v.deadline) ? dayjs(v.deadline).endOf('day').toISOString() : null,
+    postingPackageId: selectedCode === 'CV_APPLICATION' ? postingPackageId ?? null : null,
+    sourcingTarget: selectedCode === 'CV_SOURCING' ? (v.targetCandidateCount ?? null) : null,
     proposedTerms,
   };
 };
@@ -492,14 +454,36 @@ export const JobFormPage: React.FC = () => {
   const serviceTypes = useServiceTypes();
   const existing = useJobDetail(jobId);
   const { create, update } = useJobMutations();
+  // Packages, prices and limits come from the backend (admin-configurable), never from the FE.
+  const postingPackages = usePostingPackages();
+  // FREE is limited per company (active jobs / cooldown); the backend decides who may use it.
+  const eligibility = usePostingEligibility();
+  const freeBlocked = eligibility.data ? !eligibility.data.canUseFreePackage : false;
+  const freeBlockedReason = (() => {
+    const e = eligibility.data;
+    if (!e || e.canUseFreePackage) return null;
+    if (e.reason) return e.reason;
+    if (e.nextFreeAvailableDate) return `Dùng lại được từ ${dayjs(e.nextFreeAvailableDate).format('DD/MM/YYYY')}`;
+    return `Đã dùng ${e.activeJobsCount}/${e.freeActiveLimit} tin miễn phí đang hoạt động`;
+  })();
+  const packageCards: PostingPackageInfo[] = useMemo(
+    () =>
+      (postingPackages.data ?? [])
+        .filter((p) => p.isActive)
+        .map((p) => ({
+          key: p.code,
+          name: p.name,
+          price: p.price,
+          priceText: p.price > 0 ? `${p.price.toLocaleString('vi-VN')}đ` : 'Miễn phí',
+          days: p.durationDays,
+          maxCandidates: p.maxApplications ?? 0,
+          features: p.description ? [p.description] : [],
+        })),
+    [postingPackages.data]
+  );
 
-  // Unified available service types with built-in fallback
-  const availableServiceTypes = useMemo(() => {
-    if (serviceTypes.data && serviceTypes.data.length > 0) {
-      return serviceTypes.data;
-    }
-    return FALLBACK_SERVICE_TYPES;
-  }, [serviceTypes.data]);
+  // Only real service types from the API: their ids are what POST /jobs needs.
+  const availableServiceTypes = useMemo(() => serviceTypes.data ?? [], [serviceTypes.data]);
 
   // Watch entire form for live readiness and preview
   const watched = (Form.useWatch((v) => v, form) ?? {}) as Partial<JobFormValues>;
@@ -725,7 +709,9 @@ export const JobFormPage: React.FC = () => {
 
     setSaving(andSubmit ? 'submit' : 'draft');
     try {
-      const input = toInput(formValues, effectiveCode);
+      const packageCode = formValues.postingPackage || 'STANDARD';
+      const packageId = postingPackages.data?.find((p) => p.code === packageCode)?.packageId ?? null;
+      const input = toInput(formValues, effectiveCode, packageId);
       let savedId: string;
 
       if (isEdit && existing.data) {
@@ -760,6 +746,10 @@ export const JobFormPage: React.FC = () => {
 
   // ─── Render States ──────────────────────────────────────────────────────────
 
+  useEffect(() => {
+    if (freeBlocked && watched.postingPackage === 'FREE') form.setFieldValue('postingPackage', 'STANDARD');
+  }, [freeBlocked, watched.postingPackage, form]);
+
   if (isEdit && existing.isLoading) {
     return <Skeleton active paragraph={{ rows: 14 }} />;
   }
@@ -774,7 +764,7 @@ export const JobFormPage: React.FC = () => {
     );
   }
 
-  const selectedPkg = POSTING_PACKAGES.find((p) => p.key === (watched.postingPackage || 'STANDARD')) ?? POSTING_PACKAGES[1];
+  const selectedPkg = packageCards.find((p) => p.key === (watched.postingPackage || 'STANDARD')) ?? packageCards[0];
 
   const submitButton = (block?: boolean) => (
     <Button
@@ -938,6 +928,22 @@ export const JobFormPage: React.FC = () => {
                       <Skeleton.Button active block style={{ height: 180 }} />
                       <Skeleton.Button active block style={{ height: 180 }} />
                     </div>
+                  ) : serviceTypes.isError || availableServiceTypes.length === 0 ? (
+                    <Alert
+                      type={serviceTypes.isError ? 'error' : 'warning'}
+                      showIcon
+                      message={serviceTypes.isError ? 'Không tải được loại dịch vụ tuyển dụng' : 'Chưa có loại dịch vụ nào đang mở'}
+                      description={
+                        serviceTypes.isError
+                          ? getApiErrorMessage(serviceTypes.error)
+                          : 'Vui lòng liên hệ HR Connect để được hỗ trợ.'
+                      }
+                      action={
+                        <Button size="small" onClick={() => serviceTypes.refetch()} loading={serviceTypes.isFetching}>
+                          Thử lại
+                        </Button>
+                      }
+                    />
                   ) : (
                     <div className="grid gap-4 md:grid-cols-3">
                       {availableServiceTypes.map((st: ServiceType) => {
@@ -960,6 +966,7 @@ export const JobFormPage: React.FC = () => {
                             key={st.id}
                             role="button"
                             tabIndex={0}
+                            aria-pressed={isSelected}
                             onClick={() => handleSelectService(st)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSelectService(st)}
                             className={`group relative flex flex-col justify-between rounded-2xl border-2 border-solid p-5 text-left transition-all duration-200 cursor-pointer ${
@@ -969,17 +976,18 @@ export const JobFormPage: React.FC = () => {
                             } ${serviceTypeLocked || !editable ? 'opacity-65 cursor-not-allowed' : ''}`}
                           >
                             <div>
-                              <div className="flex items-center justify-between gap-2 mb-3">
-                                <div className="flex items-center gap-2">
-                                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 group-hover:bg-white transition-colors">
+                              <div className="flex items-center justify-between gap-3 mb-3">
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 group-hover:bg-white transition-colors">
                                     {meta.icon}
                                   </div>
-                                  <Tag color={meta.color} className="m-0 font-medium">
+                                  <Tag color={meta.color} className="m-0 min-w-0 truncate font-medium" title={meta.tag}>
                                     {meta.tag}
                                   </Tag>
                                 </div>
                                 <div
-                                  className={`flex h-5 w-5 items-center justify-center rounded-full border-2 border-solid transition-colors ${
+                                  aria-hidden
+                                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-solid transition-colors ${
                                     isSelected
                                       ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent)]'
                                       : 'border-slate-300 bg-white'
@@ -1435,17 +1443,28 @@ export const JobFormPage: React.FC = () => {
 
                   <Form.Item name="postingPackage" className="mb-0">
                     <div className="grid gap-4 md:grid-cols-3">
-                      {POSTING_PACKAGES.map((pkg) => {
+                      {packageCards.length === 0 && (
+                        <Alert type={postingPackages.isError ? 'error' : 'info'} showIcon className="md:col-span-3"
+                          message={postingPackages.isError ? 'Không tải được danh sách gói đăng tin' : 'Đang tải gói đăng tin...'} />
+                      )}
+                      {packageCards.map((pkg) => {
                         const isPkgSelected = (watched.postingPackage || 'STANDARD') === pkg.key;
+                        const isBlocked = pkg.key === 'FREE' && freeBlocked;
+                        const choose = () => !isBlocked && form.setFieldValue('postingPackage', pkg.key);
                         return (
                           <div
                             key={pkg.key}
                             role="button"
-                            tabIndex={0}
-                            onClick={() => form.setFieldValue('postingPackage', pkg.key)}
-                            onKeyDown={(e) => e.key === 'Enter' && form.setFieldValue('postingPackage', pkg.key)}
-                            className={`relative flex flex-col justify-between rounded-2xl border-2 border-solid p-5 text-left transition-all cursor-pointer ${
-                              isPkgSelected
+                            tabIndex={isBlocked ? -1 : 0}
+                            aria-disabled={isBlocked}
+                            onClick={choose}
+                            onKeyDown={(e) => e.key === 'Enter' && choose()}
+                            className={`relative flex flex-col justify-between rounded-2xl border-2 border-solid p-5 text-left transition-all ${
+                              isBlocked ? 'cursor-not-allowed opacity-60 border-slate-200 bg-slate-50' : 'cursor-pointer'
+                            } ${
+                              isBlocked
+                                ? ''
+                                : isPkgSelected
                                 ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)]/40 shadow-md ring-2 ring-[color:var(--console-accent)]/20'
                                 : 'border-slate-200 bg-white hover:border-slate-300'
                             }`}
@@ -1466,9 +1485,14 @@ export const JobFormPage: React.FC = () => {
 
                               <div className="my-3 pb-3 border-0 border-b border-solid border-slate-200">
                                 <div className="text-[24px] font-extrabold text-slate-900">{pkg.priceText}</div>
-                                <div className="text-xs text-slate-600">Thời hạn {pkg.days} ngày · Tối đa {pkg.maxCandidates} hồ sơ</div>
+                                <div className="text-xs text-slate-600">Thời hạn {pkg.days} ngày{pkg.maxCandidates > 0 ? ` · Tối đa ${pkg.maxCandidates} hồ sơ` : ''}</div>
                               </div>
 
+                              {isBlocked && freeBlockedReason && (
+                                <div role="note" className="mb-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[12px] text-amber-900">
+                                  Chưa dùng được gói này: {freeBlockedReason}
+                                </div>
+                              )}
                               <ul className="m-0 p-0 list-none space-y-2 text-[12.5px] text-slate-700">
                                 {pkg.features.map((feat, idx) => (
                                   <li key={idx} className="flex items-start gap-2">
@@ -1482,10 +1506,11 @@ export const JobFormPage: React.FC = () => {
                             <div className="mt-5 text-center">
                               <Button
                                 type={isPkgSelected ? 'primary' : 'default'}
+                                disabled={isBlocked}
                                 block
                                 className={isPkgSelected ? 'client-cta' : ''}
                               >
-                                {isPkgSelected ? 'Đang chọn gói này' : 'Chọn gói'}
+                                {isBlocked ? 'Chưa đủ điều kiện' : isPkgSelected ? 'Đang chọn gói này' : 'Chọn gói'}
                               </Button>
                             </div>
                           </div>
@@ -1906,7 +1931,7 @@ export const JobFormPage: React.FC = () => {
                   <div className="space-y-3">
                     <div className="rounded-xl bg-white p-4 border border-solid border-slate-200">
                       <div className="text-base font-bold text-slate-900">
-                        {selectedPkg.name}: {selectedPkg.priceText} / {selectedPkg.days} ngày
+                        {selectedPkg ? `${selectedPkg.name}: ${selectedPkg.priceText} / ${selectedPkg.days} ngày` : 'Chưa tải được gói đăng tin'}
                       </div>
                       <p className="mt-1.5 text-sm font-medium text-emerald-800 m-0">
                         Bạn thanh toán <b>sau khi tin được duyệt</b>.

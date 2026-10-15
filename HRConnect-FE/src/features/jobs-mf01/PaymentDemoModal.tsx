@@ -1,7 +1,7 @@
 /**
  * @file PaymentDemoModal.tsx
  * @description Modal mô phỏng thanh toán phí gói đăng tin STANDARD (MF-01 Giai đoạn 3).
- * Cho phép Client thực hiện thao tác demo thanh toán 1.500.000 đ để kích hoạt tin đăng.
+ * Số tiền, tên gói, thời hạn và hạn mức hồ sơ đọc từ backend (GET /jobs/{id}/posting-fee, /jobs/posting-packages).
  */
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -9,7 +9,7 @@ import { Alert, App, Button, Divider, Modal, Space, Tag, Typography } from 'antd
 import { CheckCircleOutlined, CreditCardOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { jobsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { jobQueryKeys } from './useJobQueries';
+import { formatMoney, jobQueryKeys, usePostingFee, usePostingPackages } from './useJobQueries';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -18,7 +18,6 @@ interface PaymentDemoModalProps {
   visible?: boolean;
   jobId: string;
   jobTitle: string;
-  amount?: number;
   onSuccess?: () => void;
   onPaymentSuccess?: () => void;
   onClose: () => void;
@@ -29,7 +28,6 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
   visible,
   jobId,
   jobTitle,
-  amount = 1500000,
   onSuccess,
   onPaymentSuccess,
   onClose,
@@ -38,6 +36,10 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const isOpen = Boolean(open ?? visible);
+  const fee = usePostingFee(jobId, isOpen);
+  const packages = usePostingPackages();
+  const pkg = packages.data?.find((p) => p.packageId === fee.data?.packageId);
+  const amount = fee.data?.amount ?? null;
 
   const handlePay = async () => {
     setLoading(true);
@@ -84,7 +86,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
               <Text type="secondary" className="text-xs">Vị trí tuyển dụng</Text>
               <div className="font-semibold text-slate-900 text-base">{jobTitle}</div>
             </div>
-            <Tag color="blue" className="m-0 font-medium">STANDARD</Tag>
+            <Tag color="blue" className="m-0 font-medium">{fee.data?.packageCode ?? '—'}</Tag>
           </div>
 
           <Divider className="my-2" />
@@ -92,12 +94,16 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>
               <Text type="secondary" className="text-xs">Gói dịch vụ:</Text>
-              <div className="font-medium text-slate-800">Gói Tiêu Chuẩn (30 ngày)</div>
+              <div className="font-medium text-slate-800">
+                {fee.data?.packageName ?? '—'}
+                {pkg?.durationDays ? ` (${pkg.durationDays} ngày)` : ''}
+              </div>
             </div>
             <div>
               <Text type="secondary" className="text-xs">Quyền lợi gói:</Text>
               <div className="font-medium text-emerald-700 flex items-center gap-1">
-                <CheckCircleOutlined /> Tối đa 50 hồ sơ & AI chấm điểm CV
+                <CheckCircleOutlined />{' '}
+                {pkg?.maxApplications ? `Tối đa ${pkg.maxApplications} hồ sơ & AI chấm điểm CV` : 'AI chấm điểm CV'}
               </div>
             </div>
           </div>
@@ -105,7 +111,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
           <div className="pt-2 flex justify-between items-baseline border-t border-dashed border-slate-300">
             <span className="font-semibold text-slate-700">Tổng thanh toán:</span>
             <span className="text-2xl font-bold text-indigo-600">
-              {amount.toLocaleString('vi-VN')} <span className="text-sm font-normal text-slate-500">VNĐ</span>
+              {fee.isLoading ? '…' : formatMoney(amount, fee.data?.currencyCode)}
             </span>
           </div>
         </div>
@@ -115,7 +121,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
             <SafetyCertificateOutlined className="text-emerald-600" /> Thanh toán an toàn qua cổng HRConnect
           </div>
           <p className="m-0">
-            Sau khi thanh toán thành công, tin tuyển dụng đã duyệt nội dung sẽ được kích hoạt công khai ngay lập tức, bắt đầu tính thời hạn 30 ngày và mở nhận hồ sơ ứng viên.
+            Sau khi thanh toán thành công, tin tuyển dụng đã duyệt nội dung sẽ được kích hoạt công khai ngay lập tức, bắt đầu tính thời hạn hiển thị của gói và mở nhận hồ sơ ứng viên.
           </p>
         </div>
 
@@ -127,6 +133,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
             type="primary"
             className="!bg-indigo-600 hover:!bg-indigo-500"
             loading={loading}
+            disabled={!fee.data || fee.data.status !== 'PENDING'}
             onClick={handlePay}
           >
             Xác nhận thanh toán ngay
