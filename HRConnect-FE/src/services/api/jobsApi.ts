@@ -6,6 +6,8 @@
  */
 import { apiClient } from '../apiClient';
 import type {
+  ApproveJobInput,
+  CommercialTermsDefaults,
   CreateJobResponse,
   Job,
   JobActionResponse,
@@ -117,10 +119,10 @@ export const jobsApi = {
     return res.data;
   },
 
-  /** GET /jobs/{id}/posting-fee — fee details of the job. */
-  async getPostingFee(jobId: string): Promise<JobPostingFee> {
-    const res = await apiClient.get<JobPostingFee>(`/jobs/${jobId}/posting-fee`);
-    return res.data;
+  /** GET /jobs/{id}/posting-fee — the job's fee record; null until approval creates it. */
+  async getPostingFee(jobId: string): Promise<JobPostingFee | null> {
+    const res = await apiClient.get<JobPostingFee | null>(`/jobs/${jobId}/posting-fee`);
+    return res.data ?? null;
   },
 
   /** POST /jobs/{id}/posting-fee/pay — record payment for posting fee. */
@@ -138,11 +140,25 @@ export const jobsApi = {
     return res.data;
   },
 
-  /** POST /internal/jobs/{id}/approve — PENDING_REVIEW → ACTIVE; token and paymentReference in query string. */
-  async approve(jobId: string, concurrencyToken: string, paymentReference?: string): Promise<JobActionResponse> {
-    const res = await apiClient.post<JobActionResponse>(`/internal/jobs/${jobId}/approve`, null, {
-      params: cleanParams({ concurrencyToken, paymentReference }),
-    });
+  /** GET /internal/jobs/{id}/commercial-terms/defaults — Client proposal, admin defaults, prefill and ranges. */
+  async getCommercialTermsDefaults(jobId: string): Promise<CommercialTermsDefaults> {
+    const res = await apiClient.get<{ success: boolean; data: CommercialTermsDefaults }>(
+      `/internal/jobs/${jobId}/commercial-terms/defaults`
+    );
+    return res.data.data;
+  },
+
+  /**
+   * POST /internal/jobs/{id}/approve — PENDING_REVIEW → ACTIVE / PENDING_PAYMENT.
+   * Body carries the agreed commercial terms; omitted numbers fall back to the Client proposal, then defaults.
+   */
+  async approve(jobId: string, concurrencyToken: string, input: ApproveJobInput = {}): Promise<JobActionResponse> {
+    const { paymentReference, ...body } = input;
+    const res = await apiClient.post<JobActionResponse>(
+      `/internal/jobs/${jobId}/approve`,
+      { concurrencyToken, ...body },
+      { params: cleanParams({ concurrencyToken, paymentReference }) }
+    );
     return res.data;
   },
 
