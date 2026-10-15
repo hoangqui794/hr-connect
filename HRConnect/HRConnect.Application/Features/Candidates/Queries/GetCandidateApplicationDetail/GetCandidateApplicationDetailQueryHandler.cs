@@ -3,7 +3,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Candidates.Common;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace HRConnect.Application.Features.Candidates.Queries.GetCandidateApplicationDetail;
 
@@ -11,13 +13,16 @@ public class GetCandidateApplicationDetailQueryHandler : IRequestHandler<GetCand
 {
     private readonly ICandidateRepository _candidateRepository;
     private readonly IApplicationRepository _applicationRepository;
+    private readonly ILogger<GetCandidateApplicationDetailQueryHandler> _logger;
 
     public GetCandidateApplicationDetailQueryHandler(
         ICandidateRepository candidateRepository,
-        IApplicationRepository applicationRepository)
+        IApplicationRepository applicationRepository,
+        ILogger<GetCandidateApplicationDetailQueryHandler> logger)
     {
         _candidateRepository = candidateRepository;
         _applicationRepository = applicationRepository;
+        _logger = logger;
     }
 
     public async Task<CandidateApplicationDetailResponse> Handle(GetCandidateApplicationDetailQuery request, CancellationToken cancellationToken)
@@ -43,6 +48,10 @@ public class GetCandidateApplicationDetailQueryHandler : IRequestHandler<GetCand
         var latestAi = application.AiMatchResults?
             .OrderByDescending(x => x.AttemptNo)
             .FirstOrDefault();
+        var displayStatus = CandidateApplicationDisplayStatusMapper.Map(
+            application.Status,
+            application.Offers?.Select(offer => offer.Status),
+            _logger);
 
         return new CandidateApplicationDetailResponse
         {
@@ -55,9 +64,8 @@ public class GetCandidateApplicationDetailQueryHandler : IRequestHandler<GetCand
             CvId = application.Submission?.CvId,
             CvTitle = application.Submission?.CandidateCv?.Title,
             CvFileName = application.Submission?.CandidateCv?.FileName,
-            Status = application.Status,
-            CurrentStage = application.CurrentStage,
-            StatusReason = application.StatusReason,
+            DisplayGroup = displayStatus.Group,
+            DisplayLabel = displayStatus.Label,
             SubmissionSource = application.Submission?.Source,
             AppliedAt = application.AppliedAt,
             UpdatedAt = application.UpdatedAt,

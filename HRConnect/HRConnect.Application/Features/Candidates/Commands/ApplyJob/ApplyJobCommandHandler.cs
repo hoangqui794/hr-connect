@@ -23,6 +23,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
     private readonly ILogger<ApplyJobCommandHandler> _logger;
+    private readonly ICandidateCompanyTransactionLock _candidateCompanyLock;
 
     public ApplyJobCommandHandler(
         ICandidateRepository candidateRepository,
@@ -35,7 +36,8 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         IMf03ScoringTrigger scoringTrigger,
         IUnitOfWork unitOfWork,
         IAuditLogService auditLogService,
-        ILogger<ApplyJobCommandHandler> logger)
+        ILogger<ApplyJobCommandHandler> logger,
+        ICandidateCompanyTransactionLock candidateCompanyLock)
     {
         _candidateRepository = candidateRepository;
         _userRepository = userRepository;
@@ -48,6 +50,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
         _logger = logger;
+        _candidateCompanyLock = candidateCompanyLock;
     }
 
     public async Task<ApplyJobResponse> Handle(ApplyJobCommand request, CancellationToken cancellationToken)
@@ -207,7 +210,9 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             await AddDuplicateAuditAsync(blockedSubmission, request.UserId, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            throw new ConflictException("Bạn đã nộp hồ sơ ứng tuyển vào công việc này trước đó.");
+            throw new ConflictException(
+                "Bạn đã nộp hồ sơ ứng tuyển vào công việc này trước đó.",
+                "CANDIDATE_ALREADY_SUBMITTED");
         }
 
         // 6. Tạo Submission ACCEPTED và Application chính thức trong Transaction
@@ -219,6 +224,22 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
 
         try
         {
+            await _candidateCompanyLock.AcquireAsync(
+                candidate.CandidateId,
+                job.CompanyId,
+                cancellationToken);
+
+            existingSubmission = await _submissionRepository.GetAcceptedSubmissionAsync(
+                candidate.CandidateId, job.JobId, cancellationToken);
+            existingApplication = await _applicationRepository.GetByCandidateAndJobAsync(
+                candidate.CandidateId, job.JobId, cancellationToken);
+            if (existingSubmission != null || existingApplication != null)
+            {
+                throw new ConflictException(
+                    "Bạn đã nộp hồ sơ ứng tuyển vào công việc này trước đó.",
+                    "CANDIDATE_ALREADY_SUBMITTED");
+            }
+
             submission = new Submission
             {
                 SubmissionId = Guid.NewGuid(),
@@ -271,52 +292,33 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
 
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
+        catch (ConflictException ex) when (ex.ErrorCode == "CANDIDATE_ALREADY_SUBMITTED")
+        {
+            await HandleConcurrentDuplicateAsync(
+                candidate,
+                job.JobId,
+                request.UserId,
+                cvId,
+                newlyUploadedCvId,
+                cancellationToken);
+            throw;
+        }
         catch (Exception ex) when (IsDuplicateConstraintViolation(ex))
         {
             _logger.LogWarning(ex, "Phát hiện nộp trùng lặp ứng viên do tranh chấp đồng thời: CandidateId={CandidateId}, JobId={JobId}",
                 candidate.CandidateId, job.JobId);
 
-            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            await HandleConcurrentDuplicateAsync(
+                candidate,
+                job.JobId,
+                request.UserId,
+                cvId,
+                newlyUploadedCvId,
+                cancellationToken);
 
-            if (newlyUploadedCvId.HasValue)
-            {
-                try
-                {
-                    await _cvStorageService.DeleteCvAsync(newlyUploadedCvId.Value, CancellationToken.None);
-                }
-                catch (Exception delEx)
-                {
-                    _logger.LogError(delEx, "Lỗi bồi hoàn xóa CV {CvId} trên R2 sau tranh chấp đồng thời", newlyUploadedCvId.Value);
-                }
-            }
-
-            try
-            {
-                var winningSub = await _submissionRepository.GetAcceptedSubmissionAsync(candidate.CandidateId, job.JobId, CancellationToken.None);
-                var blockedSub = new Submission
-                {
-                    SubmissionId = Guid.NewGuid(),
-                    CandidateId = candidate.CandidateId,
-                    CvId = winningSub?.CvId ?? cvId,
-                    JobId = job.JobId,
-                    SubmittedBy = request.UserId,
-                    Source = "CANDIDATE",
-                    Status = "BLOCKED_DUPLICATE",
-                    DuplicateOfSubmissionId = winningSub?.SubmissionId,
-                    Note = "Nộp trùng lặp trong phiên đồng thời.",
-                    SubmittedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                await _submissionRepository.AddAsync(blockedSub, CancellationToken.None);
-                await AddDuplicateAuditAsync(blockedSub, request.UserId, CancellationToken.None);
-                await _unitOfWork.SaveChangesAsync(CancellationToken.None);
-            }
-            catch (Exception recEx)
-            {
-                _logger.LogWarning(recEx, "Không thể ghi nhận BLOCKED_DUPLICATE sau khi tranh chấp đồng thời.");
-            }
-
-            throw new ConflictException("Bạn đã nộp hồ sơ ứng tuyển vào công việc này trước đó.");
+            throw new ConflictException(
+                "Bạn đã nộp hồ sơ ứng tuyển vào công việc này trước đó.",
+                "CANDIDATE_ALREADY_SUBMITTED");
         }
         catch (Exception ex)
         {
@@ -357,6 +359,63 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
                 AppliedAt = application.AppliedAt
             }
         };
+    }
+
+    private async Task HandleConcurrentDuplicateAsync(
+        Candidate candidate,
+        Guid jobId,
+        Guid actorUserId,
+        Guid attemptedCvId,
+        Guid? newlyUploadedCvId,
+        CancellationToken cancellationToken)
+    {
+        await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+
+        if (newlyUploadedCvId.HasValue)
+        {
+            try
+            {
+                await _cvStorageService.DeleteCvAsync(newlyUploadedCvId.Value, CancellationToken.None);
+            }
+            catch (Exception deleteException)
+            {
+                _logger.LogError(
+                    deleteException,
+                    "Lỗi bồi hoàn xóa CV {CvId} trên R2 sau tranh chấp đồng thời",
+                    newlyUploadedCvId.Value);
+            }
+        }
+
+        try
+        {
+            var winningSubmission = await _submissionRepository.GetAcceptedSubmissionAsync(
+                candidate.CandidateId,
+                jobId,
+                CancellationToken.None);
+            var blockedSubmission = new Submission
+            {
+                SubmissionId = Guid.NewGuid(),
+                CandidateId = candidate.CandidateId,
+                CvId = winningSubmission?.CvId ?? attemptedCvId,
+                JobId = jobId,
+                SubmittedBy = actorUserId,
+                Source = "CANDIDATE",
+                Status = "BLOCKED_DUPLICATE",
+                DuplicateOfSubmissionId = winningSubmission?.SubmissionId,
+                Note = "Nộp trùng lặp trong phiên đồng thời.",
+                SubmittedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            await _submissionRepository.AddAsync(blockedSubmission, CancellationToken.None);
+            await AddDuplicateAuditAsync(blockedSubmission, actorUserId, CancellationToken.None);
+            await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+        }
+        catch (Exception recordException)
+        {
+            _logger.LogWarning(
+                recordException,
+                "Không thể ghi nhận BLOCKED_DUPLICATE sau khi tranh chấp đồng thời.");
+        }
     }
 
     private static bool IsDuplicateConstraintViolation(Exception ex)

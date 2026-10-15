@@ -53,6 +53,8 @@ Sau thành công, hiển thị nút **Mở trong kho CV cá nhân** và reload d
 
 Trang usages dùng để giải thích CV này đã được Affiliate nộp vào Job/Application nào. Không xóa lịch sử usages khi Candidate thu hồi reuse hoặc adopt.
 
+Nếu usage đã tạo Application, FE hiển thị `applicationDisplayLabel` và dùng `applicationDisplayGroup` để chọn màu badge. Hai trường là `null` khi chưa có Application. Không đọc mã `applicationStatus` hoặc `applicationCurrentStage` nội bộ; xem bảng nhóm tại [11-CANDIDATE-APPLICATION-STATUS.md](./11-CANDIDATE-APPLICATION-STATUS.md).
+
 ## Checklist
 
 - [ ] Candidate chỉ xem được CV thuộc Candidate của mình.

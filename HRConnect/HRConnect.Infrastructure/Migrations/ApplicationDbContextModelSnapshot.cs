@@ -650,6 +650,9 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "CandidateId", "UpdatedAt" }, "idx_application_candidate")
                         .IsDescending(false, true);
 
+                    b.HasIndex(new[] { "CandidateId", "AppliedAt" }, "idx_application_candidate_applied_at")
+                        .IsDescending(false, true);
+
                     b.HasIndex(new[] { "JobId", "Status" }, "idx_application_job_status");
 
                     b.ToTable("application", "public", t =>
@@ -4340,7 +4343,7 @@ namespace HRConnect.Infrastructure.Migrations
                         {
                             t.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed.");
 
-                            t.HasCheckConstraint("submission_status_check", "status IN ('RECEIVED','PENDING_CONSENT','ACCEPTED','BLOCKED_DUPLICATE','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
+                            t.HasCheckConstraint("submission_status_check", "status IN ('RECEIVED','PENDING_CONSENT','ACCEPTED','BLOCKED_DUPLICATE','BLOCKED_CLIENT_OWNED','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
                         });
                 });
 

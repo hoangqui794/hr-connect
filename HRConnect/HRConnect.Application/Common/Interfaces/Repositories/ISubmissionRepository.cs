@@ -144,7 +144,7 @@ public sealed record CandidateAffiliateCvUsageRecord(
     DateTime? ConsentRespondedAt,
     Guid? ApplicationId,
     string? ApplicationStatus,
-    string? ApplicationCurrentStage,
+    string? LatestOfferStatus,
     string? AiStatus,
     decimal? AiMatchScore,
     string? AiMatchTier,

@@ -450,7 +450,10 @@ public class SubmissionRepository : ISubmissionRepository
                     {
                         application.ApplicationId,
                         ApplicationStatus = application.Status,
-                        ApplicationCurrentStage = application.CurrentStage,
+                        LatestOfferStatus = application.Offers
+                            .OrderByDescending(offer => offer.OfferVersion)
+                            .Select(offer => offer.Status)
+                            .FirstOrDefault(),
                         AiStatus = application.AiMatchResults
                             .OrderByDescending(result => result.AttemptNo)
                             .Select(result => result.Status)
@@ -488,7 +491,7 @@ public class SubmissionRepository : ISubmissionRepository
             row.ConsentRespondedAt,
             row.Application?.ApplicationId,
             row.Application?.ApplicationStatus,
-            row.Application?.ApplicationCurrentStage,
+            row.Application?.LatestOfferStatus,
             row.Application?.AiStatus,
             row.Application?.AiMatchScore,
             row.Application?.AiMatchTier,

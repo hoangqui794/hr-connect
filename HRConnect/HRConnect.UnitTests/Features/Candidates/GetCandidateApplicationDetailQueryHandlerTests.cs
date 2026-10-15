@@ -8,6 +8,7 @@ using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateApplicationDetail;
 using HRConnect.Domain.Entities;
 using Moq;
+using Microsoft.Extensions.Logging;
 using Xunit;
 using JobApplication = HRConnect.Domain.Entities.Application;
 
@@ -25,7 +26,8 @@ public class GetCandidateApplicationDetailQueryHandlerTests
         _applicationRepoMock = new Mock<IApplicationRepository>();
         _handler = new GetCandidateApplicationDetailQueryHandler(
             _candidateRepoMock.Object,
-            _applicationRepoMock.Object);
+            _applicationRepoMock.Object,
+            Mock.Of<ILogger<GetCandidateApplicationDetailQueryHandler>>());
     }
 
     [Fact]
@@ -106,8 +108,11 @@ public class GetCandidateApplicationDetailQueryHandlerTests
         result.CvId.Should().Be(cvId);
         result.CvTitle.Should().Be("My .NET CV");
         result.CvFileName.Should().Be("cv.pdf");
-        result.Status.Should().Be("SUBMITTED");
-        result.CurrentStage.Should().Be("APPLICATION_RECEIVED");
+        result.DisplayGroup.Should().Be("SUBMITTED");
+        result.DisplayLabel.Should().Be("Đã nộp");
+        typeof(CandidateApplicationDetailResponse).GetProperty("Status").Should().BeNull();
+        typeof(CandidateApplicationDetailResponse).GetProperty("CurrentStage").Should().BeNull();
+        typeof(CandidateApplicationDetailResponse).GetProperty("StatusReason").Should().BeNull();
         result.SubmissionSource.Should().Be("CANDIDATE");
         result.AiStatus.Should().Be("COMPLETED");
         result.AiMatchScore.Should().Be(85.5m);
