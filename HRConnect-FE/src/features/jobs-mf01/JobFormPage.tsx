@@ -1370,16 +1370,16 @@ export const JobFormPage: React.FC = () => {
                       <div className="space-y-3">
                         {fields.map((field, index) => (
                           <div key={field.key} className="rounded-xl border border-solid border-slate-200 bg-slate-50/70 p-3.5">
-                            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 md:grid-cols-[140px_minmax(0,1fr)_160px_auto]">
+                            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 md:grid-cols-[auto_minmax(0,1fr)_160px_auto]">
                               <Form.Item
                                 name={[field.name, 'requirementType']}
                                 label="Mức độ"
                                 className="mb-2 md:mb-0"
                                 rules={[{ required: true, message: 'Chọn mức độ.' }]}
                               >
-                                <Radio.Group optionType="button" buttonStyle="solid" size="middle">
-                                  <Radio.Button value="MUST_HAVE">Bắt buộc</Radio.Button>
-                                  <Radio.Button value="SHOULD_HAVE">Ưu tiên</Radio.Button>
+                                <Radio.Group optionType="button" buttonStyle="solid" size="middle" className="inline-flex whitespace-nowrap">
+                                  <Radio.Button value="MUST_HAVE" className="px-3 text-center">Bắt buộc</Radio.Button>
+                                  <Radio.Button value="SHOULD_HAVE" className="px-3 text-center">Ưu tiên</Radio.Button>
                                 </Radio.Group>
                               </Form.Item>
 

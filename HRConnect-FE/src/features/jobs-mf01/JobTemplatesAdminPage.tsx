@@ -853,7 +853,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
                       <Select
                         value={req.requirementType}
                         onChange={(val) => handleUpdateRequirement(req.key, 'requirementType', val)}
-                        className="w-36"
+                        className="w-[100px]"
                         size="small"
                       >
                         <Option value="MUST_HAVE">
@@ -871,7 +871,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
                       <Select
                         value={req.category}
                         onChange={(val) => handleUpdateRequirement(req.key, 'category', val)}
-                        className="w-48"
+                        className="w-56"
                         size="small"
                       >
                         {CATEGORY_OPTIONS.map((c) => (
