@@ -3,7 +3,7 @@
 > **Dành cho:** dev MF-05 (phụ trách chính). Phần của Trí (MF-02 B4): [`MF02/mf02-b4-gan-suat-thay-the.md`](../MF02/mf02-b4-gan-suat-thay-the.md). Phần của Sơn (MF-04) nằm ở tài liệu riêng [`MF04/mf04-lap-suat-thay-the.md`](../MF04/mf04-lap-suat-thay-the.md).
 > **Ngày:** 2026-10-15.
 > **Trả lời yêu cầu trong:** [`MF02/MF02-PENDING-MF05-REPLACEMENT.md`](../MF02/MF02-PENDING-MF05-REPLACEMENT.md). Thay cho phần mô tả ngắn ở mục E7 của [`mf05-viec-can-lam-theo-quy-tac-phi.md`](mf05-viec-can-lam-theo-quy-tac-phi.md).
-> **Hiện trạng code:** chưa có bảng, cột hay symbol nào về thay thế (đã kiểm tra trên `dev` ngày 15/10).
+> **Hiện trạng code (15/10, nhánh `feature/mf05-replacement-slot`):** MF-05 đã làm xong bước 1 và 2 của mục 8: bảng, cột, hằng số `ReplacementSlotStates` / `ReplacementSlotErrorCodes`, cài đặt, migration `Mf05ReplacementSlot`, S1–S4 và API mục 6. Còn lại: MF-02 B4 (Trí) và mục 5 (Sơn + MF-05).
 
 **Cách gọi trong tài liệu:**
 - **Internal HR:** nhân viên HR nội bộ của HR Connect (vai trò `INTERNAL_HR`).
@@ -26,7 +26,7 @@ Chỉ áp dụng cho **HEADHUNT_COD** (dịch vụ duy nhất có bảo hành).
 | R5 | Người thay thế đi làm thì **không tạo phí mới**. Bảo hành mới và hoa hồng mới (`IN_WARRANTY`) cho Affiliate của người thay thế, **tính trên khoản phí cũ** | Tài liệu MF-05 E7 |
 
 **[CẦN NHÓM CHỐT]**
-- Giá trị mặc định của `fill_window_days`. Đề xuất **30 ngày** (ví dụ trong [N4]), khoảng cho phép 1–180.
+- Giá trị mặc định của `fill_window_days`. Code đang dùng **30 ngày** (ví dụ trong [N4]), khoảng 1–180; Admin đổi được trong trang Cài đặt.
 - Job đã `CLOSED` (đủ người) khi mở suất thay thế: hệ thống **tự mở lại job** về `ACTIVE`, hay Internal HR mở tay? Đề xuất: **tự mở lại**, ghi lịch sử trạng thái job với mã `REOPENED_FOR_REPLACEMENT`.
 
 ---
@@ -47,6 +47,7 @@ Chỉ áp dụng cho **HEADHUNT_COD** (dịch vụ duy nhất có bảo hành).
 | `filled_by_placement_id` | uuid FK `placement` null, **UNIQUE** | Placement của người thay thế |
 | `closed_at`, `closed_by` | timestamptz null, uuid null | Lúc `FILLED` / `CANCELLED` / `EXPIRED` |
 | `cancel_reason` | varchar(500) null | Bắt buộc khi `CANCELLED` |
+| `fill_window_days` | int | Số ngày hạn, chụp lại từ cài đặt lúc tạo suất (đổi cài đặt sau đó không ảnh hưởng suất cũ) |
 | `concurrency_token` | uuid | Đổi mỗi lần đổi trạng thái |
 | `created_at`, `updated_at`, `created_by` | | |
 
@@ -64,7 +65,7 @@ Index: `(job_id, status, opened_at)` để tìm suất `OPEN` của job.
 
 ### 2.3 Cài đặt mới
 
-`mf05.replacement.fill_window_days`: kiểu Integer, mặc định **[CẦN NHÓM CHỐT, đề xuất 30]**, khoảng 1–180, đơn vị ngày.
+`mf05.replacement.fill_window_days`: kiểu Integer, mặc định **30** (nhóm có thể đổi), khoảng 1–180, đơn vị ngày, nhóm `HEADHUNT_COD` trong trang Cài đặt.
 
 ---
 
@@ -132,7 +133,7 @@ Chi tiết ở tài liệu riêng cho Sơn: [`MF04/mf04-lap-suat-thay-the.md`](.
 
 | Method | Route | Quyền | Việc |
 |---|---|---|---|
-| `GET` | `/api/v1/jobs/{jobId}/replacement-slots` | `job.review` (Internal HR); `job.view_own` (HR của Client, chỉ job của công ty mình) | Danh sách suất của job: trạng thái, người cũ, hạn chót, người thay thế |
+| `GET` | `/api/v1/jobs/{jobId}/replacement-slots` | `warranty.manage` / `commission.manage` / `commission.view` (Internal HR, Admin); `placement.confirm` (HR của Client, chỉ job của công ty mình) | Danh sách suất của job: trạng thái, người cũ, hạn chót, người thay thế |
 | `POST` | `/api/v1/internal/replacement-slots/{id}/cancel` | `warranty.manage` | Hủy suất (S4) |
 | `POST` | `/api/v1/placements/{id}/resignation/resolve` | (đã có) | Response thêm `replacement` (S1) |
 | `POST` | `/api/v1/jobs/{id}/candidate-submissions` | (đã có, MF-02) | Response thêm `isReplacement`, `replacementForPlacementId`, `replacementSlotId` |
@@ -146,7 +147,7 @@ Chi tiết ở tài liệu riêng cho Sơn: [`MF04/mf04-lap-suat-thay-the.md`](.
 | `REPLACEMENT_NOT_ALLOWED` | (audit) | Người thay thế nghỉ, hoặc không có phí: không mở suất (MF-05) |
 | `REPLACEMENT_SLOT_NOT_CANCELLABLE` | 409 | Hủy suất đã `FILLED` / `EXPIRED` / `CANCELLED` |
 
-Đặt trong một lớp hằng số dùng chung, ví dụ `HRConnect.Domain/Constants/ReplacementSlotStates.cs` (trạng thái và mã lỗi), để ba luồng không tự gõ chuỗi.
+Đã có trong `HRConnect.Domain/Constants/ReplacementSlotStates.cs`: lớp `ReplacementSlotStates` (trạng thái) và `ReplacementSlotErrorCodes` (mã lỗi, thêm `REPLACEMENT_SLOT_CONCURRENCY_CONFLICT` khi hủy với token cũ). Ba luồng dùng hằng số này, không tự gõ chuỗi.
 
 ---
 
@@ -154,8 +155,8 @@ Chi tiết ở tài liệu riêng cho Sơn: [`MF04/mf04-lap-suat-thay-the.md`](.
 
 | Thứ tự | Ai | Việc |
 |---|---|---|
-| 1 | MF-05 | Bảng, cột, hằng số, cài đặt, migration (mục 2) |
-| 2 | MF-05 | S1, S1', S2, S3, S4 và API mục 6 |
+| 1 | MF-05 ✅ | Bảng, cột, hằng số, cài đặt, migration (mục 2) |
+| 2 | MF-05 ✅ | S1, S1', S2, S3, S4 và API mục 6 |
 | 3 | **Trí (MF-02)** | Mục 4 (B4). Làm được ngay khi bước 1 đã merge |
 | 4 | Sơn (MF-04) + MF-05 | Mục 5 (tài liệu riêng cho Sơn) |
 

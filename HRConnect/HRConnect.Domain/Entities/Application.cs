@@ -44,6 +44,11 @@ public partial class Application
 
     public virtual Job Job { get; set; } = null!;
 
+    /// <summary>MF-05 replacement slot this record belongs to; null for a normal hire.</summary>
+    public Guid? ReplacementSlotId { get; set; }
+
+    public virtual ReplacementSlot? ReplacementSlot { get; set; }
+
     public virtual ICollection<Offer> Offers { get; set; } = new List<Offer>();
 
     public virtual Placement? Placement { get; set; }

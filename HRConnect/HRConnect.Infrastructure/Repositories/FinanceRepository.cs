@@ -46,6 +46,36 @@ public class FinanceRepository : IFinanceRepository
     public async Task AddPayoutAsync(Payout payout, CancellationToken cancellationToken = default) =>
         await _context.Payouts.AddAsync(payout, cancellationToken);
 
+    public async Task AddReplacementSlotAsync(ReplacementSlot slot, CancellationToken cancellationToken = default) =>
+        await _context.ReplacementSlots.AddAsync(slot, cancellationToken);
+
+    public Task<ReplacementSlot?> GetReplacementSlotByServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default) =>
+        _context.ReplacementSlots.Include(s => s.Job)
+            .FirstOrDefaultAsync(s => s.ServiceFeeId == serviceFeeId, cancellationToken);
+
+    public Task<ReplacementSlot?> GetReplacementSlotForUpdateAsync(Guid replacementSlotId, CancellationToken cancellationToken = default) =>
+        _context.ReplacementSlots.Include(s => s.Job)
+            .FirstOrDefaultAsync(s => s.ReplacementSlotId == replacementSlotId, cancellationToken);
+
+    public async Task<IReadOnlyList<Guid>> GetExpiredReplacementSlotIdsAsync(DateTime now, int take, CancellationToken cancellationToken = default) =>
+        await _context.ReplacementSlots.AsNoTracking()
+            .Where(s => s.Status == ReplacementSlotStates.Open && s.ExpiresAt != null && s.ExpiresAt <= now)
+            .OrderBy(s => s.ExpiresAt)
+            .Take(take)
+            .Select(s => s.ReplacementSlotId)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<ReplacementSlot>> GetReplacementSlotsByJobAsync(Guid jobId, CancellationToken cancellationToken = default) =>
+        await _context.ReplacementSlots.AsNoTracking()
+            .Include(s => s.OriginalPlacement).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
+            .Include(s => s.FilledByPlacement!).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
+            .Where(s => s.JobId == jobId)
+            .OrderByDescending(s => s.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+    public Task<Guid?> GetJobCompanyIdAsync(Guid jobId, CancellationToken cancellationToken = default) =>
+        _context.Jobs.AsNoTracking().Where(j => j.JobId == jobId).Select(j => (Guid?)j.CompanyId).FirstOrDefaultAsync(cancellationToken);
+
     public Task<Placement?> GetPlacementForFinanceAsync(Guid placementId, CancellationToken cancellationToken = default) =>
         _context.Placements
             .Include(p => p.Application).ThenInclude(a => a.Job)
