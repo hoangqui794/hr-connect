@@ -173,6 +173,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IFileStorageService, HRConnect.Infrastructure.Services.Storage.CloudflareR2StorageService>();
+        services.AddSingleton<HRConnect.Infrastructure.Services.Storage.PdfCvValidator>();
         services.AddScoped<ICvStorageService, HRConnect.Infrastructure.Services.Storage.CvStorageService>();
 
         // 6. Dịch vụ AI & HRConnect Client (MF-03 Integration)

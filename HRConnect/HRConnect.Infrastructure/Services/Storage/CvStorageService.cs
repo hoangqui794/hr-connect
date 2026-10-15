@@ -7,8 +7,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using System.Globalization;
-using System.Text;
 
 namespace HRConnect.Infrastructure.Services.Storage;
 
@@ -18,6 +16,7 @@ public class CvStorageService : ICvStorageService
     private readonly ICandidateCvRepository _candidateCvRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
+    private readonly PdfCvValidator _pdfCvValidator;
     private readonly R2Settings _settings;
     private readonly ILogger<CvStorageService> _logger;
 
@@ -26,6 +25,7 @@ public class CvStorageService : ICvStorageService
         ICandidateCvRepository candidateCvRepository,
         IUnitOfWork unitOfWork,
         IAuditLogService auditLogService,
+        PdfCvValidator pdfCvValidator,
         IOptions<R2Settings> options,
         ILogger<CvStorageService> logger)
     {
@@ -33,6 +33,7 @@ public class CvStorageService : ICvStorageService
         _candidateCvRepository = candidateCvRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
+        _pdfCvValidator = pdfCvValidator;
         _settings = options.Value;
         _logger = logger;
     }
@@ -508,7 +509,8 @@ public class CvStorageService : ICvStorageService
                 throw new BadRequestException("Kích thước thực tế của tập tin không khớp với thông tin tải lên.");
             }
 
-            ValidatePdfStructure(buffer.GetBuffer().AsSpan(0, checked((int)buffer.Length)));
+            _pdfCvValidator.Validate(
+                buffer.GetBuffer().AsMemory(0, checked((int)buffer.Length)));
             buffer.Position = 0;
             return buffer;
         }
@@ -519,97 +521,4 @@ public class CvStorageService : ICvStorageService
         }
     }
 
-    private static void ValidatePdfStructure(ReadOnlySpan<byte> bytes)
-    {
-        if (bytes.Length < 200 || !bytes.StartsWith("%PDF-"u8))
-        {
-            throw new BadRequestException("Nội dung tập tin không phải là tài liệu PDF hợp lệ.");
-        }
-
-        var version = bytes.Slice(5, Math.Min(3, bytes.Length - 5));
-        if (version.Length != 3 ||
-            (version[0] != (byte)'1' && version[0] != (byte)'2') ||
-            version[1] != (byte)'.' ||
-            !char.IsAsciiDigit((char)version[2]))
-        {
-            throw new BadRequestException("Phiên bản tài liệu PDF không hợp lệ.");
-        }
-
-        // PDF readers locate the final revision from the last %%EOF marker.
-        var tailStart = Math.Max(0, bytes.Length - 4096);
-        var tail = Encoding.ASCII.GetString(bytes[tailStart..]);
-        var eofIndex = tail.LastIndexOf("%%EOF", StringComparison.Ordinal);
-        if (eofIndex < 0)
-        {
-            throw new BadRequestException("Tài liệu PDF bị hỏng hoặc chưa được ghi hoàn chỉnh.");
-        }
-
-        var startXrefIndex = tail.LastIndexOf("startxref", eofIndex, StringComparison.Ordinal);
-        if (startXrefIndex < 0)
-        {
-            throw new BadRequestException("Tài liệu PDF thiếu bảng tham chiếu bắt buộc.");
-        }
-
-        var offsetText = tail[(startXrefIndex + "startxref".Length)..eofIndex].Trim();
-        var firstLine = offsetText.Split(new[] { '\r', '\n', ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-        if (!long.TryParse(firstLine, NumberStyles.None, CultureInfo.InvariantCulture, out var xrefOffset) ||
-            xrefOffset < 0 || xrefOffset >= bytes.Length)
-        {
-            throw new BadRequestException("Bảng tham chiếu của tài liệu PDF không hợp lệ.");
-        }
-
-        var xrefProbeLength = Math.Min(512, bytes.Length - checked((int)xrefOffset));
-        var xrefProbe = Encoding.ASCII.GetString(bytes.Slice(checked((int)xrefOffset), xrefProbeLength));
-        if (!xrefProbe.StartsWith("xref", StringComparison.Ordinal) &&
-            !xrefProbe.Contains("/Type/XRef", StringComparison.Ordinal) &&
-            !xrefProbe.Contains("/Type /XRef", StringComparison.Ordinal))
-        {
-            throw new BadRequestException("Bảng tham chiếu của tài liệu PDF bị hỏng.");
-        }
-
-        var documentText = Encoding.Latin1.GetString(bytes);
-        if (!documentText.Contains("/Type /Page", StringComparison.Ordinal) &&
-            !documentText.Contains("/Type/Page", StringComparison.Ordinal))
-        {
-            throw new BadRequestException("Tài liệu PDF không có trang nội dung hợp lệ.");
-        }
-
-        string[] forbiddenFeatures =
-        [
-            "/Encrypt", "/JavaScript", "/JS", "/Launch", "/EmbeddedFile",
-            "/RichMedia", "/OpenAction", "/AA"
-        ];
-
-        if (forbiddenFeatures.Any(feature => ContainsPdfName(documentText, feature)))
-        {
-            throw new BadRequestException("Tài liệu PDF chứa tính năng chủ động hoặc nội dung nhúng không được phép.");
-        }
-    }
-
-    private static bool ContainsPdfName(string documentText, string pdfName)
-    {
-        var searchFrom = 0;
-        while (searchFrom < documentText.Length)
-        {
-            var index = documentText.IndexOf(pdfName, searchFrom, StringComparison.Ordinal);
-            if (index < 0)
-            {
-                return false;
-            }
-
-            var endIndex = index + pdfName.Length;
-            if (endIndex == documentText.Length || IsPdfTokenDelimiter(documentText[endIndex]))
-            {
-                return true;
-            }
-
-            searchFrom = endIndex;
-        }
-
-        return false;
-    }
-
-    private static bool IsPdfTokenDelimiter(char value) =>
-        char.IsWhiteSpace(value) || value is '\0' or '(' or ')' or '<' or '>' or
-        '[' or ']' or '{' or '}' or '/' or '%';
 }

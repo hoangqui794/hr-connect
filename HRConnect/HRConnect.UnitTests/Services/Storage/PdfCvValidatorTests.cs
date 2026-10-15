@@ -1,0 +1,259 @@
+using FluentAssertions;
+using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Common.Models;
+using HRConnect.Infrastructure.Services.Storage;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using System.Text;
+using Xunit;
+
+namespace HRConnect.UnitTests.Services.Storage;
+
+public class PdfCvValidatorTests
+{
+    [Fact]
+    public void Validate_WithOrdinaryPdf_AcceptsDocument()
+    {
+        var validator = CreateValidator();
+
+        validator.Validate(BuildPdf());
+    }
+
+    [Fact]
+    public void Validate_WhenStreamTextContainsPdfKeywords_DoesNotTreatTextAsActiveContent()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(content: "Candidate wrote /JS and /OpenAction in a resume.");
+
+        validator.Validate(pdf);
+    }
+
+    [Fact]
+    public void Validate_WithInternalDestinationOpenAction_AcceptsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(catalogExtra: "/OpenAction [3 0 R /Fit]");
+
+        validator.Validate(pdf);
+    }
+
+    [Fact]
+    public void Validate_WithInternalGoToOpenAction_AcceptsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            catalogExtra: "/OpenAction 5 0 R",
+            extraObjects: ["<< /Type /Action /S /GoTo /D [3 0 R /Fit] >>"]);
+
+        validator.Validate(pdf);
+    }
+
+    [Fact]
+    public void Validate_WithUriLinkAction_AcceptsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            catalogExtra: "/A 5 0 R",
+            extraObjects: ["<< /Type /Action /S /URI /URI (https://hrconnectvn.online) >>"]);
+
+        validator.Validate(pdf);
+    }
+
+    [Theory]
+    [InlineData("JavaScript")]
+    [InlineData("Launch")]
+    [InlineData("GoToR")]
+    [InlineData("SubmitForm")]
+    [InlineData("ImportData")]
+    [InlineData("Rendition")]
+    [InlineData("Sound")]
+    [InlineData("Movie")]
+    public void Validate_WithUnsafeAction_RejectsDocument(string actionType)
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            catalogExtra: "/A 5 0 R",
+            extraObjects: [$"<< /Type /Action /S /{actionType} /JS (alert) >>"]);
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_ACTIVE_CONTENT");
+    }
+
+    [Fact]
+    public void Validate_WhenOpenActionUsesExternalUri_RejectsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            catalogExtra: "/OpenAction 5 0 R",
+            extraObjects: ["<< /Type /Action /S /URI /URI (https://example.com) >>"]);
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_ACTIVE_CONTENT");
+    }
+
+    [Fact]
+    public void Validate_WhenAdditionalActionContainsJavaScript_RejectsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            catalogExtra: "/AA << /WC 5 0 R >>",
+            extraObjects: ["<< /S /JavaScript /JS (alert) >>"]);
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_ACTIVE_CONTENT");
+    }
+
+    [Fact]
+    public void Validate_WithEmbeddedFileNameTree_RejectsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            catalogExtra: "/Names << /EmbeddedFiles 5 0 R >>",
+            extraObjects: ["<< /Names [] >>"]);
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_EMBEDDED_FILE");
+    }
+
+    [Fact]
+    public void Validate_WithFileAttachmentAnnotation_RejectsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            pageExtra: "/Annots [5 0 R]",
+            extraObjects: ["<< /Type /Annot /Subtype /FileAttachment /Rect [0 0 1 1] >>"]);
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_EMBEDDED_FILE");
+    }
+
+    [Fact]
+    public void Validate_WithRichMediaAnnotation_RejectsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            pageExtra: "/Annots [5 0 R]",
+            extraObjects: ["<< /Type /Annot /Subtype /RichMedia /Rect [0 0 1 1] >>"]);
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_ACTIVE_CONTENT");
+    }
+
+    [Fact]
+    public void Validate_WhenPageLimitIsExceeded_RejectsDocument()
+    {
+        var validator = CreateValidator(maxPages: 2);
+        var pdf = BuildPdf(pageCount: 3);
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_PAGE_LIMIT_EXCEEDED");
+    }
+
+    [Fact]
+    public void Validate_WithTruncatedPdf_RejectsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = Encoding.ASCII.GetBytes("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj");
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_MALFORMED");
+    }
+
+    [Fact]
+    public void Validate_WithEncryptedDocument_RejectsDocument()
+    {
+        var validator = CreateValidator();
+        var ownerKey = new string('0', 64);
+        var userKey = new string('1', 64);
+        var documentId = new string('2', 32);
+        var pdf = BuildPdf(
+            extraObjects:
+            [
+                $"<< /Filter /Standard /V 1 /R 2 /Length 40 /O <{ownerKey}> /U <{userKey}> /P -4 >>"
+            ],
+            trailerExtra: $"/Encrypt 5 0 R /ID [<{documentId}><{documentId}>]");
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_ENCRYPTED");
+    }
+
+    private static BadRequestException CaptureRejection(PdfCvValidator validator, byte[] pdf)
+    {
+        try
+        {
+            validator.Validate(pdf);
+        }
+        catch (BadRequestException exception)
+        {
+            return exception;
+        }
+
+        throw new Xunit.Sdk.XunitException("Expected PDF validation to reject the document.");
+    }
+
+    private static PdfCvValidator CreateValidator(int maxPages = 30) =>
+        new(
+            Options.Create(new R2Settings { MaxCvPdfPages = maxPages }),
+            NullLogger<PdfCvValidator>.Instance);
+
+    private static byte[] BuildPdf(
+        string catalogExtra = "",
+        string pageExtra = "",
+        int pageCount = 1,
+        string content = "",
+        IReadOnlyList<string>? extraObjects = null,
+        string trailerExtra = "")
+    {
+        var contentBytes = Encoding.ASCII.GetBytes(content);
+        var contentObjectNumber = pageCount + 3;
+        var objects = new List<string>
+        {
+            $"<< /Type /Catalog /Pages 2 0 R {catalogExtra} >>",
+            $"<< /Type /Pages /Kids [{string.Join(' ', Enumerable.Range(0, pageCount).Select(index => $"{index + 3} 0 R"))}] /Count {pageCount} >>"
+        };
+
+        for (var index = 0; index < pageCount; index++)
+        {
+            objects.Add($"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents {contentObjectNumber} 0 R {pageExtra} >>");
+        }
+
+        objects.Add($"<< /Length {contentBytes.Length} >>\nstream\n{content}\nendstream");
+        if (extraObjects is not null)
+        {
+            objects.AddRange(extraObjects);
+        }
+
+        var builder = new StringBuilder("%PDF-1.7\n");
+        var offsets = new List<int> { 0 };
+        for (var index = 0; index < objects.Count; index++)
+        {
+            offsets.Add(Encoding.ASCII.GetByteCount(builder.ToString()));
+            builder.Append(index + 1).Append(" 0 obj\n")
+                .Append(objects[index]).Append("\nendobj\n");
+        }
+
+        var xrefOffset = Encoding.ASCII.GetByteCount(builder.ToString());
+        builder.Append("xref\n0 ").Append(objects.Count + 1)
+            .Append("\n0000000000 65535 f \n");
+        foreach (var offset in offsets.Skip(1))
+        {
+            builder.Append(offset.ToString("D10")).Append(" 00000 n \n");
+        }
+
+        builder.Append("trailer\n<< /Size ").Append(objects.Count + 1)
+            .Append(" /Root 1 0 R ").Append(trailerExtra).Append(" >>\nstartxref\n")
+            .Append(xrefOffset)
+            .Append("\n%%EOF\n");
+
+        return Encoding.ASCII.GetBytes(builder.ToString());
+    }
+}

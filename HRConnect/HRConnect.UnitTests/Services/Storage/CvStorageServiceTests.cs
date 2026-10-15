@@ -20,6 +20,7 @@ public class CvStorageServiceTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<ILogger<CvStorageService>> _loggerMock;
+    private readonly Mock<ILogger<PdfCvValidator>> _pdfValidatorLoggerMock;
     private readonly R2Settings _settings;
     private readonly CvStorageService _service;
 
@@ -30,6 +31,7 @@ public class CvStorageServiceTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _auditLogServiceMock = new Mock<IAuditLogService>();
         _loggerMock = new Mock<ILogger<CvStorageService>>();
+        _pdfValidatorLoggerMock = new Mock<ILogger<PdfCvValidator>>();
 
         _settings = new R2Settings
         {
@@ -37,16 +39,19 @@ public class CvStorageServiceTests
             BucketName = "hrconnect-candidate-cvs",
             Endpoint = "https://ea997660e8c1f6c92b939eb22891843c.r2.cloudflarestorage.com",
             MaxCvFileSizeMb = 10,
+            MaxCvPdfPages = 30,
             PresignedUrlExpiryMinutes = 15,
             MaxPresignedUrlExpiryMinutes = 60
         };
 
         var options = Options.Create(_settings);
+        var pdfValidator = new PdfCvValidator(options, _pdfValidatorLoggerMock.Object);
         _service = new CvStorageService(
             _fileStorageServiceMock.Object,
             _candidateCvRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _auditLogServiceMock.Object,
+            pdfValidator,
             options,
             _loggerMock.Object);
     }
@@ -243,14 +248,54 @@ public class CvStorageServiceTests
     [Fact]
     public async Task UploadCvPdfAsync_WhenPdfContainsActiveContent_RejectsBeforeUpload()
     {
-        var activePdf = CreateMinimalPdf("/OpenAction 2 0 R");
+        var activePdf = CreateMinimalPdf("/OpenAction << /S /JavaScript /JS (alert) >>");
         using var stream = new MemoryStream(activePdf);
 
         var action = () => _service.UploadCvPdfAsync(
             Guid.NewGuid(), stream, "active.pdf", activePdf.Length);
 
         await action.Should().ThrowAsync<BadRequestException>()
-            .WithMessage("*không được phép*");
+            .Where(exception => exception.ErrorCode == "PDF_ACTIVE_CONTENT");
+        _fileStorageServiceMock.Verify(
+            service => service.UploadAsync(
+                It.IsAny<Stream>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task UploadAffiliateCvPdfAsync_WhenPdfContainsActiveContent_RejectsBeforeStorageAndDatabase()
+    {
+        var activePdf = CreateMinimalPdf("/A << /S /Launch /F (payload.exe) >>");
+        using var stream = new MemoryStream(activePdf);
+
+        BadRequestException? rejection = null;
+        try
+        {
+            await _service.UploadAffiliateCvPdfAsync(
+                Guid.NewGuid(), Guid.NewGuid(), stream, "affiliate-cv.pdf", activePdf.Length);
+        }
+        catch (BadRequestException exception)
+        {
+            rejection = exception;
+        }
+
+        rejection.Should().NotBeNull();
+        rejection!.ErrorCode.Should().Be("PDF_ACTIVE_CONTENT");
+        _fileStorageServiceMock.Verify(
+            service => service.UploadAsync(
+                It.IsAny<Stream>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+        _candidateCvRepositoryMock.Verify(
+            repository => repository.AddAsync(
+                It.IsAny<CandidateCv>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
