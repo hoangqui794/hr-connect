@@ -18,6 +18,8 @@ public class R2Settings
 
     public long MaxCvFileSizeBytes => (long)MaxCvFileSizeMb * 1024 * 1024;
 
+    public int MaxCvPdfPages { get; set; } = 30;
+
     public int PresignedUrlExpiryMinutes { get; set; } = 15;
 
     public int MaxPresignedUrlExpiryMinutes { get; set; } = 60;
