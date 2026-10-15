@@ -93,7 +93,7 @@ describe('CandidateProfilePage', () => {
     expect(screen.getByText('4 năm kinh nghiệm')).toBeInTheDocument();
 
     // Check email is disabled
-    const emailInput = screen.getByDisplayValue('candidate@example.com');
+    const emailInput = await screen.findByDisplayValue('candidate@example.com');
     expect(emailInput).toBeDisabled();
 
     // Check primary CV card

@@ -36,6 +36,8 @@ public class UpdateProfileVisibilityCommandHandler : IRequestHandler<UpdateProfi
         candidate.ProfileVisibility = normalizedVisibility;
         candidate.UpdatedAt = DateTime.UtcNow;
 
+        _candidateRepository.Update(candidate);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Đã cập nhật chế độ hiển thị hồ sơ ứng viên {CandidateId} sang {Visibility}", candidate.CandidateId, normalizedVisibility);

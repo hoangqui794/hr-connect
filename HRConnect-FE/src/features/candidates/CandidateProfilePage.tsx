@@ -184,7 +184,7 @@ export const CandidateProfilePage: React.FC = () => {
   // Sync profile data from DB into Form when query resolves
   useEffect(() => {
     if (profile) {
-      if (isPublicState === null && profile.profileVisibility) {
+      if (profile.profileVisibility) {
         setIsPublicState(profile.profileVisibility.toUpperCase() === 'PUBLIC');
       }
 
@@ -352,6 +352,8 @@ export const CandidateProfilePage: React.FC = () => {
     const command: UpdateCandidateProfileCommand = {
       fullName: (values.fullName || user?.name || '').trim(),
       phone: (values.phone || user?.phone || '').trim() || null,
+      dateOfBirth: values.dateOfBirth || profile?.dateOfBirth || null,
+      gender: values.gender || profile?.gender || null,
       currentAddress: (values.currentAddress || '').trim() || null,
       highestEducation: values.highestEducation || null,
       yearsOfExperience:
@@ -802,7 +804,7 @@ export const CandidateProfilePage: React.FC = () => {
                                   Địa chỉ Email (Đăng nhập)
                                 </span>
                                 <Link
-                                  to="/candidate/applications/consents"
+                                  to="/candidate/settings/email-identities"
                                   style={{ fontSize: 12, color: '#2563eb', fontWeight: 500 }}
                                 >
                                   Quản lý danh tính MF-02 →
@@ -957,6 +959,7 @@ export const CandidateProfilePage: React.FC = () => {
                             <Input
                               type="date"
                               size="large"
+                              min={new Date().toISOString().split('T')[0]}
                               style={{ borderRadius: 12, border: '1px solid #cbd5e1' }}
                             />
                           </Form.Item>
@@ -983,6 +986,18 @@ export const CandidateProfilePage: React.FC = () => {
                           <Form.Item
                             name="expectedSalaryMax"
                             label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Lương tối đa</span>}
+                            dependencies={['expectedSalaryMin']}
+                            rules={[
+                              ({ getFieldValue }) => ({
+                                validator(_, value) {
+                                  const min = getFieldValue('expectedSalaryMin');
+                                  if (min != null && value != null && value < min) {
+                                    return Promise.reject(new Error('Mức lương tối đa phải lớn hơn hoặc bằng mức lương tối thiểu'));
+                                  }
+                                  return Promise.resolve();
+                                },
+                              }),
+                            ]}
                           >
                             <InputNumber
                               size="large"
@@ -1325,7 +1340,7 @@ export const CandidateProfilePage: React.FC = () => {
                       <Col xs={24} md={8} style={{ textAlign: 'right' }}>
                         <Button
                           type="primary"
-                          onClick={() => navigate('/candidate/applications')}
+                          onClick={() => navigate('/candidate/cvs')}
                           style={{ borderRadius: 8, fontWeight: 600 }}
                         >
                           Quản lý kho CV MF-02 →
