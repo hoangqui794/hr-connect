@@ -3,7 +3,7 @@
 > **Dành cho:** dev phụ trách MF-05 (Bảo hành, Phí dịch vụ, Hoa hồng, Payout).
 > **Ngày:** 2026-10-14.
 > **Căn cứ:** [`HRConnect/docs/QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md`](../QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md) (đã chốt hết).
-> **Hiện trạng** được đối chiếu với code trên `main` ngày 14/10.
+> **Hiện trạng** được đối chiếu với code trên `main` ngày 14/10. **Cập nhật 15/10:** E2, E3, E4, E6 đã xong (commit `31e880b`, đã merge vào `main`); E7 đã có thiết kế.
 
 Ký hiệu: 🔴 làm trước · 🟠 cần làm · ✅ đã có, không cần làm.
 
@@ -18,7 +18,7 @@ Ký hiệu: 🔴 làm trước · 🟠 cần làm · ✅ đã có, không cần 
 
 ---
 
-## E2. 🔴 Sửa chỗ lệch do commit `c3750da` (14/10)
+## E2. ✅ Sửa chỗ lệch do commit `c3750da` (14/10) — đã xong 15/10
 
 | # | File | Đang làm | Sửa thành |
 |---|---|---|---|
@@ -32,7 +32,7 @@ Ký hiệu: 🔴 làm trước · 🟠 cần làm · ✅ đã có, không cần 
 
 ---
 
-## E3. 🔴 Trạng thái hoa hồng `IN_WARRANTY` (mục 1.3)
+## E3. ✅ Trạng thái hoa hồng `IN_WARRANTY` (mục 1.3) — đã xong 15/10
 
 **Hằng số** (`HRConnect.Domain/Constants/FinanceStates.cs`): thêm `InWarranty = "IN_WARRANTY"`.
 
@@ -52,7 +52,7 @@ Ký hiệu: 🔴 làm trước · 🟠 cần làm · ✅ đã có, không cần 
 
 ---
 
-## E4. 🟠 Trạng thái phí `DUE` (mục 1.1)
+## E4. ✅ Trạng thái phí `DUE` (mục 1.1) — đã xong 15/10
 
 `PENDING → DUE → PAID`, quá hạn → `OVERDUE`.
 
@@ -70,7 +70,7 @@ Ký hiệu: 🔴 làm trước · 🟠 cần làm · ✅ đã có, không cần 
 
 ---
 
-## E6. 🟠 Khóa cấu hình mới
+## E6. ✅ Khóa cấu hình mới — đã có đủ trong `BusinessSettingKeys`
 
 Thêm vào `BusinessSettingKeys.All` (MF-01 cần cho màn duyệt job):
 
@@ -87,6 +87,8 @@ Trang `AdminSettingsPage.tsx` tự hiện theo danh sách khóa; chỉ cần th�
 ---
 
 ## E7. 🟠 Tuyển thay thế (mục 1.2, 1.3)
+
+> **Đã có thiết kế chi tiết (15/10):** [`mf05-thiet-ke-suat-thay-the.md`](mf05-thiet-ke-suat-thay-the.md). Thiết kế đó **thay thế** phần mô tả bên dưới: dùng bảng `replacement_slot` thay cho `replacement_for_placement_id` / `openSlots`; chỉ thay 1 lần mỗi khoản phí; suất chỉ mở khi Client đã trả phí; có hạn chót cấu hình được. Việc của Trí: [`MF02/mf02-b4-gan-suat-thay-the.md`](../MF02/mf02-b4-gan-suat-thay-the.md); việc của Sơn: [`MF04/mf04-lap-suat-thay-the.md`](../MF04/mf04-lap-suat-thay-the.md).
 
 **Khi HR xác nhận ứng viên nghỉ trước 30 ngày** (`POST /api/v1/placements/{id}/resignation/resolve` với `confirm`):
 1. Bảo hành `VOIDED`, hoa hồng `CANCELLED` (đã có).
@@ -162,8 +164,8 @@ GET /api/v1/service-fees?jobId={jobId}
 
 ## Thứ tự gợi ý
 
-1. **E2 + E3** (sửa lệch, `IN_WARRANTY`) — làm ngay, đang hiển thị sai cho Affiliate.
-2. **E6** (khóa cấu hình, MF-01 đang cần).
-3. **E4**.
+1. ~~E2 + E3~~ ✅ (15/10).
+2. ~~E6~~ ✅.
+3. ~~E4~~ ✅ (15/10).
 4. **E5** sau khi MF-01 xong A4/A5 và MF-04 xong D1.
 5. **E7** sau MF-02 B4 và MF-04 D3; **E8** sau MF-03 C2.
