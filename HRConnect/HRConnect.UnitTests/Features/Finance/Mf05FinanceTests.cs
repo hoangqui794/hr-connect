@@ -139,10 +139,10 @@ public class Mf05FinanceTests
         warranty.Status.Should().Be(WarrantyStates.Active);
         warranty.EndDate.Should().Be(Start.AddDays(30));
         var fee = await _context.ServiceFees.SingleAsync();
-        fee.Amount.Should().Be(40_000_000m); // 20M × 2.0
+        fee.Amount.Should().Be(30_000_000m); // 20M × 1.5 (default fee multiplier, QUY-TAC-PHI mục 5)
         fee.Status.Should().Be(ServiceFeeStates.Pending);
         var commission = await CommissionAsync();
-        commission.Amount.Should().Be(12_000_000m); // 30% of the 40M fee
+        commission.Amount.Should().Be(9_000_000m); // 30% of the 30M fee
         commission.Status.Should().Be(CommissionStates.OnHold);
         commission.MilestoneType.Should().Be(CommissionMilestoneCodes.WarrantyPassed);
     }
@@ -241,7 +241,7 @@ public class Mf05FinanceTests
         (await _context.Warranties.SingleAsync()).Status.Should().Be(WarrantyStates.Passed);
         var commission = await CommissionAsync();
         commission.Status.Should().Be(CommissionStates.Earned);
-        commission.Amount.Should().Be(12_000_000m);
+        commission.Amount.Should().Be(9_000_000m);
     }
 
     [Fact]
@@ -407,7 +407,7 @@ public class Mf05FinanceTests
         paid.PayoutStatus.Should().Be(PayoutStates.Completed);
         paid.CommissionStatus.Should().Be(CommissionStates.Paid);
         paid.AttemptNo.Should().Be(2);
-        paid.Amount.Should().Be(12_000_000m);
+        paid.Amount.Should().Be(9_000_000m);
     }
 
     [Fact]
@@ -420,7 +420,7 @@ public class Mf05FinanceTests
 
         adjusted.Amount.Should().Be(8_000_000m);
         var adjustment = await _context.CommissionAdjustments.SingleAsync();
-        adjustment.OldAmount.Should().Be(12_000_000m);
+        adjustment.OldAmount.Should().Be(9_000_000m);
         adjustment.NewAmount.Should().Be(8_000_000m);
     }
 }

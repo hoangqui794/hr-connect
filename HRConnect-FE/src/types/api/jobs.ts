@@ -22,6 +22,7 @@ export type ServiceTypeCode = 'CV_APPLICATION' | 'CV_SOURCING' | 'HEADHUNT_COD';
 export type JobRejectReasonCode =
   | 'REJECTED_INCOMPLETE_DESCRIPTION'
   | 'REJECTED_INCOMPLETE_REQUIREMENTS'
+  | 'REJECTED_TERMS_NOT_AGREED'
   | 'REJECTED_OTHER';
 
 export type JobCloseReasonCode =
