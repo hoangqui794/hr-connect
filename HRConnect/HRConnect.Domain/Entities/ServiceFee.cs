@@ -25,7 +25,7 @@ public partial class ServiceFee
 
     public DateOnly DueDate { get; set; }
 
-    /// <summary>PENDING, PAID, OVERDUE or CANCELLED.</summary>
+    /// <summary>PENDING, DUE, PAID, OVERDUE or CANCELLED.</summary>
     public string Status { get; set; } = null!;
 
     public DateTime? PaidAt { get; set; }

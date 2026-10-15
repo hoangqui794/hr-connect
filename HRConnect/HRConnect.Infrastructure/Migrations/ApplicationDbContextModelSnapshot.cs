@@ -615,6 +615,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("date")
                         .HasColumnName("planned_start_date");
 
+                    b.Property<Guid?>("ReplacementSlotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("replacement_slot_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -654,6 +658,8 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsDescending(false, true);
 
                     b.HasIndex(new[] { "JobId", "Status" }, "idx_application_job_status");
+
+                    b.HasIndex(new[] { "ReplacementSlotId" }, "idx_application_replacement_slot_id");
 
                     b.ToTable("application", "public", t =>
                         {
@@ -3700,6 +3706,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(180)")
                         .HasColumnName("position");
 
+                    b.Property<Guid?>("ReplacementSlotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("replacement_slot_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -3725,6 +3735,9 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsUnique();
 
                     b.HasIndex(new[] { "OfferId" }, "placement_offer_id_key")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "ReplacementSlotId" }, "placement_replacement_slot_id_key")
                         .IsUnique();
 
                     b.ToTable("placement", "public");
@@ -3848,6 +3861,114 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("refresh_token", "public");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.ReplacementSlot", b =>
+                {
+                    b.Property<Guid>("ReplacementSlotId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("replacement_slot_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cancel_reason");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<Guid?>("ClosedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("closed_by");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<int>("FillWindowDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("fill_window_days");
+
+                    b.Property<Guid?>("FilledByPlacementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("filled_by_placement_id");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<DateTime?>("OpenedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("opened_at");
+
+                    b.Property<Guid>("OriginalPlacementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("original_placement_id");
+
+                    b.Property<Guid>("ServiceFeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_fee_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.HasKey("ReplacementSlotId")
+                        .HasName("replacement_slot_pkey");
+
+                    b.HasIndex(new[] { "JobId", "Status", "OpenedAt" }, "idx_replacement_slot_job_status_opened");
+
+                    b.HasIndex(new[] { "Status", "ExpiresAt" }, "idx_replacement_slot_status_expires");
+
+                    b.HasIndex(new[] { "FilledByPlacementId" }, "replacement_slot_filled_by_placement_id_key")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "OriginalPlacementId" }, "replacement_slot_original_placement_id_key")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "ServiceFeeId" }, "replacement_slot_service_fee_id_key")
+                        .IsUnique();
+
+                    b.ToTable("replacement_slot", "public", t =>
+                        {
+                            t.HasComment("MF-05 free replacement hire after a HEADHUNT_COD placement leaves during warranty. One per placement and per service fee.");
+
+                            t.HasCheckConstraint("ck_replacement_slot_cancel_reason", "status <> 'CANCELLED' OR cancel_reason IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_replacement_slot_fill_window", "fill_window_days > 0");
+
+                            t.HasCheckConstraint("ck_replacement_slot_filled", "(status = 'FILLED') = (filled_by_placement_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_replacement_slot_status", "status IN ('WAITING_PAYMENT','OPEN','FILLED','CANCELLED','EXPIRED')");
+                        });
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Role", b =>
@@ -4286,6 +4407,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("note");
 
+                    b.Property<Guid?>("ReplacementSlotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("replacement_slot_id");
+
                     b.Property<string>("Source")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -4324,6 +4449,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex("CandidateId", "CvId");
 
                     b.HasIndex(new[] { "JobId", "CandidateId", "SubmittedAt" }, "idx_submission_job_candidate");
+
+                    b.HasIndex(new[] { "ReplacementSlotId" }, "idx_submission_replacement_slot_id");
 
                     b.HasIndex(new[] { "SubmittedBy", "SubmittedAt" }, "idx_submission_submitted_by")
                         .IsDescending(false, true);
@@ -4861,6 +4988,12 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("application_job_id_fkey");
 
+                    b.HasOne("HRConnect.Domain.Entities.ReplacementSlot", "ReplacementSlot")
+                        .WithMany()
+                        .HasForeignKey("ReplacementSlotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_application_replacement_slot");
+
                     b.HasOne("HRConnect.Domain.Entities.Submission", "Submission")
                         .WithMany("Applications")
                         .HasForeignKey("AcceptedSubmissionId", "CandidateId", "JobId")
@@ -4871,6 +5004,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Candidate");
 
                     b.Navigation("Job");
+
+                    b.Navigation("ReplacementSlot");
 
                     b.Navigation("Submission");
                 });
@@ -5629,6 +5764,12 @@ namespace HRConnect.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("placement_confirmed_by_fkey");
 
+                    b.HasOne("HRConnect.Domain.Entities.ReplacementSlot", "ReplacementSlot")
+                        .WithMany()
+                        .HasForeignKey("ReplacementSlotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_placement_replacement_slot");
+
                     b.HasOne("HRConnect.Domain.Entities.Offer", "Offer")
                         .WithMany("Placements")
                         .HasForeignKey("OfferId", "ApplicationId")
@@ -5642,6 +5783,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("ConfirmedByNavigation");
 
                     b.Navigation("Offer");
+
+                    b.Navigation("ReplacementSlot");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Probation", b =>
@@ -5682,6 +5825,44 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("ReplacedByToken");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.ReplacementSlot", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.Placement", "FilledByPlacement")
+                        .WithMany()
+                        .HasForeignKey("FilledByPlacementId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_replacement_slot_filled_by_placement");
+
+                    b.HasOne("HRConnect.Domain.Entities.Job", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_replacement_slot_job");
+
+                    b.HasOne("HRConnect.Domain.Entities.Placement", "OriginalPlacement")
+                        .WithMany()
+                        .HasForeignKey("OriginalPlacementId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_replacement_slot_original_placement");
+
+                    b.HasOne("HRConnect.Domain.Entities.ServiceFee", "ServiceFee")
+                        .WithMany()
+                        .HasForeignKey("ServiceFeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_replacement_slot_service_fee");
+
+                    b.Navigation("FilledByPlacement");
+
+                    b.Navigation("Job");
+
+                    b.Navigation("OriginalPlacement");
+
+                    b.Navigation("ServiceFee");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.RolePermission", b =>
@@ -5790,6 +5971,12 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("submission_job_id_fkey");
 
+                    b.HasOne("HRConnect.Domain.Entities.ReplacementSlot", "ReplacementSlot")
+                        .WithMany()
+                        .HasForeignKey("ReplacementSlotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_submission_replacement_slot");
+
                     b.HasOne("HRConnect.Domain.Entities.AppUser", "SubmittedByNavigation")
                         .WithMany("Submissions")
                         .HasForeignKey("SubmittedBy")
@@ -5812,6 +5999,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("DuplicateOfSubmission");
 
                     b.Navigation("Job");
+
+                    b.Navigation("ReplacementSlot");
 
                     b.Navigation("SubmittedByNavigation");
                 });

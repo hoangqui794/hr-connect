@@ -42,5 +42,10 @@ public partial class Placement
     public virtual Warranty? Warranty { get; set; }
 
     public virtual ServiceFee? ServiceFee { get; set; }
+
+    /// <summary>MF-05 replacement slot this placement fills; null for a normal hire.</summary>
+    public Guid? ReplacementSlotId { get; set; }
+
+    public virtual ReplacementSlot? ReplacementSlot { get; set; }
 }
 

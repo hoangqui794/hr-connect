@@ -37,6 +37,24 @@ public interface IFinanceRepository
 
     Task<IReadOnlyList<Guid>> GetOverdueServiceFeeIdsAsync(DateOnly dueBefore, int take, CancellationToken cancellationToken = default);
 
+    // ---- replacement slots (docs/MF05/mf05-thiet-ke-suat-thay-the.md) ----
+
+    Task AddReplacementSlotAsync(ReplacementSlot slot, CancellationToken cancellationToken = default);
+
+    /// <summary>The slot granted under a service fee, with its job, tracked for update.</summary>
+    Task<ReplacementSlot?> GetReplacementSlotByServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default);
+
+    /// <summary>Slot with its job, tracked for update.</summary>
+    Task<ReplacementSlot?> GetReplacementSlotForUpdateAsync(Guid replacementSlotId, CancellationToken cancellationToken = default);
+
+    /// <summary>OPEN slots whose deadline is at or before <paramref name="now"/>.</summary>
+    Task<IReadOnlyList<Guid>> GetExpiredReplacementSlotIdsAsync(DateTime now, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>The job's slots with leaver and replacement candidate names (read-only), newest first.</summary>
+    Task<IReadOnlyList<ReplacementSlot>> GetReplacementSlotsByJobAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    Task<Guid?> GetJobCompanyIdAsync(Guid jobId, CancellationToken cancellationToken = default);
+
     Task<(IReadOnlyList<ServiceFee> Items, int TotalCount)> GetServiceFeesAsync(
         Guid? companyId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
 
