@@ -36,13 +36,14 @@ import {
   SearchOutlined,
   SendOutlined,
 } from '@ant-design/icons';
-import type { Job, JobRejectReasonCode, JobStatus } from '@/types/api/jobs';
+import type { ApproveJobInput, Job, JobRejectReasonCode, JobStatus } from '@/types/api/jobs';
 import { jobsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAlertStore } from '@/stores/alertStore';
-import { useJobDetail, useJobMutations, useJobReviewQueue } from './useJobQueries';
+import { formatMoney, useJobDetail, useJobFeeInfo, useJobMutations, useJobReviewQueue } from './useJobQueries';
 import { JobDetailPanel } from './JobDetailPanel';
 import { ReasonModal } from './ReasonModal';
+import { CommercialTermsApprovalModal } from './CommercialTermsApprovalModal';
 import { JOB_STATUS, REJECT_REASONS, SERVICE_TYPE_LABEL, formatDateTime } from './jobDisplay';
 
 const { Text } = Typography;
@@ -126,6 +127,7 @@ export const JobReviewPage: React.FC = () => {
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string>();
   const [rejectOpen, setRejectOpen] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
   const [manualPayOpen, setManualPayOpen] = useState(false);
   const [manualPayRef, setManualPayRef] = useState('');
   const [manualPayLoading, setManualPayLoading] = useState(false);
@@ -177,16 +179,53 @@ export const JobReviewPage: React.FC = () => {
   const job = detail.data;
   const busy = approve.isPending || reject.isPending;
 
+  // Fee and package come from the backend (posting fee record, else the chosen package price).
+  const feeInfo = useJobFeeInfo(job);
+  const feeText = formatMoney(feeInfo.amount, feeInfo.currencyCode);
+  const packageLabel = feeInfo.packageName ?? 'Gói đăng tin';
   const isStandardUnpaid = Boolean(
     job &&
-      (job.serviceTypeCode === 'CV_APPLICATION' || job.postingPackageCode === 'STANDARD') &&
+      job.serviceTypeCode === 'CV_APPLICATION' &&
+      (feeInfo.amount ?? 0) > 0 &&
       (!job.postingFeeStatus || job.postingFeeStatus === 'PENDING')
   );
+
+  const needsTerms = job?.serviceTypeCode === 'HEADHUNT_COD' || job?.serviceTypeCode === 'CV_SOURCING';
+
+  /** F2: approve with the commercial terms Internal HR agreed (HEADHUNT_COD, CV_SOURCING). */
+  const approveWithTerms = (input: ApproveJobInput) => {
+    if (!job) return Promise.resolve();
+    return approve.mutateAsync({ jobId: job.jobId, token: job.concurrencyToken, input }).then((res) => {
+      message.success(res.message);
+      setTermsOpen(false);
+      const isHeadhunt = job.serviceTypeCode === 'HEADHUNT_COD';
+      useAlertStore.getState().addAlert({
+        targetRole: 'INTERNAL_HR',
+        type: 'success',
+        title: isHeadhunt ? 'Đã duyệt yêu cầu tuyển Headhunt' : 'Đã duyệt job CV Sourcing',
+        message: `Đã chốt điều khoản và duyệt "${job.title}" của ${job.companyName}.`,
+        actionLabel: 'Xem chi tiết',
+        actionRoute: `/internal/jobs/review?status=ALL&highlight=${encodeURIComponent(job.jobId)}`,
+        relatedEntityId: job.jobId,
+      });
+      useAlertStore.getState().addAlert({
+        targetRole: 'CLIENT',
+        type: 'success',
+        title: 'Yêu cầu tuyển dụng đã được duyệt',
+        message: `Yêu cầu "${job.title}" đã được duyệt với điều khoản đã chốt. Xem chi tiết điều khoản trong tin tuyển dụng.`,
+        actionLabel: 'Xem điều khoản',
+        actionRoute: `/client/jobs?highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
+        relatedEntityId: job.jobId,
+      });
+    });
+  };
 
   const confirmApprove = () => {
     if (!job) return;
 
-    if (isStandardUnpaid) {
+    if (needsTerms) {
+      setTermsOpen(true);
+    } else if (isStandardUnpaid) {
       modal.confirm({
         title: 'Duyệt nội dung & Tạo yêu cầu thanh toán?',
         icon: <FileDoneOutlined className="text-indigo-600 text-xl" />,
@@ -197,9 +236,11 @@ export const JobReviewPage: React.FC = () => {
               <div className="font-semibold text-slate-900 text-sm">{job.title}</div>
               <div className="text-slate-600">{job.companyName ?? '—'}</div>
               <div className="flex flex-wrap gap-1.5 pt-1">
-                <Tag color="blue" className="m-0 font-medium">Gói Tiêu Chuẩn</Tag>
-                <Tag color="cyan" className="m-0 font-medium">1.500.000 VNĐ</Tag>
-                <Tag color="purple" className="m-0 font-medium">Tối đa 50 hồ sơ • AI gợi ý match</Tag>
+                <Tag color="blue" className="m-0 font-medium">{packageLabel}</Tag>
+                <Tag color="cyan" className="m-0 font-medium">{feeText}</Tag>
+                {feeInfo.maxApplications ? (
+                  <Tag color="purple" className="m-0 font-medium">Tối đa {feeInfo.maxApplications} hồ sơ</Tag>
+                ) : null}
               </div>
             </div>
             <div className="rounded-lg bg-slate-50 p-3 border border-solid border-slate-200 text-slate-700 space-y-1">
@@ -208,7 +249,7 @@ export const JobReviewPage: React.FC = () => {
               </div>
               <ul className="m-0 pl-4 space-y-1 text-[12px] text-slate-600">
                 <li>Nội dung tin đã đạt tiêu chuẩn kiểm duyệt.</li>
-                <li>Hệ thống tạo yêu cầu thanh toán <strong>1.500.000 VNĐ</strong> và gửi thông báo tới Doanh nghiệp.</li>
+                <li>Hệ thống tạo yêu cầu thanh toán <strong>{feeText}</strong> và gửi thông báo tới Doanh nghiệp.</li>
                 <li>Tin sẽ tự động kích hoạt công khai ngay khi Doanh nghiệp thanh toán.</li>
               </ul>
             </div>
@@ -228,7 +269,7 @@ export const JobReviewPage: React.FC = () => {
                 targetRole: 'INTERNAL_HR',
                 type: 'info',
                 title: 'Đã duyệt nội dung & tạo đơn thanh toán',
-                message: `Tin "${job.title}" của ${job.companyName} đã duyệt thành công. Đang chờ Doanh nghiệp thanh toán 1.500.000 đ.`,
+                message: `Tin "${job.title}" của ${job.companyName} đã duyệt thành công. Đang chờ Doanh nghiệp thanh toán ${feeText}.`,
                 actionLabel: 'Xem tin',
                 actionRoute: `/internal/jobs/review?status=PENDING_PAYMENT&highlight=${encodeURIComponent(job.jobId)}`,
                 relatedEntityId: job.jobId,
@@ -239,70 +280,9 @@ export const JobReviewPage: React.FC = () => {
                 targetRole: 'CLIENT',
                 type: 'warning',
                 title: 'Yêu cầu thanh toán phí đăng tin',
-                message: `Tin tuyển dụng "${job.title}" đã được duyệt nội dung! Vui lòng hoàn tất thanh toán 1.500.000 đ để kích hoạt và công khai tin.`,
+                message: `Tin tuyển dụng "${job.title}" đã được duyệt nội dung! Vui lòng hoàn tất thanh toán ${feeText} để kích hoạt và công khai tin.`,
                 actionLabel: 'Thanh toán ngay',
                 actionRoute: `/client/jobs?status=PENDING_PAYMENT&highlight=${encodeURIComponent(job.jobId)}&openPayment=true`,
-                relatedEntityId: job.jobId,
-              });
-            })
-            .catch((err) => message.error(getApiErrorMessage(err))),
-      });
-    } else if (job.serviceTypeCode === 'HEADHUNT_COD') {
-      modal.confirm({
-        title: 'Duyệt yêu cầu & Kích hoạt hợp đồng Headhunt?',
-        icon: <SafetyCertificateOutlined className="text-purple-600 text-xl" />,
-        width: 520,
-        content: (
-          <div className="py-2 space-y-3 text-xs leading-relaxed text-slate-700">
-            <div className="rounded-xl bg-purple-50/60 p-3 border border-solid border-purple-200 space-y-1">
-              <div className="font-semibold text-purple-950 text-sm">{job.title}</div>
-              <div className="text-slate-600">{job.companyName ?? '—'}</div>
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                <Tag color="purple" className="m-0 font-medium">Headhunt COD (Thành công)</Tag>
-                <Tag color="blue" className="m-0 font-medium">{job.feeMultiplier ? `Phí: ${job.feeMultiplier}× tháng lương` : 'Phí: Theo thỏa thuận'}</Tag>
-                <Tag color="emerald" className="m-0 font-medium">Bảo hành {job.warrantyDays ?? 30} ngày</Tag>
-              </div>
-            </div>
-            <div className="rounded-lg bg-slate-50 p-3 border border-solid border-slate-200 text-slate-700 space-y-1">
-              <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                <InfoCircleOutlined className="text-purple-500" /> Điều khoản thương mại dịch vụ:
-              </div>
-              <ul className="m-0 pl-4 space-y-1 text-[12px] text-slate-600">
-                <li><strong>Phí tuyển dụng:</strong> Chỉ phát sinh khi ứng viên nhận việc và bắt đầu ngày làm việc đầu tiên.</li>
-                <li><strong>Bảo hành:</strong> {job.warrantyDays ?? 30} ngày (cam kết tìm ứng viên thay thế theo thỏa thuận).</li>
-                <li><strong>Mở tuyển:</strong> Sau khi duyệt, vị trí sẽ mở cho mạng lưới Affiliate / Recruiter giới thiệu ứng viên.</li>
-              </ul>
-            </div>
-          </div>
-        ),
-        okText: 'Duyệt & Mở cho Recruiter/Affiliate',
-        okButtonProps: { className: '!bg-purple-600 hover:!bg-purple-500 font-semibold' },
-        cancelText: 'Hủy bỏ',
-        onOk: () =>
-          approve
-            .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken })
-            .then((res) => {
-              message.success(res.message);
-
-              // 1. Thông báo cho Internal HR
-              useAlertStore.getState().addAlert({
-                targetRole: 'INTERNAL_HR',
-                type: 'success',
-                title: 'Đã duyệt yêu cầu tuyển Headhunt',
-                message: `Vị trí "${job.title}" của ${job.companyName} đã được phê duyệt hợp đồng và mở cho mạng lưới Affiliate/Recruiter.`,
-                actionLabel: 'Xem chi tiết',
-                actionRoute: `/internal/jobs/review?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}`,
-                relatedEntityId: job.jobId,
-              });
-
-              // 2. Thông báo cho Client
-              useAlertStore.getState().addAlert({
-                targetRole: 'CLIENT',
-                type: 'success',
-                title: 'Hợp đồng Headhunt đã được kích hoạt',
-                message: `Yêu cầu tuyển dụng "${job.title}" đã được duyệt. Đội ngũ Headhunter của HR Connect và mạng lưới Affiliate đã bắt đầu tìm kiếm ứng viên cho quý công ty.`,
-                actionLabel: 'Theo dõi tiến độ',
-                actionRoute: `/client/jobs?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
                 relatedEntityId: job.jobId,
               });
             })
@@ -467,7 +447,7 @@ export const JobReviewPage: React.FC = () => {
                             </span>
                             {isStandardUnpaid ? (
                               <Tag color="blue" className="m-0 font-medium text-xs">
-                                Gói Tiêu chuẩn · 1.500.000 VNĐ
+                                {packageLabel} · {feeText}
                               </Tag>
                             ) : (
                               <Tag color="gold" className="m-0 font-medium text-xs">
@@ -498,7 +478,7 @@ export const JobReviewPage: React.FC = () => {
                           disabled={reject.isPending}
                           onClick={confirmApprove}
                         >
-                          {isStandardUnpaid ? 'Duyệt & Gửi yêu cầu thanh toán' : 'Duyệt và công bố tin'}
+                          {needsTerms ? 'Chốt điều khoản & Duyệt' : isStandardUnpaid ? 'Duyệt & Gửi yêu cầu thanh toán' : 'Duyệt và công bố tin'}
                         </Button>
                       </div>
                     </div>
@@ -520,7 +500,7 @@ export const JobReviewPage: React.FC = () => {
                             </Tag>
                           </div>
                           <p className="text-xs text-slate-500 m-0 leading-relaxed max-w-2xl">
-                            Đã tạo yêu cầu thanh toán <strong>1.500.000 VNĐ</strong> gửi tới Doanh nghiệp. Tin sẽ tự động chuyển sang trạng thái <strong>Đang tuyển</strong> ngay khi doanh nghiệp hoàn tất phí.
+                            Đã tạo yêu cầu thanh toán <strong>{feeText}</strong> gửi tới Doanh nghiệp. Tin sẽ tự động chuyển sang trạng thái <strong>Đang tuyển</strong> ngay khi doanh nghiệp hoàn tất phí.
                           </p>
                         </div>
                       </div>
@@ -583,6 +563,16 @@ export const JobReviewPage: React.FC = () => {
             )}
           </section>
         </div>
+      )}
+
+      {job && needsTerms && (
+        <CommercialTermsApprovalModal
+          job={job}
+          open={termsOpen}
+          loading={approve.isPending}
+          onCancel={() => setTermsOpen(false)}
+          onApprove={approveWithTerms}
+        />
       )}
 
       <ReasonModal
@@ -696,7 +686,7 @@ export const JobReviewPage: React.FC = () => {
             />
           </div>
           <div className="text-slate-500">
-            Số tiền cần thu: <strong className="text-indigo-700 font-bold">1.500.000 VNĐ</strong> (Gói Tiêu chuẩn STANDARD).
+            Số tiền cần thu: <strong className="text-indigo-700 font-bold">{feeText}</strong> ({packageLabel}).
           </div>
         </div>
       </Modal>

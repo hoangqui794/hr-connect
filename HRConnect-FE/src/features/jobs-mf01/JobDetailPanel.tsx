@@ -24,6 +24,7 @@ import type { Job, JobRequirement } from '@/types/api/jobs';
 import { useAuthStore, UserRole } from '@/stores/authStore';
 import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
 import { PaymentDemoModal } from './PaymentDemoModal';
+import { formatMoney, useJobFeeInfo } from './useJobQueries';
 import {
   EMPLOYMENT_TYPE_LABEL,
   JOB_STATUS,
@@ -42,6 +43,7 @@ const { Paragraph, Text, Title } = Typography;
 const STATUS_TAG_CLASS: Record<Job['status'], string> = {
   DRAFT: 'border-slate-200 bg-slate-50 text-slate-700',
   PENDING_REVIEW: 'border-sky-200 bg-sky-50 text-sky-800',
+  PENDING_APPROVAL: 'border-sky-200 bg-sky-50 text-sky-800',
   PENDING_PAYMENT: 'border-blue-200 bg-blue-50 text-blue-800',
   REJECTED: 'border-red-200 bg-red-50 text-red-800',
   ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-800',
@@ -114,9 +116,19 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const appliedApp = applied ? getApplication(job.jobId) : undefined;
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const feeInfo = useJobFeeInfo(isApplicant ? null : job);
+  const feeText = formatMoney(feeInfo.amount, feeInfo.currencyCode);
   const mustHave = job.requirements.filter((r) => r.requirementType === 'MUST_HAVE');
   const shouldHave = job.requirements.filter((r) => r.requirementType === 'SHOULD_HAVE');
   const service = job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode] : null;
+
+  // Agreed terms (after approval) win; before approval show what the Client proposed.
+  const agreed = job.commercialTerms ?? null;
+  const proposed = job.proposedTerms ?? null;
+  const termLabel = agreed ? 'Đã chốt' : 'Client đề xuất';
+  const feeMultiplier = agreed?.feeMultiplier ?? proposed?.feeMultiplier ?? null;
+  const warrantyDays = agreed?.warrantyDays ?? proposed?.warrantyDays ?? null;
+  const paymentDueDays = agreed?.paymentDueDays ?? proposed?.paymentDueDays ?? null;
 
   const isExpired =
     (job.expiresAt && new Date(job.expiresAt) <= new Date()) ||
@@ -167,13 +179,13 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             showIcon
             message={
               isInternalReview
-                ? 'Đang chờ Doanh nghiệp thanh toán (1.500.000 VNĐ)'
-                : 'Tin đã được duyệt · Chờ thanh toán phí đăng tin (1.500.000 VNĐ)'
+                ? `Đang chờ Doanh nghiệp thanh toán (${feeText})`
+                : `Tin đã được duyệt · Chờ thanh toán phí đăng tin (${feeText})`
             }
             description={
               isInternalReview
                 ? 'Nội dung tin tuyển dụng đã đạt yêu cầu. Đã gửi thông báo yêu cầu thanh toán tới Doanh nghiệp. Tin sẽ tự động công khai ngay sau khi nhận được thanh toán.'
-                : 'Quý khách vui lòng hoàn tất thanh toán 1.500.000 VNĐ để tin tuyển dụng được công khai trên hệ thống và bắt đầu nhận hồ sơ ứng viên (kèm AI chấm điểm CV).'
+                : `Quý khách vui lòng hoàn tất thanh toán ${feeText} để tin tuyển dụng được công khai trên hệ thống và bắt đầu nhận hồ sơ ứng viên (kèm AI chấm điểm CV).`
             }
             action={
               !isInternalReview ? (
@@ -205,11 +217,11 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           <Alert
             type={isApplicant ? 'warning' : 'info'}
             showIcon
-            message={isApplicant ? 'Tin tuyển dụng đã hết hạn tiếp nhận hồ sơ' : 'Tin tuyển dụng đã hết hạn hiển thị (30 ngày)'}
+            message={isApplicant ? 'Tin tuyển dụng đã hết hạn tiếp nhận hồ sơ' : 'Tin tuyển dụng đã hết hạn hiển thị'}
             description={
               isApplicant
                 ? 'Vị trí này hiện đã dừng tiếp nhận hồ sơ ứng tuyển mới.'
-                : 'Thời hạn hiển thị của tin đã kết thúc theo quy định của gói. Quý khách có thể đăng tin mới với Gói Tiêu Chuẩn (STANDARD) để tiếp tục tuyển dụng.'
+                : 'Thời hạn hiển thị của tin đã kết thúc theo quy định của gói. Quý khách có thể đăng tin mới để tiếp tục tuyển dụng.'
             }
             action={
               !isApplicant ? (
@@ -219,7 +231,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   icon={<PlusOutlined />}
                   onClick={() => navigate('/client/jobs/create')}
                 >
-                  Đăng tin mới (Standard)
+                  Đăng tin mới
                 </Button>
               ) : undefined
             }
@@ -295,12 +307,12 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <AuditOutlined className="text-sm" />
               </span>
               <div>
-                <span className="font-bold text-slate-800 text-sm">Gói Dịch Vụ Đăng Tin Tiêu Chuẩn</span>
+                <span className="font-bold text-slate-800 text-sm">{feeInfo.packageName ?? 'Gói đăng tin'}</span>
                 <span className="text-xs text-slate-500 ml-2">Đăng tin trực tiếp & tiếp nhận hồ sơ</span>
               </div>
             </div>
             <Tag color="blue" className="m-0 font-medium rounded-full px-2.5">
-              30 ngày hiển thị
+              {feeInfo.durationDays ? `${feeInfo.durationDays} ngày hiển thị` : 'Đăng tin'}
             </Tag>
           </div>
 
@@ -310,7 +322,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <DollarCircleOutlined className="text-indigo-500" /> Phí dịch vụ
               </div>
               <div className="font-bold text-slate-900 text-[13px] mt-1 text-indigo-700">
-                {job.serviceTypeCode === 'CV_APPLICATION' || job.postingPackageCode === 'STANDARD' ? '1.500.000 VNĐ' : 'Miễn phí'}
+                {feeText}
               </div>
             </div>
 
@@ -318,7 +330,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
                 <CalendarOutlined className="text-slate-500" /> Thời hạn tin
               </div>
-              <div className="font-bold text-slate-800 text-[13px] mt-1">30 ngày</div>
+              <div className="font-bold text-slate-800 text-[13px] mt-1">{feeInfo.durationDays ? `${feeInfo.durationDays} ngày` : '—'}</div>
             </div>
 
             <div className="rounded-lg bg-white p-3 border border-solid border-slate-200/80 shadow-2xs">
@@ -326,7 +338,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <TeamOutlined className="text-emerald-500" /> Hạn mức nhận hồ sơ
               </div>
               <div className="font-bold text-emerald-700 text-[13px] mt-1">
-                Tối đa {job.maxApplications ?? 50} hồ sơ
+                {feeInfo.maxApplications ? `Tối đa ${feeInfo.maxApplications} hồ sơ` : 'Không giới hạn'}
               </div>
             </div>
 
@@ -361,7 +373,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               </div>
             </div>
             <Tag color="purple" className="m-0 font-medium rounded-full px-2.5">
-              Bảo hành {job.warrantyDays ?? 30} ngày
+              {termLabel}
             </Tag>
           </div>
 
@@ -371,7 +383,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <DollarCircleOutlined className="text-indigo-500" /> Phí thành công (Success Fee)
               </div>
               <div className="font-bold text-indigo-700 text-[13px] mt-1">
-                {job.feeMultiplier ? `${job.feeMultiplier}× tháng lương` : 'Theo thỏa thuận hợp đồng'}
+                {feeMultiplier != null ? `${feeMultiplier}× tháng lương` : 'Chờ Internal HR chốt'}
               </div>
               <div className="text-[10px] text-slate-400 mt-0.5">Chỉ trả khi ứng viên đi làm</div>
             </div>
@@ -381,7 +393,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <SafetyCertificateOutlined className="text-emerald-500" /> Bảo hành thay thế
               </div>
               <div className="font-bold text-emerald-700 text-[13px] mt-1">
-                {job.warrantyDays ?? 30} ngày
+                {warrantyDays != null ? `${warrantyDays} ngày` : 'Chờ Internal HR chốt'}
               </div>
               <div className="text-[10px] text-slate-400 mt-0.5">Tìm ứng viên thay thế miễn phí</div>
             </div>
@@ -391,7 +403,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <CalendarOutlined className="text-blue-500" /> Hạn thanh toán
               </div>
               <div className="font-bold text-slate-800 text-[13px] mt-1">
-                {job.paymentDueDays ? `${job.paymentDueDays} ngày` : 'Theo thỏa thuận'}
+                {paymentDueDays != null ? `${paymentDueDays} ngày` : 'Chờ Internal HR chốt'}
               </div>
               <div className="text-[10px] text-slate-400 mt-0.5">Kể từ ngày bắt đầu đi làm</div>
             </div>
@@ -404,6 +416,41 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             </span>
           </div>
         </section>
+      )}
+
+      {!isApplicant && job.serviceTypeCode === 'CV_SOURCING' && (
+        <section aria-label="Điều khoản CV Sourcing" className="rounded-xl border border-solid border-teal-200/90 bg-teal-50/40 p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-0 border-b border-solid border-teal-200/70 pb-2.5">
+            <span className="font-bold text-teal-950 text-sm">Dịch vụ CV Sourcing — trả theo số CV được chấp nhận</span>
+            <Tag color={agreed ? 'success' : 'default'} className="m-0 font-medium rounded-full px-2.5">
+              {termLabel}
+            </Tag>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {[
+              { label: 'Số CV giao', value: agreed?.sourcingTarget ?? job.sourcingTarget, unit: 'CV' },
+              { label: 'Giá mỗi CV', value: agreed?.pricePerCv ?? proposed?.pricePerCv, unit: 'đ' },
+              { label: 'Tiền cọc', value: agreed?.depositPercent, unit: '%' },
+              { label: 'Thời gian duyệt CV', value: agreed?.reviewDays, unit: 'ngày' },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg bg-white p-3 border border-solid border-slate-200/80">
+                <div className="text-[11px] text-slate-600">{item.label}</div>
+                <div className="font-bold text-slate-900 text-[13px] mt-1">
+                  {item.value != null
+                    ? `${item.unit === 'đ' ? Number(item.value).toLocaleString('vi-VN') : item.value} ${item.unit}`
+                    : 'Chờ Internal HR chốt'}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!isApplicant && agreed && (agreed.agreedAt || agreed.agreementReference) && (
+        <div className="rounded-lg border border-solid border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+          Điều khoản chốt {agreed.agreedAt ? `ngày ${formatDateTime(agreed.agreedAt)}` : ''}
+          {agreed.agreementReference ? ` · Căn cứ: ${agreed.agreementReference}` : ''}
+        </div>
       )}
 
       <section aria-label="Mô tả công việc">
@@ -472,7 +519,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         visible={showPaymentModal}
         jobId={job.jobId}
         jobTitle={job.title}
-        amount={1500000}
         onClose={() => setShowPaymentModal(false)}
         onPaymentSuccess={() => {
           setShowPaymentModal(false);
