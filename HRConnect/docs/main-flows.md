@@ -472,12 +472,25 @@ Mục này đánh giá các Main Flow ở góc nhìn vận hành thực tế: ch
 
 | # | Vấn đề | Tác động | Đề xuất | Mức độ |
 |---|---|---|---|---|
-| 1.1 | Mọi job đều phải Internal HR duyệt thủ công, kể cả job đăng tin `CV_APPLICATION` | Client mua gói đăng tin kỳ vọng đăng là lên ngay; phải chờ thì thời hạn gói bị hao. Internal HR thành nút cổ chai khi số Client tăng | Tự động công bố job `CV_APPLICATION` của công ty đã xác minh, kiểm duyệt sau; giữ duyệt trước cho `HEADHUNT_COD` và `CV_SOURCING` | Trung bình |
+| 1.1 | Mọi job đều phải Internal HR duyệt thủ công, kể cả job đăng tin `CV_APPLICATION` | Client phải chờ duyệt; Internal HR có thể thành nút cổ chai khi số Client tăng | **Giữ duyệt trước** (đã kiểm chứng 15/10/2026: Indeed duyệt tin trước khi hiện trong kết quả tìm kiếm [^mf01-indeed-review]; TopCV gắn nhãn "Tin đăng đã được kiểm duyệt"). Chỉ cải thiện tốc độ duyệt, không bỏ bước duyệt | Thấp |
 | 1.2 | Job không có điều khoản thương mại (hệ số phí, Sourcing Target, bảo hành, gói) | Không có căn cứ tính phí về sau; mỗi job phải thỏa thuận ngoài hệ thống | Lưu điều khoản tại job và chốt (không cho sửa) khi job `ACTIVE` | Cao |
 | 1.3 | Client đóng job khi đang có ứng viên trong pipeline | Hồ sơ đang phỏng vấn bị treo; công sức của Affiliate mất mà không có lời giải thích | Khi đóng job: bắt buộc chọn cách xử lý hồ sơ đang mở và thông báo cho Affiliate liên quan | Trung bình |
 | 1.4 | Chưa có giới hạn gói miễn phí | Client dùng miễn phí không giới hạn, không có lý do nâng gói | Cài giới hạn 1 job mở và chu kỳ 2 tháng theo đề tài | Trung bình |
+| 1.5 | Client đóng job khi còn hồ sơ đang xử lý (`SUBMITTED`, `SCREENING`, `SHORTLISTED`, `BACKUP`, `INTERVIEW`): `CloseJob` không đụng tới hồ sơ | Hồ sơ treo vĩnh viễn; ứng viên và Affiliate không được báo (LinkedIn tự thông báo cho ứng viên không được chọn [^mf01-linkedin-reject]) | **[CHỜ XÁC NHẬN VỚI GVHD]** Bản tối giản: khi đóng job, chuyển hồ sơ đang mở sang `CLOSED` và gửi thông báo; có offer đang chờ thì chặn đóng. Gộp với mục 1.3 | Trung bình |
 
 **Tác động tới luồng khác:** thiếu điều khoản thương mại ở MF-01 (1.2) làm MF-05 không tính được phí.
+
+**Hướng phát triển (không làm trong đồ án, chỉ ghi vào báo cáo):** các tính năng dưới đây có ở các trang tuyển dụng lớn hoặc liên quan tới luật, nhưng đề tài không yêu cầu.
+
+- **Báo cáo tin tuyển dụng:** ứng viên báo tin lừa đảo hoặc sai sự thật, Internal HR gỡ tin. Indeed có nút "Report job" [^mf01-indeed-report]; TopCV có "Báo cáo tin tuyển dụng" trên trang tin.
+- **Sửa nhỏ tin đang tuyển:** Indeed cho sửa nhỏ (ví dụ lỗi chính tả) trên tin đang chạy, thay đổi lớn thì đăng tin mới [^mf01-indeed-edit]. Hiện dự án chỉ cho sửa tin nháp hoặc bị từ chối.
+- **Lý do từ chối "Nội dung phân biệt đối xử":** Bộ luật Lao động 2019 Điều 8 cấm phân biệt đối xử; Điều 3 khoản 8 định nghĩa phân biệt theo giới tính, độ tuổi…, trừ yêu cầu đặc thù của công việc. Luật Bình đẳng giới 2006 Điều 13 yêu cầu bình đẳng về tiêu chuẩn, độ tuổi khi tuyển dụng [^mf01-bllđ]. Bước duyệt hiện tại đã chặn được, chỉ thiếu mã lý do riêng.
+
+[^mf01-indeed-review]: Indeed Employer Help, <https://in.indeed.com/help/employers/articles/205846516>
+[^mf01-linkedin-reject]: LinkedIn Help, Automate sending rejection messages, <https://www.linkedin.com/help/learning/answer/a521538>
+[^mf01-indeed-report]: Indeed Help, How to report a job, <https://www.indeed.com/help/job-seekers/articles/360028156452-how-to-report-a-job>
+[^mf01-indeed-edit]: Indeed Employer Help, Edit a job post, <https://in.indeed.com/help/employers/articles/203366260>
+[^mf01-bllđ]: Trích qua Thư viện Pháp luật, <https://thuvienphapluat.vn/lao-dong-tien-luong/phan-biet-doi-xu-trong-lao-dong-co-bi-cam-trong-cong-ty-khong-20243.html>. Khi đưa vào báo cáo nên trích văn bản gốc.
 
 ## MF-02. Tiếp nhận hồ sơ, kiểm tra trùng, ghi nhận nguồn
 

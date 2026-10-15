@@ -77,7 +77,7 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
                 job.MaxApplications = null;
             }
         }
-        job.ApplicationDeadline = request.ApplicationDeadline;
+        job.ApplicationDeadline = JobDates.ToUtc(request.ApplicationDeadline);
         job.UpdatedAt = now; job.ConcurrencyToken = Guid.NewGuid(); job.StatusReason = null;
         var existingRequirements = job.JobRequirements.OrderBy(item => item.CreatedAt).ToList();
         for (var index = 0; index < request.Requirements.Count; index++)

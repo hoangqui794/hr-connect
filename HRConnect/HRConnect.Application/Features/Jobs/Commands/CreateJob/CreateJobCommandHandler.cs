@@ -119,7 +119,7 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             ProposedFeeNote = proposed.Note,
             PostingPackageId = request.PostingPackageId,
             MaxApplications = maxApplications,
-            ApplicationDeadline = request.ApplicationDeadline
+            ApplicationDeadline = JobDates.ToUtc(request.ApplicationDeadline)
         };
 
         foreach (var requirement in request.Requirements)

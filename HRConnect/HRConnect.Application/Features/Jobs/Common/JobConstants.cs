@@ -30,6 +30,21 @@ public static class EmploymentTypes
     public static readonly string[] All = [FullTime, PartTime, Contract, Internship, Freelance];
 }
 
+/// <summary>
+/// PostgreSQL timestamptz only accepts UTC. Dates sent without an offset (e.g. "2026-12-31") arrive as
+/// DateTimeKind.Unspecified and used to make SaveChanges throw (HTTP 500); treat them as UTC instead.
+/// </summary>
+public static class JobDates
+{
+    public static DateTime? ToUtc(DateTime? value) => value?.Kind switch
+    {
+        null => null,
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.Value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value!.Value, DateTimeKind.Utc),
+    };
+}
+
 public static class JobReasonCodes
 {
     public const string DraftCreated = "DRAFT_CREATED";
