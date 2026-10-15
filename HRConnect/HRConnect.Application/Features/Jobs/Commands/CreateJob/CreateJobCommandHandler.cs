@@ -181,6 +181,13 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             }
         }
 
+        // Template usage is statistics only: an unknown or hidden template never blocks creating the job.
+        if (request.TemplateId.HasValue &&
+            await _jobRepository.TryUseTemplateAsync(request.TemplateId.Value, cancellationToken))
+        {
+            job.TemplateId = request.TemplateId;
+        }
+
         await _jobRepository.AddAsync(job, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

@@ -60,6 +60,8 @@ public class CreateJobCommand : IRequest<CreateJobResponse>
     public Guid? PostingPackageId { get; set; }
 
     public DateTime? ApplicationDeadline { get; set; }
+    /// <summary>MF-01: JD template the Client started from. Optional; an unknown id is ignored.</summary>
+    public Guid? TemplateId { get; set; }
 
     public List<CreateJobRequirementRequest> Requirements { get; set; } = [];
 
