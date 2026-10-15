@@ -17,10 +17,14 @@ public static class WarrantyStates
 
 public static class CommissionStates
 {
+    /// <summary>Referred, candidate not started yet.</summary>
     public const string Pending = "PENDING";
+    /// <summary>Candidate started; inside the warranty window (QUY-TAC-PHI 1.3). Becomes EARNED when it passes.</summary>
+    public const string InWarranty = "IN_WARRANTY";
     public const string Earned = "EARNED";
     public const string Payable = "PAYABLE";
     public const string Paid = "PAID";
+    /// <summary>Client reported a resignation; Internal HR is verifying. Never auto-earned.</summary>
     public const string OnHold = "ON_HOLD";
     public const string Cancelled = "CANCELLED";
 }
@@ -36,6 +40,8 @@ public static class PayoutStates
 public static class ServiceFeeStates
 {
     public const string Pending = "PENDING";
+    /// <summary>Due within the reminder window (mf05.fee.due_reminder_days); the Client has been reminded.</summary>
+    public const string Due = "DUE";
     public const string Paid = "PAID";
     public const string Overdue = "OVERDUE";
     public const string Cancelled = "CANCELLED";

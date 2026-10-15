@@ -29,6 +29,12 @@ public interface IFinanceRepository
 
     Task<IReadOnlyList<Guid>> GetPlacementIdsWithWarrantyEndingAsync(DateOnly onOrBefore, int take, CancellationToken cancellationToken = default);
 
+    /// <summary>PENDING fees due between today and <paramref name="dueOnOrBefore"/> (inclusive): time to remind the Client.</summary>
+    Task<IReadOnlyList<Guid>> GetServiceFeeIdsDueSoonAsync(DateOnly today, DateOnly dueOnOrBefore, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>User ids of the company's ACTIVE members, for payment reminders.</summary>
+    Task<IReadOnlyList<Guid>> GetActiveCompanyUserIdsAsync(Guid companyId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Guid>> GetOverdueServiceFeeIdsAsync(DateOnly dueBefore, int take, CancellationToken cancellationToken = default);
 
     Task<(IReadOnlyList<ServiceFee> Items, int TotalCount)> GetServiceFeesAsync(
