@@ -230,7 +230,7 @@ export const AdminFinancePage: React.FC = () => {
             label="Trạng thái hoa hồng"
             value={commissionStatus}
             onChange={(v) => { setCommissionStatus(v); setPage(1); }}
-            options={[{ value: 'all', label: 'Tất cả' }, ...(['EARNED', 'PAYABLE', 'PENDING', 'ON_HOLD', 'PAID', 'CANCELLED'] as CommissionStatus[]).map((s) => ({ value: s, label: COMMISSION_STATUS[s].label }))]}
+            options={[{ value: 'all', label: 'Tất cả' }, ...(['EARNED', 'PAYABLE', 'PENDING', 'IN_WARRANTY', 'ON_HOLD', 'PAID', 'CANCELLED'] as CommissionStatus[]).map((s) => ({ value: s, label: COMMISSION_STATUS[s].label }))]}
           />
         )}
         {tab === 'fees' && (

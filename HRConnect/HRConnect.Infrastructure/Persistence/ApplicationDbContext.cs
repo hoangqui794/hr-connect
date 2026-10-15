@@ -106,6 +106,12 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<SystemSetting> SystemSettings { get; set; }
 
+    public virtual DbSet<SourcingDelivery> SourcingDeliveries { get; set; }
+
+    public virtual DbSet<JobTemplate> JobTemplates { get; set; }
+
+    public virtual DbSet<JobTemplateRequirement> JobTemplateRequirements { get; set; }
+
     public virtual DbSet<Probation> Probations { get; set; }
 
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
@@ -488,6 +494,9 @@ public partial class ApplicationDbContext : DbContext
             entity.HasIndex(e => new { e.CandidateId, e.JobId }, "application_candidate_id_job_id_key").IsUnique();
 
             entity.HasIndex(e => new { e.CandidateId, e.UpdatedAt }, "idx_application_candidate").IsDescending(false, true);
+
+            entity.HasIndex(e => new { e.CandidateId, e.AppliedAt }, "idx_application_candidate_applied_at")
+                .IsDescending(false, true);
 
             entity.HasIndex(e => new { e.JobId, e.Status }, "idx_application_job_status");
 
@@ -1838,8 +1847,20 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.FeeMultiplier).HasPrecision(5, 2).HasColumnName("fee_multiplier");
             entity.Property(e => e.WarrantyDays).HasColumnName("warranty_days");
             entity.Property(e => e.PaymentDueDays).HasColumnName("payment_due_days");
+            entity.Property(e => e.DepositPercent).HasPrecision(5, 2).HasColumnName("deposit_percent");
+            entity.Property(e => e.ReviewDays).HasColumnName("review_days");
+            entity.Property(e => e.ProposedFeeMultiplier).HasPrecision(5, 2).HasColumnName("proposed_fee_multiplier");
+            entity.Property(e => e.ProposedWarrantyDays).HasColumnName("proposed_warranty_days");
+            entity.Property(e => e.ProposedPaymentDueDays).HasColumnName("proposed_payment_due_days");
+            entity.Property(e => e.ProposedPricePerCv).HasPrecision(18, 2).HasColumnName("proposed_price_per_cv");
+            entity.Property(e => e.ProposedFeeNote).HasMaxLength(1000).HasColumnName("proposed_fee_note");
+            entity.Property(e => e.AgreementReference).HasMaxLength(500).HasColumnName("agreement_reference");
+            entity.Property(e => e.AgreementNote).HasColumnName("agreement_note");
+            entity.Property(e => e.AgreedAt).HasColumnName("agreed_at");
+            entity.Property(e => e.AgreedBy).HasColumnName("agreed_by");
             entity.Property(e => e.PostingPackageId).HasColumnName("posting_package_id");
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.MaxApplications).HasColumnName("max_applications");
 
             entity.HasOne(d => d.Company).WithMany(p => p.Jobs)
                 .HasForeignKey(d => d.CompanyId)
@@ -1850,6 +1871,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("job_created_by_fkey");
+
+            entity.HasOne(d => d.AgreedByNavigation).WithMany()
+                .HasForeignKey(d => d.AgreedBy)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("job_agreed_by_fkey");
 
             entity.HasOne(d => d.ServiceType).WithMany(p => p.Jobs)
                 .HasForeignKey(d => d.ServiceTypeId)
@@ -1888,6 +1914,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.DurationDays)
                 .HasDefaultValue(30)
                 .HasColumnName("duration_days");
+            entity.Property(e => e.MaxApplications)
+                .HasDefaultValue(50)
+                .HasColumnName("max_applications");
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");
@@ -2343,6 +2372,131 @@ public partial class ApplicationDbContext : DbContext
                 .HasConstraintName("system_setting_updated_by_fkey");
         });
 
+        modelBuilder.Entity<JobTemplate>(entity =>
+        {
+            entity.HasKey(e => e.TemplateId).HasName("job_template_pkey");
+
+            entity.ToTable("job_template", "public", tb =>
+            {
+                tb.HasComment("MF-01: shared JD templates a Client can start a job from. Managed by Internal HR / Admin.");
+                tb.HasCheckConstraint("ck_job_template_experience", "min_experience_years IS NULL OR max_experience_years IS NULL OR min_experience_years <= max_experience_years");
+                tb.HasCheckConstraint("ck_job_template_usage", "usage_count >= 0");
+            });
+
+            entity.HasIndex(e => e.Code, "uq_job_template_code").IsUnique();
+            entity.HasIndex(e => new { e.IsActive, e.Industry }, "idx_job_template_active_industry");
+
+            entity.Property(e => e.TemplateId).HasDefaultValueSql("gen_random_uuid()").HasColumnName("template_id");
+            entity.Property(e => e.Code).HasMaxLength(80).HasColumnName("code");
+            entity.Property(e => e.Name).HasMaxLength(200).HasColumnName("name");
+            entity.Property(e => e.Industry).HasMaxLength(80).HasColumnName("industry");
+            entity.Property(e => e.Level).HasMaxLength(40).HasColumnName("level");
+            entity.Property(e => e.Keywords).HasColumnName("keywords");
+            entity.Property(e => e.Summary).HasMaxLength(500).HasColumnName("summary");
+            entity.Property(e => e.Title).HasMaxLength(255).HasColumnName("title");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Benefits).HasColumnName("benefits");
+            entity.Property(e => e.EmploymentType).HasMaxLength(50).HasColumnName("employment_type");
+            entity.Property(e => e.MinExperienceYears).HasColumnName("min_experience_years");
+            entity.Property(e => e.MaxExperienceYears).HasColumnName("max_experience_years");
+            entity.Property(e => e.SearchText).HasColumnName("search_text");
+            entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
+            entity.Property(e => e.UsageCount).HasDefaultValue(0).HasColumnName("usage_count");
+            entity.Property(e => e.ConcurrencyToken).HasDefaultValueSql("gen_random_uuid()").HasColumnName("concurrency_token");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
+        });
+
+        modelBuilder.Entity<JobTemplateRequirement>(entity =>
+        {
+            entity.HasKey(e => e.TemplateRequirementId).HasName("job_template_requirement_pkey");
+
+            entity.ToTable("job_template_requirement", "public", tb =>
+                tb.HasCheckConstraint("ck_job_template_requirement_type", "requirement_type IN ('MUST_HAVE','SHOULD_HAVE')"));
+
+            entity.HasIndex(e => new { e.TemplateId, e.DisplayOrder }, "idx_job_template_requirement_order");
+
+            entity.Property(e => e.TemplateRequirementId).HasDefaultValueSql("gen_random_uuid()").HasColumnName("template_requirement_id");
+            entity.Property(e => e.TemplateId).HasColumnName("template_id");
+            entity.Property(e => e.RequirementType).HasMaxLength(20).HasColumnName("requirement_type");
+            entity.Property(e => e.Category).HasMaxLength(120).HasColumnName("category");
+            entity.Property(e => e.Content).HasMaxLength(4000).HasColumnName("content");
+            entity.Property(e => e.DisplayOrder).HasColumnName("display_order");
+
+            entity.HasOne(e => e.Template).WithMany(t => t.Requirements)
+                .HasForeignKey(e => e.TemplateId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("job_template_requirement_template_id_fkey");
+        });
+
+        modelBuilder.Entity<Job>(entity =>
+        {
+            entity.Property(e => e.TemplateId).HasColumnName("template_id");
+            entity.HasIndex(e => e.TemplateId, "idx_job_template_id");
+            entity.HasOne(e => e.Template).WithMany()
+                .HasForeignKey(e => e.TemplateId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("job_template_id_fkey");
+        });
+
+        modelBuilder.Entity<SourcingDelivery>(entity =>
+        {
+            entity.HasKey(e => e.DeliveryId).HasName("sourcing_delivery_pkey");
+
+            entity.ToTable("sourcing_delivery", "public", tb =>
+            {
+                tb.HasComment("MF-03 CV_SOURCING: a qualified CV handed to the Client. Only ACCEPTED and AUTO_ACCEPTED are billed (MF-05).");
+                tb.HasCheckConstraint("ck_sourcing_delivery_status", "status IN ('DELIVERED','ACCEPTED','REJECTED','AUTO_ACCEPTED','REPLACED')");
+                tb.HasCheckConstraint("ck_sourcing_delivery_reject_reason",
+                    "reject_reason_code IS NULL OR reject_reason_code IN ('DUPLICATE_ALREADY_OWNED','FALSE_INFORMATION','UNREACHABLE','WRONG_JOB','OTHER')");
+                tb.HasCheckConstraint("ck_sourcing_delivery_review_due", "review_due_at > delivered_at");
+            });
+
+            entity.HasIndex(e => new { e.JobId, e.Status }, "idx_sourcing_delivery_job_status");
+            entity.HasIndex(e => new { e.Status, e.ReviewDueAt }, "idx_sourcing_delivery_status_review_due");
+            entity.HasIndex(e => e.ApplicationId, "uq_sourcing_delivery_application_active")
+                .IsUnique()
+                .HasFilter("status <> 'REPLACED'");
+
+            entity.Property(e => e.DeliveryId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("delivery_id");
+            entity.Property(e => e.JobId).HasColumnName("job_id");
+            entity.Property(e => e.ApplicationId).HasColumnName("application_id");
+            entity.Property(e => e.Status)
+                .HasMaxLength(30)
+                .HasColumnName("status");
+            entity.Property(e => e.DeliveredAt).HasColumnName("delivered_at");
+            entity.Property(e => e.DeliveredBy).HasColumnName("delivered_by");
+            entity.Property(e => e.ReviewDueAt).HasColumnName("review_due_at");
+            entity.Property(e => e.DecidedAt).HasColumnName("decided_at");
+            entity.Property(e => e.DecidedBy).HasColumnName("decided_by");
+            entity.Property(e => e.RejectReasonCode)
+                .HasMaxLength(50)
+                .HasColumnName("reject_reason_code");
+            entity.Property(e => e.RejectNote)
+                .HasMaxLength(2000)
+                .HasColumnName("reject_note");
+            entity.Property(e => e.ReplacedByDeliveryId).HasColumnName("replaced_by_delivery_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Job).WithMany()
+                .HasForeignKey(d => d.JobId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("sourcing_delivery_job_id_fkey");
+            entity.HasOne(d => d.Application).WithMany()
+                .HasForeignKey(d => d.ApplicationId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("sourcing_delivery_application_id_fkey");
+        });
+
         modelBuilder.Entity<ServiceFee>(entity =>
         {
             entity.HasKey(e => e.ServiceFeeId).HasName("service_fee_pkey");
@@ -2350,7 +2504,7 @@ public partial class ApplicationDbContext : DbContext
             entity.ToTable("service_fee", "public", tb =>
             {
                 tb.HasComment("MF-05 service fee the Client owes for one HEADHUNT_COD placement. Paid outside the system; Platform Admin records payment.");
-                tb.HasCheckConstraint("ck_service_fee_status", "status IN ('PENDING','PAID','OVERDUE','CANCELLED')");
+                tb.HasCheckConstraint("ck_service_fee_status", "status IN ('PENDING','DUE','PAID','OVERDUE','CANCELLED')");
                 tb.HasCheckConstraint("ck_service_fee_amounts", "amount >= 0 AND base_salary >= 0 AND fee_multiplier > 0");
                 tb.HasCheckConstraint("ck_service_fee_paid", "(status = 'PAID') = (paid_at IS NOT NULL)");
             });
@@ -2684,7 +2838,7 @@ public partial class ApplicationDbContext : DbContext
                 table.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed.");
                 table.HasCheckConstraint(
                     "submission_status_check",
-                    "status IN ('RECEIVED','PENDING_CONSENT','ACCEPTED','BLOCKED_DUPLICATE','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
+                    "status IN ('RECEIVED','PENDING_CONSENT','ACCEPTED','BLOCKED_DUPLICATE','BLOCKED_CLIENT_OWNED','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
             });
 
             entity.HasIndex(e => new { e.JobId, e.CandidateId, e.SubmittedAt }, "idx_submission_job_candidate");

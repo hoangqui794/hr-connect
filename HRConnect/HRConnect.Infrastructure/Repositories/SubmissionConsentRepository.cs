@@ -19,6 +19,7 @@ public class SubmissionConsentRepository : ISubmissionConsentRepository
             .Include(c => c.Submission).ThenInclude(s => s.CandidateCv)
             .Include(c => c.Submission).ThenInclude(s => s.Applications)
             .Include(c => c.Submission).ThenInclude(s => s.Job).ThenInclude(j => j.Company)
+            .Include(c => c.Submission).ThenInclude(s => s.Job).ThenInclude(j => j.ServiceType)
             .FirstOrDefaultAsync(c => c.TokenHash == tokenHash, cancellationToken);
 
     public Task<SubmissionConsent?> GetBySubmissionIdAsync(Guid submissionId, CancellationToken cancellationToken = default) =>
@@ -27,6 +28,7 @@ public class SubmissionConsentRepository : ISubmissionConsentRepository
             .Include(c => c.Submission).ThenInclude(s => s.CandidateCv)
             .Include(c => c.Submission).ThenInclude(s => s.Applications)
             .Include(c => c.Submission).ThenInclude(s => s.Job).ThenInclude(j => j.Company)
+            .Include(c => c.Submission).ThenInclude(s => s.Job).ThenInclude(j => j.ServiceType)
             .FirstOrDefaultAsync(c => c.SubmissionId == submissionId, cancellationToken);
 
     public Task<SubmissionConsent?> GetActiveByCandidateAndJobAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default) =>

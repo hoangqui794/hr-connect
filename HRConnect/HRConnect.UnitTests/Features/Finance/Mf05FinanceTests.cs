@@ -127,7 +127,7 @@ public class Mf05FinanceTests
     // ---- placement start ------------------------------------------------------------------
 
     [Fact]
-    public async Task HeadhuntPlacement_creates_30_day_warranty_fee_and_pending_commission()
+    public async Task HeadhuntPlacement_creates_30_day_warranty_fee_and_in_warranty_commission()
     {
         var (placement, offer) = await SeedPlacementAsync();
 
@@ -139,11 +139,11 @@ public class Mf05FinanceTests
         warranty.Status.Should().Be(WarrantyStates.Active);
         warranty.EndDate.Should().Be(Start.AddDays(30));
         var fee = await _context.ServiceFees.SingleAsync();
-        fee.Amount.Should().Be(30_000_000m); // 20M × 1.5
+        fee.Amount.Should().Be(30_000_000m); // 20M × 1.5 (default fee multiplier, QUY-TAC-PHI mục 5)
         fee.Status.Should().Be(ServiceFeeStates.Pending);
         var commission = await CommissionAsync();
-        commission.Amount.Should().Be(9_000_000m); // 30% of the fee, all at once
-        commission.Status.Should().Be(CommissionStates.Pending);
+        commission.Amount.Should().Be(9_000_000m); // 30% of the 30M fee
+        commission.Status.Should().Be(CommissionStates.InWarranty); // E3: started, inside the warranty window
         commission.MilestoneType.Should().Be(CommissionMilestoneCodes.WarrantyPassed);
     }
 
@@ -299,7 +299,7 @@ public class Mf05FinanceTests
             new ResolveResignationCommand(placement.PlacementId, false, "Ứng viên vẫn đi làm", _actor), default);
 
         resolved.WarrantyStatus.Should().Be(WarrantyStates.Active);
-        (await CommissionAsync()).Status.Should().Be(CommissionStates.Pending);
+        (await CommissionAsync()).Status.Should().Be(CommissionStates.InWarranty); // E2.3: back to the warranty window, not ON_HOLD
     }
 
     [Fact]
@@ -312,7 +312,7 @@ public class Mf05FinanceTests
             .Invoking(h => h.Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(5), "x", _actor), default))
             .Should().ThrowAsync<NotFoundException>();
         await ReportHandler()
-            .Invoking(h => h.Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(30), "x", _actor), default))
+            .Invoking(h => h.Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(60), "x", _actor), default))
             .Should().ThrowAsync<BadRequestException>();
     }
 
@@ -362,13 +362,147 @@ public class Mf05FinanceTests
         withoutBank.Items.Single().AffiliateBank.Should().BeNull();
     }
 
+    // ---- E2/E3: IN_WARRANTY and ON_HOLD (mf05-viec-can-lam-theo-quy-tac-phi.md) -------------
+
+    [Fact]
+    public async Task Commission_under_a_resignation_review_is_not_earned_when_the_warranty_ends()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        await ReportHandler().Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(5), "Nghỉ", _actor), default);
+        (await CommissionAsync()).Status.Should().Be(CommissionStates.OnHold);
+
+        // The claim makes the warranty CLAIMED, so the clock cannot pass it or earn the ON_HOLD commission.
+        (await Progress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(60))).Should().BeFalse();
+        (await CommissionAsync()).Status.Should().Be(CommissionStates.OnHold);
+    }
+
+    [Fact]
+    public async Task Rejected_claim_lets_the_clock_earn_the_commission_afterwards()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        await ReportHandler().Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(5), "Nghỉ", _actor), default);
+        await new ResolveResignationCommandHandler(Repository, UnitOfWork, _audit.Object).Handle(
+            new ResolveResignationCommand(placement.PlacementId, false, "Ứng viên vẫn đi làm", _actor), default);
+
+        (await Progress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(30))).Should().BeTrue();
+
+        (await CommissionAsync()).Status.Should().Be(CommissionStates.Earned);
+    }
+
+    [Fact]
+    public async Task Confirmed_resignation_cancels_the_held_commission()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        await ReportHandler().Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(5), "Nghỉ", _actor), default);
+
+        await new ResolveResignationCommandHandler(Repository, UnitOfWork, _audit.Object).Handle(
+            new ResolveResignationCommand(placement.PlacementId, true, "Đã xác minh", _actor), default);
+
+        (await CommissionAsync()).Status.Should().Be(CommissionStates.Cancelled);
+    }
+
+    [Fact]
+    public async Task In_warranty_commission_cannot_be_approved_and_the_message_names_no_fixed_days()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        var commissionId = (await CommissionAsync()).CommissionId;
+
+        var act = () => Settlement().Handle(new ApproveCommissionCommand(commissionId, _actor), default);
+
+        var error = await act.Should().ThrowAsync<ConflictException>();
+        error.Which.Message.Should().Contain("IN_WARRANTY").And.NotContain("60 ngày");
+    }
+
+    // ---- E4: service fee DUE -------------------------------------------------------------------
+
+    private async Task<ServiceFee> FeeDueOnAsync(DateOnly dueDate)
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        var fee = await _context.ServiceFees.SingleAsync();
+        fee.DueDate = dueDate;
+        _context.CompanyUsers.Add(new CompanyUser
+        {
+            CompanyUserId = Guid.NewGuid(), CompanyId = fee.CompanyId, UserId = Guid.NewGuid(), Status = "ACTIVE",
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        });
+        await _context.SaveChangesAsync();
+        return fee;
+    }
+
+    [Fact]
+    public async Task Fee_within_the_reminder_window_becomes_DUE_and_the_client_is_reminded()
+    {
+        var today = new DateOnly(2026, 10, 15);
+        var fee = await FeeDueOnAsync(today.AddDays(5));
+        var notifications = new Mock<INotificationRepository>();
+        var progress = new WarrantyProgressService(Repository, UnitOfWork, _audit.Object, notifications.Object);
+
+        (await progress.MarkServiceFeeDueAsync(fee.ServiceFeeId, today, reminderDays: 5)).Should().BeTrue();
+
+        (await _context.ServiceFees.SingleAsync()).Status.Should().Be(ServiceFeeStates.Due);
+        notifications.Verify(n => n.AddAsync(
+            It.Is<Notification>(x => x.NotificationType == "COMPANY" && x.RelatedEntityId == fee.ServiceFeeId && x.Message.Contains("còn 5 ngày")),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _audit.Verify(a => a.AddAsync(It.Is<AuditEntry>(e => e.Action == AuditActions.ServiceFeeDue), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Fee_outside_the_reminder_window_stays_PENDING()
+    {
+        var today = new DateOnly(2026, 10, 15);
+        var fee = await FeeDueOnAsync(today.AddDays(6));
+
+        (await Progress().MarkServiceFeeDueAsync(fee.ServiceFeeId, today, reminderDays: 5)).Should().BeFalse();
+
+        (await _context.ServiceFees.SingleAsync()).Status.Should().Be(ServiceFeeStates.Pending);
+    }
+
+    [Fact]
+    public async Task Due_fee_becomes_OVERDUE_after_the_due_date()
+    {
+        var today = new DateOnly(2026, 10, 15);
+        var fee = await FeeDueOnAsync(today.AddDays(2));
+        await Progress().MarkServiceFeeDueAsync(fee.ServiceFeeId, today, reminderDays: 5);
+
+        (await Repository.GetOverdueServiceFeeIdsAsync(today.AddDays(3), 10)).Should().Contain(fee.ServiceFeeId);
+        (await Progress().MarkServiceFeeOverdueAsync(fee.ServiceFeeId, today.AddDays(3))).Should().BeTrue();
+        (await _context.ServiceFees.SingleAsync()).Status.Should().Be(ServiceFeeStates.Overdue);
+    }
+
+    [Fact]
+    public async Task Payment_is_accepted_while_the_fee_is_DUE()
+    {
+        var today = new DateOnly(2026, 10, 15);
+        var fee = await FeeDueOnAsync(today.AddDays(1));
+        await Progress().MarkServiceFeeDueAsync(fee.ServiceFeeId, today, reminderDays: 5);
+
+        var paid = await Settlement().Handle(
+            new RecordServiceFeePaymentCommand(fee.ServiceFeeId, DateTime.UtcNow.AddMinutes(-1), "UNC-1", _actor), default);
+
+        paid.Status.Should().Be(ServiceFeeStates.Paid);
+    }
+
+    [Fact]
+    public void Reminder_days_is_a_configurable_setting()
+    {
+        var reminder = BusinessSettingKeys.All.Single(s => s.Key == BusinessSettingKeys.FeeDueReminderDays);
+        reminder.DefaultValue.Should().Be(5m);
+        reminder.Min.Should().Be(1m);
+        reminder.Max.Should().Be(30m);
+    }
+
     // ---- approval and payout ----------------------------------------------------------------
 
     private async Task<Commission> EarnedCommissionAsync()
     {
         var (placement, offer) = await SeedPlacementAsync();
         await InitializeAsync(placement, offer);
-        await Progress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(30));
+        await Progress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(60));
         return await CommissionAsync();
     }
 

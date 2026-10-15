@@ -91,14 +91,14 @@ export const CandidateHeader: React.FC = () => {
               width: 36,
               height: 36,
               borderRadius: 10,
-              background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+              background: 'linear-gradient(135deg, #1E9EDB 0%, #53B7E8 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 800,
               color: '#fff',
               fontSize: 18,
-              boxShadow: '0 3px 10px rgba(37, 99, 235, 0.3)',
+              boxShadow: '0 3px 10px rgba(30, 158, 219, 0.35)',
             }}
           >
             H

@@ -25,6 +25,7 @@ public class ApplyJobCommandHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<ILogger<ApplyJobCommandHandler>> _loggerMock;
+    private readonly Mock<ICandidateCompanyTransactionLock> _candidateCompanyLockMock;
     private readonly ApplyJobCommandHandler _handler;
 
     public ApplyJobCommandHandlerTests()
@@ -40,6 +41,7 @@ public class ApplyJobCommandHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _auditLogServiceMock = new Mock<IAuditLogService>();
         _loggerMock = new Mock<ILogger<ApplyJobCommandHandler>>();
+        _candidateCompanyLockMock = new Mock<ICandidateCompanyTransactionLock>();
         _userRepositoryMock.Setup(repository => repository.GetByIdWithActiveRolesAsync(
                 It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateActiveCandidateUser());
@@ -55,7 +57,8 @@ public class ApplyJobCommandHandlerTests
             _scoringTriggerMock.Object,
             _unitOfWorkMock.Object,
             _auditLogServiceMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _candidateCompanyLockMock.Object);
     }
 
     [Fact]
@@ -138,6 +141,8 @@ public class ApplyJobCommandHandlerTests
 
         // Verify Save & MF-03 trigger
         _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _candidateCompanyLockMock.Verify(lockService => lockService.AcquireAsync(
+            candidateId, job.CompanyId, It.IsAny<CancellationToken>()), Times.Once);
         _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(
             It.Is<Mf03TriggerPayload>(p => p.ApplicationId == createdApp.ApplicationId && p.CvId == cvId && p.JobId == jobId),
             It.IsAny<CancellationToken>()), Times.Once);
@@ -528,6 +533,61 @@ public class ApplyJobCommandHandlerTests
         _jobRepositoryMock.Verify(repository => repository.GetByIdAsync(
             It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _cvStorageServiceMock.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Handle_WhenMaxApplicationsQuotaReached_ThrowsBadRequestException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+
+        var candidate = new Candidate
+        {
+            CandidateId = candidateId,
+            UserId = userId,
+            Status = "ACTIVE"
+        };
+        var user = CreateActiveCandidateUser();
+        user.UserId = userId;
+
+        var job = new Job
+        {
+            JobId = jobId,
+            ServiceTypeId = serviceTypeId,
+            Status = "ACTIVE",
+            Visibility = "PUBLIC",
+            ApplicationDeadline = DateTime.UtcNow.AddDays(7),
+            MaxApplications = 50
+        };
+
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+        _userRepositoryMock.Setup(r => r.GetByIdWithActiveRolesAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _jobRepositoryMock.Setup(r => r.CountAcceptedApplicationsByJobIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(50); // Reached quota
+
+        var command = new ApplyJobCommand
+        {
+            JobId = jobId,
+            UserId = userId,
+            CvId = Guid.NewGuid(),
+            RoleCodes = new[] { "CANDIDATE" }
+        };
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*đã nhận đủ số lượng hồ sơ tối đa*");
     }
 
     private static AppUser CreateActiveCandidateUser(

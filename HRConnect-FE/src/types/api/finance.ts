@@ -24,8 +24,8 @@ export interface BusinessSetting {
   updatedAt?: string | null;
 }
 
-export type ServiceFeeStatus = 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED';
-export type CommissionStatus = 'PENDING' | 'EARNED' | 'PAYABLE' | 'PAID' | 'ON_HOLD' | 'CANCELLED';
+export type ServiceFeeStatus = 'PENDING' | 'DUE' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+export type CommissionStatus = 'PENDING' | 'IN_WARRANTY' | 'ON_HOLD' | 'EARNED' | 'PAYABLE' | 'PAID' | 'CANCELLED';
 export type PayoutStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export interface ServiceFee {

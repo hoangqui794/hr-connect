@@ -259,17 +259,18 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
               width: 36,
               height: 36,
               borderRadius: 8,
-              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+              background: 'linear-gradient(135deg, #1E9EDB 0%, #53B7E8 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#fff',
               fontSize: 18,
-              fontWeight: 700,
+              fontWeight: 800,
               flexShrink: 0,
+              boxShadow: '0 2px 10px rgba(30, 158, 219, 0.35)',
             }}
           >
-            <ThunderboltOutlined />
+            H
           </div>
           {!collapsed && (
             <div style={{ marginLeft: 12, overflow: 'hidden' }}>

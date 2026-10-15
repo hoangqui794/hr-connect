@@ -44,6 +44,12 @@ public interface IApplicationRepository
 
     Task<bool> ExistsAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default);
 
+    Task<bool> ExistsForCandidateAndCompanySinceAsync(
+        Guid candidateId,
+        Guid companyId,
+        DateTime sinceUtc,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(JobApplication application, CancellationToken cancellationToken = default);
 
     void Update(JobApplication application);

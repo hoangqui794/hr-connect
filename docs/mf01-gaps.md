@@ -2,7 +2,7 @@
 
 > Người nhận: người phụ trách MF-01 (backend + frontend).
 > Rà soát ngày 2026-10-09 trên `main` / `dev` (commit `1f226e6`), đối chiếu với `HRConnect/docs/main-flows.md` (MF-01, mục 6.3)
-> và 3 tài liệu mô hình kinh doanh `HRConnect/docs/{CV_APPLICATION, CV_SOURCING, HEADHUNT_COD}*.md`.
+> và tài liệu quy tắc phí `HRConnect/docs/QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md` (thay cho 3 tài liệu mô hình kinh doanh cũ đã xóa).
 > Mỗi mục có: hiện trạng, bằng chứng (file:dòng), việc cần làm, tiêu chí nghiệm thu.
 
 ## Phần đã ổn (không cần làm lại)
@@ -68,7 +68,7 @@ Nhánh `fix/fe-requirement-level-wrap` (chưa push) có 2 commit cho form tạo 
 
 ### B1. Gói đăng tin cho `CV_APPLICATION` — Cao (dịch vụ này hiện không có doanh thu)
 
-- **Tài liệu:** `CV_APPLICATION – Service Fee Model.md` mục 4–5, 10: luồng đúng là
+- **Tài liệu:** `HRConnect/docs/QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md` mục 3: luồng đúng là
   *tạo job → chọn gói → phát sinh phí → kích hoạt gói → đăng tin*. Gói **FREE** và **STANDARD 1.500.000đ / job / 30 ngày**.
   Phí theo gói, không theo số hồ sơ, không theo placement (BR-CVA-04, 06, 07).
 - **Hiện trạng:** chưa có bước chọn gói, chưa có bảng gói, chưa có thời hạn đăng tin; job `ACTIVE` không bao giờ hết hạn.
@@ -87,7 +87,7 @@ Nhánh `fix/fe-requirement-level-wrap` (chưa push) có 2 commit cho form tạo 
 ### B3. Trường riêng theo Service Type trên job — Cao
 
 - **Tài liệu:** `main-flows.md` mục 6.3: "Sourcing Target, hệ số phí, thời hạn bảo hành, gói đăng tin trên job — MF-01";
-  `CV_SOURCING – Business Model.md` mục 1 (BR-CVS-02: `Hiring Quantity` và `Sourcing Target` độc lập);
+  `HRConnect/docs/QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md` mục 2 (BR-CVS-02: `Hiring Quantity` và `Sourcing Target` độc lập);
   `HEADHUNT_COD…md` mục 4: lưu `FeeMultiplier` theo hợp đồng thay vì cố định 1,5.
 - **Hiện trạng:** form và bảng `job` chỉ có `Quantity`.
 - **Cần làm:**

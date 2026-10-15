@@ -29,6 +29,7 @@ public class BusinessSettingsTests
         (await Settings().GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays)).Should().Be(30);
         (await Settings().GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays)).Should().Be(20);
         (await Settings().GetDecimalAsync(BusinessSettingKeys.CvSourcingAffiliateSharePercent)).Should().Be(60m);
+        (await Settings().GetIntAsync(BusinessSettingKeys.Mf02ClientOwnershipDays)).Should().Be(30);
     }
 
     [Fact]
@@ -48,6 +49,8 @@ public class BusinessSettingsTests
     [Theory]
     [InlineData(BusinessSettingKeys.HeadhuntWarrantyDays, 0)]
     [InlineData(BusinessSettingKeys.HeadhuntWarrantyDays, 30.5)]
+    [InlineData(BusinessSettingKeys.Mf02ClientOwnershipDays, 0)]
+    [InlineData(BusinessSettingKeys.Mf02ClientOwnershipDays, 30.5)]
     [InlineData(BusinessSettingKeys.CvSourcingAffiliateSharePercent, 101)]
     public async Task Out_of_range_or_fractional_days_are_rejected(string key, double value)
     {

@@ -95,8 +95,11 @@ public static class DependencyInjection
         services.AddScoped<IOfferRepository, OfferRepository>();
         services.AddScoped<IPlacementRepository, PlacementRepository>();
         services.AddScoped<IFinanceRepository, FinanceRepository>();
+        services.AddScoped<ISourcingDeliveryRepository, SourcingDeliveryRepository>();
+        services.AddScoped<IJobTemplateRepository, JobTemplateRepository>();
         services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
         services.AddScoped<IAttributionRepository, AttributionRepository>();
+        services.AddScoped<ICandidateCompanyTransactionLock, CandidateCompanyTransactionLock>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAdminApprovalService, HRConnect.Infrastructure.Services.Admin.AdminApprovalService>();
         services.AddScoped<IMf03ScoringTrigger, HRConnect.Infrastructure.Services.Integration.Mf03ScoringTrigger>();
@@ -121,6 +124,7 @@ public static class DependencyInjection
         services.AddHostedService<AccountLifecycleEmailOutboxWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Offers.OfferExpiryWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Finance.WarrantyProgressWorker>();
+        services.AddHostedService<HRConnect.Infrastructure.Services.Recruitment.SourcingAutoAcceptWorker>();
 
         // 5. Cloudflare R2 Object Storage & CV Storage
         var r2Settings = new R2Settings();
@@ -188,10 +192,6 @@ public static class DependencyInjection
                 client.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
             }
         });
-
-        // 7. Business Settings (MF-01 Section C, B1, B2, B3)
-        services.Configure<BusinessSettingsOptions>(configuration.GetSection(BusinessSettingsOptions.SectionName));
-        services.AddSingleton<IBusinessSettings, HRConnect.Infrastructure.Services.BusinessSettings>();
 
         // 8. Background Workers (MF-01 Expiration Worker)
         services.AddHostedService<HRConnect.Infrastructure.Services.Jobs.JobExpirationWorker>();

@@ -34,7 +34,7 @@ Năm Main Flow dùng chung một pipeline, nhưng mỗi loại dịch vụ đi q
 | Sàng lọc (MF-03) | Internal HR sàng lọc và liên hệ ứng viên | Internal HR xác định CV đạt chuẩn, chọn đủ Sourcing Target để giao Client, phần dư vào nhóm dự phòng | Client xem và chọn; HR của Client liên hệ ứng viên |
 | Điểm hoàn thành dịch vụ | Ứng viên đi làm thực tế (MF-04) | Giao đủ số CV đạt chuẩn (MF-03); phỏng vấn và tuyển là tùy chọn | Hết thời hạn gói; tuyển được hay không không ảnh hưởng phí |
 | Thời điểm phát sinh phí | Khi xác nhận đi làm | Khi CV được giao và tính vào quota | Khi kích hoạt gói |
-| Hoa hồng Affiliate | Theo từng placement, theo mốc bảo hành | Theo số CV được tính quota | Không có |
+| Hoa hồng Affiliate | Theo từng placement, nhận 100% khi ứng viên đi làm đủ 30 ngày | Theo số CV được tính quota | Không có |
 | Cam kết sau bán | Bảo hành, tuyển thay thế | Thay CV bằng CV dự phòng | Không có |
 
 **Quy tắc riêng của `CV_SOURCING`:**
@@ -327,15 +327,17 @@ Sơ đồ mô tả trường hợp `HEADHUNT_COD`; toàn bộ là thiết kế �
 
 **Điều kiện:** có Placement từ MF-04.
 
+> **Quy tắc phí và hoa hồng:** xem [QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md](QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md). Phần dưới chỉ tóm tắt; nếu khác nhau thì làm theo file đó.
+
 > **Đã có code cho `HEADHUNT_COD` (2026-10-09):** bảo hành 30 ngày, công nợ phí dịch vụ, hoa hồng nhận 100% khi đủ 30 ngày, báo nghỉ và Internal HR xác minh, Admin ghi nhận thu phí, duyệt/hủy/điều chỉnh hoa hồng, ghi nhận payout (API `/api/v1/service-fees`, `/api/v1/commissions`, `/api/v1/payouts`, `/api/v1/admin/...`, `/api/v1/placements/{id}/resignation`). **[CHƯA CÓ CODE]:** `CV_SOURCING`, `CV_APPLICATION`, tuyển thay thế, đánh giá Affiliate, thông báo, giao diện.
 
 ## Phí dịch vụ (Client trả cho HR Connect)
 
 | Service Type | Cách tính | Thời điểm phát sinh |
 |---|---|---|
-| `HEADHUNT_COD` | Lương gross tháng × hệ số phí (mặc định 1,5), tính riêng cho từng placement | Khi xác nhận đi làm thực tế |
-| `CV_SOURCING` | Theo gói CV đạt chuẩn | Khi CV được giao cho Client và tính vào quota |
-| `CV_APPLICATION` | Theo gói đăng tin (job × thời gian) | Khi kích hoạt gói |
+| `HEADHUNT_COD` | Lương gross tháng × hệ số phí, tính riêng cho từng placement. Hệ số do **Internal HR tinh chỉnh khi duyệt job** theo thỏa thuận với Client; Admin chỉ cấu hình giá trị điền sẵn | Khi xác nhận đi làm thực tế |
+| `CV_SOURCING` | Số CV được tính tiền × giá mỗi CV (Internal HR chốt khi duyệt JD); đặt cọc 50%, thời hạn xem xét 7 ngày (đã chốt 2026-10-14) | Khi CV được Client chấp nhận, hoặc hết thời hạn xem xét mà Client không phản hồi |
+| `CV_APPLICATION` | Giá công khai theo gói đăng tin (thời hạn, số hồ sơ tối đa) | Sau khi job được duyệt (đã chốt 2026-10-14) (`PENDING_PAYMENT` → `PAID` → job `ACTIVE`) |
 
 Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ đi từ Client đến HR Connect, hoa hồng đi từ HR Connect đến Affiliate. Ứng viên không trả phí nào.
 
@@ -343,15 +345,15 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
 
 1. Khi có placement, hệ thống tạo công nợ phí dịch vụ kèm hạn thanh toán và thông báo cho Client.
 2. Client thanh toán ngoài hệ thống (chuyển khoản).
-3. Platform Admin đối chiếu sao kê và ghi nhận đã thu; công nợ chuyển trạng thái `PENDING` → `PAID`, quá hạn thì `OVERDUE`.
+3. Platform Admin đối chiếu sao kê và ghi nhận đã thu; công nợ chuyển trạng thái `PENDING` → `DUE` → `PAID`, quá hạn thì `OVERDUE` (mặc định hạn 20 ngày kể từ ngày đi làm, Internal HR chỉnh được khi duyệt job).
 
 ## Bảo hành
 
 Áp dụng cho `HEADHUNT_COD`. Chạy song song với việc thu phí.
 
-1. Từ ngày đi làm, hệ thống đếm ngày bảo hành (**30 ngày**, cấu hình được) và tạo hoa hồng `PENDING` cho Affiliate có attribution.
+1. Từ ngày đi làm, hệ thống đếm ngày bảo hành (**30 ngày**, cấu hình được) và tạo hoa hồng `IN_WARRANTY` cho Affiliate có attribution.
 2. Hết 30 ngày mà không có báo cáo nghỉ việc, hệ thống tự chuyển bảo hành sang `PASSED` và ghi nhận **toàn bộ** hoa hồng là `EARNED` (không chia mốc; quyết định 2026-10-09). Internal HR không phải xác nhận, chỉ xử lý ngoại lệ.
-3. Ứng viên nghỉ việc trong thời hạn bảo hành: Client báo nghỉ (bảo hành `CLAIMED`, hoa hồng `ON_HOLD`) → Internal HR xác minh ngày nghỉ: xác nhận thì bảo hành `VOIDED`, hoa hồng `CANCELLED`, Client được tuyển thay thế; bác bỏ thì quay lại `ACTIVE` / `PENDING`.
+3. Ứng viên nghỉ việc trong thời hạn bảo hành: Client báo nghỉ (bảo hành `CLAIMED`, hoa hồng `ON_HOLD`) → Internal HR xác minh ngày nghỉ: xác nhận thì bảo hành `VOIDED`, hoa hồng `CANCELLED`, Client **không được hoàn phí** mà được HR Connect **tìm người thay thế miễn phí**; bác bỏ thì quay lại `ACTIVE` / `IN_WARRANTY`.
 4. Thử việc không dùng làm mốc tính hoa hồng, vì thời gian thử việc khác nhau theo vị trí; kết quả thử việc chỉ là thông tin theo dõi **[CẦN XÁC NHẬN]**.
 
 ## Hoa hồng
@@ -364,9 +366,10 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
 | `CV_SOURCING` | Quỹ hoa hồng = phí dịch vụ × tỷ lệ chia (mặc định 60%); chia theo số CV được tính quota của từng Affiliate |
 | `CV_APPLICATION` | Không có hoa hồng |
 
-**Trạng thái hoa hồng:** `PENDING` → `EARNED` → `PAYABLE` → `PAID`; nhánh phụ `ON_HOLD`, `CANCELLED`.
+**Trạng thái hoa hồng:** `PENDING` → `IN_WARRANTY` → `EARNED` → `PAYABLE` → `PAID`; nhánh phụ `ON_HOLD`, `CANCELLED`.
 
-- `PENDING`: đã có placement, chưa đủ 30 ngày.
+- `PENDING`: đã giới thiệu, ứng viên chưa đi làm.
+- `IN_WARRANTY`: ứng viên đã đi làm, chưa đủ 30 ngày (đã chốt 2026-10-14). **Không** dùng `ON_HOLD` hay `EARNED` cho giai đoạn này.
 - `EARNED`: đã đủ 30 ngày, chờ Client thanh toán phí và Admin duyệt.
 - `PAYABLE`: Platform Admin đã duyệt (kiểm tra attribution, placement, mốc, tranh chấp), chờ chi.
 - `PAID`: đã ghi nhận chi.
@@ -469,12 +472,25 @@ Mục này đánh giá các Main Flow ở góc nhìn vận hành thực tế: ch
 
 | # | Vấn đề | Tác động | Đề xuất | Mức độ |
 |---|---|---|---|---|
-| 1.1 | Mọi job đều phải Internal HR duyệt thủ công, kể cả job đăng tin `CV_APPLICATION` | Client mua gói đăng tin kỳ vọng đăng là lên ngay; phải chờ thì thời hạn gói bị hao. Internal HR thành nút cổ chai khi số Client tăng | Tự động công bố job `CV_APPLICATION` của công ty đã xác minh, kiểm duyệt sau; giữ duyệt trước cho `HEADHUNT_COD` và `CV_SOURCING` | Trung bình |
+| 1.1 | Mọi job đều phải Internal HR duyệt thủ công, kể cả job đăng tin `CV_APPLICATION` | Client phải chờ duyệt; Internal HR có thể thành nút cổ chai khi số Client tăng | **Giữ duyệt trước** (đã kiểm chứng 15/10/2026: Indeed duyệt tin trước khi hiện trong kết quả tìm kiếm [^mf01-indeed-review]; TopCV gắn nhãn "Tin đăng đã được kiểm duyệt"). Chỉ cải thiện tốc độ duyệt, không bỏ bước duyệt | Thấp |
 | 1.2 | Job không có điều khoản thương mại (hệ số phí, Sourcing Target, bảo hành, gói) | Không có căn cứ tính phí về sau; mỗi job phải thỏa thuận ngoài hệ thống | Lưu điều khoản tại job và chốt (không cho sửa) khi job `ACTIVE` | Cao |
 | 1.3 | Client đóng job khi đang có ứng viên trong pipeline | Hồ sơ đang phỏng vấn bị treo; công sức của Affiliate mất mà không có lời giải thích | Khi đóng job: bắt buộc chọn cách xử lý hồ sơ đang mở và thông báo cho Affiliate liên quan | Trung bình |
 | 1.4 | Chưa có giới hạn gói miễn phí | Client dùng miễn phí không giới hạn, không có lý do nâng gói | Cài giới hạn 1 job mở và chu kỳ 2 tháng theo đề tài | Trung bình |
+| 1.5 | Client đóng job khi còn hồ sơ đang xử lý (`SUBMITTED`, `SCREENING`, `SHORTLISTED`, `BACKUP`, `INTERVIEW`): `CloseJob` không đụng tới hồ sơ | Hồ sơ treo vĩnh viễn; ứng viên và Affiliate không được báo (LinkedIn tự thông báo cho ứng viên không được chọn [^mf01-linkedin-reject]) | **[CHỜ XÁC NHẬN VỚI GVHD]** Bản tối giản: khi đóng job, chuyển hồ sơ đang mở sang `CLOSED` và gửi thông báo; có offer đang chờ thì chặn đóng. Gộp với mục 1.3 | Trung bình |
 
 **Tác động tới luồng khác:** thiếu điều khoản thương mại ở MF-01 (1.2) làm MF-05 không tính được phí.
+
+**Hướng phát triển (không làm trong đồ án, chỉ ghi vào báo cáo):** các tính năng dưới đây có ở các trang tuyển dụng lớn hoặc liên quan tới luật, nhưng đề tài không yêu cầu.
+
+- **Báo cáo tin tuyển dụng:** ứng viên báo tin lừa đảo hoặc sai sự thật, Internal HR gỡ tin. Indeed có nút "Report job" [^mf01-indeed-report]; TopCV có "Báo cáo tin tuyển dụng" trên trang tin.
+- **Sửa nhỏ tin đang tuyển:** Indeed cho sửa nhỏ (ví dụ lỗi chính tả) trên tin đang chạy, thay đổi lớn thì đăng tin mới [^mf01-indeed-edit]. Hiện dự án chỉ cho sửa tin nháp hoặc bị từ chối.
+- **Lý do từ chối "Nội dung phân biệt đối xử":** Bộ luật Lao động 2019 Điều 8 cấm phân biệt đối xử; Điều 3 khoản 8 định nghĩa phân biệt theo giới tính, độ tuổi…, trừ yêu cầu đặc thù của công việc. Luật Bình đẳng giới 2006 Điều 13 yêu cầu bình đẳng về tiêu chuẩn, độ tuổi khi tuyển dụng [^mf01-bllđ]. Bước duyệt hiện tại đã chặn được, chỉ thiếu mã lý do riêng.
+
+[^mf01-indeed-review]: Indeed Employer Help, <https://in.indeed.com/help/employers/articles/205846516>
+[^mf01-linkedin-reject]: LinkedIn Help, Automate sending rejection messages, <https://www.linkedin.com/help/learning/answer/a521538>
+[^mf01-indeed-report]: Indeed Help, How to report a job, <https://www.indeed.com/help/job-seekers/articles/360028156452-how-to-report-a-job>
+[^mf01-indeed-edit]: Indeed Employer Help, Edit a job post, <https://in.indeed.com/help/employers/articles/203366260>
+[^mf01-bllđ]: Trích qua Thư viện Pháp luật, <https://thuvienphapluat.vn/lao-dong-tien-luong/phan-biet-doi-xu-trong-lao-dong-co-bi-cam-trong-cong-ty-khong-20243.html>. Khi đưa vào báo cáo nên trích văn bản gốc.
 
 ## MF-02. Tiếp nhận hồ sơ, kiểm tra trùng, ghi nhận nguồn
 

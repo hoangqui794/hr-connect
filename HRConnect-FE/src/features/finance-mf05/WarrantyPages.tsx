@@ -192,7 +192,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
                   className="mb-4"
                   type="warning"
                   showIcon
-                  message={`${target.candidateName ?? 'Ứng viên'} — bảo hành đến ${date(target.endDate)}. Internal HR sẽ xác minh; nếu đúng, bạn được tuyển thay thế theo chính sách bảo hành.`}
+                  message={`${target.candidateName ?? 'Ứng viên'} — bảo hành đến ${date(target.endDate)}. Internal HR sẽ xác minh; nếu đúng, HR Connect áp dụng chính sách tìm ứng viên thay thế miễn phí theo hợp đồng Headhunt hoặc điều chỉnh phí.`}
                 />
                 <Form.Item name="lastWorkingDate" label="Ngày làm việc cuối cùng" rules={[{ required: true, message: 'Chọn ngày.' }]}>
                   <DatePicker
@@ -207,10 +207,15 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
               </>
             ) : (
               <>
-                <Alert className="mb-4" type="info" showIcon message={target.resultNote ?? 'Client đã báo ứng viên nghỉ việc.'} />
-                <Form.Item name="decision" label="Kết quả xác minh" rules={[{ required: true }]}>
+                <Alert className="mb-4" type="info" showIcon message={target.resultNote ?? 'Client đã báo ứng viên nghỉ việc trong thời gian bảo hành.'} />
+                <Form.Item
+                  name="decision"
+                  label="Kết quả xác minh"
+                  rules={[{ required: true }]}
+                  extra="Đúng: bảo hành chấm dứt, hoa hồng của Affiliate bị hủy, xử lý thay thế theo hợp đồng. Không đúng: bảo hành tiếp tục, hoa hồng trở lại trạng thái đang trong thời gian bảo hành."
+                >
                   <Radio.Group>
-                    <Radio value="confirm">Đúng, ứng viên đã nghỉ (hủy hoa hồng)</Radio>
+                    <Radio value="confirm">Đúng, ứng viên đã nghỉ</Radio>
                     <Radio value="reject">Không đúng, ứng viên vẫn đi làm</Radio>
                   </Radio.Group>
                 </Form.Item>
@@ -218,10 +223,10 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
                   {({ getFieldValue }) => (
                     <Form.Item
                       name="note"
-                      label="Ghi chú"
+                      label="Ghi chú & Phương án xử lý"
                       rules={[{ required: getFieldValue('decision') === 'reject', whitespace: true, message: 'Bác bỏ cần ghi chú lý do.' }]}
                     >
-                      <Input.TextArea rows={3} placeholder="Đã xác minh với ứng viên và Client ngày…" />
+                      <Input.TextArea rows={3} placeholder="Ghi chú xác minh và phương án: Tìm ứng viên thay thế / gia hạn bảo hành / điều chỉnh phí…" />
                     </Form.Item>
                   )}
                 </Form.Item>

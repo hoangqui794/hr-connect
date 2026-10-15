@@ -53,7 +53,7 @@ import {
 
 
 type StatusFilter = 'ALL' | JobStatus;
-const FILTER_ORDER: JobStatus[] = ['DRAFT', 'PENDING_REVIEW', 'REJECTED', 'ACTIVE', 'PAUSED', 'CLOSED'];
+const FILTER_ORDER: JobStatus[] = ['DRAFT', 'PENDING_REVIEW', 'PENDING_PAYMENT', 'ACTIVE', 'PAUSED', 'CLOSED', 'REJECTED'];
 
 type PendingAction = { kind: 'pause' | 'close'; job: Job } | null;
 
@@ -79,10 +79,11 @@ export const ClientJobsListPage: React.FC = () => {
   };
   const [detailJobId, setDetailJobId] = useState<string>();
   const [pending, setPending] = useState<PendingAction>(null);
-  const [paymentModalJob, setPaymentModalJob] = useState<{ jobId: string; title: string; amount?: number } | null>(null);
+  const [paymentModalJob, setPaymentModalJob] = useState<{ jobId: string; title: string } | null>(null);
 
   const highlightParam = searchParams.get('highlight') || searchParams.get('jobId');
   const openDetailParam = searchParams.get('openDetail') === 'true';
+  const openPaymentParam = searchParams.get('openPayment') === 'true';
   const [highlightedJobId, setHighlightedJobId] = useState<string | null>(null);
 
   // One request for everything, filtered locally so each tab can show its count.
@@ -98,30 +99,42 @@ export const ClientJobsListPage: React.FC = () => {
     return byStatus;
   }, [jobs]);
 
-  // Tự động tìm kiếm, làm nổi bật và cuộn tới bài viết khi người dùng nhấn từ thông báo
+  // Tự động tìm kiếm, làm nổi bật và mở thanh toán khi người dùng nhấn từ thông báo
   React.useEffect(() => {
-    if (!highlightParam || jobs.length === 0) return;
+    if (jobs.length === 0) return;
 
-    const query = highlightParam.trim().toLowerCase();
-    const matchedJob = jobs.find(
-      (j) => j.jobId.toLowerCase() === query || j.title.toLowerCase().includes(query)
-    );
+    let targetJob: typeof jobs[0] | undefined;
 
-    if (matchedJob) {
-      setHighlightedJobId(matchedJob.jobId);
+    if (highlightParam) {
+      const query = highlightParam.trim().toLowerCase();
+      targetJob = jobs.find(
+        (j) => j.jobId.toLowerCase() === query || j.title.toLowerCase().includes(query)
+      );
+    }
 
-      // Nếu bộ lọc hiện tại đang ẩn bài này, tự động chuyển về ALL hoặc trạng thái của bài
-      if (filter !== 'ALL' && matchedJob.status !== filter) {
-        setFilter(matchedJob.status);
+    if (!targetJob && openPaymentParam) {
+      targetJob = jobs.find((j) => j.status === 'PENDING_PAYMENT');
+    }
+
+    if (targetJob) {
+      setHighlightedJobId(targetJob.jobId);
+
+      // Nếu bộ lọc hiện tại đang ẩn bài này, tự động chuyển về trạng thái của bài hoặc ALL
+      if (filter !== 'ALL' && targetJob.status !== filter) {
+        setFilter(targetJob.status);
       }
 
       if (openDetailParam) {
-        setDetailJobId(matchedJob.jobId);
+        setDetailJobId(targetJob.jobId);
+      }
+
+      if (openPaymentParam) {
+        setPaymentModalJob({ jobId: targetJob.jobId, title: targetJob.title });
       }
 
       // Cuộn mượt đến thẻ bài viết sau khi render
       const timer = setTimeout(() => {
-        const el = document.getElementById(`job-card-${matchedJob.jobId}`);
+        const el = document.getElementById(`job-card-${targetJob?.jobId}`);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -129,7 +142,7 @@ export const ClientJobsListPage: React.FC = () => {
 
       return () => clearTimeout(timer);
     }
-  }, [highlightParam, jobs]);
+  }, [highlightParam, openPaymentParam, openDetailParam, jobs]);
 
   const expiredJobs = useMemo(
     () =>
@@ -187,7 +200,7 @@ export const ClientJobsListPage: React.FC = () => {
 
   const renderActions = (job: Job) => {
         const can = clientActions(job.status);
-        const needsPayment = job.postingFeeStatus === 'PENDING';
+        const needsPayment = job.status === 'PENDING_PAYMENT' || job.postingFeeStatus === 'PENDING';
         const busy =
           (mutations.submit.isPending && mutations.submit.variables?.jobId === job.jobId) ||
           (mutations.resume.isPending && mutations.resume.variables?.jobId === job.jobId);
@@ -203,9 +216,9 @@ export const ClientJobsListPage: React.FC = () => {
               <Button
                 size="small"
                 type="primary"
-                className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600"
+                className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600 font-medium"
                 icon={<CreditCardOutlined />}
-                onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title, amount: 1500000 })}
+                onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
               >
                 Thanh toán
               </Button>
@@ -296,7 +309,24 @@ export const ClientJobsListPage: React.FC = () => {
       ),
     },
     { title: 'Mức lương', key: 'salary', width: 220, render: (_, job) => formatSalary(job) },
-    { title: <span className="whitespace-nowrap">Số lượng</span>, dataIndex: 'quantity', width: 110, align: 'right' },
+    {
+      title: <span className="whitespace-nowrap">Số lượng / Quota</span>,
+      key: 'quantity',
+      width: 140,
+      render: (_, job) => {
+        const count = applicationsOf(job.jobId);
+        return (
+          <div className="text-xs space-y-0.5">
+            <div>Tuyển: <span className="font-semibold text-slate-800">{job.quantity} người</span></div>
+            {job.maxApplications && (
+              <div className="text-slate-500">
+                Hồ sơ: <span className="font-semibold text-emerald-700">{count?.data ?? 0}/{job.maxApplications}</span>
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
     { title: 'Cập nhật', dataIndex: 'updatedAt', width: 120, render: (v: string) => formatDate(v) },
     {
       title: <span className="sr-only">Thao tác</span>,
@@ -336,7 +366,7 @@ export const ClientJobsListPage: React.FC = () => {
           showIcon
           closable
           className="mb-4"
-          message={`Bạn có ${expiredJobs.length} tin tuyển dụng đã hết hạn hiển thị (30 ngày)`}
+          message={`Bạn có ${expiredJobs.length} tin tuyển dụng đã hết hạn hiển thị`}
           description="Các tin tuyển dụng theo gói đã kết thúc thời hạn hiển thị và tự động đóng. Bạn có thể đăng tin mới với Gói Tiêu Chuẩn (STANDARD) để tiếp tục tuyển dụng không giới hạn."
           action={
             <Button size="small" type="primary" onClick={() => navigate('/client/jobs/create')}>
@@ -457,16 +487,16 @@ export const ClientJobsListPage: React.FC = () => {
                       </div>
                       <div>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'}</div>
                     </div>
-                    {job.postingFeeStatus === 'PENDING' && (
+                    {job.status === 'PENDING_PAYMENT' && (
                       <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2 text-xs text-amber-900">
-                        <span className="font-medium">Chờ thanh toán phí (1.5M đ)</span>
+                        <span className="font-medium">Chờ thanh toán phí kích hoạt (1.5M đ)</span>
                         <Button
                           type="primary"
                           size="small"
                           className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600 !text-xs !h-6"
-                          onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title, amount: 1500000 })}
+                          onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
                         >
-                          Thanh toán
+                          Thanh toán ngay
                         </Button>
                       </div>
                     )}
@@ -481,10 +511,15 @@ export const ClientJobsListPage: React.FC = () => {
                           className="flex cursor-pointer items-center gap-1.5 rounded-full border-0 bg-[color:var(--console-accent-soft)] px-3 py-1 text-[13px] font-medium text-[color:var(--console-accent-strong)] hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
                         >
                           <TeamOutlined aria-hidden />
-                          <span className="tabular-nums">{count.isLoading ? '…' : count.data ?? 0}</span> hồ sơ
+                          <span className="tabular-nums">
+                            {count.isLoading ? '…' : count.data ?? 0}
+                            {job.maxApplications ? ` / ${job.maxApplications}` : ''}
+                          </span> hồ sơ
                         </button>
                       ) : (
-                        <span className="text-xs text-slate-500">Cần {job.quantity} người</span>
+                        <span className="text-xs text-slate-500">
+                          {job.maxApplications ? `Tối đa ${job.maxApplications} hồ sơ • ` : ''}Cần {job.quantity} người
+                        </span>
                       )}
                       {renderActions(job)}
                     </div>
@@ -587,10 +622,21 @@ export const ClientJobsListPage: React.FC = () => {
         visible={Boolean(paymentModalJob)}
         jobId={paymentModalJob?.jobId ?? ''}
         jobTitle={paymentModalJob?.title ?? ''}
-        amount={paymentModalJob?.amount}
-        onClose={() => setPaymentModalJob(null)}
+        onClose={() => {
+          setPaymentModalJob(null);
+          if (searchParams.has('openPayment')) {
+            const next = new URLSearchParams(searchParams);
+            next.delete('openPayment');
+            setSearchParams(next, { replace: true });
+          }
+        }}
         onPaymentSuccess={() => {
           setPaymentModalJob(null);
+          if (searchParams.has('openPayment')) {
+            const next = new URLSearchParams(searchParams);
+            next.delete('openPayment');
+            setSearchParams(next, { replace: true });
+          }
           refetch();
         }}
       />

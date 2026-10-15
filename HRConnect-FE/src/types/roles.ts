@@ -13,6 +13,7 @@ export interface UserProfile {
   email: string;
   phone?: string;
   avatar?: string;
+  avatarUrl?: string | null;
   role: UserRole;
   /** Every backend role retained for users who participate in multiple portals. */
   roles?: string[];

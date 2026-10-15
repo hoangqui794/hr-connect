@@ -45,6 +45,8 @@ import {
   CalendarOutlined,
   CompassOutlined,
   LaptopOutlined,
+  EditOutlined,
+  BookOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -52,6 +54,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { useCandidateStore, CandidateCV } from '@/stores/candidateStore';
 import { mf04Api } from '@/services/api/mf04Api';
 import type { UpdateCandidateProfileCommand, CandidateProfileData } from '@/types/api/mf04';
+import { candidateService, type CandidateSkillItemDto } from '@/services/candidateService';
+import { getApiErrorMessage } from '@/services/apiClient';
+import { AvatarUpload } from '@/components/common/AvatarUpload';
 import type { UploadProps } from 'antd';
 
 const { Title, Text, Paragraph } = Typography;
@@ -127,15 +132,23 @@ export const CandidateProfilePage: React.FC = () => {
   });
 
   // Local state for skills tags
+  // Local state for skills tags
   const [skillsList, setSkillsList] = useState<string[]>([]);
   const [newSkillInput, setNewSkillInput] = useState('');
   const [showSkillInput, setShowSkillInput] = useState(false);
+
+  // Local state for immediate Visibility Switch responsiveness
+  const [isPublicState, setIsPublicState] = useState<boolean | null>(null);
+  const isPublic = isPublicState !== null
+    ? isPublicState
+    : (profile?.profileVisibility || 'PRIVATE').toUpperCase() === 'PUBLIC';
 
   // Visibility toggle mutation
   const visibilityMutation = useMutation({
     mutationFn: (newVisibility: 'PUBLIC' | 'PRIVATE') =>
       mf04Api.updateVisibility({ visibility: newVisibility }),
     onSuccess: (_, newVisibility) => {
+      setIsPublicState(newVisibility === 'PUBLIC');
       message.success(
         newVisibility === 'PUBLIC'
           ? 'Hồ sơ đã chuyển sang chế độ Công khai (Nhà tuyển dụng có thể tìm kiếm bạn).'
@@ -144,6 +157,7 @@ export const CandidateProfilePage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['candidate', 'profile'] });
     },
     onError: (err: any) => {
+      setIsPublicState((profile?.profileVisibility || 'PRIVATE').toUpperCase() === 'PUBLIC');
       message.error(err?.response?.data?.message || err?.message || 'Không thể cập nhật chế độ hiển thị');
     },
   });
@@ -170,6 +184,26 @@ export const CandidateProfilePage: React.FC = () => {
   // Sync profile data from DB into Form when query resolves
   useEffect(() => {
     if (profile) {
+      if (isPublicState === null && profile.profileVisibility) {
+        setIsPublicState(profile.profileVisibility.toUpperCase() === 'PUBLIC');
+      }
+
+      const locs = profile.preferredLocations
+        ? (Array.isArray(profile.preferredLocations)
+            ? profile.preferredLocations
+            : typeof profile.preferredLocations === 'string'
+            ? (profile.preferredLocations as string).split(',').map((s: string) => s.trim()).filter(Boolean)
+            : [])
+        : [];
+
+      const modes = profile.preferredWorkModes
+        ? (Array.isArray(profile.preferredWorkModes)
+            ? profile.preferredWorkModes
+            : typeof profile.preferredWorkModes === 'string'
+            ? (profile.preferredWorkModes as string).split(',').map((s: string) => s.trim()).filter(Boolean)
+            : [])
+        : [];
+
       form.setFieldsValue({
         fullName: profile.fullName || user?.name || '',
         email: profile.email || user?.email || '',
@@ -186,8 +220,8 @@ export const CandidateProfilePage: React.FC = () => {
         expectedSalaryMax: profile.expectedSalaryMax || null,
         expectedSalaryCurrency: profile.expectedSalaryCurrency || 'VND',
         availableFrom: profile.availableFrom || '',
-        preferredLocations: profile.preferredLocations || [],
-        preferredWorkModes: profile.preferredWorkModes || [],
+        preferredLocations: locs,
+        preferredWorkModes: modes,
       });
 
       // Extract skills list
@@ -200,6 +234,85 @@ export const CandidateProfilePage: React.FC = () => {
       }
     }
   }, [profile, user, form]);
+
+  // Dedicated Skills Management (from backend /skills & /candidates/profile/me/skills)
+  const [catalogSkills, setCatalogSkills] = useState<Array<{ skillId: string; skillName: string; category?: string | null }>>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+  const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
+  const [editingSkill, setEditingSkill] = useState<CandidateSkillItemDto | null>(null);
+  const [skillModalForm] = Form.useForm();
+  const [isSavingSkill, setIsSavingSkill] = useState(false);
+
+  const fetchCatalogSkills = async (search?: string) => {
+    setLoadingCatalog(true);
+    try {
+      const res = await candidateService.getCatalogSkills({ search, pageSize: 100 });
+      const items = res?.data?.items || res?.items || res?.data || [];
+      setCatalogSkills(items);
+    } catch (err) {
+      console.error('Failed to load skills catalog', err);
+    } finally {
+      setLoadingCatalog(false);
+    }
+  };
+
+  const handleOpenAddSkill = () => {
+    setEditingSkill(null);
+    skillModalForm.resetFields();
+    skillModalForm.setFieldsValue({ proficiencyLevel: 'INTERMEDIATE', yearsOfExperience: 1 });
+    setIsSkillModalOpen(true);
+    void fetchCatalogSkills();
+  };
+
+  const handleOpenEditSkill = (skill: CandidateSkillItemDto) => {
+    setEditingSkill(skill);
+    skillModalForm.setFieldsValue({
+      skillId: skill.skillId,
+      proficiencyLevel: skill.proficiencyLevel || 'INTERMEDIATE',
+      yearsOfExperience: skill.yearsOfExperience || 1,
+    });
+    setIsSkillModalOpen(true);
+  };
+
+  const handleSaveSkillSubmit = async () => {
+    try {
+      const values = await skillModalForm.validateFields();
+      setIsSavingSkill(true);
+      if (editingSkill?.skillId) {
+        await candidateService.updateSkill(editingSkill.skillId, {
+          proficiencyLevel: values.proficiencyLevel,
+          yearsOfExperience: values.yearsOfExperience != null ? Number(values.yearsOfExperience) : undefined,
+        });
+        message.success('Đã cập nhật kỹ năng thành công!');
+      } else {
+        await candidateService.addSkill({
+          skillId: values.skillId,
+          proficiencyLevel: values.proficiencyLevel,
+          yearsOfExperience: values.yearsOfExperience != null ? Number(values.yearsOfExperience) : undefined,
+        });
+        message.success('Đã thêm kỹ năng vào hồ sơ thành công!');
+      }
+      setIsSkillModalOpen(false);
+      skillModalForm.resetFields();
+      setEditingSkill(null);
+      await refetch();
+    } catch (err) {
+      message.error(getApiErrorMessage(err, 'Không thể lưu kỹ năng.'));
+    } finally {
+      setIsSavingSkill(false);
+    }
+  };
+
+  const handleRemoveSkillApi = async (skillId?: string) => {
+    if (!skillId) return;
+    try {
+      await candidateService.removeSkill(skillId);
+      message.success('Đã xóa kỹ năng khỏi hồ sơ.');
+      await refetch();
+    } catch (err) {
+      message.error(getApiErrorMessage(err, 'Không thể xóa kỹ năng.'));
+    }
+  };
 
   // Modal 1: Platform Builder Form
   const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
@@ -228,34 +341,34 @@ export const CandidateProfilePage: React.FC = () => {
 
   // Submit Handler: Saves directly to Database API
   const handleSaveProfile = async (values: any) => {
+    const locsString = Array.isArray(values.preferredLocations)
+      ? (values.preferredLocations.length > 0 ? values.preferredLocations.join(', ') : null)
+      : (typeof values.preferredLocations === 'string' && values.preferredLocations.trim() ? values.preferredLocations.trim() : null);
+
+    const modesString = Array.isArray(values.preferredWorkModes)
+      ? (values.preferredWorkModes.length > 0 ? values.preferredWorkModes.join(', ') : null)
+      : (typeof values.preferredWorkModes === 'string' && values.preferredWorkModes.trim() ? values.preferredWorkModes.trim() : null);
+
     const command: UpdateCandidateProfileCommand = {
       fullName: (values.fullName || user?.name || '').trim(),
-      phone: (values.phone || user?.phone || '').trim(),
-      currentAddress: (values.currentAddress || '').trim(),
+      phone: (values.phone || user?.phone || '').trim() || null,
+      currentAddress: (values.currentAddress || '').trim() || null,
       highestEducation: values.highestEducation || null,
       yearsOfExperience:
         typeof values.yearsOfExperience === 'number'
           ? values.yearsOfExperience
           : parseFloat(values.yearsOfExperience) || 0,
-      summary: (values.summary || '').trim(),
+      summary: (values.summary || '').trim() || null,
       // 9 Career Fields
-      currentJobTitle: (values.currentJobTitle || '').trim(),
+      currentJobTitle: (values.currentJobTitle || '').trim() || null,
       currentLevel: values.currentLevel || null,
-      targetRole: (values.targetRole || '').trim(),
-      expectedSalaryMin: values.expectedSalaryMin ? Number(values.expectedSalaryMin) : null,
-      expectedSalaryMax: values.expectedSalaryMax ? Number(values.expectedSalaryMax) : null,
+      targetRole: (values.targetRole || '').trim() || null,
+      expectedSalaryMin: values.expectedSalaryMin != null && values.expectedSalaryMin !== '' ? Number(values.expectedSalaryMin) : null,
+      expectedSalaryMax: values.expectedSalaryMax != null && values.expectedSalaryMax !== '' ? Number(values.expectedSalaryMax) : null,
       expectedSalaryCurrency: values.expectedSalaryCurrency || 'VND',
       availableFrom: values.availableFrom || null,
-      preferredLocations: Array.isArray(values.preferredLocations)
-        ? values.preferredLocations
-        : values.preferredLocations
-        ? [values.preferredLocations]
-        : [],
-      preferredWorkModes: Array.isArray(values.preferredWorkModes)
-        ? values.preferredWorkModes
-        : values.preferredWorkModes
-        ? [values.preferredWorkModes]
-        : [],
+      preferredLocations: locsString as any,
+      preferredWorkModes: modesString as any,
     };
 
     updateProfileMutation.mutate(command);
@@ -382,8 +495,6 @@ export const CandidateProfilePage: React.FC = () => {
     );
   }
 
-  const isPublic = (profile?.profileVisibility || 'PUBLIC').toUpperCase() === 'PUBLIC';
-
   return (
     <div className="candidate-page candidate-profile-page" style={{ maxWidth: 1180, margin: '0 auto', paddingBottom: 60 }}>
       {/* Header Profile Summary — Modern Dark Hero */}
@@ -416,19 +527,7 @@ export const CandidateProfilePage: React.FC = () => {
         <Row align="middle" justify="space-between" gutter={[24, 20]}>
           <Col xs={24} md={16} style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
             <div style={{ position: 'relative' }}>
-              <Avatar
-                size={84}
-                src={profile?.avatarUrl}
-                style={{
-                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                  fontSize: 28,
-                  fontWeight: 800,
-                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
-                  border: '2px solid rgba(255, 255, 255, 0.15)',
-                }}
-              >
-                {getInitials(profile?.fullName || user?.name)}
-              </Avatar>
+              <AvatarUpload size={84} />
               <div
                 style={{
                   position: 'absolute',
@@ -972,8 +1071,8 @@ export const CandidateProfilePage: React.FC = () => {
                             width: 24,
                             height: 24,
                             borderRadius: '50%',
-                            background: '#eff6ff',
-                            color: '#2563eb',
+                            background: '#00b14f',
+                            color: '#fff',
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -983,67 +1082,166 @@ export const CandidateProfilePage: React.FC = () => {
                         >
                           3
                         </span>
-                        Kỹ năng cốt lõi &amp; Mục tiêu phát triển sự nghiệp
+                        Kỹ năng chuyên môn & Giới thiệu bản thân
                       </div>
-                      <Text style={{ fontSize: 13, color: '#64748b', display: 'block', marginBottom: 16 }}>
-                        Thêm các từ khóa kỹ năng chính để tăng tỷ lệ khớp hồ sơ ATS.
-                      </Text>
+                      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b' }}>
+                        Khai báo kỹ năng từ danh mục hệ thống giúp thuật toán AI so khớp hồ sơ đạt điểm cao nhất.
+                      </p>
 
                       <Row gutter={[20, 16]}>
                         <Col xs={24}>
-                          <div style={{ marginBottom: 16 }}>
-                            <span style={{ fontWeight: 600, fontSize: 13, color: '#334155', display: 'block', marginBottom: 8 }}>
-                              Danh sách Kỹ năng chính (Skills Tags)
-                            </span>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                              {skillsList.map((skill) => (
-                                <Tag
-                                  key={skill}
-                                  closable
-                                  onClose={() => handleRemoveSkill(skill)}
-                                  style={{
-                                    padding: '5px 14px',
-                                    fontSize: 12.5,
-                                    borderRadius: 9999,
-                                    background: 'rgba(59, 130, 246, 0.08)',
-                                    color: '#1e40af',
-                                    border: '1px solid rgba(59, 130, 246, 0.25)',
-                                    fontWeight: 600,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                  }}
-                                >
-                                  {skill}
-                                </Tag>
-                              ))}
+                          <div style={{ marginBottom: 20 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+                              <span style={{ fontWeight: 700, fontSize: 14, color: '#1e293b' }}>
+                                Danh sách Kỹ năng chuyên môn (Đồng bộ Backend API)
+                              </span>
+                              <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={handleOpenAddSkill}
+                                style={{ borderRadius: 8, fontWeight: 600, background: '#2563eb' }}
+                              >
+                                + Thêm kỹ năng từ danh mục
+                              </Button>
+                            </div>
 
-                              {showSkillInput ? (
-                                <Input
-                                  size="small"
-                                  style={{ width: 140, borderRadius: 8 }}
-                                  value={newSkillInput}
-                                  onChange={(e) => setNewSkillInput(e.target.value)}
-                                  onBlur={handleAddSkill}
-                                  onPressEnter={handleAddSkill}
-                                  autoFocus
-                                  placeholder="Nhập kỹ năng..."
-                                />
-                              ) : (
-                                <Button
-                                  size="small"
-                                  icon={<PlusOutlined />}
-                                  onClick={() => setShowSkillInput(true)}
-                                  style={{
-                                    borderRadius: 8,
-                                    fontWeight: 600,
-                                    border: '1px dashed #94a3b8',
-                                    color: '#2563eb',
-                                  }}
-                                >
-                                  + Thêm kỹ năng
-                                </Button>
-                              )}
+                            {/* Render API Skills List */}
+                            {profile?.skills && profile.skills.length > 0 ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginBottom: 16 }}>
+                                {profile.skills.map((skill) => {
+                                  const levelConfig: Record<string, { label: string; color: string }> = {
+                                    BEGINNER: { label: 'Mới bắt đầu', color: 'cyan' },
+                                    INTERMEDIATE: { label: 'Trung cấp', color: 'blue' },
+                                    ADVANCED: { label: 'Thành thạo', color: 'purple' },
+                                    EXPERT: { label: 'Chuyên gia', color: 'gold' },
+                                  };
+                                  const lvl = levelConfig[skill.proficiencyLevel?.toUpperCase() || ''] || { label: skill.proficiencyLevel || 'Cơ bản', color: 'default' };
+
+                                  return (
+                                    <div
+                                      key={skill.skillId || skill.skillName}
+                                      style={{
+                                        background: '#ffffff',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: 12,
+                                        padding: '12px 14px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                                      }}
+                                    >
+                                      <div style={{ minWidth: 0, flex: 1, paddingRight: 8 }}>
+                                        <div style={{ fontWeight: 700, fontSize: 13.5, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                          <span className="truncate">{skill.skillName || 'Kỹ năng'}</span>
+                                          {skill.category && (
+                                            <Tag style={{ fontSize: 10, padding: '0 6px', borderRadius: 4, margin: 0 }}>
+                                              {skill.category}
+                                            </Tag>
+                                          )}
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                                          <Tag color={lvl.color} style={{ fontSize: 11, padding: '1px 8px', borderRadius: 9999, margin: 0, fontWeight: 600 }}>
+                                            {lvl.label}
+                                          </Tag>
+                                          {skill.yearsOfExperience != null && (
+                                            <span style={{ fontSize: 11, color: '#64748b' }}>
+                                              {skill.yearsOfExperience} năm KN
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <Button
+                                          size="small"
+                                          type="text"
+                                          icon={<EditOutlined style={{ color: '#0284c7' }} />}
+                                          onClick={() => handleOpenEditSkill(skill)}
+                                          title="Chỉnh sửa kỹ năng"
+                                        />
+                                        <Popconfirm
+                                          title="Xóa kỹ năng này?"
+                                          description={`Xóa "${skill.skillName}" khỏi hồ sơ của bạn?`}
+                                          okText="Xóa"
+                                          okButtonProps={{ danger: true }}
+                                          cancelText="Hủy"
+                                          onConfirm={() => handleRemoveSkillApi(skill.skillId)}
+                                        >
+                                          <Button
+                                            size="small"
+                                            type="text"
+                                            danger
+                                            icon={<DeleteOutlined />}
+                                            title="Xóa kỹ năng"
+                                          />
+                                        </Popconfirm>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div style={{ padding: '16px', background: '#f8fafc', borderRadius: 12, border: '1px dashed #cbd5e1', textAlign: 'center', marginBottom: 16 }}>
+                                <Text style={{ color: '#64748b', fontSize: 13 }}>
+                                  Chưa có kỹ năng chuyên môn nào được lưu trong cơ sở dữ liệu. Bấm "Thêm kỹ năng từ danh mục" để bổ sung.
+                                </Text>
+                              </div>
+                            )}
+
+                            {/* Quick custom skill tags */}
+                            <div style={{ marginTop: 10 }}>
+                              <span style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>
+                                Từ khóa bổ sung nhanh (Keyword Tags):
+                              </span>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                                {skillsList.map((skill) => (
+                                  <Tag
+                                    key={skill}
+                                    closable
+                                    onClose={() => handleRemoveSkill(skill)}
+                                    style={{
+                                      padding: '3px 10px',
+                                      fontSize: 12,
+                                      borderRadius: 9999,
+                                      background: 'rgba(59, 130, 246, 0.08)',
+                                      color: '#1e40af',
+                                      border: '1px solid rgba(59, 130, 246, 0.25)',
+                                      fontWeight: 600,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                    }}
+                                  >
+                                    {skill}
+                                  </Tag>
+                                ))}
+
+                                {showSkillInput ? (
+                                  <Input
+                                    size="small"
+                                    style={{ width: 140, borderRadius: 8 }}
+                                    value={newSkillInput}
+                                    onChange={(e) => setNewSkillInput(e.target.value)}
+                                    onBlur={handleAddSkill}
+                                    onPressEnter={handleAddSkill}
+                                    autoFocus
+                                    placeholder="Nhập từ khóa..."
+                                  />
+                                ) : (
+                                  <Button
+                                    size="small"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => setShowSkillInput(true)}
+                                    style={{
+                                      borderRadius: 8,
+                                      fontWeight: 600,
+                                      border: '1px dashed #94a3b8',
+                                      color: '#2563eb',
+                                    }}
+                                  >
+                                    + Nhập nhanh
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </Col>
@@ -1484,6 +1682,92 @@ export const CandidateProfilePage: React.FC = () => {
             </p>
           </Upload.Dragger>
         </div>
+      </Modal>
+
+      {/* MODAL 4: Thêm / Chỉnh sửa Kỹ năng (API Backend) */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <BookOutlined style={{ color: '#2563eb', fontSize: 18 }} />
+            <span style={{ fontWeight: 800 }}>
+              {editingSkill ? `Chỉnh sửa kỹ năng: ${editingSkill.skillName || ''}` : 'Thêm Kỹ Năng Vào Hồ Sơ'}
+            </span>
+          </div>
+        }
+        open={isSkillModalOpen}
+        onCancel={() => {
+          setIsSkillModalOpen(false);
+          setEditingSkill(null);
+          skillModalForm.resetFields();
+        }}
+        onOk={handleSaveSkillSubmit}
+        okText={editingSkill ? 'Lưu cập nhật' : 'Thêm kỹ năng'}
+        cancelText="Hủy"
+        confirmLoading={isSavingSkill}
+        width={520}
+      >
+        <Form form={skillModalForm} layout="vertical" style={{ marginTop: 16 }}>
+          {!editingSkill ? (
+            <Form.Item
+              name="skillId"
+              label={<span style={{ fontWeight: 700 }}>Chọn kỹ năng từ danh mục hệ thống</span>}
+              rules={[{ required: true, message: 'Vui lòng chọn kỹ năng.' }]}
+            >
+              <Select
+                showSearch
+                placeholder="Tìm kiếm kỹ năng (ví dụ: React, .NET, Docker...)"
+                loading={loadingCatalog}
+                filterOption={(input, option) =>
+                  String(option?.label || '').toLowerCase().includes(input.toLowerCase())
+                }
+                options={catalogSkills.map((s) => ({
+                  value: s.skillId,
+                  label: s.category ? `${s.skillName} (${s.category})` : s.skillName,
+                }))}
+              />
+            </Form.Item>
+          ) : (
+            <div style={{ marginBottom: 16, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: 12, color: '#64748b', display: 'block' }}>Kỹ năng đang chỉnh sửa:</span>
+              <strong style={{ fontSize: 15, color: '#0f172a' }}>{editingSkill.skillName}</strong>
+              {editingSkill.category && (
+                <Tag color="blue" style={{ marginLeft: 8 }}>{editingSkill.category}</Tag>
+              )}
+            </div>
+          )}
+
+          <Form.Item
+            name="proficiencyLevel"
+            label={<span style={{ fontWeight: 700 }}>Mức độ thành thạo</span>}
+            rules={[{ required: true, message: 'Vui lòng chọn mức độ.' }]}
+          >
+            <Select
+              options={[
+                { value: 'BEGINNER', label: 'Mới bắt đầu (Beginner)' },
+                { value: 'INTERMEDIATE', label: 'Trung cấp (Intermediate)' },
+                { value: 'ADVANCED', label: 'Thành thạo (Advanced)' },
+                { value: 'EXPERT', label: 'Chuyên gia (Expert)' },
+              ]}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="yearsOfExperience"
+            label={<span style={{ fontWeight: 700 }}>Số năm kinh nghiệm</span>}
+            rules={[
+              { required: true, message: 'Vui lòng nhập số năm kinh nghiệm.' },
+            ]}
+          >
+            <InputNumber
+              min={0}
+              max={80}
+              step={0.5}
+              style={{ width: '100%' }}
+              placeholder="Ví dụ: 2.5"
+              addonAfter="năm"
+            />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );

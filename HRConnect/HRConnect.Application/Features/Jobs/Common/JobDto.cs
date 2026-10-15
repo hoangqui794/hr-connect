@@ -107,34 +107,87 @@ public sealed record JobDto(
     string CurrencyCode, int Quantity,
     string Status, string Visibility, string? StatusReason, DateTime? PostedAt,
     DateTime? ClosedAt, DateTime CreatedAt, DateTime UpdatedAt, Guid ConcurrencyToken,
-    int? SourcingTarget, decimal? SourcingPricePerCv, decimal? FeeMultiplier, int? WarrantyDays, int? PaymentDueDays,
+    [property: Obsolete("Sử dụng CommercialTerms. Sẽ bị xóa trong bản phát hành sau.")] int? SourcingTarget,
+    [property: Obsolete("Sử dụng CommercialTerms. Sẽ bị xóa trong bản phát hành sau.")] decimal? SourcingPricePerCv,
+    [property: Obsolete("Sử dụng CommercialTerms. Sẽ bị xóa trong bản phát hành sau.")] decimal? FeeMultiplier,
+    [property: Obsolete("Sử dụng CommercialTerms. Sẽ bị xóa trong bản phát hành sau.")] int? WarrantyDays,
+    [property: Obsolete("Sử dụng CommercialTerms. Sẽ bị xóa trong bản phát hành sau.")] int? PaymentDueDays,
+    JobProposedTermsDto? ProposedTerms,
+    JobCommercialTermsDto? CommercialTerms,
     Guid? PostingPackageId, string? PostingPackageCode, string? PostingPackageName, DateTime? ExpiresAt,
+    int? MaxApplications,
     string? PostingFeeStatus,
     DateTime? ApplicationDeadline, bool IsAcceptingApplications,
     IReadOnlyList<JobRequirementDto> Requirements,
     IReadOnlyList<JobSkillDto> Skills,
-    IReadOnlyList<JobStatusHistoryDto> StatusHistories)
+    IReadOnlyList<JobStatusHistoryDto> StatusHistories,
+    Guid? TemplateId = null)
 {
-    public static JobDto From(Job job, bool includeStatusHistories = false) => new(
-        job.JobId, job.CompanyId, job.Company?.CompanyName, job.ServiceTypeId, job.ServiceType?.Code,
-        job.Title, job.Description, job.Benefits, job.Location, job.WorkingTime, job.EmploymentType,
-        job.SalaryMin, job.SalaryMax, job.SalaryNegotiable, job.SalaryNote,
-        job.MinExperienceYears, job.MaxExperienceYears,
-        job.CurrencyCode.Trim(), job.Quantity, job.Status, job.Visibility, job.StatusReason,
-        job.PostedAt, job.ClosedAt, job.CreatedAt, job.UpdatedAt, job.ConcurrencyToken,
-        job.SourcingTarget, job.SourcingPricePerCv, job.FeeMultiplier, job.WarrantyDays, job.PaymentDueDays,
-        job.PostingPackageId, job.PostingPackage?.Code, job.PostingPackage?.Name, job.ExpiresAt,
-        job.JobPostingFees.OrderByDescending(x => x.CreatedAt).FirstOrDefault()?.Status,
-        job.ApplicationDeadline,
-        JobAccessPolicy.IsAcceptingApplications(job),
-        job.JobRequirements.OrderBy(x => x.CreatedAt).Select(x => new JobRequirementDto(
-            x.RequirementId, x.RequirementType, x.Category, x.Content, x.Weight)).ToList(),
-        job.JobSkills.OrderBy(x => x.SkillId).Select(x => new JobSkillDto(
-            x.SkillId, x.Skill?.SkillName, x.IsMandatory, x.Weight)).ToList(),
-        includeStatusHistories
-            ? job.JobStatusHistories.OrderBy(x => x.ChangedAt).Select(x => new JobStatusHistoryDto(
-                x.JobStatusHistoryId, x.OldStatus, x.NewStatus, x.ChangedBy, x.ReasonCode, x.ReasonText, x.ChangedAt)).ToList()
-            : []);
+    public static JobDto From(Job job, bool includeStatusHistories = false, bool isReviewer = false)
+    {
+        var hasProposed = job.ProposedFeeMultiplier != null ||
+                          job.ProposedWarrantyDays != null ||
+                          job.ProposedPaymentDueDays != null ||
+                          job.ProposedPricePerCv != null ||
+                          !string.IsNullOrWhiteSpace(job.ProposedFeeNote);
+
+        var proposedTerms = hasProposed
+            ? new JobProposedTermsDto(
+                job.ProposedFeeMultiplier,
+                job.ProposedWarrantyDays,
+                job.ProposedPaymentDueDays,
+                job.ProposedPricePerCv,
+                job.ProposedFeeNote)
+            : null;
+
+        var hasCommercial = job.AgreedAt != null ||
+                            job.FeeMultiplier != null ||
+                            job.WarrantyDays != null ||
+                            job.PaymentDueDays != null ||
+                            job.SourcingPricePerCv != null ||
+                            job.DepositPercent != null ||
+                            job.ReviewDays != null;
+
+        var commercialTerms = hasCommercial
+            ? new JobCommercialTermsDto(
+                job.ServiceType?.Code,
+                job.FeeMultiplier,
+                job.WarrantyDays,
+                job.PaymentDueDays,
+                job.SourcingTarget,
+                job.SourcingPricePerCv,
+                job.DepositPercent,
+                job.ReviewDays,
+                job.AgreedAt,
+                job.AgreedByNavigation?.DisplayName ?? (job.AgreedBy.HasValue ? job.AgreedBy.Value.ToString() : null),
+                isReviewer ? job.AgreementReference : null,
+                isReviewer ? job.AgreementNote : null)
+            : null;
+
+        return new(
+            job.JobId, job.CompanyId, job.Company?.CompanyName, job.ServiceTypeId, job.ServiceType?.Code,
+            job.Title, job.Description, job.Benefits, job.Location, job.WorkingTime, job.EmploymentType,
+            job.SalaryMin, job.SalaryMax, job.SalaryNegotiable, job.SalaryNote,
+            job.MinExperienceYears, job.MaxExperienceYears,
+            job.CurrencyCode?.Trim() ?? string.Empty, job.Quantity, job.Status, job.Visibility, job.StatusReason,
+            job.PostedAt, job.ClosedAt, job.CreatedAt, job.UpdatedAt, job.ConcurrencyToken,
+            job.SourcingTarget, job.SourcingPricePerCv, job.FeeMultiplier, job.WarrantyDays, job.PaymentDueDays,
+            proposedTerms, commercialTerms,
+            job.PostingPackageId, job.PostingPackage?.Code, job.PostingPackage?.Name, job.ExpiresAt,
+            job.MaxApplications ?? job.PostingPackage?.MaxApplications,
+            job.JobPostingFees?.OrderByDescending(x => x.CreatedAt).FirstOrDefault()?.Status,
+            job.ApplicationDeadline,
+            JobAccessPolicy.IsAcceptingApplications(job),
+            job.JobRequirements != null ? job.JobRequirements.OrderBy(x => x.CreatedAt).Select(x => new JobRequirementDto(
+                x.RequirementId, x.RequirementType, x.Category, x.Content, x.Weight)).ToList() : [],
+            job.JobSkills != null ? job.JobSkills.OrderBy(x => x.SkillId).Select(x => new JobSkillDto(
+                x.SkillId, x.Skill?.SkillName, x.IsMandatory, x.Weight)).ToList() : [],
+            includeStatusHistories && job.JobStatusHistories != null
+                ? job.JobStatusHistories.OrderBy(x => x.ChangedAt).Select(x => new JobStatusHistoryDto(
+                    x.JobStatusHistoryId, x.OldStatus, x.NewStatus, x.ChangedBy, x.ReasonCode, x.ReasonText, x.ChangedAt)).ToList()
+                : [],
+            job.TemplateId);
+    }
 }
 
 public sealed record JobDetailDto(
@@ -145,36 +198,89 @@ public sealed record JobDetailDto(
     string CurrencyCode, int Quantity,
     string Status, string Visibility, string? StatusReason, DateTime? PostedAt,
     DateTime? ClosedAt, DateTime CreatedAt, DateTime UpdatedAt, Guid ConcurrencyToken,
-    int? SourcingTarget, decimal? SourcingPricePerCv, decimal? FeeMultiplier, int? WarrantyDays, int? PaymentDueDays,
+    [property: Obsolete("Sử dụng CommercialTerms. Sẽ bị xóa trong bản phát hành sau.")] int? SourcingTarget,
+    [property: Obsolete("Sử dụng CommercialTerms. Sẽ bị xóa trong bản phát hành sau.")] decimal? SourcingPricePerCv,
+    [property: Obsolete("Sử dụng CommercialTerms. Sẽ bị xóa trong bản phát hành sau.")] decimal? FeeMultiplier,
+    [property: Obsolete("Sử dụng CommercialTerms. Sẽ bị xóa trong bản phát hành sau.")] int? WarrantyDays,
+    [property: Obsolete("Sử dụng CommercialTerms. Sẽ bị xóa trong bản phát hành sau.")] int? PaymentDueDays,
+    JobProposedTermsDto? ProposedTerms,
+    JobCommercialTermsDto? CommercialTerms,
     Guid? PostingPackageId, string? PostingPackageCode, string? PostingPackageName, DateTime? ExpiresAt,
+    int? MaxApplications,
     string? PostingFeeStatus,
     DateTime? ApplicationDeadline, bool IsAcceptingApplications,
     IReadOnlyList<JobRequirementDto> Requirements,
     IReadOnlyList<JobSkillDto> Skills,
     IReadOnlyList<JobStatusHistoryDto> StatusHistories,
-    PublicCompanyDto? Company)
+    PublicCompanyDto? Company,
+    Guid? TemplateId = null)
 {
-    public static JobDetailDto From(Job job, bool includeStatusHistories = false) => new(
-        job.JobId, job.CompanyId, job.Company?.CompanyName, job.ServiceTypeId, job.ServiceType?.Code,
-        job.Title, job.Description, job.Benefits, job.Location, job.WorkingTime, job.EmploymentType,
-        job.SalaryMin, job.SalaryMax, job.SalaryNegotiable, job.SalaryNote,
-        job.MinExperienceYears, job.MaxExperienceYears,
-        job.CurrencyCode.Trim(), job.Quantity, job.Status, job.Visibility, job.StatusReason,
-        job.PostedAt, job.ClosedAt, job.CreatedAt, job.UpdatedAt, job.ConcurrencyToken,
-        job.SourcingTarget, job.SourcingPricePerCv, job.FeeMultiplier, job.WarrantyDays, job.PaymentDueDays,
-        job.PostingPackageId, job.PostingPackage?.Code, job.PostingPackage?.Name, job.ExpiresAt,
-        job.JobPostingFees.OrderByDescending(x => x.CreatedAt).FirstOrDefault()?.Status,
-        job.ApplicationDeadline,
-        JobAccessPolicy.IsAcceptingApplications(job),
-        job.JobRequirements.OrderBy(x => x.CreatedAt).Select(x => new JobRequirementDto(
-            x.RequirementId, x.RequirementType, x.Category, x.Content, x.Weight)).ToList(),
-        job.JobSkills.OrderBy(x => x.SkillId).Select(x => new JobSkillDto(
-            x.SkillId, x.Skill?.SkillName, x.IsMandatory, x.Weight)).ToList(),
-        includeStatusHistories
-            ? job.JobStatusHistories.OrderBy(x => x.ChangedAt).Select(x => new JobStatusHistoryDto(
-                x.JobStatusHistoryId, x.OldStatus, x.NewStatus, x.ChangedBy, x.ReasonCode, x.ReasonText, x.ChangedAt)).ToList()
-            : [],
-        PublicCompanyDto.From(job.Company));
+    public static JobDetailDto From(Job job, bool includeStatusHistories = false, bool isReviewer = false)
+    {
+        var hasProposed = job.ProposedFeeMultiplier != null ||
+                          job.ProposedWarrantyDays != null ||
+                          job.ProposedPaymentDueDays != null ||
+                          job.ProposedPricePerCv != null ||
+                          !string.IsNullOrWhiteSpace(job.ProposedFeeNote);
+
+        var proposedTerms = hasProposed
+            ? new JobProposedTermsDto(
+                job.ProposedFeeMultiplier,
+                job.ProposedWarrantyDays,
+                job.ProposedPaymentDueDays,
+                job.ProposedPricePerCv,
+                job.ProposedFeeNote)
+            : null;
+
+        var hasCommercial = job.AgreedAt != null ||
+                            job.FeeMultiplier != null ||
+                            job.WarrantyDays != null ||
+                            job.PaymentDueDays != null ||
+                            job.SourcingPricePerCv != null ||
+                            job.DepositPercent != null ||
+                            job.ReviewDays != null;
+
+        var commercialTerms = hasCommercial
+            ? new JobCommercialTermsDto(
+                job.ServiceType?.Code,
+                job.FeeMultiplier,
+                job.WarrantyDays,
+                job.PaymentDueDays,
+                job.SourcingTarget,
+                job.SourcingPricePerCv,
+                job.DepositPercent,
+                job.ReviewDays,
+                job.AgreedAt,
+                job.AgreedByNavigation?.DisplayName ?? (job.AgreedBy.HasValue ? job.AgreedBy.Value.ToString() : null),
+                isReviewer ? job.AgreementReference : null,
+                isReviewer ? job.AgreementNote : null)
+            : null;
+
+        return new(
+            job.JobId, job.CompanyId, job.Company?.CompanyName, job.ServiceTypeId, job.ServiceType?.Code,
+            job.Title, job.Description, job.Benefits, job.Location, job.WorkingTime, job.EmploymentType,
+            job.SalaryMin, job.SalaryMax, job.SalaryNegotiable, job.SalaryNote,
+            job.MinExperienceYears, job.MaxExperienceYears,
+            job.CurrencyCode?.Trim() ?? string.Empty, job.Quantity, job.Status, job.Visibility, job.StatusReason,
+            job.PostedAt, job.ClosedAt, job.CreatedAt, job.UpdatedAt, job.ConcurrencyToken,
+            job.SourcingTarget, job.SourcingPricePerCv, job.FeeMultiplier, job.WarrantyDays, job.PaymentDueDays,
+            proposedTerms, commercialTerms,
+            job.PostingPackageId, job.PostingPackage?.Code, job.PostingPackage?.Name, job.ExpiresAt,
+            job.MaxApplications ?? job.PostingPackage?.MaxApplications,
+            job.JobPostingFees?.OrderByDescending(x => x.CreatedAt).FirstOrDefault()?.Status,
+            job.ApplicationDeadline,
+            JobAccessPolicy.IsAcceptingApplications(job),
+            job.JobRequirements != null ? job.JobRequirements.OrderBy(x => x.CreatedAt).Select(x => new JobRequirementDto(
+                x.RequirementId, x.RequirementType, x.Category, x.Content, x.Weight)).ToList() : [],
+            job.JobSkills != null ? job.JobSkills.OrderBy(x => x.SkillId).Select(x => new JobSkillDto(
+                x.SkillId, x.Skill?.SkillName, x.IsMandatory, x.Weight)).ToList() : [],
+            includeStatusHistories && job.JobStatusHistories != null
+                ? job.JobStatusHistories.OrderBy(x => x.ChangedAt).Select(x => new JobStatusHistoryDto(
+                    x.JobStatusHistoryId, x.OldStatus, x.NewStatus, x.ChangedBy, x.ReasonCode, x.ReasonText, x.ChangedAt)).ToList()
+                : [],
+            PublicCompanyDto.From(job.Company),
+            job.TemplateId);
+    }
 }
 
 public sealed record JobPostingPackageDto(
@@ -184,6 +290,7 @@ public sealed record JobPostingPackageDto(
     string? Description,
     decimal Price,
     int DurationDays,
+    int? MaxApplications,
     bool IsActive);
 
 public sealed record JobPostingFeeDto(
@@ -216,7 +323,13 @@ public static class JobTransitions
             [JobStatuses.PendingReview] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 JobStatuses.Active,
+                JobStatuses.PendingPayment,
                 JobStatuses.Rejected
+            },
+            [JobStatuses.PendingPayment] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                JobStatuses.Active,
+                JobStatuses.Closed
             },
             [JobStatuses.Rejected] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {

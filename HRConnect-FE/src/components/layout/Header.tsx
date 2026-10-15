@@ -5,7 +5,7 @@ import {
 } from 'antd';
 import {
   SearchOutlined, BellOutlined, LogoutOutlined,
-  ThunderboltOutlined,
+  ThunderboltOutlined, KeyOutlined, UserOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -13,6 +13,7 @@ import { useAlertStore } from '@/stores/alertStore';
 import { RoleBadge } from '@/components/common/RoleBadge';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { MockWebSocketService } from '@/services/mockWebSocket';
+import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
 import type { MenuProps } from 'antd';
 
 const { Header } = Layout;
@@ -41,6 +42,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   // Dynamic notification state from hrconnect_notifications filtered by currentUser.email
   const [unreadNotifsCount, setUnreadNotifsCount] = useState<number>(0);
@@ -136,6 +138,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
         </div>
       ),
       disabled: true,
+    },
+    { type: 'divider' },
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Hồ sơ cá nhân',
+      onClick: () => navigate('/candidate/profile'),
+    },
+    {
+      key: 'change-password',
+      icon: <KeyOutlined />,
+      label: 'Đổi mật khẩu',
+      onClick: () => setChangePasswordOpen(true),
     },
     { type: 'divider' },
     {
@@ -420,6 +435,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
           <Text type="secondary" style={{ fontSize: 11, color: '#94a3b8' }}>ESC Đóng</Text>
         </div>
       </Modal>
+
+      <ChangePasswordModal
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+      />
     </>
   );
 };

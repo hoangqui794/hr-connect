@@ -377,6 +377,8 @@ app.MapInternalCvEndpoints();
 app.MapAiIntegrationEndpoints();
 app.MapUserEndpoints();
 app.MapRecruitmentEndpoints();
+app.MapSourcingDeliveryEndpoints();
+app.MapJobTemplateEndpoints();
 app.MapInterviewEndpoints();
 app.MapOfferEndpoints();
 app.MapPlacementEndpoints();

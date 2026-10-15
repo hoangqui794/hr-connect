@@ -6,6 +6,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { jobsApi, serviceTypesApi } from '@/services/api/jobsApi';
 import type {
+  ApproveJobInput,
+  Job,
   JobCloseReasonCode,
   JobRejectReasonCode,
   JobSearchParams,
@@ -61,12 +63,57 @@ export const useServiceTypes = () =>
     staleTime: 10 * 60 * 1000,
   });
 
+export const useCommercialTermsDefaults = (jobId: string | undefined, enabled = true) =>
+  useQuery({
+    queryKey: [...jobQueryKeys.all, 'commercial-terms-defaults', jobId ?? ''] as const,
+    queryFn: () => jobsApi.getCommercialTermsDefaults(jobId as string),
+    enabled: Boolean(jobId) && enabled,
+  });
+
 export const usePostingPackages = () =>
   useQuery({
     queryKey: jobQueryKeys.postingPackages,
     queryFn: () => jobsApi.getPostingPackages(),
     staleTime: 10 * 60 * 1000,
   });
+
+export const usePostingFee = (jobId: string | undefined, enabled = true) =>
+  useQuery({
+    queryKey: [...jobQueryKeys.all, 'posting-fee', jobId ?? ''] as const,
+    queryFn: () => jobsApi.getPostingFee(jobId as string),
+    enabled: Boolean(jobId) && enabled,
+  });
+
+export interface JobFeeInfo {
+  /** Amount the Client pays: the fee record once approved, otherwise the chosen package price. */
+  amount: number | null;
+  currencyCode: string;
+  packageName: string | null;
+  durationDays: number | null;
+  maxApplications: number | null;
+  isLoading: boolean;
+}
+
+/** Posting fee of a CV_APPLICATION job, read from the backend (never a hard-coded price). */
+export const useJobFeeInfo = (job: Job | undefined | null): JobFeeInfo => {
+  const applies = job?.serviceTypeCode === 'CV_APPLICATION';
+  const fee = usePostingFee(job?.jobId, applies);
+  const packages = usePostingPackages();
+  const pkg = packages.data?.find(
+    (p) => p.packageId === job?.postingPackageId || (job?.postingPackageCode && p.code === job.postingPackageCode)
+  );
+  return {
+    amount: fee.data?.amount ?? pkg?.price ?? null,
+    currencyCode: fee.data?.currencyCode ?? job?.currencyCode ?? 'VND',
+    packageName: fee.data?.packageName ?? pkg?.name ?? job?.postingPackageName ?? null,
+    durationDays: pkg?.durationDays ?? null,
+    maxApplications: job?.maxApplications ?? pkg?.maxApplications ?? null,
+    isLoading: (applies && fee.isLoading) || packages.isLoading,
+  };
+};
+
+export const formatMoney = (amount: number | null | undefined, currency = 'VND'): string =>
+  amount == null ? '—' : amount === 0 ? 'Miễn phí' : `${amount.toLocaleString('vi-VN')} ${currency === 'VND' ? 'VNĐ' : currency}`;
 
 export const usePostingEligibility = () =>
   useQuery({
@@ -106,12 +153,18 @@ export const useJobMutations = () => {
       onSuccess: refresh,
     }),
     approve: useMutation({
-      mutationFn: (v: { jobId: string; token: string }) => jobsApi.approve(v.jobId, v.token),
+      mutationFn: (v: { jobId: string; token: string; input?: ApproveJobInput }) =>
+        jobsApi.approve(v.jobId, v.token, v.input),
       onSuccess: refresh,
     }),
     reject: useMutation({
-      mutationFn: (v: { jobId: string; token: string; reasonCode: JobRejectReasonCode; reasonText: string }) =>
-        jobsApi.reject(v.jobId, v.token, v.reasonCode, v.reasonText),
+      mutationFn: (v: {
+        jobId: string;
+        token: string;
+        reasonCode: JobRejectReasonCode;
+        reasonText: string;
+        reason?: string;
+      }) => jobsApi.reject(v.jobId, v.token, v.reasonCode, v.reasonText, v.reason),
       onSuccess: refresh,
     }),
   };

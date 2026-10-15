@@ -57,6 +57,9 @@ public interface IJobRepository
 
     Task<IReadOnlyList<JobPostingPackage>> GetPostingPackagesAsync(bool activeOnly = true, CancellationToken cancellationToken = default);
 
+    /// <summary>MF-01: adds one to the template's usage count; false when the template does not exist.</summary>
+    Task<bool> TryUseTemplateAsync(Guid templateId, CancellationToken cancellationToken = default);
+
     Task<JobPostingPackage?> GetPostingPackageByIdAsync(Guid packageId, CancellationToken cancellationToken = default);
 
     Task<JobPostingPackage?> GetPostingPackageByCodeAsync(string code, CancellationToken cancellationToken = default);
@@ -70,6 +73,8 @@ public interface IJobRepository
     Task<int> CountActiveJobsByCompanyIdAsync(Guid companyId, CancellationToken cancellationToken = default);
 
     Task<Job?> GetLastPostedJobByCompanyIdAsync(Guid companyId, string? packageCode = null, CancellationToken cancellationToken = default);
+
+    Task<int> CountAcceptedApplicationsByJobIdAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     void Update(Job job);
 }

@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Affiliates.Commands.SubmitCandidate;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.SubmissionConsents.Common;
@@ -37,6 +38,7 @@ public class SubmitCandidateCommandHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<ILogger<SubmitCandidateCommandHandler>> _loggerMock;
+    private readonly Mock<IAdminBusinessSettings> _businessSettingsMock;
     private readonly SubmitCandidateCommandHandler _handler;
 
     public SubmitCandidateCommandHandlerTests()
@@ -61,6 +63,7 @@ public class SubmitCandidateCommandHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _auditLogServiceMock = new Mock<IAuditLogService>();
         _loggerMock = new Mock<ILogger<SubmitCandidateCommandHandler>>();
+        _businessSettingsMock = new Mock<IAdminBusinessSettings>();
 
         _emailNormalizerMock.Setup(n => n.Normalize(It.IsAny<string>()))
             .Returns<string>(s => s?.Trim().ToLowerInvariant() ?? string.Empty);
@@ -69,6 +72,9 @@ public class SubmitCandidateCommandHandlerTests
         _emailServiceMock.Setup(s => s.SendEmailAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(EmailResult.Success("test-message"));
+        _businessSettingsMock.Setup(s => s.GetIntAsync(
+                BusinessSettingKeys.Mf02ClientOwnershipDays, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(30);
 
         _handler = new SubmitCandidateCommandHandler(
             _affiliateProfileRepositoryMock.Object,
@@ -90,7 +96,8 @@ public class SubmitCandidateCommandHandlerTests
             _auditLogServiceMock.Object,
             Options.Create(new SubmissionConsentSettings()),
             _loggerMock.Object,
-            Mock.Of<ISubmissionConsentExpiryService>());
+            Mock.Of<ISubmissionConsentExpiryService>(),
+            _businessSettingsMock.Object);
     }
 
     [Fact]
@@ -936,8 +943,10 @@ public class SubmitCandidateCommandHandlerTests
 
         // Act & Assert
         var act = async () => await _handler.Handle(command, CancellationToken.None);
-        await act.Should().ThrowAsync<ConflictException>()
-            .WithMessage("Ứng viên này đã được nộp vào công việc này trước đó.");
+        var conflict = await act.Should().ThrowAsync<ConflictException>();
+        conflict.WithMessage("Ứng viên này đã được nộp vào công việc này trước đó.");
+        conflict.Which.ErrorCode.Should().Be("CANDIDATE_ALREADY_SUBMITTED");
+        conflict.Which.Details.Should().BeNull();
 
         blockedSubmission.Should().NotBeNull();
         blockedSubmission!.Status.Should().Be("BLOCKED_DUPLICATE");
@@ -949,6 +958,169 @@ public class SubmitCandidateCommandHandlerTests
         _cvStorageServiceMock.Verify(service => service.UploadAffiliateCvPdfAsync(
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(),
             It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSubmissionIsAwaitingConsent_ReturnsStableConflictWithoutAffiliateIdentity()
+    {
+        var userId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var expiresAt = DateTime.UtcNow.AddHours(12);
+
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job
+            {
+                JobId = jobId,
+                Status = JobStatuses.Active,
+                ServiceTypeId = serviceTypeId,
+                Visibility = JobVisibilities.Public
+            });
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(
+                serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync(
+                "pending@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate
+            {
+                CandidateId = candidateId,
+                FullName = "Pending Candidate",
+                Email = "pending@example.com",
+                Status = "ACTIVE"
+            });
+        _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(
+                candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Submission?)null);
+        _applicationRepositoryMock.Setup(r => r.GetByCandidateAndJobAsync(
+                candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((JobApplication?)null);
+        _submissionRepositoryMock.Setup(r => r.GetPendingConsentSubmissionAsync(
+                candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Submission
+            {
+                SubmissionId = Guid.NewGuid(),
+                CandidateId = candidateId,
+                JobId = jobId,
+                CvId = Guid.NewGuid(),
+                SubmittedBy = Guid.NewGuid(),
+                Source = "AFFILIATE",
+                Status = "PENDING_CONSENT",
+                Consent = new SubmissionConsent
+                {
+                    ConsentId = Guid.NewGuid(),
+                    SubmissionId = Guid.NewGuid(),
+                    RecipientEmail = "pending@example.com",
+                    TokenHash = "hash",
+                    Status = "PENDING",
+                    ExpiresAt = expiresAt
+                }
+            });
+
+        var action = () => _handler.Handle(new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            FullName = "Pending Candidate",
+            Email = "pending@example.com",
+            FileStream = new MemoryStream([1, 2, 3]),
+            FileName = "pending.pdf",
+            FileSizeBytes = 3,
+            RoleCodes = [JobAccessPolicy.AffiliateRole]
+        }, CancellationToken.None);
+
+        var conflict = await action.Should().ThrowAsync<ConflictException>();
+        conflict.Which.ErrorCode.Should().Be("CANDIDATE_ALREADY_SUBMITTED");
+        conflict.Which.Details.Should().ContainKey("existingSubmissionStatus")
+            .WhoseValue.Should().Be("PENDING_CONSENT");
+        conflict.Which.Details.Should().ContainKey("consentExpiresAt")
+            .WhoseValue.Should().Be(expiresAt);
+        conflict.Which.Details.Should().NotContainKey("submittedBy");
+        conflict.Which.Details.Should().NotContainKey("affiliateId");
+        _cvStorageServiceMock.Verify(service => service.UploadAffiliateCvPdfAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(),
+            It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidateIsOwnedByClientForHeadhunt_BlocksBeforeCvUpload()
+    {
+        var affiliateUserId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(
+                affiliateUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateProfile
+            {
+                AffiliateId = Guid.NewGuid(),
+                UserId = affiliateUserId,
+                Status = "ACTIVE"
+            });
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job
+            {
+                JobId = jobId,
+                CompanyId = companyId,
+                ServiceTypeId = serviceTypeId,
+                ServiceType = new ServiceType
+                {
+                    ServiceTypeId = serviceTypeId,
+                    Code = "HEADHUNT_COD",
+                    Name = "Headhunt"
+                },
+                Status = JobStatuses.Active,
+                Visibility = JobVisibilities.Public
+            });
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(
+                serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync(
+                "owned@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate
+            {
+                CandidateId = candidateId,
+                FullName = "Owned Candidate",
+                Email = "owned@example.com",
+                Status = "ACTIVE"
+            });
+        _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(
+                candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Submission?)null);
+        _applicationRepositoryMock.Setup(r => r.GetByCandidateAndJobAsync(
+                candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((JobApplication?)null);
+        _applicationRepositoryMock.Setup(r => r.ExistsForCandidateAndCompanySinceAsync(
+                candidateId,
+                companyId,
+                It.Is<DateTime>(since => since >= DateTime.UtcNow.AddDays(-30).AddMinutes(-1)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var action = () => _handler.Handle(new SubmitCandidateCommand
+        {
+            UserId = affiliateUserId,
+            JobId = jobId,
+            FullName = "Owned Candidate",
+            Email = "owned@example.com",
+            FileStream = new MemoryStream([1, 2, 3]),
+            FileName = "owned.pdf",
+            FileSizeBytes = 3,
+            RoleCodes = [JobAccessPolicy.AffiliateRole]
+        }, CancellationToken.None);
+
+        var conflict = await action.Should().ThrowAsync<ConflictException>();
+        conflict.Which.ErrorCode.Should().Be("CANDIDATE_OWNED_BY_CLIENT");
+        conflict.Which.Details.Should().ContainKey("ownershipDays").WhoseValue.Should().Be(30);
+        _cvStorageServiceMock.Verify(service => service.UploadAffiliateCvPdfAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(),
+            It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        _submissionRepositoryMock.Verify(repository => repository.AddAsync(
+            It.IsAny<Submission>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -1131,8 +1303,9 @@ public class SubmitCandidateCommandHandlerTests
         Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<ConflictException>()
-            .WithMessage("*đã được nộp vào công việc này trước đó*");
+        var conflict = await act.Should().ThrowAsync<ConflictException>();
+        conflict.WithMessage("*đã được nộp vào công việc này trước đó*");
+        conflict.Which.ErrorCode.Should().Be("CANDIDATE_ALREADY_SUBMITTED");
 
         _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _cvStorageServiceMock.Verify(s => s.CompensateUploadAsync(

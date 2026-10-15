@@ -64,6 +64,21 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
 
         var now = DateTime.UtcNow;
         var jobId = Guid.NewGuid();
+        int? maxApplications = null;
+        if (request.PostingPackageId.HasValue)
+        {
+            var package = await _jobRepository.GetPostingPackageByIdAsync(request.PostingPackageId.Value, cancellationToken);
+            maxApplications = package?.MaxApplications;
+        }
+
+        var proposed = CommercialTermsHelper.ResolveProposedTerms(
+            serviceTypeCode,
+            request.ProposedTerms,
+            request.FeeMultiplier,
+            request.WarrantyDays,
+            request.PaymentDueDays,
+            request.SourcingPricePerCv);
+
         var job = new Job
         {
             JobId = jobId,
@@ -93,12 +108,18 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             Visibility = request.Visibility.Trim().ToUpperInvariant(),
             StatusReason = null,
             SourcingTarget = request.SourcingTarget,
-            SourcingPricePerCv = request.SourcingPricePerCv,
-            FeeMultiplier = request.FeeMultiplier,
-            WarrantyDays = request.WarrantyDays,
-            PaymentDueDays = request.PaymentDueDays,
+            SourcingPricePerCv = null,
+            FeeMultiplier = null,
+            WarrantyDays = null,
+            PaymentDueDays = null,
+            ProposedFeeMultiplier = proposed.FeeMultiplier,
+            ProposedWarrantyDays = proposed.WarrantyDays,
+            ProposedPaymentDueDays = proposed.PaymentDueDays,
+            ProposedPricePerCv = proposed.PricePerCv,
+            ProposedFeeNote = proposed.Note,
             PostingPackageId = request.PostingPackageId,
-            ApplicationDeadline = request.ApplicationDeadline
+            MaxApplications = maxApplications,
+            ApplicationDeadline = JobDates.ToUtc(request.ApplicationDeadline)
         };
 
         foreach (var requirement in request.Requirements)
@@ -158,6 +179,13 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
                     UpdatedAt = now
                 });
             }
+        }
+
+        // Template usage is statistics only: an unknown or hidden template never blocks creating the job.
+        if (request.TemplateId.HasValue &&
+            await _jobRepository.TryUseTemplateAsync(request.TemplateId.Value, cancellationToken))
+        {
+            job.TemplateId = request.TemplateId;
         }
 
         await _jobRepository.AddAsync(job, cancellationToken);

@@ -27,6 +27,7 @@ vi.mock('@/stores/authStore', () => ({
     user: { id: 'user-1', name: 'Nguyễn Văn A', email: 'candidate@example.com' },
     updateUser: vi.fn(),
   }),
+  getInitials: (name?: string) => (name ? name.charAt(0).toUpperCase() : 'U'),
 }));
 
 describe('CandidateProfilePage', () => {

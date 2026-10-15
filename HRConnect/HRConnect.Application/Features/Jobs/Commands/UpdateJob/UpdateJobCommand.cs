@@ -27,10 +27,11 @@ public sealed class UpdateJobCommand : IRequest<JobActionResponse>
     public int Quantity { get; set; } = 1;
     public string Visibility { get; set; } = "PUBLIC";
     public int? SourcingTarget { get; set; }
-    public decimal? SourcingPricePerCv { get; set; }
-    public decimal? FeeMultiplier { get; set; }
-    public int? WarrantyDays { get; set; }
-    public int? PaymentDueDays { get; set; }
+    public JobProposedTermsRequest? ProposedTerms { get; set; }
+    [Obsolete("Use ProposedTerms.PricePerCv")] public decimal? SourcingPricePerCv { get; set; }
+    [Obsolete("Use ProposedTerms.FeeMultiplier")] public decimal? FeeMultiplier { get; set; }
+    [Obsolete("Use ProposedTerms.WarrantyDays")] public int? WarrantyDays { get; set; }
+    [Obsolete("Use ProposedTerms.PaymentDueDays")] public int? PaymentDueDays { get; set; }
     public Guid? PostingPackageId { get; set; }
     public DateTime? ApplicationDeadline { get; set; }
     public List<CreateJobRequirementRequest> Requirements { get; set; } = [];

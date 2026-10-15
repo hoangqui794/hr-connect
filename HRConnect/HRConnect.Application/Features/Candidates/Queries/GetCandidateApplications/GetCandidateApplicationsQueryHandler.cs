@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Candidates.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -48,13 +49,19 @@ public class GetCandidateApplicationsQueryHandler : IRequestHandler<GetCandidate
         if (submissionSource is not null && submissionSource is not ("CANDIDATE" or "AFFILIATE"))
             throw new BadRequestException("Nguồn nộp hồ sơ chỉ nhận CANDIDATE hoặc AFFILIATE.");
 
+        var displayGroup = string.IsNullOrWhiteSpace(request.Status)
+            ? null
+            : request.Status.Trim().ToUpperInvariant();
+        if (displayGroup is not null && !CandidateApplicationDisplayStatusMapper.AllowedGroups.Contains(displayGroup))
+            throw new BadRequestException("Trạng thái hiển thị không hợp lệ.");
+
         // 3. Truy vấn danh sách Application thuộc sở hữu của Candidate
         var (items, totalCount) = search is null && submissionSource is null
             ? await _applicationRepository.GetCandidateApplicationsAsync(
-                candidate.CandidateId, request.Status, request.JobId, request.FromDate, request.ToDate,
+                candidate.CandidateId, displayGroup, request.JobId, request.FromDate, request.ToDate,
                 page, pageSize, cancellationToken)
             : await _applicationRepository.GetCandidateApplicationsFilteredAsync(
-                candidate.CandidateId, request.Status, request.JobId, request.FromDate, request.ToDate,
+                candidate.CandidateId, displayGroup, request.JobId, request.FromDate, request.ToDate,
                 search, submissionSource, page, pageSize, cancellationToken);
 
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
@@ -63,6 +70,10 @@ public class GetCandidateApplicationsQueryHandler : IRequestHandler<GetCandidate
         var dtos = items.Select(a =>
         {
             var latestAi = a.AiMatchResults?.OrderByDescending(r => r.AttemptNo).FirstOrDefault();
+            var displayStatus = CandidateApplicationDisplayStatusMapper.Map(
+                a.Status,
+                a.Offers?.Select(offer => offer.Status),
+                _logger);
             return new CandidateApplicationItemDto
             {
                 ApplicationId = a.ApplicationId,
@@ -71,7 +82,8 @@ public class GetCandidateApplicationsQueryHandler : IRequestHandler<GetCandidate
                 CompanyName = a.Job?.Company?.CompanyName ?? string.Empty,
                 CvId = a.Submission?.CvId,
                 CvTitle = a.Submission?.CandidateCv?.Title ?? a.Submission?.CandidateCv?.FileName,
-                Status = a.Status,
+                DisplayGroup = displayStatus.Group,
+                DisplayLabel = displayStatus.Label,
                 AiStatus = latestAi?.Status,
                 SubmissionSource = a.Submission?.Source,
                 AppliedAt = a.AppliedAt

@@ -50,13 +50,34 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
         job.MinExperienceYears = request.MinExperienceYears; job.MaxExperienceYears = request.MaxExperienceYears;
         job.CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(); job.Quantity = request.Quantity;
         job.Visibility = request.Visibility.Trim().ToUpperInvariant();
+        var proposed = CommercialTermsHelper.ResolveProposedTerms(
+            serviceTypeCode,
+            request.ProposedTerms,
+            request.FeeMultiplier,
+            request.WarrantyDays,
+            request.PaymentDueDays,
+            request.SourcingPricePerCv);
+
         job.SourcingTarget = request.SourcingTarget;
-        job.SourcingPricePerCv = request.SourcingPricePerCv;
-        job.FeeMultiplier = request.FeeMultiplier;
-        job.WarrantyDays = request.WarrantyDays;
-        job.PaymentDueDays = request.PaymentDueDays;
-        job.PostingPackageId = request.PostingPackageId;
-        job.ApplicationDeadline = request.ApplicationDeadline;
+        job.ProposedFeeMultiplier = proposed.FeeMultiplier;
+        job.ProposedWarrantyDays = proposed.WarrantyDays;
+        job.ProposedPaymentDueDays = proposed.PaymentDueDays;
+        job.ProposedPricePerCv = proposed.PricePerCv;
+        job.ProposedFeeNote = proposed.Note;
+        if (job.PostingPackageId != request.PostingPackageId)
+        {
+            job.PostingPackageId = request.PostingPackageId;
+            if (request.PostingPackageId.HasValue)
+            {
+                var pkg = await _jobs.GetPostingPackageByIdAsync(request.PostingPackageId.Value, ct);
+                job.MaxApplications = pkg?.MaxApplications;
+            }
+            else
+            {
+                job.MaxApplications = null;
+            }
+        }
+        job.ApplicationDeadline = JobDates.ToUtc(request.ApplicationDeadline);
         job.UpdatedAt = now; job.ConcurrencyToken = Guid.NewGuid(); job.StatusReason = null;
         var existingRequirements = job.JobRequirements.OrderBy(item => item.CreatedAt).ToList();
         for (var index = 0; index < request.Requirements.Count; index++)

@@ -70,7 +70,8 @@ public sealed class ReportResignationCommandHandler : IRequestHandler<ReportResi
         warranty.ResultNote = $"Client báo nghỉ, ngày làm việc cuối {request.LastWorkingDate:yyyy-MM-dd}: {request.Reason.Trim()}";
         warranty.UpdatedBy = request.CurrentUserId;
         warranty.UpdatedAt = now;
-        foreach (var commission in placement.Commissions.Where(c => c.Status == CommissionStates.Pending))
+        // Hold the commission while Internal HR verifies the resignation (PENDING kept for rows created before IN_WARRANTY).
+        foreach (var commission in placement.Commissions.Where(c => c.Status is CommissionStates.InWarranty or CommissionStates.Pending))
         {
             commission.Status = CommissionStates.OnHold;
             commission.UpdatedAt = now;
@@ -140,7 +141,8 @@ public sealed class ResolveResignationCommandHandler : IRequestHandler<ResolveRe
             warranty.Status = WarrantyStates.Active;
             foreach (var commission in held)
             {
-                commission.Status = CommissionStates.Pending;
+                // Claim rejected: back inside the warranty window, so the worker can earn it when the window ends.
+                commission.Status = CommissionStates.InWarranty;
                 commission.UpdatedAt = now;
             }
         }
