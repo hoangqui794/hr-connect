@@ -20,6 +20,26 @@ public class PdfCvValidatorTests
     }
 
     [Fact]
+    public void Validate_WithObjectStreamAndXrefStream_AcceptsDocument()
+    {
+        var validator = CreateValidator();
+
+        validator.Validate(BuildObjectStreamPdf(includeJavaScriptAction: false));
+    }
+
+    [Fact]
+    public void Validate_WhenJavaScriptActionIsInsideObjectStream_RejectsDocument()
+    {
+        var validator = CreateValidator();
+
+        var rejection = CaptureRejection(
+            validator,
+            BuildObjectStreamPdf(includeJavaScriptAction: true));
+
+        rejection.ErrorCode.Should().Be("PDF_ACTIVE_CONTENT");
+    }
+
+    [Fact]
     public void Validate_WhenStreamTextContainsPdfKeywords_DoesNotTreatTextAsActiveContent()
     {
         var validator = CreateValidator();
@@ -68,6 +88,7 @@ public class PdfCvValidatorTests
     [InlineData("Rendition")]
     [InlineData("Sound")]
     [InlineData("Movie")]
+    [InlineData("MadeUpAction")]
     public void Validate_WithUnsafeAction_RejectsDocument(string actionType)
     {
         var validator = CreateValidator();
@@ -104,6 +125,17 @@ public class PdfCvValidatorTests
         var rejection = CaptureRejection(validator, pdf);
 
         rejection.ErrorCode.Should().Be("PDF_ACTIVE_CONTENT");
+    }
+
+    [Fact]
+    public void Validate_WhenAdditionalActionUsesInternalGoTo_AcceptsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            catalogExtra: "/AA << /WC 5 0 R >>",
+            extraObjects: ["<< /S /GoTo /D [3 0 R /Fit] >>"]);
+
+        validator.Validate(pdf);
     }
 
     [Fact]
@@ -157,12 +189,77 @@ public class PdfCvValidatorTests
     }
 
     [Fact]
+    public void Validate_WithZeroPages_RejectsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(pageCount: 0);
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_MALFORMED");
+    }
+
+    [Fact]
+    public void Validate_WithCyclicIndirectReferences_TerminatesAndAcceptsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            catalogExtra: "/Cycle 5 0 R",
+            extraObjects: ["<< /Back 1 0 R >>"]);
+
+        validator.Validate(pdf);
+    }
+
+    [Fact]
+    public void Validate_WhenTraversalDepthLimitIsExceeded_RejectsDocument()
+    {
+        var validator = CreateValidator();
+        const int firstObjectNumber = 5;
+        const int chainLength = 40;
+        var objects = Enumerable.Range(firstObjectNumber, chainLength)
+            .Select(objectNumber => objectNumber == firstObjectNumber + chainLength - 1
+                ? "<< /End true >>"
+                : $"<< /NextNode {objectNumber + 1} 0 R >>")
+            .ToArray();
+        var pdf = BuildPdf(
+            catalogExtra: $"/Deep {firstObjectNumber} 0 R",
+            extraObjects: objects);
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_TRAVERSAL_LIMIT");
+    }
+
+    [Fact]
+    public void Validate_WhenNodeBudgetIsExceeded_RejectsDocument()
+    {
+        var validator = CreateValidator();
+        var oversizedArray = string.Join(' ', Enumerable.Repeat("0", 10_001));
+        var pdf = BuildPdf(catalogExtra: $"/Oversized [{oversizedArray}]");
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_TRAVERSAL_LIMIT");
+    }
+
+    [Fact]
     public void Validate_WithTruncatedPdf_RejectsDocument()
     {
         var validator = CreateValidator();
         var pdf = Encoding.ASCII.GetBytes("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj");
 
         var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_MALFORMED");
+    }
+
+    [Fact]
+    public void Validate_WhenRenamedTextFileLooksLikePdf_RejectsDocument()
+    {
+        var validator = CreateValidator();
+        var fakePdf = Encoding.ASCII.GetBytes("This is plain text, not a PDF. %%EOF");
+
+        var rejection = CaptureRejection(validator, fakePdf);
 
         rejection.ErrorCode.Should().Be("PDF_MALFORMED");
     }
@@ -255,5 +352,82 @@ public class PdfCvValidatorTests
             .Append("\n%%EOF\n");
 
         return Encoding.ASCII.GetBytes(builder.ToString());
+    }
+
+    private static byte[] BuildObjectStreamPdf(bool includeJavaScriptAction)
+    {
+        var compressedObjects = new[]
+        {
+            includeJavaScriptAction
+                ? "<< /Type /Catalog /Pages 2 0 R /OpenAction 5 0 R >>"
+                : "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R >>",
+            includeJavaScriptAction
+                ? "<< /Type /Action /S /JavaScript /JS (alert) >>"
+                : "<< /Producer (HR Connect test fixture) >>"
+        };
+
+        var objectBody = new StringBuilder();
+        var objectOffsets = new List<int>();
+        foreach (var item in compressedObjects)
+        {
+            objectOffsets.Add(Encoding.ASCII.GetByteCount(objectBody.ToString()));
+            objectBody.Append(item).Append(' ');
+        }
+
+        var objectHeader = string.Join(
+            ' ',
+            compressedObjects.Select((_, index) => $"{index + 1} {objectOffsets[index]}")) + " ";
+        var objectStreamData = objectHeader + objectBody;
+
+        using var output = new MemoryStream();
+        WriteAscii(output, "%PDF-1.7\n%ObjectStreamFixture\n");
+
+        var contentOffset = checked((int)output.Position);
+        WriteAscii(output, "6 0 obj\n<< /Length 0 >>\nstream\n\nendstream\nendobj\n");
+
+        var objectStreamOffset = checked((int)output.Position);
+        WriteAscii(
+            output,
+            $"7 0 obj\n<< /Type /ObjStm /N {compressedObjects.Length} /First {Encoding.ASCII.GetByteCount(objectHeader)} /Length {Encoding.ASCII.GetByteCount(objectStreamData)} >>\nstream\n{objectStreamData}\nendstream\nendobj\n");
+
+        var xrefOffset = checked((int)output.Position);
+        using var xref = new MemoryStream();
+        WriteXrefEntry(xref, 0, 0, 65_535);
+        for (var index = 0; index < compressedObjects.Length; index++)
+        {
+            WriteXrefEntry(xref, 2, 7, index);
+        }
+        WriteXrefEntry(xref, 1, contentOffset, 0);
+        WriteXrefEntry(xref, 1, objectStreamOffset, 0);
+        WriteXrefEntry(xref, 1, xrefOffset, 0);
+        var xrefBytes = xref.ToArray();
+
+        WriteAscii(
+            output,
+            $"8 0 obj\n<< /Type /XRef /Size 9 /Root 1 0 R /W [1 4 2] /Index [0 9] /Length {xrefBytes.Length} >>\nstream\n");
+        output.Write(xrefBytes);
+        WriteAscii(output, $"\nendstream\nendobj\nstartxref\n{xrefOffset}\n%%EOF\n");
+
+        return output.ToArray();
+    }
+
+    private static void WriteXrefEntry(Stream stream, byte type, int field2, int field3)
+    {
+        stream.WriteByte(type);
+        stream.WriteByte((byte)(field2 >> 24));
+        stream.WriteByte((byte)(field2 >> 16));
+        stream.WriteByte((byte)(field2 >> 8));
+        stream.WriteByte((byte)field2);
+        stream.WriteByte((byte)(field3 >> 8));
+        stream.WriteByte((byte)field3);
+    }
+
+    private static void WriteAscii(Stream stream, string value)
+    {
+        var bytes = Encoding.ASCII.GetBytes(value);
+        stream.Write(bytes);
     }
 }

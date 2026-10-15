@@ -62,7 +62,7 @@ public class CvStorageServiceTests
         // Arrange
         var candidateId = Guid.NewGuid();
         var fileName = "my-resume.pdf";
-        var fileBytes = CreateMinimalPdf();
+        var fileBytes = CreateMinimalPdf("/OpenAction [3 0 R /Fit]");
         using var stream = new MemoryStream(fileBytes);
         var fileSize = (long)fileBytes.Length;
 
@@ -223,6 +223,19 @@ public class CvStorageServiceTests
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
+        _candidateCvRepositoryMock.Verify(
+            repository => repository.AddAsync(
+                It.IsAny<CandidateCv>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+        _auditLogServiceMock.Verify(
+            audit => audit.AddAsync(
+                It.IsAny<AuditEntry>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+        _unitOfWorkMock.Verify(
+            unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -242,6 +255,19 @@ public class CvStorageServiceTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()),
+            Times.Never);
+        _candidateCvRepositoryMock.Verify(
+            repository => repository.AddAsync(
+                It.IsAny<CandidateCv>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+        _auditLogServiceMock.Verify(
+            audit => audit.AddAsync(
+                It.IsAny<AuditEntry>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+        _unitOfWorkMock.Verify(
+            unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -295,6 +321,14 @@ public class CvStorageServiceTests
             repository => repository.AddAsync(
                 It.IsAny<CandidateCv>(),
                 It.IsAny<CancellationToken>()),
+            Times.Never);
+        _auditLogServiceMock.Verify(
+            audit => audit.AddAsync(
+                It.IsAny<AuditEntry>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+        _unitOfWorkMock.Verify(
+            unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
