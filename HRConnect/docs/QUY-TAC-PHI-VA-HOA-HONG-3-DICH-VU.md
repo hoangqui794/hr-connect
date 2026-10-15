@@ -41,6 +41,9 @@ Ký hiệu trong file:
 |---|---|---|
 | Thời gian | **30 ngày** kể từ ngày đi làm (mặc định, HR chỉnh được khi duyệt) | ✅ |
 | Ứng viên nghỉ trong bảo hành | **Không hoàn phí**. HR Connect **tìm người thay thế miễn phí** cho Client | ✅ |
+| Số lần thay thế | **1 lần** mỗi khoản phí. Người thay thế cũng nghỉ sớm thì bảo hành coi như hoàn thành: không thay tiếp, không hoàn tiền | ✅ (15/10) |
+| Điều kiện mở suất thay thế | Chỉ khi Client **đã thanh toán** phí dịch vụ | ✅ (15/10) |
+| Hạn tìm người thay thế | Cấu hình `mf05.replacement.fill_window_days` (mặc định đề xuất 30 ngày, nhóm chốt). Quá hạn thì suất hết hạn | ✅ (15/10) |
 | Người thay thế | Không phát sinh phí mới. Bảo hành tính lại từ đầu cho người thay thế | ✅ |
 
 ### 1.3 Hoa hồng Affiliate
@@ -144,11 +147,11 @@ Nếu ABC trả phí **sau** ngày 01/12 thì hoa hồng của Hùng nằm ở `
 | 3 | MF-01 `BusinessSettingsOptions` | Mặc định viết cứng: 14 ngày, 100.000đ/CV | Đọc từ trang Cài đặt Admin (G1) | MF-01 |
 | 4 | MF-01 gói đăng tin | Chặn gửi duyệt khi chưa trả tiền | Duyệt trước, trả tiền sau (mục 3) | MF-01 |
 | 5 | MF-01 migrations | 5 migration thiếu `.Designer.cs`, snapshot không cập nhật | Tạo lại migration chuẩn | MF-01 |
-| 6 | MF-05 `BusinessSettings.cs` | Hệ số điền sẵn đổi thành 2,0 | Giá trị điền sẵn **1,5**; HR chỉnh từng job | MF-05 |
-| 7 | MF-05 `WarrantyClaimCommands` / `PlacementFinanceService` | Vừa đi làm → `ON_HOLD` | `IN_WARRANTY` — mục 1.3 | MF-05 |
-| 8 | MF-05 `SettlementCommands.cs` | Thông báo ghi "60 ngày" | Lấy số ngày bảo hành của job | MF-05 |
-| 9 | MF-05 `financeLabels.ts` | `EARNED` = "Đã đạt mốc đi làm" | Nhãn theo bảng mục 1.3 | MF-05 |
-| 10 | MF-05 phí dịch vụ | Chưa có trạng thái `DUE` | Thêm `DUE` (mục 1.1) | MF-05 |
+| 6 | MF-05 `BusinessSettings.cs` | Hệ số điền sẵn đổi thành 2,0 | Giá trị điền sẵn **1,5**; HR chỉnh từng job | MF-05 ✅ đã sửa 15/10 |
+| 7 | MF-05 `WarrantyClaimCommands` / `PlacementFinanceService` | Vừa đi làm → `ON_HOLD` | `IN_WARRANTY` — mục 1.3 | MF-05 ✅ đã sửa 15/10 |
+| 8 | MF-05 `SettlementCommands.cs` | Thông báo ghi "60 ngày" | Lấy số ngày bảo hành của job | MF-05 ✅ đã sửa 15/10 |
+| 9 | MF-05 `financeLabels.ts` | `EARNED` = "Đã đạt mốc đi làm" | Nhãn theo bảng mục 1.3 | MF-05 ✅ đã sửa 15/10 |
+| 10 | MF-05 phí dịch vụ | Chưa có trạng thái `DUE` | Thêm `DUE` (mục 1.1) | MF-05 ✅ đã sửa 15/10 |
 
 ---
 
@@ -157,7 +160,7 @@ Nếu ABC trả phí **sau** ngày 01/12 thì hoa hồng của Hùng nằm ở `
 Tất cả mục 🟡 trước đây đã được chốt như sau:
 
 1. **Thêm trạng thái `IN_WARRANTY`** cho giai đoạn ứng viên đã đi làm nhưng chưa đủ 30 ngày. `PENDING` chỉ còn nghĩa "chưa đi làm".
-2. **Ứng viên nghỉ trong bảo hành:** Client không được hoàn phí, HR Connect tìm người thay thế miễn phí; hoa hồng của ứng viên đã nghỉ bị hủy; Affiliate giới thiệu người thay thế được hoa hồng từ khoản phí cũ sau khi người đó đi làm đủ 30 ngày.
+2. **Ứng viên nghỉ trong bảo hành:** Client không được hoàn phí, HR Connect tìm người thay thế miễn phí; hoa hồng của ứng viên đã nghỉ bị hủy; Affiliate giới thiệu người thay thế được hoa hồng từ khoản phí cũ sau khi người đó đi làm đủ 30 ngày. **Bổ sung 15/10:** chỉ thay 1 lần mỗi khoản phí, chỉ mở suất khi Client đã trả phí, có hạn chót cấu hình được (chi tiết: `MF05/mf05-thiet-ke-suat-thay-the.md`).
 3. **CV_SOURCING:** đặt cọc 50% khi job được duyệt (cấu hình được); thời hạn xem xét mặc định **7 ngày** (cấu hình được); hết hạn mà Client không phản hồi thì coi như chấp nhận; giao thiếu thì hoàn hoặc trừ phần cọc dư.
 4. **CV_APPLICATION:** duyệt trước, trả tiền sau (`PENDING_PAYMENT` → `PAID` → job `ACTIVE`).
 5. **Hệ số phí Headhunt điền sẵn: 1,5.** Đây chỉ là giá trị điền sẵn; Internal HR tinh chỉnh theo thỏa thuận với từng Client khi duyệt job.
