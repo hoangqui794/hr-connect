@@ -13,9 +13,8 @@ public sealed record CandidateApplicationDetailResponse
     public Guid? CvId { get; init; }
     public string? CvTitle { get; init; }
     public string? CvFileName { get; init; }
-    public string Status { get; init; } = string.Empty;
-    public string? CurrentStage { get; init; }
-    public string? StatusReason { get; init; }
+    public string DisplayGroup { get; init; } = string.Empty;
+    public string DisplayLabel { get; init; } = string.Empty;
     public string? SubmissionSource { get; init; }
     public DateTime AppliedAt { get; init; }
     public DateTime UpdatedAt { get; init; }

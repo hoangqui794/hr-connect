@@ -21,6 +21,9 @@ public static class SubmissionConsentNotificationFactory
             "EXPIRED" => (
                 "Yêu cầu xác nhận đã hết hạn",
                 $"Candidate {submission.Candidate.FullName} chưa phản hồi yêu cầu nộp hồ sơ vào vị trí {submission.Job.Title} trước thời hạn."),
+            "BLOCKED_CLIENT_OWNED" => (
+                "Hồ sơ không thể tiếp tục",
+                $"Candidate {submission.Candidate.FullName} đang trong thời hạn được doanh nghiệp ưu tiên xử lý nên lượt nộp vào vị trí {submission.Job.Title} đã được đóng."),
             _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unsupported consent result.")
         };
 

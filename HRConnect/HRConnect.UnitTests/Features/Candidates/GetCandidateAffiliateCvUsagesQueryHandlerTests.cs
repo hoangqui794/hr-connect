@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateAffiliateCvUsages;
 using HRConnect.Domain.Entities;
 using Moq;
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace HRConnect.UnitTests.Features.Candidates;
@@ -31,7 +32,7 @@ public sealed class GetCandidateAffiliateCvUsagesQueryHandlerTests
             {
                 new(Guid.NewGuid(), Guid.NewGuid(), "Backend Developer", Guid.NewGuid(), "HR Connect",
                     Guid.NewGuid(), "Affiliate A", "ACCEPTED", now, "CONFIRMED", now.AddMinutes(-10),
-                    now.AddDays(1), now, Guid.NewGuid(), "AI_PROCESSED", "AI_SCREENING", "COMPLETED",
+                    now.AddDays(1), now, Guid.NewGuid(), "SCREENING", null, "COMPLETED",
                     88.5m, "HIGH", now)
             }, 1));
 
@@ -42,8 +43,11 @@ public sealed class GetCandidateAffiliateCvUsagesQueryHandlerTests
         response.Data.Items.Should().ContainSingle(item =>
             item.JobTitle == "Backend Developer" &&
             item.ConsentStatus == "CONFIRMED" &&
+            item.ApplicationDisplayGroup == "IN_REVIEW" &&
             item.AiMatchScore == 88.5m);
         response.Data.Pagination.TotalItems.Should().Be(1);
+        typeof(CandidateAffiliateCvUsageItem).GetProperty("ApplicationStatus").Should().BeNull();
+        typeof(CandidateAffiliateCvUsageItem).GetProperty("ApplicationCurrentStage").Should().BeNull();
     }
 
     [Fact]
@@ -72,5 +76,8 @@ public sealed class GetCandidateAffiliateCvUsagesQueryHandlerTests
             Guid.NewGuid(), null, Guid.NewGuid(), "Affiliate", 1, 0, 1, 0, 0,
             DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow);
 
-    private GetCandidateAffiliateCvUsagesQueryHandler Handler() => new(_candidates.Object, _submissions.Object);
+    private GetCandidateAffiliateCvUsagesQueryHandler Handler() => new(
+        _candidates.Object,
+        _submissions.Object,
+        Mock.Of<ILogger<GetCandidateAffiliateCvUsagesQueryHandler>>());
 }

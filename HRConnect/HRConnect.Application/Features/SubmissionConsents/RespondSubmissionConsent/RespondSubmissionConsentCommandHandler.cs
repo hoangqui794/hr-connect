@@ -2,6 +2,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.SubmissionConsents.Common;
 using MediatR;
@@ -23,6 +24,8 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
     private readonly IAuditLogService _audit;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RespondSubmissionConsentCommandHandler> _logger;
+    private readonly ICandidateCompanyTransactionLock _candidateCompanyLock;
+    private readonly IAdminBusinessSettings _businessSettings;
 
     public RespondSubmissionConsentCommandHandler(
         ISubmissionConsentRepository consentRepository,
@@ -35,7 +38,9 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         IMf03ScoringTrigger scoringTrigger,
         IAuditLogService audit,
         IUnitOfWork unitOfWork,
-        ILogger<RespondSubmissionConsentCommandHandler> logger)
+        ILogger<RespondSubmissionConsentCommandHandler> logger,
+        ICandidateCompanyTransactionLock candidateCompanyLock,
+        IAdminBusinessSettings businessSettings)
     {
         _consentRepository = consentRepository;
         _submissionRepository = submissionRepository;
@@ -48,6 +53,8 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         _audit = audit;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _candidateCompanyLock = candidateCompanyLock;
+        _businessSettings = businessSettings;
     }
 
     public async Task<RespondSubmissionConsentResponse> Handle(RespondSubmissionConsentCommand request, CancellationToken cancellationToken)
@@ -104,7 +111,9 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         {
             consent.Submission.DuplicateOfSubmissionId = existingSubmission?.SubmissionId;
             await SetTerminalWithoutApplicationAsync(consent, "CANCELLED", "BLOCKED_DUPLICATE", request, now, cancellationToken);
-            throw new ConflictException("Candidate đã có hồ sơ được tiếp nhận cho công việc này.");
+            throw new ConflictException(
+                "Candidate đã có hồ sơ được tiếp nhận cho công việc này.",
+                "CANDIDATE_ALREADY_SUBMITTED");
         }
 
         var affiliate = await _affiliateRepository.GetByUserIdWithDetailsAsync(consent.Submission.SubmittedBy, cancellationToken);
@@ -115,9 +124,56 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         }
 
         JobApplication application;
+        var transactionCompleted = false;
+        var enforcesClientOwnership = IsClientOwnershipService(consent.Submission.Job.ServiceType?.Code);
+        var ownershipDays = enforcesClientOwnership
+            ? await _businessSettings.GetIntAsync(BusinessSettingKeys.Mf02ClientOwnershipDays, cancellationToken)
+            : 0;
         try
         {
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+            if (enforcesClientOwnership)
+            {
+                await _candidateCompanyLock.AcquireAsync(
+                    consent.Submission.CandidateId,
+                    consent.Submission.Job.CompanyId,
+                    cancellationToken);
+
+                existingSubmission = await _submissionRepository.GetAcceptedSubmissionAsync(
+                    consent.Submission.CandidateId, consent.Submission.JobId, cancellationToken);
+                existingApplication = await _applicationRepository.GetByCandidateAndJobAsync(
+                    consent.Submission.CandidateId, consent.Submission.JobId, cancellationToken);
+                if (existingSubmission != null || existingApplication != null)
+                {
+                    consent.Submission.DuplicateOfSubmissionId = existingSubmission?.SubmissionId;
+                    await SetTerminalWithoutApplicationAsync(
+                        consent, "CANCELLED", "BLOCKED_DUPLICATE", request, now, cancellationToken);
+                    await _unitOfWork.CommitTransactionAsync(cancellationToken);
+                    transactionCompleted = true;
+                    throw new ConflictException(
+                        "Candidate đã có hồ sơ được tiếp nhận cho công việc này.",
+                        "CANDIDATE_ALREADY_SUBMITTED");
+                }
+
+                var isOwnedByClient = await _applicationRepository.ExistsForCandidateAndCompanySinceAsync(
+                    consent.Submission.CandidateId,
+                    consent.Submission.Job.CompanyId,
+                    now.AddDays(-ownershipDays),
+                    cancellationToken);
+                if (isOwnedByClient)
+                {
+                    await SetTerminalWithoutApplicationAsync(
+                        consent, "CANCELLED", "BLOCKED_CLIENT_OWNED", request, now, cancellationToken);
+                    await _unitOfWork.CommitTransactionAsync(cancellationToken);
+                    transactionCompleted = true;
+                    throw new ConflictException(
+                        "Candidate đang trong thời hạn được doanh nghiệp này ưu tiên xử lý.",
+                        "CANDIDATE_OWNED_BY_CLIENT",
+                        new Dictionary<string, object?> { ["ownershipDays"] = ownershipDays });
+                }
+            }
+
             consent.Status = "CONFIRMED";
             consent.RespondedAt = now;
             consent.ResponseIp = Limit(request.IpAddress, 64);
@@ -240,16 +296,25 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             await AddAffiliateResultNotificationAsync(consent, "CONFIRMED", now, cancellationToken);
 
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            transactionCompleted = true;
         }
         catch (Exception ex) when (IsUniqueViolation(ex))
         {
-            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            if (!transactionCompleted)
+            {
+                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            }
             await MarkRaceAsDuplicateAsync(consent.SubmissionId, request, cancellationToken);
-            throw new ConflictException("Candidate đã có hồ sơ được tiếp nhận cho công việc này.");
+            throw new ConflictException(
+                "Candidate đã có hồ sơ được tiếp nhận cho công việc này.",
+                "CANDIDATE_ALREADY_SUBMITTED");
         }
         catch
         {
-            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            if (!transactionCompleted)
+            {
+                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            }
             throw;
         }
 
@@ -294,8 +359,14 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             ActorUserId = request.RequesterUserId,
             NewValues = new { consentStatus, submissionStatus }
         }, cancellationToken);
-        if (consentStatus is "DECLINED" or "EXPIRED")
-            await AddAffiliateResultNotificationAsync(consent, consentStatus, now, cancellationToken);
+        if (consentStatus is "DECLINED" or "EXPIRED" || submissionStatus == "BLOCKED_CLIENT_OWNED")
+        {
+            await AddAffiliateResultNotificationAsync(
+                consent,
+                submissionStatus == "BLOCKED_CLIENT_OWNED" ? "BLOCKED_CLIENT_OWNED" : consentStatus,
+                now,
+                cancellationToken);
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
@@ -394,6 +465,10 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             userRole.Role.IsActive &&
             string.Equals(userRole.Role.Code, JobAccessPolicy.AffiliateRole, StringComparison.OrdinalIgnoreCase));
     }
+
+    private static bool IsClientOwnershipService(string? serviceTypeCode) =>
+        string.Equals(serviceTypeCode, "HEADHUNT_COD", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(serviceTypeCode, "CV_SOURCING", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsUniqueViolation(Exception exception)
     {

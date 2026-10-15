@@ -35,22 +35,25 @@ Ký hiệu: 🔴 làm trước (đang chặn người khác hoặc sai nghiệp 
 
 **Quy tắc:** CV_SOURCING và HEADHUNT_COD không tính phí/hoa hồng cho ứng viên **Client đã có** (đã ứng tuyển trực tiếp vào công ty, hoặc đã được giao cho Client trước đó).
 
-**Cần làm trong `SubmitCandidate`:** nếu ứng viên đã có Application thuộc **cùng công ty** trong N tháng gần nhất → chặn:
+**Đã hoàn thành trong `SubmitCandidate` và bước xác nhận consent:** nếu ứng viên đã có Application thuộc **cùng công ty** trong 30 ngày gần nhất → chặn:
 
 ```jsonc
 // 409
 { "success": false, "errorCode": "CANDIDATE_OWNED_BY_CLIENT",
-  "message": "Ứng viên đã có trong hồ sơ của công ty này nên không thể giới thiệu." }
+  "message": "Candidate đang trong thời hạn được doanh nghiệp này ưu tiên xử lý.",
+  "data": { "ownershipDays": 30 } }
 ```
 
-- N là con số cấu hình, khóa mới `mf02.client_ownership_months`. **[Cần nhóm chốt N — đề xuất 6 tháng]**.
+- Thời hạn đọc từ `mf02.client_ownership_days`, mặc định 30 ngày, giới hạn 1–365 ngày.
+- Biên thời gian là `AppliedAt >= nowUtc.AddDays(-days)`: đúng ngày thứ 30 vẫn bị chặn; cũ hơn được phép.
+- Chỉ áp dụng `HEADHUNT_COD` và `CV_SOURCING`; không áp dụng `CV_APPLICATION`.
 - Không trả cho Affiliate biết ứng viên đã nộp vào job nào.
 
 ### B3. 🟠 Candidate không thấy trạng thái nội bộ
 
 **Hiện trạng:** `GET` danh sách đơn của Candidate (`GetCandidateApplicationsQueryHandler`) trả nguyên `status` gốc, nên Candidate thấy được `BACKUP`, `SCREENING`… (lộ việc bị xếp dự phòng ở CV_SOURCING).
 
-**Response — thêm `displayGroup`, bỏ `status` gốc:**
+**Đã hoàn thành:** response thêm `displayGroup/displayLabel`, bỏ `status` gốc:
 
 ```diff
  {
@@ -74,10 +77,12 @@ Ký hiệu: 🔴 làm trước (đang chặn người khác hoặc sai nghiệp 
 | `WITHDRAWN` | `WITHDRAWN`, `OFFER_DECLINED`, `NOT_STARTED` |
 
 - Không trả `statusReason`, mã lý do, ghi chú HR.
-- Thêm test duyệt **tất cả** giá trị của `ck_application_status`; giá trị chưa có nhóm → test fail.
-- **[Cần xác nhận người phụ trách]**: API này nằm trong `Features/Candidates`; nếu không phải MF-02 thì chuyển mục này cho người phụ trách Candidate.
+- Test bao phủ toàn bộ 15 giá trị của `ck_application_status`; giá trị mới hoặc không nhận diện được thu hẹp an toàn về `IN_REVIEW` và ghi warning.
+- Áp dụng đồng nhất cho danh sách Application, chi tiết Application và lịch sử Job dùng CV do Affiliate tải.
 
 ### B4. 🟠 Hồ sơ người thay thế (mục 1.2)
+
+> Theo dõi phần còn lại và điều kiện bắt đầu tại [`MF02-PENDING-MF05-REPLACEMENT.md`](./MF02-PENDING-MF05-REPLACEMENT.md).
 
 **Quy tắc:** ứng viên nghỉ trong 30 ngày → HR Connect tìm người thay thế miễn phí cho Client; Affiliate giới thiệu người thay thế được hoa hồng khi người đó đi làm đủ 30 ngày.
 
@@ -106,7 +111,7 @@ Ký hiệu: 🔴 làm trước (đang chặn người khác hoặc sai nghiệp 
 
 1. Hai Affiliate nộp cùng ứng viên vào cùng job → người sau nhận `409 CANDIDATE_ALREADY_SUBMITTED`, không thấy tên người trước.
 2. Ứng viên từ chối lượt đầu → lượt sau nộp được; Attribution thuộc lượt sau.
-3. Ứng viên đã ứng tuyển trực tiếp vào công ty trong N tháng → Affiliate nhận `409 CANDIDATE_OWNED_BY_CLIENT`.
+3. Ứng viên đã có Application tại cùng công ty trong 30 ngày → Affiliate nhận `409 CANDIDATE_OWNED_BY_CLIENT`.
 4. Candidate xem danh sách đơn → không có chuỗi `BACKUP`, `SCREENING` trong response.
 5. Job đang tìm người thay thế → submission mới có `isReplacement: true`.
 
@@ -123,4 +128,4 @@ Ký hiệu: 🔴 làm trước (đang chặn người khác hoặc sai nghiệp 
 ## Thứ tự gợi ý
 
 1. **B1 → B3**: ảnh hưởng tiền và dữ liệu cá nhân, làm trước.
-2. **B2** sau khi nhóm chốt số tháng; **B4** sau khi MF-05 có luồng thay thế.
+2. **B4** chỉ thực hiện sau khi MF-05 có persisted replacement slot; không suy luận tạm từ Placement.

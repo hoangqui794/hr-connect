@@ -25,6 +25,7 @@ public class ApplyJobCommandHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<ILogger<ApplyJobCommandHandler>> _loggerMock;
+    private readonly Mock<ICandidateCompanyTransactionLock> _candidateCompanyLockMock;
     private readonly ApplyJobCommandHandler _handler;
 
     public ApplyJobCommandHandlerTests()
@@ -40,6 +41,7 @@ public class ApplyJobCommandHandlerTests
         _unitOfWorkMock = new Mock<IUnitOfWork>();
         _auditLogServiceMock = new Mock<IAuditLogService>();
         _loggerMock = new Mock<ILogger<ApplyJobCommandHandler>>();
+        _candidateCompanyLockMock = new Mock<ICandidateCompanyTransactionLock>();
         _userRepositoryMock.Setup(repository => repository.GetByIdWithActiveRolesAsync(
                 It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateActiveCandidateUser());
@@ -55,7 +57,8 @@ public class ApplyJobCommandHandlerTests
             _scoringTriggerMock.Object,
             _unitOfWorkMock.Object,
             _auditLogServiceMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _candidateCompanyLockMock.Object);
     }
 
     [Fact]
@@ -138,6 +141,8 @@ public class ApplyJobCommandHandlerTests
 
         // Verify Save & MF-03 trigger
         _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _candidateCompanyLockMock.Verify(lockService => lockService.AcquireAsync(
+            candidateId, job.CompanyId, It.IsAny<CancellationToken>()), Times.Once);
         _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(
             It.Is<Mf03TriggerPayload>(p => p.ApplicationId == createdApp.ApplicationId && p.CvId == cvId && p.JobId == jobId),
             It.IsAny<CancellationToken>()), Times.Once);
