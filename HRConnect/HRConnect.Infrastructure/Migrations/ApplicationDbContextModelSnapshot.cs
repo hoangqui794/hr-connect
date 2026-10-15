@@ -2676,6 +2676,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("status_reason");
 
+                    b.Property<Guid?>("TemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("template_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -2725,6 +2729,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "CompanyId", "Status" }, "idx_job_company_status");
 
                     b.HasIndex(new[] { "ServiceTypeId", "Status" }, "idx_job_service_type_status");
+
+                    b.HasIndex(new[] { "TemplateId" }, "idx_job_template_id");
 
                     b.HasIndex(new[] { "Visibility", "Status", "PostedAt" }, "idx_job_visibility_status")
                         .IsDescending(false, false, true);
@@ -3029,6 +3035,179 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsDescending(false, true);
 
                     b.ToTable("job_status_history", "public");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.JobTemplate", b =>
+                {
+                    b.Property<Guid>("TemplateId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("template_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Benefits")
+                        .HasColumnType("text")
+                        .HasColumnName("benefits");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("code");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("EmploymentType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("employment_type");
+
+                    b.Property<string>("Industry")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("industry");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Keywords")
+                        .HasColumnType("text")
+                        .HasColumnName("keywords");
+
+                    b.Property<string>("Level")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("level");
+
+                    b.Property<int?>("MaxExperienceYears")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_experience_years");
+
+                    b.Property<int?>("MinExperienceYears")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_experience_years");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("SearchText")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("search_text");
+
+                    b.Property<string>("Summary")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("summary");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("UsageCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("usage_count");
+
+                    b.HasKey("TemplateId")
+                        .HasName("job_template_pkey");
+
+                    b.HasIndex(new[] { "IsActive", "Industry" }, "idx_job_template_active_industry");
+
+                    b.HasIndex(new[] { "Code" }, "uq_job_template_code")
+                        .IsUnique();
+
+                    b.ToTable("job_template", "public", t =>
+                        {
+                            t.HasComment("MF-01: shared JD templates a Client can start a job from. Managed by Internal HR / Admin.");
+
+                            t.HasCheckConstraint("ck_job_template_experience", "min_experience_years IS NULL OR max_experience_years IS NULL OR min_experience_years <= max_experience_years");
+
+                            t.HasCheckConstraint("ck_job_template_usage", "usage_count >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.JobTemplateRequirement", b =>
+                {
+                    b.Property<Guid>("TemplateRequirementId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("template_requirement_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("category");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("content");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("RequirementType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("requirement_type");
+
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("template_id");
+
+                    b.HasKey("TemplateRequirementId")
+                        .HasName("job_template_requirement_pkey");
+
+                    b.HasIndex(new[] { "TemplateId", "DisplayOrder" }, "idx_job_template_requirement_order");
+
+                    b.ToTable("job_template_requirement", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_job_template_requirement_type", "requirement_type IN ('MUST_HAVE','SHOULD_HAVE')");
+                        });
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.MatchTierConfig", b =>
@@ -5236,6 +5415,12 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("job_service_type_id_fkey");
 
+                    b.HasOne("HRConnect.Domain.Entities.JobTemplate", "Template")
+                        .WithMany()
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("job_template_id_fkey");
+
                     b.Navigation("AgreedByNavigation");
 
                     b.Navigation("Company");
@@ -5245,6 +5430,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("PostingPackage");
 
                     b.Navigation("ServiceType");
+
+                    b.Navigation("Template");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.JobPostingFee", b =>
@@ -5336,6 +5523,18 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("ChangedByNavigation");
 
                     b.Navigation("Job");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.JobTemplateRequirement", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.JobTemplate", "Template")
+                        .WithMany("Requirements")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("job_template_requirement_template_id_fkey");
+
+                    b.Navigation("Template");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Notification", b =>
@@ -5920,6 +6119,11 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("JobPostingFees");
 
                     b.Navigation("Jobs");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.JobTemplate", b =>
+                {
+                    b.Navigation("Requirements");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.MatchTierConfig", b =>

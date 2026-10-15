@@ -108,6 +108,10 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<SourcingDelivery> SourcingDeliveries { get; set; }
 
+    public virtual DbSet<JobTemplate> JobTemplates { get; set; }
+
+    public virtual DbSet<JobTemplateRequirement> JobTemplateRequirements { get; set; }
+
     public virtual DbSet<Probation> Probations { get; set; }
 
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
@@ -2363,6 +2367,75 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.UpdatedBy)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("system_setting_updated_by_fkey");
+        });
+
+        modelBuilder.Entity<JobTemplate>(entity =>
+        {
+            entity.HasKey(e => e.TemplateId).HasName("job_template_pkey");
+
+            entity.ToTable("job_template", "public", tb =>
+            {
+                tb.HasComment("MF-01: shared JD templates a Client can start a job from. Managed by Internal HR / Admin.");
+                tb.HasCheckConstraint("ck_job_template_experience", "min_experience_years IS NULL OR max_experience_years IS NULL OR min_experience_years <= max_experience_years");
+                tb.HasCheckConstraint("ck_job_template_usage", "usage_count >= 0");
+            });
+
+            entity.HasIndex(e => e.Code, "uq_job_template_code").IsUnique();
+            entity.HasIndex(e => new { e.IsActive, e.Industry }, "idx_job_template_active_industry");
+
+            entity.Property(e => e.TemplateId).HasDefaultValueSql("gen_random_uuid()").HasColumnName("template_id");
+            entity.Property(e => e.Code).HasMaxLength(80).HasColumnName("code");
+            entity.Property(e => e.Name).HasMaxLength(200).HasColumnName("name");
+            entity.Property(e => e.Industry).HasMaxLength(80).HasColumnName("industry");
+            entity.Property(e => e.Level).HasMaxLength(40).HasColumnName("level");
+            entity.Property(e => e.Keywords).HasColumnName("keywords");
+            entity.Property(e => e.Summary).HasMaxLength(500).HasColumnName("summary");
+            entity.Property(e => e.Title).HasMaxLength(255).HasColumnName("title");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Benefits).HasColumnName("benefits");
+            entity.Property(e => e.EmploymentType).HasMaxLength(50).HasColumnName("employment_type");
+            entity.Property(e => e.MinExperienceYears).HasColumnName("min_experience_years");
+            entity.Property(e => e.MaxExperienceYears).HasColumnName("max_experience_years");
+            entity.Property(e => e.SearchText).HasColumnName("search_text");
+            entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
+            entity.Property(e => e.UsageCount).HasDefaultValue(0).HasColumnName("usage_count");
+            entity.Property(e => e.ConcurrencyToken).HasDefaultValueSql("gen_random_uuid()").HasColumnName("concurrency_token");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
+        });
+
+        modelBuilder.Entity<JobTemplateRequirement>(entity =>
+        {
+            entity.HasKey(e => e.TemplateRequirementId).HasName("job_template_requirement_pkey");
+
+            entity.ToTable("job_template_requirement", "public", tb =>
+                tb.HasCheckConstraint("ck_job_template_requirement_type", "requirement_type IN ('MUST_HAVE','SHOULD_HAVE')"));
+
+            entity.HasIndex(e => new { e.TemplateId, e.DisplayOrder }, "idx_job_template_requirement_order");
+
+            entity.Property(e => e.TemplateRequirementId).HasDefaultValueSql("gen_random_uuid()").HasColumnName("template_requirement_id");
+            entity.Property(e => e.TemplateId).HasColumnName("template_id");
+            entity.Property(e => e.RequirementType).HasMaxLength(20).HasColumnName("requirement_type");
+            entity.Property(e => e.Category).HasMaxLength(120).HasColumnName("category");
+            entity.Property(e => e.Content).HasMaxLength(4000).HasColumnName("content");
+            entity.Property(e => e.DisplayOrder).HasColumnName("display_order");
+
+            entity.HasOne(e => e.Template).WithMany(t => t.Requirements)
+                .HasForeignKey(e => e.TemplateId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("job_template_requirement_template_id_fkey");
+        });
+
+        modelBuilder.Entity<Job>(entity =>
+        {
+            entity.Property(e => e.TemplateId).HasColumnName("template_id");
+            entity.HasIndex(e => e.TemplateId, "idx_job_template_id");
+            entity.HasOne(e => e.Template).WithMany()
+                .HasForeignKey(e => e.TemplateId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("job_template_id_fkey");
         });
 
         modelBuilder.Entity<SourcingDelivery>(entity =>

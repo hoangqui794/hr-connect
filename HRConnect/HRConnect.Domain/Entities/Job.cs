@@ -163,6 +163,11 @@ public partial class Job
     /// </summary>
     public DateTime? ApplicationDeadline { get; set; }
 
+    /// <summary>MF-01: JD template the Client started from (statistics only; the job content is an independent copy).</summary>
+    public Guid? TemplateId { get; set; }
+
+    public virtual JobTemplate? Template { get; set; }
+
     public virtual AppUser? AgreedByNavigation { get; set; }
 
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
