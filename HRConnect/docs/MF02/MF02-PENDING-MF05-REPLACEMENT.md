@@ -1,6 +1,7 @@
 # MF02 — Việc còn lại sau khi MF05 có luồng tuyển người thay thế
 
-> **Trạng thái:** Chưa triển khai — đang chờ contract chính thức từ MF05.
+> **Trạng thái:** Chưa triển khai — **đã có contract từ MF05 (15/10/2026)**, chờ MF05 merge bảng `replacement_slot` là làm được.
+> **Việc cần làm:** [`mf02-b4-gan-suat-thay-the.md`](mf02-b4-gan-suat-thay-the.md). **Thiết kế đầy đủ:** [`MF05/mf05-thiet-ke-suat-thay-the.md`](../MF05/mf05-thiet-ke-suat-thay-the.md).
 > **Phạm vi:** Backend MF02.
 > **Lý do chờ:** Hiện database chưa có persisted replacement slot đủ an toàn để xác định một lượt nộp thuộc đợt tuyển thay thế nào.
 

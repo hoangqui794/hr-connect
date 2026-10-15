@@ -329,7 +329,7 @@ Sơ đồ mô tả trường hợp `HEADHUNT_COD`; toàn bộ là thiết kế �
 
 > **Quy tắc phí và hoa hồng:** xem [QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md](QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md). Phần dưới chỉ tóm tắt; nếu khác nhau thì làm theo file đó.
 
-> **Đã có code cho `HEADHUNT_COD` (2026-10-09):** bảo hành 30 ngày, công nợ phí dịch vụ, hoa hồng nhận 100% khi đủ 30 ngày, báo nghỉ và Internal HR xác minh, Admin ghi nhận thu phí, duyệt/hủy/điều chỉnh hoa hồng, ghi nhận payout (API `/api/v1/service-fees`, `/api/v1/commissions`, `/api/v1/payouts`, `/api/v1/admin/...`, `/api/v1/placements/{id}/resignation`). **[CHƯA CÓ CODE]:** `CV_SOURCING`, `CV_APPLICATION`, tuyển thay thế, đánh giá Affiliate, thông báo, giao diện.
+> **Đã có code cho `HEADHUNT_COD` (2026-10-09):** bảo hành 30 ngày, công nợ phí dịch vụ, hoa hồng nhận 100% khi đủ 30 ngày, báo nghỉ và Internal HR xác minh, Admin ghi nhận thu phí, duyệt/hủy/điều chỉnh hoa hồng, ghi nhận payout (API `/api/v1/service-fees`, `/api/v1/commissions`, `/api/v1/payouts`, `/api/v1/admin/...`, `/api/v1/placements/{id}/resignation`). **Đã có code (2026-10-15):** hoa hồng `IN_WARRANTY`, phí `DUE` và nhắc Client trước hạn. **[CHƯA CÓ CODE]:** `CV_SOURCING`, `CV_APPLICATION`, tuyển thay thế (đã có thiết kế), đánh giá Affiliate, thông báo, giao diện.
 
 ## Phí dịch vụ (Client trả cho HR Connect)
 
@@ -345,7 +345,7 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
 
 1. Khi có placement, hệ thống tạo công nợ phí dịch vụ kèm hạn thanh toán và thông báo cho Client.
 2. Client thanh toán ngoài hệ thống (chuyển khoản).
-3. Platform Admin đối chiếu sao kê và ghi nhận đã thu; công nợ chuyển trạng thái `PENDING` → `DUE` → `PAID`, quá hạn thì `OVERDUE` (mặc định hạn 20 ngày kể từ ngày đi làm, Internal HR chỉnh được khi duyệt job).
+3. Platform Admin đối chiếu sao kê và ghi nhận đã thu; công nợ chuyển trạng thái `PENDING` → `DUE` (còn ≤ 5 ngày tới hạn, cấu hình `mf05.fee.due_reminder_days`; hệ thống nhắc Client) → `PAID`, quá hạn thì `OVERDUE` (mặc định hạn 20 ngày kể từ ngày đi làm, Internal HR chỉnh được khi duyệt job).
 
 ## Bảo hành
 
@@ -354,6 +354,10 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
 1. Từ ngày đi làm, hệ thống đếm ngày bảo hành (**30 ngày**, cấu hình được) và tạo hoa hồng `IN_WARRANTY` cho Affiliate có attribution.
 2. Hết 30 ngày mà không có báo cáo nghỉ việc, hệ thống tự chuyển bảo hành sang `PASSED` và ghi nhận **toàn bộ** hoa hồng là `EARNED` (không chia mốc; quyết định 2026-10-09). Internal HR không phải xác nhận, chỉ xử lý ngoại lệ.
 3. Ứng viên nghỉ việc trong thời hạn bảo hành: Client báo nghỉ (bảo hành `CLAIMED`, hoa hồng `ON_HOLD`) → Internal HR xác minh ngày nghỉ: xác nhận thì bảo hành `VOIDED`, hoa hồng `CANCELLED`, Client **không được hoàn phí** mà được HR Connect **tìm người thay thế miễn phí**; bác bỏ thì quay lại `ACTIVE` / `IN_WARRANTY`.
+   - Mỗi khoản phí chỉ được **thay thế miễn phí 1 lần**; người thay thế cũng nghỉ sớm thì bảo hành coi như hoàn thành, không thay tiếp, không hoàn tiền.
+   - Suất thay thế chỉ mở khi Client **đã thanh toán** phí dịch vụ.
+   - Suất có **hạn chót** (số ngày cấu hình được); quá hạn chưa có người đi làm thì suất hết hạn.
+   - Người thay thế đi làm: không phát sinh phí mới; bảo hành mới và hoa hồng mới tính trên khoản phí cũ. Thiết kế: `docs/MF05/mf05-thiet-ke-suat-thay-the.md` (đã chốt 2026-10-15) **[CHƯA CÓ CODE]**.
 4. Thử việc không dùng làm mốc tính hoa hồng, vì thời gian thử việc khác nhau theo vị trí; kết quả thử việc chỉ là thông tin theo dõi **[CẦN XÁC NHẬN]**.
 
 ## Hoa hồng
@@ -373,7 +377,7 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
 - `EARNED`: đã đủ 30 ngày, chờ Client thanh toán phí và Admin duyệt.
 - `PAYABLE`: Platform Admin đã duyệt (kiểm tra attribution, placement, mốc, tranh chấp), chờ chi.
 - `PAID`: đã ghi nhận chi.
-- `ON_HOLD`: tạm giữ vì đang có tranh chấp; được xét lại khi tranh chấp có kết quả.
+- `ON_HOLD`: tạm giữ vì Client báo ứng viên nghỉ, Internal HR đang xác minh. Xác nhận nghỉ → `CANCELLED`; bác bỏ → về `IN_WARRANTY`. `ON_HOLD` không tự lên `EARNED`.
 - `CANCELLED`: không đủ điều kiện hoặc ứng viên nghỉ trước mốc.
 
 Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và người thực hiện.
