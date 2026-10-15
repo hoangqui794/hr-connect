@@ -25,7 +25,7 @@ public class BusinessSettingsTests
     [Fact]
     public async Task Defaults_follow_the_business_documents()
     {
-        (await Settings().GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier)).Should().Be(2.0m);
+        (await Settings().GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier)).Should().Be(1.5m);
         (await Settings().GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays)).Should().Be(30);
         (await Settings().GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays)).Should().Be(20);
         (await Settings().GetDecimalAsync(BusinessSettingKeys.CvSourcingAffiliateSharePercent)).Should().Be(60m);
@@ -41,7 +41,7 @@ public class BusinessSettingsTests
         var listed = (await Handlers().Handle(new GetBusinessSettingsQuery(), default))
             .Single(s => s.Key == BusinessSettingKeys.HeadhuntFeeMultiplier);
         listed.Value.Should().Be(1.8m);
-        listed.DefaultValue.Should().Be(2.0m);
+        listed.DefaultValue.Should().Be(1.5m);
         listed.IsOverridden.Should().BeTrue();
         listed.UpdatedBy.Should().Be(_admin);
     }

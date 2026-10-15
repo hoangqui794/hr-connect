@@ -73,6 +73,7 @@ export const allowedVisibilities = (code: ServiceTypeCode | null | undefined): J
 export const REJECT_REASONS: { value: JobRejectReasonCode; label: string }[] = [
   { value: 'REJECTED_INCOMPLETE_DESCRIPTION', label: 'Mô tả công việc chưa đầy đủ' },
   { value: 'REJECTED_INCOMPLETE_REQUIREMENTS', label: 'Yêu cầu ứng viên chưa đầy đủ' },
+  { value: 'REJECTED_TERMS_NOT_AGREED', label: 'Chưa thống nhất điều khoản thương mại' },
   { value: 'REJECTED_OTHER', label: 'Lý do khác' },
 ];
 
