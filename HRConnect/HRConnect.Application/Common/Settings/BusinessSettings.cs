@@ -37,6 +37,8 @@ public static class BusinessSettingKeys
     public const string CvSourcingPaymentDueDays = "mf05.cv_sourcing.payment_due_days";
     public const string CvApplicationFreeActiveLimit = "mf01.cv_application.free_active_limit";
     public const string CvApplicationFreeCooldownMonths = "mf01.cv_application.free_cooldown_months";
+    public const string JobTemplatePageSizeDefault = "mf01.job_template.page_size_default";
+    public const string JobTemplatePageSizeMax = "mf01.job_template.page_size_max";
 
     public static readonly IReadOnlyList<BusinessSettingDefinition> All =
     [
@@ -70,6 +72,12 @@ public static class BusinessSettingKeys
         new(CvApplicationFreeCooldownMonths, "CV_APPLICATION", "Chu kỳ đăng tin miễn phí",
             "Khoảng thời gian giãn cách tối thiểu giữa hai lần đăng tin miễn phí của một doanh nghiệp.",
             BusinessSettingType.Integer, 2m, 0m, 24m, "tháng", "Quy tắc gói đăng tin"),
+        new(JobTemplatePageSizeDefault, "JOB_TEMPLATE", "Số mẫu JD mỗi trang (mặc định)",
+            "Số mẫu JD hiển thị mỗi trang khi Client tìm mẫu ở bước 2 của form tạo job.",
+            BusinessSettingType.Integer, 8m, 1m, 50m, "mẫu", "mf01-be-thu-vien-mau-jd.md, B2"),
+        new(JobTemplatePageSizeMax, "JOB_TEMPLATE", "Số mẫu JD tối đa mỗi trang",
+            "Giới hạn trên cho tham số pageSize khi tìm mẫu JD.",
+            BusinessSettingType.Integer, 20m, 1m, 100m, "mẫu", "mf01-be-thu-vien-mau-jd.md, B2"),
     ];
 
     public static BusinessSettingDefinition Get(string key) =>

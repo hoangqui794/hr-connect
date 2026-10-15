@@ -292,6 +292,11 @@ VALUES
      'review',
      'Review job postings'),
 
+    ('job_template.manage',
+     'job_template',
+     'manage',
+     'Manage the shared JD template library'),
+
     ('job.publish',
      'job',
      'publish',
@@ -594,6 +599,7 @@ JOIN public.permission p
 
         'probation.manage',
         'warranty.manage',
+        'job_template.manage',
 
         'commission.view',
         'payout.view'
@@ -614,6 +620,7 @@ JOIN public.permission p
         'job.view',
         'job.review',
         'job.publish',
+        'job_template.manage',
         'notification.view_own',
 
         'user.view',

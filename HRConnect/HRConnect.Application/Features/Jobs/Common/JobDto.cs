@@ -120,7 +120,8 @@ public sealed record JobDto(
     DateTime? ApplicationDeadline, bool IsAcceptingApplications,
     IReadOnlyList<JobRequirementDto> Requirements,
     IReadOnlyList<JobSkillDto> Skills,
-    IReadOnlyList<JobStatusHistoryDto> StatusHistories)
+    IReadOnlyList<JobStatusHistoryDto> StatusHistories,
+    Guid? TemplateId = null)
 {
     public static JobDto From(Job job, bool includeStatusHistories = false, bool isReviewer = false)
     {
@@ -184,7 +185,8 @@ public sealed record JobDto(
             includeStatusHistories && job.JobStatusHistories != null
                 ? job.JobStatusHistories.OrderBy(x => x.ChangedAt).Select(x => new JobStatusHistoryDto(
                     x.JobStatusHistoryId, x.OldStatus, x.NewStatus, x.ChangedBy, x.ReasonCode, x.ReasonText, x.ChangedAt)).ToList()
-                : []);
+                : [],
+            job.TemplateId);
     }
 }
 
@@ -210,7 +212,8 @@ public sealed record JobDetailDto(
     IReadOnlyList<JobRequirementDto> Requirements,
     IReadOnlyList<JobSkillDto> Skills,
     IReadOnlyList<JobStatusHistoryDto> StatusHistories,
-    PublicCompanyDto? Company)
+    PublicCompanyDto? Company,
+    Guid? TemplateId = null)
 {
     public static JobDetailDto From(Job job, bool includeStatusHistories = false, bool isReviewer = false)
     {
@@ -275,7 +278,8 @@ public sealed record JobDetailDto(
                 ? job.JobStatusHistories.OrderBy(x => x.ChangedAt).Select(x => new JobStatusHistoryDto(
                     x.JobStatusHistoryId, x.OldStatus, x.NewStatus, x.ChangedBy, x.ReasonCode, x.ReasonText, x.ChangedAt)).ToList()
                 : [],
-            PublicCompanyDto.From(job.Company));
+            PublicCompanyDto.From(job.Company),
+            job.TemplateId);
     }
 }
 

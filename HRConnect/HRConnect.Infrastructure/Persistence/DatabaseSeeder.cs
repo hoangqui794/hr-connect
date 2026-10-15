@@ -54,6 +54,7 @@ public static class DatabaseSeeder
 
         // 3. Khởi tạo danh mục gói đăng tin (Job Posting Package)
         await JobPostingPackageSeeder.SeedAsync(context, logger, cancellationToken);
+        await JobTemplateSeeder.SeedAsync(context, logger, cancellationToken);
 
         // 4. Khởi tạo ma trận quyền xem/nộp theo Service Type và Role.
         await ServiceTypeAllowedRoleSeeder.SeedAsync(context, logger, cancellationToken);
@@ -171,6 +172,7 @@ public static class DatabaseSeeder
         ('company.view', 'company', 'view', 'View companies'),
         ('job.review', 'job', 'review', 'Review job postings'),
         ('job.publish', 'job', 'publish', 'Publish approved job postings'),
+        ('job_template.manage', 'job_template', 'manage', 'Manage the shared JD template library'),
         ('candidate.view', 'candidate', 'view', 'View candidate information'),
         ('application.view', 'application', 'view', 'View applications'),
         ('application.screen', 'application', 'screen', 'Screen applications'),
@@ -245,7 +247,7 @@ public static class DatabaseSeeder
     JOIN public.permission p ON p.code IN (
         'job.view', 'notification.view_own', 'company.view', 'job.review', 'job.publish', 'candidate.view',
         'application.view', 'application.screen', 'application.retry_ai_scoring', 'submission.view', 'attribution.view',
-        'probation.manage', 'warranty.manage',
+        'probation.manage', 'warranty.manage', 'job_template.manage',
         'commission.view', 'payout.view'
     )
     WHERE r.code = 'INTERNAL_HR'
@@ -255,7 +257,7 @@ public static class DatabaseSeeder
     SELECT r.role_id, p.permission_id
     FROM public.role r
     JOIN public.permission p ON p.code IN (
-        'job.view', 'job.review', 'job.publish', 'notification.view_own', 'user.view', 'user.manage', 'role.view', 'role.manage',
+        'job.view', 'job.review', 'job.publish', 'job_template.manage', 'notification.view_own', 'user.view', 'user.manage', 'role.view', 'role.manage',
         'permission.view', 'permission.manage', 'company.verify', 'affiliate.verify', 'candidate.identity.review',
         'dispute.view', 'dispute.resolve', 'commission.manage', 'payout.manage',
         'system_config.view', 'system_config.manage', 'report.view', 'audit.view', 'application.retry_ai_scoring',
