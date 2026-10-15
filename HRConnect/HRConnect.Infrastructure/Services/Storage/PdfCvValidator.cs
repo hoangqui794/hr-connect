@@ -12,12 +12,33 @@ namespace HRConnect.Infrastructure.Services.Storage;
 
 public sealed class PdfCvValidator
 {
-    private const int MaxTraversalDepth = 32;
     private const int MaxVisitedNodes = 10_000;
     private const int ParserMaxStackDepth = 128;
 
     private static readonly HashSet<string> AllowedActionTypes =
         new(StringComparer.Ordinal) { "GoTo", "URI" };
+
+    private static readonly HashSet<string> AllowedUriSchemes =
+        new(StringComparer.OrdinalIgnoreCase) { "http", "https", "mailto", "tel" };
+
+    // These branches describe presentation, accessibility or navigation targets. They cannot
+    // execute an action by themselves and can be very large in ordinary Canva/Adobe CVs.
+    private static readonly HashSet<string> SkippedTraversalKeys =
+        new(StringComparer.Ordinal)
+        {
+            "StructTreeRoot",
+            "Resources",
+            "Contents",
+            "Metadata",
+            "OutputIntents",
+            "Dests",
+            "Parent",
+            "Prev",
+            "Last",
+            "AP",
+            "Thumb",
+            "PieceInfo"
+        };
 
     private readonly R2Settings _settings;
     private readonly ILogger<PdfCvValidator> _logger;
@@ -62,8 +83,10 @@ public sealed class PdfCvValidator
                 Reject("PDF_EMBEDDED_FILE", "Tài liệu PDF chứa tệp đính kèm không được phép.");
             }
 
+            ValidateStructureTreeAssociatedFiles(document.Structure.Catalog.CatalogDictionary, document);
+
             var context = new TraversalContext(document);
-            VisitToken(document.Structure.Catalog.CatalogDictionary, context, 0, TokenContext.General);
+            VisitToken(document.Structure.Catalog.CatalogDictionary, context, TokenContext.General);
         }
         catch (BadRequestException)
         {
@@ -107,54 +130,111 @@ public sealed class PdfCvValidator
     }
 
     private void VisitToken(
-        IToken token,
+        IToken rootToken,
         TraversalContext context,
-        int depth,
-        TokenContext tokenContext)
+        TokenContext rootContext)
     {
-        context.VisitedNodes++;
-        if (depth > MaxTraversalDepth || context.VisitedNodes > MaxVisitedNodes)
+        var pending = new Stack<(IToken Token, TokenContext Context)>();
+        pending.Push((rootToken, rootContext));
+
+        while (pending.Count > 0)
         {
-            Reject("PDF_TRAVERSAL_LIMIT", "Cấu trúc tài liệu PDF quá phức tạp để xử lý an toàn.");
+            var (token, tokenContext) = pending.Pop();
+            context.VisitedNodes++;
+            if (context.VisitedNodes > MaxVisitedNodes)
+            {
+                Reject("PDF_TRAVERSAL_LIMIT", "Cấu trúc tài liệu PDF quá phức tạp để xử lý an toàn.");
+            }
+
+            switch (token)
+            {
+                case IndirectReferenceToken referenceToken:
+                    if (context.VisitedReferences.Add((referenceToken.Data, tokenContext)))
+                    {
+                        pending.Push((
+                            context.Document.Structure.GetObject(referenceToken.Data).Data,
+                            tokenContext));
+                    }
+                    break;
+
+                case DictionaryToken dictionary:
+                    ValidateDictionary(dictionary, tokenContext);
+                    PushDictionaryChildren(dictionary, context, tokenContext, pending);
+                    break;
+
+                case ArrayToken array:
+                    var itemContext = tokenContext == TokenContext.OpenAction
+                        ? TokenContext.General
+                        : tokenContext;
+                    foreach (var item in array.Data)
+                    {
+                        pending.Push((item, itemContext));
+                    }
+                    break;
+
+                case StreamToken stream:
+                    pending.Push((stream.StreamDictionary, tokenContext));
+                    break;
+            }
+        }
+    }
+
+    private void ValidateStructureTreeAssociatedFiles(
+        DictionaryToken catalog,
+        PdfDocument document)
+    {
+        if (!catalog.Data.TryGetValue("StructTreeRoot", out var structureRoot))
+        {
+            return;
         }
 
-        switch (token)
+        var pending = new Stack<IToken>();
+        var visitedReferences = new HashSet<IndirectReference>();
+        var visitedNodes = 0;
+        pending.Push(structureRoot);
+
+        while (pending.Count > 0)
         {
-            case IndirectReferenceToken referenceToken:
-                if (context.VisitedReferences.Add((referenceToken.Data, tokenContext)))
-                {
-                    VisitToken(
-                        context.Document.Structure.GetObject(referenceToken.Data).Data,
-                        context,
-                        depth + 1,
-                        tokenContext);
-                }
-                break;
+            var token = pending.Pop();
+            visitedNodes++;
+            if (visitedNodes > MaxVisitedNodes)
+            {
+                Reject("PDF_TRAVERSAL_LIMIT", "Cấu trúc tài liệu PDF quá phức tạp để xử lý an toàn.");
+            }
 
-            case DictionaryToken dictionary:
-                ValidateDictionary(dictionary, context, depth, tokenContext);
-                break;
+            switch (token)
+            {
+                case IndirectReferenceToken referenceToken:
+                    if (visitedReferences.Add(referenceToken.Data))
+                    {
+                        pending.Push(document.Structure.GetObject(referenceToken.Data).Data);
+                    }
+                    break;
 
-            case ArrayToken array:
-                var itemContext = tokenContext == TokenContext.OpenAction
-                    ? TokenContext.General
-                    : tokenContext;
-                foreach (var item in array.Data)
-                {
-                    VisitToken(item, context, depth + 1, itemContext);
-                }
-                break;
+                case DictionaryToken dictionary:
+                    if (dictionary.Data.ContainsKey("AF"))
+                    {
+                        Reject("PDF_EMBEDDED_FILE", "Tài liệu PDF chứa tệp đính kèm không được phép.");
+                    }
 
-            case StreamToken stream:
-                VisitToken(stream.StreamDictionary, context, depth + 1, tokenContext);
-                break;
+                    if (dictionary.Data.TryGetValue("K", out var children))
+                    {
+                        pending.Push(children);
+                    }
+                    break;
+
+                case ArrayToken array:
+                    foreach (var item in array.Data)
+                    {
+                        pending.Push(item);
+                    }
+                    break;
+            }
         }
     }
 
     private void ValidateDictionary(
         DictionaryToken dictionary,
-        TraversalContext context,
-        int depth,
         TokenContext tokenContext)
     {
         var typeName = GetName(dictionary, "Type");
@@ -186,12 +266,27 @@ public sealed class PdfCvValidator
             ValidateAction(dictionary, tokenContext == TokenContext.OpenAction);
         }
 
+    }
+
+    private void PushDictionaryChildren(
+        DictionaryToken dictionary,
+        TraversalContext context,
+        TokenContext tokenContext,
+        Stack<(IToken Token, TokenContext Context)> pending)
+    {
         foreach (var pair in dictionary.Data)
         {
+            if (SkippedTraversalKeys.Contains(pair.Key) ||
+                (tokenContext == TokenContext.Action && pair.Key == "D"))
+            {
+                continue;
+            }
+
             var childContext = pair.Key switch
             {
                 "OpenAction" => TokenContext.OpenAction,
-                "A" or "Next" => TokenContext.Action,
+                "A" when IsActionToken(pair.Value, context.Document) => TokenContext.Action,
+                "Next" when tokenContext == TokenContext.Action => TokenContext.Action,
                 "AA" => TokenContext.AdditionalActions,
                 _ when tokenContext == TokenContext.AdditionalActions => TokenContext.Action,
                 _ => TokenContext.General
@@ -199,12 +294,26 @@ public sealed class PdfCvValidator
 
             if (pair.Key == "OpenAction" && pair.Value is ArrayToken or NameToken)
             {
-                VisitToken(pair.Value, context, depth + 1, TokenContext.General);
+                pending.Push((pair.Value, TokenContext.General));
                 continue;
             }
 
-            VisitToken(pair.Value, context, depth + 1, childContext);
+            pending.Push((pair.Value, childContext));
         }
+    }
+
+    private static bool IsActionToken(IToken token, PdfDocument document)
+    {
+        var resolved = token switch
+        {
+            DictionaryToken dictionary => dictionary,
+            IndirectReferenceToken reference =>
+                document.Structure.GetObject(reference.Data).Data as DictionaryToken,
+            _ => null
+        };
+
+        return resolved is not null &&
+               (GetName(resolved, "S") is not null || GetName(resolved, "Type") == "Action");
     }
 
     private void ValidateAction(DictionaryToken dictionary, bool isOpenAction)
@@ -224,6 +333,33 @@ public sealed class PdfCvValidator
         if (!AllowedActionTypes.Contains(actionType) || (isOpenAction && actionType != "GoTo"))
         {
             Reject("PDF_ACTIVE_CONTENT", "Tài liệu PDF chứa hành động chủ động không được phép.");
+        }
+
+        if (actionType == "URI")
+        {
+            ValidateUriAction(dictionary);
+        }
+    }
+
+    private void ValidateUriAction(DictionaryToken dictionary)
+    {
+        if (!dictionary.Data.TryGetValue("URI", out var uriToken))
+        {
+            Reject("PDF_ACTIVE_CONTENT", "Tài liệu PDF chứa liên kết không hợp lệ.");
+        }
+
+        var value = uriToken switch
+        {
+            StringToken stringToken => stringToken.Data,
+            HexToken hexToken => hexToken.Data,
+            _ => null
+        };
+
+        if (string.IsNullOrWhiteSpace(value) ||
+            !Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
+            !AllowedUriSchemes.Contains(uri.Scheme))
+        {
+            Reject("PDF_ACTIVE_CONTENT", "Tài liệu PDF chứa liên kết không an toàn hoặc không được hỗ trợ.");
         }
     }
 

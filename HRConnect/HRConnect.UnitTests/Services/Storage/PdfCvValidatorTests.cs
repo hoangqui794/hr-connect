@@ -80,6 +80,79 @@ public class PdfCvValidatorTests
     }
 
     [Theory]
+    [InlineData("https://github.com/hrconnect")]
+    [InlineData("http://portfolio.example.com")]
+    [InlineData("mailto:candidate@example.com")]
+    [InlineData("tel:+84900000000")]
+    public void Validate_WithCommonCandidateLinkSchemes_AcceptsDocument(string uri)
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            pageExtra: "/Annots [5 0 R]",
+            extraObjects: [$"<< /Type /Annot /Subtype /Link /A << /S /URI /URI ({uri}) >> >>"]);
+
+        validator.Validate(pdf);
+    }
+
+    [Theory]
+    [InlineData("javascript:alert")]
+    [InlineData("file:///etc/passwd")]
+    [InlineData("data:text/html,unsafe")]
+    [InlineData("vbscript:unsafe")]
+    public void Validate_WithUnsafeUriScheme_RejectsDocument(string uri)
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            pageExtra: "/Annots [5 0 R]",
+            extraObjects: [$"<< /Type /Annot /Subtype /Link /A << /S /URI /URI ({uri}) >> >>"]);
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_ACTIVE_CONTENT");
+    }
+
+    [Fact]
+    public void Validate_WhenLinkAnnotationUsesJavaScriptActionWithoutType_RejectsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            pageExtra: "/Annots [5 0 R]",
+            extraObjects: ["<< /Type /Annot /Subtype /Link /A << /S /JavaScript /JS (alert) >> >>"]);
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_ACTIVE_CONTENT");
+    }
+
+    [Fact]
+    public void Validate_WhenTaggedPdfUsesAForStructureAttributes_AcceptsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            catalogExtra: "/StructTreeRoot 5 0 R",
+            extraObjects:
+            [
+                "<< /Type /StructTreeRoot /K 6 0 R >>",
+                "<< /Type /StructElem /S /P /A [7 0 R 0] >>",
+                "<< /O /Layout /TextAlign /Start >>"
+            ]);
+
+        validator.Validate(pdf);
+    }
+
+    [Fact]
+    public void Validate_WhenLargePageResourcesArePresent_DoesNotScanPresentationGraph()
+    {
+        var validator = CreateValidator();
+        var largeResourceArray = string.Join(' ', Enumerable.Repeat("0", 10_001));
+        var pdf = BuildPdf(
+            pageExtra: "/Resources 5 0 R",
+            extraObjects: [$"<< /ProcSet [{largeResourceArray}] >>"]);
+
+        validator.Validate(pdf);
+    }
+
+    [Theory]
     [InlineData("JavaScript")]
     [InlineData("Launch")]
     [InlineData("GoToR")]
@@ -152,6 +225,25 @@ public class PdfCvValidatorTests
     }
 
     [Fact]
+    public void Validate_WithAssociatedFileOnStructureElement_RejectsDocument()
+    {
+        var validator = CreateValidator();
+        var pdf = BuildPdf(
+            catalogExtra: "/StructTreeRoot 5 0 R",
+            extraObjects:
+            [
+                "<< /Type /StructTreeRoot /K 6 0 R >>",
+                "<< /Type /StructElem /S /P /AF [7 0 R] >>",
+                "<< /Type /Filespec /F (payload.txt) /EF << /F 8 0 R >> >>",
+                "<< /Type /EmbeddedFile /Length 0 >>\nstream\n\nendstream"
+            ]);
+
+        var rejection = CaptureRejection(validator, pdf);
+
+        rejection.ErrorCode.Should().Be("PDF_EMBEDDED_FILE");
+    }
+
+    [Fact]
     public void Validate_WithFileAttachmentAnnotation_RejectsDocument()
     {
         var validator = CreateValidator();
@@ -211,7 +303,7 @@ public class PdfCvValidatorTests
     }
 
     [Fact]
-    public void Validate_WhenTraversalDepthLimitIsExceeded_RejectsDocument()
+    public void Validate_WithDeepIndirectNavigationChain_TerminatesAndAcceptsDocument()
     {
         var validator = CreateValidator();
         const int firstObjectNumber = 5;
@@ -225,9 +317,7 @@ public class PdfCvValidatorTests
             catalogExtra: $"/Deep {firstObjectNumber} 0 R",
             extraObjects: objects);
 
-        var rejection = CaptureRejection(validator, pdf);
-
-        rejection.ErrorCode.Should().Be("PDF_TRAVERSAL_LIMIT");
+        validator.Validate(pdf);
     }
 
     [Fact]
