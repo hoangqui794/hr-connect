@@ -39,7 +39,9 @@ public class CandidateApplicationItemDto
 
     public string? CvTitle { get; set; }
 
-    public string Status { get; set; } = string.Empty;
+    public string DisplayGroup { get; set; } = string.Empty;
+
+    public string DisplayLabel { get; set; } = string.Empty;
 
     public string? AiStatus { get; set; }
 

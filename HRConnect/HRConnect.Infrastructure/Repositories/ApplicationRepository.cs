@@ -1,6 +1,8 @@
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Infrastructure.Persistence;
 using HRConnect.Application.Features.Recruitment.Common;
+using HRConnect.Application.Features.Candidates.Common;
+using HRConnect.Domain.Constants;
 using Microsoft.EntityFrameworkCore;
 using JobApplication = HRConnect.Domain.Entities.Application;
 
@@ -51,6 +53,7 @@ public class ApplicationRepository : IApplicationRepository
             .Include(a => a.Submission)
                 .ThenInclude(s => s!.CandidateCv)
             .Include(a => a.AiMatchResults)
+            .Include(a => a.Offers)
             .FirstOrDefaultAsync(a => a.ApplicationId == applicationId, cancellationToken);
     }
 
@@ -84,8 +87,21 @@ public class ApplicationRepository : IApplicationRepository
 
         if (!string.IsNullOrWhiteSpace(status))
         {
-            var normalizedStatus = status.Trim().ToUpper();
-            query = query.Where(a => a.Status == normalizedStatus);
+            var displayGroup = status.Trim().ToUpperInvariant();
+            var internalStatuses = CandidateApplicationDisplayStatusMapper
+                .GetInternalStatuses(displayGroup)
+                .ToArray();
+            query = query.Where(a => internalStatuses.Contains(a.Status));
+            if (displayGroup == "OFFER")
+            {
+                query = query.Where(a => a.Offers.Any(offer => offer.Status == OfferStates.Sent));
+            }
+            else if (displayGroup == "IN_REVIEW")
+            {
+                query = query.Where(a =>
+                    a.Status != ApplicationStates.OfferPending ||
+                    !a.Offers.Any(offer => offer.Status == OfferStates.Sent));
+            }
         }
 
         if (jobId.HasValue && jobId.Value != Guid.Empty)
@@ -125,6 +141,7 @@ public class ApplicationRepository : IApplicationRepository
             .Include(a => a.Submission)
                 .ThenInclude(s => s!.CandidateCv)
             .Include(a => a.AiMatchResults)
+            .Include(a => a.Offers)
             .OrderByDescending(a => a.AppliedAt)
             .ThenByDescending(a => a.ApplicationId)
             .Skip((page - 1) * pageSize)

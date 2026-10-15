@@ -1,6 +1,8 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Candidates.Common;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace HRConnect.Application.Features.Candidates.Queries.GetCandidateAffiliateCvUsages;
 
@@ -9,13 +11,16 @@ public sealed class GetCandidateAffiliateCvUsagesQueryHandler
 {
     private readonly ICandidateRepository _candidates;
     private readonly ISubmissionRepository _submissions;
+    private readonly ILogger<GetCandidateAffiliateCvUsagesQueryHandler> _logger;
 
     public GetCandidateAffiliateCvUsagesQueryHandler(
         ICandidateRepository candidates,
-        ISubmissionRepository submissions)
+        ISubmissionRepository submissions,
+        ILogger<GetCandidateAffiliateCvUsagesQueryHandler> logger)
     {
         _candidates = candidates;
         _submissions = submissions;
+        _logger = logger;
     }
 
     public async Task<GetCandidateAffiliateCvUsagesResponse> Handle(
@@ -41,27 +46,36 @@ public sealed class GetCandidateAffiliateCvUsagesQueryHandler
             true,
             new CandidateAffiliateCvUsageListData(
                 request.CvId,
-                items.Select(item => new CandidateAffiliateCvUsageItem(
-                    item.SubmissionId,
-                    item.JobId,
-                    item.JobTitle,
-                    item.CompanyId,
-                    item.CompanyName,
-                    item.AffiliateUserId,
-                    item.AffiliateDisplayName,
-                    item.SubmissionStatus,
-                    item.SubmittedAt,
-                    item.ConsentStatus,
-                    item.ConsentRequestedAt,
-                    item.ConsentExpiresAt,
-                    item.ConsentRespondedAt,
-                    item.ApplicationId,
-                    item.ApplicationStatus,
-                    item.ApplicationCurrentStage,
-                    item.AiStatus,
-                    item.AiMatchScore,
-                    item.AiMatchTier,
-                    item.AiCompletedAt)).ToList(),
+                items.Select(item =>
+                {
+                    var displayStatus = item.ApplicationId.HasValue
+                        ? CandidateApplicationDisplayStatusMapper.Map(
+                            item.ApplicationStatus,
+                            item.LatestOfferStatus == null ? null : [item.LatestOfferStatus],
+                            _logger)
+                        : null;
+                    return new CandidateAffiliateCvUsageItem(
+                        item.SubmissionId,
+                        item.JobId,
+                        item.JobTitle,
+                        item.CompanyId,
+                        item.CompanyName,
+                        item.AffiliateUserId,
+                        item.AffiliateDisplayName,
+                        item.SubmissionStatus,
+                        item.SubmittedAt,
+                        item.ConsentStatus,
+                        item.ConsentRequestedAt,
+                        item.ConsentExpiresAt,
+                        item.ConsentRespondedAt,
+                        item.ApplicationId,
+                        displayStatus?.Group,
+                        displayStatus?.Label,
+                        item.AiStatus,
+                        item.AiMatchScore,
+                        item.AiMatchTier,
+                        item.AiCompletedAt);
+                }).ToList(),
                 new CandidateAffiliateCvUsagePagination(
                     page,
                     pageSize,

@@ -94,7 +94,9 @@ public class GetCandidateApplicationsQueryHandlerTests
         item.CompanyName.Should().Be("Tech Corp");
         item.CvId.Should().Be(cvId);
         item.CvTitle.Should().Be("My CV 2026.pdf");
-        item.Status.Should().Be("SUBMITTED");
+        item.DisplayGroup.Should().Be("SUBMITTED");
+        item.DisplayLabel.Should().Be("Đã nộp");
+        typeof(CandidateApplicationItemDto).GetProperty("Status").Should().BeNull();
         item.AiStatus.Should().Be("COMPLETED");
         item.SubmissionSource.Should().Be("CANDIDATE");
         item.AppliedAt.Should().Be(application.AppliedAt);
@@ -223,5 +225,20 @@ public class GetCandidateApplicationsQueryHandlerTests
             CancellationToken.None);
 
         await action.Should().ThrowAsync<BadRequestException>();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRejectInternalStatusFilter()
+    {
+        var userId = Guid.NewGuid();
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate { CandidateId = Guid.NewGuid(), UserId = userId });
+
+        var action = () => _handler.Handle(
+            new GetCandidateApplicationsQuery(UserId: userId, Status: "SCREENING"),
+            CancellationToken.None);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*Trạng thái hiển thị*");
     }
 }
