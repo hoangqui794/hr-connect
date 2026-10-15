@@ -75,7 +75,7 @@ Ký hiệu: 🔴 làm trước · 🟠 cần làm · 🟡 kiểm tra rồi quy�
 
 ## 2. 🔴 Suất tuyển thay thế (MF-05)
 
-**Hiện trạng FE:** chưa có. **Code BE:** `Endpoints/V1/Finance/FinanceEndpoints.cs`. Quy tắc: [`MF05/mf05-thiet-ke-suat-thay-the.md`](MF05/mf05-thiet-ke-suat-thay-the.md).
+**Hiện trạng FE:** chưa có. **Code BE:** `Endpoints/V1/Finance/FinanceEndpoints.cs`. Quy tắc: [`MF05/mf05-thiet-ke-suat-thay-the.md`](../MF05/mf05-thiet-ke-suat-thay-the.md).
 
 | Method | Route | Ai dùng (quyền) | Body |
 |---|---|---|---|
@@ -221,7 +221,7 @@ Với từng file: kiểm tra trong `app/router.tsx` còn được route không.
 
 ## Chưa làm được (backend chưa có API)
 
-Dashboard báo cáo (job theo trạng thái, top Affiliate, doanh thu theo dịch vụ), đánh giá chất lượng Affiliate, khiếu nại tranh chấp trùng (SF-04). Đợi backend có API rồi giao tiếp; không làm số liệu giả.
+Dashboard báo cáo, đánh giá chất lượng Affiliate ([`BE-tasks-01`](BE-tasks-01-bao-cao-va-danh-gia-affiliate.md)); danh bạ công ty, bộ lọc kinh nghiệm/ngành ([`BE-tasks-02`](BE-tasks-02-nganh-danh-ba-cong-ty-loc-job.md)); khiếu nại tranh chấp trùng ([`BE-tasks-03`](BE-tasks-03-tranh-chap-trung-sf04.md)). Đợi backend merge rồi giao tiếp; không làm số liệu giả.
 
 ## Thứ tự gợi ý
 
@@ -231,6 +231,18 @@ Dashboard báo cáo (job theo trạng thái, top Affiliate, doanh thu theo dịc
 4. **10** khi rảnh, tách PR riêng.
 
 Mỗi mục một nhánh `feature/fe-<tên-ngắn>` tạo từ `dev`, PR vào `dev`.
+
+**Hạn (đã chốt, trong tuần 15–18/10/2026):**
+
+| Ngày | Mục |
+|---|---|
+| Thứ Năm 15/10 | 4 |
+| Thứ Sáu 16/10 | 3 |
+| Thứ Bảy 17/10 | 1, 2 (không kịp thì ưu tiên 1, lùi 2) |
+| Chủ nhật 18/10 | 5, 6, 7, 8 |
+| Sau tuần này | 10 |
+
+"Xong" = PR đã mở vào `dev`, test và build pass.
 
 ## Nghiệm thu chung
 
