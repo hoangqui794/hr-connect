@@ -164,18 +164,19 @@ export const AffiliateCommissionsPage: React.FC = () => {
       <PageHero
         eyebrow="Headhunt · MF-05"
         title="Hoa hồng & chi trả"
-        description="Hoa hồng Headhunt minh bạch qua 5 giai đoạn: PENDING (ghi nhận ứng viên) → EARNED (ứng viên đi làm) → ON_HOLD (bảo lưu trong thời gian bảo hành) → PAYABLE (qua bảo hành & DN thanh toán) → PAID (đã chuyển khoản)."
+        description="Hoa hồng Headhunt đi qua các bước: chờ ứng viên đi làm → đang trong thời gian bảo hành → đã đạt, chờ Client thanh toán → chờ chuyển tiền → đã nhận. Nếu Client báo ứng viên nghỉ, hoa hồng được tạm giữ trong lúc Internal HR xác minh."
         actions={<Button icon={<ReloadOutlined />} onClick={() => active.refetch()} loading={active.isFetching}>Làm mới</Button>}
       />
 
       <PayoutAccountCard />
 
       {tab === 'commissions' && items.length > 0 && (
-        <div className="mb-5 grid gap-3 sm:grid-cols-3">
+        <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { label: 'Bảo lưu trong bảo hành', value: sum(['PENDING', 'ON_HOLD']) },
-            { label: 'Đạt điều kiện, chờ chi', value: sum(['EARNED', 'PAYABLE']) },
-            { label: 'Đã nhận thành công', value: sum(['PAID']) },
+            { label: 'Đang trong thời gian bảo hành', value: sum(['PENDING', 'IN_WARRANTY']) },
+            { label: 'Tạm giữ – đang xác minh', value: sum(['ON_HOLD']) },
+            { label: 'Đã đạt, chờ chi trả', value: sum(['EARNED', 'PAYABLE']) },
+            { label: 'Đã nhận', value: sum(['PAID']) },
           ].map((k) => (
             <Surface key={k.label} padded>
               <div className="text-[13px] text-slate-500">{k.label}</div>

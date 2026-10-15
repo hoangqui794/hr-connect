@@ -44,10 +44,10 @@ public sealed class SettlementCommandHandlers :
     IRequestHandler<RecordPayoutCommand, PayoutResponse>
 {
     private static readonly HashSet<string> CancellableStates =
-        [CommissionStates.Pending, CommissionStates.Earned, CommissionStates.OnHold, CommissionStates.Payable];
+        [CommissionStates.Pending, CommissionStates.InWarranty, CommissionStates.Earned, CommissionStates.OnHold, CommissionStates.Payable];
 
     private static readonly HashSet<string> AdjustableStates =
-        [CommissionStates.Pending, CommissionStates.Earned, CommissionStates.OnHold, CommissionStates.Payable];
+        [CommissionStates.Pending, CommissionStates.InWarranty, CommissionStates.Earned, CommissionStates.OnHold, CommissionStates.Payable];
 
     private readonly IFinanceRepository _financeRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -74,9 +74,9 @@ public sealed class SettlementCommandHandlers :
 
         var fee = await _financeRepository.GetServiceFeeForUpdateAsync(request.ServiceFeeId, cancellationToken)
             ?? throw new NotFoundException("Không tìm thấy công nợ phí dịch vụ.");
-        if (fee.Status is not (ServiceFeeStates.Pending or ServiceFeeStates.Overdue))
+        if (fee.Status is not (ServiceFeeStates.Pending or ServiceFeeStates.Due or ServiceFeeStates.Overdue))
         {
-            throw new ConflictException($"Chỉ ghi nhận thanh toán cho công nợ PENDING hoặc OVERDUE. Trạng thái hiện tại: {fee.Status}.");
+            throw new ConflictException($"Chỉ ghi nhận thanh toán cho công nợ PENDING, DUE hoặc OVERDUE. Trạng thái hiện tại: {fee.Status}.");
         }
 
         var oldStatus = fee.Status;
@@ -95,10 +95,16 @@ public sealed class SettlementCommandHandlers :
     public async Task<CommissionActionResponse> Handle(ApproveCommissionCommand request, CancellationToken cancellationToken)
     {
         var commission = await LoadCommissionAsync(request.CommissionId, cancellationToken);
+        if (commission.Status == CommissionStates.InWarranty)
+        {
+            // Warranty length is per job (MF-01 agreed terms), so the message names no fixed number of days.
+            throw new ConflictException(
+                "Hoa hồng đang trong thời hạn bảo hành (IN_WARRANTY). Chỉ có thể duyệt chi trả sau khi ứng viên làm đủ thời hạn bảo hành.");
+        }
         if (commission.Status == CommissionStates.OnHold)
         {
             throw new ConflictException(
-                "Hoa hồng đang trong thời hạn bảo hành 60 ngày (ON_HOLD). Chỉ có thể duyệt chi trả sau khi ứng viên hoàn thành thời hạn bảo hành.");
+                "Hoa hồng đang tạm giữ vì Client báo ứng viên nghỉ việc (ON_HOLD). Chờ Internal HR xác minh trước khi duyệt.");
         }
         if (commission.Status != CommissionStates.Earned)
         {

@@ -2504,7 +2504,7 @@ public partial class ApplicationDbContext : DbContext
             entity.ToTable("service_fee", "public", tb =>
             {
                 tb.HasComment("MF-05 service fee the Client owes for one HEADHUNT_COD placement. Paid outside the system; Platform Admin records payment.");
-                tb.HasCheckConstraint("ck_service_fee_status", "status IN ('PENDING','PAID','OVERDUE','CANCELLED')");
+                tb.HasCheckConstraint("ck_service_fee_status", "status IN ('PENDING','DUE','PAID','OVERDUE','CANCELLED')");
                 tb.HasCheckConstraint("ck_service_fee_amounts", "amount >= 0 AND base_salary >= 0 AND fee_multiplier > 0");
                 tb.HasCheckConstraint("ck_service_fee_paid", "(status = 'PAID') = (paid_at IS NOT NULL)");
             });

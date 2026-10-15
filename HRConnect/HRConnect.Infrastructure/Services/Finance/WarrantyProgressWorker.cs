@@ -1,5 +1,7 @@
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Finance.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -10,7 +12,8 @@ namespace HRConnect.Infrastructure.Services.Finance;
 
 /// <summary>
 /// MF-05 clock: passes warranties whose 30 days are over (earning their commissions in full)
-/// and marks unpaid service fees past their due date as OVERDUE. Each item runs in its own scope.
+/// and moves unpaid service fees to DUE (reminder window, mf05.fee.due_reminder_days) and then OVERDUE.
+/// Each item runs in its own scope.
 /// </summary>
 public sealed class WarrantyProgressWorker : BackgroundService
 {
@@ -53,11 +56,16 @@ public sealed class WarrantyProgressWorker : BackgroundService
     {
         IReadOnlyList<Guid> placementIds;
         IReadOnlyList<Guid> feeIds;
+        IReadOnlyList<Guid> dueSoonIds;
+        int reminderDays;
         await using (var discovery = _scopeFactory.CreateAsyncScope())
         {
             var repository = discovery.ServiceProvider.GetRequiredService<IFinanceRepository>();
             placementIds = await repository.GetPlacementIdsWithWarrantyEndingAsync(today, BatchSize, cancellationToken);
             feeIds = await repository.GetOverdueServiceFeeIdsAsync(today, BatchSize, cancellationToken);
+            reminderDays = await discovery.ServiceProvider.GetRequiredService<IAdminBusinessSettings>()
+                .GetIntAsync(BusinessSettingKeys.FeeDueReminderDays, cancellationToken);
+            dueSoonIds = await repository.GetServiceFeeIdsDueSoonAsync(today, today.AddDays(reminderDays), BatchSize, cancellationToken);
         }
 
         var passed = 0;
@@ -66,15 +74,21 @@ public sealed class WarrantyProgressWorker : BackgroundService
             passed += await RunItemAsync(service => service.CompleteWarrantyAsync(placementId, today, cancellationToken), placementId) ? 1 : 0;
         }
 
+        var due = 0;
+        foreach (var feeId in dueSoonIds)
+        {
+            due += await RunItemAsync(service => service.MarkServiceFeeDueAsync(feeId, today, reminderDays, cancellationToken), feeId) ? 1 : 0;
+        }
+
         var overdue = 0;
         foreach (var feeId in feeIds)
         {
             overdue += await RunItemAsync(service => service.MarkServiceFeeOverdueAsync(feeId, today, cancellationToken), feeId) ? 1 : 0;
         }
 
-        if (passed + overdue > 0)
+        if (passed + due + overdue > 0)
         {
-            _logger.LogInformation("MF-05: {Passed} bảo hành đã qua (hoa hồng EARNED), {Overdue} công nợ quá hạn.", passed, overdue);
+            _logger.LogInformation("MF-05: {Passed} bảo hành đã qua (hoa hồng EARNED), {Due} công nợ sắp đến hạn, {Overdue} công nợ quá hạn.", passed, due, overdue);
         }
     }
 

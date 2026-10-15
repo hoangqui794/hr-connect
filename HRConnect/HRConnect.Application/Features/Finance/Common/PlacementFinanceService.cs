@@ -151,7 +151,7 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
                     MilestoneType = CommissionMilestoneCodes.WarrantyPassed,
                     BaseAmount = IsPercent(rule) ? fee?.Amount : null,
                     Amount = amount.Value,
-                    Status = CommissionStates.OnHold,
+                    Status = CommissionStates.InWarranty,
                     RuleSnapshot = JsonSerializer.Serialize(new
                     {
                         rule.CommissionRuleId,

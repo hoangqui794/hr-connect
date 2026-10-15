@@ -71,9 +71,24 @@ public class FinanceRepository : IFinanceRepository
             .Select(w => w.PlacementId)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Guid>> GetServiceFeeIdsDueSoonAsync(DateOnly today, DateOnly dueOnOrBefore, int take, CancellationToken cancellationToken = default) =>
+        await _context.ServiceFees.AsNoTracking()
+            .Where(fee => fee.Status == ServiceFeeStates.Pending && fee.DueDate >= today && fee.DueDate <= dueOnOrBefore)
+            .OrderBy(fee => fee.DueDate)
+            .Take(take)
+            .Select(fee => fee.ServiceFeeId)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Guid>> GetActiveCompanyUserIdsAsync(Guid companyId, CancellationToken cancellationToken = default) =>
+        await _context.CompanyUsers.AsNoTracking()
+            .Where(cu => cu.CompanyId == companyId && cu.Status == "ACTIVE")
+            .Select(cu => cu.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Guid>> GetOverdueServiceFeeIdsAsync(DateOnly dueBefore, int take, CancellationToken cancellationToken = default) =>
         await _context.ServiceFees.AsNoTracking()
-            .Where(fee => fee.Status == ServiceFeeStates.Pending && fee.DueDate < dueBefore)
+            .Where(fee => (fee.Status == ServiceFeeStates.Pending || fee.Status == ServiceFeeStates.Due) && fee.DueDate < dueBefore)
             .OrderBy(fee => fee.DueDate)
             .Take(take)
             .Select(fee => fee.ServiceFeeId)
