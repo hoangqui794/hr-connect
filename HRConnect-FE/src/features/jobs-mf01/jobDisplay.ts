@@ -57,6 +57,46 @@ export const SERVICE_TYPE_LABEL: Record<ServiceTypeCode, { label: string; summar
   },
 };
 
+export const JOB_TEMPLATE_INDUSTRY_LABEL: Record<string, string> = {
+  IT: 'Công nghệ thông tin',
+  MARKETING: 'Marketing',
+  SALES: 'Kinh doanh',
+  ACCOUNTING: 'Kế toán',
+  HR: 'Nhân sự',
+  ADMIN: 'Hành chính',
+};
+
+export const JOB_TEMPLATE_LEVEL_LABEL: Record<string, string> = {
+  INTERN: 'Thực tập sinh',
+  JUNIOR: 'Nhân viên mới (Junior)',
+  MIDDLE: 'Chuyên viên (Middle)',
+  SENIOR: 'Chuyên viên cao cấp (Senior)',
+  LEAD: 'Trưởng nhóm (Lead)',
+};
+
+export const JOB_TEMPLATE_CATEGORY_LABEL: Record<string, string> = {
+  EXPERIENCE: 'Kinh nghiệm',
+  SKILL: 'Kỹ năng',
+  EDUCATION: 'Học vấn',
+  OTHER: 'Khác',
+};
+
+export const formatTemplateIndustry = (industry: string | null | undefined): string => {
+  if (!industry) return '—';
+  return JOB_TEMPLATE_INDUSTRY_LABEL[industry] || industry;
+};
+
+export const formatTemplateLevel = (level: string | null | undefined): string => {
+  if (!level) return '—';
+  return JOB_TEMPLATE_LEVEL_LABEL[level] || level;
+};
+
+export const formatTemplateCategory = (category: string | null | undefined): string => {
+  if (!category) return 'Khác';
+  return JOB_TEMPLATE_CATEGORY_LABEL[category.toUpperCase()] || category;
+};
+
+
 export const VISIBILITY_LABEL: Record<JobVisibility, { label: string; summary: string }> = {
   PUBLIC: { label: 'Công khai', summary: 'Hiển thị trên toàn hệ thống để ứng viên tìm kiếm và nộp hồ sơ.' },
   PARTNER_ONLY: { label: 'Chỉ đối tác', summary: 'Chỉ hiển thị cho mạng lưới đối tác giới thiệu ứng viên.' },

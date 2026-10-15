@@ -259,6 +259,9 @@ const Mf01JobFormPage = React.lazy(() =>
 const Mf01JobReviewPage = React.lazy(() =>
   import('@/features/jobs-mf01/JobReviewPage').then((m) => ({ default: m.JobReviewPage }))
 );
+const Mf01JobTemplatesAdminPage = React.lazy(() =>
+  import('@/features/jobs-mf01/JobTemplatesAdminPage').then((m) => ({ default: m.JobTemplatesAdminPage }))
+);
 const Mf01InAppJobDiscoveryPage = React.lazy(() =>
   import('@/features/jobs-mf01/PublicJobPages').then((m) => ({ default: m.InAppJobDiscoveryPage }))
 );
@@ -410,6 +413,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/affiliate/dashboard': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/hr/dashboard': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/jobs': [UserRole.INTERNAL_HR, UserRole.ADMIN],
+  '/hr/job-templates': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/candidates': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/screening': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/interviews': [UserRole.INTERNAL_HR, UserRole.ADMIN],
@@ -465,6 +469,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/admin/audit-trail': [UserRole.ADMIN],
   '/admin/approvals': [UserRole.ADMIN],
   '/admin/jobs': [UserRole.ADMIN],
+  '/admin/job-templates': [UserRole.ADMIN],
   '/admin/candidate-identity-claims': [UserRole.ADMIN],
   '/admin/candidate-identity-claims/:claimId': [UserRole.ADMIN],
   '/admin/service-types': [UserRole.ADMIN],
@@ -520,6 +525,7 @@ export const AppRoutes = {
   Mf01ClientJobsListPage,
   Mf01JobFormPage,
   Mf01JobReviewPage,
+  Mf01JobTemplatesAdminPage,
   Mf01InAppJobDiscoveryPage,
   Mf01PublicJobSearchPage,
   Mf01PublicJobDetailPage,

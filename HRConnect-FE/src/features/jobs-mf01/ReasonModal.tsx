@@ -58,7 +58,20 @@ export const ReasonModal: React.FC<ReasonModalProps> = ({
       destroyOnClose
     >
       <Typography.Paragraph type="secondary">{description}</Typography.Paragraph>
-      <Form form={form} layout="vertical" onFinish={onConfirm} requiredMark="optional">
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={onConfirm}
+        requiredMark={(label, info) =>
+          info.required ? (
+            <span>
+              {label} <span className="text-red-500 font-bold ml-0.5">*</span>
+            </span>
+          ) : (
+            label
+          )
+        }
+      >
         {reasonOptions && (
           <Form.Item
             name="reasonCode"

@@ -19,6 +19,9 @@ import type {
   JobRejectReasonCode,
   JobSearchParams,
   JobStatus,
+  JobTemplate,
+  JobTemplatePage,
+  JobTemplateUpsertInput,
   JobUpsertInput,
   ServiceType,
 } from '@/types/api/jobs';
@@ -128,6 +131,72 @@ export const jobsApi = {
   /** POST /jobs/{id}/posting-fee/pay — record payment for posting fee. */
   async payPostingFee(jobId: string, paymentReference?: string): Promise<JobPostingFee> {
     const res = await apiClient.post<JobPostingFee>(`/jobs/${jobId}/posting-fee/pay`, { paymentReference });
+    return res.data;
+  },
+
+  // ── Job Templates (MF-01 F1 & F2) ──────────────────────────────────────────
+  /** GET /job-templates — search active templates for job creation. */
+  async searchTemplates(params: {
+    keyword?: string;
+    industry?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<JobTemplatePage> {
+    const res = await apiClient.get<{ success: boolean; data: JobTemplatePage }>('/job-templates', {
+      params: cleanParams(params),
+    });
+    return res.data.data;
+  },
+
+  /** GET /job-templates/{id} — full template content for preview or prefilling. */
+  async getTemplate(id: string): Promise<JobTemplate> {
+    const res = await apiClient.get<{ success: boolean; data: JobTemplate }>(`/job-templates/${id}`);
+    return res.data.data;
+  },
+
+  // ── MF-01 F3: Internal HR & Admin Job Template Management ───────────────────
+  /** GET /internal/job-templates — list templates including inactive ones with filters. */
+  async getInternalTemplates(params: {
+    keyword?: string;
+    industry?: string;
+    isActive?: boolean;
+    page?: number;
+    pageSize?: number;
+  }): Promise<JobTemplatePage> {
+    const res = await apiClient.get<{ success: boolean; data: JobTemplatePage }>('/internal/job-templates', {
+      params: cleanParams(params),
+    });
+    return res.data.data;
+  },
+
+  /** GET /internal/job-templates/{id} — full template detail with concurrencyToken for editing. */
+  async getInternalTemplate(id: string): Promise<JobTemplate> {
+    const res = await apiClient.get<{ success: boolean; data: JobTemplate }>(`/internal/job-templates/${id}`);
+    return res.data.data;
+  },
+
+  /** POST /internal/job-templates — create a new job template. */
+  async createInternalTemplate(data: JobTemplateUpsertInput): Promise<JobTemplate> {
+    const res = await apiClient.post<{ success: boolean; data: JobTemplate }>('/internal/job-templates', data);
+    return res.data.data;
+  },
+
+  /** PUT /internal/job-templates/{id} — update template with concurrency token. */
+  async updateInternalTemplate(
+    id: string,
+    payload: { concurrencyToken: string; template: JobTemplateUpsertInput }
+  ): Promise<JobTemplate> {
+    const res = await apiClient.put<{ success: boolean; data: JobTemplate }>(
+      `/internal/job-templates/${id}`,
+      payload
+    );
+    return res.data.data;
+  },
+
+  /** POST /internal/job-templates/{id}/activate or /deactivate — toggle active status. */
+  async toggleTemplateActive(id: string, activate: boolean): Promise<{ success: boolean }> {
+    const action = activate ? 'activate' : 'deactivate';
+    const res = await apiClient.post<{ success: boolean }>(`/internal/job-templates/${id}/${action}`);
     return res.data;
   },
 
