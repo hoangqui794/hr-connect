@@ -1,8 +1,8 @@
 # MF-05: thiết kế suất tuyển thay thế (`replacement_slot`)
 
-> **Phạm vi chính:** Backend MF-05. Phần MF-02 B4: [`MF02/mf02-b4-gan-suat-thay-the.md`](../MF02/mf02-b4-gan-suat-thay-the.md). Phần MF-04 nằm ở tài liệu riêng [`MF04/mf04-lap-suat-thay-the.md`](../MF04/mf04-lap-suat-thay-the.md).
+> **Phạm vi chính:** Backend MF-05. Phần MF-02 B4 (gắn lượt nộp vào suất) đã xong, merge 16/10. Phần MF-04 nằm ở tài liệu riêng [`MF04/mf04-lap-suat-thay-the.md`](../MF04/mf04-lap-suat-thay-the.md).
 > **Ngày:** 2026-10-15.
-> **Trả lời yêu cầu trong:** [`MF02/MF02-PENDING-MF05-REPLACEMENT.md`](../MF02/MF02-PENDING-MF05-REPLACEMENT.md). Thay cho phần mô tả ngắn ở mục E7 của [`mf05-viec-can-lam-theo-quy-tac-phi.md`](mf05-viec-can-lam-theo-quy-tac-phi.md).
+> Thay cho phần mô tả ngắn ở mục E7 của [`mf05-viec-can-lam-theo-quy-tac-phi.md`](mf05-viec-can-lam-theo-quy-tac-phi.md).
 > **Hiện trạng code (15/10, nhánh `feature/mf05-replacement-slot`):** MF-05 đã làm xong bước 1 và 2 của mục 8: bảng, cột, hằng số `ReplacementSlotStates` / `ReplacementSlotErrorCodes`, cài đặt, migration `Mf05ReplacementSlot`, S1–S4 và API mục 6. Còn lại: MF-02 B4 và mục 5 (MF-04 + MF-05).
 
 **Cách gọi trong tài liệu:**
