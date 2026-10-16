@@ -6,7 +6,7 @@
  * which shows the actions the backend allows (screening, interview, offer, start of work).
  */
 import React from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Alert, Button, Input, Skeleton, Table, Tooltip } from 'antd';
 import { JobStatusTag } from '@/features/jobs-mf01/JobDetailPanel';
@@ -62,6 +62,7 @@ const AiScore: React.FC<{ score: number | null }> = ({ score }) => {
 };
 
 export const ClientCandidatesPage: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const stage = (STAGES as readonly string[]).includes(searchParams.get('status') ?? '') ? (searchParams.get('status') as Stage) : 'all';
   const jobId = searchParams.get('job') ?? undefined;
@@ -229,6 +230,23 @@ export const ClientCandidatesPage: React.FC = () => {
                 : `${totalAll ?? 0} CV trên mọi tin của bạn. Chọn một tin ở bên trái để xem riêng.`}
             </p>
           </div>
+
+          {selectedJob?.serviceTypeCode === 'CV_SOURCING' && (
+            <div className="rounded-xl border border-solid border-teal-200 bg-teal-50/70 p-3.5 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs text-teal-950">
+                <span className="font-bold text-sm block text-teal-900">Vị trí này thuộc dịch vụ CV Sourcing</span>
+                <span>Hồ sơ ứng viên được HR Connect sàng lọc và bàn giao. Quý khách có 7 ngày để phản hồi mỗi hồ sơ.</span>
+              </div>
+              <Button
+                type="primary"
+                size="small"
+                className="!bg-teal-700 hover:!bg-teal-600 !border-teal-700 font-semibold text-xs shadow-2xs"
+                onClick={() => navigate(`/client/jobs/${selectedJob.jobId}/sourcing`)}
+              >
+                Xem tiến độ & Phản hồi CV
+              </Button>
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div role="radiogroup" aria-label="Kiểu hiển thị" className="inline-flex rounded-full bg-slate-100 p-1">
               {(

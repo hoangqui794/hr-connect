@@ -24,11 +24,19 @@ import {
   Radio,
   Select,
   Skeleton,
+  Tag,
   Tooltip,
 } from 'antd';
-import { CheckOutlined, CloseOutlined, ExperimentOutlined, FileOutlined, LockOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, ExperimentOutlined, FileOutlined, LockOutlined, SendOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { clientActionsApi, screeningApi } from '@/services/api/hrApi';
+import { sourcingApi } from '@/services/api/sourcingApi';
+import {
+  SOURCING_REJECT_REASONS,
+  SOURCING_STATUS_CONFIG,
+  getRejectReasonLabel,
+  getSourcingReviewDeadlineInfo,
+} from '@/features/sourcing/sourcingUtils';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { RecruitmentApplicationDetail } from '@/types/api/hr';
 import { Initials, StatusDot } from '@/features/admin-console/ui';
@@ -81,7 +89,8 @@ type ModalKind =
   | 'withdraw'
   | 'plannedStart'
   | 'startWork'
-  | 'notStarted';
+  | 'notStarted'
+  | 'clientRejectSourcing';
 
 const MODAL_TITLE: Record<ModalKind, string> = {
   reject: 'Loại hồ sơ',
@@ -96,9 +105,10 @@ const MODAL_TITLE: Record<ModalKind, string> = {
   plannedStart: 'Ngày dự kiến nhận việc',
   startWork: 'Xác nhận ứng viên đã đi làm',
   notStarted: 'Ứng viên không nhận việc',
+  clientRejectSourcing: 'Từ chối CV (CV Sourcing)',
 };
 
-const DANGER_MODALS: ModalKind[] = ['reject', 'cancel', 'noshow', 'rejectBackup', 'withdraw', 'notStarted'];
+const DANGER_MODALS: ModalKind[] = ['reject', 'cancel', 'noshow', 'rejectBackup', 'withdraw', 'notStarted', 'clientRejectSourcing'];
 const INTERVIEW_TYPES = ['Trực tiếp', 'Online', 'Điện thoại'].map((v) => ({ value: v, label: v }));
 const notPast = (d: Dayjs) => d.isBefore(dayjs().startOf('day'));
 
@@ -150,6 +160,44 @@ export const ApplicationWorkbench: React.FC<{
       start.mutate(d);
     }
   }, [d, start]);
+
+  const isCvSourcing = d?.serviceTypeCode === 'CV_SOURCING';
+
+  const sourcingDeliveries = useQuery({
+    queryKey: ['sourcing-deliveries', d?.jobId],
+    queryFn: () => sourcingApi.getDeliveries(d!.jobId),
+    enabled: Boolean(d?.jobId && isCvSourcing),
+  });
+
+  const sourcingDelivery = sourcingDeliveries.data?.items.find((item) => item.applicationId === d?.applicationId);
+
+  // Deliver CV to Client (Internal HR)
+  const deliverMutation = useMutation({
+    mutationFn: () => sourcingApi.deliverCvs(d!.jobId, [d!.applicationId]),
+    onSuccess: () => {
+      message.success('Đã giao CV cho khách hàng thành công. Doanh nghiệp có 7 ngày để phản hồi.');
+      invalidateRecruitment(queryClient);
+      queryClient.invalidateQueries({ queryKey: ['sourcing-deliveries', d?.jobId] });
+    },
+    onError: (err) => {
+      message.error(getApiErrorMessage(err, 'Không thể giao CV cho khách hàng.'));
+    },
+  });
+
+  // Client accept/reject decision mutation
+  const clientDecisionMutation = useMutation({
+    mutationFn: (variables: { decision: 'ACCEPTED' | 'REJECTED'; reasonCode?: string; note?: string }) =>
+      sourcingApi.decideDelivery(d!.jobId, sourcingDelivery!.deliveryId, variables),
+    onSuccess: (res, vars) => {
+      message.success(vars.decision === 'ACCEPTED' ? 'Đã chấp nhận CV thành công.' : 'Đã từ chối CV với lý do hợp lệ.');
+      invalidateRecruitment(queryClient);
+      queryClient.invalidateQueries({ queryKey: ['sourcing-deliveries', d?.jobId] });
+      setOpen(null);
+    },
+    onError: (err) => {
+      message.error(getApiErrorMessage(err, 'Không thể thực hiện phản hồi cho CV này.'));
+    },
+  });
 
   /** Runs one write; closes the modal and refreshes everything on success. */
   const run = useMutation({
@@ -314,6 +362,12 @@ export const ApplicationWorkbench: React.FC<{
         );
       case 'notStarted':
         return run.mutate(() => clientActionsApi.markNotStarted(d.applicationId, { reason: v.reason.trim(), concurrencyToken: token }));
+      case 'clientRejectSourcing':
+        return clientDecisionMutation.mutate({
+          decision: 'REJECTED',
+          reasonCode: v.reasonCode,
+          note: trim(v.note),
+        });
     }
   };
 
@@ -346,6 +400,59 @@ export const ApplicationWorkbench: React.FC<{
   if (has('CREATE_OFFER')) btn('offer', 'Tạo offer', () => openModal('offer'), { type: 'primary' });
   if (has('SEND_OFFER')) btn('send', 'Gửi offer', confirmSendOffer, { type: 'primary' });
   if (has('CONFIRM_PLACEMENT')) btn('place', 'Xác nhận đã đi làm', () => openModal('startWork'), { type: 'primary' });
+
+  // MF-03: CV_SOURCING delivery actions
+  if (isCvSourcing) {
+    if (audience === 'hr') {
+      if (sourcingDelivery) {
+        const scfg = SOURCING_STATUS_CONFIG[sourcingDelivery.status];
+        btn('sourcingStatus', `CV Sourcing: ${scfg?.label || sourcingDelivery.status}`, () => {}, {
+          icon: <CheckOutlined />,
+        });
+      } else if (d?.status === 'SHORTLISTED') {
+        btn(
+          'deliverCv',
+          'Giao CV cho khách hàng',
+          () => {
+            modal.confirm({
+              title: 'Giao CV cho khách hàng?',
+              content: `Bàn giao hồ sơ của ${d.candidateFullName} cho Doanh nghiệp. Doanh nghiệp sẽ có 7 ngày để xem xét và phản hồi.`,
+              okText: 'Giao CV cho khách hàng',
+              cancelText: 'Hủy',
+              okButtonProps: { loading: deliverMutation.isPending },
+              onOk: () => deliverMutation.mutateAsync(),
+            });
+          },
+          { type: 'primary', icon: <SendOutlined /> }
+        );
+      }
+    } else if (audience === 'client' && sourcingDelivery && sourcingDelivery.status === 'DELIVERED') {
+      const deadline = getSourcingReviewDeadlineInfo(sourcingDelivery);
+      if (!deadline.isExpired) {
+        btn(
+          'clientRejectCv',
+          'Từ chối CV',
+          () => openModal('clientRejectSourcing'),
+          { danger: true, icon: <CloseOutlined /> }
+        );
+        btn(
+          'clientAcceptCv',
+          'Chấp nhận CV',
+          () => {
+            modal.confirm({
+              title: 'Xác nhận chấp nhận CV?',
+              content: `Xác nhận hồ sơ của ${d?.candidateFullName} phù hợp với yêu cầu tuyển dụng.`,
+              okText: 'Chấp nhận CV',
+              cancelText: 'Hủy',
+              okButtonProps: { loading: clientDecisionMutation.isPending },
+              onOk: () => clientDecisionMutation.mutateAsync({ decision: 'ACCEPTED' }),
+            });
+          },
+          { type: 'primary', icon: <CheckOutlined /> }
+        );
+      }
+    }
+  }
 
   const watchedResult = Form.useWatch('result', form);
 
@@ -399,6 +506,73 @@ export const ApplicationWorkbench: React.FC<{
               </div>
             )}
           </Panel>
+
+          {/* Sourcing Delivery Info (MF-03) */}
+          {isCvSourcing && (
+            <Panel title="Dịch vụ CV Sourcing (MF-03)">
+              {sourcingDelivery ? (
+                <div className="space-y-2 text-sm">
+                  <Row label="Trạng thái bàn giao">
+                    <Tag color={SOURCING_STATUS_CONFIG[sourcingDelivery.status]?.tagColor} className="m-0 font-medium">
+                      {SOURCING_STATUS_CONFIG[sourcingDelivery.status]?.label || sourcingDelivery.status}
+                    </Tag>
+                  </Row>
+                  <Row label="Bàn giao lúc">{fmt(sourcingDelivery.deliveredAt)}</Row>
+                  <Row label="Thời hạn phản hồi">
+                    <span>
+                      {fmt(sourcingDelivery.reviewDueAt)}
+                      {sourcingDelivery.status === 'DELIVERED' && (
+                        <span className="ml-2 font-semibold text-amber-700">
+                          ({getSourcingReviewDeadlineInfo(sourcingDelivery).countdownText})
+                        </span>
+                      )}
+                    </span>
+                  </Row>
+                  {sourcingDelivery.rejectReasonCode && (
+                    <Row label="Lý do từ chối">
+                      <span className="text-red-700 font-medium">
+                        {getRejectReasonLabel(sourcingDelivery.rejectReasonCode)}
+                      </span>
+                      {sourcingDelivery.rejectNote && (
+                        <div className="text-xs text-slate-500 italic mt-0.5">"{sourcingDelivery.rejectNote}"</div>
+                      )}
+                    </Row>
+                  )}
+                  {sourcingDelivery.decidedAt && (
+                    <Row label="Thời điểm phản hồi">{fmt(sourcingDelivery.decidedAt)}</Row>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                  <span className="text-slate-600">
+                    {d.status === 'SHORTLISTED'
+                      ? 'Hồ sơ đã đạt sàng lọc và sẵn sàng bàn giao cho Doanh nghiệp.'
+                      : 'Hồ sơ chưa bàn giao cho Doanh nghiệp.'}
+                  </span>
+                  {audience === 'hr' && d.status === 'SHORTLISTED' && (
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<SendOutlined />}
+                      loading={deliverMutation.isPending}
+                      onClick={() => {
+                        modal.confirm({
+                          title: 'Giao CV cho khách hàng?',
+                          content: `Bàn giao hồ sơ của ${d.candidateFullName} cho Doanh nghiệp. Doanh nghiệp sẽ có 7 ngày để chấp nhận hoặc từ chối CV.`,
+                          okText: 'Giao CV cho khách hàng',
+                          cancelText: 'Hủy',
+                          okButtonProps: { loading: deliverMutation.isPending },
+                          onOk: () => deliverMutation.mutateAsync(),
+                        });
+                      }}
+                    >
+                      Giao CV ngay
+                    </Button>
+                  )}
+                </div>
+              )}
+            </Panel>
+          )}
 
           {/* Interview / offer / placement progress (MF-04) */}
           {(d.interviews.length > 0 || d.offers.length > 0 || d.placement) && (
@@ -580,6 +754,42 @@ export const ApplicationWorkbench: React.FC<{
                     rules={[{ required: getFieldValue('reasonCode') === 'OTHER', whitespace: true, message: 'Lý do khác cần ghi chú.' }, { max: 2000, message: 'Tối đa 2000 ký tự.' }]}
                   >
                     <Input.TextArea rows={3} showCount maxLength={2000} />
+                  </Form.Item>
+                )}
+              </Form.Item>
+            </>
+          )}
+
+          {open === 'clientRejectSourcing' && (
+            <>
+              <p className="mt-0 text-sm text-slate-600">
+                Chọn lý do từ chối hồ sơ ứng viên theo quy định dịch vụ CV Sourcing.
+              </p>
+              <Form.Item
+                name="reasonCode"
+                label="Lý do từ chối"
+                rules={[{ required: true, message: 'Vui lòng chọn một lý do từ chối.' }]}
+              >
+                <Select
+                  options={SOURCING_REJECT_REASONS.map((r) => ({ value: r.value, label: r.label }))}
+                  placeholder="Chọn lý do từ chối"
+                />
+              </Form.Item>
+              <Form.Item noStyle shouldUpdate={(a, b) => a.reasonCode !== b.reasonCode}>
+                {({ getFieldValue }) => (
+                  <Form.Item
+                    name="note"
+                    label={getFieldValue('reasonCode') === 'OTHER' ? 'Ghi chú (bắt buộc)' : 'Ghi chú (không bắt buộc)'}
+                    rules={[
+                      {
+                        required: getFieldValue('reasonCode') === 'OTHER',
+                        whitespace: true,
+                        message: 'Lý do khác cần ghi chú cụ thể để HR Connect xác minh.',
+                      },
+                      { max: 2000, message: 'Tối đa 2000 ký tự.' },
+                    ]}
+                  >
+                    <Input.TextArea rows={3} showCount maxLength={2000} placeholder="Nhập ghi chú chi tiết..." />
                   </Form.Item>
                 )}
               </Form.Item>
