@@ -88,7 +88,7 @@ Trang `AdminSettingsPage.tsx` tự hiện theo danh sách khóa; chỉ cần th�
 
 ## E7. 🟠 Tuyển thay thế (mục 1.2, 1.3)
 
-> **Đã có thiết kế chi tiết (15/10):** [`mf05-thiet-ke-suat-thay-the.md`](mf05-thiet-ke-suat-thay-the.md). Thiết kế đó **thay thế** phần mô tả bên dưới: dùng bảng `replacement_slot` thay cho `replacement_for_placement_id` / `openSlots`; chỉ thay 1 lần mỗi khoản phí; suất chỉ mở khi Client đã trả phí; có hạn chót cấu hình được. Phần MF-02: [`MF02/mf02-b4-gan-suat-thay-the.md`](../MF02/mf02-b4-gan-suat-thay-the.md); phần MF-04: [`MF04/mf04-lap-suat-thay-the.md`](../MF04/mf04-lap-suat-thay-the.md).
+> **Đã có thiết kế chi tiết (15/10):** [`mf05-thiet-ke-suat-thay-the.md`](mf05-thiet-ke-suat-thay-the.md). Thiết kế đó **thay thế** phần mô tả bên dưới: dùng bảng `replacement_slot` thay cho `replacement_for_placement_id` / `openSlots`; chỉ thay 1 lần mỗi khoản phí; suất chỉ mở khi Client đã trả phí; có hạn chót cấu hình được. Phần MF-02 (B4) đã xong 16/10; phần MF-04: [`MF04/mf04-lap-suat-thay-the.md`](../MF04/mf04-lap-suat-thay-the.md).
 
 **Khi HR xác nhận ứng viên nghỉ trước 30 ngày** (`POST /api/v1/placements/{id}/resignation/resolve` với `confirm`):
 1. Bảo hành `VOIDED`, hoa hồng `CANCELLED` (đã có).
