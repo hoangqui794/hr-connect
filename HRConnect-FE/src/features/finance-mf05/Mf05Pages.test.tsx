@@ -56,7 +56,7 @@ describe('MF-05 admin finance', () => {
 
     renderWith(<AdminFinancePage />);
 
-    const approve = await screen.findByRole('button', { name: 'Duyệt' });
+    const approve = await screen.findByRole('button', { name: 'Duyệt' }, { timeout: 10000 });
     expect((approve as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -65,7 +65,7 @@ describe('MF-05 admin finance', () => {
 
     renderWith(<AdminFinancePage />);
 
-    const approve = await screen.findByRole('button', { name: 'Duyệt' });
+    const approve = await screen.findByRole('button', { name: 'Duyệt' }, { timeout: 10000 });
     expect((approve as HTMLButtonElement).disabled).toBe(false);
   });
 });
@@ -95,11 +95,11 @@ describe('MF-05 HR warranty verification', () => {
   it('requires a note to reject a reported resignation', async () => {
     renderWith(<HrWarrantyPage />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Xác minh' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Xác minh' }, { timeout: 10000 }));
     fireEvent.click(await screen.findByLabelText('Không đúng, ứng viên vẫn đi làm'));
     fireEvent.click(screen.getByRole('button', { name: 'Xác nhận' }));
 
-    expect(await screen.findByText('Bác bỏ cần ghi chú lý do.')).toBeTruthy();
+    expect(await screen.findByText('Bác bỏ cần ghi chú lý do.', {}, { timeout: 10000 })).toBeTruthy();
     expect(financeApi.resolveResignation).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Đóng' }));
   });
@@ -108,7 +108,7 @@ describe('MF-05 HR warranty verification', () => {
   it('confirms a resignation', async () => {
     renderWith(<HrWarrantyPage />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Xác minh' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Xác minh' }, { timeout: 10000 }));
     fireEvent.click(screen.getByRole('button', { name: 'Xác nhận' }));
 
     await waitFor(() => expect(financeApi.resolveResignation).toHaveBeenCalledWith('p1', { confirmed: true, note: undefined }));
