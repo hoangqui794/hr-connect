@@ -78,13 +78,13 @@ Cập nhật `PUT /api/v1/companies/profile/me` và đăng ký Client nhận `in
 
 **Không trả** `TaxCode`, thông tin người dùng công ty hay dữ liệu nội bộ. Dùng lại `PublicCompanyDto` đã có, bổ sung `industry` (`id`, `name`), `companySize`, `activeJobCount`.
 
-Job trong hồ sơ công ty phải tuân đúng quy tắc hiển thị hiện có (`JobAccessPolicy`): Guest chỉ thấy `PUBLIC`; không lộ job `PARTNER_ONLY` / `INTERNAL_ONLY`.
+Job trong hồ sơ công ty phải tuân đúng quy tắc hiển thị hiện có (`JobAccessPolicy`): Guest chỉ thấy job thuộc Service Type mà vai trò Candidate có `can_view`.
 
 ### Nghiệm thu B
 
 1. Công ty chưa `VERIFIED` không có trong danh bạ, mở chi tiết → `404`.
 2. Lọc theo ngành cấp 1 trả cả công ty thuộc ngành cấp 2/3 bên dưới.
-3. Hồ sơ công ty không có `taxCode`; job `PARTNER_ONLY` không xuất hiện với Guest.
+3. Hồ sơ công ty không có `taxCode`; job thuộc Service Type mà Candidate không có `can_view` không xuất hiện với Guest.
 4. Admin đặt 3 công ty nổi bật → `featured` trả đúng thứ tự.
 
 ---

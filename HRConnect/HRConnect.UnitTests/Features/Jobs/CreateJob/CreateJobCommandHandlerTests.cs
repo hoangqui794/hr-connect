@@ -47,7 +47,6 @@ public class CreateJobCommandHandlerTests
             SalaryNegotiable = true,
             SalaryNote = "  Thỏa thuận theo năng lực khi phỏng vấn.  ",
             CurrencyCode = "vnd",
-            Visibility = "public",
             Requirements =
             [
                 new CreateJobRequirementRequest
@@ -217,34 +216,6 @@ public class CreateJobCommandHandlerTests
         var action = () => _handler.Handle(command, CancellationToken.None);
 
         await action.Should().ThrowAsync<BadRequestException>();
-        _unitOfWork.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Theory]
-    [InlineData(ServiceTypeCodes.CvApplication, JobVisibilities.PartnerOnly)]
-    [InlineData(ServiceTypeCodes.CvSourcing, JobVisibilities.Public)]
-    [InlineData(ServiceTypeCodes.HeadhuntCod, JobVisibilities.Public)]
-    public async Task Handle_ShouldRejectVisibilityOutsideServiceTypeMatrix(string serviceTypeCode, string visibility)
-    {
-        var userId = Guid.NewGuid();
-        var serviceTypeId = Guid.NewGuid();
-        _companyUserRepository
-            .Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CreateActiveCompanyUser(userId, Guid.NewGuid()));
-        _jobRepository
-            .Setup(repository => repository.GetActiveServiceTypeCodeAsync(serviceTypeId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(serviceTypeCode);
-
-        var action = () => _handler.Handle(new CreateJobCommand
-        {
-            UserId = userId,
-            ServiceTypeId = serviceTypeId,
-            Visibility = visibility
-        }, CancellationToken.None);
-
-        await action.Should().ThrowAsync<BadRequestException>();
-        _jobRepository.Verify(repository => repository.AddAsync(
-            It.IsAny<Job>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

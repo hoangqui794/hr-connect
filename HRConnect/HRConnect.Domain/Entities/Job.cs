@@ -56,11 +56,6 @@ public partial class Job
 
     public Guid ConcurrencyToken { get; set; }
 
-    /// <summary>
-    /// D07-ready job visibility. Exact actor permissions remain a business-rule/authorization concern.
-    /// </summary>
-    public string Visibility { get; set; } = null!;
-
     public string? StatusReason { get; set; }
  
     /// <summary>

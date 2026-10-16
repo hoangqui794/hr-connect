@@ -27,10 +27,4 @@ public static class JobHandlerGuards
         if (!allowed.Contains(job.Status, StringComparer.OrdinalIgnoreCase))
             throw new ConflictException($"Không thể thực hiện thao tác khi công việc ở trạng thái {job.Status}.");
     }
-
-    public static void RequireVisibilityAllowed(string serviceTypeCode, string visibility)
-    {
-        if (!JobAccessPolicy.IsVisibilityAllowedForServiceType(serviceTypeCode, visibility))
-            throw new BadRequestException(JobAccessPolicy.VisibilityMatrixError(serviceTypeCode));
-    }
 }

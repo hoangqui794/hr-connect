@@ -127,7 +127,6 @@ public sealed class SubmissionConsentExpiryWorkerTests
             Title = "Backend Developer",
             CurrencyCode = "VND",
             Status = "ACTIVE",
-            Visibility = "PUBLIC",
             CreatedAt = now,
             UpdatedAt = now
         };

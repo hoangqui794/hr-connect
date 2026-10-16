@@ -32,7 +32,7 @@ GET /api/v1/jobs
 - Yêu cầu đăng nhập và permission `job.view`.
 - Chỉ trả Job `ACTIVE`.
 - Lọc theo role, Service Type và visibility.
-- Candidate không nhìn thấy Job `PARTNER_ONLY` hoặc Job thuộc Service Type không cho Candidate xem.
+- Candidate không nhìn thấy Job thuộc Service Type không cho Candidate xem (`can_view`).
 - Đã hỗ trợ `search`, `location`, `employmentType`, `serviceTypeId`, `salaryMin`, `salaryMax`, `page`, `pageSize`.
 
 ### 2.2 Guest đã có API Job riêng
@@ -43,7 +43,7 @@ GET /api/v1/public/jobs
 
 - Không cần đăng nhập.
 - Cố định quyền xem theo role `CANDIDATE`.
-- Chỉ trả Job `ACTIVE`, `PUBLIC` và Service Type có `can_view` cho Candidate.
+- Chỉ trả Job `ACTIVE` thuộc Service Type có `can_view` cho Candidate.
 - Có rate limit `public-read`.
 
 ### 2.3 Chi tiết Job đã kiểm tra phạm vi hiển thị
@@ -311,7 +311,7 @@ Test BE bắt buộc:
 
 1. Guest đọc Job Candidate công khai nhận đúng public company DTO.
 2. Candidate đăng nhập nhận cùng dữ liệu công khai, không nhận thêm dữ liệu nội bộ.
-3. Job `PARTNER_ONLY`, `INTERNAL_ONLY`, chưa duyệt, tạm dừng hoặc đã đóng không làm lộ Company qua quyền Guest.
+3. Job ngoài quyền `can_view` của Candidate, chưa duyệt, tạm dừng hoặc đã đóng không làm lộ Company qua quyền Guest.
 4. Response JSON không chứa `taxCode`, `roleInCompany`, `isPrimaryContact` hoặc thông tin người liên hệ.
 5. Company thiếu logo/website/address/description vẫn trả `200` với các trường nullable đúng schema.
 6. Website có scheme không hợp lệ được trả `null` hoặc bị loại khi cập nhật profile.
@@ -361,13 +361,13 @@ Số Application, CV, consent chờ xác nhận thuộc MF-02. MF-01 chỉ có t
 
 ## 7. Kịch bản test tay bàn giao
 
-1. Guest chỉ thấy `CV_APPLICATION`, `PUBLIC`, `ACTIVE` mà Candidate được phép xem.
+1. Guest chỉ thấy Job `ACTIVE` thuộc Service Type mà Candidate được phép xem.
 2. Candidate đăng nhập thấy đúng Job theo Service Type/role.
-3. Affiliate không dùng response Candidate để thấy Job `INTERNAL_ONLY`.
+3. Affiliate không dùng response Candidate để thấy Job ngoài quyền `can_view` của mình.
 4. Search theo tên công ty và Skill không trả Job trùng.
 5. Sort theo mới nhất và lương hoạt động ổn định khi chuyển trang.
 6. Job quá deadline vẫn xem được theo quyết định business nhưng không thể nộp hồ sơ.
 7. Candidate lưu Job, đăng nhập ở trình duyệt khác vẫn thấy Job đã lưu.
 8. Job đã đóng trong danh sách Saved Jobs hiển thị “Đã ngừng nhận hồ sơ” và không có nút ứng tuyển.
 
-Tài liệu thiếu sót MF-01 toàn luồng tạo/duyệt/công bố Job nằm tại `docs/mf01-gaps.md`. Tài liệu này chỉ bổ sung nhu cầu backend phát sinh từ trải nghiệm Candidate.
+Các thiếu sót MF-01 toàn luồng đã được xử lý xong (16/10/2026). Tài liệu này chỉ bổ sung nhu cầu backend phát sinh từ trải nghiệm Candidate.

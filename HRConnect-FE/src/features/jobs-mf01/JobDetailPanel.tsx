@@ -31,7 +31,6 @@ import {
   JOB_STATUS,
   REASON_CODE_LABEL,
   SERVICE_TYPE_LABEL,
-  VISIBILITY_LABEL,
   formatDate,
   formatDateTime,
   formatExperience,
@@ -161,9 +160,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             </Tag>
           )}
           {service && !isApplicant && <Tag className="m-0 font-medium">{service.label}</Tag>}
-          {job.status === 'ACTIVE' && !isApplicant && (
-            <Tag className="m-0">{VISIBILITY_LABEL[job.visibility]?.label ?? 'Công khai'}</Tag>
-          )}
           {!isApplicant && job.status === 'PENDING_PAYMENT' && (
             <Tag color="warning" className="m-0 font-medium">
               Chờ thanh toán phí đăng tin

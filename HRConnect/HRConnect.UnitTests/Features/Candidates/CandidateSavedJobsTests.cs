@@ -32,7 +32,6 @@ public class CandidateSavedJobsTests
         {
             JobId = Guid.NewGuid(),
             Status = JobStatuses.Active,
-            Visibility = JobVisibilities.Public,
             ServiceTypeId = Guid.NewGuid(),
             Title = "DevOps Engineer"
         };
@@ -62,7 +61,6 @@ public class CandidateSavedJobsTests
         {
             JobId = Guid.NewGuid(),
             Status = JobStatuses.Active,
-            Visibility = JobVisibilities.Public,
             ServiceTypeId = Guid.NewGuid(),
             Title = "DevOps Engineer"
         };
@@ -88,8 +86,7 @@ public class CandidateSavedJobsTests
         var job = new Job
         {
             JobId = Guid.NewGuid(),
-            Status = JobStatuses.Active,
-            Visibility = JobVisibilities.PartnerOnly, // Not visible to candidate
+            Status = JobStatuses.Active, // Not visible to candidate
             ServiceTypeId = Guid.NewGuid(),
             Title = "Partner Only Job"
         };

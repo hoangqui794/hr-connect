@@ -73,7 +73,6 @@ public class CandidateJobQueryEnhancementTests
 
         _jobs.Setup(x => x.GetVisibleJobsAsync(
                 It.IsAny<IReadOnlyCollection<string>>(),
-                It.IsAny<IReadOnlyCollection<string>>(),
                 false,
                 null,
                 null,
@@ -216,7 +215,6 @@ public class CandidateJobQueryEnhancementTests
         CurrencyCode = "VND",
         Quantity = 2,
         Status = status,
-        Visibility = JobVisibilities.Public,
         PostedAt = DateTime.UtcNow,
         CreatedAt = DateTime.UtcNow,
         UpdatedAt = DateTime.UtcNow,

@@ -19,7 +19,7 @@ public sealed class GetJobDetailQueryHandler : IRequestHandler<GetJobDetailQuery
         var member = await _members.GetByUserIdAsync(request.UserId, ct);
         var isOwner = member?.CompanyId == job.CompanyId;
         var canViewByPolicy = JobAccessPolicy.CanViewDetail(
-            job, isOwner, request.HasInternalAccess, request.RoleCodes);
+            job, isOwner, request.HasInternalAccess);
         var canView = canViewByPolicy &&
                       (isOwner || request.HasInternalAccess ||
                        await _jobs.CanAnyRoleViewJobAsync(job.ServiceTypeId, request.RoleCodes, ct));

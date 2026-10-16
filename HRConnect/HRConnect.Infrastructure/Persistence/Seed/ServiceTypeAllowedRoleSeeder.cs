@@ -10,13 +10,13 @@ public static class ServiceTypeAllowedRoleSeeder
     [
         ("HEADHUNT_COD", "AFFILIATE_RECRUITER", true, true),
         ("HEADHUNT_COD", "CANDIDATE", false, false),
-        ("HEADHUNT_COD", "INTERNAL_HR", true, true),
+        ("HEADHUNT_COD", "INTERNAL_HR", true, false),
         ("CV_APPLICATION", "CANDIDATE", true, true),
         ("CV_APPLICATION", "AFFILIATE_RECRUITER", false, false),
         ("CV_APPLICATION", "INTERNAL_HR", true, false),
         ("CV_SOURCING", "CANDIDATE", false, false),
         ("CV_SOURCING", "AFFILIATE_RECRUITER", true, true),
-        ("CV_SOURCING", "INTERNAL_HR", true, true)
+        ("CV_SOURCING", "INTERNAL_HR", true, false)
     ];
 
     public static async Task SeedAsync(

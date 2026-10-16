@@ -91,12 +91,6 @@ public class CreateJobCommandValidator : AbstractValidator<CreateJobCommand>
                 .WithMessage("Số năm kinh nghiệm tối đa phải lớn hơn hoặc bằng số năm kinh nghiệm tối thiểu.");
         });
 
-        RuleFor(x => x.Visibility)
-            .Cascade(CascadeMode.Stop)
-            .NotEmpty().WithMessage("Chế độ hiển thị không được để trống.")
-            .Must(value => JobVisibilities.All.Contains(value.Trim().ToUpperInvariant()))
-            .WithMessage("Chế độ hiển thị phải là PUBLIC, PARTNER_ONLY hoặc INTERNAL_ONLY.");
-
         When(x => x.ApplicationDeadline.HasValue, () =>
         {
             RuleFor(x => x.ApplicationDeadline)

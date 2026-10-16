@@ -30,7 +30,6 @@ const job = {
   currencyCode: 'VND',
   quantity: 1,
   status: 'ACTIVE',
-  visibility: 'PARTNER_ONLY',
   statusReason: null,
   postedAt: null,
   closedAt: null,

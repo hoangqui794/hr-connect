@@ -114,7 +114,6 @@ public class JobRepository : IJobRepository
 
     public async Task<(IReadOnlyList<Job> Items, int TotalCount)> GetVisibleJobsAsync(
         IReadOnlyCollection<string> roleCodes,
-        IReadOnlyCollection<string> allowedVisibilities,
         bool bypassServiceTypeRoleCheck,
         string? search,
         string? location,
@@ -134,7 +133,6 @@ public class JobRepository : IJobRepository
 
         var query = _context.Jobs.AsNoTracking()
             .Where(job => job.Status == JobStatuses.Active &&
-                          allowedVisibilities.Contains(job.Visibility) &&
                           (bypassServiceTypeRoleCheck || allowedServiceTypeIds.Contains(job.ServiceTypeId)));
 
         if (!string.IsNullOrWhiteSpace(search))

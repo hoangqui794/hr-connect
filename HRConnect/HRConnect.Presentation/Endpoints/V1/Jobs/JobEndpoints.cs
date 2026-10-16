@@ -46,7 +46,7 @@ public static class JobEndpoints
                 sortBy, sortDirection), ct))))
         .WithName("GetGuestCandidateJobs")
         .WithSummary("Guest tìm Job Candidate được phép xem")
-        .WithDescription("Không cần đăng nhập. API cố định phạm vi CANDIDATE: chỉ trả Job ACTIVE, PUBLIC và thuộc Service Type có can_view cho role CANDIDATE. Không trả Job PARTNER_ONLY dành cho Affiliate. Hỗ trợ sắp xếp sortBy=POSTED_AT|SALARY và sortDirection=DESC|ASC.")
+        .WithDescription("Không cần đăng nhập. API cố định phạm vi CANDIDATE: chỉ trả Job ACTIVE thuộc Service Type có can_view cho role CANDIDATE (cấu hình trong service_type_allowed_role). Hỗ trợ sắp xếp sortBy=POSTED_AT|SALARY và sortDirection=DESC|ASC.")
         .RequireRateLimiting("public-read")
         .Produces<JobPageDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
@@ -158,7 +158,7 @@ public static class JobEndpoints
         }
         ).AllowAnonymous()
         .WithName("GetJobDetail").WithSummary("Lấy chi tiết Job")
-        .WithDescription("Guest được xem chi tiết theo đúng phạm vi Candidate. Trả về thông tin chi tiết Job kèm thông tin công khai đã lọc an toàn của doanh nghiệp (PublicCompanyDto). Job chỉ dành cho Affiliate hoặc Internal không được trả về cho Guest.")
+        .WithDescription("Guest được xem chi tiết theo đúng phạm vi Candidate. Trả về thông tin chi tiết Job kèm thông tin công khai đã lọc an toàn của doanh nghiệp (PublicCompanyDto). Job thuộc Service Type mà role CANDIDATE không có can_view thì không trả về cho Guest.")
         .Produces<JobDetailDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)

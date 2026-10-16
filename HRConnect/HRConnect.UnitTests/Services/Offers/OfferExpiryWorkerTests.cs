@@ -130,7 +130,6 @@ public sealed class OfferExpiryWorkerTests
             Title = "Backend Developer",
             CurrencyCode = "VND",
             Status = "ACTIVE",
-            Visibility = "PUBLIC",
             CreatedAt = now,
             UpdatedAt = now
         };

@@ -39,8 +39,6 @@ public class CreateJobCommand : IRequest<CreateJobResponse>
 
     public int Quantity { get; set; } = 1;
 
-    public string Visibility { get; set; } = "PUBLIC";
-
     public int? SourcingTarget { get; set; }
 
     public JobProposedTermsRequest? ProposedTerms { get; set; }
@@ -120,8 +118,6 @@ public class CreateJobData
     public int? MaxExperienceYears { get; set; }
 
     public string Status { get; set; } = string.Empty;
-
-    public string Visibility { get; set; } = string.Empty;
 
     public int RequirementCount { get; set; }
 
