@@ -1,61 +1,24 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Layout,
-  Badge,
-  Dropdown,
   Space,
   Button,
   Tag,
-  List,
 } from 'antd';
 import {
-  BellOutlined,
   CompassOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '@/stores/authStore';
-import { useAlertStore } from '@/stores/alertStore';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWorkspaceMenu';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 const { Header } = Layout;
 
 export const CandidateHeader: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuthStore();
-  const { alerts, unreadCount, markAllRead, dismissAlert } = useAlertStore();
-  const [notifOpen, setNotifOpen] = useState(false);
-
-  // Dynamic notification state from hrconnect_notifications filtered by currentUser.email
-  const [unreadNotifsCount, setUnreadNotifsCount] = useState<number>(0);
-  React.useEffect(() => {
-    const fetchNotifications = () => {
-      try {
-        const raw = localStorage.getItem('hrconnect_notifications');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            const currentEmail = user?.email?.toLowerCase().trim();
-            const filtered = parsed.filter((n: any) =>
-              !currentEmail || !n.recipientEmail || n.recipientEmail.toLowerCase().trim() === currentEmail
-            );
-            const unread = filtered.filter((n: any) => n.isRead === false).length;
-            setUnreadNotifsCount(unread);
-            return;
-          }
-        }
-      } catch (e) {
-        console.error('Failed to read hrconnect_notifications:', e);
-      }
-      setUnreadNotifsCount(0);
-    };
-
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 1500);
-    return () => clearInterval(interval);
-  }, [user?.email]);
 
   const isHomeActive = location.pathname === '/' || location.pathname === '/jobs';
   const isRecruiterActive = location.search.includes('mode=recruiters');
@@ -169,79 +132,7 @@ export const CandidateHeader: React.FC = () => {
         <LanguageSwitcher theme="light" size="middle" />
 
         {/* Chuông thông báo */}
-        <Dropdown
-          open={notifOpen}
-          onOpenChange={(open) => {
-            setNotifOpen(open);
-            if (open && unreadCount > 0) markAllRead();
-          }}
-          trigger={['click']}
-          dropdownRender={() => (
-            <div
-              style={{
-                background: '#ffffff',
-                borderRadius: 14,
-                boxShadow: '0 16px 36px -4px rgba(0, 0, 0, 0.08)',
-                width: 360,
-                maxHeight: 450,
-                overflow: 'hidden',
-                border: '1px solid rgba(226, 232, 240, 0.9)',
-              }}
-            >
-              <div
-                style={{
-                  padding: '14px 16px',
-                  borderBottom: '1px solid rgba(241, 245, 249, 0.9)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
-                  Thông báo ứng tuyển
-                </span>
-                <span
-                  style={{ color: '#2563eb', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
-                  onClick={() => useAlertStore.getState().clearAll()}
-                >
-                  Đánh dấu đã đọc
-                </span>
-              </div>
-              <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-                {alerts.length === 0 ? (
-                  <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8' }}>
-                    <BellOutlined style={{ fontSize: 24, marginBottom: 8, display: 'block' }} />
-                    Chưa có thông báo nào
-                  </div>
-                ) : (
-                  <List
-                    dataSource={alerts.slice(0, 10)}
-                    renderItem={(alert) => (
-                      <List.Item
-                        key={alert.id}
-                        style={{ padding: '12px 16px', background: alert.read ? 'transparent' : 'rgba(239, 246, 255, 0.9)', borderBottom: '1px solid rgba(241, 245, 249, 0.9)' }}
-                        actions={[
-                          <span key="dismiss" style={{ fontSize: 11, color: '#94a3b8', cursor: 'pointer' }} onClick={() => dismissAlert(alert.id)}>
-                            ✕
-                          </span>,
-                        ]}
-                      >
-                        <List.Item.Meta
-                          title={<span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{alert.title}</span>}
-                          description={<span style={{ fontSize: 12, color: '#64748b' }}>{alert.message}</span>}
-                        />
-                      </List.Item>
-                    )}
-                  />
-                )}
-              </div>
-            </div>
-          )}
-        >
-          <Badge count={unreadNotifsCount !== 0 ? unreadNotifsCount : unreadCount} size="small" offset={[-2, 2]}>
-            <Button type="text" shape="circle" icon={<BellOutlined style={{ fontSize: 18, color: '#475569' }} />} style={{ width: 36, height: 36 }} />
-          </Badge>
-        </Dropdown>
+        <NotificationBell />
 
         <CandidateWorkspaceMenu />
       </Space>
