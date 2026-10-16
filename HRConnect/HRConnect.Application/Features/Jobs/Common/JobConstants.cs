@@ -66,15 +66,6 @@ public static class JobReasonCodes
     public static readonly string[] CloseCodes = [ClosedPositionFilled, ClosedByClient, ClosedExpired, ClosedQuotaReached, ClosedOther];
 }
 
-public static class JobVisibilities
-{
-    public const string Public = "PUBLIC";
-    public const string PartnerOnly = "PARTNER_ONLY";
-    public const string InternalOnly = "INTERNAL_ONLY";
-
-    public static readonly string[] All = [Public, PartnerOnly, InternalOnly];
-}
-
 public static class JobPostingPackageCodes
 {
     public const string Free = "FREE";

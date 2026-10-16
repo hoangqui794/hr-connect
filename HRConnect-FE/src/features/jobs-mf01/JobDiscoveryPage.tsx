@@ -1,7 +1,7 @@
 /**
  * @file JobDiscoveryPage.tsx
  * @description MF-01 · Job discovery backed by GET /jobs. The backend decides which jobs each
- * role may see (visibility × service type), so the UI just renders the page it gets back.
+ * role may see (can_view per service type), so the UI just renders the page it gets back.
  * Filters live in the URL so results can be shared and survive Back.
  */
 import React, { useMemo } from 'react';

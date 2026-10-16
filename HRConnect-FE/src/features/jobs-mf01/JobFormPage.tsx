@@ -3,7 +3,7 @@
  * @description MF-01 · Client Company — create (POST /jobs) or edit (PUT /jobs/{id}) a job.
  * Form structured into 4 Ant Design Steps:
  *   Step 1: Chọn dịch vụ (Card selection with short description and read-only fee rule)
- *   Step 2: Mô tả công việc (Shared JD: title, quantity, visibility, desc, benefits, requirements, skills, salary, deadline)
+ *   Step 2: Mô tả công việc (Shared JD: title, quantity, desc, benefits, requirements, skills, salary, deadline)
  *   Step 3: Nhu cầu và chi phí (Dynamic by service: CV_APPLICATION posting packages; CV_SOURCING cvCount + proposed fee; HEADHUNT_COD proposed terms)
  *   Step 4: Xem lại và gửi duyệt (JD summary + "Về chi phí" summary + action buttons)
  *
@@ -58,7 +58,6 @@ import type {
   JobRequirementType,
   JobTemplate,
   JobUpsertInput,
-  JobVisibility,
   ProposedTerms,
   ServiceType,
   ServiceTypeCode,
@@ -69,9 +68,7 @@ import { useJobDetail, useJobMutations, usePostingEligibility, usePostingPackage
 import {
   EMPLOYMENT_TYPE_LABEL,
   SERVICE_TYPE_LABEL,
-  VISIBILITY_LABEL,
   REQUIREMENT_CATEGORY_OPTIONS,
-  allowedVisibilities,
   clientActions,
 } from './jobDisplay';
 import { JobTemplatePicker } from './JobTemplatePicker';
@@ -91,7 +88,6 @@ interface JobFormValues {
   // Step 2 (Shared JD)
   title: string;
   quantity: number;
-  visibility: JobVisibility;
   employmentType?: EmploymentType;
   location?: string;
   workingTime?: string;
@@ -130,7 +126,6 @@ interface JobFormValues {
 }
 
 const EMPTY_VALUES: Partial<JobFormValues> = {
-  visibility: 'PUBLIC',
   quantity: 1,
   currencyCode: 'VND',
   salaryNegotiable: false,
@@ -254,7 +249,6 @@ const toFormValues = (job: Job): JobFormValues => {
 
   return {
     serviceTypeId: job.serviceTypeId,
-    visibility: job.visibility,
     title: job.title || '',
     employmentType: job.employmentType ?? undefined,
     location: job.location ?? undefined,
@@ -334,7 +328,6 @@ const toInput = (v: JobFormValues, selectedCode?: ServiceTypeCode, postingPackag
 
   return {
     serviceTypeId: v.serviceTypeId,
-    visibility: v.visibility || (allowedVisibilities(selectedCode)[0] ?? 'PUBLIC'),
     title: v.title ? v.title.trim() : 'Tin tuyển dụng',
     employmentType: v.employmentType ?? null,
     location: trimOrNull(v.location),
@@ -394,9 +387,6 @@ const submitBlockers = (
   }
   if (!v.quantity || v.quantity < 1) {
     missing.push({ field: ['quantity'], message: 'Nhập số lượng cần tuyển (tối thiểu 1).', step: 1 });
-  }
-  if (!v.visibility) {
-    v.visibility = allowedVisibilities(serviceCode)[0] || 'PUBLIC';
   }
   if (!v.employmentType) {
     missing.push({ field: ['employmentType'], message: 'Chọn hình thức làm việc.', step: 1 });
@@ -548,7 +538,6 @@ export const JobFormPage: React.FC = () => {
     return undefined;
   }, [selectedServiceCode, effectiveServiceId, availableServiceTypes]);
 
-  const visibilityOptions = allowedVisibilities(effectiveCode);
   const hasMustHave = (watched.requirements ?? []).some((r) => r?.requirementType === 'MUST_HAVE' && r.content?.trim());
 
   // Load existing job details
@@ -568,14 +557,6 @@ export const JobFormPage: React.FC = () => {
       }
     }
   }, [existing.data, form, availableServiceTypes]);
-
-  // Keep visibility valid for selected service type
-  useEffect(() => {
-    const currentVis = form.getFieldValue('visibility') as JobVisibility | undefined;
-    if (effectiveCode && (!currentVis || !visibilityOptions.includes(currentVis))) {
-      form.setFieldValue('visibility', visibilityOptions[0]);
-    }
-  }, [effectiveCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const editable = !isEdit || (existing.data ? clientActions(existing.data.status).canEdit : false);
   const serviceTypeLocked = isEdit && existing.data?.status !== 'DRAFT';
@@ -644,11 +625,6 @@ export const JobFormPage: React.FC = () => {
         termsNote: undefined,
       });
 
-      const nextAllowedVis = allowedVisibilities(st.code);
-      const currVis = form.getFieldValue('visibility');
-      if (!nextAllowedVis.includes(currVis)) {
-        form.setFieldValue('visibility', nextAllowedVis[0]);
-      }
     };
 
     if (hasOldStep3) {
@@ -956,11 +932,8 @@ export const JobFormPage: React.FC = () => {
             validateTrigger="onBlur"
             className="space-y-5"
           >
-            {/* Hidden fields to keep serviceTypeId & visibility registered in Form */}
+            {/* Hidden field to keep serviceTypeId registered in Form */}
             <Form.Item name="serviceTypeId" hidden noStyle>
-              <Input type="hidden" />
-            </Form.Item>
-            <Form.Item name="visibility" hidden noStyle>
               <Input type="hidden" />
             </Form.Item>
 
@@ -1856,11 +1829,6 @@ export const JobFormPage: React.FC = () => {
                         {SERVICE_TYPE_LABEL[effectiveCode]?.label}
                       </Tag>
                     )}
-                    {watched.visibility && (
-                      <Tag className="m-0 text-xs">
-                        {VISIBILITY_LABEL[watched.visibility]?.label}
-                      </Tag>
-                    )}
                     {watched.employmentType && (
                       <Tag className="m-0 text-xs">
                         {EMPLOYMENT_TYPE_LABEL[watched.employmentType]}
@@ -2130,7 +2098,7 @@ export const JobFormPage: React.FC = () => {
           {/* Candidate-Facing Preview */}
           <div className="admin-surface overflow-hidden">
             <div className="border-0 border-b border-solid border-slate-100 px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-              Ứng viên sẽ thấy
+              Xem trước tin tuyển dụng
             </div>
             <div className="p-5">
               <div className="text-[16px] font-semibold leading-snug text-slate-900">

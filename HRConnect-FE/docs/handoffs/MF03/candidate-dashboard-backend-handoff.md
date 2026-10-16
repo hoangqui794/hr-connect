@@ -105,7 +105,7 @@ quy tắc mutation của module nguồn.
 
 - Chỉ Job `ACTIVE`, Candidate được phép xem và còn nhận hồ sơ theo MF-01.
 - Loại Job Candidate đã có Application hoặc Submission đang chờ theo MF-02.
-- Không trả `PARTNER_ONLY`/`INTERNAL_ONLY` cho Candidate.
+- Không trả Job thuộc Service Type mà Candidate không có `can_view`.
 - Nếu chưa có AI đủ tin cậy, trả Job mới phù hợp role với nguồn
   `RECENT_ELIGIBLE`, không tạo điểm AI giả.
 - Không trả raw model output, dispatcher error hoặc retry count.

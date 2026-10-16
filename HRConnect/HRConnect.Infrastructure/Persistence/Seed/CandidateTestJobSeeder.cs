@@ -371,15 +371,6 @@ public static class CandidateTestJobSeeder
 
             if (existingJob != null)
             {
-                var expectedVisibility = GetDefaultVisibilityForServiceType(jobDef.ServiceTypeCode);
-                if (existingJob.Visibility != expectedVisibility)
-                {
-                    existingJob.Visibility = expectedVisibility;
-                    await context.SaveChangesAsync(cancellationToken);
-                    logger?.LogInformation("Đã đồng bộ lại Visibility hợp lệ cho Job seed '{Title}' thành {Visibility}.",
-                        jobDef.Title, expectedVisibility);
-                }
-
                 logger?.LogInformation("Job seed '{Title}' đã tồn tại (JobId: {JobId}, Status: {Status}). Bỏ qua tạo mới để đảm bảo tính Idempotent.",
                     jobDef.Title, existingJob.JobId, existingJob.Status);
 
@@ -449,7 +440,6 @@ public static class CandidateTestJobSeeder
                 SalaryMax = jobDef.SalaryMax,
                 CurrencyCode = jobDef.CurrencyCode,
                 Quantity = jobDef.Quantity,
-                Visibility = GetDefaultVisibilityForServiceType(jobDef.ServiceTypeCode),
                 Status = JobStatuses.Active,
                 PostedAt = now,
                 ClosedAt = null,
@@ -580,13 +570,4 @@ public static class CandidateTestJobSeeder
             }
         }
     }
-
-    public static string GetDefaultVisibilityForServiceType(string serviceTypeCode) =>
-        serviceTypeCode switch
-        {
-            "CV_APPLICATION" => JobVisibilities.Public,
-            "CV_SOURCING" => JobVisibilities.PartnerOnly,
-            "HEADHUNT_COD" => JobVisibilities.PartnerOnly,
-            _ => JobVisibilities.InternalOnly
-        };
 }

@@ -54,8 +54,8 @@ public class ServiceTypeAllowedRoleSeederTests
         mappings.Should().ContainSingle(x => x.ServiceType.Code == "CV_SOURCING" &&
             x.Role.Code == "AFFILIATE_RECRUITER" && x.CanView && x.CanSubmit);
         mappings.Should().ContainSingle(x => x.ServiceType.Code == "CV_SOURCING" &&
-            x.Role.Code == "INTERNAL_HR" && x.CanView && x.CanSubmit);
+            x.Role.Code == "INTERNAL_HR" && x.CanView && !x.CanSubmit);
         mappings.Should().ContainSingle(x => x.ServiceType.Code == "HEADHUNT_COD" &&
-            x.Role.Code == "INTERNAL_HR" && x.CanView && x.CanSubmit);
+            x.Role.Code == "INTERNAL_HR" && x.CanView && !x.CanSubmit);
     }
 }

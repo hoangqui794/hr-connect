@@ -59,11 +59,8 @@ public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQue
         }
 
         var roleCodes = request.RoleCodes.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var allowedVisibilities = JobAccessPolicy.GetDiscoverableVisibilities(
-            roleCodes, request.HasInternalAccess);
         var (items, totalCount) = await _jobs.GetVisibleJobsAsync(
             roleCodes,
-            allowedVisibilities,
             request.HasInternalAccess,
             request.Search,
             request.Location,

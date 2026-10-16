@@ -26,7 +26,6 @@ public interface IJobRepository
 
     Task<(IReadOnlyList<Job> Items, int TotalCount)> GetVisibleJobsAsync(
         IReadOnlyCollection<string> roleCodes,
-        IReadOnlyCollection<string> allowedVisibilities,
         bool bypassServiceTypeRoleCheck,
         string? search,
         string? location,

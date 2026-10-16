@@ -52,7 +52,7 @@ public class SourcingDeliveryTests
         var job = new Job
         {
             JobId = Guid.NewGuid(), CompanyId = _companyId, ServiceTypeId = type.ServiceTypeId, ServiceType = type, CreatedBy = Guid.NewGuid(),
-            Title = "Senior .NET Developer", CurrencyCode = "VND", Quantity = 1, Status = status, Visibility = "PARTNER_ONLY",
+            Title = "Senior .NET Developer", CurrencyCode = "VND", Quantity = 1, Status = status,
             SourcingTarget = sourcingTarget, CreatedAt = now, UpdatedAt = now, ConcurrencyToken = Guid.NewGuid(),
         };
         _context.AddRange(type, job);

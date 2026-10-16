@@ -2708,15 +2708,6 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("now()");
 
-                    b.Property<string>("Visibility")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("visibility")
-                        .HasDefaultValueSql("'PUBLIC'::character varying")
-                        .HasComment("D07-ready job visibility. Exact actor permissions remain a business-rule/authorization concern.");
-
                     b.Property<int?>("WarrantyDays")
                         .HasColumnType("integer")
                         .HasColumnName("warranty_days");
@@ -2748,13 +2739,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex(new[] { "TemplateId" }, "idx_job_template_id");
 
-                    b.HasIndex(new[] { "Visibility", "Status", "PostedAt" }, "idx_job_visibility_status")
-                        .IsDescending(false, false, true);
-
-                    b.ToTable("job", "public", t =>
-                        {
-                            t.HasCheckConstraint("ck_job_visibility", "visibility IN ('PUBLIC','PARTNER_ONLY','INTERNAL_ONLY')");
-                        });
+                    b.ToTable("job", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.JobPostingFee", b =>

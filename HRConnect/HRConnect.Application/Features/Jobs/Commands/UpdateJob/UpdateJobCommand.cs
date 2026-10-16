@@ -25,7 +25,6 @@ public sealed class UpdateJobCommand : IRequest<JobActionResponse>
     public int? MaxExperienceYears { get; set; }
     public string CurrencyCode { get; set; } = "VND";
     public int Quantity { get; set; } = 1;
-    public string Visibility { get; set; } = "PUBLIC";
     public int? SourcingTarget { get; set; }
     public JobProposedTermsRequest? ProposedTerms { get; set; }
     [Obsolete("Use ProposedTerms.PricePerCv")] public decimal? SourcingPricePerCv { get; set; }

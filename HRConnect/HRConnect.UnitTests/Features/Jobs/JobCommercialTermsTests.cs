@@ -61,7 +61,6 @@ public class JobCommercialTermsTests
             UserId = userId,
             ServiceTypeId = serviceTypeId,
             Title = "Backend Engineer",
-            Visibility = "PARTNER_ONLY",
             SourcingTarget = 5,
             ProposedTerms = new JobProposedTermsRequest(
                 FeeMultiplier: null,
@@ -115,7 +114,6 @@ public class JobCommercialTermsTests
             Location = "Hanoi",
             EmploymentType = "FULL_TIME",
             Quantity = 1,
-            Visibility = "PARTNER_ONLY",
             SourcingTarget = 3,
             ProposedPricePerCv = 300_000m,
             ServiceTypeId = serviceTypeId,
@@ -172,7 +170,6 @@ public class JobCommercialTermsTests
             Location = "HCMC",
             EmploymentType = "FULL_TIME",
             Quantity = 1,
-            Visibility = "PARTNER_ONLY",
             SourcingTarget = null, // Invalid for CV_SOURCING
             ServiceTypeId = serviceTypeId,
             JobRequirements = [new JobRequirement { RequirementType = JobRequirementTypes.MustHave, Content = "Arch" }]
@@ -243,7 +240,6 @@ public class JobCommercialTermsTests
             Status = JobStatuses.PendingReview,
             Title = "Senior QA",
             CurrencyCode = "VND",
-            Visibility = "PARTNER_ONLY",
             SourcingTarget = 2,
             ServiceType = new ServiceType { Code = "CV_SOURCING", Name = "CV Sourcing" },
             Company = new Company { CompanyId = Guid.NewGuid(), CompanyName = "Tech Corp" }
@@ -399,7 +395,6 @@ public class JobCommercialTermsTests
             Title = "Senior Dev",
             CurrencyCode = "VND",
             Status = JobStatuses.Active,
-            Visibility = "PUBLIC",
             SourcingPricePerCv = 400_000m,
             DepositPercent = 25m,
             ReviewDays = 3,

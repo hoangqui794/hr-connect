@@ -116,7 +116,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         // 3. Phân quyền can_submit dựa trên Service Type và Roles
         if (!JobAccessPolicy.CanCandidateApply(job, request.RoleCodes))
         {
-            throw new ForbiddenException("Ứng viên chỉ được tự ứng tuyển vào công việc công khai.", "JOB_VISIBILITY_NOT_ALLOWED");
+            throw new ForbiddenException("Công việc hiện không nhận hồ sơ từ ứng viên.", "JOB_NOT_ACCEPTING_CANDIDATE");
         }
 
         // Check the permission of the actor used by this operation only. A multi-role

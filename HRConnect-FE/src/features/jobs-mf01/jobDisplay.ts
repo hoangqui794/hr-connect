@@ -10,7 +10,6 @@ import type {
   JobCloseReasonCode,
   JobRejectReasonCode,
   JobStatus,
-  JobVisibility,
   ServiceTypeCode,
 } from '@/types/api/jobs';
 
@@ -103,19 +102,6 @@ export const formatTemplateCategory = (category: string | null | undefined): str
   return JOB_TEMPLATE_CATEGORY_LABEL[category.toUpperCase()] || category;
 };
 
-
-export const VISIBILITY_LABEL: Record<JobVisibility, { label: string; summary: string }> = {
-  PUBLIC: { label: 'Công khai', summary: 'Hiển thị trên toàn hệ thống để ứng viên tìm kiếm và nộp hồ sơ.' },
-  PARTNER_ONLY: { label: 'Chỉ đối tác', summary: 'Chỉ hiển thị cho mạng lưới đối tác giới thiệu ứng viên.' },
-  INTERNAL_ONLY: { label: 'Nội bộ', summary: 'Chỉ doanh nghiệp và HR Connect theo dõi nội bộ.' },
-};
-
-/** Mirrors JobAccessPolicy.IsVisibilityAllowedForServiceType. */
-export const allowedVisibilities = (code: ServiceTypeCode | null | undefined): JobVisibility[] => {
-  if (code === 'CV_APPLICATION') return ['PUBLIC', 'INTERNAL_ONLY'];
-  if (code === 'CV_SOURCING' || code === 'HEADHUNT_COD') return ['PARTNER_ONLY', 'INTERNAL_ONLY'];
-  return [];
-};
 
 export const REJECT_REASONS: { value: JobRejectReasonCode; label: string }[] = [
   { value: 'REJECTED_INCOMPLETE_DESCRIPTION', label: 'Mô tả công việc chưa đầy đủ' },
