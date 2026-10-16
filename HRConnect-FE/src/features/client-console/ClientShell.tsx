@@ -69,29 +69,31 @@ export const ClientShell: React.FC = () => {
   return (
     <div className="client-console min-h-screen bg-[#F4F7FD] text-slate-900">
       <header className="sticky top-0 z-30 border-0 border-b border-solid border-slate-200/80 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-6 px-4 lg:px-8">
-          {compact && (
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              aria-label="Mở menu"
-              aria-expanded={menuOpen}
-              className="-ml-1 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-lg text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
-            >
-              <MenuOutlined />
-            </button>
-          )}
+        <div className="flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <div className="flex shrink-0 items-center gap-3">
+            {compact && (
+              <button
+                type="button"
+                onClick={() => setMenuOpen(true)}
+                aria-label="Mở menu"
+                aria-expanded={menuOpen}
+                className="-ml-1 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-lg text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+              >
+                <MenuOutlined />
+              </button>
+            )}
 
-          <NavLink to="/client/dashboard" className="flex shrink-0 items-center gap-2.5 no-underline" aria-label="HR Connect, về tổng quan">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-base font-black text-white shadow-md shadow-[#1E9EDB]/30">H</span>
-            <span className="leading-tight">
-              <span className="block text-[15px] font-bold text-slate-900">HR Connect</span>
-              <span className="hidden text-[11px] font-medium tracking-wide text-[color:var(--console-accent-strong)] sm:block">Doanh nghiệp tuyển dụng</span>
-            </span>
-          </NavLink>
+            <NavLink to="/client/dashboard" className="flex shrink-0 items-center gap-2.5 no-underline" aria-label="HR Connect, về tổng quan">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-base font-black text-white shadow-md shadow-[#1E9EDB]/30">H</span>
+              <span className="leading-tight">
+                <span className="block text-[15px] font-bold text-slate-900">HR Connect</span>
+                <span className="hidden text-[11px] font-medium tracking-wide text-[color:var(--console-accent-strong)] sm:block">Doanh nghiệp tuyển dụng</span>
+              </span>
+            </NavLink>
+          </div>
 
           {!compact && (
-            <nav aria-label="Điều hướng chính" className="ml-2 flex items-center gap-1 rounded-full bg-slate-50 p-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
+            <nav aria-label="Điều hướng chính" className="flex items-center gap-1 rounded-full bg-slate-50 p-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
               {NAV.map((n) => (
                 <NavLink key={n.to} to={n.to} className={linkClass(isActive(n.to), 'muted' in n && n.muted)} aria-current={isActive(n.to) ? 'page' : undefined}>
                   {n.label}
@@ -100,7 +102,7 @@ export const ClientShell: React.FC = () => {
             </nav>
           )}
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <Button
               type="primary"
               icon={<PlusOutlined />}
