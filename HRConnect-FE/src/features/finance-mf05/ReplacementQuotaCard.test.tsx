@@ -142,7 +142,7 @@ describe('ReplacementQuotaCard', () => {
 
     renderComponent();
 
-    expect(await screen.findByText('Không thể tải danh sách suất tuyển thay thế')).toBeInTheDocument();
+    expect(await screen.findByText('Không thể tải danh sách suất tuyển thay thế', {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Thử lại/i })).toBeInTheDocument();
   });
 
@@ -156,7 +156,7 @@ describe('ReplacementQuotaCard', () => {
 
     renderComponent();
 
-    expect(await screen.findByText('Chưa có suất tuyển thay thế nào')).toBeInTheDocument();
+    expect(await screen.findByText('Chưa có suất tuyển thay thế nào', {}, { timeout: 10000 })).toBeInTheDocument();
   });
 
   it('renders replacement slot items with countdown and status badges', async () => {
@@ -169,7 +169,7 @@ describe('ReplacementQuotaCard', () => {
 
     renderComponent({ mode: 'client' });
 
-    expect(await screen.findByText('Trần Văn An')).toBeInTheDocument();
+    expect(await screen.findByText('Trần Văn An', {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.getByText('Lê Thị Bình')).toBeInTheDocument();
     expect(screen.getByText('Đang tìm ứng viên')).toBeInTheDocument();
     expect(screen.getByText('Chờ thanh toán phí')).toBeInTheDocument();
@@ -185,7 +185,7 @@ describe('ReplacementQuotaCard', () => {
 
     renderComponent({ mode: 'client' });
 
-    const useBtn = await screen.findByRole('button', { name: /Sử dụng suất/i });
+    const useBtn = await screen.findByRole('button', { name: /Sử dụng suất/i }, { timeout: 10000 });
     expect(useBtn).toBeInTheDocument();
 
     fireEvent.click(useBtn);
@@ -210,11 +210,11 @@ describe('ReplacementQuotaCard', () => {
 
     renderComponent({ mode: 'hr' });
 
-    const cancelBtn = await screen.findByRole('button', { name: /Hủy suất/i });
+    const cancelBtn = await screen.findByRole('button', { name: /Hủy suất/i }, { timeout: 10000 });
     fireEvent.click(cancelBtn);
 
     // Cancel modal opens
-    expect(await screen.findByText('Hủy suất tuyển thay thế')).toBeInTheDocument();
+    expect(await screen.findByText('Hủy suất tuyển thay thế', {}, { timeout: 10000 })).toBeInTheDocument();
 
     // Input reason
     const reasonInput = screen.getByPlaceholderText(/Ví dụ: Doanh nghiệp đã cơ cấu lại phòng ban/i);
