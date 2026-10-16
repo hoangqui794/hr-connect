@@ -101,6 +101,7 @@ public static class DependencyInjection
         services.AddScoped<ISourcingDeliveryRepository, SourcingDeliveryRepository>();
         services.AddScoped<IJobTemplateRepository, JobTemplateRepository>();
         services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
+        services.AddScoped<IReportRepository, ReportRepository>();
         services.AddScoped<IAttributionRepository, AttributionRepository>();
         services.AddScoped<ICandidateCompanyTransactionLock, CandidateCompanyTransactionLock>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

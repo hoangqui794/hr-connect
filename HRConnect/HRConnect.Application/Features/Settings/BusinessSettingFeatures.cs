@@ -69,6 +69,43 @@ public sealed class BusinessSettingHandlers :
                 $"Giá trị phải từ {BusinessSettingKeys.Format(definition.Min)} đến {BusinessSettingKeys.Format(definition.Max)}{integer}.");
         }
 
+        // Validate cross-setting business rules for affiliate rating
+        if (definition.Key is BusinessSettingKeys.AffiliateRatingWeightHire or BusinessSettingKeys.AffiliateRatingWeightShortlist)
+        {
+            var otherKey = definition.Key == BusinessSettingKeys.AffiliateRatingWeightHire
+                ? BusinessSettingKeys.AffiliateRatingWeightShortlist
+                : BusinessSettingKeys.AffiliateRatingWeightHire;
+            var otherDef = BusinessSettingKeys.Get(otherKey);
+            var otherRow = await _repository.GetAsync(otherKey, cancellationToken);
+            var otherVal = otherRow != null && BusinessSettingKeys.TryParse(otherDef, otherRow.Value, out var ov) ? ov : otherDef.DefaultValue;
+            if (Math.Abs(value + otherVal - 1.0m) > 0.001m)
+            {
+                throw new BadRequestException("Tổng trọng số tuyển được (weight_hire) và qua sàng lọc (weight_shortlist) phải bằng 1.");
+            }
+        }
+        else if (definition.Key is BusinessSettingKeys.AffiliateRatingExcellentMin or BusinessSettingKeys.AffiliateRatingGoodMin or BusinessSettingKeys.AffiliateRatingAverageMin)
+        {
+            var excDef = BusinessSettingKeys.Get(BusinessSettingKeys.AffiliateRatingExcellentMin);
+            var excRow = await _repository.GetAsync(BusinessSettingKeys.AffiliateRatingExcellentMin, cancellationToken);
+            var excVal = definition.Key == BusinessSettingKeys.AffiliateRatingExcellentMin ? value
+                : (excRow != null && BusinessSettingKeys.TryParse(excDef, excRow.Value, out var ev) ? ev : excDef.DefaultValue);
+
+            var goodDef = BusinessSettingKeys.Get(BusinessSettingKeys.AffiliateRatingGoodMin);
+            var goodRow = await _repository.GetAsync(BusinessSettingKeys.AffiliateRatingGoodMin, cancellationToken);
+            var goodVal = definition.Key == BusinessSettingKeys.AffiliateRatingGoodMin ? value
+                : (goodRow != null && BusinessSettingKeys.TryParse(goodDef, goodRow.Value, out var gv) ? gv : goodDef.DefaultValue);
+
+            var avgDef = BusinessSettingKeys.Get(BusinessSettingKeys.AffiliateRatingAverageMin);
+            var avgRow = await _repository.GetAsync(BusinessSettingKeys.AffiliateRatingAverageMin, cancellationToken);
+            var avgVal = definition.Key == BusinessSettingKeys.AffiliateRatingAverageMin ? value
+                : (avgRow != null && BusinessSettingKeys.TryParse(avgDef, avgRow.Value, out var av) ? av : avgDef.DefaultValue);
+
+            if (!(excVal > goodVal && goodVal > avgVal))
+            {
+                throw new BadRequestException("Ngưỡng đánh giá phải thỏa mãn: Xuất sắc (excellent_min) > Tốt (good_min) > Trung bình (average_min).");
+            }
+        }
+
         var now = DateTime.UtcNow;
         var row = await _repository.GetAsync(definition.Key, cancellationToken);
         var oldValue = row?.Value ?? BusinessSettingKeys.Format(definition.DefaultValue);

@@ -42,6 +42,13 @@ public static class BusinessSettingKeys
     public const string CvApplicationFreeCooldownMonths = "mf01.cv_application.free_cooldown_months";
     public const string JobTemplatePageSizeDefault = "mf01.job_template.page_size_default";
     public const string JobTemplatePageSizeMax = "mf01.job_template.page_size_max";
+    public const string AffiliateRatingWeightHire = "affiliate.rating.weight_hire";
+    public const string AffiliateRatingWeightShortlist = "affiliate.rating.weight_shortlist";
+    public const string AffiliateRatingHireRateTarget = "affiliate.rating.hire_rate_target";
+    public const string AffiliateRatingMinSubmissions = "affiliate.rating.min_submissions";
+    public const string AffiliateRatingExcellentMin = "affiliate.rating.excellent_min";
+    public const string AffiliateRatingGoodMin = "affiliate.rating.good_min";
+    public const string AffiliateRatingAverageMin = "affiliate.rating.average_min";
 
     public static readonly IReadOnlyList<BusinessSettingDefinition> All =
     [
@@ -90,6 +97,27 @@ public static class BusinessSettingKeys
         new(JobTemplatePageSizeMax, "JOB_TEMPLATE", "Số mẫu JD tối đa mỗi trang",
             "Giới hạn trên cho tham số pageSize khi tìm mẫu JD.",
             BusinessSettingType.Integer, 20m, 1m, 100m, "mẫu", "mf01-be-thu-vien-mau-jd.md, B2"),
+        new(AffiliateRatingWeightHire, "AFFILIATE_RATING", "Trọng số tỷ lệ tuyển được",
+            "Trọng số của tỷ lệ tuyển được trong công thức tính QualityRating của Affiliate (mặc định 0.7).",
+            BusinessSettingType.Decimal, 0.7m, 0m, 1m, "trọng số", "BE-tasks-01 B1"),
+        new(AffiliateRatingWeightShortlist, "AFFILIATE_RATING", "Trọng số tỷ lệ qua sàng lọc",
+            "Trọng số của tỷ lệ CV qua sàng lọc trong công thức tính QualityRating của Affiliate (mặc định 0.3).",
+            BusinessSettingType.Decimal, 0.3m, 0m, 1m, "trọng số", "BE-tasks-01 B1"),
+        new(AffiliateRatingHireRateTarget, "AFFILIATE_RATING", "Mục tiêu tỷ lệ tuyển được",
+            "Mục tiêu tỷ lệ tuyển được để đạt điểm tối đa phần tuyển dụng (mặc định 0.20 = 20%).",
+            BusinessSettingType.Decimal, 0.20m, 0.01m, 1m, "tỷ lệ", "BE-tasks-01 B1"),
+        new(AffiliateRatingMinSubmissions, "AFFILIATE_RATING", "Số lượt nộp tối thiểu để xếp hạng",
+            "Số lượt nộp tối thiểu trong kỳ để được đánh giá xếp hạng và tính QualityRating (dưới ngưỡng này được gắn nhãn NEW).",
+            BusinessSettingType.Integer, 5m, 1m, 100m, "lượt", "BE-tasks-01 B1"),
+        new(AffiliateRatingExcellentMin, "AFFILIATE_RATING", "Ngưỡng đánh giá Xuất sắc (EXCELLENT)",
+            "Điểm QualityRating tối thiểu để đạt xếp loại EXCELLENT (mặc định 4.0).",
+            BusinessSettingType.Decimal, 4.0m, 0m, 5m, "điểm", "BE-tasks-01 B1"),
+        new(AffiliateRatingGoodMin, "AFFILIATE_RATING", "Ngưỡng đánh giá Tốt (GOOD)",
+            "Điểm QualityRating tối thiểu để đạt xếp loại GOOD (mặc định 3.0).",
+            BusinessSettingType.Decimal, 3.0m, 0m, 5m, "điểm", "BE-tasks-01 B1"),
+        new(AffiliateRatingAverageMin, "AFFILIATE_RATING", "Ngưỡng đánh giá Trung bình (AVERAGE)",
+            "Điểm QualityRating tối thiểu để đạt xếp loại AVERAGE (mặc định 2.0). Dưới ngưỡng này là LOW.",
+            BusinessSettingType.Decimal, 2.0m, 0m, 5m, "điểm", "BE-tasks-01 B1"),
     ];
 
     public static BusinessSettingDefinition Get(string key) =>
