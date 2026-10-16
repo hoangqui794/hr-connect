@@ -88,7 +88,7 @@ public static class CandidateSavedJobEndpoints
         })
         .WithName("SaveJob")
         .WithSummary("Lưu việc làm vào danh sách quan tâm")
-        .WithDescription("Idempotent: lưu lại cùng một việc làm sẽ không tạo bản ghi trùng. Chỉ cho phép lưu việc làm Candidate có quyền xem theo Service Type và visibility.")
+        .WithDescription("Idempotent: lưu lại cùng một việc làm sẽ không tạo bản ghi trùng. Chỉ cho phép lưu việc làm Candidate có quyền xem theo Service Type (can_view).")
         .Produces<SaveJobResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)

@@ -76,9 +76,6 @@ public class JobManagementQueryHandlerTests
         var visibleJob = Job(Guid.NewGuid(), JobStatuses.Active);
         _jobs.Setup(x => x.GetVisibleJobsAsync(
                 It.Is<IReadOnlyCollection<string>>(roles => roles.Count == 2),
-                It.Is<IReadOnlyCollection<string>>(visibilities =>
-                    visibilities.Contains(JobVisibilities.Public) &&
-                    visibilities.Contains(JobVisibilities.PartnerOnly)),
                 false, "dotnet", null, null, null, null, null, 1, 20,
                 null, null,
                 It.IsAny<CancellationToken>()))
@@ -99,8 +96,6 @@ public class JobManagementQueryHandlerTests
         _jobs.Setup(x => x.GetVisibleJobsAsync(
                 It.Is<IReadOnlyCollection<string>>(roles =>
                     roles.Count == 1 && roles.Contains(JobAccessPolicy.CandidateRole)),
-                It.Is<IReadOnlyCollection<string>>(visibilities =>
-                    visibilities.Count == 1 && visibilities.Contains(JobVisibilities.Public)),
                 false, null, null, null, null, null, null, 1, 12,
                 null, null,
                 It.IsAny<CancellationToken>()))
@@ -115,27 +110,23 @@ public class JobManagementQueryHandlerTests
     }
 
     [Theory]
-    [InlineData(JobVisibilities.Public, "CANDIDATE", true)]
-    [InlineData(JobVisibilities.Public, "AFFILIATE_RECRUITER", true)]
-    [InlineData(JobVisibilities.PartnerOnly, "AFFILIATE_RECRUITER", true)]
-    [InlineData(JobVisibilities.PartnerOnly, "HEADHUNTER", false)]
-    [InlineData(JobVisibilities.PartnerOnly, "CANDIDATE", false)]
-    [InlineData(JobVisibilities.InternalOnly, "AFFILIATE_RECRUITER", false)]
-    public async Task GetDetail_ShouldEnforceVisibilityAndServiceType(
-        string visibility, string role, bool expectedAllowed)
+    [InlineData("CANDIDATE", true)]
+    [InlineData("AFFILIATE_RECRUITER", true)]
+    [InlineData("CANDIDATE", false)]
+    [InlineData("HEADHUNTER", false)]
+    public async Task GetDetail_ShouldFollowRoleCanViewPermission(string role, bool canView)
     {
         var job = Job(Guid.NewGuid(), JobStatuses.Active);
-        job.Visibility = visibility;
         var user = Guid.NewGuid();
         _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
         _members.Setup(x => x.GetByUserIdAsync(user, It.IsAny<CancellationToken>())).ReturnsAsync((CompanyUser?)null);
         _jobs.Setup(x => x.CanAnyRoleViewJobAsync(job.ServiceTypeId,
-            It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            It.Is<IReadOnlyCollection<string>>(roles => roles.Contains(role)), It.IsAny<CancellationToken>())).ReturnsAsync(canView);
 
         var action = () => new GetJobDetailQueryHandler(_jobs.Object, _members.Object)
             .Handle(new GetJobDetailQuery(job.JobId, user, false, [role]), default);
 
-        if (expectedAllowed)
+        if (canView)
             (await action()).JobId.Should().Be(job.JobId);
         else
             await action.Should().ThrowAsync<ForbiddenException>();
@@ -151,5 +142,5 @@ public class JobManagementQueryHandlerTests
     }
 
     private static CompanyUser Member(Guid user, Guid company) => new() { CompanyUserId = Guid.NewGuid(), UserId = user, CompanyId = company, Status = "ACTIVE" };
-    private static Job Job(Guid company, string status) => new() { JobId = Guid.NewGuid(), CompanyId = company, ServiceTypeId = Guid.NewGuid(), CreatedBy = Guid.NewGuid(), Title = "Job", Benefits = "Insurance and training", CurrencyCode = "VND", Quantity = 1, Status = status, Visibility = "PUBLIC", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+    private static Job Job(Guid company, string status) => new() { JobId = Guid.NewGuid(), CompanyId = company, ServiceTypeId = Guid.NewGuid(), CreatedBy = Guid.NewGuid(), Title = "Job", Benefits = "Insurance and training", CurrencyCode = "VND", Quantity = 1, Status = status, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
 }

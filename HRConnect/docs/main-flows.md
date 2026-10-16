@@ -29,7 +29,7 @@ Năm Main Flow dùng chung một pipeline, nhưng mỗi loại dịch vụ đi q
 |---|---|---|---|
 | Client mua gì | Kết quả tuyển thành công | Một số lượng CV đạt chuẩn | Quyền đăng tin trong một khoảng thời gian |
 | Nguồn ứng viên | Affiliate giới thiệu | Affiliate giới thiệu | Ứng viên tự nộp |
-| Chế độ hiển thị job | `PARTNER_ONLY` / `INTERNAL_ONLY` | `PARTNER_ONLY` / `INTERNAL_ONLY` | `PUBLIC` / `INTERNAL_ONLY` |
+| Ai thấy job (mặc định, Admin cấu hình được) | Affiliate | Affiliate | Khách, Candidate |
 | Thông tin thêm khi tạo job (MF-01) | Số lượng cần tuyển, hệ số phí, thời hạn bảo hành | Số lượng cần tuyển và Sourcing Target (hai số độc lập) | Gói đăng tin; job chỉ công bố sau khi gói được kích hoạt |
 | Sàng lọc (MF-03) | Internal HR sàng lọc và liên hệ ứng viên | Internal HR xác định CV đạt chuẩn, chọn đủ Sourcing Target để giao Client, phần dư vào nhóm dự phòng | Client xem và chọn; HR của Client liên hệ ứng viên |
 | Điểm hoàn thành dịch vụ | Ứng viên đi làm thực tế (MF-04) | Giao đủ số CV đạt chuẩn (MF-03); phỏng vấn và tuyển là tùy chọn | Hết thời hạn gói; tuyển được hay không không ảnh hưởng phí |
@@ -70,7 +70,7 @@ Năm Main Flow dùng chung một pipeline, nhưng mỗi loại dịch vụ đi q
 
 **Luồng chính:**
 
-1. Client tạo job ở trạng thái `DRAFT`: mô tả công việc, yêu cầu bắt buộc (`MUST_HAVE`) và yêu cầu ưu tiên (`SHOULD_HAVE`), Service Type, chế độ hiển thị.
+1. Client tạo job ở trạng thái `DRAFT`: mô tả công việc, yêu cầu bắt buộc (`MUST_HAVE`) và yêu cầu ưu tiên (`SHOULD_HAVE`), Service Type.
 2. Client gửi duyệt → `PENDING_REVIEW`.
 3. Internal HR duyệt → `ACTIVE`, hoặc từ chối kèm mã lý do → `REJECTED`.
 4. Job bị từ chối: Client sửa và gửi lại → `PENDING_REVIEW`.
@@ -87,12 +87,12 @@ DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
 **Quy tắc:**
 
 - Service Type được chọn tại job; người nộp hồ sơ ở MF-02 không chọn lại.
-- Chế độ hiển thị phụ thuộc Service Type:
+- **Ai được xem và nộp hồ sơ vào job do quyền của vai trò quyết định** (theo góp ý của GVHD, sửa ngày 2026-10-16): bảng `service_type_allowed_role` ghi `can_view` / `can_submit` cho từng vai trò × Service Type, Platform Admin chỉnh trên trang quản trị Service Type. Job **không** có trường "chế độ hiển thị" riêng; Client không chọn ai thấy job. Khách chưa đăng nhập được xem như vai trò Candidate. Chủ job và người nội bộ (Internal HR, Platform Admin) xem được job của mọi trạng thái.
 
-| Service Type | Chế độ hiển thị cho phép |
+| Service Type | Mặc định được xem và nộp |
 |---|---|
-| `CV_APPLICATION` | `PUBLIC` hoặc `INTERNAL_ONLY` |
-| `CV_SOURCING`, `HEADHUNT_COD` | `PARTNER_ONLY` hoặc `INTERNAL_ONLY` |
+| `CV_APPLICATION` | Candidate (và khách xem) |
+| `CV_SOURCING`, `HEADHUNT_COD` | Affiliate |
 
 - Mỗi lần đổi trạng thái đều ghi lịch sử kèm người thực hiện, mã lý do và thời điểm.
 - Hai người cùng sửa một job: người lưu sau bị từ chối và phải tải lại dữ liệu.
@@ -116,7 +116,7 @@ DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
 
 ## Nhánh A — Ứng viên tự nộp
 
-Áp dụng cho job có chế độ `PUBLIC` (tức job `CV_APPLICATION`).
+Áp dụng cho job thuộc Service Type mà vai trò Candidate có `can_submit` (mặc định `CV_APPLICATION`).
 
 1. Ứng viên chọn job và cung cấp đúng một nguồn CV: chọn CV có sẵn trong kho của mình hoặc tải tệp PDF mới.
 2. Hệ thống kiểm tra điều kiện: tài khoản và vai trò ứng viên còn hoạt động; hồ sơ ứng viên không bị khóa, lưu trữ hay hợp nhất.
@@ -125,7 +125,7 @@ DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
 
 ## Nhánh B — Affiliate giới thiệu
 
-Áp dụng cho job có chế độ `PUBLIC` hoặc `PARTNER_ONLY`. Affiliate phải đã được duyệt.
+Áp dụng cho job thuộc Service Type mà vai trò Affiliate có `can_submit` (mặc định `HEADHUNT_COD`, `CV_SOURCING`). Affiliate phải đã được duyệt.
 
 1. Affiliate chọn job, nhập ứng viên mới hoặc chọn từ kho ứng viên của mình, kèm CV. Ứng viên bắt buộc có email.
 2. Hệ thống chuẩn hóa email và số điện thoại, tìm ứng viên đã có, kiểm tra trùng.
@@ -166,7 +166,7 @@ DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
 
 ## Không làm
 
-- **Internal HR không nộp hồ sơ thay ứng viên** (nhóm chốt 2026-10-16). Nguồn ứng viên chỉ gồm ứng viên tự nộp (`CV_APPLICATION`) và Affiliate giới thiệu (`HEADHUNT_COD`, `CV_SOURCING`). Vì vậy job ở chế độ `INTERNAL_ONLY` không có cách nhận hồ sơ; lựa chọn này giữ ẩn trên form tạo job.
+- **Internal HR không nộp hồ sơ thay ứng viên** (nhóm chốt 2026-10-16). Nguồn ứng viên chỉ gồm ứng viên tự nộp (`CV_APPLICATION`) và Affiliate giới thiệu (`HEADHUNT_COD`, `CV_SOURCING`). Quyền nộp của `INTERNAL_HR` trong `service_type_allowed_role` đặt `can_submit = false`.
 
 ## Chưa có
 

@@ -55,7 +55,6 @@ public sealed class UpdateJobPersistenceTests
                 CurrencyCode = "VND",
                 Quantity = 1,
                 Status = JobStatuses.Draft,
-                Visibility = JobVisibilities.Public,
                 ConcurrencyToken = token,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
@@ -93,7 +92,6 @@ public sealed class UpdateJobPersistenceTests
                 Title = "Backend",
                 CurrencyCode = "VND",
                 Quantity = 1,
-                Visibility = JobVisibilities.Public,
                 Requirements =
                 [
                     new CreateJobRequirementRequest { RequirementType = JobRequirementTypes.MustHave, Content = "2+ năm ASP.NET Core" },

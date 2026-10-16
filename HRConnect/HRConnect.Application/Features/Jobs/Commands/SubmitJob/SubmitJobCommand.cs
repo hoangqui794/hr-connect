@@ -44,7 +44,6 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
         var serviceTypeCode = await _jobs.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, ct);
         if (serviceTypeCode == null)
             throw new BadRequestException("Loại dịch vụ đã ngừng hoạt động nên Job không thể gửi duyệt.");
-        JobHandlerGuards.RequireVisibilityAllowed(serviceTypeCode, job.Visibility);
         if (job.ApplicationDeadline.HasValue && job.ApplicationDeadline.Value <= DateTime.UtcNow)
             throw new BadRequestException("Hạn nhận hồ sơ của công việc phải lớn hơn thời điểm hiện tại.");
 

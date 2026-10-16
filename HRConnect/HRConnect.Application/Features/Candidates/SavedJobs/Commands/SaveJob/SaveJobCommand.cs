@@ -44,7 +44,7 @@ public sealed class SaveJobCommandHandler : IRequestHandler<SaveJobCommand, Save
 
         // Kiểm tra quyền xem của Candidate đối với Job
         var candidateRole = new[] { JobAccessPolicy.CandidateRole };
-        var canView = JobAccessPolicy.CanViewDetail(job, isOwner: false, hasInternalAccess: false, candidateRole) &&
+        var canView = JobAccessPolicy.CanViewDetail(job, isOwner: false, hasInternalAccess: false) &&
                       await _jobRepository.CanAnyRoleViewJobAsync(job.ServiceTypeId, candidateRole, cancellationToken);
 
         if (!canView)

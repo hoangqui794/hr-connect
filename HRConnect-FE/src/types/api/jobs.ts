@@ -14,7 +14,6 @@ export type JobStatus =
   | 'ACTIVE'
   | 'PAUSED'
   | 'CLOSED';
-export type JobVisibility = 'PUBLIC' | 'PARTNER_ONLY' | 'INTERNAL_ONLY';
 export type EmploymentType = 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'INTERNSHIP' | 'FREELANCE';
 export type JobRequirementType = 'MUST_HAVE' | 'SHOULD_HAVE';
 export type ServiceTypeCode = 'CV_APPLICATION' | 'CV_SOURCING' | 'HEADHUNT_COD';
@@ -141,7 +140,6 @@ export interface Job {
   currencyCode: string;
   quantity: number;
   status: JobStatus;
-  visibility: JobVisibility;
   statusReason: string | null;
   postedAt: string | null;
   closedAt: string | null;
@@ -253,7 +251,6 @@ export interface JobUpsertInput {
   maxExperienceYears?: number | null;
   currencyCode: string;
   quantity: number;
-  visibility: JobVisibility;
   /** CV_SOURCING: number of CVs the Client wants. */
   sourcingTarget?: number | null;
   postingPackageId?: string | null;

@@ -33,7 +33,6 @@ public sealed class UpdateJobCommandValidator : AbstractValidator<UpdateJobComma
                     MaxExperienceYears = x.MaxExperienceYears,
                     CurrencyCode = x.CurrencyCode,
                     Quantity = x.Quantity,
-                    Visibility = x.Visibility,
                     Requirements = x.Requirements,
                     Skills = x.Skills,
                     ApplicationDeadline = x.ApplicationDeadline

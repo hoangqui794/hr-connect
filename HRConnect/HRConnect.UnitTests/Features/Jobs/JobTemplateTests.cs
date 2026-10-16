@@ -306,8 +306,7 @@ public class JobTemplateTests
 
         await handler.Handle(new CreateJobCommand
         {
-            UserId = userId, ServiceTypeId = serviceTypeId, Title = "Kế toán", CurrencyCode = "VND", Quantity = 1,
-            Visibility = "PARTNER_ONLY", TemplateId = templateId,
+            UserId = userId, ServiceTypeId = serviceTypeId, Title = "Kế toán", CurrencyCode = "VND", Quantity = 1, TemplateId = templateId,
             Requirements = [new CreateJobRequirementRequest { RequirementType = "MUST_HAVE", Content = "2 năm kế toán" }],
         }, CancellationToken.None);
 
