@@ -130,12 +130,142 @@ describe('CandidateApplicationDetailPage', () => {
     expect(screen.getByText(/Vòng 1: Trực tuyến Google Meet/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Vào phòng họp/i })).toBeInTheDocument();
 
-    // Check Offer
+    // Check Offer - Accept and Decline buttons are rendered
     expect(screen.getByText(/Phiên bản #1/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Phản hồi Offer/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Chấp nhận$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Từ chối$/i })).toBeInTheDocument();
 
     // Check Timeline event
     expect(screen.getByText('Đã nộp hồ sơ thành công')).toBeInTheDocument();
+  });
+
+  it('submits ACCEPTED offer response when clicking Chấp nhận', async () => {
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValue(mockMf04Application as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValue({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'INTERVIEWING',
+      events: [],
+    });
+    const respondSpy = vi.spyOn(mf04Api, 'respondOffer').mockResolvedValue({
+      success: true,
+      message: 'Đã chấp nhận offer thành công',
+    });
+
+    renderComponent();
+
+    const acceptBtn = await screen.findByRole('button', { name: /^Chấp nhận$/i });
+    await userEvent.click(acceptBtn);
+
+    // Modal opens with ACCEPTED selected
+    const confirmBtn = screen.getByRole('button', { name: /Xác nhận chấp nhận/i });
+    await userEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(respondSpy).toHaveBeenCalledWith('off-1', {
+        response: 'ACCEPTED',
+        declineReason: undefined,
+        concurrencyToken: 'token-off-1',
+      });
+    });
+  });
+
+  it('submits DECLINED offer response with reason when clicking Từ chối', async () => {
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValue(mockMf04Application as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValue({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'INTERVIEWING',
+      events: [],
+    });
+    const respondSpy = vi.spyOn(mf04Api, 'respondOffer').mockResolvedValue({
+      success: true,
+      message: 'Đã từ chối offer',
+    });
+
+    renderComponent();
+
+    const declineBtn = await screen.findByRole('button', { name: /^Từ chối$/i });
+    await userEvent.click(declineBtn);
+
+    // Modal opens with DECLINED selected; reason is required
+    const reasonInput = screen.getByPlaceholderText(/Mức đãi ngộ chưa đạt kỳ vọng/i);
+    await userEvent.type(reasonInput, 'Mức đãi ngộ chưa phù hợp định hướng');
+
+    const confirmDeclineBtn = screen.getByRole('button', { name: /Xác nhận từ chối/i });
+    await userEvent.click(confirmDeclineBtn);
+
+    await waitFor(() => {
+      expect(respondSpy).toHaveBeenCalledWith('off-1', {
+        response: 'DECLINED',
+        declineReason: 'Mức đãi ngộ chưa phù hợp định hướng',
+        concurrencyToken: 'token-off-1',
+      });
+    });
+  });
+
+  it('hides Chấp nhận / Từ chối buttons if offer is expired or status is not SENT', async () => {
+    const expiredApp = {
+      ...mockMf04Application,
+      offers: [
+        {
+          offerId: 'off-expired',
+          offerVersion: 1,
+          salary: 30000000,
+          currencyCode: 'VND',
+          status: 'SENT',
+          expiryDate: '2020-01-01',
+          concurrencyToken: 'tok-exp',
+        },
+        {
+          offerId: 'off-declined',
+          offerVersion: 2,
+          salary: 35000000,
+          currencyCode: 'VND',
+          status: 'DECLINED',
+          expiryDate: '2099-01-01',
+          concurrencyToken: 'tok-dec',
+        },
+      ],
+    };
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValueOnce(expiredApp as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValueOnce({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'INTERVIEWING',
+      events: [],
+    });
+
+    renderComponent();
+
+    await screen.findByRole('heading', { name: 'Senior .NET Developer' });
+    expect(screen.queryByRole('button', { name: /^Chấp nhận$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Từ chối$/i })).not.toBeInTheDocument();
+  });
+
+  it('renders empty states for interviews and offers when arrays are empty', async () => {
+    const emptyApp = {
+      ...mockMf04Application,
+      interviews: [],
+      offers: [],
+    };
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValueOnce(emptyApp as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValueOnce({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'APPLIED',
+      events: [],
+    });
+
+    renderComponent();
+
+    await screen.findByRole('heading', { name: 'Senior .NET Developer' });
+    expect(screen.getByText(/Chưa có lịch phỏng vấn nào được lên lịch/i)).toBeInTheDocument();
+    expect(screen.getByText(/Chưa có thư mời nhận việc nào/i)).toBeInTheDocument();
   });
 
   it('handles 409 Conflict gracefully when withdrawing application', async () => {
@@ -167,6 +297,17 @@ describe('CandidateApplicationDetailPage', () => {
         expect.stringContaining('Dữ liệu đơn ứng tuyển đã được cập nhật từ hệ thống')
       );
     });
+  });
+
+  it('renders error state with retry button when detail request fails', async () => {
+    const detailSpy = vi.spyOn(mf04Api, 'getApplicationDetail').mockRejectedValueOnce(new Error('Network error'));
+    vi.spyOn(candidateApplicationsApi, 'detail').mockRejectedValueOnce(new Error('Network error fallback'));
+
+    renderComponent();
+
+    expect(await screen.findByText('Không tải được chi tiết đơn ứng tuyển')).toBeInTheDocument();
+    const retryBtn = screen.getByRole('button', { name: /Thử lại/i });
+    expect(retryBtn).toBeInTheDocument();
   });
 
   it('falls back to legacy MF-02 endpoint if recruitment detail fails', async () => {

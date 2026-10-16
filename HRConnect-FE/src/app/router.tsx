@@ -267,6 +267,22 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: 'jobs/:id/sourcing',
+        element: (
+          <ProtectedRoute requiredRoles={ROUTE_ACCESS['/client/jobs/:id/sourcing']}>
+            <AppRoutes.ClientJobSourcingDeliveriesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'jobs/:jobId/sourcing',
+        element: (
+          <ProtectedRoute requiredRoles={ROUTE_ACCESS['/client/jobs/:jobId/sourcing']}>
+            <AppRoutes.ClientJobSourcingDeliveriesPage />
+          </ProtectedRoute>
+        ),
+      },
       { path: 'post-job', element: <Navigate to="/client/jobs/create" replace /> },
       { path: 'candidates', element: <AppRoutes.ClientCandidatesPage /> },
       { path: 'interviews-offers', element: <AppRoutes.ClientWorkspaceInterviewsOffersPage /> },

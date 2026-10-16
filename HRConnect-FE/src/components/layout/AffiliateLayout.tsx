@@ -27,7 +27,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { useAlertStore } from '@/stores/alertStore';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import type { MenuProps } from 'antd';
 
@@ -75,7 +75,6 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { alerts, unreadCount, markRead, markAllRead } = useAlertStore();
 
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
@@ -166,49 +165,6 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
     ],
   };
 
-  const notificationMenu: MenuProps = {
-    items: [
-      {
-        key: 'notif-header',
-        disabled: true,
-        label: (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 260 }}>
-            <span style={{ fontWeight: 600 }}>Thông báo Headhunter</span>
-            {unreadCount > 0 && (
-              <Button type="link" size="small" onClick={() => markAllRead()} style={{ padding: 0, fontSize: 12 }}>
-                Đọc hết
-              </Button>
-            )}
-          </div>
-        ),
-      },
-      { type: 'divider' },
-      ...(alerts.length === 0
-        ? [
-            {
-              key: 'empty',
-              disabled: true,
-              label: <div style={{ textAlign: 'center', padding: '12px 0', color: '#94a3b8' }}>Không có thông báo mới</div>,
-            },
-          ]
-        : alerts.slice(0, 5).map((notif) => ({
-            key: notif.id,
-            label: (
-              <div
-                onClick={() => markRead(notif.id)}
-                style={{
-                  padding: '6px 0',
-                  opacity: notif.read ? 0.6 : 1,
-                  maxWidth: 280,
-                }}
-              >
-                <div style={{ fontWeight: notif.read ? 400 : 600, fontSize: 13, color: '#0f172a' }}>{notif.title}</div>
-                <div style={{ fontSize: 12, color: '#64748b', whiteSpace: 'normal' }}>{notif.message}</div>
-              </div>
-            ),
-          }))),
-    ],
-  };
 
   // Determine active key (mapping aliases like /affiliate/referral -> /affiliate/submit-candidate, /affiliate/ledger -> /affiliate/commissions)
   const currentPath = location.pathname;
@@ -421,16 +377,7 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({ children }) =>
 
             <LanguageSwitcher />
 
-            <Dropdown menu={notificationMenu} placement="bottomRight" trigger={['click']}>
-              <Badge count={unreadCount} size="small" offset={[-2, 4]}>
-                <Button
-                  type="text"
-                  shape="circle"
-                  icon={<BellOutlined style={{ fontSize: 17, color: '#94a3b8' }} />}
-                  style={{ width: 38, height: 38 }}
-                />
-              </Badge>
-            </Dropdown>
+            <NotificationBell bellColor="#94a3b8" />
 
             <Dropdown menu={userDropdownMenu} placement="bottomRight" trigger={['click']}>
               <div

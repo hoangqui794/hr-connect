@@ -14,6 +14,7 @@ import {
   Card,
   DatePicker,
   Divider,
+  Empty,
   Input,
   Modal,
   Pagination,
@@ -26,6 +27,7 @@ import {
   Timeline,
   Tooltip,
   Upload,
+  message,
 } from 'antd';
 import {
   CheckCircleFilled,
@@ -50,7 +52,7 @@ import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
 import { candidateApplicationsApi, candidateConsentApi, candidateCvApi } from '@/services/api/mf02Api';
-import { mf04Api } from '@/services/api/mf04Api';
+import { mf04Api, isCandidateOfferRespondable } from '@/services/api/mf04Api';
 import type { CandidateOfferSummaryDto } from '@/types/api/mf04';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
@@ -219,7 +221,12 @@ export const CandidateHomePage: React.FC = () => {
         {apps.isLoading ? (
           <Skeleton active paragraph={{ rows: 4 }} />
         ) : apps.isError ? (
-          <Alert type="error" showIcon message={getApiErrorMessage(apps.error)} />
+          <Alert
+            type="error"
+            showIcon
+            message={getApiErrorMessage(apps.error)}
+            action={<Button onClick={() => apps.refetch()}>Thử lại</Button>}
+          />
         ) : items.length === 0 ? (
           <CandidateSurface className="candidate-empty-surface p-8 text-center text-sm text-slate-600">
             Chưa có đơn ứng tuyển nào.
@@ -381,7 +388,13 @@ export const CandidateApplicationsPage: React.FC = () => {
       {apps.isLoading ? (
         <Skeleton active paragraph={{ rows: 6 }} />
       ) : apps.isError ? (
-        <Alert type="error" showIcon message="Không tải được đơn ứng tuyển" description={getApiErrorMessage(apps.error)} />
+        <Alert
+          type="error"
+          showIcon
+          message="Không tải được đơn ứng tuyển"
+          description={getApiErrorMessage(apps.error)}
+          action={<Button onClick={() => apps.refetch()}>Thử lại</Button>}
+        />
       ) : items.length === 0 ? (
         <CandidateSurface className="candidate-empty-surface p-10 text-center">
           <p className="m-0 text-sm text-slate-600">{status || fromDate || toDate || jobId || search || submissionSource ? 'Không có đơn nào phù hợp bộ lọc.' : 'Bạn chưa ứng tuyển công việc nào.'}</p>
@@ -416,7 +429,6 @@ export const CandidateApplicationsPage: React.FC = () => {
 export const CandidateApplicationDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { message } = AntApp.useApp();
   const { applicationId = '' } = useParams();
 
   // Primary Detail Query (MF-04 with fallback to MF-02 for backwards compatibility)
@@ -490,14 +502,14 @@ export const CandidateApplicationDetailPage: React.FC = () => {
 
   // State for Offer Response Modal
   const [selectedOffer, setSelectedOffer] = useState<CandidateOfferSummaryDto | null>(null);
-  const [offerResponseChoice, setOfferResponseChoice] = useState<'Accepted' | 'Declined'>('Accepted');
+  const [offerResponseChoice, setOfferResponseChoice] = useState<'ACCEPTED' | 'DECLINED'>('ACCEPTED');
   const [declineReason, setDeclineReason] = useState('');
   const respondOfferMutation = useMutation({
     mutationFn: async () => {
       if (!selectedOffer) return;
       return await mf04Api.respondOffer(selectedOffer.offerId, {
         response: offerResponseChoice,
-        declineReason: offerResponseChoice === 'Declined' ? declineReason.trim() || undefined : undefined,
+        declineReason: offerResponseChoice === 'DECLINED' ? declineReason.trim() || undefined : undefined,
         concurrencyToken: selectedOffer.concurrencyToken,
       });
     },
@@ -530,7 +542,12 @@ export const CandidateApplicationDetailPage: React.FC = () => {
           showIcon
           message="Không tải được chi tiết đơn ứng tuyển"
           description={getApiErrorMessage(detail.error)}
-          action={<Button onClick={() => navigate('/candidate/applications')}>Về danh sách</Button>}
+          action={
+            <Space>
+              <Button onClick={() => detail.refetch()}>Thử lại</Button>
+              <Button onClick={() => navigate('/candidate/applications')}>Về danh sách</Button>
+            </Space>
+          }
         />
       </CandidateSurface>
     );
@@ -623,12 +640,19 @@ export const CandidateApplicationDetailPage: React.FC = () => {
       </CandidateSurface>
 
       {/* Interviews Section */}
-      {interviews.length > 0 && (
-        <CandidateSurface className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <VideoCameraOutlined className="text-blue-600 text-lg" />
-            <h2 className="m-0 text-base font-bold text-slate-900">Lịch phỏng vấn ({interviews.length})</h2>
-          </div>
+      <CandidateSurface className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <VideoCameraOutlined className="text-blue-600 text-lg" />
+          <h2 className="m-0 text-base font-bold text-slate-900">
+            Lịch phỏng vấn {interviews.length > 0 ? `(${interviews.length})` : ''}
+          </h2>
+        </div>
+        {interviews.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="Chưa có lịch phỏng vấn nào được lên lịch cho đơn ứng tuyển này."
+          />
+        ) : (
           <div className="space-y-4">
             {interviews.map((iv: any) => (
               <Card
@@ -639,7 +663,9 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                 <div className="flex items-start justify-between flex-wrap gap-2">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900">Vòng {iv.interviewRound}: {iv.interviewType || 'Phỏng vấn'}</span>
+                      <span className="font-bold text-slate-900">
+                        Vòng {iv.interviewRound}: {iv.interviewType || 'Phỏng vấn'}
+                      </span>
                       <Tag color={iv.status === 'SCHEDULED' ? 'blue' : iv.status === 'COMPLETED' ? 'green' : 'default'}>
                         {iv.status}
                       </Tag>
@@ -676,80 +702,108 @@ export const CandidateApplicationDetailPage: React.FC = () => {
               </Card>
             ))}
           </div>
-        </CandidateSurface>
-      )}
+        )}
+      </CandidateSurface>
 
       {/* Offers Section */}
-      {offers.length > 0 && (
-        <CandidateSurface className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <GiftOutlined className="text-emerald-600 text-lg" />
-            <h2 className="m-0 text-base font-bold text-slate-900">Thư mời nhận việc (Offers)</h2>
-          </div>
+      <CandidateSurface className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <GiftOutlined className="text-emerald-600 text-lg" />
+          <h2 className="m-0 text-base font-bold text-slate-900">
+            Thư mời nhận việc (Offers) {offers.length > 0 ? `(${offers.length})` : ''}
+          </h2>
+        </div>
+        {offers.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="Chưa có thư mời nhận việc nào cho đơn ứng tuyển này."
+          />
+        ) : (
           <div className="space-y-4">
-            {offers.map((offer: any) => (
-              <Card
-                key={offer.offerId}
-                size="small"
-                className="border border-emerald-200 rounded-xl bg-emerald-50/30"
-              >
-                <div className="flex items-start justify-between flex-wrap gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900">Phiên bản #{offer.offerVersion}</span>
-                      <Tag color={offer.status === 'ACCEPTED' ? 'green' : offer.status === 'DECLINED' ? 'red' : 'blue'}>
-                        {offer.status}
-                      </Tag>
-                    </div>
-                    <div className="mt-2 text-sm text-slate-800">
-                      Mức lương:{' '}
-                      <strong className="text-emerald-700">
-                        {offer.salary != null ? `${offer.salary.toLocaleString('vi-VN')} ${offer.currencyCode || 'VND'}` : 'Thương lượng'}
-                      </strong>
-                    </div>
-                    <div className="mt-1 text-xs text-slate-600 flex flex-wrap gap-4">
-                      {offer.startDate && <span>Bắt đầu: {dayjs(offer.startDate).format('DD/MM/YYYY')}</span>}
-                      {offer.expiryDate && <span>Hạn phản hồi: {dayjs(offer.expiryDate).format('DD/MM/YYYY')}</span>}
-                    </div>
-                    {offer.declineReason && (
-                      <div className="mt-2 text-xs text-rose-600">
-                        Lý do từ chối: {offer.declineReason}
+            {offers.map((offer: any) => {
+              const canRespond = isCandidateOfferRespondable(offer);
+              return (
+                <Card
+                  key={offer.offerId}
+                  size="small"
+                  className="border border-emerald-200 rounded-xl bg-emerald-50/30"
+                >
+                  <div className="flex items-start justify-between flex-wrap gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900">Phiên bản #{offer.offerVersion}</span>
+                        <Tag color={offer.status === 'ACCEPTED' ? 'green' : offer.status === 'DECLINED' ? 'red' : 'blue'}>
+                          {offer.status}
+                        </Tag>
                       </div>
-                    )}
-                  </div>
+                      <div className="mt-2 text-sm text-slate-800">
+                        Mức lương:{' '}
+                        <strong className="text-emerald-700">
+                          {offer.salary != null ? `${offer.salary.toLocaleString('vi-VN')} ${offer.currencyCode || 'VND'}` : 'Thương lượng'}
+                        </strong>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-600 flex flex-wrap gap-4">
+                        {offer.startDate && <span>Bắt đầu: {dayjs(offer.startDate).format('DD/MM/YYYY')}</span>}
+                        {(offer.expiryDate || offer.validUntil || offer.expiresAt) && (
+                          <span>
+                            Hạn phản hồi: {dayjs(offer.expiryDate || offer.validUntil || offer.expiresAt).format('DD/MM/YYYY')}
+                          </span>
+                        )}
+                      </div>
+                      {offer.declineReason && (
+                        <div className="mt-2 text-xs text-rose-600">
+                          Lý do từ chối: {offer.declineReason}
+                        </div>
+                      )}
+                    </div>
 
-                  <Space>
-                    {offer.offerDocumentUrl && (
-                      <Button
-                        size="small"
-                        href={offer.offerDocumentUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        icon={<DownloadOutlined />}
-                      >
-                        Tài liệu Offer
-                      </Button>
-                    )}
-                    {offer.canRespond && (
-                      <Button
-                        type="primary"
-                        size="small"
-                        onClick={() => {
-                          setSelectedOffer(offer);
-                          setOfferResponseChoice('Accepted');
-                          setDeclineReason('');
-                        }}
-                      >
-                        Phản hồi Offer
-                      </Button>
-                    )}
-                  </Space>
-                </div>
-              </Card>
-            ))}
+                    <Space>
+                      {offer.offerDocumentUrl && (
+                        <Button
+                          size="small"
+                          href={offer.offerDocumentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          icon={<DownloadOutlined />}
+                        >
+                          Tài liệu Offer
+                        </Button>
+                      )}
+                      {canRespond && (
+                        <Space>
+                          <Button
+                            type="primary"
+                            size="small"
+                            className="bg-emerald-600 hover:bg-emerald-500 border-none"
+                            onClick={() => {
+                              setSelectedOffer(offer);
+                              setOfferResponseChoice('ACCEPTED');
+                              setDeclineReason('');
+                            }}
+                          >
+                            Chấp nhận
+                          </Button>
+                          <Button
+                            danger
+                            size="small"
+                            onClick={() => {
+                              setSelectedOffer(offer);
+                              setOfferResponseChoice('DECLINED');
+                              setDeclineReason('');
+                            }}
+                          >
+                            Từ chối
+                          </Button>
+                        </Space>
+                      )}
+                    </Space>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
-        </CandidateSurface>
-      )}
+        )}
+      </CandidateSurface>
 
       {/* Placement Section */}
       {placement && (
@@ -773,7 +827,21 @@ export const CandidateApplicationDetailPage: React.FC = () => {
       )}
 
       {/* Public Sanitized Timeline */}
-      {timelineEvents.length > 0 && (
+      {timelineQuery.isLoading ? (
+        <CandidateSurface className="p-6">
+          <Skeleton active paragraph={{ rows: 2 }} />
+        </CandidateSurface>
+      ) : timelineQuery.isError ? (
+        <CandidateSurface className="p-6">
+          <Alert
+            type="warning"
+            showIcon
+            message="Không tải được dòng thời gian"
+            description={getApiErrorMessage(timelineQuery.error)}
+            action={<Button size="small" onClick={() => timelineQuery.refetch()}>Thử lại</Button>}
+          />
+        </CandidateSurface>
+      ) : timelineEvents.length > 0 ? (
         <CandidateSurface className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <HistoryOutlined className="text-slate-600 text-lg" />
@@ -796,7 +864,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
             }))}
           />
         </CandidateSurface>
-      )}
+      ) : null}
 
       {/* AI Result Section (if available from legacy or model) */}
       {(application.aiStatus || application.aiMatchScore != null) && (
@@ -842,9 +910,13 @@ export const CandidateApplicationDetailPage: React.FC = () => {
         open={Boolean(selectedOffer)}
         onCancel={() => setSelectedOffer(null)}
         onOk={() => respondOfferMutation.mutate()}
-        okText="Gửi phản hồi"
+        okText={offerResponseChoice === 'ACCEPTED' ? 'Xác nhận chấp nhận' : 'Xác nhận từ chối'}
         cancelText="Hủy"
-        okButtonProps={{ loading: respondOfferMutation.isPending }}
+        okButtonProps={{
+          loading: respondOfferMutation.isPending,
+          danger: offerResponseChoice === 'DECLINED',
+          disabled: offerResponseChoice === 'DECLINED' && !declineReason.trim(),
+        }}
       >
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
@@ -855,20 +927,20 @@ export const CandidateApplicationDetailPage: React.FC = () => {
             onChange={(e) => setOfferResponseChoice(e.target.value)}
             className="space-y-2 block"
           >
-            <Radio value="Accepted" className="block">
+            <Radio value="ACCEPTED" className="block">
               <span className="font-semibold text-emerald-700">Đồng ý nhận việc (Accepted)</span>
               <p className="text-xs text-slate-500 m-0 ml-6">Tôi đồng ý với các điều khoản đãi ngộ và thời gian bắt đầu công việc.</p>
             </Radio>
-            <Radio value="Declined" className="block">
+            <Radio value="DECLINED" className="block">
               <span className="font-semibold text-rose-700">Từ chối nhận việc (Declined)</span>
               <p className="text-xs text-slate-500 m-0 ml-6">Tôi xin phép từ chối cơ hội làm việc này.</p>
             </Radio>
           </Radio.Group>
 
-          {offerResponseChoice === 'Declined' && (
+          {offerResponseChoice === 'DECLINED' && (
             <div className="mt-3">
               <label className="text-xs font-semibold text-slate-700 block mb-1">
-                Lý do từ chối (giúp nhà tuyển dụng cải thiện quy trình):
+                Lý do từ chối <span className="text-rose-500">*</span> (bắt buộc):
               </label>
               <Input.TextArea
                 rows={3}
