@@ -56,6 +56,7 @@ public sealed class SwaggerTagOrderDocumentFilter : IDocumentFilter
         // 07. Platform administration
         new() { Name = "Admin Profile", Description = "07 · Platform Admin — Xem và cập nhật hồ sơ quản trị viên." },
         new() { Name = "Admin Users", Description = "07 · Platform Admin — Tra cứu, tạm khóa, kích hoạt lại và mở khóa đăng nhập cho người dùng." },
+        new() { Name = "Admin Authorization", Description = "07 · Platform Admin — Quản trị Permission catalog, vai trò tùy chỉnh và quyền hiệu lực của người dùng." },
         new() { Name = "Admin Approvals", Description = "07 · Platform Admin — Duyệt Affiliate, Client Company và xử lý yêu cầu liên kết danh tính Candidate." },
         new() { Name = "Admin Audit Logs", Description = "07 · Platform Admin — Tra cứu audit log và chi tiết thay đổi nghiệp vụ." },
         new() { Name = "Admin Service Types", Description = "07 · Platform Admin — Quản trị Service Type và cấu hình role được xem hoặc submit." },

@@ -19,7 +19,7 @@ public static class DatabaseSeeder
     {
         var now = DateTime.UtcNow;
 
-        // 1. Khởi tạo 5 vai trò hệ thống nếu chưa có trong DB
+        // In-memory tests do not run migrations. Production catalogs are installed by migrations.
         var defaultRoles = new (string Code, string Name, string Description)[]
         {
             ("CANDIDATE", "Candidate", "Ứng viên tìm việc"),
@@ -29,25 +29,32 @@ public static class DatabaseSeeder
             ("PLATFORM_ADMIN", "Platform Admin", "Quản trị viên toàn hệ thống")
         };
 
-        foreach (var (code, name, description) in defaultRoles)
+        if (!context.Database.IsRelational())
         {
-            var exists = await context.Roles.AnyAsync(r => r.Code == code, cancellationToken);
-            if (!exists)
+            foreach (var (code, name, description) in defaultRoles)
             {
-                await context.Roles.AddAsync(new Role
+                var exists = await context.Roles.AnyAsync(r => r.Code == code, cancellationToken);
+                if (!exists)
                 {
-                    RoleId = Guid.NewGuid(),
-                    Code = code,
-                    Name = name,
-                    Description = description,
-                    IsSystem = true,
-                    IsActive = true,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                }, cancellationToken);
+                    await context.Roles.AddAsync(new Role
+                    {
+                        RoleId = Guid.NewGuid(),
+                        Code = code,
+                        Name = name,
+                        Description = description,
+                        IsSystem = true,
+                        IsActive = true,
+                        CreatedAt = now,
+                        UpdatedAt = now
+                    }, cancellationToken);
+                }
             }
+            await context.SaveChangesAsync(cancellationToken);
         }
-        await context.SaveChangesAsync(cancellationToken);
+        else
+        {
+            await ValidateAuthorizationCatalogAsync(context, cancellationToken);
+        }
 
         // 2. Khởi tạo danh mục loại dịch vụ (Service Type) nếu chưa có (Idempotent seed)
         await ServiceTypeSeeder.SeedAsync(context, logger, cancellationToken);
@@ -62,27 +69,6 @@ public static class DatabaseSeeder
         await CommissionMilestoneSeeder.SeedAsync(context, logger, cancellationToken);
         await CommissionRuleSeeder.SeedAsync(context, logger, cancellationToken);
 
-        // 4. Tự động nạp toàn bộ danh sách Permissions và Role-Permissions từ file Permission.md
-        if (context.Database.IsRelational())
-        {
-            try
-            {
-                var sql = GetPermissionSeedSql();
-                if (!string.IsNullOrWhiteSpace(sql))
-                {
-                    // Loại bỏ BEGIN; và COMMIT; vì EF Core tự quản lý transaction
-                    var cleanedSql = sql.Replace("BEGIN;", "", StringComparison.OrdinalIgnoreCase)
-                                        .Replace("COMMIT;", "", StringComparison.OrdinalIgnoreCase);
-
-                    await context.Database.ExecuteSqlRawAsync(cleanedSql);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($">>> DatabaseSeeder: Lỗi nạp Permission seed data: {ex.Message}");
-            }
-        }
-
         // 5. Khởi tạo tài khoản phát triển / demo nếu được bật
         if (seedDemoAccounts)
         {
@@ -91,31 +77,58 @@ public static class DatabaseSeeder
         }
     }
 
-    private static string GetPermissionSeedSql()
+    private static async Task ValidateAuthorizationCatalogAsync(
+        ApplicationDbContext context,
+        CancellationToken cancellationToken)
     {
-        // Thử tìm file Permission.md tại các đường dẫn tương đối
-        var candidatePaths = new[]
+        var requiredRoles = new[]
         {
-            Path.Combine(AppContext.BaseDirectory, "Permission.md"),
-            Path.Combine(Directory.GetCurrentDirectory(), "Permission.md"),
-            Path.Combine(Directory.GetCurrentDirectory(), "HRConnect", "Permission.md"),
-            Path.Combine(Directory.GetCurrentDirectory(), "..", "Permission.md"),
-            Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "Permission.md")
+            "CANDIDATE", "AFFILIATE_RECRUITER", "CLIENT_COMPANY_USER", "INTERNAL_HR", "PLATFORM_ADMIN"
         };
-
-        foreach (var path in candidatePaths)
+        var availableRoles = await context.Roles
+            .Where(x => requiredRoles.Contains(x.Code) && x.IsSystem && x.IsActive)
+            .Select(x => x.Code)
+            .ToListAsync(cancellationToken);
+        var missingRoles = requiredRoles.Except(availableRoles, StringComparer.Ordinal).ToArray();
+        if (missingRoles.Length > 0)
         {
-            if (File.Exists(path))
-            {
-                return File.ReadAllText(path);
-            }
+            throw new InvalidOperationException(
+                $"Authorization catalog is incomplete. Missing active system roles: {string.Join(", ", missingRoles)}. Apply all database migrations before starting the API.");
         }
 
-        // Fallback: Nếu không tìm thấy file, sử dụng script nhúng trực tiếp
-        return EmbeddedPermissionSeedSql;
+        var protectedPermissions = new[]
+        {
+            "role.manage", "permission.manage", "user.manage", "system_config.manage", "audit.view"
+        };
+        var catalog = await context.Permissions
+            .Where(x => protectedPermissions.Contains(x.Code))
+            .Select(x => new { x.Code, x.IsActive, x.IsDelegable })
+            .ToListAsync(cancellationToken);
+        var invalidPermissions = protectedPermissions
+            .Where(code => !catalog.Any(x => x.Code == code && x.IsActive && !x.IsDelegable))
+            .ToArray();
+        if (invalidPermissions.Length > 0)
+        {
+            throw new InvalidOperationException(
+                $"Authorization catalog is incomplete or unsafe. Protected permissions must be active and non-delegable: {string.Join(", ", invalidPermissions)}.");
+        }
+
+        var platformAdminHasManagementPermissions = await context.RolePermissions.AnyAsync(
+            x => x.Role.Code == "PLATFORM_ADMIN" && x.Role.IsActive &&
+                 x.Permission.Code == "role.manage" && x.Permission.IsActive,
+            cancellationToken)
+            && await context.RolePermissions.AnyAsync(
+                x => x.Role.Code == "PLATFORM_ADMIN" && x.Role.IsActive &&
+                     x.Permission.Code == "permission.manage" && x.Permission.IsActive,
+                cancellationToken);
+        if (!platformAdminHasManagementPermissions)
+        {
+            throw new InvalidOperationException(
+                "Authorization catalog is incomplete. PLATFORM_ADMIN must have role.manage and permission.manage.");
+        }
     }
 
-    private const string EmbeddedPermissionSeedSql = """
+    internal const string EmbeddedPermissionSeedSql = """
     INSERT INTO public.permission (code, resource, action, description)
     VALUES
         ('job.view', 'job', 'view', 'View published jobs'),

@@ -1,6 +1,6 @@
-# Việc FE cho Sang: nối giao diện với API đã có
+# Backlog Frontend: nối giao diện với API đã có
 
-> **Dành cho:** Sang (Frontend). **Ngày:** 2026-10-15.
+> **Phạm vi:** Frontend dùng chung. **Ngày:** 2026-10-15.
 > **Căn cứ:** đối chiếu 193 route backend (`HRConnect.Presentation/Endpoints`) với các lời gọi API và các route thật trong `HRConnect-FE/src/app/router.tsx` trên `dev` (commit `b41352d`).
 > **Phạm vi:** chỉ những API backend **đã có** nhưng FE **chưa gọi**, hoặc FE đang dùng store trên máy / mock thay cho API. Không đổi nghiệp vụ, không sửa backend. Thiếu API thì ghi lại, không tự chế dữ liệu.
 
@@ -75,7 +75,7 @@ Ký hiệu: 🔴 làm trước · 🟠 cần làm · 🟡 kiểm tra rồi quy�
 
 ## 2. 🔴 Suất tuyển thay thế (MF-05)
 
-**Hiện trạng FE:** chưa có. **Code BE:** `Endpoints/V1/Finance/FinanceEndpoints.cs`. Quy tắc: [`MF05/mf05-thiet-ke-suat-thay-the.md`](../MF05/mf05-thiet-ke-suat-thay-the.md).
+**Hiện trạng FE:** chưa có. **Code BE:** `Endpoints/V1/Finance/FinanceEndpoints.cs`. Quy tắc: [`mf05-thiet-ke-suat-thay-the.md`](../../../HRConnect/docs/MF05/mf05-thiet-ke-suat-thay-the.md).
 
 | Method | Route | Ai dùng (quyền) | Body |
 |---|---|---|---|
@@ -221,7 +221,7 @@ Với từng file: kiểm tra trong `app/router.tsx` còn được route không.
 
 ## Chưa làm được (backend chưa có API)
 
-Dashboard báo cáo, đánh giá chất lượng Affiliate ([`BE-tasks-01`](BE-tasks-01-bao-cao-va-danh-gia-affiliate.md)); danh bạ công ty, bộ lọc kinh nghiệm/ngành ([`BE-tasks-02`](BE-tasks-02-nganh-danh-ba-cong-ty-loc-job.md)); khiếu nại tranh chấp trùng ([`BE-tasks-03`](BE-tasks-03-tranh-chap-trung-sf04.md)). Đợi backend merge rồi giao tiếp; không làm số liệu giả.
+Dashboard báo cáo, đánh giá chất lượng Affiliate ([`BE-tasks-01`](../../../HRConnect/docs/tasks/BE-tasks-01-bao-cao-va-danh-gia-affiliate.md)); danh bạ công ty, bộ lọc kinh nghiệm/ngành ([`BE-tasks-02`](../../../HRConnect/docs/tasks/BE-tasks-02-nganh-danh-ba-cong-ty-loc-job.md)); khiếu nại tranh chấp trùng ([`BE-tasks-03`](../../../HRConnect/docs/tasks/BE-tasks-03-tranh-chap-trung-sf04.md)). Đợi backend merge rồi giao tiếp; không làm số liệu giả.
 
 ## Thứ tự gợi ý
 

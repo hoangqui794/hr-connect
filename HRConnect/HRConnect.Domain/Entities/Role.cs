@@ -21,6 +21,8 @@ public partial class Role
 
     public DateTime UpdatedAt { get; set; }
 
+    public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
+
     public virtual ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
 
     public virtual ICollection<ServiceTypeAllowedRole> ServiceTypeAllowedRoles { get; set; } = new List<ServiceTypeAllowedRole>();

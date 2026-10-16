@@ -60,7 +60,7 @@ Năm Main Flow dùng chung một pipeline, nhưng mỗi loại dịch vụ đi q
 
 # MF-01. Tạo, duyệt và công bố Job
 
-![MF-01](diagrams/MF-01_Activity_Diagram.png)
+> Sơ đồ MF-01 chưa được lưu trong repository; phần mô tả bên dưới là nguồn tham chiếu hiện hành.
 
 **Mục tiêu:** Client tạo job, chọn Service Type, và job được người có thẩm quyền duyệt trước khi nhận hồ sơ.
 
@@ -104,9 +104,9 @@ DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
 
 # MF-02. Tiếp nhận hồ sơ, kiểm tra trùng, ghi nhận nguồn
 
-![MF-02A](diagrams/MF-02A_Activity_Diagram.png)
+> Sơ đồ MF-02A chưa được lưu trong repository; phần mô tả bên dưới là nguồn tham chiếu hiện hành.
 
-![MF-02B](diagrams/MF-02B_Activity_Diagram.png)
+> Sơ đồ MF-02B chưa được lưu trong repository; phần mô tả bên dưới là nguồn tham chiếu hiện hành.
 
 **Mục tiêu:** tiếp nhận ứng viên và CV vào đúng job, chặn trùng trước khi vào pipeline, ghi nhận nguồn và attribution.
 
@@ -175,7 +175,7 @@ DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
 
 # MF-03. AI Matching và sàng lọc
 
-![MF-03](diagrams/MF-03_Activity_Diagram.png)
+> Sơ đồ MF-03 chưa được lưu trong repository; phần mô tả bên dưới là nguồn tham chiếu hiện hành.
 
 **Mục tiêu:** AI hỗ trợ đánh giá mức độ phù hợp giữa CV và job; con người quyết định cuối.
 
@@ -234,7 +234,7 @@ Code: quy tắc nằm ở `ScreeningPolicy`; sai người theo loại dịch v�
 
 # MF-04. Phỏng vấn, Offer, Nhận việc
 
-![MF-04](diagrams/MF-04_Activity_Diagram.png)
+> Sơ đồ MF-04 chưa được lưu trong repository; phần mô tả bên dưới là nguồn tham chiếu hiện hành.
 
 **Mục tiêu:** theo dõi ứng viên từ lúc được chọn đến khi thực sự đi làm.
 
@@ -315,7 +315,7 @@ Internal HR thuộc đơn vị vận hành nền tảng, không thuộc công ty
 
 # MF-05. Thử việc, Bảo hành, Hoa hồng, Payout
 
-![MF-05](diagrams/MF-05_Activity_Diagram.png)
+> Sơ đồ MF-05 chưa được lưu trong repository; phần mô tả bên dưới là nguồn tham chiếu hiện hành.
 
 Sơ đồ mô tả trường hợp `HEADHUNT_COD`; toàn bộ là thiết kế đề xuất.
 

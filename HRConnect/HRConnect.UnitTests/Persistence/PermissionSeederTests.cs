@@ -1,6 +1,9 @@
 using System.Reflection;
 using FluentAssertions;
 using HRConnect.Infrastructure.Persistence;
+using HRConnect.Infrastructure.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 
 namespace HRConnect.UnitTests.Persistence;
 
@@ -62,6 +65,26 @@ public class PermissionSeederTests
         sql[roleStart..roleEnd].Should().Contain("'candidate.identity.review'");
     }
 
+    [Fact]
+    public void RbacMigration_InstallsCatalogAndProtectsManagementPermissions()
+    {
+        var builder = new MigrationBuilder("Npgsql.EntityFrameworkCore.PostgreSQL");
+        new RbacMigrationHarness().BuildUp(builder);
+        var sql = string.Join("\n", builder.Operations.OfType<SqlOperation>().Select(x => x.Sql));
+
+        sql.Should().Contain("INSERT INTO public.role");
+        sql.Should().Contain("'PLATFORM_ADMIN'");
+        sql.Should().Contain("('role.manage', 'role', 'manage'");
+        sql.Should().Contain("SET is_delegable = false");
+        sql.Should().Contain("'permission.manage'");
+        sql.Should().Contain("Migrated legacy revoked assignment");
+
+        var lifecycle = builder.Operations.OfType<AddCheckConstraintOperation>()
+            .Single(x => x.Name == "ck_user_role_lifecycle");
+        lifecycle.Sql.Should().Contain("status = 'ACTIVE'");
+        lifecycle.Sql.Should().Contain("status = 'REVOKED'");
+    }
+
     private static void AssertAffiliateAttributionPermission(string sql)
     {
         sql.Should().Contain("('attribution.view_own'");
@@ -98,5 +121,10 @@ public class PermissionSeederTests
         }
 
         return null;
+    }
+
+    private sealed class RbacMigrationHarness : AddProductionRbacManagement
+    {
+        public void BuildUp(MigrationBuilder builder) => Up(builder);
     }
 }

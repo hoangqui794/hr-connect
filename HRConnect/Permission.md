@@ -1,3 +1,5 @@
+-- REFERENCE ONLY: production authorization catalog is installed by EF migrations.
+-- Application startup no longer executes this file. Keep it synchronized for review/documentation.
 BEGIN;
 
 -- ============================================================
