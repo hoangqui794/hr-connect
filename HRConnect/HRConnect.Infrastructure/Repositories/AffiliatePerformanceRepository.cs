@@ -102,7 +102,7 @@ public class AffiliatePerformanceRepository : IAffiliatePerformanceRepository
             .Include(a => a.ApplicationStatusHistories)
             .Include(a => a.Interviews)
             .Include(a => a.Placement)
-                .ThenInclude(p => p.Warranty)
+                .ThenInclude(p => p!.Warranty)
             .Where(a => (a.AcceptedSubmissionId.HasValue && validSubmissionIds.Contains(a.AcceptedSubmissionId.Value))
                         || _context.Attributions.Any(attr => attr.AffiliateId == affiliateId
                                                              && validSubmissionIds.Contains(attr.WinningSubmissionId)
