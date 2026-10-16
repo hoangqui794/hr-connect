@@ -37,7 +37,6 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
         var serviceTypeCode = await _jobs.GetActiveServiceTypeCodeAsync(request.ServiceTypeId, ct);
         if (serviceTypeCode == null)
             throw new BadRequestException("Loại dịch vụ không tồn tại hoặc đã ngừng hoạt động.");
-        JobHandlerGuards.RequireVisibilityAllowed(serviceTypeCode, request.Visibility);
         var skillIds = request.Skills.Select(x => x.SkillId).Distinct().ToList();
         if (skillIds.Count > 0 && !await _jobs.AreSkillsActiveAsync(skillIds, ct))
             throw new BadRequestException("Một hoặc nhiều kỹ năng không tồn tại hoặc đã ngừng hoạt động.");
@@ -49,7 +48,6 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
         job.SalaryNegotiable = request.SalaryNegotiable; job.SalaryNote = Normalize(request.SalaryNote);
         job.MinExperienceYears = request.MinExperienceYears; job.MaxExperienceYears = request.MaxExperienceYears;
         job.CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(); job.Quantity = request.Quantity;
-        job.Visibility = request.Visibility.Trim().ToUpperInvariant();
         var proposed = CommercialTermsHelper.ResolveProposedTerms(
             serviceTypeCode,
             request.ProposedTerms,

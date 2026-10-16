@@ -2,75 +2,41 @@ using HRConnect.Domain.Entities;
 
 namespace HRConnect.Application.Features.Jobs.Common;
 
+/// <summary>
+/// Who may see and submit to a job is decided by role permissions only:
+/// <c>service_type_allowed_role.can_view</c> / <c>can_submit</c> for the job's Service Type
+/// (checked through <c>IJobRepository.CanAnyRoleViewJobAsync</c> / <c>CanAnyRoleSubmitJobAsync</c>).
+/// This class only adds the rules that do not depend on that matrix: job status, ownership
+/// and which actor an operation runs as. Guests are treated as the Candidate role.
+/// </summary>
 public static class JobAccessPolicy
 {
     public const string CandidateRole = "CANDIDATE";
     public const string AffiliateRole = "AFFILIATE_RECRUITER";
 
-    public static IReadOnlyCollection<string> GetDiscoverableVisibilities(
-        IReadOnlyCollection<string>? roleCodes,
-        bool hasInternalAccess)
-    {
-        if (hasInternalAccess) return JobVisibilities.All;
-        return HasPartnerRole(roleCodes)
-            ? [JobVisibilities.Public, JobVisibilities.PartnerOnly]
-            : [JobVisibilities.Public];
-    }
-
-    public static bool CanViewDetail(
-        Job job,
-        bool isOwner,
-        bool hasInternalAccess,
-        IReadOnlyCollection<string>? roleCodes)
+    /// <summary>
+    /// Status part of viewing a job. Owners and internal users see every status; everyone else
+    /// sees only ACTIVE jobs, and the caller must still check the role's can_view permission.
+    /// </summary>
+    public static bool CanViewDetail(Job job, bool isOwner, bool hasInternalAccess)
     {
         if (isOwner || hasInternalAccess) return true;
-        return string.Equals(job.Status, JobStatuses.Active, StringComparison.OrdinalIgnoreCase) &&
-               GetDiscoverableVisibilities(roleCodes, false).Contains(
-                   job.Visibility, StringComparer.OrdinalIgnoreCase);
+        return string.Equals(job.Status, JobStatuses.Active, StringComparison.OrdinalIgnoreCase);
     }
 
     public static bool IsAcceptingApplications(Job job) =>
         string.Equals(job.Status, JobStatuses.Active, StringComparison.OrdinalIgnoreCase) &&
         (!job.ApplicationDeadline.HasValue || job.ApplicationDeadline.Value > DateTime.UtcNow);
 
+    /// <summary>The caller must also check the Candidate role's can_submit permission.</summary>
     public static bool CanCandidateApply(Job job, IReadOnlyCollection<string>? roleCodes) =>
-        HasRole(roleCodes, CandidateRole) &&
-        IsAcceptingApplications(job) &&
-        string.Equals(job.Visibility, JobVisibilities.Public, StringComparison.OrdinalIgnoreCase);
+        HasRole(roleCodes, CandidateRole) && IsAcceptingApplications(job);
 
+    /// <summary>The caller must also check the Affiliate role's can_submit permission.</summary>
     public static bool CanAffiliateSubmit(Job job, IReadOnlyCollection<string>? roleCodes) =>
-        HasPartnerRole(roleCodes) &&
-        IsAcceptingApplications(job) &&
-        (string.Equals(job.Visibility, JobVisibilities.Public, StringComparison.OrdinalIgnoreCase) ||
-         string.Equals(job.Visibility, JobVisibilities.PartnerOnly, StringComparison.OrdinalIgnoreCase));
+        HasRole(roleCodes, AffiliateRole) && IsAcceptingApplications(job);
 
     public static bool CanManageJob(Job job, Guid companyId) => job.CompanyId == companyId;
-
-    public static bool IsVisibilityAllowedForServiceType(string? serviceTypeCode, string? visibility)
-    {
-        if (string.IsNullOrWhiteSpace(serviceTypeCode) || string.IsNullOrWhiteSpace(visibility))
-            return false;
-
-        var normalizedServiceType = serviceTypeCode.Trim().ToUpperInvariant();
-        var normalizedVisibility = visibility.Trim().ToUpperInvariant();
-
-        return normalizedServiceType switch
-        {
-            ServiceTypeCodes.CvApplication => normalizedVisibility is
-                JobVisibilities.Public or JobVisibilities.InternalOnly,
-            ServiceTypeCodes.CvSourcing or ServiceTypeCodes.HeadhuntCod => normalizedVisibility is
-                JobVisibilities.PartnerOnly or JobVisibilities.InternalOnly,
-            _ => false
-        };
-    }
-
-    public static string VisibilityMatrixError(string? serviceTypeCode) =>
-        $"Visibility is not allowed for Service Type {serviceTypeCode}. " +
-        "CV_APPLICATION supports PUBLIC or INTERNAL_ONLY; " +
-        "CV_SOURCING and HEADHUNT_COD support PARTNER_ONLY or INTERNAL_ONLY.";
-
-    private static bool HasPartnerRole(IReadOnlyCollection<string>? roleCodes) =>
-        HasRole(roleCodes, AffiliateRole);
 
     private static bool HasRole(IReadOnlyCollection<string>? roleCodes, string expected) =>
         roleCodes?.Contains(expected, StringComparer.OrdinalIgnoreCase) == true;

@@ -77,7 +77,6 @@ public class JobManagementCommandHandlerTests
             SalaryNegotiable = false,
             SalaryNote = " Có thể thương lượng thêm thưởng dự án ",
             CurrencyCode = "usd",
-            Visibility = JobVisibilities.Public,
             Quantity = 2,
             Requirements = [new CreateJobRequirementRequest { RequirementType = "must_have", Content = "C#" }],
             Skills = [new JobSkillRequest { SkillId = existingSkill.SkillId, IsMandatory = true, Weight = 0.8m }]
@@ -114,7 +113,7 @@ public class JobManagementCommandHandlerTests
         var result = await new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
         {
             JobId = job.JobId, UserId = user, ServiceTypeId = newServiceTypeId,
-            Title = "Draft job", CurrencyCode = "VND", Quantity = 1, Visibility = "PUBLIC"
+            Title = "Draft job", CurrencyCode = "VND", Quantity = 1
         }, default);
 
         result.Data.ServiceTypeId.Should().Be(newServiceTypeId);
@@ -129,7 +128,7 @@ public class JobManagementCommandHandlerTests
         var action = () => new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
         {
             JobId = job.JobId, UserId = user, ServiceTypeId = Guid.NewGuid(),
-            Title = "Rejected job", CurrencyCode = "VND", Quantity = 1, Visibility = "PUBLIC"
+            Title = "Rejected job", CurrencyCode = "VND", Quantity = 1
         }, default);
 
         await action.Should().ThrowAsync<ConflictException>()
@@ -146,7 +145,7 @@ public class JobManagementCommandHandlerTests
         var action = () => new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
         {
             JobId = job.JobId, UserId = user, ServiceTypeId = Guid.NewGuid(),
-            Title = "Draft job", CurrencyCode = "VND", Quantity = 1, Visibility = "PUBLIC"
+            Title = "Draft job", CurrencyCode = "VND", Quantity = 1
         }, default);
 
         await action.Should().ThrowAsync<ConflictException>()
@@ -193,27 +192,6 @@ public class JobManagementCommandHandlerTests
         var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _adminSettings.Object, _uow.Object)
             .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
         await action.Should().ThrowAsync<BadRequestException>(); job.Status.Should().Be(JobStatuses.Draft);
-        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task Submit_ShouldKeepDraft_WhenVisibilityDoesNotMatchServiceType()
-    {
-        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
-        job.Title = "Backend Developer"; job.Description = "Build APIs"; job.Benefits = "Insurance";
-        job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
-        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
-        job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid() });
-        job.Visibility = JobVisibilities.Public;
-        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ServiceTypeCodes.CvSourcing);
-
-        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _adminSettings.Object, _uow.Object)
-            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
-
-        await action.Should().ThrowAsync<BadRequestException>();
-        job.Status.Should().Be(JobStatuses.Draft);
-        job.JobStatusHistories.Should().BeEmpty();
         _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -271,7 +249,6 @@ public class JobManagementCommandHandlerTests
             EmploymentType = "FULL_TIME",
             CurrencyCode = "VND",
             Quantity = 1,
-            Visibility = "PUBLIC",
             Requirements = [new CreateJobRequirementRequest { RequirementType = JobRequirementTypes.MustHave, Content = "C#" }],
             Skills = [new JobSkillRequest { SkillId = job.JobSkills.Single().SkillId, IsMandatory = true, Weight = 0.8m }]
         }, default);
@@ -349,7 +326,7 @@ public class JobManagementCommandHandlerTests
         var action = () => new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object).Handle(new UpdateJobCommand
         {
             JobId = job.JobId, UserId = user, ConcurrencyToken = Guid.NewGuid(),
-            ServiceTypeId = job.ServiceTypeId, Title = "Stale update", CurrencyCode = "VND", Quantity = 1, Visibility = "PUBLIC"
+            ServiceTypeId = job.ServiceTypeId, Title = "Stale update", CurrencyCode = "VND", Quantity = 1
         }, default);
 
         await action.Should().ThrowAsync<ConflictException>();
@@ -376,7 +353,7 @@ public class JobManagementCommandHandlerTests
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
         job.Title = "Senior Sourcing"; job.Description = "Sourcing JD"; job.Benefits = "Good";
-        job.Location = "HN"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.PartnerOnly;
+        job.Location = "HN"; job.EmploymentType = "FULL_TIME";
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ServiceTypeCodes.CvSourcing);
@@ -399,7 +376,7 @@ public class JobManagementCommandHandlerTests
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
         job.Title = "Senior Sourcing"; job.Description = "Sourcing JD"; job.Benefits = "Good";
-        job.Location = "HN"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.PartnerOnly;
+        job.Location = "HN"; job.EmploymentType = "FULL_TIME";
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
         job.SourcingTarget = 5;
         job.SourcingPricePerCv = null;
@@ -421,7 +398,7 @@ public class JobManagementCommandHandlerTests
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
         job.Title = "CTO Headhunt"; job.Description = "CTO JD"; job.Benefits = "Equity";
-        job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.PartnerOnly;
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
         job.FeeMultiplier = null;
         job.WarrantyDays = null;
@@ -444,7 +421,7 @@ public class JobManagementCommandHandlerTests
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
         job.Title = "Frontend Dev Free"; job.Description = "React JD"; job.Benefits = "Lunch";
-        job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.Public;
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
 
         var freePkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Free, Name = "Gói Miễn Phí", Price = 0, DurationDays = 30, IsActive = true };
@@ -470,7 +447,7 @@ public class JobManagementCommandHandlerTests
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
         job.Title = "Frontend Dev Free"; job.Description = "React JD"; job.Benefits = "Lunch";
-        job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.Public;
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
 
         var freePkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Free, Name = "Gói Miễn Phí", Price = 0, DurationDays = 30, IsActive = true };
@@ -493,7 +470,7 @@ public class JobManagementCommandHandlerTests
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
         job.Title = "Frontend Dev Free"; job.Description = "React JD"; job.Benefits = "Lunch";
-        job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.Public;
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
 
         var freePkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Free, Name = "Gói Miễn Phí", Price = 0, DurationDays = 30, IsActive = true };
@@ -520,7 +497,7 @@ public class JobManagementCommandHandlerTests
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
         job.Title = "Frontend Dev Standard"; job.Description = "React JD"; job.Benefits = "Lunch";
-        job.Location = "HCM"; job.EmploymentType = "FULL_TIME"; job.Visibility = JobVisibilities.Public;
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
 
         var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, Name = "Gói Trả Phí", Price = 1_500_000m, DurationDays = 30, MaxApplications = 50, IsActive = true };
@@ -685,7 +662,6 @@ public class JobManagementCommandHandlerTests
             CurrencyCode = "VND",
             Quantity = 1,
             Status = status,
-            Visibility = "PUBLIC",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

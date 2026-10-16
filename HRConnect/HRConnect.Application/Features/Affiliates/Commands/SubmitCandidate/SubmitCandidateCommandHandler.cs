@@ -131,7 +131,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         // 3. Phân quyền can_submit dựa trên Service Type và Roles
         if (!JobAccessPolicy.CanAffiliateSubmit(job, request.RoleCodes))
         {
-            throw new ForbiddenException("This job is not visible to affiliate recruiters.", "JOB_VISIBILITY_NOT_ALLOWED");
+            throw new ForbiddenException("Công việc hiện không nhận hồ sơ từ Affiliate.", "JOB_NOT_ACCEPTING_AFFILIATE");
         }
 
         // Check the permission of the actor used by this operation only. A multi-role

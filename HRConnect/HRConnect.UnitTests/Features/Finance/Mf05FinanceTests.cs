@@ -54,7 +54,7 @@ public class Mf05FinanceTests
         var job = new Job
         {
             JobId = Guid.NewGuid(), CompanyId = _companyId, ServiceTypeId = _serviceTypeId, CreatedBy = Guid.NewGuid(),
-            Title = ".NET Developer", CurrencyCode = "VND", Quantity = 1, Status = "ACTIVE", Visibility = "PUBLIC",
+            Title = ".NET Developer", CurrencyCode = "VND", Quantity = 1, Status = "ACTIVE",
             CreatedAt = now, UpdatedAt = now, ConcurrencyToken = Guid.NewGuid(),
         };
         var application = new JobApplication

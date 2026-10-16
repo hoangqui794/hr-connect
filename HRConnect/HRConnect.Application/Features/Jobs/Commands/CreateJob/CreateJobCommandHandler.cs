@@ -54,8 +54,6 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             throw new BadRequestException("Loại dịch vụ không tồn tại hoặc đã ngừng hoạt động.");
         }
 
-        JobHandlerGuards.RequireVisibilityAllowed(serviceTypeCode, request.Visibility);
-
         var skillIds = request.Skills.Select(x => x.SkillId).Distinct().ToList();
         if (skillIds.Count > 0 && !await _jobRepository.AreSkillsActiveAsync(skillIds, cancellationToken))
         {
@@ -105,7 +103,6 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             CreatedAt = now,
             UpdatedAt = now,
             ConcurrencyToken = Guid.NewGuid(),
-            Visibility = request.Visibility.Trim().ToUpperInvariant(),
             StatusReason = null,
             SourcingTarget = request.SourcingTarget,
             SourcingPricePerCv = null,
@@ -212,7 +209,6 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
                 MinExperienceYears = job.MinExperienceYears,
                 MaxExperienceYears = job.MaxExperienceYears,
                 Status = job.Status,
-                Visibility = job.Visibility,
                 RequirementCount = job.JobRequirements.Count,
                 SkillCount = job.JobSkills.Count,
                 CreatedAt = job.CreatedAt,

@@ -136,7 +136,7 @@ public static class ServiceTypeEndpoints
         })
         .WithName("GetServiceTypeAllowedRoles")
         .WithSummary("Lấy cấu hình role được xem và submit theo Service Type")
-        .WithDescription("Platform Admin xem mapping can_view và can_submit theo Service Type. Job visibility và submission authorization đọc mapping này từ database, không hardcode theo Service Type.")
+        .WithDescription("Platform Admin xem mapping can_view và can_submit theo Service Type. Quyền xem và nộp hồ sơ vào Job đọc mapping này từ database, không hardcode theo Service Type.")
         .Produces<GetServiceTypeAllowedRolesResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)

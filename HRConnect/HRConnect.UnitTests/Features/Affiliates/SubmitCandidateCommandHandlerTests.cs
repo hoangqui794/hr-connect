@@ -215,7 +215,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job);
 
@@ -239,13 +239,13 @@ public class SubmitCandidateCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenJobIsInternalOnly_RejectsAffiliateBeforeServiceTypeCheck()
+    public async Task Handle_WhenCallerHasNoAffiliateRole_RejectsBeforeServiceTypeCheck()
     {
         var userId = Guid.NewGuid();
         var job = new Job
         {
             JobId = Guid.NewGuid(), Status = JobStatuses.Active,
-            ServiceTypeId = Guid.NewGuid(), Visibility = JobVisibilities.InternalOnly
+            ServiceTypeId = Guid.NewGuid()
         };
         _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
@@ -254,11 +254,11 @@ public class SubmitCandidateCommandHandlerTests
         var action = () => _handler.Handle(new SubmitCandidateCommand
         {
             JobId = job.JobId, UserId = userId, FullName = "Candidate",
-            RoleCodes = ["AFFILIATE_RECRUITER"]
+            RoleCodes = ["CANDIDATE"]
         }, default);
 
         var exception = await action.Should().ThrowAsync<ForbiddenException>();
-        exception.Which.ErrorCode.Should().Be("JOB_VISIBILITY_NOT_ALLOWED");
+        exception.Which.ErrorCode.Should().Be("JOB_NOT_ACCEPTING_AFFILIATE");
         _jobRepositoryMock.Verify(r => r.CanAnyRoleSubmitJobAsync(
             It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -274,7 +274,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job);
 
@@ -314,7 +314,7 @@ public class SubmitCandidateCommandHandlerTests
         _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public });
+            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId });
         _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("attacker@example.com", It.IsAny<CancellationToken>()))
@@ -357,7 +357,7 @@ public class SubmitCandidateCommandHandlerTests
         _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" });
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public });
+            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId });
         _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync("candidate@example.com", It.IsAny<CancellationToken>()))
@@ -396,7 +396,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job);
 
@@ -466,7 +466,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job);
 
@@ -537,8 +537,7 @@ public class SubmitCandidateCommandHandlerTests
                 JobId = jobId,
                 Title = "Backend Developer",
                 Status = JobStatuses.Active,
-                ServiceTypeId = serviceTypeId,
-                Visibility = JobVisibilities.Public
+                ServiceTypeId = serviceTypeId
             });
         _jobRepositoryMock.Setup(x => x.CanAnyRoleSubmitJobAsync(
                 serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
@@ -627,8 +626,7 @@ public class SubmitCandidateCommandHandlerTests
             {
                 JobId = jobId,
                 Status = JobStatuses.Active,
-                ServiceTypeId = serviceTypeId,
-                Visibility = JobVisibilities.Public
+                ServiceTypeId = serviceTypeId
             });
         _jobRepositoryMock.Setup(x => x.CanAnyRoleSubmitJobAsync(
                 serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
@@ -692,8 +690,7 @@ public class SubmitCandidateCommandHandlerTests
             {
                 JobId = jobId,
                 Status = JobStatuses.Active,
-                ServiceTypeId = serviceTypeId,
-                Visibility = JobVisibilities.Public
+                ServiceTypeId = serviceTypeId
             });
         _jobRepositoryMock.Setup(x => x.CanAnyRoleSubmitJobAsync(
                 serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
@@ -759,8 +756,7 @@ public class SubmitCandidateCommandHandlerTests
             {
                 JobId = jobId,
                 Status = JobStatuses.Active,
-                ServiceTypeId = serviceTypeId,
-                Visibility = JobVisibilities.Public
+                ServiceTypeId = serviceTypeId
             });
         _jobRepositoryMock.Setup(x => x.CanAnyRoleSubmitJobAsync(
                 serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
@@ -799,7 +795,7 @@ public class SubmitCandidateCommandHandlerTests
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public });
+            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId });
         _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(
                 serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
@@ -853,7 +849,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job);
 
@@ -904,7 +900,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job);
 
@@ -980,8 +976,7 @@ public class SubmitCandidateCommandHandlerTests
             {
                 JobId = jobId,
                 Status = JobStatuses.Active,
-                ServiceTypeId = serviceTypeId,
-                Visibility = JobVisibilities.Public
+                ServiceTypeId = serviceTypeId
             });
         _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(
                 serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
@@ -1077,8 +1072,7 @@ public class SubmitCandidateCommandHandlerTests
                     Code = "HEADHUNT_COD",
                     Name = "Headhunt"
                 },
-                Status = JobStatuses.Active,
-                Visibility = JobVisibilities.Public
+                Status = JobStatuses.Active
             });
         _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(
                 serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
@@ -1136,7 +1130,7 @@ public class SubmitCandidateCommandHandlerTests
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public });
+            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId });
         _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(
                 serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
@@ -1174,7 +1168,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job);
 
@@ -1265,7 +1259,6 @@ public class SubmitCandidateCommandHandlerTests
             JobId = Guid.NewGuid(),
             Status = JobStatuses.Active,
             ServiceTypeId = serviceTypeId,
-            Visibility = JobVisibilities.PartnerOnly,
             ServiceType = new ServiceType
             {
                 ServiceTypeId = serviceTypeId,
@@ -1358,7 +1351,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job);
 
@@ -1429,7 +1422,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job);
 
@@ -1488,7 +1481,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job);
 
@@ -1563,7 +1556,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var job2Id = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var job2 = new Job { JobId = job2Id, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var job2 = new Job { JobId = job2Id, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(job2Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job2);
 
@@ -1618,7 +1611,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job);
 
@@ -1695,7 +1688,7 @@ public class SubmitCandidateCommandHandlerTests
 
         var jobId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public };
+        var job = new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId };
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job);
 
@@ -1745,7 +1738,7 @@ public class SubmitCandidateCommandHandlerTests
         var serviceTypeId = Guid.NewGuid();
         _jobRepositoryMock
             .Setup(repository => repository.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId, Visibility = JobVisibilities.Public });
+            .ReturnsAsync(new Job { JobId = jobId, Status = JobStatuses.Active, ServiceTypeId = serviceTypeId });
         _jobRepositoryMock
             .Setup(repository => repository.CanAnyRoleSubmitJobAsync(
                 serviceTypeId,
@@ -1805,8 +1798,7 @@ public class SubmitCandidateCommandHandlerTests
             {
                 JobId = jobId,
                 ServiceTypeId = serviceTypeId,
-                Status = JobStatuses.Active,
-                Visibility = JobVisibilities.Public
+                Status = JobStatuses.Active
             });
         _jobRepositoryMock.Setup(repository => repository.CanAnyRoleSubmitJobAsync(
                 serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
@@ -1879,8 +1871,7 @@ public class SubmitCandidateCommandHandlerTests
             {
                 JobId = jobId,
                 ServiceTypeId = serviceTypeId,
-                Status = JobStatuses.Active,
-                Visibility = JobVisibilities.Public
+                Status = JobStatuses.Active
             });
         _jobRepositoryMock.Setup(repository => repository.CanAnyRoleSubmitJobAsync(
                 serviceTypeId,
@@ -1941,8 +1932,7 @@ public class SubmitCandidateCommandHandlerTests
             {
                 JobId = jobId,
                 ServiceTypeId = serviceTypeId,
-                Status = JobStatuses.Active,
-                Visibility = JobVisibilities.Public
+                Status = JobStatuses.Active
             });
         _jobRepositoryMock.Setup(repository => repository.CanAnyRoleSubmitJobAsync(
                 serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))

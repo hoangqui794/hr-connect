@@ -1760,10 +1760,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.JobId).HasName("job_pkey");
 
-            entity.ToTable("job", "public", table =>
-                table.HasCheckConstraint(
-                    "ck_job_visibility",
-                    "visibility IN ('PUBLIC','PARTNER_ONLY','INTERNAL_ONLY')"));
+            entity.ToTable("job", "public");
 
             entity.HasIndex(e => new { e.CompanyId, e.ServiceTypeId, e.PostedAt }, "idx_job_active")
                 .IsDescending(false, false, true)
@@ -1772,8 +1769,6 @@ public partial class ApplicationDbContext : DbContext
             entity.HasIndex(e => new { e.CompanyId, e.Status }, "idx_job_company_status");
 
             entity.HasIndex(e => new { e.ServiceTypeId, e.Status }, "idx_job_service_type_status");
-
-            entity.HasIndex(e => new { e.Visibility, e.Status, e.PostedAt }, "idx_job_visibility_status").IsDescending(false, false, true);
 
             entity.HasIndex(e => new { e.Status, e.ApplicationDeadline }, "idx_job_active_deadline")
                 .HasFilter("((status)::text = 'ACTIVE'::text)");
@@ -1841,11 +1836,6 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
-            entity.Property(e => e.Visibility)
-                .HasMaxLength(30)
-                .HasDefaultValueSql("'PUBLIC'::character varying")
-                .HasComment("D07-ready job visibility. Exact actor permissions remain a business-rule/authorization concern.")
-                .HasColumnName("visibility");
             entity.Property(e => e.SourcingTarget).HasColumnName("sourcing_target");
             entity.Property(e => e.SourcingPricePerCv).HasPrecision(18, 2).HasColumnName("sourcing_price_per_cv");
             entity.Property(e => e.FeeMultiplier).HasPrecision(5, 2).HasColumnName("fee_multiplier");

@@ -172,7 +172,6 @@ public class RealDatabaseMf01IntegrationTests
                     EmploymentType = "FULL_TIME",
                     CurrencyCode = "VND",
                     Quantity = 2,
-                    Visibility = "PARTNER_ONLY",
                     SourcingTarget = 5,
                     ProposedTerms = new JobProposedTermsRequest(
                         FeeMultiplier: null,
