@@ -20,6 +20,7 @@ import { authService } from '@/services/authService';
 import { Initials } from '@/features/admin-console/ui';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import '@/features/admin-console/admin-console.css';
 import './candidate/candidate.css';
 
@@ -133,7 +134,8 @@ export const CandidateShell: React.FC = () => {
             </nav>
           )}
 
-          <div className={compact ? 'ml-auto flex items-center' : 'flex items-center justify-self-end'}>
+          <div className={compact ? 'ml-auto flex items-center gap-2' : 'flex items-center justify-self-end gap-3'}>
+            <NotificationBell />
             {compact ? (
               <button
                 ref={accountButtonRef}

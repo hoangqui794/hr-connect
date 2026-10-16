@@ -31,6 +31,7 @@ import { authService } from '@/services/authService';
 import { useCompactLayout } from './useCompactLayout';
 import { Initials } from './ui';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from './AdminRouteProgress';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 interface NavItem {
   to: string;
@@ -238,29 +239,32 @@ export const AdminLayout: React.FC = () => {
             )}
           </nav>
           </div>
-          <Dropdown
-            trigger={['click']}
-            menu={{
-              items: [
-                { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ của tôi' },
-                { type: 'divider' },
-                { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
-              ],
-              onClick: ({ key }) => (key === 'logout' ? signOut() : navigate('/admin/profile')),
-            }}
-          >
-            <button
-              type="button"
-              className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"
-              aria-label="Tài khoản"
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <Dropdown
+              trigger={['click']}
+              menu={{
+                items: [
+                  { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ của tôi' },
+                  { type: 'divider' },
+                  { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
+                ],
+                onClick: ({ key }) => (key === 'logout' ? signOut() : navigate('/admin/profile')),
+              }}
             >
-              <Initials name={name} size={34} />
-              <span className="hidden text-left leading-tight sm:block">
-                <span className="block text-sm font-semibold text-slate-900">{name}</span>
-                <span className="block text-xs text-slate-500">{user?.email}</span>
-              </span>
-            </button>
-          </Dropdown>
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"
+                aria-label="Tài khoản"
+              >
+                <Initials name={name} size={34} />
+                <span className="hidden text-left leading-tight sm:block">
+                  <span className="block text-sm font-semibold text-slate-900">{name}</span>
+                  <span className="block text-xs text-slate-500">{user?.email}</span>
+                </span>
+              </button>
+            </Dropdown>
+          </div>
         </header>
 
         <AdminTopProgress offsetLeft={compact ? 0 : width} />

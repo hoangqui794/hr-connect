@@ -27,6 +27,7 @@ import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { Initials } from '@/features/admin-console/ui';
 import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import '@/features/admin-console/admin-console.css';
 
 interface NavItem {
@@ -200,42 +201,45 @@ export const AffiliateShell: React.FC = () => {
             )}
           </nav>
           </div>
-          <Dropdown
-            trigger={['click']}
-            menu={{
-              items: [
-                { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ & Tài khoản' },
-                { key: 'password', icon: <KeyOutlined />, label: 'Đổi mật khẩu' },
-                { type: 'divider' },
-                { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
-              ],
-              onClick: ({ key }) => {
-                if (key === 'logout') signOut();
-                else if (key === 'password') setShowPasswordModal(true);
-                else if (key === 'profile') navigate('/affiliate/profile');
-              },
-            }}
-          >
-            <button
-              type="button"
-              className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
-              aria-label="Tài khoản"
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <Dropdown
+              trigger={['click']}
+              menu={{
+                items: [
+                  { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ & Tài khoản' },
+                  { key: 'password', icon: <KeyOutlined />, label: 'Đổi mật khẩu' },
+                  { type: 'divider' },
+                  { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
+                ],
+                onClick: ({ key }) => {
+                  if (key === 'logout') signOut();
+                  else if (key === 'password') setShowPasswordModal(true);
+                  else if (key === 'profile') navigate('/affiliate/profile');
+                },
+              }}
             >
-              {user?.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt={name}
-                  className="h-[34px] w-[34px] rounded-full object-cover border border-solid border-slate-200"
-                />
-              ) : (
-                <Initials name={name} size={34} />
-              )}
-              <span className="hidden text-left leading-tight sm:block">
-                <span className="block text-sm font-semibold text-slate-900">{name}</span>
-                <span className="block text-xs text-slate-500">{user?.email}</span>
-              </span>
-            </button>
-          </Dropdown>
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+                aria-label="Tài khoản"
+              >
+                {user?.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={name}
+                    className="h-[34px] w-[34px] rounded-full object-cover border border-solid border-slate-200"
+                  />
+                ) : (
+                  <Initials name={name} size={34} />
+                )}
+                <span className="hidden text-left leading-tight sm:block">
+                  <span className="block text-sm font-semibold text-slate-900">{name}</span>
+                  <span className="block text-xs text-slate-500">{user?.email}</span>
+                </span>
+              </button>
+            </Dropdown>
+          </div>
         </header>
 
         <AdminTopProgress offsetLeft={compact ? 0 : width} />
