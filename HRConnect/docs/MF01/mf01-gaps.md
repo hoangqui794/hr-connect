@@ -100,10 +100,10 @@ Nhánh `fix/fe-requirement-level-wrap` (chưa push) có 2 commit cho form tạo 
 
 ### B4. Tin "Nội bộ" chưa có cách nhận hồ sơ — Trung bình
 
-- **Hiện trạng:** `service_type_allowed_role` cho `INTERNAL_HR` `can_submit = true` với `CV_SOURCING`, `HEADHUNT_COD`, nhưng chưa có
-  chức năng Internal HR nộp hồ sơ thay ứng viên (`main-flows.md` MF-02 ghi **[CHƯA CÓ CODE]**). Vì vậy `INTERNAL_ONLY` đang bị ẩn
-  tạm trên form (xem phần "Đã sửa sẵn").
-- **Cần làm (phối hợp MF-02):** chức năng Internal HR nộp hồ sơ vào job; xong thì mở lại lựa chọn "Nội bộ".
+- **Quyết định (nhóm chốt 2026-10-16):** Internal HR **không** nộp hồ sơ thay ứng viên, nên tin `INTERNAL_ONLY` không bao giờ có hồ sơ.
+  Giữ ẩn lựa chọn "Nội bộ" trên form (xem phần "Đã sửa sẵn"); không mở lại.
+- **Cần dọn:** `ServiceTypeAllowedRoleSeeder` vẫn đặt `INTERNAL_HR` `CanSubmit = true` với `CV_SOURCING`, `HEADHUNT_COD` → đổi thành `false`
+  cho khớp quyết định (không API nào dùng quyền này). Nếu muốn bỏ hẳn `INTERNAL_ONLY` khỏi ma trận hiển thị thì cần migration xử lý job cũ.
 
 ---
 
