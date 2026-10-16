@@ -104,27 +104,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Bước Deploy thực tế lên Server / Cloud:
-      # Tùy theo nền tảng bạn dùng, kích hoạt 1 trong các cách sau:
-      - name: Trigger Production Deployment
+      # Deploy backend lên Render bằng Deploy Hook, chỉ khi CI pass (job này needs: ci).
+      # Secret RENDER_DEPLOY_HOOK_URL: Render > service backend > Settings > Deploy Hook.
+      # Nên tắt Auto-Deploy của service trên Render để không deploy 2 lần cho cùng một commit.
+      - name: Trigger Render Deployment (CD)
+        if: success()
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          echo "================================================================="
-          echo "Docker image successfully built and pushed to GHCR:"
-          echo "${{ steps.meta.outputs.tags }}"
-          echo "Production deployment initiated!"
-          echo "================================================================="
-          
-          # CÁCH 1: Nếu dùng Deploy Webhook (Render / Railway / Portainer / Coolify):
-          # if [ -n "${{ secrets.DEPLOY_WEBHOOK_URL }}" ]; then
-          #   curl -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}"
-          # fi
-
-          # CÁCH 2: Nếu dùng SSH vào VPS Linux (kéo image mới và docker compose up):
-          # uses: appleboy/ssh-action@v1.0.3
-          # with:
-          #   host: ${{ secrets.PROD_SERVER_HOST }}
-          #   username: ${{ secrets.PROD_SERVER_USER }}
-          #   key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
-          #   script: |
-          #     docker pull ghcr.io/${{ github.repository }}:latest
-          #     docker compose -f /app/docker-compose.yml up -d
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK_URL is not set; skipping Render deployment."
+            exit 0
+          fi
+          echo "CI passed! Triggering deployment to Render..."
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
+          echo "Deploy hook sent successfully!"
