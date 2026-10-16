@@ -61,6 +61,7 @@ public sealed class SwaggerTagOrderDocumentFilter : IDocumentFilter
         new() { Name = "Admin Audit Logs", Description = "07 · Platform Admin — Tra cứu audit log và chi tiết thay đổi nghiệp vụ." },
         new() { Name = "Admin Service Types", Description = "07 · Platform Admin — Quản trị Service Type và cấu hình role được xem hoặc submit." },
         new() { Name = "Admin Commission Rules", Description = "07 · Platform Admin — Quản trị quy tắc, mốc và chính sách hoa hồng Affiliate." },
+        new() { Name = "Admin Reports", Description = "07 · Platform Admin — Dashboard báo cáo tổng quan hệ thống, doanh thu theo dịch vụ, top Affiliate và top Doanh nghiệp." },
 
         // 08. Service-to-service integration
         new() { Name = "Internal AI Integration", Description = "08 · Nội bộ MF03 — API service-to-service để lấy JD và gửi kết quả chấm điểm AI." },

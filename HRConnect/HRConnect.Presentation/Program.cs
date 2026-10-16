@@ -1,4 +1,5 @@
 using HRConnect.Presentation.Endpoints.V1.Finance;
+using HRConnect.Presentation.Endpoints.V1.Reports;
 using System.Text;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -388,6 +389,7 @@ app.MapBusinessSettingEndpoints();
 app.MapSubmissionConsentEndpoints();
 app.MapCandidateSavedJobEndpoints();
 app.MapNotificationEndpoints();
+app.MapReportEndpoints();
 
 // ==============================================================================
 // 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động
