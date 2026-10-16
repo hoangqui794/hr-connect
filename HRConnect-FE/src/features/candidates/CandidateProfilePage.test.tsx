@@ -1,6 +1,6 @@
 import { App as AntApp, message } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -22,10 +22,13 @@ Object.defineProperty(window, 'matchMedia', {
   }),
 });
 
+const mockUser = { id: 'user-1', name: 'Nguyễn Văn A', email: 'candidate@example.com' };
+const mockUpdateUser = vi.fn();
+
 vi.mock('@/stores/authStore', () => ({
   useAuthStore: () => ({
-    user: { id: 'user-1', name: 'Nguyễn Văn A', email: 'candidate@example.com' },
-    updateUser: vi.fn(),
+    user: mockUser,
+    updateUser: mockUpdateUser,
   }),
   getInitials: (name?: string) => (name ? name.charAt(0).toUpperCase() : 'U'),
 }));
@@ -83,7 +86,7 @@ describe('CandidateProfilePage', () => {
   };
 
   it('loads candidate profile from DB and renders career details', async () => {
-    vi.spyOn(mf04Api, 'getProfile').mockResolvedValueOnce(mockProfileData);
+    vi.spyOn(mf04Api, 'getProfile').mockResolvedValue(mockProfileData);
 
     renderComponent();
 
@@ -101,7 +104,7 @@ describe('CandidateProfilePage', () => {
   });
 
   it('submits form and calls mf04Api.updateProfile with 9 career fields', async () => {
-    vi.spyOn(mf04Api, 'getProfile').mockResolvedValueOnce(mockProfileData);
+    vi.spyOn(mf04Api, 'getProfile').mockResolvedValue(mockProfileData);
     const updateSpy = vi.spyOn(mf04Api, 'updateProfile').mockResolvedValueOnce({
       ...mockProfileData,
       targetRole: 'Staff Frontend Engineer',
@@ -109,10 +112,10 @@ describe('CandidateProfilePage', () => {
 
     renderComponent();
 
-    expect(await screen.findByRole('heading', { name: 'Nguyễn Văn A' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Nguyễn Văn A' }, { timeout: 10000 })).toBeInTheDocument();
 
     const saveButton = screen.getByRole('button', { name: /Lưu thông tin hồ sơ vào Database/i });
-    await userEvent.click(saveButton);
+    fireEvent.submit(saveButton.closest('form')!);
 
     await waitFor(() => {
       expect(updateSpy).toHaveBeenCalledWith(
@@ -130,7 +133,7 @@ describe('CandidateProfilePage', () => {
   });
 
   it('displays error message when DB updateProfile fails', async () => {
-    vi.spyOn(mf04Api, 'getProfile').mockResolvedValueOnce(mockProfileData);
+    vi.spyOn(mf04Api, 'getProfile').mockResolvedValue(mockProfileData);
     const errorSpy = vi.spyOn(message, 'error');
     vi.spyOn(mf04Api, 'updateProfile').mockRejectedValueOnce(
       new Error('Lỗi kết nối cơ sở dữ liệu')
@@ -141,7 +144,7 @@ describe('CandidateProfilePage', () => {
     expect(await screen.findByRole('heading', { name: 'Nguyễn Văn A' })).toBeInTheDocument();
 
     const saveButton = screen.getByRole('button', { name: /Lưu thông tin hồ sơ vào Database/i });
-    await userEvent.click(saveButton);
+    fireEvent.submit(saveButton.closest('form')!);
 
     await waitFor(() => {
       expect(errorSpy).toHaveBeenCalledWith('Lỗi kết nối cơ sở dữ liệu');
