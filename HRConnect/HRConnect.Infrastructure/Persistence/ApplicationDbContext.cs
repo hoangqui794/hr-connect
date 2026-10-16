@@ -218,6 +218,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
                 .HasDefaultValueSql("'PENDING'::character varying")
+                .IsConcurrencyToken()
                 .HasColumnName("status");
             entity.Property(e => e.SubmittedAt)
                 .HasDefaultValueSql("now()")
@@ -1411,6 +1412,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
                 .HasDefaultValueSql("'PENDING'::character varying")
+                .IsConcurrencyToken()
                 .HasColumnName("status");
             entity.Property(e => e.SubmittedAt)
                 .HasDefaultValueSql("now()")
@@ -3068,6 +3070,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("token_id");
             entity.Property(e => e.AttemptCount)
                 .HasDefaultValue(0)
+                .IsConcurrencyToken()
                 .HasColumnName("attempt_count");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
@@ -3080,7 +3083,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.TokenType)
                 .HasMaxLength(40)
                 .HasColumnName("token_type");
-            entity.Property(e => e.UsedAt).HasColumnName("used_at");
+            entity.Property(e => e.UsedAt)
+                .IsConcurrencyToken()
+                .HasColumnName("used_at");
             entity.Property(e => e.UserId).HasColumnName("user_id");
 
             entity.HasOne(d => d.User).WithMany(p => p.UserTokens)
