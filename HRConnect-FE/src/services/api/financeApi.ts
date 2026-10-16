@@ -3,15 +3,20 @@ import type { ApiEnvelope } from '@/types/api/admin';
 import type {
   AffiliateBankAccount,
   BusinessSetting,
+  CancelReplacementSlotRequest,
   Commission,
   CommissionStatus,
   FinancePage,
   Payout,
+  PlacementListItem,
+  ReplacementSlotDto,
   ServiceFee,
   ServiceFeeStatus,
   Warranty,
+  WarrantyClaimResponse,
   WarrantyStatus,
 } from '@/types/api/finance';
+
 
 const clean = <T extends Record<string, unknown>>(params: T) =>
   Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '' && v !== 'all'));
@@ -61,10 +66,45 @@ export const financeApi = {
   async reportResignation(placementId: string, input: { lastWorkingDate: string; reason: string }) {
     return (await apiClient.post<ApiEnvelope<unknown>>(`/placements/${placementId}/resignation`, input)).data;
   },
-  async resolveResignation(placementId: string, input: { confirmed: boolean; note?: string }) {
-    return (await apiClient.post<ApiEnvelope<unknown>>(`/placements/${placementId}/resignation/resolve`, input)).data;
+  async resolveResignation(placementId: string, input: { confirmed: boolean; note?: string }): Promise<WarrantyClaimResponse> {
+    const res = await apiClient.post<ApiEnvelope<WarrantyClaimResponse>>(`/placements/${placementId}/resignation/resolve`, input);
+    return res.data.data ?? (res.data as unknown as WarrantyClaimResponse);
+  },
+  /** MF-05 replacement slots of one job */
+  async getReplacementSlots(jobId: string): Promise<ReplacementSlotDto[]> {
+    const res = await apiClient.get<ApiEnvelope<ReplacementSlotDto[]>>(`/jobs/${jobId}/replacement-slots`);
+    if (Array.isArray(res.data?.data)) return res.data.data;
+    if (Array.isArray(res.data)) return res.data as unknown as ReplacementSlotDto[];
+    return [];
+  },
+
+  /** Internal HR cancels a WAITING_PAYMENT or OPEN slot */
+  async cancelReplacementSlot(
+    replacementSlotId: string,
+    input: CancelReplacementSlotRequest
+  ): Promise<ReplacementSlotDto> {
+    const res = await apiClient.post<ApiEnvelope<ReplacementSlotDto>>(
+      `/internal/replacement-slots/${replacementSlotId}/cancel`,
+      input
+    );
+    return res.data.data ?? (res.data as unknown as ReplacementSlotDto);
+  },
+  /** Placements list (Client scoped to own company, HR/Admin scoped system-wide) */
+  async getPlacements(params?: {
+    companyId?: string;
+    jobId?: string;
+    candidateId?: string;
+    status?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{ items: PlacementListItem[]; totalCount: number }> {
+    const res = await apiClient.get<{ items: PlacementListItem[]; totalCount: number }>('/placements', {
+      params: clean(params ?? {}),
+    });
+    return res.data?.items ? res.data : ((res.data as any)?.data ?? { items: [], totalCount: 0 });
   },
 };
+
 
 /** The affiliate's own payout account (needed before MF-05 payouts can be made). */
 export const affiliateBankApi = {
