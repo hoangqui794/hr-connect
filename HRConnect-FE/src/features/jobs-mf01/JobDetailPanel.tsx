@@ -5,7 +5,7 @@
  */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert, Button, Descriptions, Empty, Tag, Timeline, Typography } from 'antd';
+import { Alert, Button, Descriptions, Drawer, Empty, Tag, Timeline, Typography } from 'antd';
 import {
   AuditOutlined,
   CalendarOutlined,
@@ -24,6 +24,7 @@ import {
 import type { Job, JobRequirement } from '@/types/api/jobs';
 import { useAuthStore, UserRole } from '@/stores/authStore';
 import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
+import { SourcingDeliveriesView } from '@/features/sourcing/SourcingDeliveriesView';
 import { PaymentDemoModal } from './PaymentDemoModal';
 import { formatMoney, useJobFeeInfo, useJobTemplate } from './useJobQueries';
 import {
@@ -127,6 +128,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const appliedApp = applied ? getApplication(job.jobId) : undefined;
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showSourcingDrawer, setShowSourcingDrawer] = useState(false);
   const feeInfo = useJobFeeInfo(isApplicant ? null : job);
   const feeText = formatMoney(feeInfo.amount, feeInfo.currencyCode);
   const mustHave = job.requirements.filter((r) => r.requirementType === 'MUST_HAVE');
@@ -434,9 +436,25 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         <section aria-label="Điều khoản CV Sourcing" className="rounded-xl border border-solid border-teal-200/90 bg-teal-50/40 p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2 border-0 border-b border-solid border-teal-200/70 pb-2.5">
             <span className="font-bold text-teal-950 text-sm">Dịch vụ CV Sourcing — trả theo số CV được chấp nhận</span>
-            <Tag color={agreed ? 'success' : 'default'} className="m-0 font-medium rounded-full px-2.5">
-              {termLabel}
-            </Tag>
+            <div className="flex items-center gap-2">
+              <Tag color={agreed ? 'success' : 'default'} className="m-0 font-medium rounded-full px-2.5">
+                {termLabel}
+              </Tag>
+              <Button
+                size="small"
+                type="primary"
+                className="!bg-teal-700 hover:!bg-teal-600 !border-teal-700 text-xs font-semibold"
+                onClick={() => {
+                  if (isInternalReview) {
+                    setShowSourcingDrawer(true);
+                  } else {
+                    navigate(`/client/jobs/${job.jobId}/sourcing`);
+                  }
+                }}
+              >
+                {isInternalReview ? 'Quản lý CV đã giao' : 'Xem hồ sơ nhận được'}
+              </Button>
+            </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {[
@@ -537,6 +555,20 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           onPaySuccess?.();
         }}
       />
+
+      <Drawer
+        open={showSourcingDrawer}
+        width="min(800px, 100vw)"
+        onClose={() => setShowSourcingDrawer(false)}
+        title={`CV Sourcing · ${job.title}`}
+        destroyOnClose
+      >
+        <SourcingDeliveriesView
+          jobId={job.jobId}
+          jobTitle={job.title}
+          role={isInternalReview ? 'hr' : 'client'}
+        />
+      </Drawer>
     </div>
   );
 };

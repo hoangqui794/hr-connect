@@ -219,9 +219,67 @@ Với từng file: kiểm tra trong `app/router.tsx` còn được route không.
 
 ---
 
+## 11. 🔴 Dashboard báo cáo (Platform Admin) & Đánh giá chất lượng Affiliate (BE-tasks-01 - ĐÃ CÓ API)
+
+> **Căn cứ:** [`BE-tasks-01`](../../../HRConnect/docs/tasks/BE-tasks-01-bao-cao-va-danh-gia-affiliate.md) đã hoàn thành cả Phần A và Phần B.
+
+### A. Dashboard báo cáo Platform Admin (Quyền `report.view`)
+
+| Method | Route | Quyền | Mô tả |
+|---|---|---|---|
+| `GET` | `/reports/overview?from=&to=` | `report.view` | Báo cáo tổng quan: việc làm theo trạng thái/dịch vụ, hồ sơ, tuyển dụng, doanh thu, hoa hồng, phân hạng affiliate |
+| `GET` | `/reports/revenue?from=&to=&groupBy=MONTH\|QUARTER\|YEAR` | `report.view` | Báo cáo doanh thu phát sinh/thực thu theo gói dịch vụ và chuỗi thời gian gom nhóm |
+| `GET` | `/reports/top-affiliates?from=&to=&sortBy=PLACEMENTS\|SUBMISSION_TO_HIRE_RATE\|COMMISSION_EARNED&limit=10` | `report.view` | Bảng xếp hạng Top Affiliate theo placements, tỷ lệ chuyển đổi hoặc hoa hồng |
+| `GET` | `/reports/top-companies?from=&to=&sortBy=PLACEMENTS\|REVENUE\|ACTIVE_JOBS&limit=10` | `report.view` | Bảng xếp hạng Top Doanh nghiệp chi tiêu cao nhất hoặc nhiều job nhất |
+
+### B. Hiệu suất & Đánh giá chất lượng Affiliate
+
+| Method | Route | Quyền | Mô tả |
+|---|---|---|---|
+| `GET` | `/affiliates/me/performance?period=MONTH\|QUARTER\|YEAR` | `affiliate.performance.view_own` | Cho thẻ "Hiệu suất của tôi" trên portal Affiliate (kỳ hiện tại + mảng `history`) |
+| `GET` | `/admin/affiliates/{affiliateId}/performance?period=MONTH\|QUARTER\|YEAR` | `report.view` | Admin xem lịch sử hiệu suất và xếp hạng của từng Affiliate |
+| `POST` | `/admin/affiliate-performance/recalculate` | `report.view` | Body: `{ "from": "YYYY-MM-DD", "to": "YYYY-MM-DD", "affiliateId": null }`. Tính lại hiệu suất |
+
+**Response mẫu `GET /affiliates/me/performance`:**
+```jsonc
+{
+  "success": true,
+  "data": {
+    "affiliateId": "uuid",
+    "displayName": "Đối Tác A",
+    "affiliateType": "INDIVIDUAL",
+    "periodStart": "2026-10-01",
+    "periodEnd": "2026-10-31",
+    "totalSubmissions": 10,
+    "totalShortlisted": 4,
+    "totalInterviews": 3,
+    "totalPlacements": 2,
+    "submissionToHireRate": 0.2,
+    "qualityRating": 4.1,
+    "ratingLabel": "EXCELLENT", // EXCELLENT | GOOD | AVERAGE | LOW | NEW
+    "calculationVersion": "v1",
+    "calculatedAt": "2026-10-16T15:00:00Z",
+    "history": [
+      {
+        "periodStart": "2026-09-01",
+        "periodEnd": "2026-09-30",
+        "totalSubmissions": 8,
+        "totalShortlisted": 3,
+        "totalPlacements": 1,
+        "qualityRating": 3.2,
+        "ratingLabel": "GOOD",
+        "calculatedAt": "..."
+      }
+    ]
+  }
+}
+```
+
+---
+
 ## Chưa làm được (backend chưa có API)
 
-Dashboard báo cáo, đánh giá chất lượng Affiliate ([`BE-tasks-01`](../../../HRConnect/docs/tasks/BE-tasks-01-bao-cao-va-danh-gia-affiliate.md)); danh bạ công ty, bộ lọc kinh nghiệm/ngành ([`BE-tasks-02`](../../../HRConnect/docs/tasks/BE-tasks-02-nganh-danh-ba-cong-ty-loc-job.md)); khiếu nại tranh chấp trùng ([`BE-tasks-03`](../../../HRConnect/docs/tasks/BE-tasks-03-tranh-chap-trung-sf04.md)). Đợi backend merge rồi giao tiếp; không làm số liệu giả.
+Danh bạ công ty, bộ lọc kinh nghiệm/ngành ([`BE-tasks-02`](../../../HRConnect/docs/tasks/BE-tasks-02-nganh-danh-ba-cong-ty-loc-job.md)); khiếu nại tranh chấp trùng ([`BE-tasks-03`](../../../HRConnect/docs/tasks/BE-tasks-03-tranh-chap-trung-sf04.md)). Đợi backend merge rồi giao tiếp; không làm số liệu giả.
 
 ## Thứ tự gợi ý
 
