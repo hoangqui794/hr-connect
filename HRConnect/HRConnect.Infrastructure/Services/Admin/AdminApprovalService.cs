@@ -116,11 +116,18 @@ public class AdminApprovalService : IAdminApprovalService
             else
             {
                 existingUserRole.Status = "ACTIVE";
+                existingUserRole.AssignmentSource = "AFFILIATE_APPROVAL";
+                existingUserRole.AssignedBy = adminUserId;
+                existingUserRole.AssignedAt = now;
+                existingUserRole.RevokedAt = null;
+                existingUserRole.RevokedBy = null;
+                existingUserRole.RevokeReason = null;
                 _context.UserRoles.Update(existingUserRole);
             }
 
             // 4. Kích hoạt tài khoản AppUser
             application.User.Status = "ACTIVE";
+            application.User.AuthorizationConcurrencyToken = Guid.NewGuid();
             application.User.UpdatedAt = now;
             _context.AppUsers.Update(application.User);
 
@@ -320,11 +327,18 @@ public class AdminApprovalService : IAdminApprovalService
             else
             {
                 existingUserRole.Status = "ACTIVE";
+                existingUserRole.AssignmentSource = "COMPANY_VERIFICATION";
+                existingUserRole.AssignedBy = adminUserId;
+                existingUserRole.AssignedAt = now;
+                existingUserRole.RevokedAt = null;
+                existingUserRole.RevokedBy = null;
+                existingUserRole.RevokeReason = null;
                 _context.UserRoles.Update(existingUserRole);
             }
 
             // 5. Kích hoạt tài khoản AppUser
             request.SubmittedByNavigation.Status = "ACTIVE";
+            request.SubmittedByNavigation.AuthorizationConcurrencyToken = Guid.NewGuid();
             request.SubmittedByNavigation.UpdatedAt = now;
 
             await AddReviewAuditAsync(

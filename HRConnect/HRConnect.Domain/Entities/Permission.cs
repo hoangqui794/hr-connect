@@ -17,9 +17,14 @@ public partial class Permission
 
     public bool IsActive { get; set; }
 
+    /// <summary>Whether this permission may be granted to a custom role.</summary>
+    public bool IsDelegable { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
+
+    public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
 
     public virtual ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
 }

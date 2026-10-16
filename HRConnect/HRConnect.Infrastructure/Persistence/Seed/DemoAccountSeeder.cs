@@ -669,14 +669,24 @@ public static class DemoAccountSeeder
             };
 
             await context.UserRoles.AddAsync(userRole, cancellationToken);
+            var user = await context.AppUsers.SingleAsync(x => x.UserId == userId, cancellationToken);
+            user.AuthorizationConcurrencyToken = Guid.NewGuid();
+            user.UpdatedAt = now;
             await context.SaveChangesAsync(cancellationToken);
             logger?.LogInformation("Assigned role {RoleCode} to UserId {UserId} with source {Source}", roleCode, userId, assignmentSource);
         }
         else if (existingUserRole.Status != "ACTIVE")
         {
             existingUserRole.Status = "ACTIVE";
+            existingUserRole.AssignmentSource = assignmentSource;
             existingUserRole.AssignedAt = now;
             existingUserRole.AssignedBy = assignedBy ?? existingUserRole.AssignedBy;
+            existingUserRole.RevokedAt = null;
+            existingUserRole.RevokedBy = null;
+            existingUserRole.RevokeReason = null;
+            var user = await context.AppUsers.SingleAsync(x => x.UserId == userId, cancellationToken);
+            user.AuthorizationConcurrencyToken = Guid.NewGuid();
+            user.UpdatedAt = now;
             context.UserRoles.Update(existingUserRole);
             await context.SaveChangesAsync(cancellationToken);
             logger?.LogInformation("Re-activated role {RoleCode} for UserId {UserId}", roleCode, userId);
