@@ -185,6 +185,7 @@ public class GetPlacementDetailQueryHandlerTests
         var placement = new Placement
         {
             PlacementId = placementId,
+            ReplacementSlotId = Guid.NewGuid(),
             ApplicationId = Guid.NewGuid(),
             OfferId = Guid.NewGuid(),
             ActualStartDate = new DateOnly(2026, 10, 1),
@@ -230,6 +231,10 @@ public class GetPlacementDetailQueryHandlerTests
                 StartDate = new DateOnly(2026, 10, 1),
                 EndDate = new DateOnly(2026, 11, 1),
                 Status = "ACTIVE"
+            },
+            ReplacementSlot = new ReplacementSlot
+            {
+                OriginalPlacementId = Guid.NewGuid()
             }
         };
 
@@ -261,6 +266,9 @@ public class GetPlacementDetailQueryHandlerTests
         result.Probation!.Result.Should().Be("PENDING");
         result.Warranty.Should().NotBeNull();
         result.Warranty!.Status.Should().Be("ACTIVE");
+        result.IsReplacement.Should().BeTrue();
+        result.ReplacementSlotId.Should().Be(placement.ReplacementSlotId);
+        result.ReplacesPlacementId.Should().Be(placement.ReplacementSlot!.OriginalPlacementId);
         result.AllowedActions.Should().Contain("VIEW_PLACEMENT");
         result.AllowedActions.Should().NotContain(["MANAGE_PLACEMENT", "MARK_NOT_STARTED"]);
         result.AllowedActions.Should().Contain("VIEW_PROBATION");

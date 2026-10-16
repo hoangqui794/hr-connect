@@ -372,6 +372,75 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
         result.Data.AllowedActions.Should().NotContain(["UPDATE_OFFER", "SEND_OFFER", "WITHDRAW_OFFER"]);
     }
 
+    [Fact]
+    public async Task Handle_WhenReplacementCandidateHasNotStartedWork_ShouldExposeReplacementSlotContext()
+    {
+        var appId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var replacementSlotId = Guid.NewGuid();
+        var originalPlacementId = Guid.NewGuid();
+        var app = CreateSampleApplication(appId, companyId, ApplicationStates.OfferAccepted, ServiceTypeCodes.HeadhuntCod);
+        app.ReplacementSlotId = replacementSlotId;
+        app.ReplacementSlot = new ReplacementSlot
+        {
+            ReplacementSlotId = replacementSlotId,
+            OriginalPlacementId = originalPlacementId,
+            Status = ReplacementSlotStates.Open,
+            ExpiresAt = DateTime.UtcNow.AddDays(10)
+        };
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+
+        var result = await CreateHandler().Handle(new GetRecruitmentApplicationDetailQuery(
+            appId, userId, IsClientCompanyUser: true, IsInternalHrOrAdmin: false), CancellationToken.None);
+
+        result.Data.IsReplacement.Should().BeTrue();
+        result.Data.ReplacementSlotId.Should().Be(replacementSlotId);
+        result.Data.ReplacementForPlacementId.Should().Be(originalPlacementId);
+    }
+
+    [Fact]
+    public async Task Handle_WhenClientAcceptsReplacementCandidateAsNewHire_ShouldNotMislabelPlacementAsReplacement()
+    {
+        var appId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var app = CreateSampleApplication(appId, companyId, ApplicationStates.Placed, ServiceTypeCodes.HeadhuntCod);
+        app.ReplacementSlotId = Guid.NewGuid();
+        app.ReplacementSlot = new ReplacementSlot
+        {
+            ReplacementSlotId = app.ReplacementSlotId.Value,
+            OriginalPlacementId = Guid.NewGuid(),
+            Status = ReplacementSlotStates.Open
+        };
+        app.Placement = new Placement
+        {
+            PlacementId = Guid.NewGuid(),
+            ApplicationId = appId,
+            Status = PlacementStates.Started,
+            ActualStartDate = DateOnly.FromDateTime(DateTime.UtcNow)
+        };
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+
+        var result = await CreateHandler().Handle(new GetRecruitmentApplicationDetailQuery(
+            appId, userId, IsClientCompanyUser: true, IsInternalHrOrAdmin: false), CancellationToken.None);
+
+        result.Data.IsReplacement.Should().BeFalse();
+        result.Data.ReplacementSlotId.Should().BeNull();
+        result.Data.ReplacementForPlacementId.Should().BeNull();
+        result.Data.Placement!.IsReplacement.Should().BeFalse();
+    }
+
     private static Domain.Entities.Application CreateSampleApplication(
         Guid applicationId,
         Guid companyId,

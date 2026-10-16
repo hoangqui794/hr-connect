@@ -123,6 +123,9 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
             placement.ConfirmedBy,
             confirmedByName,
             placement.ConfirmationNote,
+            placement.ReplacementSlotId.HasValue,
+            placement.ReplacementSlotId,
+            placement.ReplacementSlot?.OriginalPlacementId,
             new PlacementDetailCandidateDto(
                 candidate?.CandidateId ?? Guid.Empty,
                 candidateName,

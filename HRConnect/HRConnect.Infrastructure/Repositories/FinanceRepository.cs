@@ -75,6 +75,16 @@ public class FinanceRepository : IFinanceRepository
     public Task<ReplacementSlot?> GetReplacementSlotForConsentForUpdateAsync(
         Guid replacementSlotId,
         CancellationToken cancellationToken = default)
+        => GetReplacementSlotWithLockAsync(replacementSlotId, cancellationToken);
+
+    public Task<ReplacementSlot?> GetReplacementSlotForPlacementForUpdateAsync(
+        Guid replacementSlotId,
+        CancellationToken cancellationToken = default)
+        => GetReplacementSlotWithLockAsync(replacementSlotId, cancellationToken);
+
+    private Task<ReplacementSlot?> GetReplacementSlotWithLockAsync(
+        Guid replacementSlotId,
+        CancellationToken cancellationToken)
     {
         if (string.Equals(
                 _context.Database.ProviderName,

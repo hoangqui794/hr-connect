@@ -25,6 +25,7 @@ public class ConfirmStartWorkCommandHandlerTests
     private readonly Mock<ILogger<ConfirmStartWorkCommandHandler>> _loggerMock = new();
     private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
     private readonly Mock<IPlacementFinanceService> _placementFinanceServiceMock = CreateFinanceMock();
+    private readonly Mock<IFinanceRepository> _financeRepositoryMock = new();
 
     private static Mock<IPlacementFinanceService> CreateFinanceMock()
     {
@@ -43,7 +44,8 @@ public class ConfirmStartWorkCommandHandlerTests
             _unitOfWorkMock.Object,
             _loggerMock.Object,
             _auditLogServiceMock.Object,
-            _placementFinanceServiceMock.Object);
+            _placementFinanceServiceMock.Object,
+            _financeRepositoryMock.Object);
 
     [Fact]
     public async Task Handle_WhenActualStartDateIsInFuture_ShouldThrowBadRequestException()
@@ -619,5 +621,177 @@ public class ConfirmStartWorkCommandHandlerTests
         _placementRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Placement>(), It.IsAny<CancellationToken>()), Times.Once);
         _applicationRepositoryMock.Verify(r => r.Update(application), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenReplacementSlotIsOpen_ShouldFillSlotAndSuppressNewHireClassification()
+    {
+        var slotId = Guid.NewGuid();
+        var fixture = ArrangeValidClientStart(slotId);
+        var originalPlacementId = Guid.NewGuid();
+        var slot = new ReplacementSlot
+        {
+            ReplacementSlotId = slotId,
+            JobId = fixture.Application.JobId,
+            OriginalPlacementId = originalPlacementId,
+            ServiceFeeId = Guid.NewGuid(),
+            Status = ReplacementSlotStates.Open,
+            OpenedAt = DateTime.UtcNow.AddDays(-1),
+            ExpiresAt = DateTime.UtcNow.AddDays(10),
+            ConcurrencyToken = Guid.NewGuid()
+        };
+        var sourceFee = new ServiceFee
+        {
+            ServiceFeeId = slot.ServiceFeeId,
+            Status = ServiceFeeStates.Paid,
+            Amount = 30_000_000m,
+            CurrencyCode = "VND"
+        };
+        JobApplicationContext? capturedContext = null;
+        Placement? createdPlacement = null;
+
+        _financeRepositoryMock
+            .Setup(r => r.GetReplacementSlotForPlacementForUpdateAsync(slotId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(slot);
+        _financeRepositoryMock
+            .Setup(r => r.GetServiceFeeForUpdateAsync(slot.ServiceFeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(sourceFee);
+        _placementRepositoryMock
+            .Setup(r => r.AddAsync(It.IsAny<Placement>(), It.IsAny<CancellationToken>()))
+            .Callback<Placement, CancellationToken>((placement, _) => createdPlacement = placement)
+            .Returns(Task.CompletedTask);
+        _placementFinanceServiceMock
+            .Setup(s => s.InitializeAsync(It.IsAny<Placement>(), It.IsAny<JobApplicationContext>(), fixture.UserId, It.IsAny<CancellationToken>()))
+            .Callback<Placement, JobApplicationContext, Guid, CancellationToken>((_, context, _, _) => capturedContext = context)
+            .ReturnsAsync(new PlacementFinanceResult(true, Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)), null, null, Guid.NewGuid(), 9_000_000m, []));
+        _unitOfWorkMock.Setup(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _unitOfWorkMock.Setup(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var response = await CreateHandler().Handle(fixture.CreateCommand(false), CancellationToken.None);
+
+        response.IsReplacement.Should().BeTrue();
+        response.ReplacementSlotId.Should().Be(slotId);
+        response.ReplacesPlacementId.Should().Be(originalPlacementId);
+        response.AcceptedAsNewHire.Should().BeFalse();
+        createdPlacement.Should().NotBeNull();
+        createdPlacement!.ReplacementSlotId.Should().Be(slotId);
+        slot.Status.Should().Be(ReplacementSlotStates.Filled);
+        slot.FilledByPlacementId.Should().Be(createdPlacement.PlacementId);
+        slot.ClosedBy.Should().Be(fixture.UserId);
+        slot.ClosedAt.Should().NotBeNull();
+        capturedContext.Should().NotBeNull();
+        capturedContext!.ReplacementSourceServiceFee.Should().BeSameAs(sourceFee);
+        _unitOfWorkMock.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenAnotherCandidateAlreadyFilledTheSlot_ShouldReturnReplacementSlotAlreadyFilled()
+    {
+        var slotId = Guid.NewGuid();
+        var fixture = ArrangeValidClientStart(slotId);
+        var filledSlot = new ReplacementSlot
+        {
+            ReplacementSlotId = slotId,
+            JobId = fixture.Application.JobId,
+            ServiceFeeId = Guid.NewGuid(),
+            Status = ReplacementSlotStates.Filled,
+            ExpiresAt = DateTime.UtcNow.AddDays(10)
+        };
+
+        _financeRepositoryMock
+            .Setup(r => r.GetReplacementSlotForPlacementForUpdateAsync(slotId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(filledSlot);
+        _unitOfWorkMock.Setup(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _unitOfWorkMock.Setup(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var act = () => CreateHandler().Handle(fixture.CreateCommand(false), CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<ConflictException>();
+        exception.Which.ErrorCode.Should().Be(ReplacementSlotErrorCodes.AlreadyFilled);
+        _placementRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Placement>(), It.IsAny<CancellationToken>()), Times.Never);
+        _placementFinanceServiceMock.Verify(s => s.InitializeAsync(It.IsAny<Placement>(), It.IsAny<JobApplicationContext>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenClientAcceptsReplacementCandidateAsNewHire_ShouldNotConsumeTheSlot()
+    {
+        var fixture = ArrangeValidClientStart(Guid.NewGuid());
+        Placement? createdPlacement = null;
+        JobApplicationContext? capturedContext = null;
+
+        _placementRepositoryMock
+            .Setup(r => r.AddAsync(It.IsAny<Placement>(), It.IsAny<CancellationToken>()))
+            .Callback<Placement, CancellationToken>((placement, _) => createdPlacement = placement)
+            .Returns(Task.CompletedTask);
+        _placementFinanceServiceMock
+            .Setup(s => s.InitializeAsync(It.IsAny<Placement>(), It.IsAny<JobApplicationContext>(), fixture.UserId, It.IsAny<CancellationToken>()))
+            .Callback<Placement, JobApplicationContext, Guid, CancellationToken>((_, context, _, _) => capturedContext = context)
+            .ReturnsAsync(new PlacementFinanceResult(true, Guid.NewGuid(), null, Guid.NewGuid(), 30_000_000m, null, null, []));
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        var response = await CreateHandler().Handle(fixture.CreateCommand(true), CancellationToken.None);
+
+        response.IsReplacement.Should().BeFalse();
+        response.ReplacementSlotId.Should().BeNull();
+        response.AcceptedAsNewHire.Should().BeTrue();
+        createdPlacement.Should().NotBeNull();
+        createdPlacement!.ReplacementSlotId.Should().BeNull();
+        capturedContext.Should().NotBeNull();
+        capturedContext!.ReplacementSourceServiceFee.Should().BeNull();
+        _financeRepositoryMock.Verify(r => r.GetReplacementSlotForPlacementForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private (Domain.Entities.Application Application, Offer Offer, Guid UserId, Func<bool, ConfirmStartWorkCommand> CreateCommand) ArrangeValidClientStart(Guid? replacementSlotId)
+    {
+        var applicationId = Guid.NewGuid();
+        var offerId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var application = new Domain.Entities.Application
+        {
+            ApplicationId = applicationId,
+            Status = ApplicationStates.OfferAccepted,
+            ConcurrencyToken = Guid.NewGuid(),
+            ReplacementSlotId = replacementSlotId,
+            Job = new Job
+            {
+                JobId = Guid.NewGuid(),
+                CompanyId = companyId,
+                Title = "Backend Developer"
+            }
+        };
+        application.JobId = application.Job.JobId;
+        var offer = new Offer
+        {
+            OfferId = offerId,
+            ApplicationId = applicationId,
+            Status = OfferStates.Accepted,
+            RespondedAt = DateTime.UtcNow.AddDays(-1)
+        };
+
+        _applicationRepositoryMock.Setup(r => r.GetByIdAsync(applicationId, It.IsAny<CancellationToken>())).ReturnsAsync(application);
+        _placementRepositoryMock.Setup(r => r.GetByApplicationIdAsync(applicationId, It.IsAny<CancellationToken>())).ReturnsAsync((Placement?)null);
+        _offerRepositoryMock.Setup(r => r.GetByIdAsync(offerId, It.IsAny<CancellationToken>())).ReturnsAsync(offer);
+        _companyUserRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+
+        ConfirmStartWorkCommand CreateCommand(bool acceptAsNewHire = false) => new(
+            applicationId,
+            offerId,
+            DateOnly.FromDateTime(DateTime.UtcNow),
+            "Đã đi làm",
+            null,
+            null,
+            application.ConcurrencyToken,
+            userId,
+            IsClientCompanyUser: true,
+            AcceptAsNewHire: acceptAsNewHire);
+
+        return (application, offer, userId, CreateCommand);
     }
 }

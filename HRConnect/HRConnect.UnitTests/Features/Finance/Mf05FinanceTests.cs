@@ -191,6 +191,103 @@ public class Mf05FinanceTests
     }
 
     [Fact]
+    public async Task ReplacementPlacement_creates_new_warranty_and_commission_but_no_second_service_fee()
+    {
+        var (originalPlacement, originalOffer) = await SeedPlacementAsync();
+        await InitializeAsync(originalPlacement, originalOffer);
+        var originalFee = await _context.ServiceFees.SingleAsync();
+        originalFee.Status = ServiceFeeStates.Paid;
+
+        var now = DateTime.UtcNow;
+        var replacementCandidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            FullName = "Người thay thế",
+            ProfileVisibility = "PRIVATE",
+            Status = "ACTIVE",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var replacementApplication = new JobApplication
+        {
+            ApplicationId = Guid.NewGuid(),
+            JobId = originalPlacement.Application.JobId,
+            CandidateId = replacementCandidate.CandidateId,
+            Status = ApplicationStates.Placed,
+            AppliedAt = now,
+            UpdatedAt = now,
+            ConcurrencyToken = Guid.NewGuid(),
+            Job = originalPlacement.Application.Job,
+            Candidate = replacementCandidate
+        };
+        var replacementOffer = new Offer
+        {
+            OfferId = Guid.NewGuid(),
+            ApplicationId = replacementApplication.ApplicationId,
+            OfferVersion = 1,
+            Salary = 22_000_000m,
+            CurrencyCode = "VND",
+            SalaryBasis = OfferSalaryBasisCodes.Gross,
+            SalaryPeriod = OfferSalaryPeriodCodes.Monthly,
+            Status = OfferStates.Accepted,
+            ConcurrencyToken = Guid.NewGuid(),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var replacementPlacement = new Placement
+        {
+            PlacementId = Guid.NewGuid(),
+            ApplicationId = replacementApplication.ApplicationId,
+            OfferId = replacementOffer.OfferId,
+            ActualStartDate = Start.AddDays(5),
+            Status = PlacementStates.Started,
+            ReplacementSlotId = Guid.NewGuid(),
+            ConfirmedAt = now,
+            CreatedAt = now,
+            UpdatedAt = now,
+            Application = replacementApplication,
+            Offer = replacementOffer
+        };
+        _context.AddRange(replacementCandidate, replacementApplication, replacementOffer, replacementPlacement);
+        _context.Add(new Attribution
+        {
+            AttributionId = Guid.NewGuid(),
+            ApplicationId = replacementApplication.ApplicationId,
+            AffiliateId = Guid.NewGuid(),
+            WinningSubmissionId = Guid.NewGuid(),
+            AttributionRule = "FIRST_ACCEPTED_SUBMISSION",
+            Status = "ACTIVE",
+            EstablishedAt = now,
+            UpdatedAt = now
+        });
+        await _context.SaveChangesAsync();
+
+        var result = await FinanceService().InitializeAsync(
+            replacementPlacement,
+            new JobApplicationContext(
+                replacementApplication.ApplicationId,
+                _companyId,
+                _serviceTypeId,
+                ServiceTypeCodesForTest.Headhunt,
+                replacementOffer,
+                ReplacementSourceServiceFee: originalFee),
+            _actor);
+        await _context.SaveChangesAsync();
+
+        result.Applicable.Should().BeTrue();
+        result.ServiceFeeId.Should().BeNull();
+        result.ServiceFeeAmount.Should().BeNull();
+        (await _context.ServiceFees.CountAsync()).Should().Be(1);
+        var replacementWarranty = await _context.Warranties.SingleAsync(w => w.PlacementId == replacementPlacement.PlacementId);
+        replacementWarranty.StartDate.Should().Be(replacementPlacement.ActualStartDate);
+        replacementWarranty.EndDate.Should().Be(replacementPlacement.ActualStartDate.AddDays(30));
+        var replacementCommission = await _context.Commissions.SingleAsync(c => c.PlacementId == replacementPlacement.PlacementId);
+        replacementCommission.Status.Should().Be(CommissionStates.InWarranty);
+        replacementCommission.BaseAmount.Should().Be(originalFee.Amount);
+        replacementCommission.Amount.Should().Be(originalFee.Amount * 30m / 100m);
+    }
+
+    [Fact]
     public async Task Admin_configured_numbers_apply_to_new_placements()
     {
         var admin = Guid.NewGuid();

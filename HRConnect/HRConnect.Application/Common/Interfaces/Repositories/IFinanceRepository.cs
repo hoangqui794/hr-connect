@@ -64,6 +64,14 @@ public interface IFinanceRepository
         Guid replacementSlotId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Locks one slot row while MF-04 confirms that a replacement candidate started work.
+    /// The caller must begin a transaction before invoking this method.
+    /// </summary>
+    Task<ReplacementSlot?> GetReplacementSlotForPlacementForUpdateAsync(
+        Guid replacementSlotId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>OPEN slots whose deadline is at or before <paramref name="now"/>.</summary>
     Task<IReadOnlyList<Guid>> GetExpiredReplacementSlotIdsAsync(DateTime now, int take, CancellationToken cancellationToken = default);
 

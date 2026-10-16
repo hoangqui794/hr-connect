@@ -26,6 +26,7 @@ public sealed class Mf04HappyPathFlowTests
         var offers = new Mock<IOfferRepository>();
         var placements = new Mock<IPlacementRepository>();
         var companyUsers = new Mock<ICompanyUserRepository>();
+        var financeRepository = new Mock<IFinanceRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
         var audit = new Mock<IAuditLogService>();
 
@@ -223,7 +224,8 @@ public sealed class Mf04HappyPathFlowTests
             unitOfWork.Object,
             Mock.Of<ILogger<ConfirmStartWorkCommandHandler>>(),
             audit.Object,
-            NotApplicableFinance());
+            NotApplicableFinance(),
+            financeRepository.Object);
         await confirmStartHandler.Handle(new ConfirmStartWorkCommand(
             application.ApplicationId,
             persistedOffer.OfferId,

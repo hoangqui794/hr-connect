@@ -694,7 +694,8 @@ public static class RecruitmentEndpoints
                     ConcurrencyToken: request.ExpectedApplicationVersion ?? request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
                     IsClientCompanyUser: true,
-                    IsInternalHrOrAdmin: false
+                    IsInternalHrOrAdmin: false,
+                    AcceptAsNewHire: request.AcceptAsNewHire
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -715,7 +716,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return Results.Conflict(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
             }
             catch (BadRequestException ex)
             {
@@ -724,7 +725,7 @@ public static class RecruitmentEndpoints
         })
         .WithName("ConfirmStartWork")
         .WithSummary("Xác nhận ứng viên thực tế đi làm (Confirm Start Work & Create Placement)")
-        .WithDescription("Chỉ Client Company sở hữu Job với quyền placement.confirm được xác nhận đi làm. API tạo Placement, chuyển hồ sơ sang PLACED và ghi nhận lịch sử trạng thái trong một transaction.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền placement.confirm được xác nhận đi làm. Với hồ sơ thay thế, hệ thống khóa và lấp suất thay thế để không tạo phí mới. Nếu suất đã hết, gửi acceptAsNewHire = true để nhận ứng viên như một tuyển dụng mới có tính phí.")
         .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -880,6 +881,8 @@ public class ConfirmStartWorkRequest
     public string? Note { get; set; }
     public string? Position { get; set; }
     public string? Department { get; set; }
+    /// <summary>Chỉ dùng khi hồ sơ đang gắn suất thay thế nhưng Client chọn nhận như một tuyển dụng mới có tính phí.</summary>
+    public bool AcceptAsNewHire { get; set; }
     public Guid? ExpectedApplicationVersion { get; set; }
     public Guid? ConcurrencyToken { get; set; }
 }

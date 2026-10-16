@@ -32,6 +32,7 @@ public class ApplicationRepository : IApplicationRepository
                 .ThenInclude(j => j.Company)
             .Include(a => a.Job)
                 .ThenInclude(j => j.ServiceType)
+            .Include(a => a.ReplacementSlot)
             .Include(a => a.Candidate)
             .Include(a => a.Interviews)
                 .ThenInclude(i => i.InterviewStatusHistories)
@@ -225,6 +226,7 @@ public class ApplicationRepository : IApplicationRepository
                 .ThenInclude(j => j.Company)
             .Include(a => a.Job)
                 .ThenInclude(j => j.ServiceType)
+            .Include(a => a.ReplacementSlot)
             .Include(a => a.Candidate)
             .Include(a => a.Interviews)
             .Include(a => a.Offers)
@@ -262,6 +264,8 @@ public class ApplicationRepository : IApplicationRepository
                 .ThenInclude(o => o.CreatedByNavigation)
             .Include(a => a.Placement)
                 .ThenInclude(p => p!.ConfirmedByNavigation)
+            .Include(a => a.Placement)
+                .ThenInclude(p => p!.ReplacementSlot)
             .AsSplitQuery()
             .FirstOrDefaultAsync(a => a.ApplicationId == applicationId, cancellationToken);
     }
