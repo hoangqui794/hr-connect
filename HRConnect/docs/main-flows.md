@@ -164,9 +164,12 @@ DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
 | Submission (lượt nộp) | Một lần ai đó gửi ứng viên + CV vào một job |
 | Application (hồ sơ ứng tuyển) | Hồ sơ tuyển dụng chính của ứng viên trong một job; mỗi cặp ứng viên + job chỉ có một |
 
+## Không làm
+
+- **Internal HR không nộp hồ sơ thay ứng viên** (nhóm chốt 2026-10-16). Nguồn ứng viên chỉ gồm ứng viên tự nộp (`CV_APPLICATION`) và Affiliate giới thiệu (`HEADHUNT_COD`, `CV_SOURCING`). Vì vậy job ở chế độ `INTERNAL_ONLY` không có cách nhận hồ sơ; lựa chọn này giữ ẩn trên form tạo job.
+
 ## Chưa có
 
-- Internal HR nộp hồ sơ thay ứng viên **[CHƯA CÓ CODE] [CẦN XÁC NHẬN]**.
 - Khiếu nại tranh chấp trùng và Platform Admin xử lý (SF-04) **[CHƯA CÓ CODE]**.
 
 **Kết quả:** hồ sơ ứng tuyển `SUBMITTED` kèm nguồn và attribution (nếu có), hoặc lượt nộp bị chặn/dừng.
@@ -414,7 +417,7 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 1. Người sàng lọc tách theo loại dịch vụ: Client với `CV_APPLICATION`; Internal HR với `HEADHUNT_COD` và `CV_SOURCING` (MF-03).
 2. Ở MF-04, Client thực hiện mọi bước tuyển dụng; Internal HR chỉ đối soát placement trước khi tính phí với `HEADHUNT_COD` và kiểm tra hồ sơ bị đánh dấu không nhận việc.
 3. Platform Admin là người ghi nhận thu phí, duyệt hoa hồng, ghi nhận payout và xử lý tranh chấp; không có vai trò kế toán riêng.
-4. Internal HR có cần chức năng nộp hồ sơ thay ứng viên không (MF-02).
+4. ~~Internal HR có cần chức năng nộp hồ sơ thay ứng viên không (MF-02)~~ → **đã chốt 2026-10-16:** không làm.
 
 **Tiền**
 
@@ -436,7 +439,6 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 | Hạng mục | Thuộc luồng |
 |---|---|
 | Sàng lọc: chuyển hồ sơ sang `SCREENING`, `SHORTLISTED`, `REJECTED`; phân quyền sàng lọc theo loại dịch vụ | MF-03 — đã có code |
-| Internal HR nộp hồ sơ | MF-02 |
 | Khiếu nại và xử lý tranh chấp trùng | SF-04 |
 | Định tuyến người liên hệ theo Service Type, che thông tin liên hệ | MF-03 |
 | Giới hạn gói miễn phí | MF-01 |
@@ -506,7 +508,7 @@ Mục này đánh giá các Main Flow ở góc nhìn vận hành thực tế: ch
 | 2.4 | Nhận diện trùng chỉ bằng email hoặc số điện thoại khớp chính xác | Ứng viên có nhiều email/số điện thoại; Affiliate thứ hai nhập thông tin khác là qua được. Phát sinh hai hồ sơ cho một người và tranh chấp hoa hồng | Thêm cảnh báo trùng mềm (họ tên + ngày sinh, hoặc nội dung CV) để Internal HR xem xét | Cao |
 | 2.5 | Chưa có luồng khiếu nại tranh chấp | Mọi tranh chấp xử lý ngoài hệ thống, không có dấu vết | Làm SF-04 trước khi mở cho nhiều Affiliate | Trung bình |
 | 2.6 | Ứng viên do Affiliate tạo không có tài khoản | Các bước sau (xem lịch phỏng vấn, phản hồi offer) giả định ứng viên đăng nhập; với nhóm này luồng bị cụt | Mời ứng viên tạo tài khoản ngay ở bước đồng ý, hoặc cho thao tác qua link | Cao |
-| 2.7 | Internal HR không nộp được hồ sơ | Ứng viên do chính SHIRE tìm không vào được pipeline | Thêm nhánh Internal HR nộp, nguồn `INTERNAL`, không có hoa hồng | Trung bình |
+| 2.7 | Internal HR không nộp được hồ sơ | Ứng viên do chính SHIRE tìm không vào được pipeline | ~~Thêm nhánh Internal HR nộp~~ **Đã chốt 2026-10-16: không làm.** Nguồn ứng viên giữ nguyên (ứng viên tự nộp, Affiliate giới thiệu) | — |
 
 **Tác động tới luồng khác:** 2.4 và 2.3 quyết định hoa hồng trả cho ai ở MF-05; 2.6 ảnh hưởng toàn bộ MF-04.
 
