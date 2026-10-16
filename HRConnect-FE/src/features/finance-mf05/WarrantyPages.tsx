@@ -14,6 +14,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import type { ServiceFee, ServiceFeeStatus, Warranty, WarrantyStatus } from '@/types/api/finance';
 import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { COMMISSION_STATUS, SERVICE_FEE_STATUS, WARRANTY_STATUS, date, labelOf, money } from './financeLabels';
+import { ReplacementQuotaCard } from './ReplacementQuotaCard';
 
 const PAGE_SIZE = 20;
 type Mode = 'client' | 'hr';
@@ -35,18 +36,39 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
   const submit = useMutation({
     mutationFn: async () => {
       const v = await form.validateFields();
-      if (!target) return;
+      if (!target) return null;
       if (mode === 'client') {
         await financeApi.reportResignation(target.placementId, {
           lastWorkingDate: (v.lastWorkingDate as Dayjs).format('YYYY-MM-DD'),
           reason: v.reason,
         });
+        return null;
       } else {
-        await financeApi.resolveResignation(target.placementId, { confirmed: v.decision === 'confirm', note: v.note });
+        return await financeApi.resolveResignation(target.placementId, { confirmed: v.decision === 'confirm', note: v.note });
       }
     },
-    onSuccess: () => {
-      message.success(mode === 'client' ? 'Đã báo nghỉ việc. Internal HR sẽ xác minh.' : 'Đã xử lý báo nghỉ.');
+    onSuccess: (claimRes) => {
+      if (mode === 'client') {
+        message.success('Đã báo nghỉ việc. Internal HR sẽ xác minh.');
+      } else {
+        if (claimRes?.replacement) {
+          if (claimRes.replacement.status === 'OPEN') {
+            message.success(
+              `Đã xác minh báo nghỉ việc. Suất tuyển thay thế đã được kích hoạt (hạn đến ${date(
+                claimRes.replacement.expiresAt
+              )}).`
+            );
+          } else if (claimRes.replacement.status === 'WAITING_PAYMENT') {
+            message.info(
+              'Đã xác minh báo nghỉ việc. Suất thay thế sẽ tự động mở khi Doanh nghiệp thanh toán phí dịch vụ.'
+            );
+          } else {
+            message.success('Đã xử lý báo nghỉ.');
+          }
+        } else {
+          message.success('Đã xử lý báo nghỉ.');
+        }
+      }
       setTarget(null);
       form.resetFields();
       queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith('mf05-') });
@@ -56,6 +78,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
       if (!(error && typeof error === 'object' && 'errorFields' in error)) message.error(getApiErrorMessage(error));
     },
   });
+
 
   const columns: ColumnsType<Warranty> = [
     {
@@ -293,6 +316,8 @@ export const ClientWarrantyPage: React.FC = () => (
       title="Bảo hành & phí dịch vụ"
       description="Mỗi ứng viên đi làm được bảo hành theo thời hạn đã thỏa thuận. Nếu ứng viên nghỉ trong thời hạn, hãy báo nghỉ để được tuyển thay thế."
     />
+    <ReplacementQuotaCard mode="client" />
+    <h2 className="mb-3 mt-8 text-lg font-semibold text-slate-900">Danh sách bảo hành ứng viên</h2>
     <WarrantyList mode="client" />
     <h2 className="mb-3 mt-8 text-lg font-semibold text-slate-900">Công nợ phí dịch vụ</h2>
     <p className="-mt-2 mb-3 text-[13.5px] text-slate-600">Phí = lương gross tháng trong offer × hệ số phí. Thanh toán bằng chuyển khoản; HR Connect ghi nhận khi nhận được tiền.</p>
@@ -307,6 +332,9 @@ export const HrWarrantyPage: React.FC = () => (
       title="Theo dõi bảo hành"
       description="Bảo hành tự qua khi đủ thời hạn (hoa hồng Affiliate được ghi nhận 100%). Khi Client báo nghỉ, xác minh với ứng viên và Client rồi xác nhận hoặc bác bỏ."
     />
+    <ReplacementQuotaCard mode="hr" />
+    <h2 className="mb-3 mt-8 text-lg font-semibold text-slate-900">Danh sách bảo hành ứng viên</h2>
     <WarrantyList mode="hr" />
   </div>
 );
+

@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from 'antd';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { AdminFinancePage } from './AdminFinancePage';
 import { HrWarrantyPage } from './WarrantyPages';
 import { financeApi } from '@/services/api/financeApi';
@@ -15,6 +17,9 @@ vi.mock('@/services/api/financeApi', () => ({
     warranties: vi.fn(),
     approveCommission: vi.fn(),
     resolveResignation: vi.fn(),
+    getPlacements: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
+    getReplacementSlots: vi.fn().mockResolvedValue([]),
+    cancelReplacementSlot: vi.fn(),
   },
 }));
 
@@ -30,9 +35,12 @@ const page = <T,>(items: T[]) => ({ items, totalCount: items.length, page: 1, pa
 const renderWith = (node: React.ReactNode) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <App>{node}</App>
+      <MemoryRouter>
+        <App>{node}</App>
+      </MemoryRouter>
     </QueryClientProvider>
   );
+
 
 const earned = (feeStatus: Commission['serviceFeeStatus']): Commission => ({
   commissionId: 'c1', placementId: 'p1', attributionId: 'a1', affiliateId: 'af1', affiliateName: 'Affiliate Hùng',
@@ -71,8 +79,18 @@ describe('MF-05 HR warranty verification', () => {
 
   beforeEach(() => {
     vi.mocked(financeApi.warranties).mockResolvedValue(page([claimed]));
-    vi.mocked(financeApi.resolveResignation).mockReset().mockResolvedValue({ success: true, data: null });
+    vi.mocked(financeApi.getPlacements).mockResolvedValue({ items: [], totalCount: 0 });
+    vi.mocked(financeApi.getReplacementSlots).mockResolvedValue([]);
+    vi.mocked(financeApi.resolveResignation).mockReset().mockResolvedValue({
+      placementId: 'p1',
+      warrantyStatus: 'VOIDED',
+      placementStatus: 'RESIGNED',
+      commissions: [],
+      replacement: null,
+    });
   });
+
+
 
   it('requires a note to reject a reported resignation', async () => {
     renderWith(<HrWarrantyPage />);
@@ -83,7 +101,9 @@ describe('MF-05 HR warranty verification', () => {
 
     expect(await screen.findByText('Bác bỏ cần ghi chú lý do.')).toBeTruthy();
     expect(financeApi.resolveResignation).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Đóng' }));
   });
+
 
   it('confirms a resignation', async () => {
     renderWith(<HrWarrantyPage />);
