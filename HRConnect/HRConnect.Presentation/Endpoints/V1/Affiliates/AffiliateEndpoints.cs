@@ -113,10 +113,16 @@ public static class AffiliateEndpoints
 
         // 3. GET /api/v1/affiliates/profile/me/performance - Xem thống kê hiệu suất tuyển dụng
         group.MapGet("/me/performance", async (
+            [FromQuery] string? period,
             ClaimsPrincipal user,
             [FromServices] ISender sender,
             CancellationToken cancellationToken) =>
         {
+            if (!PermissionAuthorization.HasPermission(user, "affiliate.performance.view_own"))
+            {
+                return Results.Forbid();
+            }
+
             var userId = GetUserIdFromClaims(user);
             if (userId == null)
             {
@@ -125,7 +131,7 @@ public static class AffiliateEndpoints
 
             try
             {
-                var result = await sender.Send(new GetAffiliatePerformanceQuery(userId.Value), cancellationToken);
+                var result = await sender.Send(new GetAffiliatePerformanceQuery(userId.Value, period), cancellationToken);
                 return Results.Ok(result);
             }
             catch (NotFoundException ex)
@@ -138,10 +144,11 @@ public static class AffiliateEndpoints
             }
         })
         .WithName("GetAffiliatePerformance")
-        .WithSummary("Xem thống kê hiệu suất tuyển dụng của đối tác")
-        .WithDescription("Lấy các chỉ số thống kê hiệu suất tuyển dụng mới nhất của đối tác tuyển dụng (tổng hồ sơ đã nộp, shortlist, phỏng vấn, tuyển dụng thành công, tỷ lệ tuyển dụng, xếp hạng chất lượng).")
+        .WithSummary("Xem thống kê hiệu suất tuyển dụng của đối tác (kỳ hiện tại và lịch sử)")
+        .WithDescription("Quyền affiliate.performance.view_own. Lấy các chỉ số thống kê hiệu suất tuyển dụng theo kỳ (MONTH, QUARTER, YEAR) của đối tác tuyển dụng kèm lịch sử.")
         .Produces<AffiliatePerformanceResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 
