@@ -35,6 +35,42 @@ public class AdminApprovalServiceTests
     }
 
     [Fact]
+    public async Task ApproveAffiliateApplicationAsync_WhenReviewWasChangedConcurrently_ReturnsControlledConflict()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        await using var context = new ConcurrencyFailureDbContext(options);
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(), Email = "affiliate.concurrent@example.com", PasswordHash = "hash",
+            DisplayName = "Concurrent Affiliate", Status = "PENDING", EmailVerifiedAt = DateTime.UtcNow
+        };
+        var role = new Role
+        {
+            RoleId = Guid.NewGuid(), Code = "AFFILIATE_RECRUITER", Name = "Affiliate Recruiter", IsActive = true
+        };
+        var application = new AffiliateApplication
+        {
+            AffiliateApplicationId = Guid.NewGuid(), UserId = user.UserId,
+            AffiliateType = "RECRUITER", Status = "UNDER_REVIEW", SubmittedData = "{}"
+        };
+        await context.AddRangeAsync(user, role, application);
+        await context.SaveChangesAsync();
+        context.FailNextSaveWithConcurrency = true;
+        var service = new AdminApprovalService(
+            context,
+            Mock.Of<IAuditLogService>(),
+            Mock.Of<ILogger<AdminApprovalService>>());
+
+        var action = () => service.ApproveAffiliateApplicationAsync(
+            application.AffiliateApplicationId, Guid.NewGuid());
+
+        var error = await action.Should().ThrowAsync<ConflictException>();
+        error.Which.ErrorCode.Should().Be("CONCURRENT_UPDATE");
+    }
+
+    [Fact]
     public async Task ApproveAffiliateApplicationAsync_ShouldApproveAndGrantRoleAndActivateUser()
     {
         // Arrange
@@ -176,10 +212,22 @@ public class AdminApprovalServiceTests
             Status = "UNDER_REVIEW",
             SubmittedPayload = "{}"
         };
+        var companyUser = new CompanyUser
+        {
+            CompanyUserId = Guid.NewGuid(),
+            CompanyId = company.CompanyId,
+            UserId = user.UserId,
+            RoleInCompany = "Primary contact",
+            IsPrimaryContact = true,
+            Status = "PENDING",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
 
         await _context.AppUsers.AddAsync(user);
         await _context.Roles.AddAsync(role);
         await _context.Companies.AddAsync(company);
+        await _context.CompanyUsers.AddAsync(companyUser);
         await _context.CompanyVerificationRequests.AddAsync(request);
         await _context.SaveChangesAsync();
 
@@ -203,10 +251,77 @@ public class AdminApprovalServiceTests
         userRole.Should().NotBeNull();
         userRole!.RoleId.Should().Be(role.RoleId);
         userRole.Status.Should().Be("ACTIVE");
+        (await _context.CompanyUsers.SingleAsync()).Status.Should().Be("ACTIVE");
         (await _context.EmailOutboxes.SingleAsync()).TemplateCode.Should().Be("CLIENT_REGISTRATION_APPROVED");
         _auditLogServiceMock.Verify(audit => audit.AddAsync(
             It.Is<AuditEntry>(entry => entry.Action == AuditActions.ClientApproved && entry.ActorUserId == adminId),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ApproveCompanyVerificationRequestAsync_WhenCompanyMembershipIsMissing_ReturnsConflictWithoutPartialApproval()
+    {
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(), Email = "client.missing-membership@example.com", PasswordHash = "hash",
+            DisplayName = "Missing membership", Status = "PENDING", EmailVerifiedAt = DateTime.UtcNow
+        };
+        var role = new Role
+        {
+            RoleId = Guid.NewGuid(), Code = "CLIENT_COMPANY_USER", Name = "Client Company User", IsActive = true
+        };
+        var company = new Company
+        {
+            CompanyId = Guid.NewGuid(), CompanyName = "Broken Membership Corp", VerificationStatus = "UNDER_REVIEW"
+        };
+        var request = new CompanyVerificationRequest
+        {
+            CompanyVerificationRequestId = Guid.NewGuid(), CompanyId = company.CompanyId,
+            SubmittedBy = user.UserId, Status = "UNDER_REVIEW", SubmittedPayload = "{}"
+        };
+        await _context.AddRangeAsync(user, role, company, request);
+        await _context.SaveChangesAsync();
+
+        var action = () => _service.ApproveCompanyVerificationRequestAsync(
+            request.CompanyVerificationRequestId, Guid.NewGuid());
+
+        var error = await action.Should().ThrowAsync<ConflictException>();
+        error.Which.ErrorCode.Should().Be("COMPANY_MEMBERSHIP_MISSING");
+        request.Status.Should().Be("UNDER_REVIEW");
+        company.VerificationStatus.Should().Be("UNDER_REVIEW");
+        user.Status.Should().Be("PENDING");
+        (await _context.UserRoles.CountAsync()).Should().Be(0);
+        (await _context.EmailOutboxes.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ApproveAffiliateApplicationAsync_WhenAccountIsNotPending_ReturnsConflictWithoutGrantingRole()
+    {
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(), Email = "affiliate.invalid-status@example.com", PasswordHash = "hash",
+            DisplayName = "Invalid status", Status = "SUSPENDED", EmailVerifiedAt = DateTime.UtcNow
+        };
+        var role = new Role
+        {
+            RoleId = Guid.NewGuid(), Code = "AFFILIATE_RECRUITER", Name = "Affiliate Recruiter", IsActive = true
+        };
+        var application = new AffiliateApplication
+        {
+            AffiliateApplicationId = Guid.NewGuid(), UserId = user.UserId,
+            AffiliateType = "RECRUITER", Status = "UNDER_REVIEW", SubmittedData = "{}"
+        };
+        await _context.AddRangeAsync(user, role, application);
+        await _context.SaveChangesAsync();
+
+        var action = () => _service.ApproveAffiliateApplicationAsync(
+            application.AffiliateApplicationId, Guid.NewGuid());
+
+        var error = await action.Should().ThrowAsync<ConflictException>();
+        error.Which.ErrorCode.Should().Be("ACCOUNT_NOT_PENDING_APPROVAL");
+        application.Status.Should().Be("UNDER_REVIEW");
+        user.Status.Should().Be("SUSPENDED");
+        (await _context.UserRoles.CountAsync()).Should().Be(0);
     }
 
     [Fact]
@@ -528,5 +643,22 @@ public class AdminApprovalServiceTests
     {
         await Assert.ThrowsAsync<NotFoundException>(() =>
             _service.ApproveCompanyVerificationRequestAsync(Guid.NewGuid(), Guid.NewGuid()));
+    }
+
+    private sealed class ConcurrencyFailureDbContext(DbContextOptions<ApplicationDbContext> options)
+        : ApplicationDbContext(options)
+    {
+        public bool FailNextSaveWithConcurrency { get; set; }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            if (FailNextSaveWithConcurrency)
+            {
+                FailNextSaveWithConcurrency = false;
+                throw new DbUpdateConcurrencyException("Simulated concurrent review.");
+            }
+
+            return base.SaveChangesAsync(cancellationToken);
+        }
     }
 }

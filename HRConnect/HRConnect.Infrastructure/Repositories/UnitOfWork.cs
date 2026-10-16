@@ -39,6 +39,10 @@ public class UnitOfWork : IUnitOfWork
                 "INTERVIEW_ALREADY_SCHEDULED",
                 ex);
         }
+        catch (DbUpdateException ex) when (TryGetRegistrationConflict(ex, out var message, out var errorCode))
+        {
+            throw new ConflictException(message, errorCode, ex);
+        }
     }
 
     public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
@@ -94,6 +98,11 @@ public class UnitOfWork : IUnitOfWork
                 "INTERVIEW_ALREADY_SCHEDULED",
                 ex);
         }
+        catch (DbUpdateException ex) when (TryGetRegistrationConflict(ex, out var message, out var errorCode))
+        {
+            await RollbackTransactionAsync(cancellationToken);
+            throw new ConflictException(message, errorCode, ex);
+        }
         catch
         {
             await RollbackTransactionAsync(cancellationToken);
@@ -140,5 +149,44 @@ public class UnitOfWork : IUnitOfWork
             SqlState: PostgresErrorCodes.UniqueViolation,
             ConstraintName: "ux_interview_one_scheduled_per_application"
         };
+    }
+
+    private static bool TryGetRegistrationConflict(
+        DbUpdateException exception,
+        out string message,
+        out string errorCode)
+    {
+        message = string.Empty;
+        errorCode = string.Empty;
+
+        if (exception.InnerException is not PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation
+            } postgresException)
+        {
+            return false;
+        }
+
+        switch (postgresException.ConstraintName)
+        {
+            case "uq_user_email_identity_active_email":
+                message = "Email này đã được sử dụng cho một tài khoản khác.";
+                errorCode = "EMAIL_ALREADY_REGISTERED";
+                return true;
+            case "uq_company_tax_code":
+                message = "Mã số thuế này đã được đăng ký cho một doanh nghiệp khác.";
+                errorCode = "TAX_CODE_ALREADY_REGISTERED";
+                return true;
+            case "uq_affiliate_application_open":
+                message = "Tài khoản đã có một hồ sơ Affiliate đang chờ xử lý.";
+                errorCode = "AFFILIATE_APPLICATION_ALREADY_OPEN";
+                return true;
+            case "uq_company_verification_open":
+                message = "Doanh nghiệp đã có một yêu cầu xác thực đang chờ xử lý.";
+                errorCode = "COMPANY_VERIFICATION_ALREADY_OPEN";
+                return true;
+            default:
+                return false;
+        }
     }
 }

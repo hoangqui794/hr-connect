@@ -6,6 +6,7 @@ using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace HRConnect.Infrastructure.Services.Admin;
 
@@ -48,6 +49,13 @@ public class AdminApprovalService : IAdminApprovalService
         if (!string.Equals(application.Status, "UNDER_REVIEW", StringComparison.OrdinalIgnoreCase))
         {
             throw new ConflictException($"Đơn đăng ký Affiliate đang ở trạng thái {application.Status}; chỉ hồ sơ UNDER_REVIEW mới được phê duyệt.");
+        }
+
+        if (!string.Equals(application.User.Status, "PENDING", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException(
+                "Tài khoản không còn ở trạng thái chờ phê duyệt. Vui lòng kiểm tra trạng thái mới nhất trước khi thao tác.",
+                "ACCOUNT_NOT_PENDING_APPROVAL");
         }
 
         var affiliateRole = await _context.Roles
@@ -152,19 +160,30 @@ public class AdminApprovalService : IAdminApprovalService
             await _context.SaveChangesAsync(cancellationToken);
         };
 
-        if (_context.Database.IsRelational())
+        try
         {
-            var strategy = _context.Database.CreateExecutionStrategy();
-            await strategy.ExecuteAsync(async () =>
+            if (_context.Database.IsRelational())
             {
-                using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                    await saveAction();
+                    await transaction.CommitAsync(cancellationToken);
+                });
+            }
+            else
+            {
                 await saveAction();
-                await transaction.CommitAsync(cancellationToken);
-            });
+            }
         }
-        else
+        catch (DbUpdateConcurrencyException ex)
         {
-            await saveAction();
+            throw CreateConcurrentReviewConflict(ex);
+        }
+        catch (DbUpdateException ex) when (IsConcurrentApprovalUniqueConflict(ex))
+        {
+            throw CreateConcurrentReviewConflict(ex);
         }
 
         _logger.LogInformation("Admin {AdminId} đã phê duyệt đơn đăng ký Affiliate {AppId} cho UserId {UserId}",
@@ -227,19 +246,26 @@ public class AdminApprovalService : IAdminApprovalService
             await _context.SaveChangesAsync(cancellationToken);
         };
 
-        if (_context.Database.IsRelational())
+        try
         {
-            var strategy = _context.Database.CreateExecutionStrategy();
-            await strategy.ExecuteAsync(async () =>
+            if (_context.Database.IsRelational())
             {
-                using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                    await saveAction();
+                    await transaction.CommitAsync(cancellationToken);
+                });
+            }
+            else
+            {
                 await saveAction();
-                await transaction.CommitAsync(cancellationToken);
-            });
+            }
         }
-        else
+        catch (DbUpdateConcurrencyException ex)
         {
-            await saveAction();
+            throw CreateConcurrentReviewConflict(ex);
         }
 
         _logger.LogInformation("Admin {AdminId} đã từ chối đơn đăng ký Affiliate {AppId} cho UserId {UserId}",
@@ -274,6 +300,13 @@ public class AdminApprovalService : IAdminApprovalService
             throw new ConflictException($"Hồ sơ doanh nghiệp chưa sẵn sàng để phê duyệt (request: {request.Status}, company: {request.Company.VerificationStatus}).");
         }
 
+        if (!string.Equals(request.SubmittedByNavigation.Status, "PENDING", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException(
+                "Tài khoản không còn ở trạng thái chờ phê duyệt. Vui lòng kiểm tra trạng thái mới nhất trước khi thao tác.",
+                "ACCOUNT_NOT_PENDING_APPROVAL");
+        }
+
         var clientRole = await _context.Roles
             .FirstOrDefaultAsync(
                 role => role.Code == "CLIENT_COMPANY_USER" && role.IsActive,
@@ -281,6 +314,18 @@ public class AdminApprovalService : IAdminApprovalService
         if (clientRole == null)
         {
             throw new ConflictException("Role CLIENT_COMPANY_USER đang thiếu hoặc đã bị tắt; chưa thể phê duyệt hồ sơ.");
+        }
+
+        var companyUser = await _context.CompanyUsers
+            .FirstOrDefaultAsync(
+                companyUser => companyUser.CompanyId == request.CompanyId &&
+                               companyUser.UserId == request.SubmittedBy,
+                cancellationToken);
+        if (companyUser == null)
+        {
+            throw new ConflictException(
+                "Hồ sơ thành viên doanh nghiệp bị thiếu. Không thể phê duyệt cho đến khi dữ liệu đăng ký được khôi phục.",
+                "COMPANY_MEMBERSHIP_MISSING");
         }
 
         var now = DateTime.UtcNow;
@@ -298,15 +343,10 @@ public class AdminApprovalService : IAdminApprovalService
             request.Company.VerifiedAt = now;
             request.Company.UpdatedAt = now;
 
-            // 3. Cập nhật trạng thái CompanyUser (nếu có)
-            var companyUser = await _context.CompanyUsers
-                .FirstOrDefaultAsync(cu => cu.CompanyId == request.CompanyId && cu.UserId == request.SubmittedBy, cancellationToken);
-            if (companyUser != null)
-            {
-                companyUser.Status = "ACTIVE";
-                companyUser.UpdatedAt = now;
-                _context.CompanyUsers.Update(companyUser);
-            }
+            // 3. Kích hoạt đúng thành viên doanh nghiệp đã được tạo khi đăng ký.
+            companyUser.Status = "ACTIVE";
+            companyUser.UpdatedAt = now;
+            _context.CompanyUsers.Update(companyUser);
 
             // 4. Gán Role CLIENT_COMPANY_USER
             var existingUserRole = await _context.UserRoles
@@ -362,19 +402,30 @@ public class AdminApprovalService : IAdminApprovalService
             await _context.SaveChangesAsync(cancellationToken);
         };
 
-        if (_context.Database.IsRelational())
+        try
         {
-            var strategy = _context.Database.CreateExecutionStrategy();
-            await strategy.ExecuteAsync(async () =>
+            if (_context.Database.IsRelational())
             {
-                using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                    await saveAction();
+                    await transaction.CommitAsync(cancellationToken);
+                });
+            }
+            else
+            {
                 await saveAction();
-                await transaction.CommitAsync(cancellationToken);
-            });
+            }
         }
-        else
+        catch (DbUpdateConcurrencyException ex)
         {
-            await saveAction();
+            throw CreateConcurrentReviewConflict(ex);
+        }
+        catch (DbUpdateException ex) when (IsConcurrentApprovalUniqueConflict(ex))
+        {
+            throw CreateConcurrentReviewConflict(ex);
         }
 
         _logger.LogInformation("Admin {AdminId} đã phê duyệt doanh nghiệp {CompanyId} cho UserId {UserId}",
@@ -442,19 +493,26 @@ public class AdminApprovalService : IAdminApprovalService
             await _context.SaveChangesAsync(cancellationToken);
         };
 
-        if (_context.Database.IsRelational())
+        try
         {
-            var strategy = _context.Database.CreateExecutionStrategy();
-            await strategy.ExecuteAsync(async () =>
+            if (_context.Database.IsRelational())
             {
-                using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                    await saveAction();
+                    await transaction.CommitAsync(cancellationToken);
+                });
+            }
+            else
+            {
                 await saveAction();
-                await transaction.CommitAsync(cancellationToken);
-            });
+            }
         }
-        else
+        catch (DbUpdateConcurrencyException ex)
         {
-            await saveAction();
+            throw CreateConcurrentReviewConflict(ex);
         }
 
         _logger.LogInformation("Admin {AdminId} đã từ chối xác thực doanh nghiệp {CompanyId}",
@@ -508,5 +566,28 @@ public class AdminApprovalService : IAdminApprovalService
             NextRetryAt = now,
             CreatedAt = now
         }, cancellationToken);
+    }
+
+    private static ConflictException CreateConcurrentReviewConflict(Exception exception)
+    {
+        return new ConflictException(
+            "Hồ sơ vừa được xử lý bởi một Quản trị viên khác. Vui lòng tải lại trạng thái mới nhất.",
+            "CONCURRENT_UPDATE",
+            exception);
+    }
+
+    private static bool IsConcurrentApprovalUniqueConflict(DbUpdateException exception)
+    {
+        if (exception.InnerException is not PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation
+            } postgresException)
+        {
+            return false;
+        }
+
+        return postgresException.ConstraintName is
+            "user_role_pkey" or
+            "affiliate_profile_user_id_key";
     }
 }

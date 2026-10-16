@@ -4,11 +4,45 @@ using HRConnect.Infrastructure.Persistence;
 using HRConnect.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using HRConnect.Application.Common.Exceptions;
+using Npgsql;
 
 namespace HRConnect.UnitTests.Persistence;
 
 public class UnitOfWorkTests
 {
+    [Theory]
+    [InlineData("uq_user_email_identity_active_email", "EMAIL_ALREADY_REGISTERED")]
+    [InlineData("uq_company_tax_code", "TAX_CODE_ALREADY_REGISTERED")]
+    [InlineData("uq_affiliate_application_open", "AFFILIATE_APPLICATION_ALREADY_OPEN")]
+    [InlineData("uq_company_verification_open", "COMPANY_VERIFICATION_ALREADY_OPEN")]
+    public async Task SaveChangesAsync_WhenConcurrentRegistrationHitsKnownUniqueConstraint_ReturnsBusinessConflict(
+        string constraintName,
+        string expectedErrorCode)
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        await using var context = new UniqueConstraintFailureDbContext(options, constraintName);
+
+        var action = () => new UnitOfWork(context).SaveChangesAsync();
+
+        var error = await action.Should().ThrowAsync<ConflictException>();
+        error.Which.ErrorCode.Should().Be(expectedErrorCode);
+    }
+
+    [Fact]
+    public async Task SaveChangesAsync_WhenUnknownUniqueConstraintFails_DoesNotMaskInfrastructureError()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        await using var context = new UniqueConstraintFailureDbContext(options, "some_other_unique_constraint");
+
+        var action = () => new UnitOfWork(context).SaveChangesAsync();
+
+        await action.Should().ThrowExactlyAsync<DbUpdateException>();
+    }
+
     [Fact]
     public async Task SaveChangesAsync_WhenSubmissionConsentWasChangedConcurrently_ReturnsConflict()
     {
@@ -218,6 +252,22 @@ public class UnitOfWorkTests
             }
 
             return base.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private sealed class UniqueConstraintFailureDbContext(
+        DbContextOptions<ApplicationDbContext> options,
+        string constraintName) : ApplicationDbContext(options)
+    {
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            var postgresException = new PostgresException(
+                "duplicate key value violates unique constraint",
+                "ERROR",
+                "ERROR",
+                PostgresErrorCodes.UniqueViolation,
+                constraintName: constraintName);
+            throw new DbUpdateException("Simulated PostgreSQL unique-constraint failure.", postgresException);
         }
     }
 }
