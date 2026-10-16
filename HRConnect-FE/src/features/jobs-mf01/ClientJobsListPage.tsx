@@ -206,12 +206,23 @@ export const ClientJobsListPage: React.FC = () => {
           (mutations.resume.isPending && mutations.resume.variables?.jobId === job.jobId);
         const more = [
           { key: 'view', icon: <EyeOutlined />, label: 'Xem chi tiết' },
+          ...(job.serviceTypeCode === 'CV_SOURCING' ? [{ key: 'sourcing', icon: <TeamOutlined />, label: 'Hồ sơ CV Sourcing' }] : []),
           ...(can.canPause ? [{ key: 'pause', label: 'Tạm dừng tuyển' }] : []),
           ...(can.canResume ? [{ key: 'resume', label: 'Mở lại tuyển' }] : []),
           ...(can.canClose ? [{ key: 'close', label: 'Đóng tin', danger: true }] : []),
         ];
         return (
           <div className="flex items-center justify-end gap-1">
+            {job.serviceTypeCode === 'CV_SOURCING' && (
+              <Button
+                size="small"
+                className="!text-teal-700 !border-teal-300 hover:!border-teal-500 bg-teal-50/50 font-medium"
+                icon={<TeamOutlined />}
+                onClick={() => navigate(`/client/jobs/${job.jobId}/sourcing`)}
+              >
+                CV Sourcing
+              </Button>
+            )}
             {needsPayment && (
               <Button
                 size="small"
@@ -244,6 +255,7 @@ export const ClientJobsListPage: React.FC = () => {
                 items: more,
                 onClick: ({ key }) => {
                   if (key === 'view') setDetailJobId(job.jobId);
+                  if (key === 'sourcing') navigate(`/client/jobs/${job.jobId}/sourcing`);
                   if (key === 'resume') resume(job);
                   if (key === 'pause' || key === 'close') setPending({ kind: key, job });
                 },
