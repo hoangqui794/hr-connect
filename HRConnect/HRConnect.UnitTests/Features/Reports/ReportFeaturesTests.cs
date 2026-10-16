@@ -97,7 +97,6 @@ public class ReportFeaturesTests
             ServiceType = headhuntServiceType,
             Title = "Senior C# Backend Engineer",
             Status = "ACTIVE",
-            Visibility = "PUBLIC",
             CurrencyCode = "VND",
             Quantity = 2,
             CreatedAt = now,
@@ -111,7 +110,6 @@ public class ReportFeaturesTests
             ServiceType = cvAppServiceType,
             Title = "React Frontend Developer",
             Status = "PENDING_REVIEW",
-            Visibility = "PUBLIC",
             CurrencyCode = "VND",
             Quantity = 1,
             CreatedAt = now,
@@ -382,7 +380,7 @@ public class ReportFeaturesTests
             await _context.Jobs.AddAsync(new Job
             {
                 JobId = Guid.NewGuid(), CompanyId = c1.CompanyId, ServiceTypeId = Guid.NewGuid(), Title = $"Job A {i}", Status = "ACTIVE",
-                Visibility = "PUBLIC", CurrencyCode = "VND", Quantity = 1, CreatedAt = now, UpdatedAt = now
+                CurrencyCode = "VND", Quantity = 1, CreatedAt = now, UpdatedAt = now
             });
         }
 
@@ -390,7 +388,7 @@ public class ReportFeaturesTests
         var jobC2 = new Job
         {
             JobId = Guid.NewGuid(), CompanyId = c2.CompanyId, ServiceTypeId = Guid.NewGuid(), Title = "Job B", Status = "ACTIVE",
-            Visibility = "PUBLIC", CurrencyCode = "VND", Quantity = 1, CreatedAt = now, UpdatedAt = now
+            CurrencyCode = "VND", Quantity = 1, CreatedAt = now, UpdatedAt = now
         };
         var appC2 = new JobApplication { ApplicationId = Guid.NewGuid(), JobId = jobC2.JobId, CandidateId = Guid.NewGuid(), Status = ApplicationStates.Placed, AppliedAt = now, UpdatedAt = now };
         var placementC2 = new Placement { PlacementId = Guid.NewGuid(), ApplicationId = appC2.ApplicationId, OfferId = Guid.NewGuid(), ActualStartDate = today, Status = PlacementStates.Started, ConfirmedAt = now, CreatedAt = now, UpdatedAt = now };
