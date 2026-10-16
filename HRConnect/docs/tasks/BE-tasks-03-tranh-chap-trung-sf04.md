@@ -15,8 +15,8 @@ Quy ước chung: Vertical Slice + MediatR; audit qua `IAuditLogService` như c�
 - **Nhánh:** `feature/<tên-ngắn>` tạo từ `dev`, PR vào `dev`, ít nhất 1 người review; CI xanh mới merge.
 - **Cài đặt mới:** thêm khóa vào `BusinessSettingKeys` (`HRConnect.Application/Common/Settings/BusinessSettings.cs`) để hiện ở trang Cài đặt Admin.
 - **Xong khi:** đạt hết mục nghiệm thu, có unit test, `dotnet test` pass, migration có `.Designer.cs`, Swagger có mô tả tiếng Việt, cập nhật trạng thái **[CHƯA CÓ CODE]** trong `main-flows.md` / tài liệu Actor nếu có.
-- **Bàn giao FE:** Báo Sang khi API Affiliate và Admin merge.
-- **Hỏi ai:** nghiệp vụ hỏi Quí; chỗ nào tài liệu chưa rõ thì hỏi trước, không tự đoán.
+- **Bàn giao FE:** cập nhật tài liệu Frontend khi API Affiliate và Admin merge.
+- **Nghiệp vụ chưa rõ:** xác nhận với người phụ trách nghiệp vụ trước, không tự đoán.
 
 ---
 
@@ -87,4 +87,4 @@ Trao đổi trước khi code để không sửa trùng file của MF-02/MF-05.
 
 ## Giao cho FE
 
-Sau khi xong, bổ sung vào [`FE-tasks-sang.md`](FE-tasks-sang.md): nút "Khiếu nại" ở lượt nộp bị chặn (Affiliate), trang "Khiếu nại của tôi", hàng chờ và màn xử lý cho Admin.
+Sau khi xong, bổ sung vào [`API-INTEGRATION-BACKLOG.md`](../../../HRConnect-FE/docs/tasks/API-INTEGRATION-BACKLOG.md): nút "Khiếu nại" ở lượt nộp bị chặn (Affiliate), trang "Khiếu nại của tôi", hàng chờ và màn xử lý cho Admin.

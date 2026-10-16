@@ -1,6 +1,6 @@
 # MF-01 (Backend): thư viện mẫu JD
 
-> **Dành cho:** Mi, backend MF-01 (Job). Phần giao diện do Sang làm, xem [`mf01-fe-thu-vien-mau-jd.md`](mf01-fe-thu-vien-mau-jd.md).
+> **Phạm vi:** Backend MF-01 (Job). Phần giao diện xem [`JOB-TEMPLATES.md`](../../../HRConnect-FE/docs/integration/MF01/JOB-TEMPLATES.md).
 > **Ngày:** 2026-10-15.
 > **Hiện trạng** được đối chiếu với code trên `main` ngày 15/10: chưa có bảng, API hay seed nào về mẫu JD. Tài liệu nghiệp vụ (`main-flows.md`) cũng chưa nhắc tới.
 
@@ -212,4 +212,4 @@ Phần này sẽ có tài liệu riêng khi bắt đầu làm.
 
 ## Thứ tự gợi ý
 
-B1 → B6 (seed để có dữ liệu thật) → B2 + B3 (Sang bắt đầu gắn được) → B4 → B5 → B7.
+B1 → B6 (seed để có dữ liệu thật) → B2 + B3 (Frontend bắt đầu tích hợp được) → B4 → B5 → B7.

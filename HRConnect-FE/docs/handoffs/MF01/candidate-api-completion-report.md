@@ -1,8 +1,8 @@
 # Báo cáo Hoàn thành API — MF-01 & Candidate Backend Enhancements
 
-> **Thời điểm hoàn thành:** 2026-10-13  
-> **Tài liệu căn cứ:** [candidate-ui-backend-handoff.md](file:///d:/0-FPT/Capstone/code/BE/hr-connect/docs/MF01/candidate-ui-backend-handoff.md)  
-> **Nhánh thực hiện:** `feature/mf01-candidate-backend-enhancements`  
+> **Thời điểm hoàn thành:** 2026-10-13
+> **Tài liệu căn cứ:** [candidate-ui-backend-handoff.md](./candidate-ui-backend-handoff.md)
+> **Nhánh thực hiện:** `feature/mf01-candidate-backend-enhancements`
 > **Commit hash:** `ba283ea0fff5cd3c80507b27910af4c8abcd3a94`
 
 ---

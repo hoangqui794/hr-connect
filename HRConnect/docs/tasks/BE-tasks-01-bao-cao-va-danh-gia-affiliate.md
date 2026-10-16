@@ -1,6 +1,6 @@
 # BE task 01: Dashboard báo cáo và đánh giá chất lượng Affiliate
 
-> **Ngày:** 2026-10-15. **Ưu tiên:** 🔴 Cao, sản phẩm phải nộp của đề tài; Sang (FE) đang chờ API.
+> **Ngày:** 2026-10-15. **Ưu tiên:** 🔴 Cao, sản phẩm phải nộp của đề tài; Frontend đang chờ API.
 > **Căn cứ đề tài:** mục *Reporting & Company Directory* ("Dashboard summaries: jobs by status, top-performing affiliates by quarter/year, revenue by service line") và *Partner & Finance* ("affiliate quality rating based on submission-to-hire conversion rather than raw volume").
 > **Hiện trạng code** (GitNexus, `main` `5640eb1`): chưa có query hay endpoint báo cáo nào. Bảng `affiliate_performance` (entity `AffiliatePerformance`) **đã có** nhưng chưa có code nào ghi hay đọc. Quyền `report.view` (Platform Admin) và `affiliate.performance.view_own` (Affiliate) **đã seed** trong `Permission.md`.
 
@@ -13,8 +13,8 @@ Quy ước chung: Vertical Slice + MediatR theo README mục 7; response `{ succ
 - **Nhánh:** `feature/<tên-ngắn>` tạo từ `dev`, PR vào `dev`, ít nhất 1 người review; CI xanh mới merge.
 - **Cài đặt mới:** thêm khóa vào `BusinessSettingKeys` (`HRConnect.Application/Common/Settings/BusinessSettings.cs`) để hiện ở trang Cài đặt Admin.
 - **Xong khi:** đạt hết mục nghiệm thu, có unit test, `dotnet test` pass, migration có `.Designer.cs`, Swagger có mô tả tiếng Việt, cập nhật trạng thái **[CHƯA CÓ CODE]** trong `main-flows.md` / tài liệu Actor nếu có.
-- **Bàn giao FE:** Sang (FE) đang chờ: báo Sang ngay khi Phần A merge vào `dev`.
-- **Hỏi ai:** nghiệp vụ hỏi Quí; chỗ nào tài liệu chưa rõ thì hỏi trước, không tự đoán.
+- **Bàn giao FE:** cập nhật tài liệu Frontend ngay khi Phần A merge vào `dev`.
+- **Nghiệp vụ chưa rõ:** xác nhận với người phụ trách nghiệp vụ trước, không tự đoán.
 
 ---
 
@@ -176,4 +176,4 @@ Response mỗi kỳ: đủ các cột ở B1 + `periodStart`, `periodEnd`, `calc
 
 ## Giao cho FE
 
-Khi xong, bổ sung route + response vào [`FE-tasks-sang.md`](FE-tasks-sang.md) (mục "Chưa làm được") để Sang làm trang dashboard Admin và thẻ "Hiệu suất của tôi" cho Affiliate.
+Khi xong, bổ sung route + response vào [`API-INTEGRATION-BACKLOG.md`](../../../HRConnect-FE/docs/tasks/API-INTEGRATION-BACKLOG.md) (mục "Chưa làm được") để Frontend làm trang dashboard Admin và thẻ "Hiệu suất của tôi" cho Affiliate.

@@ -6,7 +6,7 @@
 
 ## 1. Objective
 
-Xây dựng Backend quản trị Permission catalog, custom Role, Role-Permission matrix và User-Role assignment đủ an toàn cho production. Platform Admin có thể xem quyền hiệu lực, tạo/quản lý custom Role và gán/thu hồi custom Role cho người dùng. Không sửa FE; sau khi toàn bộ API ổn định mới tạo `docs/RBAC/FRONTEND-INTEGRATION.md`.
+Xây dựng Backend quản trị Permission catalog, custom Role, Role-Permission matrix và User-Role assignment đủ an toàn cho production. Platform Admin có thể xem quyền hiệu lực, tạo/quản lý custom Role và gán/thu hồi custom Role cho người dùng. Không sửa FE; sau khi toàn bộ API ổn định mới tạo `HRConnect-FE/docs/admin/RBAC/FRONTEND-INTEGRATION.md`.
 
 [inferred] Không cấp Permission trực tiếp cho từng user. Quyền bổ sung cho một người đi qua custom Role để có nguồn quyền rõ ràng, tái sử dụng được, audit và thu hồi được.
 
@@ -115,7 +115,7 @@ Stable errors: validation 400; missing 404; 403 cho thiếu quyền/`SELF_ROLE_M
 
 ### 6.7 FE handoff only after APIs pass
 
-Tạo `docs/RBAC/FRONTEND-INTEGRATION.md` sau cùng: routes/permissions, request-response examples từ code thật, pagination, concurrency/refetch flow, system/custom constraints, stable errors, UI state recommendations và flow “extra access = custom Role → permissions → assign”. Không sửa FE.
+Tạo `HRConnect-FE/docs/admin/RBAC/FRONTEND-INTEGRATION.md` sau cùng: routes/permissions, request-response examples từ code thật, pagination, concurrency/refetch flow, system/custom constraints, stable errors, UI state recommendations và flow “extra access = custom Role → permissions → assign”. Không sửa FE.
 
 ## 7. Implementation Sequence
 
@@ -174,7 +174,7 @@ Commands verified:
 | Existing workflows | RegisterCandidateCommandHandler, AdminApprovalService, demo seeder | Correct role lifecycle/token rotation |
 | Presentation | new admin authorization endpoints + Program registration | 12 APIs/OpenAPI |
 | Tests | persistence/auth/admin/approval/identity tests | Production coverage |
-| Docs | docs/RBAC/FRONTEND-INTEGRATION.md | FE handoff after API completion |
+| Docs | HRConnect-FE/docs/admin/RBAC/FRONTEND-INTEGRATION.md | FE handoff after API completion |
 
 ## 11. Reusable Implementation Context
 
@@ -470,7 +470,7 @@ implementation_context:
     - { file: 'HRConnect/HRConnect.Infrastructure/Persistence/DatabaseSeeder.cs', symbols: ['SeedAsync','GetPermissionSeedSql'], intended_change: 'Stop rewrite; validate.' }
     - { file: 'HRConnect/HRConnect.Application/Features/Admin/Authorization', symbols: [], intended_change: 'New Backend feature slice.' }
     - { file: 'HRConnect/HRConnect.Presentation/Endpoints/V1/Admin', symbols: [], intended_change: '12 APIs.' }
-    - { file: 'docs/RBAC/FRONTEND-INTEGRATION.md', symbols: [], intended_change: 'Post-API FE contract.' }
+    - { file: 'HRConnect-FE/docs/admin/RBAC/FRONTEND-INTEGRATION.md', symbols: [], intended_change: 'Post-API FE contract.' }
   tests:
     - { file: 'HRConnect/HRConnect.UnitTests/Persistence/PermissionSeederTests.cs', scenarios: ['Exact catalog/matrix','Missing protected record fails','Restart does not rewrite'] }
     - { file: 'HRConnect/HRConnect.UnitTests/Authentication/ActiveAuthorizationClaimsTransformationTests.cs', scenarios: ['Assign appears next request','Revoke disappears next request','Inactive elements excluded'] }

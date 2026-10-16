@@ -18,6 +18,7 @@ Tài liệu trong thư mục này chỉ mô tả các trang và luồng thuộc 
 | [09-ADMIN-IDENTITY-CLAIMS.md](./09-ADMIN-IDENTITY-CLAIMS.md) | Admin duyệt/từ chối claim cần đối chiếu thủ công |
 | [10-ADMIN-AUDIT-LOGS.md](./10-ADMIN-AUDIT-LOGS.md) | Admin tra audit log của các thao tác MF02 |
 | [11-CANDIDATE-APPLICATION-STATUS.md](./11-CANDIDATE-APPLICATION-STATUS.md) | Trạng thái Application công khai cho Candidate |
+| [12-SUBMISSION-CONSENT-FLOW.md](./12-SUBMISSION-CONSENT-FLOW.md) | Luồng giao diện consent đầy đủ cho Candidate có và chưa có tài khoản |
 
 ## Luồng chính
 

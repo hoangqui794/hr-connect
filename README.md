@@ -8,6 +8,12 @@ HR Connect là nền tảng tuyển dụng hiện đại dành cho Agency, kết
 > **Trạng thái:** Đang phát triển (In Active Development)  
 > **Giảng viên hướng dẫn:** Thầy Phạm Minh Trí  
 
+## Tài liệu dự án
+
+- [Mục lục tài liệu chung](docs/README.md)
+- [Tài liệu Backend](HRConnect/docs/README.md)
+- [Tài liệu Frontend](HRConnect-FE/docs/README.md)
+
 ---
 
 ## 👥 Nhóm Thực Hiện (Team Members)
