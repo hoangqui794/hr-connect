@@ -3,6 +3,8 @@
  * @description API client service for MF-04 Candidate Profile & Recruitment Lifecycle.
  */
 
+import dayjs from 'dayjs';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import { apiClient } from '../apiClient';
 import type {
   CandidateProfileData,
@@ -17,6 +19,38 @@ import type {
   CandidateInterviewSummaryDto,
   CandidateOfferSummaryDto,
 } from '@/types/api/mf04';
+
+dayjs.extend(isSameOrAfter);
+
+/**
+ * Tính toán điều kiện ứng viên có thể Chấp nhận / Từ chối Offer:
+ * - Offer có status === 'SENT'
+ * - Chưa quá hạn: validUntil hoặc expiresAt (hoặc expiryDate) >= thời điểm hiện tại
+ */
+export const isCandidateOfferRespondable = (offer?: {
+  status?: string | null;
+  expiryDate?: string | null;
+  validUntil?: string | null;
+  expiresAt?: string | null;
+  canRespond?: boolean;
+}): boolean => {
+  if (!offer || offer.status !== 'SENT') {
+    return false;
+  }
+  const expiry = offer.validUntil || offer.expiresAt || offer.expiryDate;
+  if (!expiry) {
+    return true;
+  }
+  const expDayjs = dayjs(expiry);
+  if (!expDayjs.isValid()) {
+    return false;
+  }
+  const now = dayjs();
+  if (expiry.length === 10) {
+    return expDayjs.endOf('day').isSameOrAfter(now);
+  }
+  return expDayjs.isSameOrAfter(now);
+};
 
 export const mf04Api = {
   /**
@@ -110,7 +144,7 @@ export const mf04Api = {
   },
 
   /**
-   * GET /api/v1/recruitment/interviews
+   * GET /api/v1/interviews
    * Lấy danh sách lịch phỏng vấn (scoped cho ứng viên hiện tại).
    */
   async getInterviews(params?: {
@@ -122,7 +156,7 @@ export const mf04Api = {
       success: boolean;
       message: string;
       data: { items: any[] };
-    }>('/recruitment/interviews', { params });
+    }>('/interviews', { params });
     const items = response.data?.data?.items || [];
     return items.map((i) => ({
       interviewId: i.interviewId,
@@ -138,7 +172,7 @@ export const mf04Api = {
   },
 
   /**
-   * GET /api/v1/recruitment/offers
+   * GET /api/v1/offers
    * Lấy danh sách lời mời nhận việc (scoped cho ứng viên hiện tại).
    */
   async getOffers(params?: {
@@ -149,7 +183,7 @@ export const mf04Api = {
       success: boolean;
       message: string;
       data: { items: any[] };
-    }>('/recruitment/offers', { params });
+    }>('/offers', { params });
     const items = response.data?.data?.items || [];
     return items.map((o) => ({
       offerId: o.offerId,
@@ -158,26 +192,28 @@ export const mf04Api = {
       currencyCode: o.currencyCode || 'VND',
       startDate: o.startDate,
       expiryDate: o.expiryDate,
+      validUntil: o.validUntil,
+      expiresAt: o.expiresAt,
       status: o.status,
       offerDocumentUrl: o.offerDocumentUrl,
       sentAt: o.sentAt,
       respondedAt: o.respondedAt,
       declineReason: o.declineReason,
       concurrencyToken: o.concurrencyToken,
-      canRespond: Boolean(o.canRespond),
+      canRespond: isCandidateOfferRespondable(o),
     }));
   },
 
   /**
-   * POST /api/v1/recruitment/offers/:id/respond
-   * Phản hồi lời mời nhận việc (Accepted / Declined kèm reason và concurrencyToken).
+   * POST /api/v1/offers/:id/response
+   * Phản hồi lời mời nhận việc (ACCEPTED / DECLINED kèm reason và concurrencyToken).
    */
   async respondOffer(
     offerId: string,
     payload: RespondOfferRequest
   ): Promise<{ success: boolean; message: string }> {
     const response = await apiClient.post<{ success: boolean; message: string }>(
-      `/recruitment/offers/${offerId}/respond`,
+      `/offers/${offerId}/response`,
       payload
     );
     return response.data;
