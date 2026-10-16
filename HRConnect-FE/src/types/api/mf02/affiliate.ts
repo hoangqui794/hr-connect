@@ -106,6 +106,9 @@ export interface SubmitCandidateResult {
   consentExpiresAt: string | null;
   emailDeliveryStatus: string;
   submittedAt: string;
+  isReplacement: boolean;
+  replacementForPlacementId: string | null;
+  replacementSlotId: string | null;
 }
 
 export interface AffiliateProfile {

@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Models;
 using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.SubmissionConsents.Common;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using JobApplication = HRConnect.Domain.Entities.Application;
@@ -18,6 +19,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
     private readonly IApplicationRepository _applicationRepository;
     private readonly IAffiliateProfileRepository _affiliateRepository;
     private readonly IAttributionRepository _attributionRepository;
+    private readonly IFinanceRepository _financeRepository;
     private readonly ICandidateCvRepository _cvRepository;
     private readonly INotificationRepository _notificationRepository;
     private readonly IMf03ScoringTrigger _scoringTrigger;
@@ -33,6 +35,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         IApplicationRepository applicationRepository,
         IAffiliateProfileRepository affiliateRepository,
         IAttributionRepository attributionRepository,
+        IFinanceRepository financeRepository,
         ICandidateCvRepository cvRepository,
         INotificationRepository notificationRepository,
         IMf03ScoringTrigger scoringTrigger,
@@ -47,6 +50,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         _applicationRepository = applicationRepository;
         _affiliateRepository = affiliateRepository;
         _attributionRepository = attributionRepository;
+        _financeRepository = financeRepository;
         _cvRepository = cvRepository;
         _notificationRepository = notificationRepository;
         _scoringTrigger = scoringTrigger;
@@ -132,6 +136,39 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         try
         {
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+            if (consent.Submission.ReplacementSlotId.HasValue)
+            {
+                var replacementSlot = await _financeRepository.GetReplacementSlotForConsentForUpdateAsync(
+                    consent.Submission.ReplacementSlotId.Value,
+                    cancellationToken);
+                var replacementSlotIsAvailable = replacementSlot != null &&
+                    replacementSlot.JobId == consent.Submission.JobId &&
+                    string.Equals(replacementSlot.Status, ReplacementSlotStates.Open, StringComparison.Ordinal) &&
+                    replacementSlot.ExpiresAt.HasValue &&
+                    replacementSlot.ExpiresAt.Value > now;
+
+                if (!replacementSlotIsAvailable)
+                {
+                    await SetTerminalWithoutApplicationAsync(
+                        consent,
+                        "CANCELLED",
+                        "CANCELLED",
+                        request,
+                        now,
+                        cancellationToken,
+                        ReplacementSlotErrorCodes.Unavailable);
+                    await _unitOfWork.CommitTransactionAsync(cancellationToken);
+                    transactionCompleted = true;
+                    throw new ConflictException(
+                        "Suất tuyển thay thế không còn khả dụng. Affiliate cần tạo lượt nộp mới nếu công việc vẫn nhận hồ sơ.",
+                        ReplacementSlotErrorCodes.Unavailable,
+                        new Dictionary<string, object?>
+                        {
+                            ["replacementSlotId"] = consent.Submission.ReplacementSlotId
+                        });
+                }
+            }
 
             if (enforcesClientOwnership)
             {
@@ -241,6 +278,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
                 JobId = consent.Submission.JobId,
                 CandidateId = consent.Submission.CandidateId,
                 AcceptedSubmissionId = consent.SubmissionId,
+                ReplacementSlotId = consent.Submission.ReplacementSlotId,
                 Status = "SUBMITTED",
                 CurrentStage = "SUBMITTED",
                 AppliedAt = now,
@@ -273,7 +311,13 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
                 EntityId = consent.SubmissionId,
                 ActorUserId = request.RequesterUserId,
                 OldValues = new { status = "PENDING_CONSENT" },
-                NewValues = new { status = "ACCEPTED", application.ApplicationId, aiStatus = "PENDING" }
+                NewValues = new
+                {
+                    status = "ACCEPTED",
+                    application.ApplicationId,
+                    application.ReplacementSlotId,
+                    aiStatus = "PENDING"
+                }
             }, cancellationToken);
 
             if (consent.Submission.Candidate.UserId.HasValue)
@@ -336,7 +380,8 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         string submissionStatus,
         RespondSubmissionConsentCommand request,
         DateTime now,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? reasonCode = null)
     {
         consent.Status = consentStatus;
         consent.RespondedAt = now;
@@ -357,13 +402,23 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             EntityType = "SUBMISSION",
             EntityId = consent.SubmissionId,
             ActorUserId = request.RequesterUserId,
-            NewValues = new { consentStatus, submissionStatus }
+            NewValues = new
+            {
+                consentStatus,
+                submissionStatus,
+                reasonCode,
+                consent.Submission.ReplacementSlotId
+            }
         }, cancellationToken);
-        if (consentStatus is "DECLINED" or "EXPIRED" || submissionStatus == "BLOCKED_CLIENT_OWNED")
+        if (consentStatus is "DECLINED" or "EXPIRED" ||
+            submissionStatus == "BLOCKED_CLIENT_OWNED" ||
+            reasonCode == ReplacementSlotErrorCodes.Unavailable)
         {
             await AddAffiliateResultNotificationAsync(
                 consent,
-                submissionStatus == "BLOCKED_CLIENT_OWNED" ? "BLOCKED_CLIENT_OWNED" : consentStatus,
+                reasonCode == ReplacementSlotErrorCodes.Unavailable
+                    ? ReplacementSlotErrorCodes.Unavailable
+                    : submissionStatus == "BLOCKED_CLIENT_OWNED" ? "BLOCKED_CLIENT_OWNED" : consentStatus,
                 now,
                 cancellationToken);
         }
