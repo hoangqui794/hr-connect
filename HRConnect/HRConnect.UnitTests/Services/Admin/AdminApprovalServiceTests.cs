@@ -477,6 +477,46 @@ public class AdminApprovalServiceTests
     }
 
     [Fact]
+    public async Task ApproveAffiliateApplicationAsync_ReactivationClearsRevocationMetadataAndRotatesToken()
+    {
+        var previousToken = Guid.NewGuid();
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(), Email = "affiliate.reactivate@example.com", PasswordHash = "hash",
+            Status = "PENDING", EmailVerifiedAt = DateTime.UtcNow,
+            AuthorizationConcurrencyToken = previousToken
+        };
+        var role = new Role
+        {
+            RoleId = Guid.NewGuid(), Code = "AFFILIATE_RECRUITER", Name = "Affiliate Recruiter", IsActive = true
+        };
+        var assignment = new UserRole
+        {
+            UserId = user.UserId, RoleId = role.RoleId, Status = "REVOKED",
+            AssignmentSource = "LEGACY", AssignedAt = DateTime.UtcNow.AddMonths(-2),
+            RevokedAt = DateTime.UtcNow.AddDays(-1), RevokedBy = Guid.NewGuid(), RevokeReason = "Tạm ngừng"
+        };
+        var application = new AffiliateApplication
+        {
+            AffiliateApplicationId = Guid.NewGuid(), UserId = user.UserId,
+            AffiliateType = "RECRUITER", Status = "UNDER_REVIEW", SubmittedData = "{}"
+        };
+        await _context.AddRangeAsync(user, role, assignment, application);
+        await _context.SaveChangesAsync();
+        var adminId = Guid.NewGuid();
+
+        await _service.ApproveAffiliateApplicationAsync(application.AffiliateApplicationId, adminId, "Duyệt lại");
+
+        assignment.Status.Should().Be("ACTIVE");
+        assignment.AssignmentSource.Should().Be("AFFILIATE_APPROVAL");
+        assignment.AssignedBy.Should().Be(adminId);
+        assignment.RevokedAt.Should().BeNull();
+        assignment.RevokedBy.Should().BeNull();
+        assignment.RevokeReason.Should().BeNull();
+        user.AuthorizationConcurrencyToken.Should().NotBe(previousToken);
+    }
+
+    [Fact]
     public async Task ApproveAffiliateApplicationAsync_ShouldThrowNotFound_WhenNotExists()
     {
         await Assert.ThrowsAsync<NotFoundException>(() =>
