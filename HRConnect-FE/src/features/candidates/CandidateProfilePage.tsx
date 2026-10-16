@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   Tabs,
@@ -181,6 +181,46 @@ export const CandidateProfilePage: React.FC = () => {
     },
   });
 
+  // Compute formInitialValues from DB profile
+  const formInitialValues = useMemo(() => {
+    if (!profile) return undefined;
+    const locs = profile.preferredLocations
+      ? (Array.isArray(profile.preferredLocations)
+        ? profile.preferredLocations
+        : typeof profile.preferredLocations === 'string'
+          ? (profile.preferredLocations as string).split(',').map((s: string) => s.trim()).filter(Boolean)
+          : [])
+      : [];
+
+    const modes = profile.preferredWorkModes
+      ? (Array.isArray(profile.preferredWorkModes)
+        ? profile.preferredWorkModes
+        : typeof profile.preferredWorkModes === 'string'
+          ? (profile.preferredWorkModes as string).split(',').map((s: string) => s.trim()).filter(Boolean)
+          : [])
+      : [];
+
+    return {
+      fullName: profile.fullName || user?.name || '',
+      email: profile.email || user?.email || '',
+      phone: profile.phone || user?.phone || '',
+      currentAddress: profile.currentAddress || '',
+      highestEducation: profile.highestEducation || '',
+      yearsOfExperience: profile.yearsOfExperience ?? 0,
+      summary: profile.summary || '',
+      // 9 Career Fields
+      currentJobTitle: profile.currentJobTitle || '',
+      currentLevel: profile.currentLevel || 'Mid-Level',
+      targetRole: profile.targetRole || '',
+      expectedSalaryMin: profile.expectedSalaryMin || null,
+      expectedSalaryMax: profile.expectedSalaryMax || null,
+      expectedSalaryCurrency: profile.expectedSalaryCurrency || 'VND',
+      availableFrom: profile.availableFrom || '',
+      preferredLocations: locs,
+      preferredWorkModes: modes,
+    };
+  }, [profile, user?.name, user?.email, user?.phone]);
+
   // Sync profile data from DB into Form when query resolves
   useEffect(() => {
     if (profile) {
@@ -188,52 +228,24 @@ export const CandidateProfilePage: React.FC = () => {
         setIsPublicState(profile.profileVisibility.toUpperCase() === 'PUBLIC');
       }
 
-      const locs = profile.preferredLocations
-        ? (Array.isArray(profile.preferredLocations)
-            ? profile.preferredLocations
-            : typeof profile.preferredLocations === 'string'
-            ? (profile.preferredLocations as string).split(',').map((s: string) => s.trim()).filter(Boolean)
-            : [])
-        : [];
-
-      const modes = profile.preferredWorkModes
-        ? (Array.isArray(profile.preferredWorkModes)
-            ? profile.preferredWorkModes
-            : typeof profile.preferredWorkModes === 'string'
-            ? (profile.preferredWorkModes as string).split(',').map((s: string) => s.trim()).filter(Boolean)
-            : [])
-        : [];
-
-      form.setFieldsValue({
-        fullName: profile.fullName || user?.name || '',
-        email: profile.email || user?.email || '',
-        phone: profile.phone || user?.phone || '',
-        currentAddress: profile.currentAddress || '',
-        highestEducation: profile.highestEducation || '',
-        yearsOfExperience: profile.yearsOfExperience ?? 0,
-        summary: profile.summary || '',
-        // 9 Career Fields
-        currentJobTitle: profile.currentJobTitle || '',
-        currentLevel: profile.currentLevel || 'Mid-Level',
-        targetRole: profile.targetRole || '',
-        expectedSalaryMin: profile.expectedSalaryMin || null,
-        expectedSalaryMax: profile.expectedSalaryMax || null,
-        expectedSalaryCurrency: profile.expectedSalaryCurrency || 'VND',
-        availableFrom: profile.availableFrom || '',
-        preferredLocations: locs,
-        preferredWorkModes: modes,
-      });
+      if (formInitialValues) {
+        form.setFieldsValue(formInitialValues);
+      }
 
       // Extract skills list
       if (profile.skills && profile.skills.length > 0) {
-        setSkillsList(
-          profile.skills
-            .map((s) => s.skillName || '')
-            .filter(Boolean)
-        );
+        const nextSkills = profile.skills
+          .map((s) => s.skillName || '')
+          .filter(Boolean);
+        setSkillsList((prev) => {
+          if (prev.length === nextSkills.length && prev.every((v, i) => v === nextSkills[i])) {
+            return prev;
+          }
+          return nextSkills;
+        });
       }
     }
-  }, [profile, user, form]);
+  }, [profile, formInitialValues, form]);
 
   // Dedicated Skills Management (from backend /skills & /candidates/profile/me/skills)
   const [catalogSkills, setCatalogSkills] = useState<Array<{ skillId: string; skillName: string; category?: string | null }>>([]);
@@ -740,6 +752,7 @@ export const CandidateProfilePage: React.FC = () => {
                 <div style={{ paddingTop: 8 }}>
                   <Form
                     form={form}
+                    initialValues={formInitialValues}
                     layout="vertical"
                     onFinish={handleSaveProfile}
                     onFinishFailed={({ errorFields }) => {
@@ -802,6 +815,9 @@ export const CandidateProfilePage: React.FC = () => {
                               <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                                 <span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>
                                   Địa chỉ Email (Đăng nhập)
+                                  <Tooltip title="Email tài khoản được bảo mật và cố định. Để dùng email khác khi nộp đơn, hãy thêm ở Quản lý danh tính MF-02.">
+                                    <MailOutlined style={{ marginLeft: 6, color: '#94a3b8' }} />
+                                  </Tooltip>
                                 </span>
                                 <Link
                                   to="/candidate/settings/email-identities"
@@ -812,13 +828,11 @@ export const CandidateProfilePage: React.FC = () => {
                               </div>
                             }
                           >
-                            <Tooltip title="Email tài khoản được bảo mật và cố định. Để dùng email khác khi nộp đơn, hãy thêm ở Quản lý danh tính MF-02.">
-                              <Input
-                                size="large"
-                                disabled
-                                style={{ borderRadius: 12, background: '#f8fafc', color: '#64748b' }}
-                              />
-                            </Tooltip>
+                            <Input
+                              size="large"
+                              disabled
+                              style={{ borderRadius: 12, background: '#f8fafc', color: '#64748b' }}
+                            />
                           </Form.Item>
                         </Col>
 
@@ -1306,6 +1320,7 @@ export const CandidateProfilePage: React.FC = () => {
             // ==================== TAB 2 ====================
             {
               key: 'cv-center',
+              forceRender: true,
               label: (
                 <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <FileTextOutlined />

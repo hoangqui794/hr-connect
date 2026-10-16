@@ -115,6 +115,8 @@ export interface CandidateOfferSummaryDto {
   currencyCode: string;
   startDate?: string | null;
   expiryDate?: string | null;
+  validUntil?: string | null;
+  expiresAt?: string | null;
   status: string;
   offerDocumentUrl?: string | null;
   sentAt?: string | null;
@@ -187,7 +189,7 @@ export interface WithdrawApplicationRequest {
 }
 
 export interface RespondOfferRequest {
-  response: 'ACCEPTED' | 'DECLINED' | 'Accepted' | 'Declined';
+  response: 'ACCEPTED' | 'DECLINED';
   declineReason?: string;
   concurrencyToken?: string;
 }

@@ -147,7 +147,7 @@ describe('mf04Api service', () => {
       expect(result.success).toBe(true);
     });
 
-    it('getInterviews calls /recruitment/interviews with query params', async () => {
+    it('getInterviews calls /interviews with query params', async () => {
       vi.mocked(apiClient.get).mockResolvedValueOnce({
         data: {
           success: true,
@@ -170,14 +170,22 @@ describe('mf04Api service', () => {
         sortDirection: 'ASC',
       });
 
-      expect(apiClient.get).toHaveBeenCalledWith('/recruitment/interviews', {
+      expect(apiClient.get).toHaveBeenCalledWith('/interviews', {
         params: { applicationId: 'app-1', sortDirection: 'ASC' },
       });
       expect(result.length).toBe(1);
       expect(result[0].interviewRound).toBe(1);
     });
 
-    it('getOffers calls /recruitment/offers and parses canRespond', async () => {
+    it('getOffers calls /offers and computes canRespond correctly', async () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString();
+
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString();
+
       vi.mocked(apiClient.get).mockResolvedValueOnce({
         data: {
           success: true,
@@ -188,8 +196,24 @@ describe('mf04Api service', () => {
                 offerVersion: 1,
                 salary: 40000000,
                 status: 'SENT',
-                canRespond: true,
+                expiryDate: tomorrowStr,
                 concurrencyToken: 'off-token-1',
+              },
+              {
+                offerId: 'off-2',
+                offerVersion: 2,
+                salary: 42000000,
+                status: 'SENT',
+                validUntil: yesterdayStr,
+                concurrencyToken: 'off-token-2',
+              },
+              {
+                offerId: 'off-3',
+                offerVersion: 3,
+                salary: 45000000,
+                status: 'ACCEPTED',
+                expiryDate: tomorrowStr,
+                concurrencyToken: 'off-token-3',
               },
             ],
           },
@@ -197,13 +221,19 @@ describe('mf04Api service', () => {
       });
 
       const result = await mf04Api.getOffers({ applicationId: 'app-1' });
-      expect(apiClient.get).toHaveBeenCalledWith('/recruitment/offers', {
+      expect(apiClient.get).toHaveBeenCalledWith('/offers', {
         params: { applicationId: 'app-1' },
       });
+      expect(result.length).toBe(3);
+      // off-1: SENT & future expiryDate -> canRespond = true
       expect(result[0].canRespond).toBe(true);
+      // off-2: SENT & past validUntil -> canRespond = false
+      expect(result[1].canRespond).toBe(false);
+      // off-3: ACCEPTED -> canRespond = false
+      expect(result[2].canRespond).toBe(false);
     });
 
-    it('respondOffer sends response, declineReason and concurrencyToken', async () => {
+    it('respondOffer sends response, declineReason and concurrencyToken to /offers/:id/response', async () => {
       vi.mocked(apiClient.post).mockResolvedValueOnce({
         data: { success: true, message: 'Đã phản hồi lời mời nhận việc' },
       });
@@ -214,7 +244,7 @@ describe('mf04Api service', () => {
         concurrencyToken: 'off-token-1',
       });
 
-      expect(apiClient.post).toHaveBeenCalledWith('/recruitment/offers/off-1/respond', {
+      expect(apiClient.post).toHaveBeenCalledWith('/offers/off-1/response', {
         response: 'DECLINED',
         declineReason: 'Mức lương chưa phù hợp',
         concurrencyToken: 'off-token-1',
