@@ -1,6 +1,6 @@
 # MF-01 (Giao diện): thư viện mẫu JD
 
-> **Dành cho:** Sang, giao diện MF-01.
+> **Phạm vi:** Giao diện MF-01.
 > **Backend: ✅ đã xong trên `dev`** (commit `443d337`, ngày 15/10). Làm giao diện và **gắn API thật luôn**, không cần dữ liệu giả.
 > **Ngày:** 2026-10-15.
 > **Hiện trạng:** bước 2 "Mô tả công việc" của `JobFormPage.tsx` chỉ có ô trống kèm chữ gợi ý (placeholder). Không có mẫu và không có chức năng dùng lại tin cũ.

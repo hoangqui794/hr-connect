@@ -480,6 +480,10 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+            entity.Property(e => e.AuthorizationConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("authorization_concurrency_token");
         });
 
         modelBuilder.Entity<HRConnect.Domain.Entities.Application>(entity =>
@@ -2340,12 +2344,19 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");
+            entity.Property(e => e.IsDelegable)
+                .HasDefaultValue(true)
+                .HasColumnName("is_delegable");
             entity.Property(e => e.Resource)
                 .HasMaxLength(100)
                 .HasColumnName("resource");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
         });
 
         modelBuilder.Entity<SystemSetting>(entity =>
@@ -2722,6 +2733,10 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
         });
 
         modelBuilder.Entity<RolePermission>(entity =>
@@ -2735,6 +2750,16 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.GrantedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("granted_at");
+            entity.Property(e => e.GrantedBy).HasColumnName("granted_by");
+            entity.Property(e => e.GrantSource)
+                .HasMaxLength(40)
+                .HasDefaultValue("SYSTEM_MIGRATION")
+                .HasColumnName("grant_source");
+
+            entity.HasOne(d => d.GrantedByNavigation).WithMany()
+                .HasForeignKey(d => d.GrantedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("role_permission_granted_by_fkey");
 
             entity.HasOne(d => d.Permission).WithMany(p => p.RolePermissions)
                 .HasForeignKey(d => d.PermissionId)
@@ -2949,7 +2974,15 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => new { e.UserId, e.RoleId }).HasName("user_role_pkey");
 
-            entity.ToTable("user_role", "public", tb => tb.HasComment("Role ownership/lifecycle. Candidate and Affiliate may coexist on the same app_user. Other multi-role combinations remain subject to business policy."));
+            entity.ToTable("user_role", "public", tb =>
+            {
+                tb.HasComment("Role ownership/lifecycle. Candidate and Affiliate may coexist on the same app_user. Other multi-role combinations remain subject to business policy.");
+                tb.HasCheckConstraint("ck_user_role_status", "status IN ('ACTIVE','REVOKED')");
+                tb.HasCheckConstraint(
+                    "ck_user_role_lifecycle",
+                    "(status = 'ACTIVE' AND revoked_at IS NULL AND revoked_by IS NULL AND revoke_reason IS NULL) OR " +
+                    "(status = 'REVOKED' AND revoked_at IS NOT NULL AND length(trim(revoke_reason)) > 0)");
+            });
 
             entity.HasIndex(e => new { e.UserId, e.RoleId }, "idx_user_role_active_user").HasFilter("((status)::text = 'ACTIVE'::text)");
 

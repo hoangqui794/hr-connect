@@ -1,6 +1,6 @@
 # Việc cho Trí (MF-02 B4): gắn lượt nộp vào suất thay thế
 
-> **Dành cho:** Trí (MF-02). **Ngày:** 2026-10-15.
+> **Phạm vi:** Backend MF-02. **Ngày:** 2026-10-15.
 > **Trạng thái:** Đã triển khai trên nhánh `feature/mf02-replacement-slot-b4`; chờ merge.
 > **Trả lời:** [`MF02-PENDING-MF05-REPLACEMENT.md`](MF02-PENDING-MF05-REPLACEMENT.md).
 > **Thiết kế đầy đủ:** [`MF05/mf05-thiet-ke-suat-thay-the.md`](../MF05/mf05-thiet-ke-suat-thay-the.md). Đọc mục 1 (quy tắc), 2 (dữ liệu), 3 (vòng đời suất) và 7 (mã lỗi).

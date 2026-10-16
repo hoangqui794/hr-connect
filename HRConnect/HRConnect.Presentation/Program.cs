@@ -366,6 +366,7 @@ app.MapAffiliateEndpoints();
 app.MapAdminApprovalEndpoints();
 app.MapAdminProfileEndpoints();
 app.MapAdminUserEndpoints();
+app.MapAdminAuthorizationEndpoints();
 app.MapAdminAuditLogEndpoints();
 app.MapServiceTypeEndpoints();
 app.MapCommissionMilestoneEndpoints();

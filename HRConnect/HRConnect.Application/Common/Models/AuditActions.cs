@@ -37,6 +37,15 @@ public static class AuditActions
     public const string UserSuspended = "USER_SUSPENDED";
     public const string UserReactivated = "USER_REACTIVATED";
     public const string UserLoginUnlocked = "USER_LOGIN_UNLOCKED";
+    public const string RoleCreated = "ROLE_CREATED";
+    public const string RoleUpdated = "ROLE_UPDATED";
+    public const string RoleDeactivated = "ROLE_DEACTIVATED";
+    public const string RolePermissionsReplaced = "ROLE_PERMISSIONS_REPLACED";
+    public const string PermissionUpdated = "PERMISSION_UPDATED";
+    public const string PermissionActivated = "PERMISSION_ACTIVATED";
+    public const string PermissionDeactivated = "PERMISSION_DEACTIVATED";
+    public const string UserRoleAssigned = "USER_ROLE_ASSIGNED";
+    public const string UserRoleRevoked = "USER_ROLE_REVOKED";
     public const string AffiliateCvViewed = "AFFILIATE_CV_VIEWED";
     public const string ApplicationStatusChanged = "APPLICATION_STATUS_CHANGED";
     public const string ApplicationScreened = "APPLICATION_SCREENED";

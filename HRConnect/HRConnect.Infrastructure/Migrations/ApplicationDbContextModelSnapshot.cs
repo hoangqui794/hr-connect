@@ -490,6 +490,13 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("user_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<Guid>("AuthorizationConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("authorization_concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<string>("AvatarUrl")
                         .HasColumnType("text")
                         .HasColumnName("avatar_url");
@@ -3619,6 +3626,13 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(120)")
                         .HasColumnName("code");
 
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -3634,6 +3648,12 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDelegable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_delegable");
 
                     b.Property<string>("Resource")
                         .IsRequired()
@@ -3985,6 +4005,13 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(60)")
                         .HasColumnName("code");
 
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -4038,14 +4065,28 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("permission_id");
 
+                    b.Property<string>("GrantSource")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("SYSTEM_MIGRATION")
+                        .HasColumnName("grant_source");
+
                     b.Property<DateTime>("GrantedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("granted_at")
                         .HasDefaultValueSql("now()");
 
+                    b.Property<Guid?>("GrantedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("granted_by");
+
                     b.HasKey("RoleId", "PermissionId")
                         .HasName("role_permission_pkey");
+
+                    b.HasIndex("GrantedBy");
 
                     b.HasIndex("PermissionId");
 
@@ -4771,6 +4812,10 @@ namespace HRConnect.Infrastructure.Migrations
                     b.ToTable("user_role", "public", t =>
                         {
                             t.HasComment("Role ownership/lifecycle. Candidate and Affiliate may coexist on the same app_user. Other multi-role combinations remain subject to business policy.");
+
+                            t.HasCheckConstraint("ck_user_role_lifecycle", "(status = 'ACTIVE' AND revoked_at IS NULL AND revoked_by IS NULL AND revoke_reason IS NULL) OR (status = 'REVOKED' AND revoked_at IS NOT NULL AND length(trim(revoke_reason)) > 0)");
+
+                            t.HasCheckConstraint("ck_user_role_status", "status IN ('ACTIVE','REVOKED')");
                         });
                 });
 
@@ -5867,6 +5912,12 @@ namespace HRConnect.Infrastructure.Migrations
 
             modelBuilder.Entity("HRConnect.Domain.Entities.RolePermission", b =>
                 {
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "GrantedByNavigation")
+                        .WithMany()
+                        .HasForeignKey("GrantedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("role_permission_granted_by_fkey");
+
                     b.HasOne("HRConnect.Domain.Entities.Permission", "Permission")
                         .WithMany("RolePermissions")
                         .HasForeignKey("PermissionId")
@@ -5880,6 +5931,8 @@ namespace HRConnect.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("role_permission_role_id_fkey");
+
+                    b.Navigation("GrantedByNavigation");
 
                     b.Navigation("Permission");
 

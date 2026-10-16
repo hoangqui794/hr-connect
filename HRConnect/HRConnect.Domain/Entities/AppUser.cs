@@ -36,6 +36,9 @@ public partial class AppUser
 
     public DateTime UpdatedAt { get; set; }
 
+    /// <summary>Optimistic concurrency boundary for role assignment changes.</summary>
+    public Guid AuthorizationConcurrencyToken { get; set; } = Guid.NewGuid();
+
     public virtual AdminProfile? AdminProfile { get; set; }
 
     public virtual ICollection<AffiliateApplication> AffiliateApplicationReviewedByNavigations { get; set; } = new List<AffiliateApplication>();

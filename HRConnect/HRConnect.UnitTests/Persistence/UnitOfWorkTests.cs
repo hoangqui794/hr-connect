@@ -182,7 +182,16 @@ public class UnitOfWorkTests
 
             try
             {
-                if (await context.Database.CanConnectAsync()) return context;
+                if (await context.Database.CanConnectAsync())
+                {
+                    if ((await context.Database.GetPendingMigrationsAsync()).Any())
+                    {
+                        await context.DisposeAsync();
+                        continue;
+                    }
+
+                    return context;
+                }
             }
             catch (Exception ex) when (ex is Npgsql.NpgsqlException or System.Net.Sockets.SocketException or InvalidOperationException)
             {

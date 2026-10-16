@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authentication;
 using HRConnect.Infrastructure.Authentication;
 using HRConnect.Infrastructure.Services.Audit;
+using HRConnect.Application.Features.Admin.Authorization;
+using HRConnect.Infrastructure.Services.Admin;
 
 namespace HRConnect.Infrastructure;
 
@@ -58,6 +60,7 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IRequestContext, HttpRequestContext>();
         services.AddScoped<IAuditLogService, AuditLogService>();
+        services.AddScoped<IAuthorizationAdminService, AuthorizationAdminService>();
         services.AddScoped<IClaimsTransformation, ActiveAuthorizationClaimsTransformation>();
 
         // 4. Repositories & UnitOfWork

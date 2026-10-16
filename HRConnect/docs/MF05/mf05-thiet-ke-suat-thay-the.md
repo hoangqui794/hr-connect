@@ -1,9 +1,9 @@
 # MF-05: thiết kế suất tuyển thay thế (`replacement_slot`)
 
-> **Dành cho:** dev MF-05 (phụ trách chính). Phần của Trí (MF-02 B4): [`MF02/mf02-b4-gan-suat-thay-the.md`](../MF02/mf02-b4-gan-suat-thay-the.md). Phần của Sơn (MF-04) nằm ở tài liệu riêng [`MF04/mf04-lap-suat-thay-the.md`](../MF04/mf04-lap-suat-thay-the.md).
+> **Phạm vi chính:** Backend MF-05. Phần MF-02 B4: [`MF02/mf02-b4-gan-suat-thay-the.md`](../MF02/mf02-b4-gan-suat-thay-the.md). Phần MF-04 nằm ở tài liệu riêng [`MF04/mf04-lap-suat-thay-the.md`](../MF04/mf04-lap-suat-thay-the.md).
 > **Ngày:** 2026-10-15.
 > **Trả lời yêu cầu trong:** [`MF02/MF02-PENDING-MF05-REPLACEMENT.md`](../MF02/MF02-PENDING-MF05-REPLACEMENT.md). Thay cho phần mô tả ngắn ở mục E7 của [`mf05-viec-can-lam-theo-quy-tac-phi.md`](mf05-viec-can-lam-theo-quy-tac-phi.md).
-> **Hiện trạng code (15/10, nhánh `feature/mf05-replacement-slot`):** MF-05 đã làm xong bước 1 và 2 của mục 8: bảng, cột, hằng số `ReplacementSlotStates` / `ReplacementSlotErrorCodes`, cài đặt, migration `Mf05ReplacementSlot`, S1–S4 và API mục 6. Còn lại: MF-02 B4 (Trí) và mục 5 (Sơn + MF-05).
+> **Hiện trạng code (15/10, nhánh `feature/mf05-replacement-slot`):** MF-05 đã làm xong bước 1 và 2 của mục 8: bảng, cột, hằng số `ReplacementSlotStates` / `ReplacementSlotErrorCodes`, cài đặt, migration `Mf05ReplacementSlot`, S1–S4 và API mục 6. Còn lại: MF-02 B4 và mục 5 (MF-04 + MF-05).
 
 **Cách gọi trong tài liệu:**
 - **Internal HR:** nhân viên HR nội bộ của HR Connect (vai trò `INTERNAL_HR`).
@@ -59,7 +59,7 @@ Index: `(job_id, status, opened_at)` để tìm suất `OPEN` của job.
 |---|---|---|
 | `submission` | `replacement_slot_id` uuid null FK | MF-02, lúc tạo lượt nộp |
 | `application` | `replacement_slot_id` uuid null FK | MF-02, lúc ứng viên đồng ý (chép từ submission) |
-| `placement` | `replacement_slot_id` uuid null FK, UNIQUE | Sơn (MF-04), lúc xác nhận đi làm |
+| `placement` | `replacement_slot_id` uuid null FK, UNIQUE | MF-04, lúc xác nhận đi làm |
 
 **Không suy luận lại khi đọc:** liên kết được ghi một lần, đúng lúc phát sinh (đáp ứng yêu cầu của MF-02).
 
@@ -91,7 +91,7 @@ Internal HR xác nhận người cũ nghỉ trước hạn bảo hành
 | **S3. Hết hạn** | MF-05 | `WarrantyProgressWorker` thêm bước: suất `OPEN` quá `expires_at` → `EXPIRED`, thông báo HR của Client và Internal HR |
 | **S4. Hủy** | MF-05 | `POST /api/v1/internal/replacement-slots/{id}/cancel` `{ reason, concurrencyToken }`, quyền `warranty.manage`. Chỉ hủy được suất `WAITING_PAYMENT` hoặc `OPEN`. Không hoàn phí (R4) |
 | **S5. Gắn lượt nộp** | **MF-02 (Trí)** | Xem mục 4 |
-| **S6. Lấp suất** | **Sơn (MF-04)** + MF-05 | Xem mục 5 |
+| **S6. Lấp suất** | **MF-04** + MF-05 | Xem mục 5 |
 
 ---
 
@@ -122,11 +122,11 @@ Job bình thường: `isReplacement: false`, hai trường kia `null`.
 
 ---
 
-## 5. Lấp suất khi người thay thế đi làm (Sơn MF-04 + MF-05)
+## 5. Lấp suất khi người thay thế đi làm (MF-04 + MF-05)
 
-Chi tiết ở tài liệu riêng cho Sơn: [`MF04/mf04-lap-suat-thay-the.md`](../MF04/mf04-lap-suat-thay-the.md). Tóm tắt:
+Chi tiết ở tài liệu MF-04: [`MF04/mf04-lap-suat-thay-the.md`](../MF04/mf04-lap-suat-thay-the.md). Tóm tắt:
 
-- **Sơn (MF-04):** trong `ConfirmStartWorkCommandHandler`, khóa suất, lấp suất (`FILLED`) hoặc trả 409 `REPLACEMENT_SLOT_ALREADY_FILLED`; ghi `placement.replacement_slot_id`.
+- **MF-04:** trong `ConfirmStartWorkCommandHandler`, khóa suất, lấp suất (`FILLED`) hoặc trả 409 `REPLACEMENT_SLOT_ALREADY_FILLED`; ghi `placement.replacement_slot_id`.
 - **MF-05:** `PlacementFinanceService.InitializeAsync` nhận thông tin người thay thế: không tạo phí mới, tạo bảo hành mới, hoa hồng `IN_WARRANTY` tính trên phí gốc. Người thay thế nghỉ sớm thì không mở suất mới (R1).
 
 ## 6. API
@@ -158,7 +158,7 @@ Chi tiết ở tài liệu riêng cho Sơn: [`MF04/mf04-lap-suat-thay-the.md`](.
 | 1 | MF-05 ✅ | Bảng, cột, hằng số, cài đặt, migration (mục 2) |
 | 2 | MF-05 ✅ | S1, S1', S2, S3, S4 và API mục 6 |
 | 3 | **Trí (MF-02)** | Mục 4 (B4). Làm được ngay khi bước 1 đã merge |
-| 4 | Sơn (MF-04) + MF-05 | Mục 5 (tài liệu riêng cho Sơn) |
+| 4 | MF-04 + MF-05 | Mục 5 (tài liệu MF-04) |
 
 ## 9. Tiêu chí nghiệm thu
 

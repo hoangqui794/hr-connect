@@ -18,8 +18,8 @@ Quy ước chung: Vertical Slice + MediatR; migration có `.Designer.cs`; `has-p
 - **Nhánh:** `feature/<tên-ngắn>` tạo từ `dev`, PR vào `dev`, ít nhất 1 người review; CI xanh mới merge.
 - **Cài đặt mới:** thêm khóa vào `BusinessSettingKeys` (`HRConnect.Application/Common/Settings/BusinessSettings.cs`) để hiện ở trang Cài đặt Admin.
 - **Xong khi:** đạt hết mục nghiệm thu, có unit test, `dotnet test` pass, migration có `.Designer.cs`, Swagger có mô tả tiếng Việt, cập nhật trạng thái **[CHƯA CÓ CODE]** trong `main-flows.md` / tài liệu Actor nếu có.
-- **Bàn giao FE:** Báo Sang khi A và C merge (FE thay `industries.ts`, thêm bộ lọc).
-- **Hỏi ai:** nghiệp vụ hỏi Quí; chỗ nào tài liệu chưa rõ thì hỏi trước, không tự đoán.
+- **Bàn giao FE:** cập nhật tài liệu Frontend khi A và C merge (`industries.ts`, thêm bộ lọc).
+- **Nghiệp vụ chưa rõ:** xác nhận với người phụ trách nghiệp vụ trước, không tự đoán.
 
 ---
 
@@ -113,4 +113,4 @@ Mở rộng `GetPublicJobsQuery` và endpoint `GET /api/v1/public/jobs` (và `GE
 
 ## Giao cho FE
 
-Sau khi xong, bổ sung vào [`FE-tasks-sang.md`](FE-tasks-sang.md): thay `constants/industries.ts` bằng API `/industries`; trang danh bạ công ty và Top Companies; thêm 2 bộ lọc kinh nghiệm và ngành ở trang tìm việc.
+Sau khi xong, bổ sung vào [`API-INTEGRATION-BACKLOG.md`](../../../HRConnect-FE/docs/tasks/API-INTEGRATION-BACKLOG.md): thay `constants/industries.ts` bằng API `/industries`; trang danh bạ công ty và Top Companies; thêm 2 bộ lọc kinh nghiệm và ngành ở trang tìm việc.

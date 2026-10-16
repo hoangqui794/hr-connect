@@ -1,6 +1,6 @@
-# Việc cho Sơn (MF-04): lấp suất thay thế khi người thay thế đi làm
+# MF-04: lấp suất thay thế khi người thay thế đi làm
 
-> **Dành cho:** Sơn (MF-04). **Ngày:** 2026-10-15.
+> **Phạm vi:** Backend MF-04. **Ngày:** 2026-10-15.
 > **Thiết kế đầy đủ:** [`MF05/mf05-thiet-ke-suat-thay-the.md`](../MF05/mf05-thiet-ke-suat-thay-the.md). Đọc mục 1 (quy tắc) và mục 3 (vòng đời suất) trước.
 > **Điều kiện bắt đầu:** MF-05 đã merge bảng `replacement_slot`, cột `application.replacement_slot_id`, `placement.replacement_slot_id` và hằng số `ReplacementSlotStates` (bước 1 trong thiết kế).
 
@@ -8,7 +8,7 @@
 
 ## Bối cảnh ngắn
 
-Người được tuyển (HEADHUNT_COD) nghỉ trước hạn bảo hành thì MF-05 mở một **suất thay thế** cho job. Affiliate nộp người mới vào suất đó (MF-02 của Trí). Khi HR của Client xác nhận người thay thế **đi làm**, bước của Sơn quyết định người này có lấp suất hay không. Người thay thế **không tạo phí mới**.
+Người được tuyển (HEADHUNT_COD) nghỉ trước hạn bảo hành thì MF-05 mở một **suất thay thế** cho job. Affiliate nộp người mới vào suất đó (MF-02). Khi HR của Client xác nhận người thay thế **đi làm**, MF-04 quyết định người này có lấp suất hay không. Người thay thế **không tạo phí mới**.
 
 ## Việc cần làm
 
@@ -21,7 +21,7 @@ Sửa `ConfirmStartWorkCommandHandler` (`POST /api/v1/recruitment/applications/{
 3. Request thêm trường tùy chọn `acceptAsNewHire` (bool, mặc định `false`). HR của Client gửi lại với `true` thì tạo placement **như tuyển mới** (có phí), **không** gắn suất.
 4. Ghi audit khi lấp suất và khi chuyển sang tuyển mới.
 
-## Sơn không làm
+## Ngoài phạm vi MF-04
 
 - Không tạo phí, bảo hành, hoa hồng (MF-05 làm trong `PlacementFinanceService`).
 - Không mở, hủy hay cho hết hạn suất (MF-05).
