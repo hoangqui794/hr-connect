@@ -1,4 +1,5 @@
 using System.Text.Json;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 
 namespace HRConnect.Application.Features.SubmissionConsents.Common;
@@ -24,6 +25,9 @@ public static class SubmissionConsentNotificationFactory
             "BLOCKED_CLIENT_OWNED" => (
                 "Hồ sơ không thể tiếp tục",
                 $"Candidate {submission.Candidate.FullName} đang trong thời hạn được doanh nghiệp ưu tiên xử lý nên lượt nộp vào vị trí {submission.Job.Title} đã được đóng."),
+            ReplacementSlotErrorCodes.Unavailable => (
+                "Suất tuyển thay thế không còn khả dụng",
+                $"Lượt nộp của Candidate {submission.Candidate.FullName} vào vị trí {submission.Job.Title} đã được đóng vì suất tuyển thay thế đã hết hạn hoặc không còn mở."),
             _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unsupported consent result.")
         };
 
@@ -40,7 +44,8 @@ public static class SubmissionConsentNotificationFactory
             {
                 status = normalizedStatus,
                 submission.CandidateId,
-                submission.JobId
+                submission.JobId,
+                submission.ReplacementSlotId
             }),
             IsRead = false,
             CreatedAt = createdAt

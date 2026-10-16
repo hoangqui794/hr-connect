@@ -1,6 +1,6 @@
 # MF02 — Việc còn lại sau khi MF05 có luồng tuyển người thay thế
 
-> **Trạng thái:** Chưa triển khai — **đã có contract từ MF05 (15/10/2026)**, chờ MF05 merge bảng `replacement_slot` là làm được.
+> **Trạng thái:** MF05 đã merge contract; MF02 B4 đã triển khai trên nhánh `feature/mf02-replacement-slot-b4`, chờ merge.
 > **Việc cần làm:** [`mf02-b4-gan-suat-thay-the.md`](mf02-b4-gan-suat-thay-the.md). **Thiết kế đầy đủ:** [`MF05/mf05-thiet-ke-suat-thay-the.md`](../MF05/mf05-thiet-ke-suat-thay-the.md).
 > **Phạm vi:** Backend MF02.
 > **Lý do chờ:** Hiện database chưa có persisted replacement slot đủ an toàn để xác định một lượt nộp thuộc đợt tuyển thay thế nào.
@@ -67,7 +67,8 @@ MF05 cần có nguồn dữ liệu persisted tương đương `replacement_slot`
 - Affiliate không thể truyền hoặc giả mạo Placement đích.
 - Job không có slot vẫn đi theo luồng MF02 bình thường.
 - Slot đóng trong lúc chờ consent không tạo Application, Attribution hoặc MF03 request.
-- Hai consent xác nhận đồng thời chỉ một lượt chiếm được slot.
+- Nhiều consent hợp lệ có thể cùng tạo Application tham chiếu một slot đang `OPEN`; MF02 không chiếm hoặc đóng slot.
+- Consent chạy đồng thời với thao tác MF05 đóng/điền slot phải khóa và kiểm tra lại slot trong transaction; consent chỉ được tiếp tục khi slot vẫn `OPEN` và chưa hết hạn.
 - Submission luôn giữ đúng liên kết với Placement gốc sau nhiều lần thay thế.
 - MF05 có cross-module test chứng minh Placement thay thế không tạo phí dịch vụ mới.
 - Audit và notification đầy đủ cho cả thành công và slot hết khả dụng.
@@ -76,12 +77,12 @@ MF05 cần có nguồn dữ liệu persisted tương đương `replacement_slot`
 
 Chỉ bắt đầu phần này khi tất cả điều kiện sau đã có:
 
-- [ ] Entity/table replacement slot của MF05 đã merge.
-- [ ] Migration và constraint MF05 đã ổn định.
-- [ ] Repository hoặc Application interface để đọc/lock slot đã có.
-- [ ] Quy tắc phí và hoa hồng replacement đã được nhóm chốt.
-- [ ] Mã lỗi và trạng thái terminal khi slot đóng đã được thống nhất.
-- [ ] Đã chạy GitNexus impact analysis lại trên code mới nhất của MF02 và MF05.
+- [x] Entity/table replacement slot của MF05 đã merge.
+- [x] Migration và constraint MF05 đã ổn định.
+- [x] Repository/Application interface đọc slot và khóa dòng bằng `FOR UPDATE` đã có.
+- [x] Quy tắc phí và hoa hồng replacement đã được nhóm chốt.
+- [x] Mã lỗi `REPLACEMENT_SLOT_UNAVAILABLE` và trạng thái terminal `CANCELLED` đã được thống nhất.
+- [x] Đã chạy GitNexus impact analysis lại trên code mới nhất của MF02 và MF05.
 
 ## Tiêu chí hoàn thành
 

@@ -128,6 +128,44 @@ public class Mf05FinanceTests
         public const string Headhunt = "HEADHUNT_COD";
     }
 
+    [Fact]
+    public async Task ReplacementSlotLookup_ReturnsEarliestOpenUnexpiredSlotForJob()
+    {
+        var now = DateTime.UtcNow;
+        var jobId = Guid.NewGuid();
+        var earliest = NewSlot(jobId, ReplacementSlotStates.Open, now.AddDays(-2), now.AddDays(10));
+        var later = NewSlot(jobId, ReplacementSlotStates.Open, now.AddDays(-1), now.AddDays(10));
+        var expired = NewSlot(jobId, ReplacementSlotStates.Open, now.AddDays(-3), now.AddSeconds(-1));
+        var filled = NewSlot(jobId, ReplacementSlotStates.Filled, now.AddDays(-4), now.AddDays(10));
+        var otherJob = NewSlot(Guid.NewGuid(), ReplacementSlotStates.Open, now.AddDays(-5), now.AddDays(10));
+        _context.ReplacementSlots.AddRange(later, expired, filled, otherJob, earliest);
+        await _context.SaveChangesAsync();
+
+        var result = await Repository.GetEarliestOpenReplacementSlotForJobAsync(jobId, now);
+
+        result.Should().NotBeNull();
+        result!.ReplacementSlotId.Should().Be(earliest.ReplacementSlotId);
+    }
+
+    private static ReplacementSlot NewSlot(
+        Guid jobId,
+        string status,
+        DateTime openedAt,
+        DateTime expiresAt) => new()
+        {
+            ReplacementSlotId = Guid.NewGuid(),
+            JobId = jobId,
+            OriginalPlacementId = Guid.NewGuid(),
+            ServiceFeeId = Guid.NewGuid(),
+            Status = status,
+            FillWindowDays = 30,
+            OpenedAt = openedAt,
+            ExpiresAt = expiresAt,
+            ConcurrencyToken = Guid.NewGuid(),
+            CreatedAt = openedAt,
+            UpdatedAt = openedAt
+        };
+
     // ---- placement start ------------------------------------------------------------------
 
     [Fact]

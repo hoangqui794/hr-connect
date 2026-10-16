@@ -7,6 +7,7 @@ using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Affiliates.Commands.SubmitCandidate;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.SubmissionConsents.Common;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,6 +28,7 @@ public class SubmitCandidateCommandHandlerTests
     private readonly Mock<ICvStorageService> _cvStorageServiceMock;
     private readonly Mock<ISubmissionRepository> _submissionRepositoryMock;
     private readonly Mock<IApplicationRepository> _applicationRepositoryMock;
+    private readonly Mock<IFinanceRepository> _financeRepositoryMock;
     private readonly Mock<IAttributionRepository> _attributionRepositoryMock;
     private readonly Mock<ISubmissionConsentRepository> _consentRepositoryMock;
     private readonly Mock<INotificationRepository> _notificationRepositoryMock;
@@ -52,6 +54,7 @@ public class SubmitCandidateCommandHandlerTests
         _cvStorageServiceMock = new Mock<ICvStorageService>();
         _submissionRepositoryMock = new Mock<ISubmissionRepository>();
         _applicationRepositoryMock = new Mock<IApplicationRepository>();
+        _financeRepositoryMock = new Mock<IFinanceRepository>();
         _attributionRepositoryMock = new Mock<IAttributionRepository>();
         _consentRepositoryMock = new Mock<ISubmissionConsentRepository>();
         _notificationRepositoryMock = new Mock<INotificationRepository>();
@@ -86,6 +89,7 @@ public class SubmitCandidateCommandHandlerTests
             _cvStorageServiceMock.Object,
             _submissionRepositoryMock.Object,
             _applicationRepositoryMock.Object,
+            _financeRepositoryMock.Object,
             _consentRepositoryMock.Object,
             _notificationRepositoryMock.Object,
             _emailOutboxRepositoryMock.Object,
@@ -1225,6 +1229,9 @@ public class SubmitCandidateCommandHandlerTests
         response.Data.Should().NotBeNull();
         response.Data!.Status.Should().Be("PENDING_CONSENT");
         response.Data.AiStatus.Should().Be("NOT_QUEUED");
+        response.Data.IsReplacement.Should().BeFalse();
+        response.Data.ReplacementSlotId.Should().BeNull();
+        response.Data.ReplacementForPlacementId.Should().BeNull();
 
         createdSubmission.Should().NotBeNull();
         createdSubmission!.Status.Should().Be("PENDING_CONSENT");
@@ -1240,6 +1247,103 @@ public class SubmitCandidateCommandHandlerTests
         _auditLogServiceMock.Verify(a => a.AddAsync(
             It.Is<AuditEntry>(entry => entry.Action == AuditActions.AffiliateSubmissionCreated && entry.EntityId == createdSubmission.SubmissionId),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Handle_WhenHeadhuntJobIsSubmitted_ReturnsAvailableReplacementContext(bool hasOpenSlot)
+    {
+        var userId = Guid.NewGuid();
+        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId, Status = "ACTIVE" };
+        _affiliateProfileRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(affiliate);
+
+        var serviceTypeId = Guid.NewGuid();
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(),
+            Status = JobStatuses.Active,
+            ServiceTypeId = serviceTypeId,
+            Visibility = JobVisibilities.PartnerOnly,
+            ServiceType = new ServiceType
+            {
+                ServiceTypeId = serviceTypeId,
+                Code = ServiceTypeCodes.HeadhuntCod,
+                Name = "Headhunt COD"
+            }
+        };
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(
+                serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var candidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            FullName = "Replacement Candidate",
+            Email = "replacement@example.com",
+            NormalizedEmail = "replacement@example.com",
+            Status = "ACTIVE"
+        };
+        _candidateRepositoryMock.Setup(r => r.GetByNormalizedEmailAsync(
+                candidate.NormalizedEmail, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+        _submissionRepositoryMock.Setup(r => r.GetAcceptedSubmissionAsync(
+                candidate.CandidateId, job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Submission?)null);
+        _applicationRepositoryMock.Setup(r => r.GetByCandidateAndJobAsync(
+                candidate.CandidateId, job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((JobApplication?)null);
+
+        var cv = new CandidateCv
+        {
+            CvId = Guid.NewGuid(),
+            CandidateId = candidate.CandidateId,
+            Status = "ACTIVE",
+            SourceFileUrl = "replacement.pdf",
+            CreationMethod = "AFFILIATE_UPLOAD",
+            UploadedByUserId = userId,
+            AffiliateReuseStatus = "ALLOWED"
+        };
+        _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cv.CvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cv);
+
+        var slot = new ReplacementSlot
+        {
+            ReplacementSlotId = Guid.NewGuid(),
+            JobId = job.JobId,
+            OriginalPlacementId = Guid.NewGuid(),
+            Status = ReplacementSlotStates.Open,
+            OpenedAt = DateTime.UtcNow.AddDays(-1),
+            ExpiresAt = DateTime.UtcNow.AddDays(29)
+        };
+        _financeRepositoryMock.Setup(r => r.GetEarliestOpenReplacementSlotForJobAsync(
+                job.JobId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(hasOpenSlot ? slot : null);
+
+        Submission? createdSubmission = null;
+        _submissionRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Submission>(), It.IsAny<CancellationToken>()))
+            .Callback<Submission, CancellationToken>((value, _) => createdSubmission = value)
+            .Returns(Task.CompletedTask);
+
+        var response = await _handler.Handle(new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = job.JobId,
+            FullName = candidate.FullName,
+            Email = candidate.Email,
+            CvId = cv.CvId,
+            RoleCodes = [JobAccessPolicy.AffiliateRole]
+        }, CancellationToken.None);
+
+        createdSubmission.Should().NotBeNull();
+        createdSubmission!.ReplacementSlotId.Should().Be(hasOpenSlot ? slot.ReplacementSlotId : null);
+        response.Data!.IsReplacement.Should().Be(hasOpenSlot);
+        response.Data.ReplacementSlotId.Should().Be(hasOpenSlot ? slot.ReplacementSlotId : null);
+        response.Data.ReplacementForPlacementId.Should().Be(hasOpenSlot ? slot.OriginalPlacementId : null);
+        _financeRepositoryMock.Verify(r => r.GetEarliestOpenReplacementSlotForJobAsync(
+            job.JobId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

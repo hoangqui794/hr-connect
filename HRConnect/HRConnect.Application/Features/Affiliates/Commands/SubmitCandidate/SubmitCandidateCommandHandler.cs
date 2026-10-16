@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Models;
 using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.SubmissionConsents.Common;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -27,6 +28,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
     private readonly ICvStorageService _cvStorageService;
     private readonly ISubmissionRepository _submissionRepository;
     private readonly IApplicationRepository _applicationRepository;
+    private readonly IFinanceRepository _financeRepository;
     private readonly ISubmissionConsentRepository _consentRepository;
     private readonly INotificationRepository _notificationRepository;
     private readonly IEmailOutboxRepository _emailOutboxRepository;
@@ -50,6 +52,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         ICvStorageService cvStorageService,
         ISubmissionRepository submissionRepository,
         IApplicationRepository applicationRepository,
+        IFinanceRepository financeRepository,
         ISubmissionConsentRepository consentRepository,
         INotificationRepository notificationRepository,
         IEmailOutboxRepository emailOutboxRepository,
@@ -72,6 +75,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         _cvStorageService = cvStorageService;
         _submissionRepository = submissionRepository;
         _applicationRepository = applicationRepository;
+        _financeRepository = financeRepository;
         _consentRepository = consentRepository;
         _notificationRepository = notificationRepository;
         _emailOutboxRepository = emailOutboxRepository;
@@ -397,6 +401,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         Submission submission;
         SubmissionConsent consent;
         EmailOutbox emailOutbox;
+        ReplacementSlot? replacementSlot = null;
         string? uploadedObjectKey = null;
         Guid cvId = Guid.Empty;
         var rawToken = CreateOpaqueToken();
@@ -444,6 +449,14 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
 
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
+            if (string.Equals(job.ServiceType?.Code, ServiceTypeCodes.HeadhuntCod, StringComparison.OrdinalIgnoreCase))
+            {
+                replacementSlot = await _financeRepository.GetEarliestOpenReplacementSlotForJobAsync(
+                    job.JobId,
+                    now,
+                    cancellationToken);
+            }
+
             submission = new Submission
             {
                 SubmissionId = Guid.NewGuid(),
@@ -453,6 +466,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 SubmittedBy = request.UserId,
                 Source = "AFFILIATE",
                 Status = "PENDING_CONSENT",
+                ReplacementSlotId = replacementSlot?.ReplacementSlotId,
                 Note = request.Note?.Trim(),
                 SubmittedAt = now,
                 UpdatedAt = now
@@ -527,6 +541,8 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                     cvId,
                     source = "AFFILIATE",
                     status = "PENDING_CONSENT",
+                    replacementSlotId = replacementSlot?.ReplacementSlotId,
+                    replacementForPlacementId = replacementSlot?.OriginalPlacementId,
                     consentExpiresAt = expiresAt,
                     aiStatus = "NOT_QUEUED"
                 }
@@ -645,7 +661,10 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 AiStatus = "NOT_QUEUED",
                 ConsentExpiresAt = expiresAt,
                 EmailDeliveryStatus = deliveryStatus,
-                SubmittedAt = submission.SubmittedAt
+                SubmittedAt = submission.SubmittedAt,
+                IsReplacement = replacementSlot != null,
+                ReplacementForPlacementId = replacementSlot?.OriginalPlacementId,
+                ReplacementSlotId = replacementSlot?.ReplacementSlotId
             }
         };
     }

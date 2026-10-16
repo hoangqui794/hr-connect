@@ -41,11 +41,28 @@ public interface IFinanceRepository
 
     Task AddReplacementSlotAsync(ReplacementSlot slot, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Earliest usable replacement slot for a job. Multiple submissions may point to the same
+    /// slot; the slot is only filled when a replacement placement starts work.
+    /// </summary>
+    Task<ReplacementSlot?> GetEarliestOpenReplacementSlotForJobAsync(
+        Guid jobId,
+        DateTime now,
+        CancellationToken cancellationToken = default);
+
     /// <summary>The slot granted under a service fee, with its job, tracked for update.</summary>
     Task<ReplacementSlot?> GetReplacementSlotByServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default);
 
     /// <summary>Slot with its job, tracked for update.</summary>
     Task<ReplacementSlot?> GetReplacementSlotForUpdateAsync(Guid replacementSlotId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Locks one slot row for the current transaction while MF-02 confirms Candidate consent.
+    /// The caller must begin a transaction before invoking this method.
+    /// </summary>
+    Task<ReplacementSlot?> GetReplacementSlotForConsentForUpdateAsync(
+        Guid replacementSlotId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>OPEN slots whose deadline is at or before <paramref name="now"/>.</summary>
     Task<IReadOnlyList<Guid>> GetExpiredReplacementSlotIdsAsync(DateTime now, int take, CancellationToken cancellationToken = default);

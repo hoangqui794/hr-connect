@@ -106,10 +106,15 @@ Response `200`:
     "aiStatus": "NOT_QUEUED",
     "consentExpiresAt": "2026-10-04T13:44:59Z",
     "emailDeliveryStatus": "SENT",
-    "submittedAt": "2026-10-02T13:44:59Z"
+    "submittedAt": "2026-10-02T13:44:59Z",
+    "isReplacement": true,
+    "replacementForPlacementId": "uuid",
+    "replacementSlotId": "uuid"
   }
 }
 ```
+
+Ba trường replacement do backend tự xác định, FE không gửi `replacementSlotId` hoặc Placement trong request. Với lượt nộp bình thường, `isReplacement` là `false` và hai ID là `null`. FE có thể hiển thị nhãn “Ứng viên thay thế”; nếu không cần phân biệt trên màn hình hiện tại thì vẫn phải giữ các trường trong type để dùng cho lịch sử và tiến trình tuyển dụng.
 
 FE phải hiển thị theo `emailDeliveryStatus`:
 
@@ -344,7 +349,7 @@ Không suy luận trạng thái MF03 từ Submission. Chỉ hiển thị MF03 đ
 | `401` | Đăng nhập thất bại hoặc Bearer hết hạn | Hiển thị form đăng nhập lại |
 | `403` | Bearer thuộc Candidate khác hoặc không có quyền truy cập | Báo sai tài khoản/không có quyền và cho phép đổi tài khoản |
 | `404` | Token không tồn tại/không hợp lệ | Hiển thị trang link không hợp lệ, không retry tự động |
-| `409` | Đã xử lý, Job đóng hoặc phát hiện trùng | Hiển thị `message`, khóa các nút quyết định rồi gọi review lại một lần |
+| `409` | Đã xử lý, Job đóng, phát hiện trùng hoặc suất thay thế không còn khả dụng | Hiển thị `message`, khóa các nút quyết định rồi gọi review lại một lần. Nếu `errorCode = REPLACEMENT_SLOT_UNAVAILABLE`, hiển thị hồ sơ không thể tiếp tục vì suất thay thế đã đóng/hết hạn; không retry consent. |
 | `429` | Gọi quá nhanh | Disable nút tạm thời và thông báo thử lại sau |
 | `500` | Lỗi hệ thống | Hiển thị thông báo chung kèm correlation ID nếu response/header có cung cấp |
 
@@ -354,6 +359,19 @@ Error response nghiệp vụ thường có dạng:
 {
   "success": false,
   "message": "Nội dung lỗi cụ thể"
+}
+```
+
+Riêng conflict có thể kèm mã và dữ liệu an toàn để FE xử lý theo nghiệp vụ:
+
+```json
+{
+  "success": false,
+  "errorCode": "REPLACEMENT_SLOT_UNAVAILABLE",
+  "message": "Suất thay thế không còn khả dụng.",
+  "data": {
+    "replacementSlotId": "uuid"
+  }
 }
 ```
 
