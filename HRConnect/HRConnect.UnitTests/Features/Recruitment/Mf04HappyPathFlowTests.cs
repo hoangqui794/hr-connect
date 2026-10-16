@@ -177,7 +177,9 @@ public sealed class Mf04HappyPathFlowTests
             null,
             application.ConcurrencyToken,
             companyUserId,
-            IsClientCompanyUser: true), CancellationToken.None);
+            IsClientCompanyUser: true,
+            SalaryBasis: OfferSalaryBasisCodes.Gross,
+            SalaryPeriod: OfferSalaryPeriodCodes.Monthly), CancellationToken.None);
 
         persistedOffer.Should().NotBeNull();
         persistedOffer!.Status.Should().Be(OfferStates.Draft);

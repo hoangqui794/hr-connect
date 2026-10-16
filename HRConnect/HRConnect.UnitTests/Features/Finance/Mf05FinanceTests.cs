@@ -65,7 +65,8 @@ public class Mf05FinanceTests
         var offer = new Offer
         {
             OfferId = Guid.NewGuid(), ApplicationId = application.ApplicationId, OfferVersion = 1, Salary = salary,
-            CurrencyCode = "VND", Status = OfferStates.Accepted, ConcurrencyToken = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now,
+            CurrencyCode = "VND", SalaryBasis = OfferSalaryBasisCodes.Gross, SalaryPeriod = OfferSalaryPeriodCodes.Monthly,
+            Status = OfferStates.Accepted, ConcurrencyToken = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now,
         };
         var placement = new Placement
         {
@@ -205,6 +206,32 @@ public class Mf05FinanceTests
         fee.Amount.Should().Be(40_000_000m);
         fee.DueDate.Should().Be(Start.AddDays(20)); // default payment due days from the HEADHUNT_COD document
         (await _context.Warranties.SingleAsync()).EndDate.Should().Be(Start.AddDays(45));
+    }
+
+    [Fact]
+    public async Task AnnualGrossSalary_is_normalized_to_monthly_before_calculating_service_fee()
+    {
+        var (placement, offer) = await SeedPlacementAsync(240_000_000m);
+        offer.SalaryPeriod = OfferSalaryPeriodCodes.Annual;
+
+        await InitializeAsync(placement, offer);
+
+        var fee = await _context.ServiceFees.SingleAsync();
+        fee.BaseSalary.Should().Be(20_000_000m);
+        fee.Amount.Should().Be(30_000_000m);
+    }
+
+    [Fact]
+    public async Task HeadhuntFinance_rejects_net_salary()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        offer.SalaryBasis = OfferSalaryBasisCodes.Net;
+
+        var act = () => InitializeAsync(placement, offer);
+
+        var exception = await act.Should().ThrowAsync<BadRequestException>();
+        exception.Which.ErrorCode.Should().Be(OfferSalaryErrorCodes.HeadhuntRequiresGross);
+        (await _context.ServiceFees.AnyAsync()).Should().BeFalse();
     }
 
     [Fact]

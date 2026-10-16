@@ -7,6 +7,7 @@ using System.Text.Json;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Recruitment.Common;
+using HRConnect.Application.Features.Offers.Common;
 using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -98,6 +99,9 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
                 OfferVersion = o.OfferVersion,
                 Salary = o.Salary,
                 CurrencyCode = o.CurrencyCode ?? "VND",
+                SalaryBasis = o.SalaryBasis,
+                SalaryPeriod = o.SalaryPeriod,
+                MonthlyGrossSalary = OfferSalaryPolicy.CalculateMonthlyGrossSalary(o.Salary, o.SalaryBasis, o.SalaryPeriod),
                 StartDate = o.StartDate,
                 ExpiryDate = o.ExpiryDate,
                 Status = o.Status,

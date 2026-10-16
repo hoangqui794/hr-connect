@@ -6,6 +6,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Offers.Commands.UpdateOfferDraft;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -274,7 +275,9 @@ public class UpdateOfferDraftCommandHandlerTests
             OfferDocumentUrl: "https://new-doc.pdf",
             ConcurrencyToken: offer.ConcurrencyToken,
             CurrentUserId: clientUserId,
-            IsClientCompanyUser: true);
+            IsClientCompanyUser: true,
+            SalaryBasis: "gross",
+            SalaryPeriod: "monthly");
 
         var result = await CreateHandler().Handle(command, CancellationToken.None);
 
@@ -285,12 +288,17 @@ public class UpdateOfferDraftCommandHandlerTests
         result.StartDate.Should().Be(newStartDate);
         result.ExpiryDate.Should().Be(newExpiryDate);
         result.OfferDocumentUrl.Should().Be("https://new-doc.pdf");
+        result.SalaryBasis.Should().Be(OfferSalaryBasisCodes.Gross);
+        result.SalaryPeriod.Should().Be(OfferSalaryPeriodCodes.Monthly);
+        result.MonthlyGrossSalary.Should().Be(28_000_000m);
 
         offer.Salary.Should().Be(28000000);
         offer.CurrencyCode.Should().Be("USD");
         offer.StartDate.Should().Be(newStartDate);
         offer.ExpiryDate.Should().Be(newExpiryDate);
         offer.OfferDocumentUrl.Should().Be("https://new-doc.pdf");
+        offer.SalaryBasis.Should().Be(OfferSalaryBasisCodes.Gross);
+        offer.SalaryPeriod.Should().Be(OfferSalaryPeriodCodes.Monthly);
 
         _offerRepositoryMock.Verify(r => r.Update(offer), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);

@@ -3,7 +3,9 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Common.Settings;
+using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.Offers.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -70,6 +72,11 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
             return new PlacementFinanceResult(false, null, null, null, null, null, null, Array.Empty<string>());
         }
 
+        var monthlyGrossSalary = OfferSalaryPolicy.EnsureReadyForSending(context.Offer, context.ServiceTypeCode)
+            ?? throw new BadRequestException(
+                "Không xác định được lương gross theo tháng để tính phí dịch vụ.",
+                OfferSalaryErrorCodes.Incomplete);
+
         var now = DateTime.UtcNow;
         var warnings = new List<string>();
 
@@ -97,30 +104,21 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
         };
         await _financeRepository.AddWarrantyAsync(warranty, cancellationToken);
 
-        ServiceFee? fee = null;
-        if (context.Offer.Salary is decimal salary && salary > 0)
+        var fee = new ServiceFee
         {
-            fee = new ServiceFee
-            {
-                ServiceFeeId = Guid.NewGuid(),
-                PlacementId = placement.PlacementId,
-                CompanyId = context.CompanyId,
-                BaseSalary = salary,
-                FeeMultiplier = feeMultiplier,
-                Amount = decimal.Round(salary * feeMultiplier, 2, MidpointRounding.AwayFromZero),
-                CurrencyCode = string.IsNullOrWhiteSpace(context.Offer.CurrencyCode) ? "VND" : context.Offer.CurrencyCode.Trim().ToUpperInvariant(),
-                DueDate = placement.ActualStartDate.AddDays(paymentDueDays),
-                Status = ServiceFeeStates.Pending,
-                CreatedAt = now,
-                UpdatedAt = now,
-            };
-            await _financeRepository.AddServiceFeeAsync(fee, cancellationToken);
-        }
-        else
-        {
-            warnings.Add("SERVICE_FEE_SALARY_MISSING");
-            _logger.LogWarning("Placement {PlacementId}: offer has no salary, service fee not created.", placement.PlacementId);
-        }
+            ServiceFeeId = Guid.NewGuid(),
+            PlacementId = placement.PlacementId,
+            CompanyId = context.CompanyId,
+            BaseSalary = monthlyGrossSalary,
+            FeeMultiplier = feeMultiplier,
+            Amount = decimal.Round(monthlyGrossSalary * feeMultiplier, 2, MidpointRounding.AwayFromZero),
+            CurrencyCode = string.IsNullOrWhiteSpace(context.Offer.CurrencyCode) ? "VND" : context.Offer.CurrencyCode.Trim().ToUpperInvariant(),
+            DueDate = placement.ActualStartDate.AddDays(paymentDueDays),
+            Status = ServiceFeeStates.Pending,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        await _financeRepository.AddServiceFeeAsync(fee, cancellationToken);
 
         Commission? commission = null;
         var attribution = await _financeRepository.GetActiveAttributionAsync(context.ApplicationId, cancellationToken);
@@ -191,6 +189,10 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
                 warrantyEndDate = warranty.EndDate,
                 serviceFeeId = fee?.ServiceFeeId,
                 serviceFeeAmount = fee?.Amount,
+                offeredSalary = context.Offer.Salary,
+                salaryBasis = context.Offer.SalaryBasis,
+                salaryPeriod = context.Offer.SalaryPeriod,
+                monthlyGrossSalary,
                 commissionId = commission?.CommissionId,
                 commissionAmount = commission?.Amount,
                 warnings,

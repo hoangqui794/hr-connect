@@ -6,6 +6,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Recruitment.Common;
+using HRConnect.Application.Features.Offers.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -93,6 +94,8 @@ public class UpdateOfferDraftCommandHandler : IRequestHandler<UpdateOfferDraftCo
         {
             salary = offer.Salary,
             currencyCode = offer.CurrencyCode,
+            salaryBasis = offer.SalaryBasis,
+            salaryPeriod = offer.SalaryPeriod,
             startDate = offer.StartDate,
             expiryDate = offer.ExpiryDate
         };
@@ -110,6 +113,16 @@ public class UpdateOfferDraftCommandHandler : IRequestHandler<UpdateOfferDraftCo
         if (request.Salary.HasValue)
         {
             offer.Salary = request.Salary.Value;
+        }
+
+        if (request.SalaryBasis != null)
+        {
+            offer.SalaryBasis = OfferSalaryPolicy.NormalizeBasis(request.SalaryBasis);
+        }
+
+        if (request.SalaryPeriod != null)
+        {
+            offer.SalaryPeriod = OfferSalaryPolicy.NormalizePeriod(request.SalaryPeriod);
         }
 
         if (request.StartDate.HasValue)
@@ -146,6 +159,9 @@ public class UpdateOfferDraftCommandHandler : IRequestHandler<UpdateOfferDraftCo
                 status = offer.Status,
                 salary = offer.Salary,
                 currencyCode = offer.CurrencyCode,
+                salaryBasis = offer.SalaryBasis,
+                salaryPeriod = offer.SalaryPeriod,
+                monthlyGrossSalary = OfferSalaryPolicy.CalculateMonthlyGrossSalary(offer.Salary, offer.SalaryBasis, offer.SalaryPeriod),
                 startDate = offer.StartDate,
                 expiryDate = offer.ExpiryDate
             }
@@ -165,7 +181,10 @@ public class UpdateOfferDraftCommandHandler : IRequestHandler<UpdateOfferDraftCo
             offer.Status,
             offer.OfferDocumentUrl,
             offer.ConcurrencyToken,
-            offer.UpdatedAt
+            offer.UpdatedAt,
+            offer.SalaryBasis,
+            offer.SalaryPeriod,
+            OfferSalaryPolicy.CalculateMonthlyGrossSalary(offer.Salary, offer.SalaryBasis, offer.SalaryPeriod)
         );
     }
 }

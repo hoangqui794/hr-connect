@@ -3421,6 +3421,16 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("salary");
 
+                    b.Property<string>("SalaryBasis")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("salary_basis");
+
+                    b.Property<string>("SalaryPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("salary_period");
+
                     b.Property<DateTime?>("SentAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("sent_at");
@@ -3459,6 +3469,10 @@ namespace HRConnect.Infrastructure.Migrations
                             t.HasCheckConstraint("ck_offer_declined_response", "status <> 'DECLINED' OR responded_at IS NOT NULL");
 
                             t.HasCheckConstraint("ck_offer_response_time", "responded_at IS NULL OR sent_at IS NULL OR responded_at >= sent_at");
+
+                            t.HasCheckConstraint("ck_offer_salary_basis", "salary_basis IS NULL OR salary_basis IN ('GROSS','NET')");
+
+                            t.HasCheckConstraint("ck_offer_salary_period", "salary_period IS NULL OR salary_period IN ('MONTHLY','ANNUAL')");
 
                             t.HasCheckConstraint("ck_offer_salary_positive", "salary IS NULL OR salary >= 0");
 

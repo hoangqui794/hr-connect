@@ -176,6 +176,12 @@ public class RecruitmentOfferSummaryDto
 
     public string CurrencyCode { get; set; } = "VND";
 
+    public string? SalaryBasis { get; set; }
+
+    public string? SalaryPeriod { get; set; }
+
+    public decimal? MonthlyGrossSalary { get; set; }
+
     public DateOnly? StartDate { get; set; }
 
     public DateOnly? ExpiryDate { get; set; }

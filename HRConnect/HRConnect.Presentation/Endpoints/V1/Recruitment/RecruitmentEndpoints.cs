@@ -563,7 +563,9 @@ public static class RecruitmentEndpoints
                     ConcurrencyToken: request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
                     IsClientCompanyUser: true,
-                    IsInternalHrOrAdmin: false
+                    IsInternalHrOrAdmin: false,
+                    SalaryBasis: request.SalaryBasis,
+                    SalaryPeriod: request.SalaryPeriod
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -583,7 +585,7 @@ public static class RecruitmentEndpoints
             }
             catch (BadRequestException ex)
             {
-                return Results.BadRequest(new { success = false, message = ex.Message });
+                return Results.BadRequest(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
             }
         })
         .WithName("CreateOfferDraft")
@@ -852,6 +854,10 @@ public class CreateOfferDraftRequest
 {
     public decimal? Salary { get; set; }
     public string? CurrencyCode { get; set; }
+    /// <summary>GROSS hoặc NET. Có thể bỏ trống khi lưu nháp.</summary>
+    public string? SalaryBasis { get; set; }
+    /// <summary>MONTHLY hoặc ANNUAL. Có thể bỏ trống khi lưu nháp.</summary>
+    public string? SalaryPeriod { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? ExpiryDate { get; set; }
     public string? OfferDocumentUrl { get; set; }

@@ -13,5 +13,8 @@ public record UpdateOfferDraftResponse(
     string Status,
     string? OfferDocumentUrl,
     Guid ConcurrencyToken,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string? SalaryBasis = null,
+    string? SalaryPeriod = null,
+    decimal? MonthlyGrossSalary = null
 );

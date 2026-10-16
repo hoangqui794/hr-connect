@@ -7,6 +7,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Offers.Commands.CreateOfferDraft;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -351,7 +352,9 @@ public class CreateOfferDraftCommandHandlerTests
             OfferDocumentUrl: "https://storage.hrconnect.vn/offers/doc1.pdf",
             ConcurrencyToken: app.ConcurrencyToken,
             CurrentUserId: clientUserId,
-            IsClientCompanyUser: true);
+            IsClientCompanyUser: true,
+            SalaryBasis: " gross ",
+            SalaryPeriod: "annual");
 
         Offer? addedOffer = null;
         _offerRepositoryMock
@@ -369,6 +372,9 @@ public class CreateOfferDraftCommandHandlerTests
         result.OfferVersion.Should().Be(2); // previous was 1
         result.Salary.Should().Be(25000000);
         result.CurrencyCode.Should().Be("VND");
+        result.SalaryBasis.Should().Be(OfferSalaryBasisCodes.Gross);
+        result.SalaryPeriod.Should().Be(OfferSalaryPeriodCodes.Annual);
+        result.MonthlyGrossSalary.Should().Be(decimal.Round(25_000_000m / 12m, 2, MidpointRounding.AwayFromZero));
         result.Status.Should().Be("DRAFT");
         result.OfferDocumentUrl.Should().Be("https://storage.hrconnect.vn/offers/doc1.pdf");
         result.ApplicationStatus.Should().Be("OFFER_PENDING");
@@ -377,6 +383,8 @@ public class CreateOfferDraftCommandHandlerTests
         addedOffer!.OfferVersion.Should().Be(2);
         addedOffer.Status.Should().Be("DRAFT");
         addedOffer.CreatedBy.Should().Be(clientUserId);
+        addedOffer.SalaryBasis.Should().Be(OfferSalaryBasisCodes.Gross);
+        addedOffer.SalaryPeriod.Should().Be(OfferSalaryPeriodCodes.Annual);
 
         app.Status.Should().Be("OFFER_PENDING");
         app.ApplicationStatusHistories.Should().BeEmpty();
