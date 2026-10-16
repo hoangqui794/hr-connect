@@ -56,4 +56,7 @@ public class SubmitCandidateData
     public DateTime? ConsentExpiresAt { get; set; }
     public string EmailDeliveryStatus { get; set; } = "PENDING";
     public DateTime SubmittedAt { get; set; }
+    public bool IsReplacement { get; set; }
+    public Guid? ReplacementForPlacementId { get; set; }
+    public Guid? ReplacementSlotId { get; set; }
 }

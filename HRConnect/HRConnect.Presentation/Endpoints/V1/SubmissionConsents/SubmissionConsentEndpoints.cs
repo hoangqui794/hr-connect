@@ -177,7 +177,16 @@ public static class SubmissionConsentEndpoints
         try { return Results.Ok(await action()); }
         catch (NotFoundException ex) { return Results.NotFound(new { success = false, message = ex.Message }); }
         catch (ForbiddenException ex) { return Results.Json(new { success = false, message = ex.Message }, statusCode: 403); }
-        catch (ConflictException ex) { return Results.Conflict(new { success = false, message = ex.Message }); }
+        catch (ConflictException ex)
+        {
+            return Results.Conflict(new
+            {
+                success = false,
+                errorCode = ex.ErrorCode,
+                message = ex.Message,
+                data = ex.Details
+            });
+        }
         catch (BadRequestException ex) { return Results.BadRequest(new { success = false, message = ex.Message }); }
     }
 

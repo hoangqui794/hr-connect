@@ -49,6 +49,21 @@ public class FinanceRepository : IFinanceRepository
     public async Task AddReplacementSlotAsync(ReplacementSlot slot, CancellationToken cancellationToken = default) =>
         await _context.ReplacementSlots.AddAsync(slot, cancellationToken);
 
+    public Task<ReplacementSlot?> GetEarliestOpenReplacementSlotForJobAsync(
+        Guid jobId,
+        DateTime now,
+        CancellationToken cancellationToken = default) =>
+        _context.ReplacementSlots.AsNoTracking()
+            .Where(s => s.JobId == jobId &&
+                        s.Status == ReplacementSlotStates.Open &&
+                        s.OpenedAt != null &&
+                        s.ExpiresAt != null &&
+                        s.ExpiresAt > now)
+            .OrderBy(s => s.OpenedAt)
+            .ThenBy(s => s.CreatedAt)
+            .ThenBy(s => s.ReplacementSlotId)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public Task<ReplacementSlot?> GetReplacementSlotByServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default) =>
         _context.ReplacementSlots.Include(s => s.Job)
             .FirstOrDefaultAsync(s => s.ServiceFeeId == serviceFeeId, cancellationToken);
@@ -56,6 +71,26 @@ public class FinanceRepository : IFinanceRepository
     public Task<ReplacementSlot?> GetReplacementSlotForUpdateAsync(Guid replacementSlotId, CancellationToken cancellationToken = default) =>
         _context.ReplacementSlots.Include(s => s.Job)
             .FirstOrDefaultAsync(s => s.ReplacementSlotId == replacementSlotId, cancellationToken);
+
+    public Task<ReplacementSlot?> GetReplacementSlotForConsentForUpdateAsync(
+        Guid replacementSlotId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.Equals(
+                _context.Database.ProviderName,
+                "Npgsql.EntityFrameworkCore.PostgreSQL",
+                StringComparison.Ordinal))
+        {
+            return _context.ReplacementSlots
+                .FromSqlInterpolated($"SELECT * FROM public.replacement_slot WHERE replacement_slot_id = {replacementSlotId} FOR UPDATE")
+                .AsTracking()
+                .SingleOrDefaultAsync(cancellationToken);
+        }
+
+        // Unit tests use EF InMemory, which does not support relational row locks.
+        return _context.ReplacementSlots
+            .FirstOrDefaultAsync(s => s.ReplacementSlotId == replacementSlotId, cancellationToken);
+    }
 
     public async Task<IReadOnlyList<Guid>> GetExpiredReplacementSlotIdsAsync(DateTime now, int take, CancellationToken cancellationToken = default) =>
         await _context.ReplacementSlots.AsNoTracking()
