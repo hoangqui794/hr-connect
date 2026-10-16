@@ -7,6 +7,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmStartWork;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -65,8 +66,9 @@ public class ConfirmStartWorkCommandHandlerTests
         Func<Task> act = async () => await CreateHandler().Handle(command, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<BadRequestException>()
-            .WithMessage("*tương lai*");
+        var exception = await act.Should().ThrowAsync<BadRequestException>();
+        exception.Which.Message.Should().Contain("tương lai");
+        exception.Which.ErrorCode.Should().Be(PlacementStartDateErrorCodes.InvalidStartDate);
     }
 
     [Theory]
@@ -483,6 +485,49 @@ public class ConfirmStartWorkCommandHandlerTests
         // Assert
         await act.Should().ThrowAsync<BadRequestException>()
             .WithMessage("*ACCEPTED*");
+    }
+
+    [Fact]
+    public async Task Handle_WhenActualStartDateIsBeforeOfferAcceptance_ShouldReturnInvalidStartDate()
+    {
+        var appId = Guid.NewGuid();
+        var offerId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var acceptedAt = DateTime.UtcNow.AddDays(-2);
+        var application = new Domain.Entities.Application
+        {
+            ApplicationId = appId,
+            Status = ApplicationStates.OfferAccepted,
+            ConcurrencyToken = Guid.NewGuid(),
+            Job = new Job { CompanyId = companyId }
+        };
+        var offer = new Offer
+        {
+            OfferId = offerId,
+            ApplicationId = appId,
+            Status = OfferStates.Accepted,
+            RespondedAt = acceptedAt
+        };
+
+        _applicationRepositoryMock.Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>())).ReturnsAsync(application);
+        _placementRepositoryMock.Setup(r => r.GetByApplicationIdAsync(appId, It.IsAny<CancellationToken>())).ReturnsAsync((Placement?)null);
+        _offerRepositoryMock.Setup(r => r.GetByIdAsync(offerId, It.IsAny<CancellationToken>())).ReturnsAsync(offer);
+
+        var act = () => CreateHandler().Handle(new ConfirmStartWorkCommand(
+            appId,
+            offerId,
+            DateOnly.FromDateTime(acceptedAt.AddDays(-1)),
+            null,
+            null,
+            null,
+            application.ConcurrencyToken,
+            userId,
+            IsClientCompanyUser: true), default);
+
+        var exception = await act.Should().ThrowAsync<BadRequestException>();
+        exception.Which.ErrorCode.Should().Be(PlacementStartDateErrorCodes.InvalidStartDate);
+        _companyUserRepositoryMock.Verify(r => r.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

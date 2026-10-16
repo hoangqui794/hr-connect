@@ -3,6 +3,7 @@ using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Placements.Queries.GetPlacementDetail;
 using HRConnect.Application.Features.Placements.Queries.GetPlacements;
+using HRConnect.Application.Features.Placements.Commands.CorrectPlacementStartDate;
 using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -148,6 +149,63 @@ public static class PlacementEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
 
+        // P06: POST /api/v1/placements/{placementId}/start-date-correction
+        group.MapPost("/{placementId:guid}/start-date-correction", async (
+            Guid placementId,
+            [FromBody] CorrectPlacementStartDateRequest request,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var isInternalHrOrAdmin = user.IsInRole("INTERNAL_HR") || user.IsInRole("PLATFORM_ADMIN");
+            if (!isInternalHrOrAdmin)
+            {
+                return PermissionAuthorization.Forbidden("INTERNAL_HR | PLATFORM_ADMIN");
+            }
+
+            try
+            {
+                var response = await sender.Send(new CorrectPlacementStartDateCommand(
+                    placementId,
+                    request.ActualStartDate,
+                    request.Reason,
+                    userId.Value,
+                    IsInternalHrOrAdmin: true), cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
+            }
+        })
+        .WithName("CorrectPlacementStartDate")
+        .WithSummary("Sửa ngày đi làm thực tế trong trường hợp nhập nhầm")
+        .WithDescription("Chỉ Internal HR hoặc Platform Admin được sửa trong 7 ngày kể từ lúc xác nhận và trước khi phí dịch vụ được ghi nhận PAID. Hệ thống đồng thời dời hạn bảo hành và hạn thanh toán theo cùng số ngày.")
+        .Produces<CorrectPlacementStartDateResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -163,4 +221,10 @@ public static class PlacementEndpoints
 
         return null;
     }
+}
+
+public class CorrectPlacementStartDateRequest
+{
+    public DateOnly ActualStartDate { get; set; }
+    public string Reason { get; set; } = string.Empty;
 }

@@ -51,7 +51,9 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         if (request.ActualStartDate > today)
         {
-            throw new BadRequestException("Ngày thực tế đi làm không được ở tương lai.");
+            throw new BadRequestException(
+                "Ngày thực tế đi làm không được ở tương lai.",
+                PlacementStartDateErrorCodes.InvalidStartDate);
         }
 
 
@@ -101,6 +103,17 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
             _logger.LogWarning("Thư mời nhận việc {OfferId} chưa được chấp thuận (Status: {Status}).",
                 offer.OfferId, offer.Status);
             throw new BadRequestException($"Chỉ có thể xác nhận bắt đầu làm việc khi thư mời nhận việc đã được chấp nhận (ACCEPTED). Trạng thái hiện tại: {offer.Status}.");
+        }
+
+        // A live offer response always records RespondedAt. UpdatedAt is a safe fallback
+        // for legacy ACCEPTED offers created before that field was consistently populated.
+        var acceptedAt = offer.RespondedAt ??
+            (offer.UpdatedAt == default ? (DateTime?)null : offer.UpdatedAt);
+        if (acceptedAt.HasValue && request.ActualStartDate < DateOnly.FromDateTime(acceptedAt.Value))
+        {
+            throw new BadRequestException(
+                "Ngày thực tế đi làm không được sớm hơn ngày ứng viên chấp nhận offer.",
+                PlacementStartDateErrorCodes.InvalidStartDate);
         }
 
         Job job;

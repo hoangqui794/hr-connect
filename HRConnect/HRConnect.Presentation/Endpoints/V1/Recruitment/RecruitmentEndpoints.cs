@@ -719,7 +719,7 @@ public static class RecruitmentEndpoints
             }
             catch (BadRequestException ex)
             {
-                return Results.BadRequest(new { success = false, message = ex.Message });
+                return Results.BadRequest(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
             }
         })
         .WithName("ConfirmStartWork")
