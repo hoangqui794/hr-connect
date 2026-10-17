@@ -193,22 +193,42 @@ class ScoringOrchestrator:
         self._pipeline_factory = pipeline_factory
 
     async def process(self, job: ScoringJobRequest) -> None:
+        """Scores one job within SCORING_JOB_TIMEOUT_SECONDS; past it the backend gets FAILED / AI_TIMEOUT."""
         started = time.monotonic()
+        try:
+            await asyncio.wait_for(self._process(job, started), timeout=self._settings.scoring_job_timeout_seconds)
+        except asyncio.TimeoutError:
+            # The LLM thread cannot be killed, but the application must not wait for it: manual review instead.
+            logger.error("v2 scoring timed out request=%s application=%s after %.0fs",
+                         job.request_id, job.application_id, time.monotonic() - started)
+            await self._client.post_ai_result(build_failed_payload(
+                job, "AI_TIMEOUT",
+                f"AI chấm quá {self._settings.scoring_job_timeout_seconds:.0f} giây. Hồ sơ cần HR xem thủ công."))
+
+    async def _process(self, job: ScoringJobRequest, started: float) -> None:
+        logger.info("v2 scoring started request=%s application=%s attempt=%s",
+                    job.request_id, job.application_id, job.attempt_no)
         cv_metadata, job_data = await asyncio.gather(
             self._client.get_cv_metadata(job.cv_id), self._client.get_job(job.job_id))
         data = await self._client.download_cv(cv_metadata["downloadUrl"])
+        logger.info("v2 scoring fetched JD (%s requirements) and CV (%s bytes) request=%s",
+                    len(job_data.requirements), len(data), job.request_id)
         try:
             document = prepare_document(cv_metadata.get("fileName") or "candidate.pdf", data)
         except UnsupportedDocumentError as exc:
+            logger.warning("v2 scoring unsupported CV request=%s: %s", job.request_id, exc)
             await self._client.post_ai_result(build_failed_payload(job, "UNSUPPORTED_CV_FORMAT", str(exc)))
             return
 
+        logger.info("v2 scoring document kind=%s text_layer=%s pages=%s request=%s",
+                    document.kind, document.has_text_layer, document.page_count, job.request_id)
         metadata = MatchingMetadata(requestId=job.request_id, applicationId=job.application_id,
                                     attemptNo=job.attempt_no, job=job_data)
         try:
             result = await run_in_threadpool(self._pipeline_factory().run, metadata, document)
         except LlmError as exc:
             # AI unavailable: the backend routes the application to manual review, never to rejection.
+            logger.warning("v2 scoring AI unavailable request=%s: %s", job.request_id, exc)
             await self._client.post_ai_result(build_failed_payload(job, "AI_PROVIDER_UNAVAILABLE", str(exc)))
             return
 
@@ -300,6 +320,8 @@ async def enqueue_scoring_job(
     try:
         await scoring_job_queue.enqueue(payload)
     except asyncio.QueueFull as exc:
+        logger.warning("v2 scoring queue full request=%s", payload.request_id)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail="Scoring queue is full; retry later") from exc
+    logger.info("v2 scoring queued request=%s application=%s", payload.request_id, payload.application_id)
     return ScoringJobAccepted(requestId=payload.request_id)
