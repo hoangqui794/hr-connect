@@ -5,9 +5,9 @@
  */
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, DatePicker, Form, Input, Modal, Radio, Table, Tooltip } from 'antd';
+import { Alert, App, Button, DatePicker, Form, Input, Modal, Radio, Space, Table, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined } from '@ant-design/icons';
+import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -15,6 +15,7 @@ import type { ServiceFee, ServiceFeeStatus, Warranty, WarrantyStatus } from '@/t
 import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { COMMISSION_STATUS, SERVICE_FEE_STATUS, WARRANTY_STATUS, date, labelOf, money } from './financeLabels';
 import { ReplacementQuotaCard } from './ReplacementQuotaCard';
+import { PlacementDetailDrawer } from './PlacementDetailDrawer';
 
 const PAGE_SIZE = 20;
 type Mode = 'client' | 'hr';
@@ -25,6 +26,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
   const [status, setStatus] = useState<WarrantyStatus | 'all'>(mode === 'hr' ? 'CLAIMED' : 'all');
   const [page, setPage] = useState(1);
   const [target, setTarget] = useState<Warranty | null>(null);
+  const [detailPlacementId, setDetailPlacementId] = useState<string | null>(null);
   const [form] = Form.useForm();
 
   const list = useQuery({
@@ -148,20 +150,30 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
       title: '',
       key: 'actions',
       align: 'right',
-      render: (_, w) =>
-        mode === 'client' ? (
-          w.status === 'ACTIVE' && (
-            <Button size="small" danger onClick={() => { form.setFieldsValue({ lastWorkingDate: dayjs() }); setTarget(w); }}>
-              Báo nghỉ việc
-            </Button>
-          )
-        ) : (
-          w.status === 'CLAIMED' && (
-            <Button size="small" type="primary" onClick={() => { form.setFieldsValue({ decision: 'confirm' }); setTarget(w); }}>
-              Xác minh
-            </Button>
-          )
-        ),
+      render: (_, w) => (
+        <Space size="small">
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => setDetailPlacementId(w.placementId)}
+          >
+            Chi tiết
+          </Button>
+          {mode === 'client' ? (
+            w.status === 'ACTIVE' && (
+              <Button size="small" danger onClick={() => { form.setFieldsValue({ lastWorkingDate: dayjs() }); setTarget(w); }}>
+                Báo nghỉ việc
+              </Button>
+            )
+          ) : (
+            w.status === 'CLAIMED' && (
+              <Button size="small" type="primary" onClick={() => { form.setFieldsValue({ decision: 'confirm' }); setTarget(w); }}>
+                Xác minh
+              </Button>
+            )
+          )}
+        </Space>
+      ),
     },
   ];
 
@@ -258,6 +270,13 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
           </Form>
         )}
       </Modal>
+
+      <PlacementDetailDrawer
+        open={Boolean(detailPlacementId)}
+        placementId={detailPlacementId || undefined}
+        mode={mode}
+        onClose={() => setDetailPlacementId(null)}
+      />
     </>
   );
 };
