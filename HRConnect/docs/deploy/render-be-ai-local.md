@@ -3,6 +3,7 @@
 > **Dành cho:** thành viên có quyền sửa service backend trên Render. **Ngày:** 2026-10-16.
 > **Mục đích:** test luồng MF-02 → MF-03 có điểm AI thật trên **backend deploy**, trong khi **AI service chạy trên máy** của một thành viên. AI trên Render gói Free (0,1 CPU, 512 MB) không chạy nổi: ngày 16/10 lúc 22:16 Render đã giết instance vì `/health` quá 5 giây không trả lời khi đang chấm CV.
 > **Không có key thật trong file này.** Token và URL tunnel gửi riêng qua kênh nhóm.
+> **Cách cố định (khuyên dùng):** quick tunnel bên dưới đổi địa chỉ mỗi lần chạy, nên phải sửa Render mỗi lần. Dùng tunnel cố định `https://ai-dev.hrconnectvn.online` theo [`cloudflare-ai-dev-tunnel.md`](cloudflare-ai-dev-tunnel.md) thì chỉ sửa Render **một lần**.
 
 ## 1. Vì sao phải sửa backend
 
