@@ -7,6 +7,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Recruitment.Common;
+using HRConnect.Application.Features.Offers.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -124,6 +125,9 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
             throw new BadRequestException("Mã tiền tệ không được vượt quá 3 ký tự.");
         }
 
+        var salaryBasis = OfferSalaryPolicy.NormalizeBasis(request.SalaryBasis);
+        var salaryPeriod = OfferSalaryPolicy.NormalizePeriod(request.SalaryPeriod);
+
         var now = DateTime.UtcNow;
         var offerId = Guid.NewGuid();
 
@@ -134,6 +138,8 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
             OfferVersion = nextVersion,
             Salary = request.Salary,
             CurrencyCode = currency,
+            SalaryBasis = salaryBasis,
+            SalaryPeriod = salaryPeriod,
             StartDate = request.StartDate,
             ExpiryDate = request.ExpiryDate,
             Status = OfferStates.Draft,
@@ -162,6 +168,9 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
                 status = offer.Status,
                 salary = offer.Salary,
                 currencyCode = offer.CurrencyCode,
+                salaryBasis = offer.SalaryBasis,
+                salaryPeriod = offer.SalaryPeriod,
+                monthlyGrossSalary = OfferSalaryPolicy.CalculateMonthlyGrossSalary(offer.Salary, offer.SalaryBasis, offer.SalaryPeriod),
                 startDate = offer.StartDate,
                 expiryDate = offer.ExpiryDate
             }
@@ -183,7 +192,10 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
             offer.OfferDocumentUrl,
             offer.ConcurrencyToken,
             offer.CreatedAt,
-            application.Status
+            application.Status,
+            offer.SalaryBasis,
+            offer.SalaryPeriod,
+            OfferSalaryPolicy.CalculateMonthlyGrossSalary(offer.Salary, offer.SalaryBasis, offer.SalaryPeriod)
         );
     }
 }

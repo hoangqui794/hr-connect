@@ -98,6 +98,10 @@ export interface RecruitmentApplicationDetail {
   updatedAt: string;
   plannedStartDate: string | null;
   concurrencyToken: string;
+  /** A replacement slot was attached during MF-02. The Client never selects this value. */
+  isReplacement: boolean;
+  replacementSlotId: string | null;
+  replacementForPlacementId: string | null;
   cv: { cvId: string; title: string | null; fileName: string | null; fileSizeBytes: number | null; createdAt: string } | null;
   aiMatch: RecruitmentAiMatch | null;
   interviews: ApplicationInterview[];
@@ -129,6 +133,9 @@ export interface ApplicationOffer {
   offerVersion: number;
   salary: number | null;
   currencyCode: string;
+  salaryBasis: 'GROSS' | 'NET' | null;
+  salaryPeriod: 'MONTHLY' | 'ANNUAL' | null;
+  monthlyGrossSalary: number | null;
   startDate: string | null;
   expiryDate: string | null;
   status: string;
@@ -146,6 +153,9 @@ export interface ApplicationPlacement {
   status: string;
   confirmedAt: string;
   confirmationNote: string | null;
+  isReplacement: boolean;
+  replacementSlotId: string | null;
+  replacesPlacementId: string | null;
 }
 
 export interface ApplicationTimelineEvent {
@@ -195,6 +205,9 @@ export interface OfferItem {
   offerVersion: number;
   salary: number | null;
   currencyCode: string;
+  salaryBasis: 'GROSS' | 'NET' | null;
+  salaryPeriod: 'MONTHLY' | 'ANNUAL' | null;
+  monthlyGrossSalary: number | null;
   startDate: string | null;
   expiryDate: string | null;
   status: string;

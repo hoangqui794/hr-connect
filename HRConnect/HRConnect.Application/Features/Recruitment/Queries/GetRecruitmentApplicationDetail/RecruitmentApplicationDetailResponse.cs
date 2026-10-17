@@ -58,6 +58,16 @@ public class RecruitmentApplicationDetailData
 
     public Guid ConcurrencyToken { get; set; }
 
+    /// <summary>
+    /// True before placement when MF-02 linked a replacement slot, or after
+    /// placement when the placement actually filled that slot.
+    /// </summary>
+    public bool IsReplacement { get; set; }
+
+    public Guid? ReplacementSlotId { get; set; }
+
+    public Guid? ReplacementForPlacementId { get; set; }
+
     public RecruitmentCvSummaryDto? Cv { get; set; }
 
     public RecruitmentAiMatchSummaryDto? AiMatch { get; set; }
@@ -176,6 +186,12 @@ public class RecruitmentOfferSummaryDto
 
     public string CurrencyCode { get; set; } = "VND";
 
+    public string? SalaryBasis { get; set; }
+
+    public string? SalaryPeriod { get; set; }
+
+    public decimal? MonthlyGrossSalary { get; set; }
+
     public DateOnly? StartDate { get; set; }
 
     public DateOnly? ExpiryDate { get; set; }
@@ -208,4 +224,10 @@ public class RecruitmentPlacementSummaryDto
     public DateTime ConfirmedAt { get; set; }
 
     public string? ConfirmationNote { get; set; }
+
+    public bool IsReplacement { get; set; }
+
+    public Guid? ReplacementSlotId { get; set; }
+
+    public Guid? ReplacesPlacementId { get; set; }
 }

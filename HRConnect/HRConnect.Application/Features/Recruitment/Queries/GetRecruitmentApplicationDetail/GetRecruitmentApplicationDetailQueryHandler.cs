@@ -7,6 +7,7 @@ using System.Text.Json;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Recruitment.Common;
+using HRConnect.Application.Features.Offers.Common;
 using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -98,6 +99,9 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
                 OfferVersion = o.OfferVersion,
                 Salary = o.Salary,
                 CurrencyCode = o.CurrencyCode ?? "VND",
+                SalaryBasis = o.SalaryBasis,
+                SalaryPeriod = o.SalaryPeriod,
+                MonthlyGrossSalary = OfferSalaryPolicy.CalculateMonthlyGrossSalary(o.Salary, o.SalaryBasis, o.SalaryPeriod),
                 StartDate = o.StartDate,
                 ExpiryDate = o.ExpiryDate,
                 Status = o.Status,
@@ -119,9 +123,20 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
                 Department = app.Placement.Department,
                 Status = app.Placement.Status,
                 ConfirmedAt = app.Placement.ConfirmedAt,
-                ConfirmationNote = app.Placement.ConfirmationNote
+                ConfirmationNote = app.Placement.ConfirmationNote,
+                IsReplacement = app.Placement.ReplacementSlotId.HasValue,
+                ReplacementSlotId = app.Placement.ReplacementSlotId,
+                ReplacesPlacementId = app.Placement.ReplacementSlot?.OriginalPlacementId
             };
         }
+
+        // Before start-work, the Application carries the slot chosen in MF-02.
+        // Afterwards, Placement is the source of truth because Client may have
+        // explicitly accepted this candidate as a paid new hire instead.
+        var activeReplacementSlot = app.Placement?.ReplacementSlotId ??
+            (app.Placement == null ? app.ReplacementSlotId : null);
+        var replacementForPlacementId = app.Placement?.ReplacementSlot?.OriginalPlacementId ??
+            (app.Placement == null ? app.ReplacementSlot?.OriginalPlacementId : null);
 
         var allowedActions = ComputeAllowedActions(app, request.IsClientCompanyUser, request.ScreeningActor, serviceTypeCode);
 
@@ -149,6 +164,9 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             UpdatedAt = app.UpdatedAt,
             PlannedStartDate = app.PlannedStartDate,
             ConcurrencyToken = app.ConcurrencyToken,
+            IsReplacement = activeReplacementSlot.HasValue,
+            ReplacementSlotId = activeReplacementSlot,
+            ReplacementForPlacementId = replacementForPlacementId,
             Cv = cvEntity != null ? new RecruitmentCvSummaryDto
             {
                 CvId = cvEntity.CvId,

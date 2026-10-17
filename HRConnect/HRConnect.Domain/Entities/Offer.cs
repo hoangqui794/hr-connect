@@ -15,6 +15,12 @@ public partial class Offer
 
     public string CurrencyCode { get; set; } = null!;
 
+    /// <summary>GROSS or NET. Draft offers may leave this unset.</summary>
+    public string? SalaryBasis { get; set; }
+
+    /// <summary>MONTHLY or ANNUAL. Draft offers may leave this unset.</summary>
+    public string? SalaryPeriod { get; set; }
+
     public DateOnly? StartDate { get; set; }
 
     public DateOnly? ExpiryDate { get; set; }

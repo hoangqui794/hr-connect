@@ -3,7 +3,9 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Common.Settings;
+using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.Offers.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -39,7 +41,13 @@ public sealed record JobApplicationContext(
     Offer Offer,
     decimal? FeeMultiplier = null,
     int? WarrantyDays = null,
-    int? PaymentDueDays = null);
+    int? PaymentDueDays = null,
+    /// <summary>
+    /// The already-paid service fee that funds one free replacement. When present,
+    /// a fresh warranty and commission are created for the replacement placement,
+    /// but no second service-fee record is created.
+    /// </summary>
+    ServiceFee? ReplacementSourceServiceFee = null);
 
 public sealed class PlacementFinanceService : IPlacementFinanceService
 {
@@ -70,6 +78,20 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
             return new PlacementFinanceResult(false, null, null, null, null, null, null, Array.Empty<string>());
         }
 
+        var isReplacement = context.ReplacementSourceServiceFee != null;
+        // A replacement is funded by an existing paid fee. Its offer salary must not
+        // block a legitimate free replacement for legacy offers because it is not
+        // used to calculate a new service fee.
+        var monthlyGrossSalary = isReplacement
+            ? OfferSalaryPolicy.CalculateMonthlyGrossSalary(
+                context.Offer.Salary,
+                context.Offer.SalaryBasis,
+                context.Offer.SalaryPeriod)
+            : OfferSalaryPolicy.EnsureReadyForSending(context.Offer, context.ServiceTypeCode)
+                ?? throw new BadRequestException(
+                    "Không xác định được lương gross theo tháng để tính phí dịch vụ.",
+                    OfferSalaryErrorCodes.Incomplete);
+
         var now = DateTime.UtcNow;
         var warnings = new List<string>();
 
@@ -78,13 +100,6 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
         var warrantyDays = context.WarrantyDays is > 0
             ? context.WarrantyDays.Value
             : await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays, cancellationToken);
-        var feeMultiplier = context.FeeMultiplier is > 0
-            ? context.FeeMultiplier.Value
-            : await _settings.GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier, cancellationToken);
-        var paymentDueDays = context.PaymentDueDays is > 0
-            ? context.PaymentDueDays.Value
-            : await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, cancellationToken);
-
         var warranty = new Warranty
         {
             WarrantyId = Guid.NewGuid(),
@@ -97,29 +112,37 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
         };
         await _financeRepository.AddWarrantyAsync(warranty, cancellationToken);
 
-        ServiceFee? fee = null;
-        if (context.Offer.Salary is decimal salary && salary > 0)
+        ServiceFee? newFee = null;
+        ServiceFee commissionBaseFee;
+        if (isReplacement)
         {
-            fee = new ServiceFee
+            commissionBaseFee = context.ReplacementSourceServiceFee!;
+        }
+        else
+        {
+            var feeMultiplier = context.FeeMultiplier is > 0
+                ? context.FeeMultiplier.Value
+                : await _settings.GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier, cancellationToken);
+            var paymentDueDays = context.PaymentDueDays is > 0
+                ? context.PaymentDueDays.Value
+                : await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, cancellationToken);
+
+            newFee = new ServiceFee
             {
                 ServiceFeeId = Guid.NewGuid(),
                 PlacementId = placement.PlacementId,
                 CompanyId = context.CompanyId,
-                BaseSalary = salary,
+                BaseSalary = monthlyGrossSalary!.Value,
                 FeeMultiplier = feeMultiplier,
-                Amount = decimal.Round(salary * feeMultiplier, 2, MidpointRounding.AwayFromZero),
+                Amount = decimal.Round(monthlyGrossSalary.Value * feeMultiplier, 2, MidpointRounding.AwayFromZero),
                 CurrencyCode = string.IsNullOrWhiteSpace(context.Offer.CurrencyCode) ? "VND" : context.Offer.CurrencyCode.Trim().ToUpperInvariant(),
                 DueDate = placement.ActualStartDate.AddDays(paymentDueDays),
                 Status = ServiceFeeStates.Pending,
                 CreatedAt = now,
                 UpdatedAt = now,
             };
-            await _financeRepository.AddServiceFeeAsync(fee, cancellationToken);
-        }
-        else
-        {
-            warnings.Add("SERVICE_FEE_SALARY_MISSING");
-            _logger.LogWarning("Placement {PlacementId}: offer has no salary, service fee not created.", placement.PlacementId);
+            await _financeRepository.AddServiceFeeAsync(newFee, cancellationToken);
+            commissionBaseFee = newFee;
         }
 
         Commission? commission = null;
@@ -131,7 +154,7 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
         else
         {
             var rule = await _financeRepository.GetActiveCommissionRuleAsync(context.ServiceTypeId, now, cancellationToken);
-            var amount = rule == null ? null : CalculateCommission(rule, fee);
+            var amount = rule == null ? null : CalculateCommission(rule, commissionBaseFee);
             if (rule == null)
             {
                 warnings.Add("NO_ACTIVE_COMMISSION_RULE");
@@ -149,7 +172,7 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
                     PlacementId = placement.PlacementId,
                     CommissionRuleId = rule.CommissionRuleId,
                     MilestoneType = CommissionMilestoneCodes.WarrantyPassed,
-                    BaseAmount = IsPercent(rule) ? fee?.Amount : null,
+                    BaseAmount = IsPercent(rule) ? commissionBaseFee.Amount : null,
                     Amount = amount.Value,
                     Status = CommissionStates.InWarranty,
                     RuleSnapshot = JsonSerializer.Serialize(new
@@ -163,11 +186,13 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
                     }, SnapshotJson),
                     CalculationSnapshot = JsonSerializer.Serialize(new
                     {
-                        serviceFeeAmount = fee?.Amount,
-                        currencyCode = fee?.CurrencyCode,
+                        serviceFeeAmount = commissionBaseFee.Amount,
+                        currencyCode = commissionBaseFee.CurrencyCode,
                         rateType = rule.RateType,
                         rateValue = rule.RateValue,
                         commissionAmount = amount.Value,
+                        isReplacement,
+                        replacementSourceServiceFeeId = isReplacement ? (Guid?)commissionBaseFee.ServiceFeeId : null,
                         stage = "candidate_started_work_on_hold_during_warranty",
                         earnedWhen = $"warranty passed ({warrantyDays} days after {placement.ActualStartDate:yyyy-MM-dd})",
                     }, SnapshotJson),
@@ -189,8 +214,15 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
             {
                 warrantyId = warranty.WarrantyId,
                 warrantyEndDate = warranty.EndDate,
-                serviceFeeId = fee?.ServiceFeeId,
-                serviceFeeAmount = fee?.Amount,
+                serviceFeeId = newFee?.ServiceFeeId,
+                serviceFeeAmount = newFee?.Amount,
+                isReplacement,
+                replacementSourceServiceFeeId = isReplacement ? (Guid?)commissionBaseFee.ServiceFeeId : null,
+                replacementSourceServiceFeeAmount = isReplacement ? (decimal?)commissionBaseFee.Amount : null,
+                offeredSalary = context.Offer.Salary,
+                salaryBasis = context.Offer.SalaryBasis,
+                salaryPeriod = context.Offer.SalaryPeriod,
+                monthlyGrossSalary,
                 commissionId = commission?.CommissionId,
                 commissionAmount = commission?.Amount,
                 warnings,
@@ -198,7 +230,7 @@ public sealed class PlacementFinanceService : IPlacementFinanceService
         }, cancellationToken);
 
         return new PlacementFinanceResult(
-            true, warranty.WarrantyId, warranty.EndDate, fee?.ServiceFeeId, fee?.Amount,
+            true, warranty.WarrantyId, warranty.EndDate, newFee?.ServiceFeeId, newFee?.Amount,
             commission?.CommissionId, commission?.Amount, warnings);
     }
 
