@@ -28,8 +28,8 @@ import {
 } from 'antd';
 import { CheckOutlined, CloseOutlined, ExperimentOutlined, FileOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
-import { clientActionsApi, screeningApi } from '@/services/api/hrApi';
-import { getApiErrorMessage } from '@/services/apiClient';
+import { clientActionsApi, screeningApi, type ConfirmStartWorkInput } from '@/services/api/hrApi';
+import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import type { RecruitmentApplicationDetail } from '@/types/api/hr';
 import { Initials, StatusDot } from '@/features/admin-console/ui';
 import {
@@ -101,6 +101,16 @@ const MODAL_TITLE: Record<ModalKind, string> = {
 const DANGER_MODALS: ModalKind[] = ['reject', 'cancel', 'noshow', 'rejectBackup', 'withdraw', 'notStarted'];
 const INTERVIEW_TYPES = ['Trực tiếp', 'Online', 'Điện thoại'].map((v) => ({ value: v, label: v }));
 const notPast = (d: Dayjs) => d.isBefore(dayjs().startOf('day'));
+const SALARY_BASIS_OPTIONS = [
+  { value: 'GROSS', label: 'Gross' },
+  { value: 'NET', label: 'Net' },
+];
+const SALARY_PERIOD_OPTIONS = [
+  { value: 'MONTHLY', label: 'Theo tháng' },
+  { value: 'ANNUAL', label: 'Theo năm' },
+];
+
+type StartWorkAttempt = { applicationId: string; input: ConfirmStartWorkInput };
 
 export const invalidateRecruitment = (qc: ReturnType<typeof useQueryClient>) =>
   qc.invalidateQueries({
@@ -120,6 +130,7 @@ export const ApplicationWorkbench: React.FC<{
   const [open, setOpen] = useState<ModalKind | null>(null);
   const [form] = Form.useForm();
   const startedFor = useRef<string>();
+  const pendingStartWork = useRef<StartWorkAttempt>();
 
   const detail = useQuery({
     queryKey: ['hr-application', applicationId],
@@ -155,6 +166,7 @@ export const ApplicationWorkbench: React.FC<{
   const run = useMutation({
     mutationFn: async (job: () => Promise<{ message?: string } | unknown>) => job(),
     onSuccess: (res, _vars) => {
+      pendingStartWork.current = undefined;
       const msg = (res as { message?: string } | undefined)?.message;
       message.success(msg || 'Đã cập nhật hồ sơ.');
       setOpen(null);
@@ -162,7 +174,35 @@ export const ApplicationWorkbench: React.FC<{
       invalidateRecruitment(queryClient);
     },
     onError: (err) => {
-      message.error(getApiErrorMessage(err, 'Không thực hiện được thao tác.'));
+      const attempt = pendingStartWork.current;
+      pendingStartWork.current = undefined;
+      const error = getApiError(err, 'Không thực hiện được thao tác.');
+      if (attempt && error.code === 'REPLACEMENT_SLOT_ALREADY_FILLED') {
+        modal.confirm({
+          title: 'Suất thay thế không còn',
+          content: 'Suất thay thế không còn. Nếu vẫn nhận ứng viên này thì sẽ tính phí như tuyển mới.',
+          okText: 'Nhận như tuyển mới',
+          cancelText: 'Hủy',
+          onOk: async () => {
+            try {
+              const res = await clientActionsApi.confirmStartWork(attempt.applicationId, {
+                ...attempt.input,
+                acceptAsNewHire: true,
+              });
+              const msg = (res as { message?: string } | undefined)?.message;
+              message.success(msg || 'Đã nhận ứng viên như một tuyển dụng mới.');
+              setOpen(null);
+              form.resetFields();
+            } catch (retryError) {
+              message.error(getApiErrorMessage(retryError, 'Không thể nhận ứng viên như tuyển mới.'));
+            } finally {
+              invalidateRecruitment(queryClient);
+            }
+          },
+        });
+      } else {
+        message.error(error.message);
+      }
       invalidateRecruitment(queryClient); // a 409 means someone else changed it
     },
   });
@@ -203,10 +243,12 @@ export const ApplicationWorkbench: React.FC<{
       form.setFieldsValue({
         salary: offer.salary ?? undefined,
         currencyCode: offer.currencyCode || 'VND',
+        salaryBasis: offer.salaryBasis ?? 'GROSS',
+        salaryPeriod: offer.salaryPeriod ?? 'MONTHLY',
         startDate: offer.startDate ? dayjs(offer.startDate) : undefined,
         expiryDate: offer.expiryDate ? dayjs(offer.expiryDate) : undefined,
       });
-    } else if (kind === 'offer') form.setFieldsValue({ currencyCode: 'VND' });
+    } else if (kind === 'offer') form.setFieldsValue({ currencyCode: 'VND', salaryBasis: 'GROSS', salaryPeriod: 'MONTHLY' });
     if (kind === 'schedule') form.setFieldsValue({ durationMinutes: 60, interviewType: 'Trực tiếp' });
     if (kind === 'reschedule' && interview)
       form.setFieldsValue({ durationMinutes: interview.durationMinutes ?? 60, location: interview.location ?? undefined, meetingLink: interview.meetingLink ?? undefined });
@@ -294,24 +336,41 @@ export const ApplicationWorkbench: React.FC<{
       case 'offer':
         return run.mutate(() =>
           has('UPDATE_OFFER') && offer
-            ? clientActionsApi.updateOffer(offer.offerId, { salary: v.salary, currencyCode: v.currencyCode, startDate: day(v.startDate), expiryDate: day(v.expiryDate), concurrencyToken: offer.concurrencyToken })
-            : clientActionsApi.createOffer(d.applicationId, { salary: v.salary, currencyCode: v.currencyCode, startDate: day(v.startDate), expiryDate: day(v.expiryDate), concurrencyToken: token })
+            ? clientActionsApi.updateOffer(offer.offerId, {
+                salary: v.salary,
+                currencyCode: v.currencyCode,
+                salaryBasis: v.salaryBasis,
+                salaryPeriod: v.salaryPeriod,
+                startDate: day(v.startDate),
+                expiryDate: day(v.expiryDate),
+                concurrencyToken: offer.concurrencyToken,
+              })
+            : clientActionsApi.createOffer(d.applicationId, {
+                salary: v.salary,
+                currencyCode: v.currencyCode,
+                salaryBasis: v.salaryBasis,
+                salaryPeriod: v.salaryPeriod,
+                startDate: day(v.startDate),
+                expiryDate: day(v.expiryDate),
+                concurrencyToken: token,
+              })
         );
       case 'withdraw':
         return run.mutate(() => clientActionsApi.withdrawOffer(offer!.offerId, { reason: v.reason.trim(), concurrencyToken: offer!.concurrencyToken }));
       case 'plannedStart':
         return run.mutate(() => clientActionsApi.setPlannedStart(d.applicationId, { plannedStartDate: day(v.plannedStartDate)!, reason: trim(v.reason), concurrencyToken: token }));
-      case 'startWork':
-        return run.mutate(() =>
-          clientActionsApi.confirmStartWork(d.applicationId, {
-            offerId: acceptedOffer!.offerId,
-            actualStartDate: day(v.actualStartDate)!,
-            position: trim(v.position),
-            department: trim(v.department),
-            confirmationNote: trim(v.note),
-            concurrencyToken: token,
-          })
-        );
+      case 'startWork': {
+        const input: ConfirmStartWorkInput = {
+          offerId: acceptedOffer!.offerId,
+          actualStartDate: day(v.actualStartDate)!,
+          position: trim(v.position),
+          department: trim(v.department),
+          confirmationNote: trim(v.note),
+          concurrencyToken: token,
+        };
+        pendingStartWork.current = { applicationId: d.applicationId, input };
+        return run.mutate(() => clientActionsApi.confirmStartWork(d.applicationId, input));
+      }
       case 'notStarted':
         return run.mutate(() => clientActionsApi.markNotStarted(d.applicationId, { reason: v.reason.trim(), concurrencyToken: token }));
     }
@@ -348,6 +407,17 @@ export const ApplicationWorkbench: React.FC<{
   if (has('CONFIRM_PLACEMENT')) btn('place', 'Xác nhận đã đi làm', () => openModal('startWork'), { type: 'primary' });
 
   const watchedResult = Form.useWatch('result', form);
+  const watchedSalary = Form.useWatch('salary', form) as number | undefined;
+  const watchedSalaryBasis = Form.useWatch('salaryBasis', form) as 'GROSS' | 'NET' | undefined;
+  const watchedSalaryPeriod = Form.useWatch('salaryPeriod', form) as 'MONTHLY' | 'ANNUAL' | undefined;
+  const watchedCurrencyCode = Form.useWatch('currencyCode', form) as string | undefined;
+  const isHeadhuntCod = d?.serviceTypeCode === 'HEADHUNT_COD';
+  const monthlyGrossPreview =
+    typeof watchedSalary === 'number' && watchedSalary >= 0 && watchedSalaryBasis === 'GROSS'
+      ? watchedSalaryPeriod === 'ANNUAL'
+        ? watchedSalary / 12
+        : watchedSalary
+      : null;
 
   return (
     <Drawer
@@ -377,6 +447,9 @@ export const ApplicationWorkbench: React.FC<{
                   {st && <StatusDot tone={st.tone}>{st.label}</StatusDot>}
                   {d.serviceTypeCode && (
                     <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{SERVICE_TYPE[d.serviceTypeCode] ?? d.serviceTypeCode}</span>
+                  )}
+                  {d.isReplacement && (
+                    <span className="rounded-md bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900">Người thay thế – không tính phí mới</span>
                   )}
                 </div>
               </div>
@@ -432,6 +505,14 @@ export const ApplicationWorkbench: React.FC<{
                       <div className="mt-1 text-[13px] text-slate-600">
                         Bắt đầu {fmt(o.startDate, 'DD/MM/YYYY')} · hạn phản hồi {fmt(o.expiryDate, 'DD/MM/YYYY')}
                       </div>
+                      {(o.salaryBasis || o.salaryPeriod) && (
+                        <div className="mt-1 text-[13px] text-slate-600">
+                          {o.salaryBasis === 'GROSS' ? 'Gross' : o.salaryBasis === 'NET' ? 'Net' : '—'}
+                          {' · '}
+                          {o.salaryPeriod === 'ANNUAL' ? 'Theo năm' : o.salaryPeriod === 'MONTHLY' ? 'Theo tháng' : '—'}
+                          {o.monthlyGrossSalary != null ? ` · Gross tháng quy đổi ${money(o.monthlyGrossSalary, o.currencyCode)}` : ''}
+                        </div>
+                      )}
                       {o.declineReason && <div className="text-[13px] text-red-800">Lý do từ chối: {o.declineReason}</div>}
                     </div>
                   );
@@ -442,6 +523,7 @@ export const ApplicationWorkbench: React.FC<{
                     Đã đi làm từ {fmt(d.placement.actualStartDate, 'DD/MM/YYYY')}
                     {d.placement.position ? ` · ${d.placement.position}` : ''}
                     {d.placement.department ? ` · ${d.placement.department}` : ''}
+                    {d.placement.isReplacement ? ' · Người thay thế, không tính phí mới' : ''}
                   </div>
                 )}
               </div>
@@ -680,6 +762,40 @@ export const ApplicationWorkbench: React.FC<{
                 </Form.Item>
               </div>
               <div className="grid gap-x-4 sm:grid-cols-2">
+                <Form.Item
+                  name="salaryBasis"
+                  label="Loại lương"
+                  rules={[
+                    { required: true, message: 'Chọn Gross hoặc Net.' },
+                    {
+                      validator: (_, value: 'GROSS' | 'NET' | undefined) =>
+                        !isHeadhuntCod || value === 'GROSS'
+                          ? Promise.resolve()
+                          : Promise.reject(new Error('Job HEADHUNT_COD chỉ nhận offer lương Gross.')),
+                    },
+                  ]}
+                >
+                  <Radio.Group options={SALARY_BASIS_OPTIONS} optionType="button" buttonStyle="solid" />
+                </Form.Item>
+                <Form.Item name="salaryPeriod" label="Kỳ lương" rules={[{ required: true, message: 'Chọn kỳ lương.' }]}>
+                  <Radio.Group options={SALARY_PERIOD_OPTIONS} optionType="button" buttonStyle="solid" />
+                </Form.Item>
+              </div>
+              {isHeadhuntCod && (
+                <Alert
+                  className="mb-4"
+                  type="info"
+                  showIcon
+                  message="Job HEADHUNT_COD tính phí theo lương Gross tháng"
+                  description="Chọn Gross. Nếu offer ghi theo năm, hệ thống tự quy đổi về mức Gross theo tháng để tính phí."
+                />
+              )}
+              {monthlyGrossPreview != null && (
+                <div className="mb-4 rounded-lg bg-sky-50 px-3 py-2 text-[13px] text-sky-950">
+                  Gross theo tháng dùng để tính phí: <b>{money(monthlyGrossPreview, watchedCurrencyCode || 'VND')}</b>
+                </div>
+              )}
+              <div className="grid gap-x-4 sm:grid-cols-2">
                 <Form.Item name="expiryDate" label="Hạn phản hồi" rules={[{ required: true, message: 'Chọn hạn phản hồi.' }]}>
                   <DatePicker format="DD/MM/YYYY" disabledDate={notPast} className="w-full" />
                 </Form.Item>
@@ -716,7 +832,17 @@ export const ApplicationWorkbench: React.FC<{
 
           {open === 'startWork' && (
             <>
-              <p className="mt-0 text-sm text-slate-600">Xác nhận ứng viên đã thực sự đi làm. Bước này tạo bản ghi nhận việc và là mốc tính phí dịch vụ.</p>
+              {d?.isReplacement ? (
+                <Alert
+                  className="mb-4"
+                  type="success"
+                  showIcon
+                  message="Người thay thế – không tính phí mới"
+                  description="Nếu suất thay thế còn hiệu lực, xác nhận này sẽ dùng suất đó và khởi động lại thời hạn bảo hành."
+                />
+              ) : (
+                <p className="mt-0 text-sm text-slate-600">Xác nhận ứng viên đã thực sự đi làm. Bước này tạo bản ghi nhận việc và là mốc tính phí dịch vụ.</p>
+              )}
               <Form.Item name="actualStartDate" label="Ngày thực tế đi làm" rules={[{ required: true, message: 'Chọn ngày.' }]}>
                 <DatePicker format="DD/MM/YYYY" disabledDate={(x) => x.isAfter(dayjs(), 'day')} className="w-full" />
               </Form.Item>

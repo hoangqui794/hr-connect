@@ -121,10 +121,25 @@ export interface ScheduleInterviewInput {
 export interface OfferInput {
   salary?: number;
   currencyCode?: string;
+  /** GROSS or NET. HEADHUNT_COD offers must use GROSS before they can be sent. */
+  salaryBasis?: 'GROSS' | 'NET';
+  /** MONTHLY or ANNUAL. The backend derives monthly gross from this value. */
+  salaryPeriod?: 'MONTHLY' | 'ANNUAL';
   startDate?: string;
   expiryDate?: string;
   offerDocumentUrl?: string;
   concurrencyToken?: string;
+}
+
+export interface ConfirmStartWorkInput {
+  offerId: string;
+  actualStartDate: string;
+  confirmationNote?: string;
+  position?: string;
+  department?: string;
+  concurrencyToken: string;
+  /** Use only after REPLACEMENT_SLOT_ALREADY_FILLED to accept the candidate as a paid new hire. */
+  acceptAsNewHire?: boolean;
 }
 
 const post = async <T = { message?: string }>(url: string, body?: unknown) => (await apiClient.post<T>(url, body)).data;
@@ -150,7 +165,7 @@ export const clientActionsApi = {
   withdrawOffer: (offerId: string, input: { reason: string; concurrencyToken: string }) => post(`/offers/${offerId}/withdraw`, input),
   setPlannedStart: (applicationId: string, input: { plannedStartDate: string; reason?: string; concurrencyToken: string }) =>
     put(`/recruitment/applications/${applicationId}/planned-start-date`, input),
-  confirmStartWork: (applicationId: string, input: { offerId: string; actualStartDate: string; confirmationNote?: string; position?: string; department?: string; concurrencyToken: string }) =>
+  confirmStartWork: (applicationId: string, input: ConfirmStartWorkInput) =>
     post(`/recruitment/applications/${applicationId}/start-work`, input),
   markNotStarted: (applicationId: string, input: { reason: string; concurrencyToken: string }) =>
     post(`/recruitment/applications/${applicationId}/not-started`, input),
