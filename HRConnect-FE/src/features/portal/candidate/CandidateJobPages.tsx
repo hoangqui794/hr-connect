@@ -7,6 +7,7 @@ import { JobDiscoveryPage } from '@/features/jobs-mf01/JobDiscoveryPage';
 import { JobDetailPanel } from '@/features/jobs-mf01/JobDetailPanel';
 import { useJobDetail } from '@/features/jobs-mf01/useJobQueries';
 import { JobApplyActions } from '@/features/portal/JobApplyActions';
+import { BookmarkButton } from '@/components/common/BookmarkButton';
 import { CandidatePageHeader, CandidateSurface } from './CandidateUi';
 
 export const CandidateJobsPage: React.FC = () => (
@@ -39,7 +40,8 @@ export const CandidateJobDetailPage: React.FC = () => {
           <Skeleton active paragraph={{ rows: 12 }} />
         ) : (
           <>
-            <div className="mb-5 flex justify-end">
+            <div className="mb-5 flex items-center justify-end gap-3">
+              <BookmarkButton jobId={detail.data.jobId} jobTitle={detail.data.title} size="lg" />
               <JobApplyActions job={detail.data} />
             </div>
             <JobDetailPanel job={detail.data} isApplicantView />

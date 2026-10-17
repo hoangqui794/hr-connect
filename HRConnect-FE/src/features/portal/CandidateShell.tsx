@@ -9,6 +9,7 @@ import {
   CloseOutlined,
   FileDoneOutlined,
   FolderOpenOutlined,
+  HeartOutlined,
   HomeOutlined,
   LogoutOutlined,
   MailOutlined,
@@ -37,6 +38,7 @@ const PRIMARY_NAV = [
 ] as const;
 
 const ACCOUNT_LINKS = [
+  { to: '/candidate/saved-jobs', label: 'Việc làm đã lưu', icon: HeartOutlined },
   { to: '/candidate/profile', label: 'Hồ sơ cá nhân', icon: UserOutlined },
   { to: '/candidate/affiliate-cvs', label: 'CV do Affiliate gửi', icon: FolderOpenOutlined },
   { to: '/candidate/settings/email-identities', label: 'Email liên kết & khôi phục dữ liệu', icon: MailOutlined },
