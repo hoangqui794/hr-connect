@@ -56,9 +56,9 @@ import { mf04Api, isCandidateOfferRespondable } from '@/services/api/mf04Api';
 import type { CandidateOfferSummaryDto } from '@/types/api/mf04';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
-import type { CandidateApplication } from '@/types/api/mf02';
+import type { CandidateApplication, CandidateApplicationDisplayGroup } from '@/types/api/mf02';
 import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
-import { CANDIDATE_STEPS, MAX_CV_MB, candidateStage, cvFileError, fileSize } from './mf02Labels';
+import { CANDIDATE_STEPS, MAX_CV_MB, candidateDisplayStage, candidateStage, cvFileError, fileSize } from './mf02Labels';
 import { CandidatePageHeader, CandidateSurface } from './candidate/CandidateUi';
 
 dayjs.extend(relativeTimePlugin);
@@ -113,19 +113,54 @@ const StageTracker: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
+const PublicApplicationProgress: React.FC<{ application: CandidateApplication }> = ({ application }) => {
+  const stage = candidateDisplayStage(application.displayGroup, application.displayLabel);
+
+  if (stage.terminalMessage && application.displayGroup !== 'HIRED') {
+    return (
+      <div className="candidate-application-outcome" role="status" aria-label={stage.label}>
+        <CloseCircleOutlined className="text-base text-slate-500" aria-hidden />
+        <div className="min-w-0">
+          <div className="text-xs font-semibold text-slate-700">Cập nhật từ nhà tuyển dụng</div>
+          <div className="mt-0.5 text-[11px] leading-relaxed text-slate-500">{stage.terminalMessage}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ol className="m-0 flex list-none items-center gap-1 p-0" aria-label={`Tiến độ: ${stage.label}`}>
+      {CANDIDATE_STEPS.map((label, index) => {
+        const reached = index <= stage.step;
+        return (
+          <li key={label} className="flex flex-1 flex-col gap-1">
+            <span className={`h-1.5 rounded-full ${reached ? 'bg-[color:var(--console-accent)]' : 'bg-slate-200'}`} aria-hidden />
+            <span className={`hidden text-[11px] sm:block ${reached ? 'font-medium text-slate-700' : 'text-slate-400'}`}>{label}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+};
+
 const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
   const navigate = useNavigate();
-  const st = candidateStage(a.status);
+  const stage = candidateDisplayStage(a.displayGroup, a.displayLabel);
+  const isPositiveOutcome = a.displayGroup === 'HIRED';
+  const isClosedOutcome = a.displayGroup === 'NOT_SELECTED' || a.displayGroup === 'WITHDRAWN';
   return (
-    <article className="candidate-surface candidate-application-card flex flex-col gap-3 p-5">
+    <article className={`candidate-surface candidate-application-card flex flex-col gap-3 p-5 ${isClosedOutcome ? 'candidate-application-card--closed' : ''}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[16px] font-semibold leading-snug text-slate-900">{a.jobTitle}</div>
           <div className="text-[13px] text-slate-600">{a.companyName}</div>
         </div>
-        <StatusDot tone={st.tone}>{st.label}</StatusDot>
+        <span className={`candidate-application-status ${isPositiveOutcome ? 'candidate-application-status--success' : isClosedOutcome ? 'candidate-application-status--closed' : 'candidate-application-status--active'}`}>
+          {isPositiveOutcome ? <CheckCircleFilled aria-hidden /> : isClosedOutcome ? <CloseCircleOutlined aria-hidden /> : <HistoryOutlined aria-hidden />}
+          {stage.label}
+        </span>
       </div>
-      <StageTracker status={a.status} />
+      <PublicApplicationProgress application={a} />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
         <span>Nộp {dayjs(a.appliedAt).fromNow()}</span>
         {a.cvTitle && (
@@ -151,8 +186,8 @@ export const CandidateHomePage: React.FC = () => {
   const apps = useMyApplications();
   const cvs = useCandidateCvs();
   const items = apps.data?.items ?? [];
-  const active = items.filter((a) => !candidateStage(a.status).closed);
-  const interviewing = items.filter((a) => a.status === 'INTERVIEW' || a.status === 'SHORTLISTED').length;
+  const active = items.filter((a) => !candidateDisplayStage(a.displayGroup, a.displayLabel).closed);
+  const interviewing = items.filter((a) => a.displayGroup === 'INTERVIEW').length;
   const firstName = (user?.name || 'bạn').trim().split(/\s+/).slice(-1)[0];
 
   return (
@@ -348,15 +383,13 @@ export const CandidateApplicationsPage: React.FC = () => {
           className="min-w-52"
           options={[
             ['SUBMITTED', 'Đã nộp'],
-            ['SCREENING', 'Đang được xem'],
-            ['SHORTLISTED', 'Được chọn'],
+            ['IN_REVIEW', 'Đang xem xét'],
             ['INTERVIEW', 'Phỏng vấn'],
-            ['OFFER_PENDING', 'Đang chuẩn bị offer'],
-            ['OFFER_ACCEPTED', 'Đã nhận offer'],
-            ['PLACED', 'Đã đi làm'],
-            ['REJECTED', 'Chưa phù hợp'],
+            ['OFFER', 'Đã nhận lời mời'],
+            ['HIRED', 'Đã tuyển'],
+            ['NOT_SELECTED', 'Chưa phù hợp'],
             ['WITHDRAWN', 'Đã rút đơn'],
-          ].map(([value, label]) => ({ value, label }))}
+          ].map(([value, label]) => ({ value: value as CandidateApplicationDisplayGroup, label }))}
         />
         <Select
           aria-label="Lọc theo nguồn ứng tuyển"

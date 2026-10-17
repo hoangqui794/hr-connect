@@ -3,6 +3,7 @@
  * @description Vietnamese wording for MF-02 codes and candidate-facing application stages.
  */
 import type { Tone } from '@/features/admin-console/ui';
+import type { CandidateApplicationDisplayGroup } from '@/types/api/mf02';
 
 export const MAX_CV_MB = 10; // R2Settings.MaxCvFileSizeMb
 
@@ -18,6 +19,44 @@ export const fileSize = (bytes?: number | null) =>
 
 /** Candidate-facing stages, in order; each backend status maps onto one step. */
 export const CANDIDATE_STEPS = ['Đã nộp', 'Đang được xem', 'Được chọn', 'Phỏng vấn', 'Offer', 'Đi làm'] as const;
+
+export interface CandidateDisplayStage {
+  step: number;
+  label: string;
+  tone: Tone;
+  closed: boolean;
+  terminalMessage?: string;
+}
+
+/** Maps the sanitized status groups exposed by the Candidate application list API. */
+export const candidateDisplayStage = (
+  group: CandidateApplicationDisplayGroup,
+  serverLabel?: string
+): CandidateDisplayStage => {
+  const mapped: Record<CandidateApplicationDisplayGroup, CandidateDisplayStage> = {
+    SUBMITTED: { step: 0, label: 'Đã nộp', tone: 'info', closed: false },
+    IN_REVIEW: { step: 1, label: 'Đang xem xét', tone: 'info', closed: false },
+    INTERVIEW: { step: 3, label: 'Phỏng vấn', tone: 'info', closed: false },
+    OFFER: { step: 4, label: 'Đã nhận lời mời', tone: 'success', closed: false },
+    HIRED: { step: 5, label: 'Đã tuyển', tone: 'success', closed: true },
+    NOT_SELECTED: {
+      step: 1,
+      label: 'Chưa phù hợp lần này',
+      tone: 'neutral',
+      closed: true,
+      terminalMessage: 'Quy trình tuyển dụng cho đơn này đã kết thúc.',
+    },
+    WITHDRAWN: {
+      step: 0,
+      label: 'Đã rút đơn',
+      tone: 'neutral',
+      closed: true,
+      terminalMessage: 'Đơn ứng tuyển này không còn trong quy trình tuyển dụng.',
+    },
+  };
+  const stage = mapped[group] ?? mapped.IN_REVIEW;
+  return { ...stage, label: serverLabel?.trim() || stage.label };
+};
 
 export const candidateStage = (status: string): { step: number; label: string; tone: Tone; closed?: boolean } => {
   switch (status) {

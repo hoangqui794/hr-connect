@@ -322,6 +322,8 @@ describe('CandidateApplicationDetailPage', () => {
       cvId: 'cv-1',
       cvTitle: 'CV Backend Legacy',
       cvFileName: 'backend.pdf',
+      displayGroup: 'IN_REVIEW',
+      displayLabel: 'Đang xem xét',
       status: 'APPLIED',
       currentStage: 'SCREENING',
       statusReason: null,

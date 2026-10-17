@@ -59,4 +59,29 @@ describe('CandidateApplicationsPage', () => {
       submissionSource: 'AFFILIATE',
     })));
   }, 10_000);
+
+  it('shows the public rejection status prominently and sends the public filter group', async () => {
+    vi.mocked(candidateApplicationsApi.list).mockResolvedValue({
+      items: [{
+        applicationId: 'application-rejected', jobId: 'job-rejected', jobTitle: 'Junior Java Backend Developer',
+        companyName: 'HR Connect Demo Company', cvId: 'cv-1', cvTitle: 'CV_Test 1',
+        displayGroup: 'NOT_SELECTED', displayLabel: 'Chưa phù hợp', aiStatus: 'COMPLETED',
+        submissionSource: 'CANDIDATE', appliedAt: '2026-10-17T13:20:00Z',
+      }],
+      page: 1, pageSize: 10, total: 1, totalPages: 1,
+    });
+
+    renderPage();
+
+    expect(await screen.findByText('Chưa phù hợp')).toBeInTheDocument();
+    expect(screen.getByText('Quy trình tuyển dụng cho đơn này đã kết thúc.')).toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Lọc theo trạng thái' }));
+    const notSelectedLabels = await screen.findAllByText('Chưa phù hợp');
+    fireEvent.click(notSelectedLabels[notSelectedLabels.length - 1]);
+
+    await waitFor(() => expect(candidateApplicationsApi.list).toHaveBeenLastCalledWith(expect.objectContaining({
+      status: 'NOT_SELECTED',
+    })));
+  });
 });

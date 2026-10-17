@@ -183,12 +183,69 @@ html:has(.candidate-console) {
 }
 
 .candidate-application-card {
+  position: relative;
+  overflow: hidden;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .candidate-application-card:hover {
   border-color: #bfdbfe;
   box-shadow: 0 15px 32px rgb(15 23 42 / 7%);
+}
+
+.candidate-application-card--closed {
+  border-color: #dbe3ee;
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.candidate-application-card--closed::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  content: '';
+  background: #94a3b8;
+}
+
+.candidate-application-status {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.candidate-application-status--active {
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.candidate-application-status--success {
+  border-color: #bbf7d0;
+  color: #15803d;
+  background: #f0fdf4;
+}
+
+.candidate-application-status--closed {
+  border-color: #dbe3ee;
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.candidate-application-outcome {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  padding: 0.7rem 0.8rem;
+  background: rgb(248 250 252 / 82%);
 }
 
 .candidate-empty-surface {
