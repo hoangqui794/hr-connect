@@ -54,7 +54,7 @@ Năm Main Flow dùng chung một pipeline, nhưng mỗi loại dịch vụ đi q
 - Số lượng hồ sơ nhận được không làm thay đổi phí; không có hồ sơ nào cũng không tự động hoàn phí.
 - Ứng viên tự nộp được tuyển thành công không phát sinh phí tuyển dụng thành công và không có hoa hồng.
 
-**Mức hỗ trợ trong code hiện tại:** job mới chỉ có trường số lượng cần tuyển (`Quantity`). Sourcing Target, hệ số phí, thời hạn bảo hành theo job, gói đăng tin, và các trạng thái đạt chuẩn / đã giao / tính quota / dự phòng đều **[CHƯA CÓ CODE]**. Riêng bảng hoa hồng và payout đã có sẵn các trường cần thiết (số tiền gốc, ảnh chụp quy tắc lúc tính, mã giao dịch, chứng từ) nhưng chưa có nghiệp vụ sử dụng.
+**Mức hỗ trợ trong code hiện tại (2026-10-17):** điều khoản thương mại theo job (hệ số phí, bảo hành, hạn thanh toán, Sourcing Target, giá mỗi CV, tỷ lệ cọc, thời hạn xem xét), gói đăng tin, giao CV / chấp nhận / tự chấp nhận / thay CV cho `CV_SOURCING`, phí và hoa hồng của cả 3 dịch vụ đều đã có code. Còn thiếu: chặn tuyển quá số lượng cần tuyển (MF-04).
 
 ---
 
@@ -96,7 +96,8 @@ DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
 
 - Mỗi lần đổi trạng thái đều ghi lịch sử kèm người thực hiện, mã lý do và thời điểm.
 - Hai người cùng sửa một job: người lưu sau bị từ chối và phải tải lại dữ liệu.
-- Giới hạn gói miễn phí (1 job mở tại một thời điểm, chu kỳ mở lại 2 tháng) **[CHƯA CÓ CODE]**.
+- Giới hạn gói miễn phí: số job mở cùng lúc và chu kỳ mở lại đọc từ cài đặt Admin (`mf01.cv_application.free_active_limit`, `mf01.cv_application.free_cooldown_months`), kiểm tra khi gửi duyệt và khi mở lại job.
+- `CV_SOURCING` có tỷ lệ cọc > 0: duyệt xong job ở `PENDING_PAYMENT` và hệ thống tạo phiếu cọc; Platform Admin ghi nhận cọc thì job `ACTIVE` (chốt 2026-10-17, xem MF-05).
 
 **Kết quả:** job `ACTIVE` sẵn sàng nhận hồ sơ, hoặc job `REJECTED` trả về Client để sửa.
 
@@ -184,7 +185,7 @@ DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
 
 **Actor:** người sàng lọc (Internal HR hoặc Client Company User, tùy loại dịch vụ). **Thành phần hệ thống:** AI Matching Service.
 
-**Ai sàng lọc [CẦN XÁC NHẬN]:**
+**Ai sàng lọc** (đã có code; vẫn nằm trong danh sách hỏi giảng viên, mục 6.2):
 
 | Service Type | Người sàng lọc | Lý do |
 |---|---|---|
@@ -197,7 +198,8 @@ Code: quy tắc nằm ở `ScreeningPolicy`; sai người theo loại dịch v�
 
 **Luồng chính:**
 
-1. Hệ thống tự gọi AI chấm điểm CV so với mô tả job. Nếu AI service lỗi hoặc quá thời gian xử lý (15 phút), hệ thống tự thử lại với khoảng chờ tăng dần (từ 30 giây đến tối đa 15 phút) và có giới hạn số lần thử.
+1. Hệ thống tự gọi AI chấm điểm CV so với mô tả job. Nếu AI service lỗi hoặc quá thời gian xử lý (15 phút), hệ thống tự thử lại với khoảng chờ tăng dần (từ 30 giây đến tối đa 15 phút) và có giới hạn số lần thử; hết lượt thì hồ sơ chuyển người sàng lọc xem tay.
+   - AI service v2 (2026-10-17): mỗi lần gọi Gemini dừng sau 120 giây, cả lượt chấm dừng sau 300 giây và báo `FAILED` / `AI_TIMEOUT` (cấu hình được); ghi log từng bước; `match-file` và `/docs` cần token trừ khi bật chế độ test trên máy. Hàng đợi nằm trong RAM: dịch vụ khởi động lại thì backend tự gửi lại như trên.
 2. AI trả về điểm phù hợp, tier, kết quả từng yêu cầu bắt buộc/ưu tiên kèm bằng chứng trích từ CV.
 3. Người sàng lọc xem kết quả; Internal HR có thể yêu cầu chấm lại.
 4. Người sàng lọc quyết định (`PATCH /api/v1/jobs/{jobId}/applications/{applicationId}/status`, bắt buộc `concurrencyToken`):
@@ -443,24 +445,25 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 | Hạng mục | Thuộc luồng |
 |---|---|
 | Sàng lọc: chuyển hồ sơ sang `SCREENING`, `SHORTLISTED`, `REJECTED`; phân quyền sàng lọc theo loại dịch vụ | MF-03 — đã có code |
-| Khiếu nại và xử lý tranh chấp trùng | SF-04 |
-| Định tuyến người liên hệ theo Service Type, che thông tin liên hệ | MF-03 |
-| Giới hạn gói miễn phí | MF-01 |
-| Sourcing Target, hệ số phí, thời hạn bảo hành, gói đăng tin trên job | MF-01 |
-| Trạng thái CV đạt chuẩn / đã giao / tính quota / dự phòng cho `CV_SOURCING` | MF-03 |
-| Theo dõi số vị trí đã tuyển so với số lượng cần tuyển | MF-04 |
-| Công nợ phí dịch vụ và ghi nhận thu phí | MF-05 — đã có code cho `HEADHUNT_COD` |
-| Đếm bảo hành, tự ghi nhận mốc, báo nghỉ việc, tuyển thay thế | MF-05 — đã có code trừ tuyển thay thế |
-| Tính, duyệt hoa hồng; ghi nhận payout; đánh giá Affiliate | MF-05 |
+| Khiếu nại và xử lý tranh chấp trùng | SF-04 — **chưa có code** (task `tasks/BE-tasks-03-tranh-chap-trung-sf04.md`) |
+| Định tuyến người liên hệ theo Service Type, che thông tin liên hệ | MF-03 — đã có code |
+| Giới hạn gói miễn phí | MF-01 — đã có code |
+| Sourcing Target, hệ số phí, thời hạn bảo hành, gói đăng tin trên job | MF-01 — đã có code |
+| Trạng thái CV đạt chuẩn / đã giao / tính quota / dự phòng cho `CV_SOURCING` | MF-03 — đã có code |
+| Theo dõi số vị trí đã tuyển so với số lượng cần tuyển | MF-04 — **chưa có code**: xác nhận đi làm không chặn khi đã đủ `Quantity` |
+| Công nợ phí dịch vụ và ghi nhận thu phí | MF-05 — đã có code cho cả 3 dịch vụ |
+| Đếm bảo hành, tự ghi nhận mốc, báo nghỉ việc, tuyển thay thế | MF-05 — đã có code |
+| Tính, duyệt hoa hồng; ghi nhận payout; đánh giá Affiliate | MF-05 — đã có code |
 | Thu hẹp quyền của Internal HR ở MF-04 (không lên lịch, không ghi kết quả, không tạo offer) | MF-04 — đã có code |
-| Bước Internal HR đối soát placement và kiểm tra lý do không nhận việc | MF-04 |
-| Đổi mã vai trò `AFFILIATE_RECRUITER` thành `AFFILIATE` | Toàn hệ thống |
+| Bước Internal HR đối soát placement và kiểm tra lý do không nhận việc | MF-04 — **chưa có code, cần chốt làm hay bỏ** |
+| Ghi kết quả thử việc | MF-05 — **ngoài phạm vi** (chốt 2026-10-17) |
+| Đổi mã vai trò `AFFILIATE_RECRUITER` thành `AFFILIATE` | Toàn hệ thống — **chưa làm** |
 
 ---
 
 # 6.4. ĐÁNH GIÁ NGHIỆP VỤ VÀ TÁC ĐỘNG THEO TỪNG MAIN FLOW
 
-Cột "Đề xuất" có ghi **(đã đưa vào thiết kế)** với những mục đã được phản ánh trong mô tả luồng và sơ đồ ở bản 2.2; các mục đó vẫn chưa có code.
+Cột "Đề xuất" có ghi **(đã đưa vào thiết kế)** với những mục đã được phản ánh trong mô tả luồng và sơ đồ ở bản 2.2. **Cập nhật 2026-10-17:** phần lớn các mục đó nay đã có code; trạng thái code hiện hành xem mục 6.3, bảng dưới giữ nguyên làm phân tích ban đầu.
 
 Mục này đánh giá các Main Flow ở góc nhìn vận hành thực tế: chỗ nào có lỗ hổng, chỗ nào người dùng thật sẽ không làm theo thiết kế, và nếu không sửa thì ảnh hưởng gì.
 
@@ -555,8 +558,10 @@ Mục này đánh giá các Main Flow ở góc nhìn vận hành thực tế: ch
 
 ## Thứ tự xử lý đề xuất
 
-1. **Bảo vệ doanh thu (4.1, 3.3, 1.2):** chốt ai xác nhận đi làm, che thông tin liên hệ, lưu điều khoản thương mại tại job.
-2. **Nối luồng (3.1, 3.2):** làm bước sàng lọc và tách theo loại dịch vụ.
-3. **Giữ Affiliate (2.1, 2.2, 2.4, 2.6):** sửa bước xác nhận của ứng viên, chống xí chỗ, cải thiện nhận diện trùng.
-4. **Tạo doanh thu (5.1, 5.2, 5.3):** làm MF-05 bắt đầu từ `HEADHUNT_COD`.
-5. Các mục mức Trung bình và Thấp còn lại.
+Bước 1–4 của bản đầu (bảo vệ doanh thu, nối luồng sàng lọc, giữ Affiliate, MF-05) đã có code tới 2026-10-17. Việc còn lại trước buổi bảo vệ:
+
+1. **Kiểm chứng trên bản deploy** toàn luồng của 3 dịch vụ, nhất là `CV_SOURCING` (cọc → mở job → giao CV → hoa hồng → quyết toán) và `HEADHUNT_COD` tới bảo hành.
+2. **Hạ tầng AI:** nâng dịch vụ AI trên Render lên tối thiểu 1 CPU / 2 GB (gói Free bị Render tắt khi đang chấm), hoặc giữ AI chạy trên máy qua tunnel khi demo.
+3. **Bảo mật:** đổi các key / token đã lộ; thêm rule WAF cho tunnel AI.
+4. **Chốt và làm:** SF-04 bản tối thiểu; chặn tuyển quá `Quantity` (MF-04); đối soát placement của Internal HR (làm hay bỏ).
+5. **Giao diện:** lỗi trong `tasks/BUGS-2026-10-17-test-mf02-mf03.md` và `tasks/TEST-2026-10-17-mf01-mf03-3-dich-vu.md`.
