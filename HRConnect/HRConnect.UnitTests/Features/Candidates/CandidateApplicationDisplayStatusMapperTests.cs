@@ -12,7 +12,7 @@ public sealed class CandidateApplicationDisplayStatusMapperTests
     {
         { ApplicationStates.Submitted, "SUBMITTED" },
         { ApplicationStates.Screening, "IN_REVIEW" },
-        { ApplicationStates.Shortlisted, "IN_REVIEW" },
+        { ApplicationStates.Shortlisted, "SELECTED" },
         { ApplicationStates.Rejected, "NOT_SELECTED" },
         { ApplicationStates.Interview, "INTERVIEW" },
         { ApplicationStates.Backup, "IN_REVIEW" },
@@ -42,6 +42,16 @@ public sealed class CandidateApplicationDisplayStatusMapperTests
             .Group.Should().Be("IN_REVIEW");
         CandidateApplicationDisplayStatusMapper.Map(ApplicationStates.OfferPending, [OfferStates.Sent])
             .Group.Should().Be("OFFER");
+    }
+
+    [Fact]
+    public void GetInternalStatuses_SelectedOnlyIncludesShortlisted()
+    {
+        CandidateApplicationDisplayStatusMapper.GetInternalStatuses("SELECTED")
+            .Should().BeEquivalentTo([ApplicationStates.Shortlisted]);
+
+        CandidateApplicationDisplayStatusMapper.GetInternalStatuses("IN_REVIEW")
+            .Should().NotContain(ApplicationStates.Shortlisted);
     }
 
     [Theory]

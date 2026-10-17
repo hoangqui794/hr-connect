@@ -13,7 +13,7 @@ public static class CandidateApplicationDisplayStatusMapper
 {
     public static readonly IReadOnlySet<string> AllowedGroups = new HashSet<string>(StringComparer.Ordinal)
     {
-        "SUBMITTED", "IN_REVIEW", "INTERVIEW", "OFFER", "HIRED", "NOT_SELECTED", "WITHDRAWN"
+        "SUBMITTED", "IN_REVIEW", "SELECTED", "INTERVIEW", "OFFER", "HIRED", "NOT_SELECTED", "WITHDRAWN"
     };
 
     public static CandidateApplicationDisplayStatus Map(
@@ -28,8 +28,8 @@ public static class CandidateApplicationDisplayStatusMapper
         return normalizedStatus switch
         {
             ApplicationStates.Submitted => new("SUBMITTED", "Đã nộp"),
-            ApplicationStates.Screening or ApplicationStates.Shortlisted or ApplicationStates.Backup
-                => new("IN_REVIEW", "Đang xem xét"),
+            ApplicationStates.Screening or ApplicationStates.Backup => new("IN_REVIEW", "Đang xem xét"),
+            ApplicationStates.Shortlisted => new("SELECTED", "Được chọn phỏng vấn"),
             ApplicationStates.Interview => new("INTERVIEW", "Phỏng vấn"),
             ApplicationStates.OfferPending when hasSentOffer => new("OFFER", "Đã nhận lời mời"),
             ApplicationStates.OfferPending => new("IN_REVIEW", "Đang xem xét"),
@@ -46,7 +46,8 @@ public static class CandidateApplicationDisplayStatusMapper
     public static IReadOnlyCollection<string> GetInternalStatuses(string displayGroup) => displayGroup switch
     {
         "SUBMITTED" => [ApplicationStates.Submitted],
-        "IN_REVIEW" => [ApplicationStates.Screening, ApplicationStates.Shortlisted, ApplicationStates.Backup, ApplicationStates.OfferPending],
+        "IN_REVIEW" => [ApplicationStates.Screening, ApplicationStates.Backup, ApplicationStates.OfferPending],
+        "SELECTED" => [ApplicationStates.Shortlisted],
         "INTERVIEW" => [ApplicationStates.Interview],
         "OFFER" => [ApplicationStates.OfferPending],
         "HIRED" => [ApplicationStates.OfferAccepted, ApplicationStates.Placed],

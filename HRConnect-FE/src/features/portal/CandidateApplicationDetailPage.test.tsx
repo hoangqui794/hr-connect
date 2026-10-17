@@ -139,6 +139,30 @@ describe('CandidateApplicationDetailPage', () => {
     expect(screen.getByText('Đã nộp hồ sơ thành công')).toBeInTheDocument();
   });
 
+  it('translates legacy internal status codes into candidate-friendly timeline copy', async () => {
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValueOnce(mockMf04Application as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValueOnce({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'SHORTLISTED',
+      events: [{
+        eventType: 'APPLICATION_STATUS_CHANGED',
+        title: 'Chuyển trạng thái: SHORTLISTED',
+        description: 'Trạng thái chuyển từ SCREENING sang SHORTLISTED.',
+        status: 'SHORTLISTED',
+        timestamp: '2026-10-08T10:05:00Z',
+      }],
+    });
+
+    renderComponent();
+
+    expect(await screen.findByText('Bạn đã được chọn vào vòng phỏng vấn')).toBeInTheDocument();
+    expect(screen.getByText('Nhà tuyển dụng đã chọn hồ sơ của bạn để tiếp tục quy trình.')).toBeInTheDocument();
+    expect(screen.queryByText(/SHORTLISTED/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/SCREENING/)).not.toBeInTheDocument();
+  });
+
   it('submits ACCEPTED offer response when clicking Chấp nhận', async () => {
     vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValue(mockMf04Application as any);
     vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValue({
@@ -322,6 +346,8 @@ describe('CandidateApplicationDetailPage', () => {
       cvId: 'cv-1',
       cvTitle: 'CV Backend Legacy',
       cvFileName: 'backend.pdf',
+      displayGroup: 'IN_REVIEW',
+      displayLabel: 'Đang xem xét',
       status: 'APPLIED',
       currentStage: 'SCREENING',
       statusReason: null,

@@ -21,7 +21,7 @@ const PAGE_SIZE = 12;
 const JobCard: React.FC<{ job: Job; detailBasePath: string; isApplied?: boolean }> = ({ job, detailBasePath, isApplied }) => (
   <Card
     hoverable
-    className={`h-full transition-shadow duration-200 ${isApplied ? 'border-emerald-300/80 bg-emerald-50/15' : ''}`}
+    className={`h-full bg-white transition-shadow duration-200 ${isApplied ? 'border-blue-200' : ''}`}
     styles={{ body: { padding: 16, display: 'flex', flexDirection: 'column', gap: 8, height: '100%' } }}
   >
     <div className="flex items-start justify-between gap-2">
@@ -34,7 +34,7 @@ const JobCard: React.FC<{ job: Job; detailBasePath: string; isApplied?: boolean 
       <div className="flex items-center gap-1.5 shrink-0">
         <BookmarkButton jobId={job.jobId} jobTitle={job.title} size="sm" />
         {isApplied && (
-          <Tag color="success" icon={<CheckCircleFilled />} className="m-0 shrink-0 font-medium text-[11px]">
+          <Tag color="blue" icon={<CheckCircleFilled />} className="m-0 shrink-0 font-medium text-[11px]">
             Đã ứng tuyển
           </Tag>
         )}

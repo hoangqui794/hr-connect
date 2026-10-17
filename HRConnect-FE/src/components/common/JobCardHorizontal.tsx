@@ -138,8 +138,8 @@ export const JobCardHorizontal: React.FC<JobCardHorizontalProps> = ({
           {/* HR Connect Special Badges */}
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap sm:justify-end">
             {isApplied && (
-              <span className="inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">
-                <CheckCircleFilled className="text-emerald-600 text-3xs" />
+              <span className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-2xs font-semibold text-blue-700">
+                <CheckCircleFilled className="text-blue-600 text-3xs" />
                 Đã ứng tuyển
               </span>
             )}
