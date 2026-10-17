@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authentication;
 using HRConnect.Infrastructure.Authentication;
 using HRConnect.Infrastructure.Services.Audit;
 using HRConnect.Application.Features.Admin.Authorization;
+using HRConnect.Application.Features.Reports.Common;
 using HRConnect.Infrastructure.Services.Admin;
 
 namespace HRConnect.Infrastructure;
@@ -102,6 +103,8 @@ public static class DependencyInjection
         services.AddScoped<IJobTemplateRepository, JobTemplateRepository>();
         services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
         services.AddScoped<IReportRepository, ReportRepository>();
+        services.AddScoped<IAffiliatePerformanceRepository, AffiliatePerformanceRepository>();
+        services.AddScoped<IAffiliatePerformanceCalculationService, HRConnect.Application.Features.Reports.Common.AffiliatePerformanceCalculationService>();
         services.AddScoped<IAttributionRepository, AttributionRepository>();
         services.AddScoped<ICandidateCompanyTransactionLock, CandidateCompanyTransactionLock>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -129,6 +132,7 @@ public static class DependencyInjection
         services.AddHostedService<HRConnect.Infrastructure.Services.Offers.OfferExpiryWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Finance.WarrantyProgressWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Recruitment.SourcingAutoAcceptWorker>();
+        services.AddHostedService<HRConnect.Infrastructure.Services.Affiliates.AffiliatePerformanceWorker>();
 
         // 5. Cloudflare R2 Object Storage & CV Storage
         var r2Settings = new R2Settings();

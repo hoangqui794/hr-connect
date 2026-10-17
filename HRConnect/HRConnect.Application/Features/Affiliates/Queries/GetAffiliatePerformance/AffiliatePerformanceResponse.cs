@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace HRConnect.Application.Features.Affiliates.Queries.GetAffiliatePerformance;
 
 public class AffiliatePerformanceResponse
@@ -24,4 +27,25 @@ public class AffiliatePerformanceData
     public string? RatingLabel { get; set; }
     public string? CalculationVersion { get; set; }
     public DateTime? CalculatedAt { get; set; }
+
+    /// <summary>
+    /// Lịch sử hiệu suất các kỳ trước
+    /// </summary>
+    public List<AffiliatePerformanceHistoryItem> History { get; set; } = new();
+}
+
+public class AffiliatePerformanceHistoryItem
+{
+    public Guid AffiliatePerformanceId { get; set; }
+    public DateOnly PeriodStart { get; set; }
+    public DateOnly PeriodEnd { get; set; }
+    public int TotalSubmissions { get; set; }
+    public int TotalShortlisted { get; set; }
+    public int TotalInterviews { get; set; }
+    public int TotalPlacements { get; set; }
+    public decimal? SubmissionToHireRate { get; set; }
+    public decimal? QualityRating { get; set; }
+    public string? RatingLabel { get; set; }
+    public string? CalculationVersion { get; set; }
+    public DateTime CalculatedAt { get; set; }
 }
