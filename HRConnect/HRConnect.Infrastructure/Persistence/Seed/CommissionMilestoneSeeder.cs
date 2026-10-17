@@ -11,7 +11,8 @@ public static class CommissionMilestoneSeeder
         ("APPLICATION_CREATED", "Application Created", "A candidate application has been created.", true),
         ("START_WORK", "Start Work", "The placed candidate has started work.", true),
         ("PROBATION_PASSED", "Probation Passed", "The placed candidate has successfully completed probation.", true),
-        ("WARRANTY_PASSED", "Warranty Passed", "The placement has completed its warranty period.", true)
+        ("WARRANTY_PASSED", "Warranty Passed", "The placement has completed its warranty period.", true),
+        ("CV_ACCEPTED", "CV Accepted", "CV_SOURCING: the Client accepted the delivered CV, or the review window ended without an answer.", true)
     ];
 
     public static async Task SeedAsync(

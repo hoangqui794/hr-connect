@@ -24,7 +24,10 @@ public interface IFinanceRepository
 
     Task<ServiceFee?> GetServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default);
 
-    /// <summary>Commission with its placement's service fee, attribution and payouts, tracked for update.</summary>
+    /// <summary>
+    /// Commission with its placement's service fee (HEADHUNT_COD) or its sourcing delivery and job
+    /// (CV_SOURCING), and its payouts, tracked for update.
+    /// </summary>
     Task<Commission?> GetCommissionForUpdateAsync(Guid commissionId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Guid>> GetPlacementIdsWithWarrantyEndingAsync(DateOnly onOrBefore, int take, CancellationToken cancellationToken = default);
@@ -80,8 +83,25 @@ public interface IFinanceRepository
 
     Task<Guid?> GetJobCompanyIdAsync(Guid jobId, CancellationToken cancellationToken = default);
 
+    // ---- CV_SOURCING deposit, settlement and per-CV commission (docs/MF05 section E8) ----
+
+    /// <summary>Job with its service type, tracked.</summary>
+    Task<Job?> GetJobForFinanceAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>DEPOSIT, SETTLEMENT and CREDIT fees of a job, tracked for update.</summary>
+    Task<IReadOnlyList<ServiceFee>> GetJobServiceFeesForUpdateAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>Approved CV_SOURCING jobs with a deposit percent above zero and no DEPOSIT fee yet.</summary>
+    Task<IReadOnlyList<Guid>> GetSourcingJobIdsAwaitingDepositAsync(int take, CancellationToken cancellationToken = default);
+
+    /// <summary>CLOSED CV_SOURCING jobs that have been billed (deposit or counted CVs) but not settled.</summary>
+    Task<IReadOnlyList<Guid>> GetClosedSourcingJobIdsAwaitingSettlementAsync(int take, CancellationToken cancellationToken = default);
+
+    Task<bool> HasSourcingCommissionAsync(Guid deliveryId, CancellationToken cancellationToken = default);
+
     Task<(IReadOnlyList<ServiceFee> Items, int TotalCount)> GetServiceFeesAsync(
-        Guid? companyId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
+        Guid? companyId, string? status, int page, int pageSize, CancellationToken cancellationToken = default,
+        Guid? jobId = null, string? kind = null);
 
     Task<(IReadOnlyList<Commission> Items, int TotalCount)> GetCommissionsAsync(
         Guid? affiliateUserId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);

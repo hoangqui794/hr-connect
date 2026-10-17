@@ -1123,7 +1123,12 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.CommissionId).HasName("commission_pkey");
 
-            entity.ToTable("commission", "public", tb => tb.HasComment("Commission eligibility/calculation domain. PAYABLE means approved for payment; payment completion is represented by payout.status=COMPLETED."));
+            entity.ToTable("commission", "public", tb =>
+            {
+                tb.HasComment("Commission eligibility/calculation domain. PAYABLE means approved for payment; payment completion is represented by payout.status=COMPLETED.");
+                // Exactly one source: a HEADHUNT_COD placement or a CV_SOURCING delivery.
+                tb.HasCheckConstraint("ck_commission_source", "(placement_id IS NULL) <> (sourcing_delivery_id IS NULL)");
+            });
 
             entity.HasIndex(e => new { e.Status, e.CreatedAt }, "idx_commission_status").IsDescending(false, true);
 
@@ -1191,6 +1196,16 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.PlacementId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("commission_placement_id_fkey");
+
+            // CV_SOURCING (MF-05 E8): one commission per accepted delivery.
+            entity.Property(e => e.SourcingDeliveryId).HasColumnName("sourcing_delivery_id");
+            entity.HasIndex(e => e.SourcingDeliveryId, "uq_commission_sourcing_delivery")
+                .IsUnique()
+                .HasFilter("sourcing_delivery_id IS NOT NULL");
+            entity.HasOne(d => d.SourcingDelivery).WithMany()
+                .HasForeignKey(d => d.SourcingDeliveryId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("commission_sourcing_delivery_id_fkey");
         });
 
         modelBuilder.Entity<CommissionAdjustment>(entity =>
@@ -2514,13 +2529,23 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("service_fee", "public", tb =>
             {
-                tb.HasComment("MF-05 service fee the Client owes for one HEADHUNT_COD placement. Paid outside the system; Platform Admin records payment.");
+                tb.HasComment("MF-05 service fee the Client owes: one HEADHUNT_COD placement (PLACEMENT) or a CV_SOURCING job's DEPOSIT, SETTLEMENT or CREDIT. Paid outside the system; Platform Admin records payment.");
                 tb.HasCheckConstraint("ck_service_fee_status", "status IN ('PENDING','DUE','PAID','OVERDUE','CANCELLED')");
                 tb.HasCheckConstraint("ck_service_fee_amounts", "amount >= 0 AND base_salary >= 0 AND fee_multiplier > 0");
                 tb.HasCheckConstraint("ck_service_fee_paid", "(status = 'PAID') = (paid_at IS NOT NULL)");
+                tb.HasCheckConstraint("ck_service_fee_kind", "kind IN ('PLACEMENT','DEPOSIT','SETTLEMENT','CREDIT')");
+                tb.HasCheckConstraint("ck_service_fee_source",
+                    "(kind = 'PLACEMENT' AND placement_id IS NOT NULL) OR (kind <> 'PLACEMENT' AND placement_id IS NULL AND job_id IS NOT NULL)");
             });
 
             entity.HasIndex(e => e.PlacementId, "service_fee_placement_id_key").IsUnique();
+            // One deposit and one closing fee (SETTLEMENT or CREDIT) per CV_SOURCING job.
+            entity.HasIndex(e => e.JobId, "uq_service_fee_job_deposit")
+                .IsUnique()
+                .HasFilter("kind = 'DEPOSIT'");
+            entity.HasIndex(e => e.JobId, "uq_service_fee_job_closing")
+                .IsUnique()
+                .HasFilter("kind IN ('SETTLEMENT','CREDIT')");
             entity.HasIndex(e => new { e.CompanyId, e.Status }, "idx_service_fee_company_status");
             entity.HasIndex(e => new { e.Status, e.DueDate }, "idx_service_fee_status_due_date");
 
@@ -2528,6 +2553,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("service_fee_id");
             entity.Property(e => e.PlacementId).HasColumnName("placement_id");
+            entity.Property(e => e.JobId).HasColumnName("job_id");
+            entity.Property(e => e.Kind)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'PLACEMENT'::character varying")
+                .HasColumnName("kind");
             entity.Property(e => e.CompanyId).HasColumnName("company_id");
             entity.Property(e => e.BaseSalary)
                 .HasPrecision(18, 2)
@@ -2563,6 +2593,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey<ServiceFee>(d => d.PlacementId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("service_fee_placement_id_fkey");
+
+            entity.HasOne(d => d.Job).WithMany()
+                .HasForeignKey(d => d.JobId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("service_fee_job_id_fkey");
 
             entity.HasOne(d => d.Company).WithMany()
                 .HasForeignKey(d => d.CompanyId)
