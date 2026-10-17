@@ -36,6 +36,8 @@ import {
   formatDateTime,
   formatExperience,
   formatSalary,
+  isAwaitingSourcingDeposit,
+  sourcingDepositAmount,
 } from './jobDisplay';
 
 const { Paragraph, Text, Title } = Typography;
@@ -130,7 +132,10 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showSourcingDrawer, setShowSourcingDrawer] = useState(false);
   const feeInfo = useJobFeeInfo(isApplicant ? null : job);
-  const feeText = formatMoney(feeInfo.amount, feeInfo.currencyCode);
+  const awaitingDeposit = isAwaitingSourcingDeposit(job);
+  const feeText = awaitingDeposit
+    ? formatMoney(sourcingDepositAmount(job) ?? 0, 'VND')
+    : formatMoney(feeInfo.amount, feeInfo.currencyCode);
   const mustHave = job.requirements.filter((r) => r.requirementType === 'MUST_HAVE');
   const shouldHave = job.requirements.filter((r) => r.requirementType === 'SHOULD_HAVE');
   const service = job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode] : null;
@@ -164,7 +169,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           {service && !isApplicant && <Tag className="m-0 font-medium">{service.label}</Tag>}
           {!isApplicant && job.status === 'PENDING_PAYMENT' && (
             <Tag color="warning" className="m-0 font-medium">
-              Chờ thanh toán phí đăng tin
+              {awaitingDeposit ? 'Chờ đặt cọc CV Sourcing' : 'Chờ thanh toán phí đăng tin'}
             </Tag>
           )}
           {!isApplicant && job.postingFeeStatus === 'PAID' && (
@@ -192,17 +197,23 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             type={isInternalReview ? 'info' : 'warning'}
             showIcon
             message={
-              isInternalReview
-                ? `Đang chờ Doanh nghiệp thanh toán (${feeText})`
-                : `Tin đã được duyệt · Chờ thanh toán phí đăng tin (${feeText})`
+              awaitingDeposit
+                ? isInternalReview
+                  ? `Đang chờ Doanh nghiệp đặt cọc CV Sourcing (${feeText})`
+                  : `Tin đã được duyệt · Chờ đặt cọc CV Sourcing (${feeText})`
+                : isInternalReview
+                  ? `Đang chờ Doanh nghiệp thanh toán (${feeText})`
+                  : `Tin đã được duyệt · Chờ thanh toán phí đăng tin (${feeText})`
             }
             description={
-              isInternalReview
-                ? 'Nội dung tin tuyển dụng đã đạt yêu cầu. Đã gửi thông báo yêu cầu thanh toán tới Doanh nghiệp. Tin sẽ tự động công khai ngay sau khi nhận được thanh toán.'
-                : `Quý khách vui lòng hoàn tất thanh toán ${feeText} để tin tuyển dụng được công khai trên hệ thống và bắt đầu nhận hồ sơ ứng viên (kèm AI chấm điểm CV).`
+              awaitingDeposit
+                ? 'Tin CV Sourcing chỉ được công bố cho Affiliate sau khi HR Connect nhận tiền cọc. Platform Admin ghi nhận khoản cọc ở trang Tài chính; tin tự chuyển sang Đang tuyển ngay sau đó.'
+                : isInternalReview
+                  ? 'Nội dung tin tuyển dụng đã đạt yêu cầu. Đã gửi thông báo yêu cầu thanh toán tới Doanh nghiệp. Tin sẽ tự động công khai ngay sau khi nhận được thanh toán.'
+                  : `Quý khách vui lòng hoàn tất thanh toán ${feeText} để tin tuyển dụng được công khai trên hệ thống và bắt đầu nhận hồ sơ ứng viên (kèm AI chấm điểm CV).`
             }
             action={
-              !isInternalReview ? (
+              !isInternalReview && !awaitingDeposit ? (
                 <Button
                   type="primary"
                   size="small"

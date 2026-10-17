@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Finance.Common;
+using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -65,13 +66,16 @@ public sealed class SettlementCommandHandlers :
     private readonly INotificationRepository? _notificationRepository;
     private readonly ISourcingFinanceService? _sourcingFinance;
     private readonly ISourcingDeliveryRepository? _deliveries;
+    private readonly IJobRepository? _jobs;
 
     public SettlementCommandHandlers(
         IFinanceRepository financeRepository, IUnitOfWork unitOfWork, IAuditLogService auditLogService,
         INotificationRepository? notificationRepository = null,
         ISourcingFinanceService? sourcingFinance = null,
-        ISourcingDeliveryRepository? deliveries = null)
+        ISourcingDeliveryRepository? deliveries = null,
+        IJobRepository? jobs = null)
     {
+        _jobs = jobs;
         _financeRepository = financeRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
@@ -117,6 +121,11 @@ public sealed class SettlementCommandHandlers :
                 slot, slot.Job, fee.UpdatedAt, request.CurrentUserId, _financeRepository, _notificationRepository, cancellationToken);
             await AuditAsync(AuditActions.ReplacementSlotOpened, "REPLACEMENT_SLOT", slot.ReplacementSlotId, request.CurrentUserId,
                 new { status = ReplacementSlotStates.WaitingPayment }, new { slot.Status, slot.OpenedAt, slot.ExpiresAt }, cancellationToken);
+        }
+
+        if (fee.Kind == ServiceFeeKinds.Deposit && fee.JobId is Guid jobId)
+        {
+            await OpenJobAfterDepositAsync(jobId, request.CurrentUserId, cancellationToken);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -279,6 +288,50 @@ public sealed class SettlementCommandHandlers :
             cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return new PayoutResponse(payout.PayoutId, commission.CommissionId, payout.Status, commission.Status, payout.Amount, payout.AttemptNo);
+    }
+
+    /// <summary>CV_SOURCING waits in PENDING_PAYMENT until its deposit is paid (decision 2026-10-17).</summary>
+    private async Task OpenJobAfterDepositAsync(Guid jobId, Guid actorUserId, CancellationToken cancellationToken)
+    {
+        var job = await _financeRepository.GetJobForFinanceAsync(jobId, cancellationToken);
+        if (job == null || job.Status != JobStatuses.PendingPayment)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        JobTransitions.ChangeStatus(
+            job, JobStatuses.Active, actorUserId, JobReasonCodes.Approved,
+            "Đã nhận tiền cọc CV Sourcing. Tin tuyển dụng đã được công bố.");
+        if (_jobs != null)
+        {
+            await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), cancellationToken);
+        }
+
+        job.PostedAt = now;
+        job.ClosedAt = null;
+
+        if (_notificationRepository != null)
+        {
+            await _notificationRepository.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = job.CreatedBy,
+                NotificationType = "JOB",
+                Title = "Tin tuyển dụng đã được công bố",
+                Message = $"Đã nhận tiền cọc cho tin \"{job.Title}\". Tin CV Sourcing đã được công bố.",
+                RelatedEntityType = "JOB",
+                RelatedEntityId = job.JobId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    jobId = job.JobId,
+                    status = job.Status,
+                    actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
+                }),
+                IsRead = false,
+                CreatedAt = now
+            }, cancellationToken);
+        }
     }
 
     public async Task<SourcingSettlementResponse> Handle(SettleSourcingJobCommand request, CancellationToken cancellationToken)

@@ -19,8 +19,12 @@ namespace HRConnect.Application.Features.Finance.Common;
 /// </summary>
 public interface ISourcingFinanceService
 {
-    /// <summary>Creates the job's DEPOSIT fee when it has none. Returns null when no deposit is due.</summary>
-    Task<ServiceFee?> EnsureDepositAsync(Job job, Guid? actorUserId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Creates the job's DEPOSIT fee when it has none. Returns null when no deposit is due.
+    /// <paramref name="serviceTypeCode"/> is used when <c>job.ServiceType</c> is not loaded.
+    /// </summary>
+    Task<ServiceFee?> EnsureDepositAsync(
+        Job job, Guid? actorUserId, CancellationToken cancellationToken = default, string? serviceTypeCode = null);
 
     /// <summary>
     /// Called when a delivery becomes ACCEPTED or AUTO_ACCEPTED: the affiliate earns the per-CV commission,
@@ -60,9 +64,12 @@ public sealed class SourcingFinanceService : ISourcingFinanceService
         _logger = logger;
     }
 
-    public async Task<ServiceFee?> EnsureDepositAsync(Job job, Guid? actorUserId, CancellationToken cancellationToken = default)
+    public async Task<ServiceFee?> EnsureDepositAsync(
+        Job job, Guid? actorUserId, CancellationToken cancellationToken = default, string? serviceTypeCode = null)
     {
-        if (!IsSourcing(job) || job.AgreedAt == null)
+        var isSourcing = IsSourcing(job)
+            || string.Equals(serviceTypeCode, ServiceTypeCodes.CvSourcing, StringComparison.OrdinalIgnoreCase);
+        if (!isSourcing || job.AgreedAt == null)
         {
             return null;
         }

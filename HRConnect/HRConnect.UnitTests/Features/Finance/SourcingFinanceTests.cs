@@ -5,6 +5,8 @@ using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Finance.Commands.Settlement;
 using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Finance.Queries;
+using HRConnect.Application.Features.Jobs.Commands.ApproveJob;
+using HRConnect.Application.Features.Jobs.Commands.RecordJobPostingFeePayment;
 using HRConnect.Application.Features.Recruitment.Sourcing;
 using HRConnect.Application.Features.Settings;
 using HRConnect.Domain.Constants;
@@ -55,7 +57,10 @@ public class SourcingFinanceTests
     private SourcingAutoAcceptService AutoAccept() => new(Deliveries, UnitOfWork, _audit.Object, Finance());
 
     private SettlementCommandHandlers Settlement() =>
-        new(Repository, UnitOfWork, _audit.Object, sourcingFinance: Finance(), deliveries: Deliveries);
+        new(Repository, UnitOfWork, _audit.Object, new NotificationRepository(_context), Finance(), Deliveries, new JobRepository(_context));
+
+    private ApproveJobCommandHandler Approve() =>
+        new(new JobRepository(_context), Settings, new NotificationRepository(_context), _audit.Object, UnitOfWork, Finance());
 
     // ---- setup ---------------------------------------------------------------------------
 
@@ -397,6 +402,65 @@ public class SourcingFinanceTests
         var result = await Settlement().Handle(new ApproveCommissionCommand(_context.Commissions.Single().CommissionId, _actor), default);
 
         result.Status.Should().Be(CommissionStates.Payable);
+    }
+
+    // ---- deposit gates the job (decision 2026-10-17) -------------------------------------
+
+    private Job SeedPendingReviewJob(decimal? proposedPrice = PricePerCv)
+    {
+        if (!_context.Companies.Any(c => c.CompanyId == _companyId))
+        {
+            _context.Add(new Company { CompanyId = _companyId, CompanyName = "HR Connect Demo Company", TaxCode = "0123456789", VerificationStatus = "VERIFIED" });
+        }
+
+        var job = SeedJob(target: 10, depositPercent: null, status: "PENDING_REVIEW");
+        job.AgreedAt = null;
+        job.SourcingPricePerCv = null;
+        job.ProposedPricePerCv = proposedPrice;
+        job.CreatedBy = _clientUserId;
+        _context.SaveChanges();
+        return job;
+    }
+
+    [Fact]
+    public async Task ApproveSourcingJob_WithDeposit_ShouldWaitForPaymentAndCreateDeposit()
+    {
+        var job = SeedPendingReviewJob();
+
+        await Approve().Handle(new ApproveJobCommand { JobId = job.JobId, UserId = _actor, ConcurrencyToken = job.ConcurrencyToken }, default);
+
+        job.Status.Should().Be("PENDING_PAYMENT");
+        var deposit = _context.ServiceFees.Single(f => f.JobId == job.JobId);
+        deposit.Kind.Should().Be(ServiceFeeKinds.Deposit);
+        // Admin defaults: 50% of 10 × 600,000.
+        deposit.Amount.Should().Be(3_000_000m);
+    }
+
+    [Fact]
+    public async Task RecordingTheDeposit_ShouldOpenTheJob()
+    {
+        var job = SeedPendingReviewJob();
+        await Approve().Handle(new ApproveJobCommand { JobId = job.JobId, UserId = _actor, ConcurrencyToken = job.ConcurrencyToken }, default);
+        var deposit = _context.ServiceFees.Single(f => f.JobId == job.JobId);
+
+        await Settlement().Handle(new RecordServiceFeePaymentCommand(deposit.ServiceFeeId, DateTime.UtcNow, "UNC-TEST-1", _actor), default);
+
+        job.Status.Should().Be("ACTIVE");
+        job.PostedAt.Should().NotBeNull();
+        _context.Notifications.Should().Contain(n => n.RelatedEntityId == job.JobId && n.Title == "Tin tuyển dụng đã được công bố");
+    }
+
+    [Fact]
+    public async Task PostingFeePayment_OnSourcingJob_ShouldBeRejected()
+    {
+        var job = SeedPendingReviewJob();
+        await Approve().Handle(new ApproveJobCommand { JobId = job.JobId, UserId = _actor, ConcurrencyToken = job.ConcurrencyToken }, default);
+        var handler = new RecordJobPostingFeePaymentCommandHandler(new JobRepository(_context), new NotificationRepository(_context), UnitOfWork);
+
+        var act = () => handler.Handle(new RecordJobPostingFeePaymentCommand { JobId = job.JobId, UserId = _actor, PaymentReference = "X" }, default);
+
+        (await act.Should().ThrowAsync<ConflictException>()).Which.ErrorCode.Should().Be("JOB_REQUIRES_SOURCING_DEPOSIT");
+        job.Status.Should().Be("PENDING_PAYMENT");
     }
 
     // ---- queries -------------------------------------------------------------------------

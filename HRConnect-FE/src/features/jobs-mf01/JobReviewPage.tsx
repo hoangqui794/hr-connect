@@ -44,7 +44,14 @@ import { formatMoney, useJobDetail, useJobFeeInfo, useJobMutations, useJobReview
 import { JobDetailPanel, JobTemplateOriginTag } from './JobDetailPanel';
 import { ReasonModal } from './ReasonModal';
 import { CommercialTermsApprovalModal } from './CommercialTermsApprovalModal';
-import { JOB_STATUS, REJECT_REASONS, SERVICE_TYPE_LABEL, formatDateTime } from './jobDisplay';
+import {
+  JOB_STATUS,
+  REJECT_REASONS,
+  SERVICE_TYPE_LABEL,
+  formatDateTime,
+  isAwaitingSourcingDeposit,
+  sourcingDepositAmount,
+} from './jobDisplay';
 
 const { Text } = Typography;
 
@@ -506,10 +513,19 @@ export const JobReviewPage: React.FC = () => {
                             </Tag>
                           </div>
                           <p className="text-xs text-slate-500 m-0 leading-relaxed max-w-2xl">
-                            Đã tạo yêu cầu thanh toán <strong>{feeText}</strong> gửi tới Doanh nghiệp. Tin sẽ tự động chuyển sang trạng thái <strong>Đang tuyển</strong> ngay khi doanh nghiệp hoàn tất phí.
+                            {isAwaitingSourcingDeposit(job) ? (
+                              <>
+                                Đã tạo khoản cọc CV Sourcing <strong>{formatMoney(sourcingDepositAmount(job) ?? 0, 'VND')}</strong>. Platform Admin ghi nhận cọc ở trang <strong>Tài chính</strong>; tin tự chuyển sang <strong>Đang tuyển</strong> ngay sau đó.
+                              </>
+                            ) : (
+                              <>
+                                Đã tạo yêu cầu thanh toán <strong>{feeText}</strong> gửi tới Doanh nghiệp. Tin sẽ tự động chuyển sang trạng thái <strong>Đang tuyển</strong> ngay khi doanh nghiệp hoàn tất phí.
+                              </>
+                            )}
                           </p>
                         </div>
                       </div>
+                      {!isAwaitingSourcingDeposit(job) && (
                       <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                         <Button
                           type="default"
@@ -523,6 +539,7 @@ export const JobReviewPage: React.FC = () => {
                           Ghi nhận thanh toán thủ công
                         </Button>
                       </div>
+                      )}
                     </div>
                   </div>
                 ) : job.status === 'ACTIVE' ? (
