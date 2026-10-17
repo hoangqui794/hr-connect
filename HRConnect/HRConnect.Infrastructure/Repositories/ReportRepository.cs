@@ -168,16 +168,23 @@ public class ReportRepository : IReportRepository
 
     public async Task<ReportRevenueResponse> GetRevenueReportAsync(ReportTimeRange range, string groupBy, CancellationToken cancellationToken = default)
     {
-        // 1. HEADHUNT_COD từ service_fee
-        var headhuntBilled = await _context.ServiceFees
+        // 1. service_fee: PLACEMENT là HEADHUNT_COD; DEPOSIT + SETTLEMENT − CREDIT (hoàn cọc) là CV_SOURCING.
+        var billedFees = await _context.ServiceFees
             .AsNoTracking()
             .Where(sf => sf.CreatedAt >= range.FromUtc && sf.CreatedAt < range.ToUtcPlusOne && sf.Status != ServiceFeeStates.Cancelled)
-            .SumAsync(sf => sf.Amount, cancellationToken);
+            .Select(sf => new { sf.Kind, sf.Amount })
+            .ToListAsync(cancellationToken);
 
-        var headhuntCollected = await _context.ServiceFees
+        var collectedFees = await _context.ServiceFees
             .AsNoTracking()
             .Where(sf => sf.Status == ServiceFeeStates.Paid && sf.PaidAt != null && sf.PaidAt >= range.FromUtc && sf.PaidAt < range.ToUtcPlusOne)
-            .SumAsync(sf => sf.Amount, cancellationToken);
+            .Select(sf => new { sf.Kind, sf.Amount, PaidAt = sf.PaidAt!.Value })
+            .ToListAsync(cancellationToken);
+
+        var headhuntBilled = billedFees.Where(f => f.Kind == ServiceFeeKinds.Placement).Sum(f => f.Amount);
+        var headhuntCollected = collectedFees.Where(f => f.Kind == ServiceFeeKinds.Placement).Sum(f => f.Amount);
+        var sourcingBilled = billedFees.Where(f => f.Kind != ServiceFeeKinds.Placement).Sum(f => SignedSourcingAmount(f.Kind, f.Amount));
+        var sourcingCollected = collectedFees.Where(f => f.Kind != ServiceFeeKinds.Placement).Sum(f => SignedSourcingAmount(f.Kind, f.Amount));
 
         // 2. CV_APPLICATION từ job_posting_fee
         var cvAppBilled = await _context.JobPostingFees
@@ -194,17 +201,11 @@ public class ReportRepository : IReportRepository
         var totals = new Dictionary<string, RevenueServiceTotalDto>
         {
             ["HEADHUNT_COD"] = new() { Billed = headhuntBilled, Collected = headhuntCollected },
-            ["CV_SOURCING"] = new() { Billed = 0m, Collected = 0m },
+            ["CV_SOURCING"] = new() { Billed = sourcingBilled, Collected = sourcingCollected },
             ["CV_APPLICATION"] = new() { Billed = cvAppBilled, Collected = cvAppCollected }
         };
 
         // 4. Series (thu theo collected, gom theo groupBy và timezone UTC+7)
-        var headhuntPaidItems = await _context.ServiceFees
-            .AsNoTracking()
-            .Where(sf => sf.Status == ServiceFeeStates.Paid && sf.PaidAt != null && sf.PaidAt >= range.FromUtc && sf.PaidAt < range.ToUtcPlusOne)
-            .Select(sf => new { Amount = sf.Amount, PaidAt = sf.PaidAt!.Value })
-            .ToListAsync(cancellationToken);
-
         var cvAppPaidItems = await _context.JobPostingFees
             .AsNoTracking()
             .Where(jpf => jpf.Status == "PAID" && jpf.PaidAt != null && jpf.PaidAt >= range.FromUtc && jpf.PaidAt < range.ToUtcPlusOne)
@@ -213,7 +214,7 @@ public class ReportRepository : IReportRepository
 
         var periodMap = new SortedDictionary<string, RevenueSeriesItemDto>();
 
-        foreach (var item in headhuntPaidItems)
+        foreach (var item in collectedFees)
         {
             var period = FormatPeriod(item.PaidAt.Add(VietnamOffset), groupBy);
             if (!periodMap.TryGetValue(period, out var seriesItem))
@@ -221,7 +222,9 @@ public class ReportRepository : IReportRepository
                 seriesItem = new RevenueSeriesItemDto { Period = period };
                 periodMap[period] = seriesItem;
             }
-            periodMap[period] = seriesItem with { HEADHUNT_COD = seriesItem.HEADHUNT_COD + item.Amount };
+            periodMap[period] = item.Kind == ServiceFeeKinds.Placement
+                ? seriesItem with { HEADHUNT_COD = seriesItem.HEADHUNT_COD + item.Amount }
+                : seriesItem with { CV_SOURCING = seriesItem.CV_SOURCING + SignedSourcingAmount(item.Kind, item.Amount) };
         }
 
         foreach (var item in cvAppPaidItems)
@@ -235,15 +238,8 @@ public class ReportRepository : IReportRepository
             periodMap[period] = seriesItem with { CV_APPLICATION = seriesItem.CV_APPLICATION + item.Amount };
         }
 
-        // 5. Commission
-        var commissionEarned = await _context.Commissions
-            .AsNoTracking()
-            .Where(c => (c.Status == CommissionStates.Earned || c.Status == CommissionStates.Payable || c.Status == CommissionStates.Paid)
-                && c.Placement.Warranty != null
-                && c.Placement.Warranty.EndDate != null
-                && c.Placement.Warranty.EndDate >= range.FromDate
-                && c.Placement.Warranty.EndDate <= range.ToDate)
-            .SumAsync(c => c.Amount, cancellationToken);
+        // 5. Commission: HEADHUNT_COD đạt khi hết bảo hành; CV_SOURCING đạt khi CV được chấp nhận.
+        var commissionEarned = await EarnedCommissionsInPeriod(range).SumAsync(c => c.Amount, cancellationToken);
 
         var commissionPaid = await _context.Payouts
             .AsNoTracking()
@@ -262,6 +258,27 @@ public class ReportRepository : IReportRepository
             }
         };
     }
+
+    /// <summary>CV_SOURCING fees in revenue: a CREDIT is deposit refunded to the Client.</summary>
+    private static decimal SignedSourcingAmount(string kind, decimal amount) =>
+        kind == ServiceFeeKinds.Credit ? -amount : amount;
+
+    /// <summary>
+    /// Commissions earned in the period: HEADHUNT_COD when the warranty ends inside it,
+    /// CV_SOURCING when the CV was accepted (commission created) inside it.
+    /// </summary>
+    private IQueryable<HRConnect.Domain.Entities.Commission> EarnedCommissionsInPeriod(ReportTimeRange range) =>
+        _context.Commissions
+            .AsNoTracking()
+            .Where(c => (c.Status == CommissionStates.Earned || c.Status == CommissionStates.Payable || c.Status == CommissionStates.Paid)
+                && ((c.Placement != null
+                        && c.Placement.Warranty != null
+                        && c.Placement.Warranty.EndDate != null
+                        && c.Placement.Warranty.EndDate >= range.FromDate
+                        && c.Placement.Warranty.EndDate <= range.ToDate)
+                    || (c.SourcingDeliveryId != null
+                        && c.CreatedAt >= range.FromUtc
+                        && c.CreatedAt < range.ToUtcPlusOne)));
 
     public async Task<ReportTopAffiliatesResponse> GetTopAffiliatesAsync(
         ReportTimeRange range,
@@ -297,13 +314,7 @@ public class ReportRepository : IReportRepository
             .ToListAsync(cancellationToken);
 
         // Lấy hoa hồng phát sinh trong kỳ theo attribution
-        var commissionsInPeriod = await _context.Commissions
-            .AsNoTracking()
-            .Where(c => (c.Status == CommissionStates.Earned || c.Status == CommissionStates.Payable || c.Status == CommissionStates.Paid)
-                && c.Placement.Warranty != null
-                && c.Placement.Warranty.EndDate != null
-                && c.Placement.Warranty.EndDate >= range.FromDate
-                && c.Placement.Warranty.EndDate <= range.ToDate)
+        var commissionsInPeriod = await EarnedCommissionsInPeriod(range)
             .Select(c => new
             {
                 c.Amount,
@@ -440,12 +451,12 @@ public class ReportRepository : IReportRepository
             .Where(sf => sf.Status == ServiceFeeStates.Paid
                 && sf.PaidAt != null
                 && sf.PaidAt >= range.FromUtc
-                && sf.PaidAt < range.ToUtcPlusOne
-                && sf.Placement != null)
+                && sf.PaidAt < range.ToUtcPlusOne)
             .Select(sf => new
             {
-                sf.Amount,
-                CompanyId = sf.Placement!.Application.Job.CompanyId
+                // A CREDIT is deposit refunded to the Client, so it lowers the company revenue.
+                Amount = sf.Kind == ServiceFeeKinds.Credit ? -sf.Amount : sf.Amount,
+                sf.CompanyId
             })
             .ToListAsync(cancellationToken);
 

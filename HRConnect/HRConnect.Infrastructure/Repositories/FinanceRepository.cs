@@ -9,6 +9,10 @@ namespace HRConnect.Infrastructure.Repositories;
 public class FinanceRepository : IFinanceRepository
 {
     private const string ActiveAttribution = "ACTIVE";
+    private const string ServiceTypeCvSourcing = "CV_SOURCING";
+    private const string ClosedJob = "CLOSED";
+    private const string SuspendedUser = "SUSPENDED";
+    private const string ActiveUser = "ACTIVE";
 
     private readonly ApplicationDbContext _context;
 
@@ -135,9 +139,70 @@ public class FinanceRepository : IFinanceRepository
 
     public Task<Commission?> GetCommissionForUpdateAsync(Guid commissionId, CancellationToken cancellationToken = default) =>
         _context.Commissions
-            .Include(c => c.Placement).ThenInclude(p => p.ServiceFee)
+            .Include(c => c.Placement!).ThenInclude(p => p.ServiceFee)
+            .Include(c => c.SourcingDelivery!).ThenInclude(d => d.Job)
             .Include(c => c.Payouts)
             .FirstOrDefaultAsync(c => c.CommissionId == commissionId, cancellationToken);
+
+    public Task<Job?> GetJobForFinanceAsync(Guid jobId, CancellationToken cancellationToken = default) =>
+        _context.Jobs
+            .Include(j => j.ServiceType)
+            .FirstOrDefaultAsync(j => j.JobId == jobId, cancellationToken);
+
+    public async Task<IReadOnlyList<ServiceFee>> GetJobServiceFeesForUpdateAsync(Guid jobId, CancellationToken cancellationToken = default) =>
+        await _context.ServiceFees
+            .Where(fee => fee.JobId == jobId)
+            .OrderBy(fee => fee.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Guid>> GetSourcingJobIdsAwaitingDepositAsync(int take, CancellationToken cancellationToken = default) =>
+        await _context.Jobs.AsNoTracking()
+            .Where(j => j.ServiceType.Code == ServiceTypeCvSourcing
+                        && j.AgreedAt != null
+                        && j.DepositPercent > 0
+                        && !_context.ServiceFees.Any(fee => fee.JobId == j.JobId && fee.Kind == ServiceFeeKinds.Deposit))
+            .OrderBy(j => j.AgreedAt)
+            .Take(take)
+            .Select(j => j.JobId)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Guid>> GetClosedSourcingJobIdsAwaitingSettlementAsync(int take, CancellationToken cancellationToken = default) =>
+        await _context.Jobs.AsNoTracking()
+            .Where(j => j.ServiceType.Code == ServiceTypeCvSourcing
+                        && j.Status == ClosedJob
+                        && j.AgreedAt != null
+                        && (_context.ServiceFees.Any(fee => fee.JobId == j.JobId && fee.Kind == ServiceFeeKinds.Deposit)
+                            || _context.SourcingDeliveries.Any(d => d.JobId == j.JobId
+                                && (d.Status == SourcingDeliveryStates.Accepted || d.Status == SourcingDeliveryStates.AutoAccepted)))
+                        && !_context.ServiceFees.Any(fee => fee.JobId == j.JobId
+                            && (fee.Kind == ServiceFeeKinds.Settlement || fee.Kind == ServiceFeeKinds.Credit)))
+            .OrderBy(j => j.UpdatedAt)
+            .Take(take)
+            .Select(j => j.JobId)
+            .ToListAsync(cancellationToken);
+
+    public Task<bool> HasSourcingCommissionAsync(Guid deliveryId, CancellationToken cancellationToken = default) =>
+        _context.Commissions.AnyAsync(c => c.SourcingDeliveryId == deliveryId, cancellationToken);
+
+    public async Task<IReadOnlyList<Commission>> GetCommissionsOfSuspendedAffiliatesAsync(int take, CancellationToken cancellationToken = default) =>
+        await _context.Commissions
+            .Where(c => (c.Status == CommissionStates.Pending || c.Status == CommissionStates.InWarranty)
+                        && c.Attribution.Affiliate.User.Status == SuspendedUser)
+            .OrderBy(c => c.CreatedAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Commission>> GetHeldCommissionsOfReactivatedAffiliatesAsync(int take, CancellationToken cancellationToken = default) =>
+        await _context.Commissions
+            .Include(c => c.Placement!).ThenInclude(p => p.Warranty)
+            .Where(c => c.Status == CommissionStates.OnHold
+                        && c.Attribution.Affiliate.User.Status == ActiveUser
+                        && c.Placement != null
+                        && c.Placement.Warranty != null
+                        && (c.Placement.Warranty.Status == WarrantyStates.Active || c.Placement.Warranty.Status == WarrantyStates.Passed))
+            .OrderBy(c => c.UpdatedAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Guid>> GetPlacementIdsWithWarrantyEndingAsync(DateOnly onOrBefore, int take, CancellationToken cancellationToken = default) =>
         await _context.Warranties.AsNoTracking()
@@ -171,7 +236,8 @@ public class FinanceRepository : IFinanceRepository
             .ToListAsync(cancellationToken);
 
     public async Task<(IReadOnlyList<ServiceFee> Items, int TotalCount)> GetServiceFeesAsync(
-        Guid? companyId, string? status, int page, int pageSize, CancellationToken cancellationToken = default)
+        Guid? companyId, string? status, int page, int pageSize, CancellationToken cancellationToken = default,
+        Guid? jobId = null, string? kind = null)
     {
         var query = _context.ServiceFees.AsNoTracking();
         if (companyId.HasValue)
@@ -184,11 +250,23 @@ public class FinanceRepository : IFinanceRepository
             query = query.Where(fee => fee.Status == status);
         }
 
+        if (jobId.HasValue)
+        {
+            query = query.Where(fee => fee.JobId == jobId.Value
+                || (fee.Placement != null && fee.Placement.Application.JobId == jobId.Value));
+        }
+
+        if (kind != null)
+        {
+            query = query.Where(fee => fee.Kind == kind);
+        }
+
         var total = await query.CountAsync(cancellationToken);
         var items = await query
             .Include(fee => fee.Company)
-            .Include(fee => fee.Placement).ThenInclude(p => p.Application).ThenInclude(a => a.Job)
-            .Include(fee => fee.Placement).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
+            .Include(fee => fee.Job)
+            .Include(fee => fee.Placement!).ThenInclude(p => p.Application).ThenInclude(a => a.Job)
+            .Include(fee => fee.Placement!).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
             .OrderByDescending(fee => fee.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -213,10 +291,12 @@ public class FinanceRepository : IFinanceRepository
         var total = await query.CountAsync(cancellationToken);
         var items = await query
             .Include(c => c.Attribution).ThenInclude(a => a.Affiliate).ThenInclude(a => a.User)
-            .Include(c => c.Placement).ThenInclude(p => p.Application).ThenInclude(a => a.Job)
-            .Include(c => c.Placement).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
-            .Include(c => c.Placement).ThenInclude(p => p.Warranty)
-            .Include(c => c.Placement).ThenInclude(p => p.ServiceFee)
+            .Include(c => c.Placement!).ThenInclude(p => p.Application).ThenInclude(a => a.Job)
+            .Include(c => c.Placement!).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
+            .Include(c => c.Placement!).ThenInclude(p => p.Warranty)
+            .Include(c => c.Placement!).ThenInclude(p => p.ServiceFee)
+            .Include(c => c.SourcingDelivery!).ThenInclude(d => d.Job)
+            .Include(c => c.SourcingDelivery!).ThenInclude(d => d.Application).ThenInclude(a => a.Candidate)
             .OrderByDescending(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)

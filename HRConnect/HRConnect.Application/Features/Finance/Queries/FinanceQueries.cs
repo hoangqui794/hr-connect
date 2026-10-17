@@ -6,16 +6,21 @@ namespace HRConnect.Application.Features.Finance.Queries;
 
 public sealed record PagedResult<T>(IReadOnlyList<T> Items, int TotalCount, int Page, int PageSize);
 
+/// <summary>
+/// Kind PLACEMENT (HEADHUNT_COD) has a placement and candidate; DEPOSIT, SETTLEMENT and CREDIT
+/// (CV_SOURCING) have only a job. CREDIT is owed to the Client.
+/// </summary>
 public sealed record ServiceFeeDto(
-    Guid ServiceFeeId, Guid PlacementId, Guid CompanyId, string? CompanyName, string? JobTitle, string? CandidateName,
+    Guid ServiceFeeId, Guid? PlacementId, Guid CompanyId, string? CompanyName, string? JobTitle, string? CandidateName,
     decimal BaseSalary, decimal FeeMultiplier, decimal Amount, string CurrencyCode, DateOnly DueDate, string Status,
-    DateTime? PaidAt, string? PaymentReference, DateTime CreatedAt);
+    DateTime? PaidAt, string? PaymentReference, DateTime CreatedAt, string Kind = "PLACEMENT", Guid? JobId = null);
 
+/// <summary>PlacementId is set for HEADHUNT_COD; SourcingDeliveryId for CV_SOURCING (one per accepted CV).</summary>
 public sealed record CommissionDto(
-    Guid CommissionId, Guid PlacementId, Guid AttributionId, Guid AffiliateId, string? AffiliateName, string? JobTitle,
+    Guid CommissionId, Guid? PlacementId, Guid AttributionId, Guid AffiliateId, string? AffiliateName, string? JobTitle,
     string? CandidateName, decimal Amount, decimal? BaseAmount, string Status, string? MilestoneType,
     DateOnly? WarrantyEndDate, string? WarrantyStatus, string? ServiceFeeStatus, DateTime? ApprovedAt, DateTime CreatedAt,
-    AffiliateBankDto? AffiliateBank = null);
+    AffiliateBankDto? AffiliateBank = null, Guid? SourcingDeliveryId = null);
 
 /// <summary>Where to transfer the commission. Only returned to users who record payouts.</summary>
 public sealed record AffiliateBankDto(string? BankName, string? BankAccountNumber, string? BankAccountHolder, string? BankBranch);
@@ -30,7 +35,8 @@ public sealed record PayoutDto(
     string Status, int AttemptNo, DateTime CreatedAt);
 
 /// <summary>Viewer scope is resolved by the endpoint: Client sees one company; Admin sees all.</summary>
-public sealed record GetServiceFeesQuery(Guid? CompanyUserId, string? Status, int Page, int PageSize) : IRequest<PagedResult<ServiceFeeDto>>;
+public sealed record GetServiceFeesQuery(Guid? CompanyUserId, string? Status, int Page, int PageSize, Guid? JobId = null, string? Kind = null)
+    : IRequest<PagedResult<ServiceFeeDto>>;
 
 /// <summary>AffiliateUserId limits the list to the affiliate's own commissions.</summary>
 public sealed record GetCommissionsQuery(Guid? AffiliateUserId, string? Status, int Page, int PageSize, bool IncludeBankDetails = false)
@@ -67,12 +73,14 @@ public sealed class FinanceQueryHandlers :
             companyId = companyUser.CompanyId;
         }
 
-        var (items, total) = await _financeRepository.GetServiceFeesAsync(companyId, Upper(request.Status), page, pageSize, cancellationToken);
+        var (items, total) = await _financeRepository.GetServiceFeesAsync(
+            companyId, Upper(request.Status), page, pageSize, cancellationToken, request.JobId, Upper(request.Kind));
         return new PagedResult<ServiceFeeDto>(items.Select(fee => new ServiceFeeDto(
             fee.ServiceFeeId, fee.PlacementId, fee.CompanyId, fee.Company?.CompanyName,
-            fee.Placement?.Application?.Job?.Title, fee.Placement?.Application?.Candidate?.FullName,
+            fee.Job?.Title ?? fee.Placement?.Application?.Job?.Title, fee.Placement?.Application?.Candidate?.FullName,
             fee.BaseSalary, fee.FeeMultiplier, fee.Amount, fee.CurrencyCode, fee.DueDate, fee.Status,
-            fee.PaidAt, fee.PaymentReference, fee.CreatedAt)).ToList(), total, page, pageSize);
+            fee.PaidAt, fee.PaymentReference, fee.CreatedAt, fee.Kind,
+            fee.JobId ?? fee.Placement?.Application?.JobId)).ToList(), total, page, pageSize);
     }
 
     public async Task<PagedResult<CommissionDto>> Handle(GetCommissionsQuery request, CancellationToken cancellationToken)
@@ -81,13 +89,15 @@ public sealed class FinanceQueryHandlers :
         var (items, total) = await _financeRepository.GetCommissionsAsync(request.AffiliateUserId, Upper(request.Status), page, pageSize, cancellationToken);
         return new PagedResult<CommissionDto>(items.Select(c => new CommissionDto(
             c.CommissionId, c.PlacementId, c.AttributionId, c.Attribution.AffiliateId, c.Attribution.Affiliate?.DisplayName ?? c.Attribution.Affiliate?.User?.DisplayName,
-            c.Placement?.Application?.Job?.Title, c.Placement?.Application?.Candidate?.FullName,
+            c.Placement?.Application?.Job?.Title ?? c.SourcingDelivery?.Job?.Title,
+            c.Placement?.Application?.Candidate?.FullName ?? c.SourcingDelivery?.Application?.Candidate?.FullName,
             c.Amount, c.BaseAmount, c.Status, c.MilestoneType,
             c.Placement?.Warranty?.EndDate, c.Placement?.Warranty?.Status, c.Placement?.ServiceFee?.Status,
             c.ApprovedAt, c.CreatedAt,
             request.IncludeBankDetails && c.Attribution.Affiliate is { } affiliate
                 ? new AffiliateBankDto(affiliate.BankName, affiliate.BankAccountNumber, affiliate.BankAccountHolder, affiliate.BankBranch)
-                : null)).ToList(), total, page, pageSize);
+                : null,
+            c.SourcingDeliveryId)).ToList(), total, page, pageSize);
     }
 
     public async Task<PagedResult<PayoutDto>> Handle(GetPayoutsQuery request, CancellationToken cancellationToken)

@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Common.Settings;
+using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
@@ -29,19 +30,22 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
     private readonly INotificationRepository _notifications;
     private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _uow;
+    private readonly ISourcingFinanceService? _sourcingFinance;
 
     public ApproveJobCommandHandler(
         IJobRepository jobs,
         IAdminBusinessSettings adminSettings,
         INotificationRepository notifications,
         IAuditLogService auditLogService,
-        IUnitOfWork uow)
+        IUnitOfWork uow,
+        ISourcingFinanceService? sourcingFinance = null)
     {
         _jobs = jobs;
         _adminSettings = adminSettings;
         _notifications = notifications;
         _auditLogService = auditLogService;
         _uow = uow;
+        _sourcingFinance = sourcingFinance;
     }
 
     public async Task<JobActionResponse> Handle(ApproveJobCommand request, CancellationToken ct)
@@ -54,6 +58,8 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
         var now = DateTime.UtcNow;
         var requiresPayment = false;
         decimal standardPrice = 0m;
+        // CV_SOURCING: the job opens only after the Client pays the deposit (decision 2026-10-17).
+        var awaitsSourcingDeposit = false;
 
         object? adminDefaultsAtApproval = null;
         object? approvedTerms = null;
@@ -221,6 +227,17 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                 reviewDays,
                 paymentDueDays
             };
+
+            if (_sourcingFinance != null)
+            {
+                var deposit = await _sourcingFinance.EnsureDepositAsync(job, request.UserId, ct, serviceTypeCode);
+                if (deposit != null && deposit.Status != ServiceFeeStates.Paid)
+                {
+                    requiresPayment = true;
+                    awaitsSourcingDeposit = true;
+                    standardPrice = deposit.Amount;
+                }
+            }
         }
         else if (string.Equals(serviceTypeCode, ServiceTypeCodes.CvApplication, StringComparison.OrdinalIgnoreCase))
         {
@@ -314,7 +331,9 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                 JobStatuses.PendingPayment,
                 request.UserId,
                 JobReasonCodes.Approved,
-                "Nội dung tin tuyển dụng đã được duyệt. Vui lòng thanh toán phí dịch vụ để công bố.");
+                awaitsSourcingDeposit
+                    ? "Nội dung tin tuyển dụng đã được duyệt. Vui lòng đặt cọc CV Sourcing để công bố."
+                    : "Nội dung tin tuyển dụng đã được duyệt. Vui lòng thanh toán phí dịch vụ để công bố.");
             await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
 
             await _notifications.AddAsync(new Notification
@@ -323,7 +342,9 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                 UserId = job.CreatedBy,
                 NotificationType = "JOB",
                 Title = "Tin tuyển dụng đã được duyệt nội dung",
-                Message = $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng thanh toán phí đăng tin ({standardPrice:N0} đ) để công bố.",
+                Message = awaitsSourcingDeposit
+                    ? $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng đặt cọc CV Sourcing ({standardPrice:N0} đ) để công bố."
+                    : $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng thanh toán phí đăng tin ({standardPrice:N0} đ) để công bố.",
                 RelatedEntityType = "JOB",
                 RelatedEntityId = job.JobId,
                 Metadata = System.Text.Json.JsonSerializer.Serialize(new
@@ -331,6 +352,7 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                     jobId = job.JobId,
                     status = JobStatuses.PendingPayment,
                     amount = standardPrice,
+                    paymentKind = awaitsSourcingDeposit ? ServiceFeeKinds.Deposit : "POSTING_FEE",
                     actionRoute = $"/client/jobs?highlight={job.JobId}&openPayment=true"
                 }),
                 IsRead = false,

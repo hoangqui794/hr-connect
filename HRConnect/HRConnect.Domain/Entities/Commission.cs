@@ -12,9 +12,17 @@ public partial class Commission
 
     public Guid AttributionId { get; set; }
 
-    public Guid PlacementId { get; set; }
+    /// <summary>HEADHUNT_COD placement; null for a CV_SOURCING commission.</summary>
+    public Guid? PlacementId { get; set; }
 
-    public Guid CommissionRuleId { get; set; }
+    /// <summary>CV_SOURCING: the accepted delivery this commission pays for; null for HEADHUNT_COD.</summary>
+    public Guid? SourcingDeliveryId { get; set; }
+
+    /// <summary>
+    /// HEADHUNT_COD rule; null for CV_SOURCING, whose share comes from the Admin setting
+    /// <c>mf05.cv_sourcing.affiliate_share_percent</c> (recorded in <see cref="RuleSnapshot"/>).
+    /// </summary>
+    public Guid? CommissionRuleId { get; set; }
 
     public string? MilestoneType { get; set; }
 
@@ -47,7 +55,7 @@ public partial class Commission
 
     public virtual ICollection<CommissionAdjustment> CommissionAdjustments { get; set; } = new List<CommissionAdjustment>();
 
-    public virtual CommissionRule CommissionRule { get; set; } = null!;
+    public virtual CommissionRule? CommissionRule { get; set; }
 
     public virtual ICollection<Dispute> Disputes { get; set; } = new List<Dispute>();
 
@@ -55,6 +63,8 @@ public partial class Commission
 
     public virtual ICollection<Payout> Payouts { get; set; } = new List<Payout>();
 
-    public virtual Placement Placement { get; set; } = null!;
+    public virtual Placement? Placement { get; set; }
+
+    public virtual SourcingDelivery? SourcingDelivery { get; set; }
 }
 
