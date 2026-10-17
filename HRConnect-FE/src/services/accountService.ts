@@ -5,31 +5,61 @@
  */
 
 import { UserRole } from '@/types/roles';
-import {
-  getHRConnectUsers,
-  saveHRConnectUser,
-  findHRConnectUserByEmail as findHRUser,
-  HRConnectUser,
-  STORAGE_KEYS,
-  PRESEEDED_TEST_ACCOUNTS,
-} from '@/services/localStorageService';
 
-export interface RegisteredAccount extends HRConnectUser {}
+export interface RegisteredAccount {
+  id: string;
+  email: string;
+  password?: string;
+  role: UserRole;
+  fullName: string;
+  phone?: string;
+  companyName?: string;
+  companySize?: string;
+  createdAt: string;
+}
 
-export const REGISTERED_ACCOUNTS_KEY = STORAGE_KEYS.USERS;
-
-export const SEED_ACCOUNTS: RegisteredAccount[] = PRESEEDED_TEST_ACCOUNTS;
+export const REGISTERED_ACCOUNTS_KEY = 'hrconnect_users';
 
 export const getRegisteredAccounts = (): RegisteredAccount[] => {
-  return getHRConnectUsers();
+  try {
+    const raw = localStorage.getItem(REGISTERED_ACCOUNTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 };
 
 export const findRegisteredAccountByEmail = (email: string): RegisteredAccount | undefined => {
-  return findHRUser(email);
+  const norm = email.trim().toLowerCase();
+  return getRegisteredAccounts().find((u) => u.email.toLowerCase() === norm);
 };
 
 export const saveRegisteredAccount = (
   account: Omit<RegisteredAccount, 'id' | 'createdAt'> & { id?: string }
 ): RegisteredAccount => {
-  return saveHRConnectUser(account);
+  const users = getRegisteredAccounts();
+  const existingIndex = users.findIndex(
+    (u) => u.email.toLowerCase() === account.email.toLowerCase()
+  );
+  const now = new Date().toISOString();
+  let saved: RegisteredAccount;
+  if (existingIndex >= 0) {
+    saved = { ...users[existingIndex], ...account };
+    users[existingIndex] = saved;
+  } else {
+    saved = {
+      ...account,
+      id: account.id || `usr-${Date.now()}`,
+      createdAt: now,
+    };
+    users.push(saved);
+  }
+  try {
+    localStorage.setItem(REGISTERED_ACCOUNTS_KEY, JSON.stringify(users));
+  } catch {
+    // ignore
+  }
+  return saved;
 };
