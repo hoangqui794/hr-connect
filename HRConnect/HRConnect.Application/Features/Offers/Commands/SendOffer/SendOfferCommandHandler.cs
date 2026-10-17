@@ -6,6 +6,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Recruitment.Common;
+using HRConnect.Application.Features.Offers.Common;
 using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -86,6 +87,10 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
             throw new ForbiddenException("Bạn không có quyền gửi offer.");
         }
 
+        var monthlyGrossSalary = OfferSalaryPolicy.EnsureReadyForSending(
+            offer,
+            offer.Application?.Job?.ServiceType?.Code);
+
         var oldStatus = offer.Status;
         var now = DateTime.UtcNow;
         offer.Status = "SENT";
@@ -115,7 +120,12 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
                 offerVersion = offer.OfferVersion,
                 status = offer.Status,
                 sentAt = offer.SentAt,
-                expiryDate = offer.ExpiryDate
+                expiryDate = offer.ExpiryDate,
+                salary = offer.Salary,
+                currencyCode = offer.CurrencyCode,
+                salaryBasis = offer.SalaryBasis,
+                salaryPeriod = offer.SalaryPeriod,
+                monthlyGrossSalary
             }
         }, cancellationToken);
 
@@ -140,7 +150,10 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
                     offerId = offer.OfferId,
                     offerVersion = offer.OfferVersion,
                     expiryDate = offer.ExpiryDate,
-                    startDate = offer.StartDate
+                    startDate = offer.StartDate,
+                    salaryBasis = offer.SalaryBasis,
+                    salaryPeriod = offer.SalaryPeriod,
+                    monthlyGrossSalary
                 }),
                 IsRead = false,
                 CreatedAt = now
@@ -162,6 +175,9 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
             offer.StartDate,
             offer.Salary,
             offer.CurrencyCode,
+            offer.SalaryBasis,
+            offer.SalaryPeriod,
+            monthlyGrossSalary,
             offer.OfferDocumentUrl,
             offer.ConcurrencyToken,
             offer.UpdatedAt

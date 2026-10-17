@@ -6,6 +6,8 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Offers.Commands.SendOffer;
+using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -194,6 +196,8 @@ public class SendOfferCommandHandlerTests
             ExpiryDate = tomorrow,
             Salary = 20000000,
             CurrencyCode = "VND",
+            SalaryBasis = OfferSalaryBasisCodes.Gross,
+            SalaryPeriod = OfferSalaryPeriodCodes.Monthly,
             ConcurrencyToken = Guid.NewGuid(),
             Application = app
         };
@@ -222,6 +226,7 @@ public class SendOfferCommandHandlerTests
         result.OfferId.Should().Be(offerId);
         result.Status.Should().Be("SENT");
         result.SentAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        result.MonthlyGrossSalary.Should().Be(20000000);
 
         offer.Status.Should().Be("SENT");
         offer.SentAt.Should().NotBeNull();
@@ -255,6 +260,8 @@ public class SendOfferCommandHandlerTests
             Status = "DRAFT",
             Salary = 30000000,
             CurrencyCode = "VND",
+            SalaryBasis = OfferSalaryBasisCodes.Gross,
+            SalaryPeriod = OfferSalaryPeriodCodes.Monthly,
             ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7))
         };
 
@@ -293,5 +300,65 @@ public class SendOfferCommandHandlerTests
                 notif.UserId == candidateUserId &&
                 notif.NotificationType == "OFFER"),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSalarySemanticsAreIncomplete_ShouldReturnStableErrorCode()
+    {
+        var offerId = Guid.NewGuid();
+        var clientUserId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var offer = new Offer
+        {
+            OfferId = offerId,
+            Status = OfferStates.Draft,
+            Salary = 20_000_000m,
+            Application = new Domain.Entities.Application { Job = new Job { CompanyId = companyId } }
+        };
+        _offerRepositoryMock.Setup(r => r.GetByIdWithApplicationAsync(offerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(offer);
+        _companyUserRepositoryMock.Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = companyId, Status = "ACTIVE" });
+
+        var act = () => CreateHandler().Handle(new SendOfferCommand(
+            offerId, offer.ConcurrencyToken, clientUserId, IsClientCompanyUser: true), default);
+
+        var exception = await act.Should().ThrowAsync<BadRequestException>();
+        exception.Which.ErrorCode.Should().Be(OfferSalaryErrorCodes.Incomplete);
+        _offerRepositoryMock.Verify(r => r.Update(It.IsAny<Offer>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenHeadhuntSalaryIsNet_ShouldRejectBeforeSending()
+    {
+        var offerId = Guid.NewGuid();
+        var clientUserId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var offer = new Offer
+        {
+            OfferId = offerId,
+            Status = OfferStates.Draft,
+            Salary = 20_000_000m,
+            SalaryBasis = OfferSalaryBasisCodes.Net,
+            SalaryPeriod = OfferSalaryPeriodCodes.Monthly,
+            Application = new Domain.Entities.Application
+            {
+                Job = new Job
+                {
+                    CompanyId = companyId,
+                    ServiceType = new ServiceType { Code = ServiceTypeCodes.HeadhuntCod }
+                }
+            }
+        };
+        _offerRepositoryMock.Setup(r => r.GetByIdWithApplicationAsync(offerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(offer);
+        _companyUserRepositoryMock.Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = companyId, Status = "ACTIVE" });
+
+        var act = () => CreateHandler().Handle(new SendOfferCommand(
+            offerId, offer.ConcurrencyToken, clientUserId, IsClientCompanyUser: true), default);
+
+        var exception = await act.Should().ThrowAsync<BadRequestException>();
+        exception.Which.ErrorCode.Should().Be(OfferSalaryErrorCodes.HeadhuntRequiresGross);
     }
 }

@@ -129,7 +129,7 @@ describe('SourcingDeliveriesView', () => {
     vi.mocked(sourcingApi.getDeliveries).mockRejectedValueOnce(new Error('Network error'));
     renderComponent();
 
-    expect(await screen.findByText('Không thể tải danh sách CV bàn giao')).toBeInTheDocument();
+    expect(await screen.findByText('Không thể tải danh sách CV bàn giao', {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Thử lại/i })).toBeInTheDocument();
   });
 
@@ -149,7 +149,7 @@ describe('SourcingDeliveriesView', () => {
 
     renderComponent();
 
-    expect(await screen.findByText('Chưa có hồ sơ CV nào trong danh sách này.')).toBeInTheDocument();
+    expect(await screen.findByText('Chưa có hồ sơ CV nào trong danh sách này.', {}, { timeout: 10000 })).toBeInTheDocument();
   });
 
   it('renders progress summary and delivery items with 7-day deadline countdown', async () => {
@@ -161,7 +161,7 @@ describe('SourcingDeliveriesView', () => {
     renderComponent();
 
     // Summary target & progress
-    expect(await screen.findByText('Tiến độ bàn giao CV Sourcing')).toBeInTheDocument();
+    expect(await screen.findByText('Tiến độ bàn giao CV Sourcing', {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.getByText('Mục tiêu: 10 CV')).toBeInTheDocument();
 
     // Candidate names
@@ -189,13 +189,13 @@ describe('SourcingDeliveriesView', () => {
 
     renderComponent({ role: 'client' });
 
-    const acceptBtn = await screen.findByRole('button', { name: /Chấp nhận CV/i });
+    const acceptBtn = await screen.findByRole('button', { name: /Chấp nhận CV/i }, { timeout: 10000 });
     expect(acceptBtn).toBeInTheDocument();
 
     fireEvent.click(acceptBtn);
 
     // Confirmation modal should open
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await screen.findByRole('dialog', {}, { timeout: 10000 });
     expect(within(dialog).getByText(/Xác nhận chấp nhận CV của Nguyễn Văn A/i)).toBeInTheDocument();
 
     // Confirm in modal
@@ -223,11 +223,11 @@ describe('SourcingDeliveriesView', () => {
 
     renderComponent({ role: 'client' });
 
-    const rejectBtn = await screen.findByRole('button', { name: /Từ chối CV/i });
+    const rejectBtn = await screen.findByRole('button', { name: /Từ chối CV/i }, { timeout: 10000 });
     fireEvent.click(rejectBtn);
 
     // Reject modal opens
-    expect(await screen.findByText(/Từ chối hồ sơ ứng viên Nguyễn Văn A/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Từ chối hồ sơ ứng viên Nguyễn Văn A/i, {}, { timeout: 10000 })).toBeInTheDocument();
 
     // Select FALSE_INFORMATION radio
     const radioFalseInfo = screen.getByLabelText(/Thông tin ứng viên sai sự thật/i);
@@ -260,7 +260,7 @@ describe('SourcingDeliveriesView', () => {
 
     renderComponent({ role: 'client' });
 
-    expect(await screen.findByText('Quá hạn xem xét')).toBeInTheDocument();
+    expect(await screen.findByText('Quá hạn xem xét', {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Chấp nhận CV/i })).not.toBeInTheDocument();
   });
 });

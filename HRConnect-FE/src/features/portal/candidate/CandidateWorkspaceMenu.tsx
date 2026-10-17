@@ -4,6 +4,7 @@ import {
   CheckCircleOutlined,
   DashboardOutlined,
   FolderOpenOutlined,
+  HeartOutlined,
   IdcardOutlined,
   LogoutOutlined,
   MailOutlined,
@@ -50,6 +51,12 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
       icon: <DashboardOutlined />,
       label: 'Tổng quan Candidate',
       onClick: () => navigate('/candidate/dashboard'),
+    },
+    {
+      key: 'saved-jobs',
+      icon: <HeartOutlined />,
+      label: 'Việc làm đã lưu',
+      onClick: () => navigate('/candidate/saved-jobs'),
     },
     {
       key: 'applications',

@@ -12,6 +12,9 @@ public record SendOfferResponse(
     DateOnly? StartDate,
     decimal? Salary,
     string CurrencyCode,
+    string? SalaryBasis,
+    string? SalaryPeriod,
+    decimal? MonthlyGrossSalary,
     string? OfferDocumentUrl,
     Guid ConcurrencyToken,
     DateTime UpdatedAt

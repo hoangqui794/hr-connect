@@ -16,6 +16,7 @@ import type {
   CommissionMilestone,
   CommissionRule,
   CommissionRuleCreateInput,
+  CommissionRuleToggleData,
   CommissionRuleUpdateInput,
   Paged,
   ServiceTypeAllowedRole,
@@ -132,9 +133,17 @@ export const adminCommissionApi = {
   async update(id: string, input: CommissionRuleUpdateInput) {
     return (await apiClient.put<ApiEnvelope<CommissionRule>>(`/admin/commission-rules/${id}`, input)).data;
   },
-  async setActive(id: string, active: boolean) {
+  async setActive(id: string, active: boolean): Promise<ApiEnvelope<CommissionRuleToggleData>> {
     return (
-      await apiClient.patch<ApiEnvelope<unknown>>(`/admin/commission-rules/${id}/${active ? 'activate' : 'deactivate'}`)
+      await apiClient.patch<ApiEnvelope<CommissionRuleToggleData>>(
+        `/admin/commission-rules/${id}/${active ? 'activate' : 'deactivate'}`
+      )
     ).data;
+  },
+  async toggleActive(id: string, currentActive: boolean): Promise<ApiEnvelope<CommissionRuleToggleData>> {
+    return this.setActive(id, !currentActive);
+  },
+  async updateStatus(id: string, isActive: boolean): Promise<ApiEnvelope<CommissionRuleToggleData>> {
+    return this.setActive(id, isActive);
   },
 };

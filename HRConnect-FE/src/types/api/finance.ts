@@ -112,3 +112,77 @@ export interface Warranty {
   commissionStatus?: CommissionStatus | null;
   commissionAmount?: number | null;
 }
+
+/** MF-05 replacement slot status */
+export type ReplacementSlotStatus =
+  | 'WAITING_PAYMENT'
+  | 'OPEN'
+  | 'FILLED'
+  | 'CANCELLED'
+  | 'EXPIRED';
+
+/** Full replacement slot details returned by GET /jobs/{jobId}/replacement-slots */
+export interface ReplacementSlotDto {
+  replacementSlotId: string;
+  jobId: string;
+  status: ReplacementSlotStatus;
+  originalPlacementId: string;
+  originalCandidateName: string | null;
+  serviceFeeId: string;
+  fillWindowDays: number;
+  openedAt: string | null;
+  expiresAt: string | null;
+  filledByPlacementId: string | null;
+  replacementCandidateName: string | null;
+  closedAt: string | null;
+  cancelReason: string | null;
+  concurrencyToken: string;
+  createdAt: string;
+}
+
+/** Short slot summary returned when resolving a resignation */
+export interface ReplacementSummaryDto {
+  replacementSlotId: string;
+  jobId: string;
+  status: ReplacementSlotStatus;
+  expiresAt: string | null;
+}
+
+/** Body for POST /internal/replacement-slots/{replacementSlotId}/cancel */
+export interface CancelReplacementSlotRequest {
+  reason: string;
+  concurrencyToken: string;
+}
+
+/** Response of POST /placements/{id}/resignation/resolve */
+export interface WarrantyClaimResponse {
+  placementId: string;
+  warrantyStatus: WarrantyStatus;
+  placementStatus: string;
+  commissions: { commissionId: string; status: string }[];
+  replacement?: ReplacementSummaryDto | null;
+}
+
+/** Placement summary item for linking warranty / replacement slots */
+export interface PlacementListItem {
+  placementId: string;
+  applicationId: string;
+  offerId: string;
+  actualStartDate: string;
+  position?: string | null;
+  department?: string | null;
+  status: string;
+  candidate: {
+    candidateId: string;
+    fullName: string;
+    email: string;
+    phoneNumber?: string | null;
+  };
+  job: {
+    jobId: string;
+    title: string;
+    companyId: string;
+    companyName: string;
+  };
+}
+

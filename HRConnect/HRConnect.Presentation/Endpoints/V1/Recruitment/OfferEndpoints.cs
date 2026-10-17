@@ -183,7 +183,9 @@ public static class OfferEndpoints
                     ConcurrencyToken: request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
                     IsClientCompanyUser: true,
-                    IsInternalHrOrAdmin: false
+                    IsInternalHrOrAdmin: false,
+                    SalaryBasis: request.SalaryBasis,
+                    SalaryPeriod: request.SalaryPeriod
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -203,7 +205,7 @@ public static class OfferEndpoints
             }
             catch (BadRequestException ex)
             {
-                return Results.BadRequest(new { success = false, message = ex.Message });
+                return Results.BadRequest(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
             }
         })
         .WithName("UpdateOfferDraft")
@@ -264,7 +266,7 @@ public static class OfferEndpoints
             }
             catch (BadRequestException ex)
             {
-                return Results.BadRequest(new { success = false, message = ex.Message });
+                return Results.BadRequest(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
             }
         })
         .WithName("SendOffer")
@@ -415,6 +417,10 @@ public class UpdateOfferDraftRequest
 {
     public decimal? Salary { get; set; }
     public string? CurrencyCode { get; set; }
+    /// <summary>GROSS hoặc NET.</summary>
+    public string? SalaryBasis { get; set; }
+    /// <summary>MONTHLY hoặc ANNUAL.</summary>
+    public string? SalaryPeriod { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? ExpiryDate { get; set; }
     public string? OfferDocumentUrl { get; set; }

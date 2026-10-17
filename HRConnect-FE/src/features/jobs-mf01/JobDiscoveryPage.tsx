@@ -11,6 +11,7 @@ import { CheckCircleFilled, EnvironmentOutlined, SearchOutlined } from '@ant-des
 import type { EmploymentType, Job, JobSearchParams } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
+import { BookmarkButton } from '@/components/common/BookmarkButton';
 import { useJobSearch, usePublicJobSearch, useServiceTypes } from './useJobQueries';
 import { EMPLOYMENT_TYPE_LABEL, SERVICE_TYPE_LABEL, formatDate, formatExperience, formatSalary } from './jobDisplay';
 
@@ -30,11 +31,14 @@ const JobCard: React.FC<{ job: Job; detailBasePath: string; isApplied?: boolean 
       >
         {job.title}
       </Link>
-      {isApplied && (
-        <Tag color="success" icon={<CheckCircleFilled />} className="m-0 shrink-0 font-medium text-[11px]">
-          Đã ứng tuyển
-        </Tag>
-      )}
+      <div className="flex items-center gap-1.5 shrink-0">
+        <BookmarkButton jobId={job.jobId} jobTitle={job.title} size="sm" />
+        {isApplied && (
+          <Tag color="success" icon={<CheckCircleFilled />} className="m-0 shrink-0 font-medium text-[11px]">
+            Đã ứng tuyển
+          </Tag>
+        )}
+      </div>
     </div>
     <Text type="secondary" className="text-sm">
       {job.companyName ?? '—'}

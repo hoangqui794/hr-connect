@@ -75,6 +75,16 @@ public class FinanceRepository : IFinanceRepository
     public Task<ReplacementSlot?> GetReplacementSlotForConsentForUpdateAsync(
         Guid replacementSlotId,
         CancellationToken cancellationToken = default)
+        => GetReplacementSlotWithLockAsync(replacementSlotId, cancellationToken);
+
+    public Task<ReplacementSlot?> GetReplacementSlotForPlacementForUpdateAsync(
+        Guid replacementSlotId,
+        CancellationToken cancellationToken = default)
+        => GetReplacementSlotWithLockAsync(replacementSlotId, cancellationToken);
+
+    private Task<ReplacementSlot?> GetReplacementSlotWithLockAsync(
+        Guid replacementSlotId,
+        CancellationToken cancellationToken)
     {
         if (string.Equals(
                 _context.Database.ProviderName,
@@ -114,6 +124,7 @@ public class FinanceRepository : IFinanceRepository
     public Task<Placement?> GetPlacementForFinanceAsync(Guid placementId, CancellationToken cancellationToken = default) =>
         _context.Placements
             .Include(p => p.Application).ThenInclude(a => a.Job)
+            .Include(p => p.Offer)
             .Include(p => p.Warranty)
             .Include(p => p.ServiceFee)
             .Include(p => p.Commissions)

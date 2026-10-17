@@ -133,6 +133,9 @@ public class OfferRepository : IOfferRepository
                 .ThenInclude(a => a.Job)
                     .ThenInclude(j => j.Company)
             .Include(o => o.Application)
+                .ThenInclude(a => a.Job)
+                    .ThenInclude(j => j.ServiceType)
+            .Include(o => o.Application)
                 .ThenInclude(a => a.Candidate)
                     .ThenInclude(c => c.User)
             .FirstOrDefaultAsync(o => o.OfferId == offerId, cancellationToken);

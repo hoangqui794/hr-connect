@@ -13,5 +13,7 @@ public record UpdateOfferDraftCommand(
     Guid? ConcurrencyToken,
     Guid CurrentUserId,
     bool IsClientCompanyUser = false,
-    bool IsInternalHrOrAdmin = false
+    bool IsInternalHrOrAdmin = false,
+    string? SalaryBasis = null,
+    string? SalaryPeriod = null
 ) : IRequest<UpdateOfferDraftResponse>;

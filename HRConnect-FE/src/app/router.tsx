@@ -12,14 +12,11 @@
  *   /register          → LoginPage (public)
  *   / (AppShell)
  *     dashboard        → Dashboard          [CLIENT, CANDIDATE, AFFILIATE, INTERNAL_HR, ADMIN]
- *     jobs             → JobBoard           [CLIENT, AFFILIATE, INTERNAL_HR, ADMIN, CANDIDATE]
- *     jobs/create      → CreateJobWizard    [CLIENT, ADMIN]
- *     affiliate/referral → ReferralForm     [AFFILIATE]
- *     affiliate/ledger → FinancialLedger    [AFFILIATE, INTERNAL_HR, ADMIN]
- *     screening        → AIScreening        [INTERNAL_HR, ADMIN, CLIENT]
- *     candidates       → CandidateList      [INTERNAL_HR, ADMIN, CLIENT]
- *     cv-builder       → CVBuilder          [CANDIDATE]
- *     admin            → AdminDashboard     [ADMIN]
+ *     jobs             → Mf01InAppJobDiscoveryPage
+ *     jobs/create      → Mf01JobFormPage    [CLIENT, ADMIN]
+ *     screening        → HrScreeningPage    [INTERNAL_HR, ADMIN, CLIENT]
+ *     candidates       → redirect /hr/screening?status=all
+ *     admin            → ConsoleOverviewPage [ADMIN]
  *   *                  → redirect /
  */
 import React from 'react';
@@ -140,11 +137,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'screening',
-        element: protectedPage('/screening', <AppRoutes.AIScreening />),
+        element: protectedPage('/screening', <AppRoutes.HrScreeningPage />),
       },
       {
         path: 'candidates',
-        element: protectedPage('/candidates', <AppRoutes.CandidateList />),
+        element: <Navigate to="/hr/screening?status=all" replace />,
       },
     ],
   },
@@ -207,9 +204,10 @@ export const router = createBrowserRouter([
       { path: 'affiliate-cvs', element: <AppRoutes.CandidateAffiliateCvsPage /> },
       { path: 'affiliate-cvs/:cvId', element: <AppRoutes.CandidateAffiliateCvDetailPage /> },
       { path: 'settings/email-identities', element: <AppRoutes.CandidateIdentityPage /> },
+      { path: 'saved-jobs', element: <AppRoutes.CandidateSavedJobsPage /> },
       { path: 'profile', element: <AppRoutes.CandidateProfilePage /> },
-      // Saved jobs had no backend; send people to the job search.
-      { path: 'saved-jobs', element: <Navigate to="/candidate/jobs" replace /> },
+      { path: 'interviews/:interviewId', element: <AppRoutes.CandidateInterviewDetailPage /> },
+      { path: 'applications/:applicationId/interviews/:interviewId', element: <AppRoutes.CandidateInterviewDetailPage /> },
     ],
   },
   { path: '/profile', element: <Navigate to="/candidate/profile" replace /> },
@@ -289,6 +287,7 @@ export const router = createBrowserRouter([
       { path: 'company', element: <AppRoutes.ClientCompanyPage /> },
       // MF-05 warranty has no backend API yet: explicit empty state, no mock numbers.
       { path: 'warranty', element: <AppRoutes.ClientWarrantyPlaceholder /> },
+      { path: 'placements/:placementId', element: <AppRoutes.PlacementDetailPage /> },
     ],
   },
 
@@ -317,6 +316,7 @@ export const router = createBrowserRouter([
       // No backend API yet: explicit empty state, no mock numbers.
       { path: 'placement-review', element: <AppRoutes.HrPlacementReviewPlaceholder /> },
       { path: 'warranty-tracking', element: <AppRoutes.HrWarrantyPlaceholder /> },
+      { path: 'placements/:placementId', element: <AppRoutes.PlacementDetailPage /> },
     ],
   },
 

@@ -67,6 +67,7 @@ public static class AuditActions
     public const string OfferWithdrawn = "OFFER_WITHDRAWN";
     public const string OfferExpired = "OFFER_EXPIRED";
     public const string PlacementConfirmed = "PLACEMENT_CONFIRMED";
+    public const string PlacementStartDateCorrected = "PLACEMENT_START_DATE_CORRECTED";
     public const string PlacementFinanceInitialized = "PLACEMENT_FINANCE_INITIALIZED";
     public const string WarrantyPassed = "WARRANTY_PASSED";
     public const string WarrantyClaimReported = "WARRANTY_CLAIM_REPORTED";
@@ -74,9 +75,11 @@ public static class AuditActions
     public const string ServiceFeeOverdue = "SERVICE_FEE_OVERDUE";
     public const string ServiceFeeDue = "SERVICE_FEE_DUE";
     public const string ReplacementSlotOpened = "REPLACEMENT_SLOT_OPENED";
+    public const string ReplacementSlotFilled = "REPLACEMENT_SLOT_FILLED";
     public const string ReplacementSlotCancelled = "REPLACEMENT_SLOT_CANCELLED";
     public const string ReplacementSlotExpired = "REPLACEMENT_SLOT_EXPIRED";
     public const string ReplacementNotAllowed = "REPLACEMENT_NOT_ALLOWED";
+    public const string ReplacementAcceptedAsNewHire = "REPLACEMENT_ACCEPTED_AS_NEW_HIRE";
     public const string ServiceFeePaymentRecorded = "SERVICE_FEE_PAYMENT_RECORDED";
     public const string CommissionEarned = "COMMISSION_EARNED";
     public const string CommissionApproved = "COMMISSION_APPROVED";

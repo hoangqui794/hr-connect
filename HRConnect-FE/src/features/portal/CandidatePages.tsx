@@ -47,12 +47,15 @@ import {
   GiftOutlined,
   CalendarOutlined,
   HistoryOutlined,
+  CopyOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
 import { candidateApplicationsApi, candidateConsentApi, candidateCvApi } from '@/services/api/mf02Api';
 import { mf04Api, isCandidateOfferRespondable } from '@/services/api/mf04Api';
+import { CandidateInterviewDetailModal } from '@/features/candidates/CandidateInterviewDetailModal';
 import type { CandidateOfferSummaryDto } from '@/types/api/mf04';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
@@ -60,6 +63,7 @@ import type { CandidateApplication } from '@/types/api/mf02';
 import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { CANDIDATE_STEPS, MAX_CV_MB, candidateStage, cvFileError, fileSize } from './mf02Labels';
 import { CandidatePageHeader, CandidateSurface } from './candidate/CandidateUi';
+import { useSavedJobs } from '@/hooks/useSavedJobs';
 
 dayjs.extend(relativeTimePlugin);
 dayjs.locale('vi');
@@ -150,6 +154,7 @@ export const CandidateHomePage: React.FC = () => {
   const user = useAuthStore((s) => s.user);
   const apps = useMyApplications();
   const cvs = useCandidateCvs();
+  const { savedJobsCount } = useSavedJobs();
   const items = apps.data?.items ?? [];
   const active = items.filter((a) => !candidateStage(a.status).closed);
   const interviewing = items.filter((a) => a.status === 'INTERVIEW' || a.status === 'SHORTLISTED').length;
@@ -193,13 +198,14 @@ export const CandidateHomePage: React.FC = () => {
         {[
           { label: 'Đơn đã nộp', value: items.length, to: '/candidate/applications' },
           { label: 'Đang xử lý', value: active.length, to: '/candidate/applications' },
+          { label: 'Việc đã lưu', value: savedJobsCount, to: '/candidate/saved-jobs' },
           { label: 'CV trong kho', value: cvs.data?.length ?? 0, to: '/candidate/cvs' },
         ].map((k) => (
           <button
             key={k.label}
             type="button"
             onClick={() => navigate(k.to)}
-            className="candidate-surface candidate-stat-card cursor-pointer p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--candidate-accent)]"
+            className="candidate-surface candidate-stat-card cursor-pointer p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-2 focus-visible:outline-[color:var(--candidate-accent)]"
           >
             <span className="block text-[13px] font-medium text-slate-600">{k.label}</span>
             <span className="mt-1 block text-[28px] font-bold tabular-nums text-slate-900">
@@ -504,6 +510,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
   const [selectedOffer, setSelectedOffer] = useState<CandidateOfferSummaryDto | null>(null);
   const [offerResponseChoice, setOfferResponseChoice] = useState<'ACCEPTED' | 'DECLINED'>('ACCEPTED');
   const [declineReason, setDeclineReason] = useState('');
+  const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null);
   const respondOfferMutation = useMutation({
     mutationFn: async () => {
       if (!selectedOffer) return;
@@ -686,18 +693,43 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  {iv.meetingLink && (
+                  <Space wrap>
                     <Button
-                      type="primary"
                       size="small"
-                      href={iv.meetingLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      icon={<VideoCameraOutlined />}
+                      icon={<InfoCircleOutlined />}
+                      onClick={() => setSelectedInterviewId(iv.interviewId)}
                     >
-                      Vào phòng họp
+                      Chi tiết
                     </Button>
-                  )}
+                    {iv.meetingLink && (
+                      <>
+                        <Tooltip title="Sao chép link phòng họp">
+                          <Button
+                            size="small"
+                            icon={<CopyOutlined />}
+                            onClick={() => {
+                              if (navigator.clipboard) {
+                                navigator.clipboard.writeText(iv.meetingLink);
+                                message.success('Đã sao chép link phòng họp!');
+                              } else {
+                                message.info(iv.meetingLink);
+                              }
+                            }}
+                          />
+                        </Tooltip>
+                        <Button
+                          type="primary"
+                          size="small"
+                          href={iv.meetingLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          icon={<VideoCameraOutlined />}
+                        >
+                          Vào phòng họp
+                        </Button>
+                      </>
+                    )}
+                  </Space>
                 </div>
               </Card>
             ))}
@@ -952,6 +984,13 @@ export const CandidateApplicationDetailPage: React.FC = () => {
           )}
         </div>
       </Modal>
+
+      {/* Modal 3: Interview Detail */}
+      <CandidateInterviewDetailModal
+        open={Boolean(selectedInterviewId)}
+        interviewId={selectedInterviewId || undefined}
+        onClose={() => setSelectedInterviewId(null)}
+      />
     </div>
   );
 };

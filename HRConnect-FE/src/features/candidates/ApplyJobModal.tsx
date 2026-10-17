@@ -23,7 +23,7 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
-import { useCandidateStore, CandidateCV } from '@/stores/candidateStore';
+import type { CandidateCV } from './CandidateProfilePage';
 import type { UploadProps } from 'antd';
 
 const { Text, Paragraph } = Typography;
@@ -51,7 +51,8 @@ export const ApplyJobModal: React.FC<ApplyJobModalProps> = ({
   onSuccess,
 }) => {
   const { user } = useAuthStore();
-  const { profile, cvs, applyJob, addCV } = useCandidateStore();
+  const [userCvs, setUserCvs] = useState<CandidateCV[]>([]);
+  const addCV = (newCv: CandidateCV) => setUserCvs((prev) => [newCv, ...prev]);
   const [form] = Form.useForm();
 
   const [selectedCvId, setSelectedCvId] = useState<string>('');
@@ -59,10 +60,6 @@ export const ApplyJobModal: React.FC<ApplyJobModalProps> = ({
   const [isQuickUploadOpen, setIsQuickUploadOpen] = useState(false);
 
   const currentUserEmail = (user?.email || '').toLowerCase().trim();
-  const userCvs = React.useMemo(() => {
-    if (!currentUserEmail) return [];
-    return (cvs || []).filter((c) => (c.userEmail || '').toLowerCase().trim() === currentUserEmail);
-  }, [currentUserEmail, cvs]);
 
   // Set default selected CV and contact info whenever modal opens
   useEffect(() => {
@@ -71,13 +68,13 @@ export const ApplyJobModal: React.FC<ApplyJobModalProps> = ({
       setSelectedCvId(defaultCv?.id || '');
 
       form.setFieldsValue({
-        fullName: profile.fullName || user?.name || '',
-        email: profile.email || user?.email || '',
-        phone: profile.phone || '0912 345 678',
+        fullName: user?.name || '',
+        email: user?.email || '',
+        phone: user?.phone || '0912 345 678',
         coverLetter: '',
       });
     }
-  }, [open, userCvs, profile, user, form]);
+  }, [open, userCvs, user, form]);
 
   const uploadProps: UploadProps = {
     name: 'file',
@@ -128,24 +125,6 @@ export const ApplyJobModal: React.FC<ApplyJobModalProps> = ({
 
       setSubmitting(true);
       setTimeout(() => {
-        const salaryString = job.salaryText
-          ? job.salaryText
-          : job.salaryMin && job.salaryMax
-          ? `${(job.salaryMin / 1000000).toFixed(0)} - ${(job.salaryMax / 1000000).toFixed(0)} Triệu VNĐ`
-          : 'Thỏa thuận theo năng lực';
-
-        applyJob({
-          jobId: job.id,
-          jobTitle: job.title,
-          company: job.company,
-          salary: salaryString,
-          cvUsed: chosenCv?.name || 'CV chính',
-          coverLetter: values.coverLetter,
-          applicantName: values.fullName,
-          applicantEmail: values.email,
-          applicantPhone: values.phone,
-        });
-
         setSubmitting(false);
         message.success({
           content: 'Nộp hồ sơ thành công! Trạng thái đã được lưu vào Lịch sử ứng tuyển.',

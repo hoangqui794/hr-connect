@@ -172,6 +172,15 @@ export const mf04Api = {
   },
 
   /**
+   * GET /api/v1/interviews/:interviewId
+   * Lấy chi tiết lịch phỏng vấn.
+   */
+  async getInterviewDetail(interviewId: string) {
+    const { candidateInterviewApi } = await import('./candidateInterviewApi');
+    return candidateInterviewApi.getInterviewDetail(interviewId);
+  },
+
+  /**
    * GET /api/v1/offers
    * Lấy danh sách lời mời nhận việc (scoped cho ứng viên hiện tại).
    */

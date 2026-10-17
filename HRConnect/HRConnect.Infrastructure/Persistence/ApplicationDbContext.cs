@@ -2171,6 +2171,8 @@ public partial class ApplicationDbContext : DbContext
             {
                 t.HasCheckConstraint("ck_offer_version_positive", "offer_version > 0");
                 t.HasCheckConstraint("ck_offer_salary_positive", "salary IS NULL OR salary >= 0");
+                t.HasCheckConstraint("ck_offer_salary_basis", "salary_basis IS NULL OR salary_basis IN ('GROSS','NET')");
+                t.HasCheckConstraint("ck_offer_salary_period", "salary_period IS NULL OR salary_period IN ('MONTHLY','ANNUAL')");
                 t.HasCheckConstraint("ck_offer_response_time", "responded_at IS NULL OR sent_at IS NULL OR responded_at >= sent_at");
                 t.HasCheckConstraint("ck_offer_declined_response", "status <> 'DECLINED' OR responded_at IS NOT NULL");
             });
@@ -2206,6 +2208,12 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Salary)
                 .HasPrecision(18, 2)
                 .HasColumnName("salary");
+            entity.Property(e => e.SalaryBasis)
+                .HasMaxLength(10)
+                .HasColumnName("salary_basis");
+            entity.Property(e => e.SalaryPeriod)
+                .HasMaxLength(10)
+                .HasColumnName("salary_period");
             entity.Property(e => e.SentAt).HasColumnName("sent_at");
             entity.Property(e => e.StartDate).HasColumnName("start_date");
             entity.Property(e => e.Status)

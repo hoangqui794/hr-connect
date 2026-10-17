@@ -51,13 +51,25 @@ import {
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
-import { useCandidateStore, CandidateCV } from '@/stores/candidateStore';
 import { mf04Api } from '@/services/api/mf04Api';
 import type { UpdateCandidateProfileCommand, CandidateProfileData } from '@/types/api/mf04';
 import { candidateService, type CandidateSkillItemDto } from '@/services/candidateService';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { AvatarUpload } from '@/components/common/AvatarUpload';
 import type { UploadProps } from 'antd';
+
+export interface CandidateCV {
+  id: string;
+  userEmail?: string;
+  name: string;
+  updatedAt: string;
+  size: string;
+  isDefault: boolean;
+  atsScore: number;
+  type: 'Platform Builder' | 'Template ATS' | 'File Upload';
+  fileUrl?: string;
+  previewUrl?: string;
+}
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -114,7 +126,7 @@ export const CandidateProfilePage: React.FC = () => {
 
   const { user, updateUser } = useAuthStore();
   const currentUserEmail = (user?.email || '').toLowerCase().trim();
-  const { cvs, addCV, setDefaultCV, deleteCV } = useCandidateStore();
+  const [localCvs, setLocalCvs] = useState<CandidateCV[]>([]);
 
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
@@ -339,9 +351,14 @@ export const CandidateProfilePage: React.FC = () => {
 
   // Only display CVs created or uploaded by current user
   const myCvs = React.useMemo(() => {
-    if (!currentUserEmail) return [];
-    return (cvs || []).filter((c) => (c.userEmail || '').toLowerCase().trim() === currentUserEmail);
-  }, [currentUserEmail, cvs]);
+    if (!currentUserEmail) return localCvs;
+    return localCvs.filter((c) => !c.userEmail || c.userEmail.toLowerCase().trim() === currentUserEmail);
+  }, [currentUserEmail, localCvs]);
+
+  const addCV = (newCv: CandidateCV) => setLocalCvs((prev) => [newCv, ...prev]);
+  const setDefaultCV = (id: string) =>
+    setLocalCvs((prev) => prev.map((c) => ({ ...c, isDefault: c.id === id })));
+  const deleteCV = (id: string) => setLocalCvs((prev) => prev.filter((c) => c.id !== id));
 
   /** Returns initials: first char of first word + first char of last word */
   const getInitials = (name?: string): string => {

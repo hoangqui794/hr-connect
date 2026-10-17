@@ -14,5 +14,8 @@ public record CreateOfferDraftResponse(
     string? OfferDocumentUrl,
     Guid ConcurrencyToken,
     DateTime CreatedAt,
-    string ApplicationStatus
+    string ApplicationStatus,
+    string? SalaryBasis = null,
+    string? SalaryPeriod = null,
+    decimal? MonthlyGrossSalary = null
 );

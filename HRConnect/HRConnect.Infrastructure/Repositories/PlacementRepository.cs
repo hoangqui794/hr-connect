@@ -109,6 +109,7 @@ public class PlacementRepository : IPlacementRepository
                     .ThenInclude(c => c.User)
             .Include(p => p.Offer)
             .Include(p => p.ConfirmedByNavigation)
+            .Include(p => p.ReplacementSlot)
             .Include(p => p.Probation)
             .Include(p => p.Warranty)
             .AsSplitQuery()

@@ -40,90 +40,20 @@ const VerifyOtpPage = React.lazy(() =>
 const Dashboard = React.lazy(() =>
   import('@/features/dashboard/Dashboard').then((m: any) => ({ default: m.default || m.Dashboard }))
 );
-const ClientDashboardPage = React.lazy(() =>
-  import('@/pages/client/ClientDashboardPage').then((m: any) => ({ default: m.default || m.ClientDashboardPage }))
-);
-const AffiliateDashboardPage = React.lazy(() =>
-  import('@/pages/affiliate/AffiliateDashboardPage').then((m: any) => ({ default: m.default || m.AffiliateDashboardPage }))
-);
-const HRDashboardPage = React.lazy(() =>
-  import('@/pages/hr/HRDashboardPage').then((m: any) => ({ default: m.default || m.HRDashboardPage }))
-);
-const CandidateDashboardPage = React.lazy(() =>
-  import('@/pages/candidate/CandidateDashboardPage').then((m: any) => ({ default: m.default || m.CandidateDashboardPage }))
-);
-const JobBoard = React.lazy(() =>
-  import('@/features/jobs/JobBoard').then((m: any) => ({ default: m.default || m.JobBoard }))
-);
-const JobSearchPage = React.lazy(() =>
-  import('@/pages/JobSearchPage').then((m: any) => ({ default: m.default || m.JobSearchPage }))
-);
-const JobDetailPage = React.lazy(() =>
-  import('@/pages/JobDetailPage').then((m: any) => ({ default: m.default || m.JobDetailPage }))
-);
-// CreateJobWizard is the production wizard for MF-01 | SCR-CLI-01
-const CreateJobWizard = React.lazy(() =>
-  import('@/features/jobs/CreateJobWizard').then((m: any) => ({ default: m.default || m.CreateJobWizard }))
-);
-const ReferralForm = React.lazy(() =>
-  import('@/features/affiliate/ReferralForm').then((m: any) => ({ default: m.default || m.ReferralForm }))
-);
-const FinancialLedger = React.lazy(() =>
-  import('@/features/affiliate/FinancialLedger').then((m: any) => ({ default: m.default || m.FinancialLedger }))
-);
-const AIScreening = React.lazy(() =>
-  import('@/features/screening/AIScreening').then((m: any) => ({ default: m.default || m.AIScreening }))
-);
-const CandidateList = React.lazy(() =>
-  import('@/features/candidates/CandidateList').then((m: any) => ({ default: m.default || m.CandidateList }))
-);
 const CVBuilder = React.lazy(() =>
   import('@/features/candidates/CVBuilder').then((m: any) => ({ default: m.default || m.CVBuilder }))
 );
 const CandidateProfilePage = React.lazy(() =>
   import('@/features/candidates/CandidateProfilePage').then((m: any) => ({ default: m.default || m.CandidateProfilePage }))
 );
-const CandidateApplicationsPage = React.lazy(() =>
-  import('@/features/candidates/CandidateApplicationsPage').then((m: any) => ({ default: m.default || m.CandidateApplicationsPage }))
-);
 const CandidateSavedJobsPage = React.lazy(() =>
   import('@/features/candidates/CandidateSavedJobsPage').then((m: any) => ({ default: m.default || m.CandidateSavedJobsPage }))
 );
-const AdminDashboard = React.lazy(() =>
-  import('@/features/admin/AdminDashboard').then((m: any) => ({ default: m.default || m.AdminDashboard }))
+const CandidateInterviewDetailPage = React.lazy(() =>
+  import('@/features/candidates/CandidateInterviewDetailPage').then((m: any) => ({ default: m.default || m.CandidateInterviewDetailPage }))
 );
-const AdminUsersPage = React.lazy(() =>
-  import('@/features/admin/AdminUsersPage').then((m: any) => ({ default: m.default || m.AdminUsersPage }))
-);
-const AdminCompaniesPage = React.lazy(() =>
-  import('@/features/admin/AdminCompaniesPage').then((m: any) => ({ default: m.default || m.AdminCompaniesPage }))
-);
-const AdminAffiliatesPage = React.lazy(() =>
-  import('@/features/admin/AdminAffiliatesPage').then((m: any) => ({ default: m.default || m.AdminAffiliatesPage }))
-);
-const AdminDisputesPage = React.lazy(() =>
-  import('@/features/admin/AdminDisputesPage').then((m: any) => ({ default: m.default || m.AdminDisputesPage }))
-);
-const AdminPayoutsPage = React.lazy(() =>
-  import('@/features/admin/AdminPayoutsPage').then((m: any) => ({ default: m.default || m.AdminPayoutsPage }))
-);
-const AdminSettingsPage = React.lazy(() =>
-  import('@/features/admin/AdminSettingsPage').then((m: any) => ({ default: m.default || m.AdminSettingsPage }))
-);
-const AdminAuditTrailPage = React.lazy(() =>
-  import('@/features/admin/AdminAuditTrailPage').then((m: any) => ({ default: m.default || m.AdminAuditTrailPage }))
-);
-const HRInterviewsPage = React.lazy(() =>
-  import('@/features/hr/HRInterviewsPage').then((m: any) => ({ default: m.default || m.HRInterviewsPage }))
-);
-const HROffersPage = React.lazy(() =>
-  import('@/features/hr/HROffersPage').then((m: any) => ({ default: m.default || m.HROffersPage }))
-);
-const HRWarrantyTrackingPage = React.lazy(() =>
-  import('@/features/hr/HRWarrantyTrackingPage').then((m: any) => ({ default: m.default || m.HRWarrantyTrackingPage }))
-);
-const ClientLayout = React.lazy(() =>
-  import('@/components/layout/ClientLayout').then((m: any) => ({ default: m.default || m.ClientLayout }))
+const PlacementDetailPage = React.lazy(() =>
+  import('@/features/finance-mf05/PlacementDetailPage').then((m: any) => ({ default: m.default || m.PlacementDetailPage }))
 );
 // ── Admin console pages backed by the real API (features/admin-console) ──────
 const ConsoleOverviewPage = React.lazy(() =>
@@ -273,28 +203,6 @@ const Mf01PublicJobSearchPage = React.lazy(() =>
 );
 const Mf01PublicJobDetailPage = React.lazy(() =>
   import('@/features/jobs-mf01/PublicJobPages').then((m) => ({ default: m.PublicJobDetailPage }))
-);
-
-const ClientJobsPage = React.lazy(() =>
-  import('@/features/jobs/ClientJobsPage').then((m: any) => ({ default: m.default || m.ClientJobsPage }))
-);
-const ClientCandidatePoolPage = React.lazy(() =>
-  import('@/pages/client/ClientCandidatePoolPage').then((m: any) => ({ default: m.default || m.ClientCandidatePoolPage }))
-);
-const ClientInterviewsOffersPage = React.lazy(() =>
-  import('@/pages/client/ClientInterviewsOffersPage').then((m: any) => ({ default: m.default || m.ClientInterviewsOffersPage }))
-);
-const ClientWarrantyPage = React.lazy(() =>
-  import('@/pages/client/ClientWarrantyPage').then((m: any) => ({ default: m.default || m.ClientWarrantyPage }))
-);
-const AffiliateLayout = React.lazy(() =>
-  import('@/components/layout/AffiliateLayout').then((m: any) => ({ default: m.default || m.AffiliateLayout }))
-);
-const AffiliateSubmissionsPage = React.lazy(() =>
-  import('@/pages/affiliate/AffiliateSubmissionsPage').then((m: any) => ({ default: m.default || m.AffiliateSubmissionsPage }))
-);
-const AffiliateCommissionsPage = React.lazy(() =>
-  import('@/pages/affiliate/AffiliateCommissionsPage').then((m: any) => ({ default: m.default || m.AffiliateCommissionsPage }))
 );
 
 // ---------------------------------------------------------------------------
@@ -491,41 +399,11 @@ export const AppRoutes = {
   LoginPage,
   RegisterPage,
   Dashboard,
-  ClientDashboardPage,
-  AffiliateDashboardPage,
-  HRDashboardPage,
-  CandidateDashboardPage,
-  JobBoard,
-  CreateJobWizard,
-  ReferralForm,
-  FinancialLedger,
-  AIScreening,
-  CandidateList,
   CVBuilder,
   CandidateProfilePage,
-  CandidateApplicationsPage,
   CandidateSavedJobsPage,
-  AdminDashboard,
-  AdminUsersPage,
-  AdminCompaniesPage,
-  AdminAffiliatesPage,
-  AdminDisputesPage,
-  AdminPayoutsPage,
-  AdminSettingsPage,
-  AdminAuditTrailPage,
-  HRInterviewsPage,
-  HROffersPage,
-  HRWarrantyTrackingPage,
-  ClientLayout,
-  ClientJobsPage,
-  ClientCandidatePoolPage,
-  ClientInterviewsOffersPage,
-  ClientWarrantyPage,
-  AffiliateLayout,
-  AffiliateSubmissionsPage,
-  AffiliateCommissionsPage,
-  JobDetailPage,
-  JobSearchPage,
+  CandidateInterviewDetailPage,
+  PlacementDetailPage,
   VerifyOtpPage,
   Mf01ClientJobsListPage,
   Mf01JobFormPage,

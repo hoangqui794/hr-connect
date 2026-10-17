@@ -12,5 +12,9 @@ public record ConfirmStartWorkResponse(
     Guid ConcurrencyToken,
     IReadOnlyList<string> AllowedActions,
     // MF-05 records created for a HEADHUNT_COD placement; null for other service types.
-    PlacementFinanceResult? Finance = null
+    PlacementFinanceResult? Finance = null,
+    bool IsReplacement = false,
+    Guid? ReplacementSlotId = null,
+    Guid? ReplacesPlacementId = null,
+    bool AcceptedAsNewHire = false
 );

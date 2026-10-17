@@ -177,6 +177,29 @@ describe('mf04Api service', () => {
       expect(result[0].interviewRound).toBe(1);
     });
 
+    it('getInterviewDetail calls /interviews/:interviewId and returns candidate interview detail', async () => {
+      vi.mocked(apiClient.get).mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: {
+            interviewId: 'iv-mf04',
+            jobTitle: 'Senior Fullstack Engineer',
+            companyName: 'VinFast',
+            interviewRound: 2,
+            interviewType: 'ONLINE',
+            status: 'SCHEDULED',
+          },
+        },
+      } as any);
+
+      const result = await mf04Api.getInterviewDetail('iv-mf04');
+
+      expect(apiClient.get).toHaveBeenCalledWith('/interviews/iv-mf04');
+      expect(result.interviewId).toBe('iv-mf04');
+      expect(result.jobTitle).toBe('Senior Fullstack Engineer');
+      expect(result.companyName).toBe('VinFast');
+    });
+
     it('getOffers calls /offers and computes canRespond correctly', async () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
