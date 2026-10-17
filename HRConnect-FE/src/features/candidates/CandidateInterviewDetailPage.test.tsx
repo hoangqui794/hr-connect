@@ -10,9 +10,6 @@ import { candidateInterviewApi } from '@/services/api/candidateInterviewApi';
 vi.mock('@/services/api/candidateInterviewApi', () => ({
   candidateInterviewApi: {
     getInterviewDetail: vi.fn(),
-    getInterviewHistory: vi.fn(),
-    confirmAttendance: vi.fn(),
-    requestReschedule: vi.fn(),
   },
 }));
 
@@ -47,17 +44,12 @@ const mockOnlineInterview = {
   companyName: 'VNG Corporation',
   candidateId: 'cand-1',
   candidateFullName: 'Nguyễn Văn A',
-  candidateEmail: 'nguyenvana@example.com',
-  candidatePhone: '0901234567',
   interviewRound: 1,
   interviewType: 'ONLINE',
   scheduledAt: '2026-10-25T14:00:00Z',
   durationMinutes: 45,
   meetingLink: 'https://meet.google.com/abc-defg-hij',
   status: 'SCHEDULED',
-  participants: [
-    { userId: 'u-1', name: 'Lê Hoàng Nam', role: 'Technical Lead' },
-  ],
   statusHistories: [
     {
       interviewStatusHistoryId: 'hist-1',
@@ -69,7 +61,6 @@ const mockOnlineInterview = {
   ],
   createdAt: '2026-10-20T08:00:00Z',
   updatedAt: '2026-10-20T08:00:00Z',
-  isConfirmed: false,
 };
 
 const mockOfflineInterview = {
@@ -153,9 +144,8 @@ describe('CandidateInterviewDetailPage & CandidateInterviewDetailView', () => {
     // Calendar button
     expect(screen.getByRole('link', { name: /Google Calendar/i })).toBeInTheDocument();
 
-    // Participants
-    expect(screen.getByText('Lê Hoàng Nam')).toBeInTheDocument();
-    expect(screen.getByText('Technical Lead')).toBeInTheDocument();
+    expect(screen.queryByText(/Xác nhận tham gia/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Yêu cầu dời lịch/i)).not.toBeInTheDocument();
   });
 
   it('renders offline interview with address and google maps link', async () => {
@@ -173,68 +163,15 @@ describe('CandidateInterviewDetailPage & CandidateInterviewDetailView', () => {
     expect(screen.getByRole('link', { name: /Google Maps/i })).toBeInTheDocument();
   });
 
-  it('calls confirmAttendance when candidate confirms participation', async () => {
-    vi.mocked(candidateInterviewApi.getInterviewDetail).mockResolvedValue(mockOnlineInterview as any);
-    vi.mocked(candidateInterviewApi.confirmAttendance).mockResolvedValueOnce({
-      success: true,
-      message: 'Bạn đã xác nhận sẵn sàng tham gia buổi phỏng vấn!',
-    });
+  it('does not render staff-only participants from an unsafe initial payload', async () => {
+    vi.mocked(candidateInterviewApi.getInterviewDetail).mockResolvedValue({
+      ...mockOnlineInterview,
+      participants: [{ userId: 'staff-1', name: 'Nội bộ', role: 'Interviewer' }],
+    } as any);
 
     renderWithProviders(<CandidateInterviewDetailPage />, '/candidate/interviews/iv-online-1');
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Xác nhận tham gia/i })).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Xác nhận tham gia/i }));
-
-    // Popconfirm opens
-    await waitFor(() => {
-      expect(screen.getByText(/Xác nhận tham gia buổi phỏng vấn/i)).toBeInTheDocument();
-    });
-
-    const confirmOkBtn = screen.getByRole('button', { name: 'Xác nhận' });
-    fireEvent.click(confirmOkBtn);
-
-    await waitFor(() => {
-      expect(candidateInterviewApi.confirmAttendance).toHaveBeenCalledWith({
-        interviewId: 'iv-online-1',
-      });
-    });
-  });
-
-  it('allows candidate to submit reschedule request modal', async () => {
-    vi.mocked(candidateInterviewApi.getInterviewDetail).mockResolvedValue(mockOnlineInterview as any);
-    vi.mocked(candidateInterviewApi.requestReschedule).mockResolvedValueOnce({
-      success: true,
-      message: 'Yêu cầu hỗ trợ dời lịch phỏng vấn đã được ghi nhận',
-    });
-
-    renderWithProviders(<CandidateInterviewDetailPage />, '/candidate/interviews/iv-online-1');
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Yêu cầu dời lịch/i })).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Yêu cầu dời lịch/i }));
-
-    // Modal opens
-    await waitFor(() => {
-      expect(screen.getByText(/Lý do xin dời lịch/i)).toBeInTheDocument();
-    });
-
-    const reasonInput = screen.getByPlaceholderText(/Tôi có lịch thi\/công tác đột xuất/i);
-    fireEvent.change(reasonInput, { target: { value: 'Bận lịch công tác tại Đà Nẵng' } });
-
-    const submitBtn = screen.getByRole('button', { name: /Gửi yêu cầu dời lịch/i });
-    fireEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(candidateInterviewApi.requestReschedule).toHaveBeenCalledWith({
-        interviewId: 'iv-online-1',
-        reason: 'Bận lịch công tác tại Đà Nẵng',
-        preferredTime: undefined,
-      });
-    });
+    await waitFor(() => expect(screen.getByTestId('interview-detail-content')).toBeInTheDocument());
+    expect(screen.queryByText('Nội bộ')).not.toBeInTheDocument();
   });
 });
