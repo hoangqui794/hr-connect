@@ -206,6 +206,21 @@ html:has(.candidate-console) {
   background: #94a3b8;
 }
 
+.candidate-application-card--not-selected {
+  border-color: #ffe4e6;
+  background: #fffafb;
+  box-shadow: 0 8px 22px rgb(190 18 60 / 3%);
+}
+
+.candidate-application-card--not-selected:hover {
+  border-color: #fecdd3;
+  box-shadow: 0 10px 24px rgb(190 18 60 / 5%);
+}
+
+.candidate-application-card--not-selected::before {
+  background: #fda4af;
+}
+
 .candidate-application-status {
   display: inline-flex;
   min-height: 2rem;

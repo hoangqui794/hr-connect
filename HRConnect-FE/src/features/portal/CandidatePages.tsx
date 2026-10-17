@@ -154,7 +154,7 @@ const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
   const isPositiveOutcome = a.displayGroup === 'SELECTED' || a.displayGroup === 'HIRED';
   const isClosedOutcome = a.displayGroup === 'NOT_SELECTED' || a.displayGroup === 'WITHDRAWN';
   return (
-    <article className={`candidate-surface candidate-application-card flex flex-col gap-3 p-5 ${isClosedOutcome ? 'candidate-application-card--closed' : ''}`}>
+    <article className={`candidate-surface candidate-application-card candidate-application-card--${statusClass} flex flex-col gap-3 p-5 ${isClosedOutcome ? 'candidate-application-card--closed' : ''}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[16px] font-semibold leading-snug text-slate-900">{a.jobTitle}</div>
