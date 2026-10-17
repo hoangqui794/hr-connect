@@ -292,6 +292,29 @@ html:has(.candidate-console) {
   background: rgb(248 250 252 / 82%);
 }
 
+.candidate-application-outcome--not-selected {
+  border-color: #fecdd3;
+  background: #fff7f8;
+}
+
+.candidate-application-outcome--not-selected .candidate-application-outcome__icon,
+.candidate-application-outcome--not-selected .candidate-application-outcome__title {
+  color: #be123c;
+}
+
+.candidate-application-outcome--not-selected .candidate-application-outcome__message {
+  color: #9f1239;
+}
+
+.candidate-application-outcome--withdrawn .candidate-application-outcome__icon,
+.candidate-application-outcome--withdrawn .candidate-application-outcome__title {
+  color: #475569;
+}
+
+.candidate-application-outcome--withdrawn .candidate-application-outcome__message {
+  color: #64748b;
+}
+
 .candidate-empty-surface {
   color: var(--candidate-muted);
 }

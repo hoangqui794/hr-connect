@@ -118,12 +118,15 @@ const PublicApplicationProgress: React.FC<{ application: CandidateApplication }>
   const statusClass = application.displayGroup.toLowerCase().replace(/_/g, '-');
 
   if (stage.terminalMessage && application.displayGroup !== 'HIRED') {
+    const outcomeClass = application.displayGroup === 'NOT_SELECTED'
+      ? 'candidate-application-outcome--not-selected'
+      : 'candidate-application-outcome--withdrawn';
     return (
-      <div className="candidate-application-outcome" role="status" aria-label={stage.label}>
-        <CloseCircleOutlined className="text-base text-slate-500" aria-hidden />
+      <div className={`candidate-application-outcome ${outcomeClass}`} role="status" aria-label={stage.label}>
+        <CloseCircleOutlined className="candidate-application-outcome__icon text-base" aria-hidden />
         <div className="min-w-0">
-          <div className="text-xs font-semibold text-slate-700">Cập nhật từ nhà tuyển dụng</div>
-          <div className="mt-0.5 text-[11px] leading-relaxed text-slate-500">{stage.terminalMessage}</div>
+          <div className="candidate-application-outcome__title text-xs font-semibold">Cập nhật từ nhà tuyển dụng</div>
+          <div className="candidate-application-outcome__message mt-0.5 text-[11px] leading-relaxed">{stage.terminalMessage}</div>
         </div>
       </div>
     );

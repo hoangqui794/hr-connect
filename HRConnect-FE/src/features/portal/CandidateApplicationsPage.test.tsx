@@ -74,7 +74,8 @@ describe('CandidateApplicationsPage', () => {
     renderPage();
 
     expect(await screen.findByText('Chưa phù hợp')).toBeInTheDocument();
-    expect(screen.getByText('Quy trình tuyển dụng cho đơn này đã kết thúc.')).toBeInTheDocument();
+    expect(screen.getByText('Quy trình tuyển dụng cho đơn này đã kết thúc.').closest('.candidate-application-outcome'))
+      .toHaveClass('candidate-application-outcome--not-selected');
 
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Lọc theo trạng thái' }));
     const notSelectedLabels = await screen.findAllByText('Chưa phù hợp');
