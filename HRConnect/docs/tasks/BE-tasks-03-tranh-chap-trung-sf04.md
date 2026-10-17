@@ -4,13 +4,34 @@
 > **Căn cứ:** đề tài ("resolves duplicate-submission disputes"; Admin console "duplicate dispute resolution"; NFR "Every candidate-to-affiliate attribution… logged with an immutable timestamp and reviewable by Admin"); `main-flows.md` mục 6.1 **SF-04**: *Phát hiện trùng → người nộp khiếu nại → Platform Admin xem xét danh tính, lịch sử nộp, thời điểm, bằng chứng → chấp nhận / bác bỏ → ghi audit* **[CHƯA CÓ CODE]**; `main-flows.md` mục 2.5.
 > **Hiện trạng code** (GitNexus `context Dispute`, `main` `5640eb1`): bảng `dispute` và entity `Dispute` **đã có** (`DisputeType`, `SubmissionId`, `AttributionId`, `CommissionId`, `RaisedBy`, `Description`, `Evidence` jsonb, `Status`, `ResolvedBy`, `Resolution`, `ResolvedAt`), nhưng **không có** command, query, endpoint hay check constraint nào. Quyền **đã seed**: `dispute.create`, `dispute.view_own` (Affiliate); `dispute.view`, `dispute.resolve` (Platform Admin).
 
+## 0. Có cần làm không? (rà lại 2026-10-17)
+
+**Có, nhưng làm bản tối thiểu.** Chặn trùng tự động (MF-02, đã xong) chỉ **phòng** tranh chấp; đề tài còn yêu cầu **xử lý** tranh chấp ở 2 chỗ:
+
+- Actor Admin: *"reviews and forwards candidates, **resolves duplicate-submission disputes**"*.
+- Sản phẩm Admin console: *"company/job approval, **duplicate dispute resolution**, commission configuration, reporting dashboard"*.
+
+Chặn trùng máy móc không đủ vì có những trường hợp hệ thống không tự phân xử được: hai Affiliate nộp **cùng một người bằng email/SĐT khác nhau** (không bị chặn, cả hai đòi hoa hồng); Affiliate bị chặn vì người khác **"xí chỗ"**; bị chặn vì "Client đã có ứng viên" nhưng Affiliate không đồng ý.
+
+**Bản tối thiểu (khoảng 2 ngày) — làm cái này trước:**
+
+| Giữ | Bỏ hoặc để sau |
+|---|---|
+| `POST /api/v1/disputes` (Affiliate, chỉ ghi chú dạng chữ) | Tải file bằng chứng (`evidence` chỉ lưu ghi chú/link) |
+| `GET /api/v1/disputes/mine` | `POST /disputes/{id}/evidence`, `/withdraw` |
+| `GET /api/v1/admin/disputes`, `GET /api/v1/admin/disputes/{id}` (đủ dữ liệu D4) | `start-review` (Admin xử lý thẳng từ `OPEN`) |
+| `POST /api/v1/admin/disputes/{id}/resolve` (UPHELD chuyển attribution, có audit) | |
+| D3: chặn duyệt hoa hồng khi có khiếu nại mở | |
+
+Các mục 1–5 bên dưới là thiết kế đầy đủ; làm bản tối thiểu thì bỏ qua các phần ở cột phải.
+
 **Phạm vi:** chỉ luồng khiếu nại và xử lý. **Không** đổi quy tắc kiểm tra trùng hay attribution của MF-02 (dev MF-02 đang làm phần đó); khi cần đổi attribution thì gọi qua một hàm do MF-02 cung cấp, xem mục 4.
 
 Quy ước chung: Vertical Slice + MediatR; audit qua `IAuditLogService` như các luồng khác; GitNexus `impact` trước khi sửa `Attribution`, `Commission`, `Submission`.
 
 **Cách làm và bàn giao**
 
-- **Ước lượng:** khoảng 3–4 ngày.
+- **Ước lượng:** bản tối thiểu khoảng 2 ngày (mục 0); bản đầy đủ khoảng 3–4 ngày.
 - **Phụ thuộc:** Cần **Trí (MF-02)** cung cấp hàm chuyển attribution và **dev MF-05** thêm điều kiện chặn duyệt hoa hồng (mục 4). Hẹn trao đổi trước khi code.
 - **Nhánh:** `feature/<tên-ngắn>` tạo từ `dev`, PR vào `dev`, ít nhất 1 người review; CI xanh mới merge.
 - **Cài đặt mới:** thêm khóa vào `BusinessSettingKeys` (`HRConnect.Application/Common/Settings/BusinessSettings.cs`) để hiện ở trang Cài đặt Admin.
