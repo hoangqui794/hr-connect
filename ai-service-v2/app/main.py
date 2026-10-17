@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
+import secrets
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import ValidationError
 
@@ -36,8 +38,29 @@ async def lifespan(_: FastAPI):
         await scoring_job_queue.stop()
 
 
-app = FastAPI(title="HR Connect AI Service v2", version="2.0.0", lifespan=lifespan)
+_startup_settings = get_settings()
+logging.basicConfig(level=_startup_settings.log_level.upper(),
+                    format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
+# API docs only in local testing: on a public URL they advertise the unauthenticated test endpoint.
+_docs_enabled = _startup_settings.allow_unauthenticated_test_endpoints
+app = FastAPI(title="HR Connect AI Service v2", version="2.0.0", lifespan=lifespan,
+              docs_url="/docs" if _docs_enabled else None,
+              redoc_url="/redoc" if _docs_enabled else None,
+              openapi_url="/openapi.json" if _docs_enabled else None)
 app.include_router(scoring_router)
+
+
+def require_test_access(
+    settings: Settings = Depends(get_settings),
+    x_service_token: str | None = Header(default=None, alias="X-Service-Token"),
+) -> None:
+    """match-file spends LLM quota: open only in local testing, otherwise the backend service token."""
+    if settings.allow_unauthenticated_test_endpoints:
+        return
+    expected = settings.hrconnect_service_token
+    if not expected or not x_service_token or not secrets.compare_digest(x_service_token, expected):
+        raise HTTPException(status_code=401)
 
 
 @app.get("/health")
@@ -45,7 +68,8 @@ def health() -> dict:
     return {"status": "ok", "service": "ai-service-v2"}
 
 
-@app.post("/api/v1/match-file", response_model=FileMatchingResponse, response_model_by_alias=True)
+@app.post("/api/v1/match-file", response_model=FileMatchingResponse, response_model_by_alias=True,
+          dependencies=[Depends(require_test_access)])
 async def match_file(
     file: Annotated[UploadFile, File(...)],
     metadata: Annotated[str, Form(...)],

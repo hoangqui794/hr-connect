@@ -139,3 +139,38 @@ def test_marketing_years_gap_is_explained():
     item = RequirementResult(requirement=requirement, type=requirement.type, matchStatus=MatchStatus.PARTIAL,
                              relevantYears=2.5, matchMethod="LLM_YEARS_BELOW_MIN")
     assert _years_gap(item) == "cần 3 năm, CV thể hiện khoảng 2.5 năm"
+
+
+def test_slow_scoring_reports_timeout_not_hang(monkeypatch):
+    import time as _time
+
+    class SlowAssessor:
+        def assess(self, *args):
+            _time.sleep(1.0)
+            raise LlmError("too late")
+
+    client = FakeClient()
+    monkeypatch.setattr("app.scoring_jobs.prepare_document", lambda name, data: PreparedDocument(
+        kind="text", media_type="text/plain", data=data, source_text=data.decode(),
+        extraction_method="TEXT", has_text_layer=True, page_count=1, image_only_pages=[]))
+    settings = Settings(scoring_job_timeout_seconds=0.2)
+    slow = ScoringOrchestrator(settings, client, lambda: MatchingPipeline(settings, SlowAssessor(), FakeSemantic()))
+
+    asyncio.run(slow.process(SCORING_JOB))
+
+    assert client.posted[-1]["status"] == "FAILED"
+    assert client.posted[-1]["errorCode"] == "AI_TIMEOUT"
+
+
+def test_match_file_requires_service_token_by_default(api):
+    files = {"file": ("cv.txt", b"C# developer", "text/plain")}
+    data = {"metadata": "{}"}
+    assert api.post("/api/v1/match-file", files=files, data=data).status_code == 401
+    # With the token the request reaches validation (empty metadata is rejected, not the caller).
+    assert api.post("/api/v1/match-file", files=files, data=data,
+                    headers={"X-Service-Token": "secret-token"}).status_code == 422
+
+
+def test_docs_are_not_served_by_default(api):
+    assert api.get("/docs").status_code == 404
+    assert api.get("/openapi.json").status_code == 404

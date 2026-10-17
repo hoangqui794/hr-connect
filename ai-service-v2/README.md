@@ -46,6 +46,15 @@ Cùng hợp đồng với v1: `POST /api/v1/match-file` (multipart: `file` + `me
 `applicationId`, `attemptNo`, `job`). Response có `parseResult` và `matchingResult` (`matchScore`,
 `semanticScore`, `mustHaveResult`, `shouldHaveResult`, `requiresManualReview`, `reviewReasons`, ...).
 
+**Bảo vệ (17/10):** mặc định `match-file` cần header `X-Service-Token` (giống `scoring-jobs`) và không có `/docs`.
+Muốn mở Swagger và gọi `match-file` không cần token khi test trên máy, thêm vào `.env`:
+`ALLOW_UNAUTHENTICATED_TEST_ENDPOINTS=true`. **Không bật trên Render hoặc khi đang mở tunnel.**
+
+**Thời gian:** mỗi lần gọi Gemini dừng sau `LLM_TIMEOUT_SECONDS` (120 giây); cả lượt chấm dừng sau
+`SCORING_JOB_TIMEOUT_SECONDS` (300 giây) và báo backend `FAILED` / `AI_TIMEOUT`, hồ sơ chuyển HR xem tay.
+Hàng đợi nằm trong RAM: dịch vụ khởi động lại thì việc đang chờ mất, backend tự gửi lại sau
+`Mf03Integration__ProcessingTimeoutMinutes` (tối đa `MaxDispatchAttempts` lần) rồi chuyển HR xem tay.
+
 ## Chạy
 
 ```powershell

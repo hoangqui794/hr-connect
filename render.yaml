@@ -1,53 +1,48 @@
-# Render Blueprint for the MF-03 AI Matching Service.
+# Render Blueprint for the MF-03 AI Matching Service (v2: Gemini + Sentence-BERT).
 # Render dashboard: New > Blueprint > pick this repo. Secrets marked sync: false are asked for on first deploy.
+# The backend points MF03_BASE_URL at this service and shares HRCONNECT_SERVICE_TOKEN with it.
 services:
   - type: web
-    name: hrconnect-ai-service
+    name: hrconnect-ai-service-v2
     runtime: docker
-    rootDir: ai-service
+    rootDir: ai-service-v2
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    # MiniLM peaks around 1.4 GB RAM; starter (512 MB) and free run out of memory.
+    # MiniLM + PDF handling needs at least 1 CPU / 2 GB; free (0.1 CPU, 512 MB) misses /health while
+    # scoring and Render kills the instance (17/10 test).
     plan: standard
     region: singapore
     branch: main
     healthCheckPath: /health
     envVars:
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
+      # Same key, used in order when the model above is rate limited.
+      - key: GEMINI_FALLBACK_MODELS
+        value: gemini-3.1-flash-lite
+      - key: GEMINI_API_KEY
+        sync: false
+      # Each Gemini HTTP call, and the whole scoring job (download + LLM retries + scoring).
+      - key: LLM_TIMEOUT_SECONDS
+        value: "120"
+      - key: SCORING_JOB_TIMEOUT_SECONDS
+        value: "300"
       - key: EMBEDDING_MODEL
         value: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-      - key: SEMANTIC_MATCH_THRESHOLD
-        value: "0.35"
-      - key: SEMANTIC_FLOOR
-        value: "0.10"
-      - key: SEMANTIC_CEILING
-        value: "0.55"
-      - key: EVIDENCE_CREDIT_THRESHOLD
-        value: "0.65"
-      # Cross-encoder reranker needs ~0.5 GB more RAM; enable on the pro plan:
-      # cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
-      - key: RERANKER_MODEL
-        value: ""
-      - key: SEMANTIC_GATED_BY_MUST_HAVE
-        value: "true"
-      - key: INFER_CORE_REQUIREMENTS
-        value: "true"
-      - key: KNOCKOUT_SCORE_CAP
-        value: "59"
-      - key: LOG_LEVEL
-        value: INFO
-      - key: OCR_LANGUAGES
-        value: vi,en
-      - key: OCR_MAX_CONCURRENCY
-        value: "1"
       - key: SCORING_WORKER_COUNT
         value: "1"
-      - key: HRCONNECT_VERIFY_SSL
-        value: "true"
+      - key: LOG_LEVEL
+        value: INFO
+      # Keep false on a public URL: match-file then needs the service token and /docs is not served.
       - key: ALLOW_UNAUTHENTICATED_TEST_ENDPOINTS
         value: "false"
-      # Public URL of the HR Connect backend, e.g. https://hrconnect-api.onrender.com
+      - key: HRCONNECT_VERIFY_SSL
+        value: "true"
+      # Public URL of the HR Connect backend, e.g. https://hr-connect-0ykm.onrender.com
       - key: HRCONNECT_BASE_URL
         sync: false
-      # Must equal Mf03Integration__ServiceToken on the backend.
+      # Must equal HRCONNECT_SERVICE_TOKEN on the backend.
       - key: HRCONNECT_SERVICE_TOKEN
         sync: false

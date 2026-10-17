@@ -82,6 +82,6 @@ Bấm **Save, rebuild, and deploy** → đợi trạng thái **Live** → mở `
 ## 6. Lưu ý
 
 - Máy phải bật, AI và tunnel phải đang chạy trong suốt lúc test. Hồ sơ nộp khi AI tắt không bị mất: backend tự thử lại tối đa 5 lần, sau đó chuyển HR xem tay.
-- Trong lúc tunnel mở, AI trên máy công khai trên Internet. `/api/v1/scoring-jobs` có token bảo vệ, nhưng `/api/v1/match-file` **không**: ai biết địa chỉ có thể gọi và tốn quota Gemini. Không chia sẻ địa chỉ tunnel ra ngoài nhóm, test xong tắt ngay.
+- Trong lúc tunnel mở, AI trên máy công khai trên Internet. Từ 17/10 `/api/v1/scoring-jobs` và `/api/v1/match-file` đều cần token, `/docs` tắt, **miễn là `.env` không bật `ALLOW_UNAUTHENTICATED_TEST_ENDPOINTS`**. Không chia sẻ địa chỉ tunnel ra ngoài nhóm, test xong tắt ngay.
 - CV demo sẽ được gửi lên Gemini để chấm.
 - Muốn AI chạy ổn định trên Render (không cần máy ai bật) thì phải nâng `hrconnect-ai-service-v2` lên gói **tối thiểu 1 CPU / 2 GB RAM**.
