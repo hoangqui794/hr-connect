@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Common.Settings;
+using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
@@ -192,8 +193,10 @@ public sealed class DeliverSourcingCvsCommandHandler : IRequestHandler<DeliverSo
             SourcingDeliveryRules.RequireDeliverable(application, existing);
         }
 
-        // Review window: the job's agreed value once MF-01 stores it, the Admin default until then.
-        var reviewDays = await _settings.GetIntAsync(BusinessSettingKeys.CvSourcingReviewDays, cancellationToken);
+        // Review window: the job's agreed value (MF-01 approval), the Admin default for older jobs.
+        var reviewDays = job.ReviewDays is > 0
+            ? job.ReviewDays.Value
+            : await _settings.GetIntAsync(BusinessSettingKeys.CvSourcingReviewDays, cancellationToken);
         var now = DateTime.UtcNow;
         var created = new List<SourcingDelivery>();
         foreach (var application in applications)
@@ -240,14 +243,17 @@ public sealed class DecideSourcingDeliveryCommandHandler : IRequestHandler<Decid
     private readonly ICompanyUserRepository _companyUsers;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _audit;
+    private readonly ISourcingFinanceService? _finance;
 
     public DecideSourcingDeliveryCommandHandler(
-        ISourcingDeliveryRepository deliveries, ICompanyUserRepository companyUsers, IUnitOfWork unitOfWork, IAuditLogService audit)
+        ISourcingDeliveryRepository deliveries, ICompanyUserRepository companyUsers, IUnitOfWork unitOfWork, IAuditLogService audit,
+        ISourcingFinanceService? finance = null)
     {
         _deliveries = deliveries;
         _companyUsers = companyUsers;
         _unitOfWork = unitOfWork;
         _audit = audit;
+        _finance = finance;
     }
 
     public async Task<SourcingDeliveryDto> Handle(DecideSourcingDeliveryCommand request, CancellationToken cancellationToken)
@@ -315,6 +321,12 @@ public sealed class DecideSourcingDeliveryCommandHandler : IRequestHandler<Decid
             OldValues = new { Status = SourcingDeliveryStates.Delivered },
             NewValues = new { delivery.Status, delivery.RejectReasonCode, delivery.RejectNote }
         }, cancellationToken);
+        if (_finance != null)
+        {
+            // MF-05: an accepted CV earns its commission and may complete the job's settlement.
+            await _finance.OnDeliveryCountedAsync(delivery, request.CurrentUserId, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return SourcingDeliveryRules.ToDto(delivery, now);
@@ -327,11 +339,16 @@ public sealed class ReviewSourcingRejectionCommandHandler : IRequestHandler<Revi
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _audit;
 
-    public ReviewSourcingRejectionCommandHandler(ISourcingDeliveryRepository deliveries, IUnitOfWork unitOfWork, IAuditLogService audit)
+    private readonly ISourcingFinanceService? _finance;
+
+    public ReviewSourcingRejectionCommandHandler(
+        ISourcingDeliveryRepository deliveries, IUnitOfWork unitOfWork, IAuditLogService audit,
+        ISourcingFinanceService? finance = null)
     {
         _deliveries = deliveries;
         _unitOfWork = unitOfWork;
         _audit = audit;
+        _finance = finance;
     }
 
     public async Task<SourcingDeliveryDto> Handle(ReviewSourcingRejectionCommand request, CancellationToken cancellationToken)
@@ -373,6 +390,11 @@ public sealed class ReviewSourcingRejectionCommandHandler : IRequestHandler<Revi
             OldValues = new { Status = SourcingDeliveryStates.Rejected, RejectReasonCode = oldReason },
             NewValues = new { delivery.Status, request.Upheld, Note = note }
         }, cancellationToken);
+        if (!request.Upheld && _finance != null)
+        {
+            await _finance.OnDeliveryCountedAsync(delivery, request.CurrentUserId, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return SourcingDeliveryRules.ToDto(delivery, now);
@@ -497,11 +519,16 @@ public sealed class SourcingAutoAcceptService : ISourcingAutoAcceptService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _audit;
 
-    public SourcingAutoAcceptService(ISourcingDeliveryRepository deliveries, IUnitOfWork unitOfWork, IAuditLogService audit)
+    private readonly ISourcingFinanceService? _finance;
+
+    public SourcingAutoAcceptService(
+        ISourcingDeliveryRepository deliveries, IUnitOfWork unitOfWork, IAuditLogService audit,
+        ISourcingFinanceService? finance = null)
     {
         _deliveries = deliveries;
         _unitOfWork = unitOfWork;
         _audit = audit;
+        _finance = finance;
     }
 
     public async Task<bool> AutoAcceptAsync(Guid deliveryId, DateTime now, CancellationToken cancellationToken = default)
@@ -524,6 +551,11 @@ public sealed class SourcingAutoAcceptService : ISourcingAutoAcceptService
             OldValues = new { Status = SourcingDeliveryStates.Delivered },
             NewValues = new { delivery.Status, delivery.ReviewDueAt }
         }, cancellationToken);
+        if (_finance != null)
+        {
+            await _finance.OnDeliveryCountedAsync(delivery, null, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
     }
