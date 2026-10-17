@@ -25,12 +25,17 @@ export interface BusinessSetting {
 }
 
 export type ServiceFeeStatus = 'PENDING' | 'DUE' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+/** PLACEMENT = HEADHUNT_COD placement; DEPOSIT / SETTLEMENT / CREDIT = CV_SOURCING job (CREDIT is owed to the Client). */
+export type ServiceFeeKind = 'PLACEMENT' | 'DEPOSIT' | 'SETTLEMENT' | 'CREDIT';
 export type CommissionStatus = 'PENDING' | 'IN_WARRANTY' | 'ON_HOLD' | 'EARNED' | 'PAYABLE' | 'PAID' | 'CANCELLED';
 export type PayoutStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export interface ServiceFee {
   serviceFeeId: string;
-  placementId: string;
+  /** Null for CV_SOURCING fees. */
+  placementId: string | null;
+  kind?: ServiceFeeKind;
+  jobId?: string | null;
   companyId: string;
   companyName?: string | null;
   jobTitle?: string | null;
@@ -48,7 +53,9 @@ export interface ServiceFee {
 
 export interface Commission {
   commissionId: string;
-  placementId: string;
+  /** HEADHUNT_COD placement; null for a CV_SOURCING commission (see sourcingDeliveryId). */
+  placementId: string | null;
+  sourcingDeliveryId?: string | null;
   attributionId: string;
   affiliateId: string;
   affiliateName?: string | null;
