@@ -7,6 +7,7 @@ the quotes and computes the score (see scoring.py).
 from __future__ import annotations
 
 import json
+import logging
 import time
 from typing import Protocol
 
@@ -16,6 +17,8 @@ from pydantic import BaseModel, Field
 from app.config import Settings
 from app.documents import PreparedDocument
 from app.schemas import Job
+
+logger = logging.getLogger(__name__)
 
 # Frozen: any byte change here invalidates the prompt cache for every request.
 SYSTEM_PROMPT = """You are a recruitment screening assistant for HR Connect, a Vietnamese recruitment platform.
@@ -212,11 +215,15 @@ class GeminiCvAssessor:
 
     def __init__(self, settings: Settings, client=None) -> None:
         from google import genai
+        from google.genai import types
 
         if client is None and not settings.gemini_api_key:
             raise LlmError("GEMINI_API_KEY is not set.")
         self._settings = settings
-        self._client = client or genai.Client(api_key=settings.gemini_api_key)
+        # Without a timeout one stuck Gemini call blocks the single scoring worker for ever (milliseconds).
+        self._client = client or genai.Client(
+            api_key=settings.gemini_api_key,
+            http_options=types.HttpOptions(timeout=int(settings.llm_timeout_seconds * 1000)))
         self.last_model = ""
 
     def assess(self, job: Job, document: PreparedDocument, today: str) -> LlmCvAssessment:
@@ -243,13 +250,17 @@ class GeminiCvAssessor:
             is_last = index == len(models) - 1
             for attempt in range(1, self._settings.llm_max_attempts + 1):
                 try:
+                    started = time.monotonic()
+                    logger.info("Gemini call model=%s attempt=%s", model, attempt)
                     interaction = self._client.interactions.create(model=model, **request)
                     result = _parse(getattr(interaction, "output_text", None))
                     self.last_model = model
+                    logger.info("Gemini answered model=%s in %.1fs", model, time.monotonic() - started)
                     return result
                 except LlmError:
                     raise
                 except Exception as exc:  # the SDK raises several transport/API error types
+                    logger.warning("Gemini call failed model=%s attempt=%s: %s", model, attempt, type(exc).__name__)
                     if not _is_rate_limit(exc):
                         raise LlmError(f"Gemini request failed: {type(exc).__name__}: {str(exc)[:200]}") from exc
                     if not is_last:

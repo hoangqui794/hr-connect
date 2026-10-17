@@ -42,7 +42,7 @@ Dùng **tunnel quản lý trên dashboard** (có token), để Quí không cần
 
 ### 2.1. Chặn gọi lung tung vào AI (nên làm)
 
-`ai-dev.hrconnectvn.online` là địa chỉ cố định, công khai. Endpoint `/api/v1/scoring-jobs` có token bảo vệ, nhưng **`/api/v1/match-file` và `/docs` thì không**: ai biết địa chỉ có thể gọi và tốn quota Gemini.
+`ai-dev.hrconnectvn.online` là địa chỉ cố định, công khai. Từ 17/10, AI v2 mặc định bắt token cho cả `/api/v1/scoring-jobs` lẫn `/api/v1/match-file` và không mở `/docs` (trừ khi `.env` bật `ALLOW_UNAUTHENTICATED_TEST_ENDPOINTS=true` — đừng bật khi đang mở tunnel). Rule WAF bên dưới vẫn nên làm để chặn mọi đường dẫn lạ trước khi tới máy Quí.
 
 Cloudflare dashboard → chọn tên miền `hrconnectvn.online` → **Security → WAF → Custom rules → Create rule**:
 

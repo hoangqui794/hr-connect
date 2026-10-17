@@ -61,6 +61,15 @@ class Settings(BaseSettings):
     scoring_queue_size: int = 100
     # One worker keeps LLM calls within provider rate limits.
     scoring_worker_count: int = 1
+    # Whole scoring job (download + LLM with retries + scoring). Past it the backend gets FAILED / AI_TIMEOUT
+    # and routes the application to manual review instead of waiting forever.
+    scoring_job_timeout_seconds: float = 300.0
+
+    # /api/v1/match-file and /docs are for local testing only. When false (default, and on Render) match-file
+    # needs the X-Service-Token and the API docs are not served, so nobody can spend the LLM quota.
+    allow_unauthenticated_test_endpoints: bool = False
+
+    log_level: str = "INFO"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
