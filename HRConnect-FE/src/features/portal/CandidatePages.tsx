@@ -60,6 +60,7 @@ import type { CandidateApplication } from '@/types/api/mf02';
 import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { CANDIDATE_STEPS, MAX_CV_MB, candidateStage, cvFileError, fileSize } from './mf02Labels';
 import { CandidatePageHeader, CandidateSurface } from './candidate/CandidateUi';
+import { useSavedJobs } from '@/hooks/useSavedJobs';
 
 dayjs.extend(relativeTimePlugin);
 dayjs.locale('vi');
@@ -150,6 +151,7 @@ export const CandidateHomePage: React.FC = () => {
   const user = useAuthStore((s) => s.user);
   const apps = useMyApplications();
   const cvs = useCandidateCvs();
+  const { savedJobsCount } = useSavedJobs();
   const items = apps.data?.items ?? [];
   const active = items.filter((a) => !candidateStage(a.status).closed);
   const interviewing = items.filter((a) => a.status === 'INTERVIEW' || a.status === 'SHORTLISTED').length;
@@ -193,13 +195,14 @@ export const CandidateHomePage: React.FC = () => {
         {[
           { label: 'Đơn đã nộp', value: items.length, to: '/candidate/applications' },
           { label: 'Đang xử lý', value: active.length, to: '/candidate/applications' },
+          { label: 'Việc đã lưu', value: savedJobsCount, to: '/candidate/saved-jobs' },
           { label: 'CV trong kho', value: cvs.data?.length ?? 0, to: '/candidate/cvs' },
         ].map((k) => (
           <button
             key={k.label}
             type="button"
             onClick={() => navigate(k.to)}
-            className="candidate-surface candidate-stat-card cursor-pointer p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--candidate-accent)]"
+            className="candidate-surface candidate-stat-card cursor-pointer p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-2 focus-visible:outline-[color:var(--candidate-accent)]"
           >
             <span className="block text-[13px] font-medium text-slate-600">{k.label}</span>
             <span className="mt-1 block text-[28px] font-bold tabular-nums text-slate-900">
