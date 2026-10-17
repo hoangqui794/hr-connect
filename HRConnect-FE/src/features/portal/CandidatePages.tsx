@@ -47,12 +47,15 @@ import {
   GiftOutlined,
   CalendarOutlined,
   HistoryOutlined,
+  CopyOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
 import { candidateApplicationsApi, candidateConsentApi, candidateCvApi } from '@/services/api/mf02Api';
 import { mf04Api, isCandidateOfferRespondable } from '@/services/api/mf04Api';
+import { CandidateInterviewDetailModal } from '@/features/candidates/CandidateInterviewDetailModal';
 import type { CandidateOfferSummaryDto } from '@/types/api/mf04';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
@@ -507,6 +510,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
   const [selectedOffer, setSelectedOffer] = useState<CandidateOfferSummaryDto | null>(null);
   const [offerResponseChoice, setOfferResponseChoice] = useState<'ACCEPTED' | 'DECLINED'>('ACCEPTED');
   const [declineReason, setDeclineReason] = useState('');
+  const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null);
   const respondOfferMutation = useMutation({
     mutationFn: async () => {
       if (!selectedOffer) return;
@@ -689,18 +693,43 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  {iv.meetingLink && (
+                  <Space wrap>
                     <Button
-                      type="primary"
                       size="small"
-                      href={iv.meetingLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      icon={<VideoCameraOutlined />}
+                      icon={<InfoCircleOutlined />}
+                      onClick={() => setSelectedInterviewId(iv.interviewId)}
                     >
-                      Vào phòng họp
+                      Chi tiết
                     </Button>
-                  )}
+                    {iv.meetingLink && (
+                      <>
+                        <Tooltip title="Sao chép link phòng họp">
+                          <Button
+                            size="small"
+                            icon={<CopyOutlined />}
+                            onClick={() => {
+                              if (navigator.clipboard) {
+                                navigator.clipboard.writeText(iv.meetingLink);
+                                message.success('Đã sao chép link phòng họp!');
+                              } else {
+                                message.info(iv.meetingLink);
+                              }
+                            }}
+                          />
+                        </Tooltip>
+                        <Button
+                          type="primary"
+                          size="small"
+                          href={iv.meetingLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          icon={<VideoCameraOutlined />}
+                        >
+                          Vào phòng họp
+                        </Button>
+                      </>
+                    )}
+                  </Space>
                 </div>
               </Card>
             ))}
@@ -955,6 +984,13 @@ export const CandidateApplicationDetailPage: React.FC = () => {
           )}
         </div>
       </Modal>
+
+      {/* Modal 3: Interview Detail */}
+      <CandidateInterviewDetailModal
+        open={Boolean(selectedInterviewId)}
+        interviewId={selectedInterviewId || undefined}
+        onClose={() => setSelectedInterviewId(null)}
+      />
     </div>
   );
 };

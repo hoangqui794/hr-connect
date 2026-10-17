@@ -89,6 +89,9 @@ const CandidateApplicationsPage = React.lazy(() =>
 const CandidateSavedJobsPage = React.lazy(() =>
   import('@/features/candidates/CandidateSavedJobsPage').then((m: any) => ({ default: m.default || m.CandidateSavedJobsPage }))
 );
+const CandidateInterviewDetailPage = React.lazy(() =>
+  import('@/features/candidates/CandidateInterviewDetailPage').then((m: any) => ({ default: m.default || m.CandidateInterviewDetailPage }))
+);
 const AdminDashboard = React.lazy(() =>
   import('@/features/admin/AdminDashboard').then((m: any) => ({ default: m.default || m.AdminDashboard }))
 );
@@ -505,6 +508,7 @@ export const AppRoutes = {
   CandidateProfilePage,
   CandidateApplicationsPage,
   CandidateSavedJobsPage,
+  CandidateInterviewDetailPage,
   AdminDashboard,
   AdminUsersPage,
   AdminCompaniesPage,
