@@ -12,14 +12,11 @@
  *   /register          → LoginPage (public)
  *   / (AppShell)
  *     dashboard        → Dashboard          [CLIENT, CANDIDATE, AFFILIATE, INTERNAL_HR, ADMIN]
- *     jobs             → JobBoard           [CLIENT, AFFILIATE, INTERNAL_HR, ADMIN, CANDIDATE]
- *     jobs/create      → CreateJobWizard    [CLIENT, ADMIN]
- *     affiliate/referral → ReferralForm     [AFFILIATE]
- *     affiliate/ledger → FinancialLedger    [AFFILIATE, INTERNAL_HR, ADMIN]
- *     screening        → AIScreening        [INTERNAL_HR, ADMIN, CLIENT]
- *     candidates       → CandidateList      [INTERNAL_HR, ADMIN, CLIENT]
- *     cv-builder       → CVBuilder          [CANDIDATE]
- *     admin            → AdminDashboard     [ADMIN]
+ *     jobs             → Mf01InAppJobDiscoveryPage
+ *     jobs/create      → Mf01JobFormPage    [CLIENT, ADMIN]
+ *     screening        → HrScreeningPage    [INTERNAL_HR, ADMIN, CLIENT]
+ *     candidates       → redirect /hr/screening?status=all
+ *     admin            → ConsoleOverviewPage [ADMIN]
  *   *                  → redirect /
  */
 import React from 'react';
@@ -140,11 +137,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'screening',
-        element: protectedPage('/screening', <AppRoutes.AIScreening />),
+        element: protectedPage('/screening', <AppRoutes.HrScreeningPage />),
       },
       {
         path: 'candidates',
-        element: protectedPage('/candidates', <AppRoutes.CandidateList />),
+        element: <Navigate to="/hr/screening?status=all" replace />,
       },
     ],
   },
@@ -208,6 +205,7 @@ export const router = createBrowserRouter([
       { path: 'affiliate-cvs/:cvId', element: <AppRoutes.CandidateAffiliateCvDetailPage /> },
       { path: 'settings/email-identities', element: <AppRoutes.CandidateIdentityPage /> },
       { path: 'saved-jobs', element: <AppRoutes.CandidateSavedJobsPage /> },
+      { path: 'profile', element: <AppRoutes.CandidateProfilePage /> },
       { path: 'interviews/:interviewId', element: <AppRoutes.CandidateInterviewDetailPage /> },
       { path: 'applications/:applicationId/interviews/:interviewId', element: <AppRoutes.CandidateInterviewDetailPage /> },
     ],

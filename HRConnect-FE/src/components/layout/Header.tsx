@@ -11,7 +11,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { RoleBadge } from '@/components/common/RoleBadge';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
-import { MockWebSocketService } from '@/services/mockWebSocket';
 import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import type { MenuProps } from 'antd';
@@ -173,15 +172,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
 
         {/* Right Section */}
         <Space size={16}>
-          {/* Live Demo Alert Trigger */}
-          <Tooltip title="Kích hoạt thông báo mẫu">
-            <Button
-              type="text"
-              size="small"
-              icon={<ThunderboltOutlined style={{ color: '#f59e0b' }} />}
-              onClick={() => MockWebSocketService.triggerAlert(Math.floor(Math.random() * 7))}
-            />
-          </Tooltip>
 
           {/* Language Switcher */}
           <LanguageSwitcher theme="light" size="middle" />

@@ -10,7 +10,6 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { AppHeader } from './Header';
 import { CandidateHeader } from './CandidateHeader';
-import { MockWebSocketService } from '@/services/mockWebSocket';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 
@@ -26,14 +25,6 @@ export const AppShell: React.FC = () => {
   // Candidate has a clean, full-width portal layout with no left sidebar
   const isCandidate = role === UserRole.CANDIDATE;
   const siderWidth = isCandidate ? 0 : collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH;
-
-  // Connect the mock SignalR/WebSocket service for the lifetime of the shell.
-  useEffect(() => {
-    MockWebSocketService.connect();
-    return () => {
-      MockWebSocketService.disconnect();
-    };
-  }, []);
 
   return (
     <Layout style={{ minHeight: '100vh', background: '#F8FAFC' }}>
