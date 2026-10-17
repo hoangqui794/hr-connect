@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../apiClient';
-import { clientActionsApi } from './hrApi';
+import { clientActionsApi, interviewHistoryApi } from './hrApi';
 
 vi.mock('../apiClient', () => ({
   apiClient: {
@@ -74,5 +74,33 @@ describe('clientActionsApi MF-04 fee and replacement contracts', () => {
       concurrencyToken: 'application-token',
       acceptAsNewHire: true,
     });
+  });
+
+  it('updates interview details with the latest concurrency token', async () => {
+    vi.mocked(apiClient.put).mockResolvedValueOnce({ data: { success: true, data: { interviewId: 'interview-1' } } });
+
+    await clientActionsApi.updateInterview('interview-1', {
+      durationMinutes: 75,
+      interviewType: 'ONLINE',
+      location: 'Google Meet',
+      meetingLink: 'https://meet.google.com/example',
+      concurrencyToken: 'interview-token',
+    });
+
+    expect(apiClient.put).toHaveBeenCalledWith('/interviews/interview-1', {
+      durationMinutes: 75,
+      interviewType: 'ONLINE',
+      location: 'Google Meet',
+      meetingLink: 'https://meet.google.com/example',
+      concurrencyToken: 'interview-token',
+    });
+  });
+
+  it('loads the interview history through the real read-only endpoint', async () => {
+    const history = [{ historyId: 'history-1', newStatus: 'RESCHEDULED' }];
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: { success: true, data: history } });
+
+    await expect(interviewHistoryApi.get('interview-1')).resolves.toEqual(history);
+    expect(apiClient.get).toHaveBeenCalledWith('/interviews/interview-1/history');
   });
 });

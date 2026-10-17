@@ -288,6 +288,7 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             }
             else
             {
+                actions.Add("UPDATE_INTERVIEW");
                 actions.Add("RESCHEDULE_INTERVIEW");
                 actions.Add("CANCEL_INTERVIEW");
                 if (!scheduledInterview.ScheduledAt.HasValue || scheduledInterview.ScheduledAt <= DateTime.UtcNow)

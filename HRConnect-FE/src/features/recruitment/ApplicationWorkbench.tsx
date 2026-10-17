@@ -27,9 +27,9 @@ import {
   Tag,
   Tooltip,
 } from 'antd';
-import { CheckOutlined, CloseOutlined, ExperimentOutlined, FileOutlined, LockOutlined, SendOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, EditOutlined, ExperimentOutlined, FileOutlined, HistoryOutlined, LockOutlined, SendOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
-import { clientActionsApi, screeningApi, type ConfirmStartWorkInput } from '@/services/api/hrApi';
+import { clientActionsApi, interviewHistoryApi, screeningApi, type ConfirmStartWorkInput } from '@/services/api/hrApi';
 import { sourcingApi } from '@/services/api/sourcingApi';
 import {
   SOURCING_REJECT_REASONS,
@@ -80,6 +80,7 @@ export const Panel: React.FC<{ title?: string; children: React.ReactNode; extra?
 type ModalKind =
   | 'reject'
   | 'schedule'
+  | 'editInterview'
   | 'reschedule'
   | 'cancel'
   | 'result'
@@ -95,6 +96,7 @@ type ModalKind =
 const MODAL_TITLE: Record<ModalKind, string> = {
   reject: 'Loại hồ sơ',
   schedule: 'Lên lịch phỏng vấn',
+  editInterview: 'Chỉnh sửa thông tin lịch',
   reschedule: 'Dời lịch phỏng vấn',
   cancel: 'Hủy lịch phỏng vấn',
   result: 'Ghi kết quả phỏng vấn',
@@ -138,6 +140,7 @@ export const ApplicationWorkbench: React.FC<{
   const { message, modal } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState<ModalKind | null>(null);
+  const [historyInterviewId, setHistoryInterviewId] = useState<string | null>(null);
   const [form] = Form.useForm();
   const startedFor = useRef<string>();
   const pendingStartWork = useRef<StartWorkAttempt>();
@@ -146,6 +149,12 @@ export const ApplicationWorkbench: React.FC<{
     queryKey: ['hr-application', applicationId],
     queryFn: () => screeningApi.get(applicationId!),
     enabled: Boolean(applicationId),
+  });
+
+  const interviewHistory = useQuery({
+    queryKey: ['interview-history', historyInterviewId],
+    queryFn: () => interviewHistoryApi.get(historyInterviewId!),
+    enabled: Boolean(historyInterviewId),
   });
   const timeline = useQuery({
     queryKey: ['hr-application-timeline', applicationId],
@@ -298,6 +307,13 @@ export const ApplicationWorkbench: React.FC<{
       });
     } else if (kind === 'offer') form.setFieldsValue({ currencyCode: 'VND', salaryBasis: 'GROSS', salaryPeriod: 'MONTHLY' });
     if (kind === 'schedule') form.setFieldsValue({ durationMinutes: 60, interviewType: 'Trực tiếp' });
+    if (kind === 'editInterview' && interview)
+      form.setFieldsValue({
+        durationMinutes: interview.durationMinutes ?? 60,
+        interviewType: interview.interviewType ?? undefined,
+        location: interview.location ?? undefined,
+        meetingLink: interview.meetingLink ?? undefined,
+      });
     if (kind === 'reschedule' && interview)
       form.setFieldsValue({ durationMinutes: interview.durationMinutes ?? 60, location: interview.location ?? undefined, meetingLink: interview.meetingLink ?? undefined });
     if (kind === 'startWork') form.setFieldsValue({ actualStartDate: dayjs() });
@@ -353,6 +369,16 @@ export const ApplicationWorkbench: React.FC<{
             location: trim(v.location),
             meetingLink: trim(v.meetingLink),
             applicationConcurrencyToken: token,
+          })
+        );
+      case 'editInterview':
+        return run.mutate(() =>
+          clientActionsApi.updateInterview(interview!.interviewId, {
+            durationMinutes: v.durationMinutes,
+            interviewType: v.interviewType,
+            location: trim(v.location),
+            meetingLink: trim(v.meetingLink),
+            concurrencyToken: interview!.concurrencyToken,
           })
         );
       case 'reschedule':
@@ -446,6 +472,7 @@ export const ApplicationWorkbench: React.FC<{
   if (has('REJECT_BACKUP')) btn('rejb', 'Loại dự phòng', () => openModal('rejectBackup'), { danger: true });
   if (has('CANCEL_INTERVIEW')) btn('cancel', 'Hủy lịch', () => openModal('cancel'), { danger: true });
   if (has('RECORD_NO_SHOW')) btn('noshow', 'Vắng mặt', () => openModal('noshow'));
+  if (has('UPDATE_INTERVIEW')) btn('editInterview', 'Sửa thông tin lịch', () => openModal('editInterview'), { icon: <EditOutlined /> });
   if (has('RESCHEDULE_INTERVIEW')) btn('resched', 'Dời lịch', () => openModal('reschedule'));
   if (has('WITHDRAW_OFFER')) btn('withdraw', 'Thu hồi offer', () => openModal('withdraw'), { danger: true });
   if (has('MARK_NOT_STARTED')) btn('nostart', 'Không nhận việc', () => openModal('notStarted'), { danger: true });
@@ -665,6 +692,11 @@ export const ApplicationWorkbench: React.FC<{
                       </div>
                       {i.meetingLink && <div className="truncate text-[13px] text-slate-600">Link: {i.meetingLink}</div>}
                       {i.result && <div className="mt-1 text-[13px] text-slate-800">Kết quả: {INTERVIEW_RESULT[i.result] ?? i.result}{i.feedback ? ` — ${i.feedback}` : ''}</div>}
+                      <div className="mt-2 flex justify-end">
+                        <Button size="small" icon={<HistoryOutlined />} onClick={() => setHistoryInterviewId(i.interviewId)}>
+                          Lịch sử
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
@@ -890,11 +922,16 @@ export const ApplicationWorkbench: React.FC<{
               >
                 <DatePicker showTime={{ format: 'HH:mm', minuteStep: 5 }} format="HH:mm DD/MM/YYYY" disabledDate={notPast} className="w-full" />
               </Form.Item>
+            </>
+          )}
+
+          {(open === 'schedule' || open === 'reschedule' || open === 'editInterview') && (
+            <>
               <div className="grid gap-x-4 sm:grid-cols-2">
                 <Form.Item name="durationMinutes" label="Thời lượng (phút)" rules={[{ type: 'number', min: 1, max: 480, message: 'Từ 1 đến 480 phút.' }]}>
                   <InputNumber min={1} max={480} className="w-full" />
                 </Form.Item>
-                {open === 'schedule' && (
+                {(open === 'schedule' || open === 'editInterview') && (
                   <Form.Item name="interviewType" label="Hình thức">
                     <Select options={INTERVIEW_TYPES} />
                   </Form.Item>
@@ -1071,6 +1108,43 @@ export const ApplicationWorkbench: React.FC<{
           )}
         </Form>
       </Modal>
+
+      <Drawer
+        open={Boolean(historyInterviewId)}
+        title="Lịch sử phỏng vấn"
+        width="min(520px, 100vw)"
+        onClose={() => setHistoryInterviewId(null)}
+        destroyOnClose
+      >
+        {interviewHistory.isLoading ? (
+          <Skeleton active paragraph={{ rows: 5 }} />
+        ) : interviewHistory.isError ? (
+          <Alert type="error" showIcon message={getApiErrorMessage(interviewHistory.error, 'Không tải được lịch sử phỏng vấn.')} />
+        ) : (interviewHistory.data ?? []).length === 0 ? (
+          <p className="m-0 text-sm text-slate-600">Chưa có lịch sử cập nhật.</p>
+        ) : (
+          <ol className="m-0 list-none space-y-4 p-0">
+            {interviewHistory.data!.map((item) => (
+              <li key={item.historyId} className="border-0 border-l-2 border-solid border-blue-300 pl-4 text-sm">
+                <div className="font-medium text-slate-900">
+                  {item.oldStatus ? `${item.oldStatus} → ${item.newStatus}` : item.newStatus}
+                </div>
+                {(item.oldScheduledAt || item.newScheduledAt) && (
+                  <div className="mt-1 text-slate-600">
+                    {item.oldScheduledAt && `Cũ: ${fmt(item.oldScheduledAt)}`}
+                    {item.oldScheduledAt && item.newScheduledAt && ' · '}
+                    {item.newScheduledAt && `Mới: ${fmt(item.newScheduledAt)}`}
+                  </div>
+                )}
+                {item.reason && <div className="mt-1 text-slate-600">Lý do: {item.reason}</div>}
+                <div className="mt-1 text-xs text-slate-500">
+                  {fmt(item.changedAt)}{item.changedByName ? ` · ${item.changedByName}` : ''}
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Drawer>
     </Drawer>
   );
 };

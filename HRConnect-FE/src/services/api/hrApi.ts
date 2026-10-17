@@ -131,6 +131,27 @@ export interface OfferInput {
   concurrencyToken?: string;
 }
 
+export interface UpdateInterviewInput {
+  durationMinutes?: number;
+  interviewType?: string;
+  location?: string;
+  meetingLink?: string;
+  concurrencyToken: string;
+}
+
+export interface InterviewHistoryItem {
+  historyId: string;
+  interviewId: string;
+  oldStatus: string | null;
+  newStatus: string;
+  oldScheduledAt: string | null;
+  newScheduledAt: string | null;
+  reason: string | null;
+  changedBy: string | null;
+  changedByName: string | null;
+  changedAt: string;
+}
+
 export interface ConfirmStartWorkInput {
   offerId: string;
   actualStartDate: string;
@@ -151,6 +172,8 @@ export const clientActionsApi = {
     post(`/recruitment/applications/${applicationId}/interviews`, input),
   rescheduleInterview: (interviewId: string, input: { newScheduledAt: string; reason: string; durationMinutes?: number; location?: string; meetingLink?: string; concurrencyToken: string }) =>
     post(`/interviews/${interviewId}/reschedule`, input),
+  updateInterview: (interviewId: string, input: UpdateInterviewInput) =>
+    put(`/interviews/${interviewId}`, input),
   cancelInterview: (interviewId: string, input: { reason: string; concurrencyToken: string }) =>
     post(`/interviews/${interviewId}/cancel`, input),
   recordResult: (interviewId: string, input: { result: 'PASS' | 'FAIL' | 'BACKUP'; feedback?: string; isFinalRound?: boolean; nextAction?: string; concurrencyToken: string }) =>
@@ -169,6 +192,14 @@ export const clientActionsApi = {
     post(`/recruitment/applications/${applicationId}/start-work`, input),
   markNotStarted: (applicationId: string, input: { reason: string; concurrencyToken: string }) =>
     post(`/recruitment/applications/${applicationId}/not-started`, input),
+};
+
+/** Read-only audit trail shared by Client Company and Internal HR. */
+export const interviewHistoryApi = {
+  async get(interviewId: string): Promise<InterviewHistoryItem[]> {
+    const response = await apiClient.get<ApiEnvelope<InterviewHistoryItem[]>>(`/interviews/${interviewId}/history`);
+    return response.data.data ?? [];
+  },
 };
 
 /** GET/PUT /companies/profile/me */
