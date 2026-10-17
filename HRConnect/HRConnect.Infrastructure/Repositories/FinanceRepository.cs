@@ -11,6 +11,8 @@ public class FinanceRepository : IFinanceRepository
     private const string ActiveAttribution = "ACTIVE";
     private const string ServiceTypeCvSourcing = "CV_SOURCING";
     private const string ClosedJob = "CLOSED";
+    private const string SuspendedUser = "SUSPENDED";
+    private const string ActiveUser = "ACTIVE";
 
     private readonly ApplicationDbContext _context;
 
@@ -181,6 +183,26 @@ public class FinanceRepository : IFinanceRepository
 
     public Task<bool> HasSourcingCommissionAsync(Guid deliveryId, CancellationToken cancellationToken = default) =>
         _context.Commissions.AnyAsync(c => c.SourcingDeliveryId == deliveryId, cancellationToken);
+
+    public async Task<IReadOnlyList<Commission>> GetCommissionsOfSuspendedAffiliatesAsync(int take, CancellationToken cancellationToken = default) =>
+        await _context.Commissions
+            .Where(c => (c.Status == CommissionStates.Pending || c.Status == CommissionStates.InWarranty)
+                        && c.Attribution.Affiliate.User.Status == SuspendedUser)
+            .OrderBy(c => c.CreatedAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Commission>> GetHeldCommissionsOfReactivatedAffiliatesAsync(int take, CancellationToken cancellationToken = default) =>
+        await _context.Commissions
+            .Include(c => c.Placement!).ThenInclude(p => p.Warranty)
+            .Where(c => c.Status == CommissionStates.OnHold
+                        && c.Attribution.Affiliate.User.Status == ActiveUser
+                        && c.Placement != null
+                        && c.Placement.Warranty != null
+                        && (c.Placement.Warranty.Status == WarrantyStates.Active || c.Placement.Warranty.Status == WarrantyStates.Passed))
+            .OrderBy(c => c.UpdatedAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Guid>> GetPlacementIdsWithWarrantyEndingAsync(DateOnly onOrBefore, int take, CancellationToken cancellationToken = default) =>
         await _context.Warranties.AsNoTracking()

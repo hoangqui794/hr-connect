@@ -99,6 +99,17 @@ public interface IFinanceRepository
 
     Task<bool> HasSourcingCommissionAsync(Guid deliveryId, CancellationToken cancellationToken = default);
 
+    // ---- suspended affiliates (decision 2026-10-17) ----
+
+    /// <summary>PENDING / IN_WARRANTY commissions of affiliates whose account is SUSPENDED, tracked for update.</summary>
+    Task<IReadOnlyList<Commission>> GetCommissionsOfSuspendedAffiliatesAsync(int take, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// ON_HOLD HEADHUNT_COD commissions of ACTIVE affiliates whose warranty is ACTIVE or PASSED (no resignation
+    /// claim pending): held while the affiliate was suspended. Tracked, with the placement's warranty.
+    /// </summary>
+    Task<IReadOnlyList<Commission>> GetHeldCommissionsOfReactivatedAffiliatesAsync(int take, CancellationToken cancellationToken = default);
+
     Task<(IReadOnlyList<ServiceFee> Items, int TotalCount)> GetServiceFeesAsync(
         Guid? companyId, string? status, int page, int pageSize, CancellationToken cancellationToken = default,
         Guid? jobId = null, string? kind = null);
