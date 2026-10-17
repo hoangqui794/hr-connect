@@ -84,4 +84,29 @@ describe('CandidateApplicationsPage', () => {
       status: 'NOT_SELECTED',
     })));
   });
+
+  it('shows shortlisted applications as selected for interview and supports its filter', async () => {
+    vi.mocked(candidateApplicationsApi.list).mockResolvedValue({
+      items: [{
+        applicationId: 'application-selected', jobId: 'job-selected', jobTitle: 'Junior .NET Developer',
+        companyName: 'HR Connect Demo Company', cvId: 'cv-1', cvTitle: 'CV_Test 1',
+        displayGroup: 'SELECTED', displayLabel: 'Được chọn phỏng vấn', aiStatus: 'COMPLETED',
+        submissionSource: 'CANDIDATE', appliedAt: '2026-10-17T13:20:00Z',
+      }],
+      page: 1, pageSize: 10, total: 1, totalPages: 1,
+    });
+
+    renderPage();
+
+    expect(await screen.findByText('Được chọn phỏng vấn')).toBeInTheDocument();
+    expect(screen.getByLabelText('Tiến độ: Được chọn phỏng vấn')).toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Lọc theo trạng thái' }));
+    const selectedLabels = await screen.findAllByText('Được chọn phỏng vấn');
+    fireEvent.click(selectedLabels[selectedLabels.length - 1]);
+
+    await waitFor(() => expect(candidateApplicationsApi.list).toHaveBeenLastCalledWith(expect.objectContaining({
+      status: 'SELECTED',
+    })));
+  });
 });

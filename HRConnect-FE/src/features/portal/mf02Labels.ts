@@ -36,6 +36,7 @@ export const candidateDisplayStage = (
   const mapped: Record<CandidateApplicationDisplayGroup, CandidateDisplayStage> = {
     SUBMITTED: { step: 0, label: 'Đã nộp', tone: 'info', closed: false },
     IN_REVIEW: { step: 1, label: 'Đang xem xét', tone: 'info', closed: false },
+    SELECTED: { step: 2, label: 'Được chọn phỏng vấn', tone: 'success', closed: false },
     INTERVIEW: { step: 3, label: 'Phỏng vấn', tone: 'info', closed: false },
     OFFER: { step: 4, label: 'Đã nhận lời mời', tone: 'success', closed: false },
     HIRED: { step: 5, label: 'Đã tuyển', tone: 'success', closed: true },
@@ -56,6 +57,49 @@ export const candidateDisplayStage = (
   };
   const stage = mapped[group] ?? mapped.IN_REVIEW;
   return { ...stage, label: serverLabel?.trim() || stage.label };
+};
+
+const CANDIDATE_TIMELINE_STATUS_COPY: Record<string, { title: string; description: string }> = {
+  SUBMITTED: { title: 'Hồ sơ đã được gửi', description: 'Nhà tuyển dụng đã nhận được hồ sơ của bạn.' },
+  SCREENING: { title: 'Nhà tuyển dụng đang xem hồ sơ', description: 'Hồ sơ của bạn đang được nhà tuyển dụng xem xét.' },
+  IN_REVIEW: { title: 'Nhà tuyển dụng đang xem hồ sơ', description: 'Hồ sơ của bạn đang được nhà tuyển dụng xem xét.' },
+  SHORTLISTED: { title: 'Bạn đã được chọn vào vòng phỏng vấn', description: 'Nhà tuyển dụng đã chọn hồ sơ của bạn để tiếp tục quy trình.' },
+  SELECTED: { title: 'Bạn đã được chọn vào vòng phỏng vấn', description: 'Nhà tuyển dụng đã chọn hồ sơ của bạn để tiếp tục quy trình.' },
+  BACKUP: { title: 'Hồ sơ đang được cân nhắc', description: 'Nhà tuyển dụng vẫn đang cân nhắc hồ sơ của bạn.' },
+  INTERVIEW: { title: 'Hồ sơ đã chuyển sang bước phỏng vấn', description: 'Nhà tuyển dụng sẽ cập nhật lịch phỏng vấn khi sẵn sàng.' },
+  OFFER_PENDING: { title: 'Nhà tuyển dụng đang chuẩn bị lời mời', description: 'Quy trình của bạn đang ở bước chuẩn bị lời mời nhận việc.' },
+  OFFER_ACCEPTED: { title: 'Bạn đã chấp nhận lời mời nhận việc', description: 'Nhà tuyển dụng sẽ tiếp tục hướng dẫn thủ tục nhận việc.' },
+  PLACED: { title: 'Bạn đã hoàn tất quy trình tuyển dụng', description: 'Thông tin nhận việc của bạn đã được xác nhận.' },
+  REJECTED: { title: 'Chưa phù hợp lần này', description: 'Quy trình tuyển dụng cho đơn này đã kết thúc.' },
+  NOT_SELECTED: { title: 'Chưa phù hợp lần này', description: 'Quy trình tuyển dụng cho đơn này đã kết thúc.' },
+  INTERVIEW_FAILED: { title: 'Chưa phù hợp lần này', description: 'Quy trình tuyển dụng cho đơn này đã kết thúc.' },
+  BACKUP_NOT_SELECTED: { title: 'Chưa phù hợp lần này', description: 'Quy trình tuyển dụng cho đơn này đã kết thúc.' },
+  CLOSED: { title: 'Chưa phù hợp lần này', description: 'Quy trình tuyển dụng cho đơn này đã kết thúc.' },
+  WITHDRAWN: { title: 'Bạn đã rút đơn ứng tuyển', description: 'Đơn này không còn trong quy trình tuyển dụng.' },
+  OFFER_DECLINED: { title: 'Bạn đã từ chối lời mời nhận việc', description: 'Quy trình tuyển dụng cho đơn này đã kết thúc.' },
+  NOT_STARTED: { title: 'Không tiếp tục nhận việc', description: 'Quy trình tuyển dụng cho đơn này đã kết thúc.' },
+};
+
+/** Prevents an older API deployment or cached response from exposing internal workflow codes. */
+export const candidateTimelineEventCopy = (event: {
+  eventType?: string | null;
+  status?: string | null;
+  title?: string | null;
+  description?: string | null;
+}) => {
+  if (event.eventType !== 'APPLICATION_STATUS_CHANGED') {
+    return { title: event.title || 'Tiến trình hồ sơ được cập nhật', description: event.description || null };
+  }
+
+  const normalizedStatus = event.status?.trim().toUpperCase();
+  const directCopy = normalizedStatus ? CANDIDATE_TIMELINE_STATUS_COPY[normalizedStatus] : undefined;
+  if (directCopy) return directCopy;
+
+  const rawText = `${event.title || ''} ${event.description || ''}`.toUpperCase();
+  const statusFromLegacyText = Object.keys(CANDIDATE_TIMELINE_STATUS_COPY).find((status) => rawText.includes(status));
+  return statusFromLegacyText
+    ? CANDIDATE_TIMELINE_STATUS_COPY[statusFromLegacyText]
+    : { title: 'Hồ sơ đã được cập nhật', description: 'Nhà tuyển dụng vừa cập nhật tiến trình hồ sơ của bạn.' };
 };
 
 export const candidateStage = (status: string): { step: number; label: string; tone: Tone; closed?: boolean } => {

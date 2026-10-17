@@ -58,7 +58,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { CandidateApplication, CandidateApplicationDisplayGroup } from '@/types/api/mf02';
 import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
-import { CANDIDATE_STEPS, MAX_CV_MB, candidateDisplayStage, candidateStage, cvFileError, fileSize } from './mf02Labels';
+import { CANDIDATE_STEPS, MAX_CV_MB, candidateDisplayStage, candidateStage, candidateTimelineEventCopy, cvFileError, fileSize } from './mf02Labels';
 import { CandidatePageHeader, CandidateSurface } from './candidate/CandidateUi';
 
 dayjs.extend(relativeTimePlugin);
@@ -115,6 +115,7 @@ const StageTracker: React.FC<{ status: string }> = ({ status }) => {
 
 const PublicApplicationProgress: React.FC<{ application: CandidateApplication }> = ({ application }) => {
   const stage = candidateDisplayStage(application.displayGroup, application.displayLabel);
+  const statusClass = application.displayGroup.toLowerCase().replace(/_/g, '-');
 
   if (stage.terminalMessage && application.displayGroup !== 'HIRED') {
     return (
@@ -129,12 +130,12 @@ const PublicApplicationProgress: React.FC<{ application: CandidateApplication }>
   }
 
   return (
-    <ol className="m-0 flex list-none items-center gap-1 p-0" aria-label={`Tiến độ: ${stage.label}`}>
+    <ol className={`candidate-application-progress candidate-application-progress--${statusClass} m-0 flex list-none items-center gap-1 p-0`} aria-label={`Tiến độ: ${stage.label}`}>
       {CANDIDATE_STEPS.map((label, index) => {
         const reached = index <= stage.step;
         return (
           <li key={label} className="flex flex-1 flex-col gap-1">
-            <span className={`h-1.5 rounded-full ${reached ? 'bg-[color:var(--console-accent)]' : 'bg-slate-200'}`} aria-hidden />
+            <span className={`candidate-application-progress__bar h-1.5 rounded-full ${reached ? 'candidate-application-progress__bar--reached' : 'bg-slate-200'}`} aria-hidden />
             <span className={`hidden text-[11px] sm:block ${reached ? 'font-medium text-slate-700' : 'text-slate-400'}`}>{label}</span>
           </li>
         );
@@ -146,7 +147,8 @@ const PublicApplicationProgress: React.FC<{ application: CandidateApplication }>
 const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
   const navigate = useNavigate();
   const stage = candidateDisplayStage(a.displayGroup, a.displayLabel);
-  const isPositiveOutcome = a.displayGroup === 'HIRED';
+  const statusClass = a.displayGroup.toLowerCase().replace(/_/g, '-');
+  const isPositiveOutcome = a.displayGroup === 'SELECTED' || a.displayGroup === 'HIRED';
   const isClosedOutcome = a.displayGroup === 'NOT_SELECTED' || a.displayGroup === 'WITHDRAWN';
   return (
     <article className={`candidate-surface candidate-application-card flex flex-col gap-3 p-5 ${isClosedOutcome ? 'candidate-application-card--closed' : ''}`}>
@@ -155,7 +157,7 @@ const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
           <div className="text-[16px] font-semibold leading-snug text-slate-900">{a.jobTitle}</div>
           <div className="text-[13px] text-slate-600">{a.companyName}</div>
         </div>
-        <span className={`candidate-application-status ${isPositiveOutcome ? 'candidate-application-status--success' : isClosedOutcome ? 'candidate-application-status--closed' : 'candidate-application-status--active'}`}>
+        <span className={`candidate-application-status candidate-application-status--${statusClass}`}>
           {isPositiveOutcome ? <CheckCircleFilled aria-hidden /> : isClosedOutcome ? <CloseCircleOutlined aria-hidden /> : <HistoryOutlined aria-hidden />}
           {stage.label}
         </span>
@@ -384,6 +386,7 @@ export const CandidateApplicationsPage: React.FC = () => {
           options={[
             ['SUBMITTED', 'Đã nộp'],
             ['IN_REVIEW', 'Đang xem xét'],
+            ['SELECTED', 'Được chọn phỏng vấn'],
             ['INTERVIEW', 'Phỏng vấn'],
             ['OFFER', 'Đã nhận lời mời'],
             ['HIRED', 'Đã tuyển'],
@@ -882,19 +885,23 @@ export const CandidateApplicationDetailPage: React.FC = () => {
           </div>
           <Timeline
             className="mt-4"
-            items={timelineEvents.map((evt: any) => ({
-              children: (
+            items={timelineEvents.map((evt: any) => {
+              const copy = candidateTimelineEventCopy(evt);
+              return {
+                color: evt.status === 'HIRED' || evt.status === 'SELECTED' ? 'green' : evt.status === 'NOT_SELECTED' ? 'gray' : 'blue',
+                children: (
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-900">{evt.title}</span>
+                    <span className="font-semibold text-slate-900">{copy.title}</span>
                     <span className="text-xs text-slate-400">
                       {dayjs(evt.timestamp).format('HH:mm DD/MM/YYYY')}
                     </span>
                   </div>
-                  {evt.description && <div className="text-xs text-slate-600 mt-1">{evt.description}</div>}
+                  {copy.description && <div className="text-xs text-slate-600 mt-1">{copy.description}</div>}
                 </div>
               ),
-            }))}
+              };
+            })}
           />
         </CandidateSurface>
       ) : null}

@@ -2,6 +2,7 @@
 export type CandidateApplicationDisplayGroup =
   | 'SUBMITTED'
   | 'IN_REVIEW'
+  | 'SELECTED'
   | 'INTERVIEW'
   | 'OFFER'
   | 'HIRED'

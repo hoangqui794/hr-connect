@@ -245,6 +245,16 @@ public class GetRecruitmentApplicationTimelineQueryHandlerTests
             ChangedBy = Guid.NewGuid(),
             ChangedByNavigation = new AppUser { DisplayName = "Internal HR Staff" }
         });
+        app.ApplicationStatusHistories.Add(new ApplicationStatusHistory
+        {
+            ApplicationStatusHistoryId = Guid.NewGuid(),
+            ApplicationId = appId,
+            OldStatus = "SUBMITTED",
+            NewStatus = "SHORTLISTED",
+            ChangedAt = DateTime.UtcNow.AddDays(-4),
+            Reason = "Internal AI score: 87/100",
+            ChangedBy = Guid.NewGuid()
+        });
 
         // Add Interview with feedback
         app.Interviews.Add(new Interview
@@ -294,6 +304,16 @@ public class GetRecruitmentApplicationTimelineQueryHandlerTests
         var statusChangedEvent = result.Data.Events.First(e => e.EventType == "APPLICATION_STATUS_CHANGED");
         statusChangedEvent.ActorUserId.Should().BeNull();
         statusChangedEvent.ActorName.Should().BeNull();
+
+        result.Data.CurrentStatus.Should().Be("INTERVIEW");
+        result.Data.Events.Select(e => e.Title).Should().Contain("Bạn đã được chọn vào vòng phỏng vấn");
+        result.Data.Events.Select(e => e.Description).Should().Contain("Nhà tuyển dụng đã chọn hồ sơ của bạn để tiếp tục quy trình.");
+        result.Data.Events.SelectMany(e => new[] { e.Title, e.Description ?? string.Empty })
+            .Should().NotContain(text =>
+                text.Contains("SCREENING", StringComparison.Ordinal) ||
+                text.Contains("SHORTLISTED", StringComparison.Ordinal) ||
+                text.Contains("SUBMITTED", StringComparison.Ordinal) ||
+                text.Contains("Internal AI score", StringComparison.Ordinal));
 
         var interviewScheduledEvent = result.Data.Events.First(e => e.EventType == "INTERVIEW_SCHEDULED");
         interviewScheduledEvent.ActorUserId.Should().BeNull();
