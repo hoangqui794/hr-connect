@@ -289,6 +289,7 @@ export const router = createBrowserRouter([
       { path: 'company', element: <AppRoutes.ClientCompanyPage /> },
       // MF-05 warranty has no backend API yet: explicit empty state, no mock numbers.
       { path: 'warranty', element: <AppRoutes.ClientWarrantyPlaceholder /> },
+      { path: 'placements/:placementId', element: <AppRoutes.PlacementDetailPage /> },
     ],
   },
 
@@ -317,6 +318,7 @@ export const router = createBrowserRouter([
       // No backend API yet: explicit empty state, no mock numbers.
       { path: 'placement-review', element: <AppRoutes.HrPlacementReviewPlaceholder /> },
       { path: 'warranty-tracking', element: <AppRoutes.HrWarrantyPlaceholder /> },
+      { path: 'placements/:placementId', element: <AppRoutes.PlacementDetailPage /> },
     ],
   },
 

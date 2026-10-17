@@ -103,6 +103,11 @@ export const financeApi = {
     });
     return res.data?.items ? res.data : ((res.data as any)?.data ?? { items: [], totalCount: 0 });
   },
+  /** Get single Placement Detail (GET /placements/{placementId}) */
+  async getPlacementDetail(placementId: string) {
+    const { placementApi } = await import('./placementApi');
+    return placementApi.getPlacementDetail(placementId);
+  },
 };
 
 
