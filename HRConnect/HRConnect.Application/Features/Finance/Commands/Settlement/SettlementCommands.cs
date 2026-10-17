@@ -19,8 +19,16 @@ public sealed record PayoutResponse(Guid PayoutId, Guid CommissionId, string Pay
 public sealed record RecordServiceFeePaymentCommand(
     Guid ServiceFeeId, DateTime PaidAt, string PaymentReference, Guid CurrentUserId) : IRequest<ServiceFeePaymentResponse>;
 
-/// <summary>Platform Admin approves an EARNED commission for payment; requires the service fee to be PAID.</summary>
+/// <summary>
+/// Platform Admin approves an EARNED commission for payment. HEADHUNT_COD: the placement fee is PAID.
+/// CV_SOURCING: the job is settled, its deposit and settlement are PAID and the last review window has ended.
+/// </summary>
 public sealed record ApproveCommissionCommand(Guid CommissionId, Guid CurrentUserId) : IRequest<CommissionActionResponse>;
+
+/// <summary>Internal HR / Admin settles a CV_SOURCING job early (under-delivery or before closing it).</summary>
+public sealed record SettleSourcingJobCommand(Guid JobId, Guid CurrentUserId) : IRequest<SourcingSettlementResponse>;
+
+public sealed record SourcingSettlementResponse(Guid ServiceFeeId, Guid JobId, string Kind, decimal Amount, string Status, DateOnly DueDate);
 
 public sealed record CancelCommissionCommand(Guid CommissionId, string Reason, Guid CurrentUserId) : IRequest<CommissionActionResponse>;
 
@@ -42,7 +50,8 @@ public sealed class SettlementCommandHandlers :
     IRequestHandler<ApproveCommissionCommand, CommissionActionResponse>,
     IRequestHandler<CancelCommissionCommand, CommissionActionResponse>,
     IRequestHandler<AdjustCommissionCommand, CommissionActionResponse>,
-    IRequestHandler<RecordPayoutCommand, PayoutResponse>
+    IRequestHandler<RecordPayoutCommand, PayoutResponse>,
+    IRequestHandler<SettleSourcingJobCommand, SourcingSettlementResponse>
 {
     private static readonly HashSet<string> CancellableStates =
         [CommissionStates.Pending, CommissionStates.InWarranty, CommissionStates.Earned, CommissionStates.OnHold, CommissionStates.Payable];
@@ -54,15 +63,21 @@ public sealed class SettlementCommandHandlers :
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationRepository? _notificationRepository;
+    private readonly ISourcingFinanceService? _sourcingFinance;
+    private readonly ISourcingDeliveryRepository? _deliveries;
 
     public SettlementCommandHandlers(
         IFinanceRepository financeRepository, IUnitOfWork unitOfWork, IAuditLogService auditLogService,
-        INotificationRepository? notificationRepository = null)
+        INotificationRepository? notificationRepository = null,
+        ISourcingFinanceService? sourcingFinance = null,
+        ISourcingDeliveryRepository? deliveries = null)
     {
         _financeRepository = financeRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
         _notificationRepository = notificationRepository;
+        _sourcingFinance = sourcingFinance;
+        _deliveries = deliveries;
     }
 
     public async Task<ServiceFeePaymentResponse> Handle(RecordServiceFeePaymentCommand request, CancellationToken cancellationToken)
@@ -128,22 +143,32 @@ public sealed class SettlementCommandHandlers :
                 $"Chỉ duyệt hoa hồng đã EARNED (ứng viên đi làm đủ thời hạn bảo hành). Trạng thái hiện tại: {commission.Status}.");
         }
 
-        var fee = commission.Placement.ServiceFee;
-        if (fee == null || fee.Status != ServiceFeeStates.Paid)
+        var now = DateTime.UtcNow;
+        Guid? serviceFeeId;
+        if (commission.SourcingDeliveryId.HasValue)
         {
-            throw new ConflictException(
-                "Client chưa thanh toán phí dịch vụ của placement này; hoa hồng chỉ được duyệt sau khi đã thu phí.",
-                "SERVICE_FEE_NOT_PAID");
+            serviceFeeId = await RequireSourcingPaidAsync(commission, now, cancellationToken);
+        }
+        else
+        {
+            var fee = commission.Placement?.ServiceFee;
+            if (fee == null || fee.Status != ServiceFeeStates.Paid)
+            {
+                throw new ConflictException(
+                    "Client chưa thanh toán phí dịch vụ của placement này; hoa hồng chỉ được duyệt sau khi đã thu phí.",
+                    "SERVICE_FEE_NOT_PAID");
+            }
+
+            serviceFeeId = fee.ServiceFeeId;
         }
 
-        var now = DateTime.UtcNow;
         commission.Status = CommissionStates.Payable;
         commission.ApprovedBy = request.CurrentUserId;
         commission.ApprovedAt = now;
         commission.UpdatedAt = now;
 
         await AuditAsync(AuditActions.CommissionApproved, "COMMISSION", commission.CommissionId, request.CurrentUserId,
-            new { status = CommissionStates.Earned }, new { status = commission.Status, commission.Amount, serviceFeeId = fee.ServiceFeeId }, cancellationToken);
+            new { status = CommissionStates.Earned }, new { status = commission.Status, commission.Amount, serviceFeeId }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return ToResponse(commission);
     }
@@ -254,6 +279,59 @@ public sealed class SettlementCommandHandlers :
             cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return new PayoutResponse(payout.PayoutId, commission.CommissionId, payout.Status, commission.Status, payout.Amount, payout.AttemptNo);
+    }
+
+    public async Task<SourcingSettlementResponse> Handle(SettleSourcingJobCommand request, CancellationToken cancellationToken)
+    {
+        if (_sourcingFinance == null)
+        {
+            throw new InvalidOperationException("ISourcingFinanceService is not registered.");
+        }
+
+        var job = await _financeRepository.GetJobForFinanceAsync(request.JobId, cancellationToken)
+            ?? throw new NotFoundException("Không tìm thấy công việc.");
+        var fee = await _sourcingFinance.SettleAsync(job, request.CurrentUserId, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return new SourcingSettlementResponse(fee.ServiceFeeId, job.JobId, fee.Kind, fee.Amount, fee.Status, fee.DueDate);
+    }
+
+    /// <summary>
+    /// CV_SOURCING payout gate (QUY-TAC-PHI section 2): the Client has paid in full (deposit and
+    /// settlement) and the dispute window, the review window of the last delivery, has ended.
+    /// </summary>
+    private async Task<Guid?> RequireSourcingPaidAsync(Commission commission, DateTime now, CancellationToken cancellationToken)
+    {
+        var jobId = commission.SourcingDelivery?.JobId
+            ?? throw new ConflictException("Hoa hồng CV Sourcing không còn gắn với CV đã giao.", "SOURCING_DELIVERY_MISSING");
+        var fees = await _financeRepository.GetJobServiceFeesForUpdateAsync(jobId, cancellationToken);
+        var closing = fees.FirstOrDefault(fee => ServiceFeeKinds.Closing.Contains(fee.Kind));
+        if (closing == null)
+        {
+            throw new ConflictException(
+                "Job CV Sourcing chưa quyết toán; hoa hồng chỉ được duyệt sau khi Client trả đủ cọc và phần quyết toán.",
+                "SOURCING_NOT_SETTLED");
+        }
+
+        if (fees.Any(fee => fee.Kind is ServiceFeeKinds.Deposit or ServiceFeeKinds.Settlement && fee.Status != ServiceFeeStates.Paid))
+        {
+            throw new ConflictException(
+                "Client chưa thanh toán đủ cọc và phần quyết toán của job này; hoa hồng chỉ được duyệt sau khi đã thu phí.",
+                "SERVICE_FEE_NOT_PAID");
+        }
+
+        if (_deliveries != null)
+        {
+            var lastReviewDue = (await _deliveries.GetByJobAsync(jobId, cancellationToken))
+                .Select(d => (DateTime?)d.ReviewDueAt).Max();
+            if (lastReviewDue > now)
+            {
+                throw new ConflictException(
+                    $"Còn trong thời hạn tranh chấp đến {lastReviewDue:dd/MM/yyyy HH:mm} UTC (hạn xem xét của CV giao cuối).",
+                    "SOURCING_DISPUTE_WINDOW_OPEN");
+            }
+        }
+
+        return closing.ServiceFeeId;
     }
 
     private async Task<Commission> LoadCommissionAsync(Guid commissionId, CancellationToken cancellationToken) =>
