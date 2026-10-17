@@ -14,10 +14,12 @@ import {
   Button,
   DatePicker,
   Drawer,
+  Empty,
   Form,
   InputNumber,
   Radio,
   Select,
+  Skeleton,
   Switch,
   Table,
   Typography,
@@ -123,25 +125,78 @@ export const AdminCommissionRulesPage: React.FC = () => {
     onError: (err) => message.error(getApiErrorMessage(err)),
   });
 
-  const toggleActive = (rule: CommissionRule) =>
-    modal.confirm({
-      title: rule.isActive ? 'Ngừng hiệu lực quy tắc này?' : 'Kích hoạt lại quy tắc này?',
-      content: rule.isActive
-        ? 'Các placement mới sẽ không còn tính hoa hồng theo quy tắc này.'
-        : 'Quy tắc sẽ được dùng để tính hoa hồng cho các placement phù hợp.',
-      okText: rule.isActive ? 'Ngừng hiệu lực' : 'Kích hoạt',
-      okButtonProps: { danger: rule.isActive },
-      cancelText: 'Hủy',
-      onOk: async () => {
-        try {
-          const res = await adminCommissionApi.setActive(rule.commissionRuleId, !rule.isActive);
-          message.success(res.message || 'Đã cập nhật.');
-          refresh();
-        } catch (err) {
-          message.error(getApiErrorMessage(err));
-        }
-      },
-    });
+  const [togglingRuleId, setTogglingRuleId] = useState<string | null>(null);
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, nextActive }: { id: string; nextActive: boolean }) => {
+      setTogglingRuleId(id);
+      return adminCommissionApi.setActive(id, nextActive);
+    },
+    onMutate: async ({ id, nextActive }) => {
+      // Cancel queries to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: ['admin-commission'] });
+      const previousData = queryClient.getQueryData(['admin-commission', params]);
+
+      // Optimistic update in table cache
+      queryClient.setQueryData(['admin-commission', params], (old: any) => {
+        if (!old || !old.items) return old;
+        return {
+          ...old,
+          items: old.items.map((item: CommissionRule) =>
+            item.commissionRuleId === id ? { ...item, isActive: nextActive } : item
+          ),
+        };
+      });
+
+      return { previousData };
+    },
+    onError: (err, _vars, context) => {
+      // Rollback on failure
+      if (context?.previousData) {
+        queryClient.setQueryData(['admin-commission', params], context.previousData);
+      }
+      message.error(getApiErrorMessage(err, 'Không thể cập nhật trạng thái quy tắc hoa hồng.'));
+    },
+    onSuccess: (res, vars) => {
+      message.success(
+        res.message || (vars.nextActive ? 'Đã kích hoạt quy tắc hoa hồng.' : 'Đã ngừng áp dụng quy tắc hoa hồng.')
+      );
+    },
+    onSettled: () => {
+      setTogglingRuleId(null);
+      queryClient.invalidateQueries({ queryKey: ['admin-commission'] });
+    },
+  });
+
+  const handleToggle = (rule: CommissionRule) => {
+    if (rule.isActive) {
+      modal.confirm({
+        title: 'Ngừng áp dụng quy tắc hoa hồng?',
+        content: (
+          <div className="space-y-2 text-sm text-slate-600">
+            <p className="m-0">
+              Quy tắc cho{' '}
+              <strong className="text-slate-900">
+                {rule.serviceTypeName ?? rule.serviceTypeCode} - {rule.milestoneName ?? rule.milestoneType}
+              </strong>{' '}
+              (Mức: <span className="font-semibold text-slate-900">{formatRate(rule)}</span>) sẽ bị vô hiệu hóa.
+            </p>
+            <p className="m-0 text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
+              ⚠️ Cảnh báo: Các tin tuyển dụng hoặc placement mới thuộc loại dịch vụ này sẽ không còn được tự động tính hoa hồng theo mức này.
+            </p>
+          </div>
+        ),
+        okText: 'Ngừng hiệu lực',
+        okButtonProps: { danger: true },
+        cancelText: 'Hủy',
+        onOk: () => {
+          toggleMutation.mutate({ id: rule.commissionRuleId, nextActive: false });
+        },
+      });
+    } else {
+      toggleMutation.mutate({ id: rule.commissionRuleId, nextActive: true });
+    }
+  };
 
   const columns: ColumnsType<CommissionRule> = [
     {
@@ -176,14 +231,29 @@ export const AdminCommissionRulesPage: React.FC = () => {
       title: 'Trạng thái',
       key: 'active',
       width: 210,
-      render: (_, r) => (
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <StatusDot tone={r.isActive ? 'success' : 'neutral'}>{r.isActive ? 'Đang áp dụng' : 'Ngừng'}</StatusDot>
-          <Button size="small" type="link" danger={r.isActive} onClick={() => toggleActive(r)}>
-            {r.isActive ? 'Ngừng' : 'Kích hoạt'}
-          </Button>
-        </div>
-      ),
+      render: (_, r) => {
+        const isToggling = togglingRuleId === r.commissionRuleId;
+        return (
+          <div
+            className="flex items-center gap-2.5"
+            onClick={(e) => e.stopPropagation()}
+            data-testid={`commission-rule-status-${r.commissionRuleId}`}
+          >
+            <Switch
+              size="small"
+              checked={r.isActive}
+              loading={isToggling}
+              disabled={isToggling}
+              onChange={() => handleToggle(r)}
+              aria-label={`Bật tắt quy tắc ${r.name || r.milestoneType}`}
+              data-testid={`commission-rule-switch-${r.commissionRuleId}`}
+            />
+            <StatusDot tone={r.isActive ? 'success' : 'neutral'}>
+              {r.isActive ? 'Đang áp dụng' : 'Ngừng'}
+            </StatusDot>
+          </div>
+        );
+      },
     },
   ];
 
@@ -232,18 +302,59 @@ export const AdminCommissionRulesPage: React.FC = () => {
           />
         </div>
         {list.isError ? (
-          <div className="p-4">
-            <Alert type="error" showIcon message="Không tải được quy tắc hoa hồng" description={getApiErrorMessage(list.error)} />
+          <div className="p-6" data-testid="commission-rules-error">
+            <Alert
+              type="error"
+              showIcon
+              message="Không tải được quy tắc hoa hồng"
+              description={
+                <div className="space-y-3 mt-1">
+                  <p className="m-0 text-slate-700">{getApiErrorMessage(list.error)}</p>
+                  <Button icon={<ReloadOutlined />} onClick={() => list.refetch()}>
+                    Thử lại
+                  </Button>
+                </div>
+              }
+            />
+          </div>
+        ) : list.isLoading && !page ? (
+          <div className="p-6 space-y-4" data-testid="commission-rules-loading">
+            <Skeleton active paragraph={{ rows: 6 }} />
+          </div>
+        ) : !page || page.items.length === 0 ? (
+          <div className="p-12 text-center" data-testid="commission-rules-empty">
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="Chưa có quy tắc hoa hồng nào phù hợp bộ lọc."
+            >
+              <div className="flex items-center justify-center gap-2 mt-2">
+                {params.serviceTypeId || params.isActive !== undefined ? (
+                  <Button onClick={() => setSearchParams(new URLSearchParams())}>
+                    Xóa bộ lọc
+                  </Button>
+                ) : null}
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')}>
+                  Thêm quy tắc mới
+                </Button>
+              </div>
+            </Empty>
           </div>
         ) : (
           <Table<CommissionRule>
             className="admin-soft-table"
             rowKey="commissionRuleId"
-            loading={list.isLoading}
+            loading={list.isFetching && !list.isLoading}
             columns={columns}
-            dataSource={page?.items ?? []}
+            dataSource={page.items}
             scroll={{ x: 1080 }}
-            locale={{ emptyText: 'Chưa có quy tắc hoa hồng nào phù hợp.' }}
+            pagination={{
+              current: page.page ?? params.page,
+              pageSize: PAGE_SIZE,
+              total: page.total ?? 0,
+              showSizeChanger: false,
+              hideOnSinglePage: true,
+              onChange: (p) => setParam('page', String(p)),
+            }}
             onRow={(r) => ({
               onClick: () => setEditing(r),
               onKeyDown: (e) => {
@@ -253,14 +364,6 @@ export const AdminCommissionRulesPage: React.FC = () => {
               className: 'cursor-pointer',
               'aria-label': `Sửa quy tắc ${r.name}`,
             })}
-            pagination={{
-              current: page?.page ?? params.page,
-              pageSize: PAGE_SIZE,
-              total: page?.total ?? 0,
-              showSizeChanger: false,
-              hideOnSinglePage: true,
-              onChange: (p) => setParam('page', String(p)),
-            }}
           />
         )}
       </Surface>

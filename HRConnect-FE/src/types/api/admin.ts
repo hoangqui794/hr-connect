@@ -136,6 +136,18 @@ export interface CommissionRule {
   updatedAt: string;
 }
 
+export interface CommissionRuleToggleData {
+  commissionRuleId: string;
+  isActive: boolean;
+  updatedAt: string;
+}
+
+export interface CommissionRuleToggleResponse {
+  success: boolean;
+  message: string;
+  data: CommissionRuleToggleData;
+}
+
 export interface CommissionMilestone {
   code: string;
   name: string;
