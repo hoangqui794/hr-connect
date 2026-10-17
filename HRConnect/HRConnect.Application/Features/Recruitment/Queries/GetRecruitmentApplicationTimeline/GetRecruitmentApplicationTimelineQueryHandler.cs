@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Candidates.Common;
 using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -76,8 +77,10 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
         events.Add(new ApplicationTimelineEventDto
         {
             EventType = "APPLICATION_APPLIED",
-            Title = "Nộp hồ sơ ứng tuyển",
-            Description = $"Ứng viên {candidateName} đã nộp hồ sơ ứng tuyển vào vị trí {jobTitle}.",
+            Title = request.IsCandidate ? "Hồ sơ đã được gửi" : "Nộp hồ sơ ứng tuyển",
+            Description = request.IsCandidate
+                ? $"Hồ sơ của bạn đã được gửi đến nhà tuyển dụng cho vị trí {jobTitle}."
+                : $"Ứng viên {candidateName} đã nộp hồ sơ ứng tuyển vào vị trí {jobTitle}.",
             Timestamp = app.AppliedAt,
             ActorUserId = app.Candidate?.UserId,
             ActorName = candidateName,
@@ -89,17 +92,21 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
         {
             foreach (var h in app.ApplicationStatusHistories)
             {
+                var candidateCopy = GetCandidateApplicationStatusCopy(h.NewStatus);
+                var candidateDisplayStatus = CandidateApplicationDisplayStatusMapper.Map(h.NewStatus);
                 events.Add(new ApplicationTimelineEventDto
                 {
                     EventType = "APPLICATION_STATUS_CHANGED",
-                    Title = $"Chuyển trạng thái: {h.NewStatus}",
-                    Description = !string.IsNullOrWhiteSpace(h.Reason)
-                        ? h.Reason
-                        : $"Trạng thái chuyển từ {h.OldStatus ?? "Mới"} sang {h.NewStatus}.",
+                    Title = request.IsCandidate ? candidateCopy.Title : $"Chuyển trạng thái: {h.NewStatus}",
+                    Description = request.IsCandidate
+                        ? candidateCopy.Description
+                        : !string.IsNullOrWhiteSpace(h.Reason)
+                            ? h.Reason
+                            : $"Trạng thái chuyển từ {h.OldStatus ?? "Mới"} sang {h.NewStatus}.",
                     Timestamp = h.ChangedAt,
                     ActorUserId = request.IsCandidate ? null : h.ChangedBy,
                     ActorName = request.IsCandidate ? null : (h.ChangedByNavigation?.DisplayName ?? h.ChangedByNavigation?.Email),
-                    Status = h.NewStatus,
+                    Status = request.IsCandidate ? candidateDisplayStatus.Group : h.NewStatus,
                     ReasonCode = request.IsCandidate ? null : h.ReasonCode
                 });
             }
@@ -113,27 +120,30 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                 events.Add(new ApplicationTimelineEventDto
                 {
                     EventType = "INTERVIEW_SCHEDULED",
-                    Title = $"Lên lịch phỏng vấn Vòng {i.InterviewRound}",
-                    Description = $"Thời gian: {i.ScheduledAt:yyyy-MM-dd HH:mm} - Hình thức: {i.InterviewType ?? "Trực tiếp"}.",
+                    Title = request.IsCandidate ? $"Lịch phỏng vấn vòng {i.InterviewRound}" : $"Lên lịch phỏng vấn Vòng {i.InterviewRound}",
+                    Description = request.IsCandidate
+                        ? $"Thời gian: {i.ScheduledAt:dd/MM/yyyy HH:mm}. Hình thức: {ToCandidateInterviewType(i.InterviewType)}."
+                        : $"Thời gian: {i.ScheduledAt:yyyy-MM-dd HH:mm} - Hình thức: {i.InterviewType ?? "Trực tiếp"}.",
                     Timestamp = i.CreatedAt,
                     ActorUserId = request.IsCandidate ? null : i.CreatedBy,
                     ActorName = request.IsCandidate ? null : (i.CreatedByNavigation?.DisplayName ?? i.CreatedByNavigation?.Email),
-                    Status = i.Status
+                    Status = request.IsCandidate ? "INTERVIEW" : i.Status
                 });
 
                 if (i.InterviewStatusHistories != null)
                 {
                     foreach (var sh in i.InterviewStatusHistories)
                     {
+                        var candidateHistoryCopy = GetCandidateInterviewStatusCopy(sh.NewStatus, i.InterviewRound);
                         events.Add(new ApplicationTimelineEventDto
                         {
                             EventType = "INTERVIEW_STATUS_CHANGED",
-                            Title = $"Cập nhật phỏng vấn Vòng {i.InterviewRound}: {sh.NewStatus}",
-                            Description = sh.Reason,
+                            Title = request.IsCandidate ? candidateHistoryCopy.Title : $"Cập nhật phỏng vấn Vòng {i.InterviewRound}: {sh.NewStatus}",
+                            Description = request.IsCandidate ? candidateHistoryCopy.Description : sh.Reason,
                             Timestamp = sh.ChangedAt,
                             ActorUserId = request.IsCandidate ? null : sh.ChangedBy,
                             ActorName = request.IsCandidate ? null : (sh.ChangedByNavigation?.DisplayName ?? sh.ChangedByNavigation?.Email),
-                            Status = sh.NewStatus
+                            Status = request.IsCandidate ? "INTERVIEW" : sh.NewStatus
                         });
                     }
                 }
@@ -178,12 +188,14 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                     events.Add(new ApplicationTimelineEventDto
                     {
                         EventType = "OFFER_SENT",
-                        Title = $"Gửi Offer v{o.OfferVersion}",
-                        Description = $"Offer đã được gửi đến ứng viên {candidateName}.",
+                        Title = request.IsCandidate ? "Bạn đã nhận được lời mời nhận việc" : $"Gửi Offer v{o.OfferVersion}",
+                        Description = request.IsCandidate
+                            ? "Nhà tuyển dụng đã gửi lời mời nhận việc. Bạn có thể xem chi tiết và phản hồi ngay trên trang này."
+                            : $"Offer đã được gửi đến ứng viên {candidateName}.",
                         Timestamp = o.SentAt.Value,
                         ActorUserId = request.IsCandidate ? null : o.CreatedBy,
                         ActorName = request.IsCandidate ? null : (o.CreatedByNavigation?.DisplayName ?? o.CreatedByNavigation?.Email),
-                        Status = "SENT"
+                        Status = request.IsCandidate ? "OFFER" : "SENT"
                     });
                 }
 
@@ -192,12 +204,14 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                     events.Add(new ApplicationTimelineEventDto
                     {
                         EventType = o.Status == "ACCEPTED" ? "OFFER_ACCEPTED" : "OFFER_DECLINED",
-                        Title = o.Status == "ACCEPTED" ? $"Ứng viên chấp nhận Offer v{o.OfferVersion}" : $"Ứng viên từ chối Offer v{o.OfferVersion}",
+                        Title = request.IsCandidate
+                            ? (o.Status == "ACCEPTED" ? "Bạn đã chấp nhận lời mời nhận việc" : "Bạn đã từ chối lời mời nhận việc")
+                            : (o.Status == "ACCEPTED" ? $"Ứng viên chấp nhận Offer v{o.OfferVersion}" : $"Ứng viên từ chối Offer v{o.OfferVersion}"),
                         Description = !string.IsNullOrWhiteSpace(o.DeclineReason) ? $"Lý do: {o.DeclineReason}" : null,
                         Timestamp = o.RespondedAt.Value,
                         ActorUserId = app.Candidate?.UserId,
                         ActorName = candidateName,
-                        Status = o.Status
+                        Status = request.IsCandidate ? (o.Status == "ACCEPTED" ? "HIRED" : "WITHDRAWN") : o.Status
                     });
                 }
             }
@@ -237,9 +251,56 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                 ApplicationId = app.ApplicationId,
                 CandidateName = candidateName,
                 JobTitle = jobTitle,
-                CurrentStatus = app.Status,
+                CurrentStatus = request.IsCandidate
+                    ? CandidateApplicationDisplayStatusMapper.Map(app.Status, app.Offers?.Select(o => o.Status)).Group
+                    : app.Status,
                 Events = sortedEvents
             }
+        };
+    }
+
+    private static (string Title, string Description) GetCandidateApplicationStatusCopy(string? status)
+    {
+        return status?.Trim().ToUpperInvariant() switch
+        {
+            ApplicationStates.Submitted => ("Hồ sơ đã được gửi", "Nhà tuyển dụng đã nhận được hồ sơ của bạn."),
+            ApplicationStates.Screening => ("Nhà tuyển dụng đang xem hồ sơ", "Hồ sơ của bạn đang được nhà tuyển dụng xem xét."),
+            ApplicationStates.Shortlisted => ("Bạn đã được chọn vào vòng phỏng vấn", "Nhà tuyển dụng đã chọn hồ sơ của bạn để tiếp tục quy trình."),
+            ApplicationStates.Backup => ("Hồ sơ đang được cân nhắc", "Nhà tuyển dụng vẫn đang cân nhắc hồ sơ của bạn."),
+            ApplicationStates.Interview => ("Hồ sơ đã chuyển sang bước phỏng vấn", "Nhà tuyển dụng sẽ cập nhật lịch phỏng vấn khi sẵn sàng."),
+            ApplicationStates.OfferPending => ("Nhà tuyển dụng đang chuẩn bị lời mời", "Quy trình của bạn đang ở bước chuẩn bị lời mời nhận việc."),
+            ApplicationStates.OfferAccepted => ("Bạn đã chấp nhận lời mời nhận việc", "Nhà tuyển dụng sẽ tiếp tục hướng dẫn thủ tục nhận việc."),
+            ApplicationStates.Placed => ("Bạn đã hoàn tất quy trình tuyển dụng", "Thông tin nhận việc của bạn đã được xác nhận."),
+            ApplicationStates.Rejected or ApplicationStates.InterviewFailed or ApplicationStates.BackupNotSelected or ApplicationStates.Closed
+                => ("Chưa phù hợp lần này", "Quy trình tuyển dụng cho đơn này đã kết thúc."),
+            ApplicationStates.Withdrawn => ("Bạn đã rút đơn ứng tuyển", "Đơn này không còn trong quy trình tuyển dụng."),
+            ApplicationStates.OfferDeclined => ("Bạn đã từ chối lời mời nhận việc", "Quy trình tuyển dụng cho đơn này đã kết thúc."),
+            ApplicationStates.NotStarted => ("Không tiếp tục nhận việc", "Quy trình tuyển dụng cho đơn này đã kết thúc."),
+            _ => ("Hồ sơ đã được cập nhật", "Nhà tuyển dụng vừa cập nhật tiến trình hồ sơ của bạn.")
+        };
+    }
+
+    private static (string Title, string Description) GetCandidateInterviewStatusCopy(string? status, int round)
+    {
+        return status?.Trim().ToUpperInvariant() switch
+        {
+            "SCHEDULED" => ($"Đã lên lịch phỏng vấn vòng {round}", "Vui lòng kiểm tra thời gian và thông tin tham gia phỏng vấn."),
+            "RESCHEDULED" => ($"Lịch phỏng vấn vòng {round} đã thay đổi", "Vui lòng kiểm tra lại thời gian phỏng vấn mới."),
+            "COMPLETED" => ($"Đã hoàn thành phỏng vấn vòng {round}", "Nhà tuyển dụng đang xem xét kết quả phỏng vấn."),
+            "CANCELLED" => ($"Lịch phỏng vấn vòng {round} đã được hủy", "Nhà tuyển dụng sẽ liên hệ nếu có cập nhật tiếp theo."),
+            "NO_SHOW" => ($"Không thể hoàn thành phỏng vấn vòng {round}", "Vui lòng liên hệ nhà tuyển dụng nếu bạn cần hỗ trợ."),
+            _ => ($"Lịch phỏng vấn vòng {round} đã được cập nhật", "Vui lòng kiểm tra thông tin phỏng vấn mới nhất.")
+        };
+    }
+
+    private static string ToCandidateInterviewType(string? interviewType)
+    {
+        return interviewType?.Trim().ToUpperInvariant() switch
+        {
+            "ONLINE" or "REMOTE" => "Trực tuyến",
+            "PHONE" => "Qua điện thoại",
+            "ONSITE" or "OFFLINE" or "IN_PERSON" => "Trực tiếp",
+            _ => string.IsNullOrWhiteSpace(interviewType) ? "Trực tiếp" : interviewType
         };
     }
 }

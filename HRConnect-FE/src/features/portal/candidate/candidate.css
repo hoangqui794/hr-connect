@@ -183,12 +183,151 @@ html:has(.candidate-console) {
 }
 
 .candidate-application-card {
+  position: relative;
+  overflow: hidden;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .candidate-application-card:hover {
   border-color: #bfdbfe;
   box-shadow: 0 15px 32px rgb(15 23 42 / 7%);
+}
+
+.candidate-application-card--closed {
+  border-color: #dbe3ee;
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.candidate-application-card--closed::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  content: '';
+  background: #94a3b8;
+}
+
+.candidate-application-card--not-selected {
+  border-color: #ffe4e6;
+  background: #fffafb;
+  box-shadow: 0 8px 22px rgb(190 18 60 / 3%);
+}
+
+.candidate-application-card--not-selected:hover {
+  border-color: #fecdd3;
+  box-shadow: 0 10px 24px rgb(190 18 60 / 5%);
+}
+
+.candidate-application-card--not-selected::before {
+  background: #fda4af;
+}
+
+.candidate-application-status {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.candidate-application-status--submitted {
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.candidate-application-status--in-review {
+  border-color: #bae6fd;
+  color: #0369a1;
+  background: #f0f9ff;
+}
+
+.candidate-application-status--selected {
+  border-color: #99f6e4;
+  color: #0f766e;
+  background: #f0fdfa;
+}
+
+.candidate-application-status--interview {
+  border-color: #ddd6fe;
+  color: #6d28d9;
+  background: #f5f3ff;
+}
+
+.candidate-application-status--offer {
+  border-color: #fde68a;
+  color: #b45309;
+  background: #fffbeb;
+}
+
+.candidate-application-status--hired {
+  border-color: #bbf7d0;
+  color: #15803d;
+  background: #f0fdf4;
+}
+
+.candidate-application-status--not-selected {
+  border-color: #fecdd3;
+  color: #be123c;
+  background: #fff1f2;
+}
+
+.candidate-application-status--withdrawn {
+  border-color: #dbe3ee;
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.candidate-application-progress {
+  --candidate-stage-color: #2563eb;
+}
+
+.candidate-application-progress--in-review { --candidate-stage-color: #0284c7; }
+.candidate-application-progress--selected { --candidate-stage-color: #0d9488; }
+.candidate-application-progress--interview { --candidate-stage-color: #7c3aed; }
+.candidate-application-progress--offer { --candidate-stage-color: #d97706; }
+.candidate-application-progress--hired { --candidate-stage-color: #16a34a; }
+
+.candidate-application-progress__bar--reached {
+  background: var(--candidate-stage-color);
+}
+
+.candidate-application-outcome {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  padding: 0.7rem 0.8rem;
+  background: rgb(248 250 252 / 82%);
+}
+
+.candidate-application-outcome--not-selected {
+  border-color: #fecdd3;
+  background: #fff7f8;
+}
+
+.candidate-application-outcome--not-selected .candidate-application-outcome__icon,
+.candidate-application-outcome--not-selected .candidate-application-outcome__title {
+  color: #be123c;
+}
+
+.candidate-application-outcome--not-selected .candidate-application-outcome__message {
+  color: #9f1239;
+}
+
+.candidate-application-outcome--withdrawn .candidate-application-outcome__icon,
+.candidate-application-outcome--withdrawn .candidate-application-outcome__title {
+  color: #475569;
+}
+
+.candidate-application-outcome--withdrawn .candidate-application-outcome__message {
+  color: #64748b;
 }
 
 .candidate-empty-surface {
