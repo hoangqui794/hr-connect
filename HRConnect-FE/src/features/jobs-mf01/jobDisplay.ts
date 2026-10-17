@@ -132,6 +132,19 @@ export const REASON_CODE_LABEL: Record<string, string> = {
 };
 
 /** What a Client may do next, per JobTransitions on the backend. */
+/**
+ * CV_SOURCING waiting for its deposit (PENDING_PAYMENT): it has no posting fee; the job opens when
+ * Platform Admin records the deposit in MF-05. Amount = target × price per CV × deposit percent.
+ */
+export const isAwaitingSourcingDeposit = (job: Pick<Job, 'status' | 'serviceTypeCode'>): boolean =>
+  job.status === 'PENDING_PAYMENT' && job.serviceTypeCode === 'CV_SOURCING';
+
+export const sourcingDepositAmount = (job: Pick<Job, 'commercialTerms'>): number | null => {
+  const terms = job.commercialTerms;
+  if (!terms?.sourcingTarget || !terms.pricePerCv || !terms.depositPercent) return null;
+  return Math.round(terms.sourcingTarget * terms.pricePerCv * terms.depositPercent) / 100;
+};
+
 export const clientActions = (status: JobStatus) => ({
   canEdit: status === 'DRAFT' || status === 'REJECTED',
   canSubmit: status === 'DRAFT' || status === 'REJECTED',

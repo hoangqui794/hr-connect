@@ -13,7 +13,7 @@ import { financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Commission, CommissionStatus, Payout, ServiceFee, ServiceFeeStatus } from '@/types/api/finance';
 import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
-import { COMMISSION_STATUS, PAYOUT_STATUS, SERVICE_FEE_STATUS, date, labelOf, money } from './financeLabels';
+import { COMMISSION_STATUS, PAYOUT_STATUS, SERVICE_FEE_KIND, SERVICE_FEE_STATUS, date, labelOf, money } from './financeLabels';
 
 type Tab = 'commissions' | 'fees' | 'payouts';
 type Dialog =
@@ -156,7 +156,9 @@ export const AdminFinancePage: React.FC = () => {
       key: 'who',
       render: (_, f) => (
         <div>
-          <div className="font-semibold text-slate-900">{f.candidateName ?? '—'}</div>
+          <div className="font-semibold text-slate-900">
+            {f.kind && f.kind !== 'PLACEMENT' ? labelOf(SERVICE_FEE_KIND, f.kind).label : (f.candidateName ?? '—')}
+          </div>
           <div className="text-xs text-slate-500">{f.jobTitle ?? '—'}</div>
         </div>
       ),

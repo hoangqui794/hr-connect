@@ -47,7 +47,29 @@ public static class ServiceFeeStates
     public const string Cancelled = "CANCELLED";
 }
 
+/// <summary>
+/// What a service fee bills. PLACEMENT is one HEADHUNT_COD placement; the others belong to a
+/// CV_SOURCING job (QUY-TAC-PHI section 2, docs/MF05 section E8).
+/// </summary>
+public static class ServiceFeeKinds
+{
+    public const string Placement = "PLACEMENT";
+    /// <summary>Paid in advance when the job is approved: sourcing target × price per CV × deposit percent.</summary>
+    public const string Deposit = "DEPOSIT";
+    /// <summary>Counted CVs × price per CV minus the deposit, billed once when the job is settled.</summary>
+    public const string Settlement = "SETTLEMENT";
+    /// <summary>The deposit exceeded what was delivered: refunded or deducted next time.</summary>
+    public const string Credit = "CREDIT";
+
+    public static readonly string[] All = [Placement, Deposit, Settlement, Credit];
+
+    /// <summary>Kinds that close a CV_SOURCING job; at most one of them exists per job.</summary>
+    public static readonly string[] Closing = [Settlement, Credit];
+}
+
 public static class CommissionMilestoneCodes
 {
     public const string WarrantyPassed = "WARRANTY_PASSED";
+    /// <summary>CV_SOURCING: the Client accepted the CV (or the review window ended without an answer).</summary>
+    public const string CvAccepted = "CV_ACCEPTED";
 }

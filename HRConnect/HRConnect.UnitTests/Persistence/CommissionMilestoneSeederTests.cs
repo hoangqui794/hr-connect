@@ -14,7 +14,7 @@ public class CommissionMilestoneSeederTests
             .Options);
 
     [Fact]
-    public async Task SeedAsync_InsertsTheFourExpectedMilestones_WhenTheyAreMissing()
+    public async Task SeedAsync_InsertsTheExpectedMilestones_WhenTheyAreMissing()
     {
         await using var context = CreateContext();
 
@@ -26,7 +26,8 @@ public class CommissionMilestoneSeederTests
             "APPLICATION_CREATED",
             "START_WORK",
             "PROBATION_PASSED",
-            "WARRANTY_PASSED"
+            "WARRANTY_PASSED",
+            "CV_ACCEPTED"
         });
         milestones.Should().OnlyContain(milestone => milestone.IsActive);
         milestones.Should().OnlyContain(milestone => milestone.CreatedAt != default && milestone.UpdatedAt != default);
@@ -48,7 +49,7 @@ public class CommissionMilestoneSeederTests
         var milestone = await context.CommissionMilestones.SingleAsync(item => item.MilestoneCode == "PROBATION_PASSED");
         milestone.Name.Should().Be("Custom probation milestone");
         milestone.IsActive.Should().BeFalse();
-        (await context.CommissionMilestones.CountAsync()).Should().Be(4);
+        (await context.CommissionMilestones.CountAsync()).Should().Be(CommissionMilestoneSeeder.ExpectedMilestones.Length);
     }
 
     [Fact]
@@ -58,6 +59,6 @@ public class CommissionMilestoneSeederTests
 
         await DatabaseSeeder.SeedAsync(context);
 
-        (await context.CommissionMilestones.CountAsync()).Should().Be(4);
+        (await context.CommissionMilestones.CountAsync()).Should().Be(CommissionMilestoneSeeder.ExpectedMilestones.Length);
     }
 }

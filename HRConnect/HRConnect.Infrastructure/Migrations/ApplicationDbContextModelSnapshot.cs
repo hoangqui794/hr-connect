@@ -128,6 +128,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("reviewed_by");
 
                     b.Property<string>("Status")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(30)
@@ -1562,7 +1563,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("calculation_snapshot")
                         .HasDefaultValueSql("'{}'::jsonb");
 
-                    b.Property<Guid>("CommissionRuleId")
+                    b.Property<Guid?>("CommissionRuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("commission_rule_id");
 
@@ -1577,7 +1578,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(60)")
                         .HasColumnName("milestone_type");
 
-                    b.Property<Guid>("PlacementId")
+                    b.Property<Guid?>("PlacementId")
                         .HasColumnType("uuid")
                         .HasColumnName("placement_id");
 
@@ -1587,6 +1588,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("rule_snapshot")
                         .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<Guid?>("SourcingDeliveryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sourcing_delivery_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1620,9 +1625,15 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "AttributionId", "PlacementId" }, "uq_commission_attribution_placement")
                         .IsUnique();
 
+                    b.HasIndex(new[] { "SourcingDeliveryId" }, "uq_commission_sourcing_delivery")
+                        .IsUnique()
+                        .HasFilter("sourcing_delivery_id IS NOT NULL");
+
                     b.ToTable("commission", "public", t =>
                         {
                             t.HasComment("Commission eligibility/calculation domain. PAYABLE means approved for payment; payment completion is represented by payout.status=COMPLETED.");
+
+                            t.HasCheckConstraint("ck_commission_source", "(placement_id IS NULL) <> (sourcing_delivery_id IS NULL)");
                         });
                 });
 
@@ -1958,6 +1969,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("reviewed_by");
 
                     b.Property<string>("Status")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(30)
@@ -4136,6 +4148,18 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("numeric(6,3)")
                         .HasColumnName("fee_multiplier");
 
+                    b.Property<Guid?>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind")
+                        .HasDefaultValueSql("'PLACEMENT'::character varying");
+
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("paid_at");
@@ -4145,7 +4169,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("payment_reference");
 
-                    b.Property<Guid>("PlacementId")
+                    b.Property<Guid?>("PlacementId")
                         .HasColumnType("uuid")
                         .HasColumnName("placement_id");
 
@@ -4177,13 +4201,25 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "PlacementId" }, "service_fee_placement_id_key")
                         .IsUnique();
 
+                    b.HasIndex(new[] { "JobId" }, "uq_service_fee_job_closing")
+                        .IsUnique()
+                        .HasFilter("kind IN ('SETTLEMENT','CREDIT')");
+
+                    b.HasIndex(new[] { "JobId" }, "uq_service_fee_job_deposit")
+                        .IsUnique()
+                        .HasFilter("kind = 'DEPOSIT'");
+
                     b.ToTable("service_fee", "public", t =>
                         {
-                            t.HasComment("MF-05 service fee the Client owes for one HEADHUNT_COD placement. Paid outside the system; Platform Admin records payment.");
+                            t.HasComment("MF-05 service fee the Client owes: one HEADHUNT_COD placement (PLACEMENT) or a CV_SOURCING job's DEPOSIT, SETTLEMENT or CREDIT. Paid outside the system; Platform Admin records payment.");
 
                             t.HasCheckConstraint("ck_service_fee_amounts", "amount >= 0 AND base_salary >= 0 AND fee_multiplier > 0");
 
+                            t.HasCheckConstraint("ck_service_fee_kind", "kind IN ('PLACEMENT','DEPOSIT','SETTLEMENT','CREDIT')");
+
                             t.HasCheckConstraint("ck_service_fee_paid", "(status = 'PAID') = (paid_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_service_fee_source", "(kind = 'PLACEMENT' AND placement_id IS NOT NULL) OR (kind <> 'PLACEMENT' AND placement_id IS NULL AND job_id IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_service_fee_status", "status IN ('PENDING','DUE','PAID','OVERDUE','CANCELLED')");
                         });
@@ -4827,6 +4863,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<int>("AttemptCount")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
@@ -4859,6 +4896,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("token_type");
 
                     b.Property<DateTime?>("UsedAt")
+                        .IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("used_at");
 
@@ -5308,7 +5346,6 @@ namespace HRConnect.Infrastructure.Migrations
                         .WithMany("Commissions")
                         .HasForeignKey("CommissionRuleId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .IsRequired()
                         .HasConstraintName("commission_commission_rule_id_fkey");
 
                     b.HasOne("HRConnect.Domain.Entities.CommissionMilestone", "MilestoneTypeNavigation")
@@ -5321,8 +5358,13 @@ namespace HRConnect.Infrastructure.Migrations
                         .WithMany("Commissions")
                         .HasForeignKey("PlacementId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("commission_placement_id_fkey");
+
+                    b.HasOne("HRConnect.Domain.Entities.SourcingDelivery", "SourcingDelivery")
+                        .WithMany()
+                        .HasForeignKey("SourcingDeliveryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("commission_sourcing_delivery_id_fkey");
 
                     b.Navigation("ApprovedByNavigation");
 
@@ -5333,6 +5375,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("MilestoneTypeNavigation");
 
                     b.Navigation("Placement");
+
+                    b.Navigation("SourcingDelivery");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.CommissionAdjustment", b =>
@@ -5947,14 +5991,21 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("service_fee_company_id_fkey");
 
+                    b.HasOne("HRConnect.Domain.Entities.Job", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("service_fee_job_id_fkey");
+
                     b.HasOne("HRConnect.Domain.Entities.Placement", "Placement")
                         .WithOne("ServiceFee")
                         .HasForeignKey("HRConnect.Domain.Entities.ServiceFee", "PlacementId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("service_fee_placement_id_fkey");
 
                     b.Navigation("Company");
+
+                    b.Navigation("Job");
 
                     b.Navigation("Placement");
                 });

@@ -4,6 +4,7 @@
 > **Ngày:** 2026-10-14.
 > **Căn cứ:** [`HRConnect/docs/QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md`](../QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md) (đã chốt hết).
 > **Hiện trạng** được đối chiếu với code trên `main` ngày 14/10. **Cập nhật 15/10:** E2, E3, E4, E6 đã xong (commit `31e880b`, đã merge vào `main`); E7 đã có thiết kế.
+> **Cập nhật 17/10:** E5, E7 đã có trong code; E8 làm xong trên nhánh `feature/mf05-sourcing-finance` (xem mục E8 "Đã làm").
 
 Ký hiệu: 🔴 làm trước · 🟠 cần làm · ✅ đã có, không cần làm.
 
@@ -62,11 +63,12 @@ Ký hiệu: 🔴 làm trước · 🟠 cần làm · ✅ đã có, không cần 
 
 ---
 
-## E5. 🟠 Đọc điều khoản trên job (sau khi MF-01 làm A4/A5)
+## E5. ✅ Đọc điều khoản trên job — đã có (17/10)
 
 - `PlacementFinanceService` đọc `job.commercialTerms` (hệ số, bảo hành, hạn thanh toán) thay cho các cột rời. Nếu null (job duyệt trước khi MF-01 sửa) → lấy mặc định từ `IAdminBusinessSettings` như hiện tại.
 - Phí = **`offer.monthlyGrossSalary` × hệ số** (MF-04 mục D1). `monthlyGrossSalary = null` (lương NET) → không tạo phí, ghi `SERVICE_FEE_BLOCKED` và báo Internal HR.
 - Xóa 3 thuộc tính tương thích `WarrantyDays`, `HeadhuntFeeMultiplier`, `PaymentDueDays` trong `Mf05Settings` khi MF-01 bỏ `BusinessSettingsOptions`.
+- **Hiện trạng 17/10:** `ConfirmStartWork` truyền `job.FeeMultiplier / WarrantyDays / PaymentDueDays` (điều khoản đã chốt) vào `PlacementFinanceService`; null thì lấy mặc định Admin. Lương NET không đi tới đây được vì MF-04 D1 đã chặn gửi offer Headhunt không phải GROSS (`HEADHUNT_REQUIRES_GROSS`), nên không cần `SERVICE_FEE_BLOCKED`.
 
 ---
 
@@ -86,7 +88,7 @@ Trang `AdminSettingsPage.tsx` tự hiện theo danh sách khóa; chỉ cần th�
 
 ---
 
-## E7. 🟠 Tuyển thay thế (mục 1.2, 1.3)
+## E7. ✅ Tuyển thay thế (mục 1.2, 1.3) — đã có theo thiết kế suất thay thế
 
 > **Đã có thiết kế chi tiết (15/10):** [`mf05-thiet-ke-suat-thay-the.md`](mf05-thiet-ke-suat-thay-the.md). Thiết kế đó **thay thế** phần mô tả bên dưới: dùng bảng `replacement_slot` thay cho `replacement_for_placement_id` / `openSlots`; chỉ thay 1 lần mỗi khoản phí; suất chỉ mở khi Client đã trả phí; có hạn chót cấu hình được. Phần MF-02 (B4) đã xong 16/10; phần MF-04: [`MF04/mf04-lap-suat-thay-the.md`](../MF04/mf04-lap-suat-thay-the.md).
 
@@ -107,7 +109,7 @@ Trang `AdminSettingsPage.tsx` tự hiện theo danh sách khóa; chỉ cần th�
 
 ---
 
-## E8. 🟠 Phí và hoa hồng CV_SOURCING (mục 2)
+## E8. ✅ Phí và hoa hồng CV_SOURCING (mục 2) — xong 17/10
 
 **Đặt cọc** — khi job CV_SOURCING được duyệt (MF-01 gọi sự kiện `JobApproved`):
 
@@ -130,6 +132,22 @@ GET /api/v1/service-fees?jobId={jobId}
 - Tổng = số CV được tính (MF-03: `ACCEPTED` + `AUTO_ACCEPTED`) × `pricePerCv`.
 - `SETTLEMENT` = Tổng − tiền cọc đã thu. Âm (giao thiếu) → ghi khoản **hoàn / trừ lần sau** (`kind = CREDIT`).
 - **Migration:** `service_fee` thêm `kind`, cho phép `placement_id` null (phí CV_SOURCING không gắn Placement), thêm `job_id`.
+
+**Đã làm (17/10, nhánh `feature/mf05-sourcing-finance`):**
+
+| Việc | Ở đâu |
+|---|---|
+| `service_fee`: thêm `kind` (`PLACEMENT`/`DEPOSIT`/`SETTLEMENT`/`CREDIT`), `job_id`; `placement_id` cho phép null; mỗi job tối đa 1 cọc và 1 phiếu quyết toán | Migration `AddSourcingFinance` |
+| `commission`: thêm `sourcing_delivery_id` (1 hoa hồng / CV); `placement_id`, `commission_rule_id` cho phép null | Migration `AddSourcingFinance` |
+| Tạo phiếu `DEPOSIT` cho job CV_SOURCING đã duyệt | `SourcingFinanceWorker` (MF-05 tự quét, **không sửa code MF-01**) |
+| CV được chấp nhận / tự chấp nhận / HR bác lý do từ chối → hoa hồng `EARNED` = giá mỗi CV × tỷ lệ Affiliate | `SourcingFinanceService.OnDeliveryCountedAsync`, gắn vào 3 handler MF-03 |
+| Đủ số CV → tự quyết toán; job `CLOSED` → worker quyết toán; quyết toán sớm: `POST /api/v1/jobs/{jobId}/sourcing-settlement` | `SourcingFinanceService.SettleAsync` |
+| Duyệt chi hoa hồng CV_SOURCING: job đã quyết toán, cọc + quyết toán `PAID`, hết hạn xem xét của CV giao cuối | `ApproveCommissionCommand` (409 `SOURCING_NOT_SETTLED`, `SERVICE_FEE_NOT_PAID`, `SOURCING_DISPUTE_WINDOW_OPEN`) |
+| `GET /api/v1/service-fees?jobId=&kind=` | `FinanceQueries` |
+| Giao CV dùng `job.ReviewDays` đã chốt (trước đây luôn dùng mặc định Admin) | `DeliverSourcingCvsCommandHandler` |
+| Test | `SourcingFinanceTests` (19 test, gồm tiêu chí E9 mục 8, 9) |
+
+Phiếu `CREDIT` là khoản HR Connect nợ Client (giao thiếu); Admin ghi nhận "đã hoàn" bằng chính API ghi nhận thanh toán. Quyết toán bằng 0 được lưu là `SETTLEMENT` đã `PAID` (mã `DEPOSIT_COVERED`).
 
 **Hoa hồng:**
 - Quỹ = tổng phí thực thu × `mf05.cv_sourcing.affiliate_share_percent` (60%).

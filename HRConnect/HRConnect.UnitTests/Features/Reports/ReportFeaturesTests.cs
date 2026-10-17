@@ -392,7 +392,7 @@ public class ReportFeaturesTests
         };
         var appC2 = new JobApplication { ApplicationId = Guid.NewGuid(), JobId = jobC2.JobId, CandidateId = Guid.NewGuid(), Status = ApplicationStates.Placed, AppliedAt = now, UpdatedAt = now };
         var placementC2 = new Placement { PlacementId = Guid.NewGuid(), ApplicationId = appC2.ApplicationId, OfferId = Guid.NewGuid(), ActualStartDate = today, Status = PlacementStates.Started, ConfirmedAt = now, CreatedAt = now, UpdatedAt = now };
-        var feeC2 = new ServiceFee { ServiceFeeId = Guid.NewGuid(), PlacementId = placementC2.PlacementId, Amount = 50_000_000m, CurrencyCode = "VND", Status = ServiceFeeStates.Paid, PaidAt = now, CreatedAt = now, UpdatedAt = now };
+        var feeC2 = new ServiceFee { ServiceFeeId = Guid.NewGuid(), PlacementId = placementC2.PlacementId, CompanyId = c2.CompanyId, Amount = 50_000_000m, CurrencyCode = "VND", Status = ServiceFeeStates.Paid, PaidAt = now, CreatedAt = now, UpdatedAt = now };
         appC2.Placement = placementC2;
         feeC2.Placement = placementC2;
         placementC2.Application = appC2;
@@ -413,6 +413,46 @@ public class ReportFeaturesTests
         var resJobs = await handler.Handle(new GetReportTopCompaniesQuery(today.AddDays(-1), today.AddDays(1), "ACTIVE_JOBS", 10), default);
         resJobs.Items[0].CompanyId.Should().Be(c1.CompanyId);
         resJobs.Items[0].ActiveJobs.Should().Be(3);
+    }
+
+    // =========================================================================
+    // 6b. CV_SOURCING: cọc + quyết toán vào doanh thu, CREDIT (hoàn cọc) trừ ra
+    // =========================================================================
+    [Fact]
+    public async Task Revenue_And_TopCompanies_Count_Sourcing_Fees_And_Subtract_Credit()
+    {
+        var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(now.AddHours(7));
+        var company = new Company { CompanyId = Guid.NewGuid(), CompanyName = "Sourcing Co", Industry = "IT", VerificationStatus = "VERIFIED", CreatedAt = now, UpdatedAt = now };
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(), CompanyId = company.CompanyId, ServiceTypeId = Guid.NewGuid(), Title = "Frontend", Status = "ACTIVE",
+            CurrencyCode = "VND", Quantity = 1, CreatedAt = now, UpdatedAt = now
+        };
+        ServiceFee Fee(string kind, decimal amount) => new()
+        {
+            ServiceFeeId = Guid.NewGuid(), JobId = job.JobId, Kind = kind, CompanyId = company.CompanyId, BaseSalary = amount, FeeMultiplier = 1m,
+            Amount = amount, CurrencyCode = "VND", DueDate = today, Status = ServiceFeeStates.Paid, PaidAt = now, CreatedAt = now, UpdatedAt = now
+        };
+        await _context.Companies.AddAsync(company);
+        await _context.Jobs.AddAsync(job);
+        await _context.ServiceFees.AddRangeAsync(
+            Fee(ServiceFeeKinds.Deposit, 3_000_000m),
+            Fee(ServiceFeeKinds.Credit, 600_000m));
+        await _context.SaveChangesAsync();
+
+        var revenue = await new GetReportRevenueQueryHandler(Repository)
+            .Handle(new GetReportRevenueQuery(today.AddDays(-1), today.AddDays(1), "MONTH"), default);
+
+        // 3,000,000 deposit − 600,000 refunded = 2,400,000 (4 CV × 600,000).
+        revenue.Totals["CV_SOURCING"].Collected.Should().Be(2_400_000m);
+        revenue.Totals["CV_SOURCING"].Billed.Should().Be(2_400_000m);
+        revenue.Totals["HEADHUNT_COD"].Collected.Should().Be(0m);
+        revenue.Series.Single().CV_SOURCING.Should().Be(2_400_000m);
+
+        var top = await new GetReportTopCompaniesQueryHandler(Repository)
+            .Handle(new GetReportTopCompaniesQuery(today.AddDays(-1), today.AddDays(1), "REVENUE", 10), default);
+        top.Items.Single(i => i.CompanyId == company.CompanyId).RevenueCollected.Should().Be(2_400_000m);
     }
 
     // =========================================================================

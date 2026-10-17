@@ -1,5 +1,5 @@
 import type { Tone } from '@/features/admin-console/ui';
-import type { CommissionStatus, PayoutStatus, ServiceFeeStatus, WarrantyStatus } from '@/types/api/finance';
+import type { CommissionStatus, PayoutStatus, ServiceFeeKind, ServiceFeeStatus, WarrantyStatus } from '@/types/api/finance';
 
 interface StatusLabel {
   label: string;
@@ -23,6 +23,13 @@ export const SERVICE_FEE_STATUS: Record<ServiceFeeStatus, StatusLabel> = {
   PAID: { label: 'Đã thanh toán', tone: 'success' },
   OVERDUE: { label: 'Quá hạn', tone: 'danger' },
   CANCELLED: { label: 'Đã hủy', tone: 'neutral' },
+};
+
+export const SERVICE_FEE_KIND: Record<ServiceFeeKind, StatusLabel> = {
+  PLACEMENT: { label: 'Phí Headhunt', tone: 'neutral' },
+  DEPOSIT: { label: 'Cọc CV Sourcing', tone: 'info', hint: 'Số CV × giá mỗi CV × tỷ lệ cọc, thu khi job được duyệt.' },
+  SETTLEMENT: { label: 'Quyết toán CV Sourcing', tone: 'info', hint: 'Số CV được chấp nhận × giá mỗi CV − tiền cọc.' },
+  CREDIT: { label: 'Hoàn cọc cho Client', tone: 'warning', hint: 'Giao thiếu: phần cọc dư được hoàn hoặc trừ vào lần sau.' },
 };
 
 export const PAYOUT_STATUS: Record<PayoutStatus, StatusLabel> = {

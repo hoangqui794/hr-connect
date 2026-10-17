@@ -11,9 +11,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace HRConnect.Presentation.Endpoints.V1.Finance;
 
 /// <summary>
-/// MF-05 (HEADHUNT_COD): service fees, warranty claims, commissions and payouts.
-/// Commission is earned in full when the candidate has worked through the 30-day warranty,
+/// MF-05: service fees, warranty claims, commissions and payouts.
+/// HEADHUNT_COD: commission is earned in full when the candidate has worked through the warranty,
 /// and is approved for payment only after the Client has paid the service fee.
+/// CV_SOURCING: deposit on approval, one commission per accepted CV, settlement by counted CVs.
 /// </summary>
 public static class FinanceEndpoints
 {
@@ -85,16 +86,24 @@ public static class FinanceEndpoints
             .WithDescription("Internal HR / Admin xem tất cả (báo nghỉ CLAIMED lên đầu); Client (placement.confirm) chỉ xem của doanh nghiệp mình. Trạng thái: ACTIVE, CLAIMED, PASSED, VOIDED.");
 
         group.MapGet("/service-fees", (
-                ClaimsPrincipal user, [FromServices] ISender sender, [FromQuery] string? status, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
+                ClaimsPrincipal user, [FromServices] ISender sender, [FromQuery] string? status, CancellationToken ct,
+                [FromQuery] Guid? jobId, [FromQuery] string? kind, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
             Execute(user, [CommissionManage, CommissionView, PlacementConfirm], userId =>
             {
                 // Platform roles see every fee; a Client sees only its own company's fees.
                 var platform = Has(user, CommissionManage) || Has(user, CommissionView);
-                return sender.Send(new GetServiceFeesQuery(platform ? null : userId, status, page, pageSize), ct);
+                return sender.Send(new GetServiceFeesQuery(platform ? null : userId, status, page, pageSize, jobId, kind), ct);
             }))
             .WithName("GetServiceFees")
-            .WithSummary("Danh sách công nợ phí dịch vụ HEADHUNT_COD")
-            .WithDescription("Admin/Internal HR xem tất cả; Client (placement.confirm) chỉ xem công nợ của doanh nghiệp mình. Lọc theo status: PENDING, PAID, OVERDUE, CANCELLED.");
+            .WithSummary("Danh sách công nợ phí dịch vụ")
+            .WithDescription("Admin/Internal HR xem tất cả; Client (placement.confirm) chỉ xem công nợ của doanh nghiệp mình. Lọc theo status (PENDING, DUE, PAID, OVERDUE, CANCELLED), jobId và kind: PLACEMENT (HEADHUNT_COD), DEPOSIT, SETTLEMENT, CREDIT (CV_SOURCING; CREDIT là khoản trả lại Client).");
+
+        group.MapPost("/jobs/{jobId:guid}/sourcing-settlement", (
+                Guid jobId, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>
+            Execute(user, [CommissionManage, WarrantyManage], userId => sender.Send(new SettleSourcingJobCommand(jobId, userId), ct)))
+            .WithName("SettleSourcingJob")
+            .WithSummary("Quyết toán job CV Sourcing")
+            .WithDescription("Số CV được tính (ACCEPTED, AUTO_ACCEPTED) × giá mỗi CV − tiền cọc. Dương: phiếu SETTLEMENT; âm (giao thiếu): phiếu CREDIT trả lại Client; bằng 0: SETTLEMENT đã PAID. Hệ thống tự quyết toán khi đủ số CV hoặc job CLOSED; endpoint này để quyết toán sớm. Gọi lại trả về phiếu đã có. Quyền commission.manage hoặc warranty.manage.");
 
         group.MapPost("/admin/service-fees/{serviceFeeId:guid}/record-payment", (
                 Guid serviceFeeId, [FromBody] RecordServiceFeePaymentRequest body, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>
@@ -122,7 +131,7 @@ public static class FinanceEndpoints
             Execute(user, [CommissionManage], userId => sender.Send(new ApproveCommissionCommand(commissionId, userId), ct)))
             .WithName("ApproveCommission")
             .WithSummary("Admin duyệt hoa hồng để chi trả")
-            .WithDescription("EARNED → PAYABLE. Từ chối (409 SERVICE_FEE_NOT_PAID) khi Client chưa thanh toán phí dịch vụ. Quyền commission.manage.");
+            .WithDescription("EARNED → PAYABLE. Từ chối (409 SERVICE_FEE_NOT_PAID) khi Client chưa thanh toán phí dịch vụ. CV_SOURCING còn cần job đã quyết toán (409 SOURCING_NOT_SETTLED) và hết thời hạn tranh chấp (409 SOURCING_DISPUTE_WINDOW_OPEN). Quyền commission.manage.");
 
         group.MapPost("/admin/commissions/{commissionId:guid}/cancel", (
                 Guid commissionId, [FromBody] ReasonRequest body, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>

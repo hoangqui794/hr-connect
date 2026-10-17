@@ -131,6 +131,8 @@ public static class DependencyInjection
         services.AddHostedService<AccountLifecycleEmailOutboxWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Offers.OfferExpiryWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Finance.WarrantyProgressWorker>();
+        services.AddHostedService<HRConnect.Infrastructure.Services.Finance.SourcingFinanceWorker>();
+        services.AddHostedService<HRConnect.Infrastructure.Services.Finance.AffiliateCommissionHoldWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Recruitment.SourcingAutoAcceptWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Affiliates.AffiliatePerformanceWorker>();
 

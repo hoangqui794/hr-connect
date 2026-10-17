@@ -46,6 +46,15 @@ public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<R
             throw new NotFoundException("Không tìm thấy tin tuyển dụng.");
         }
 
+        var serviceTypeCode = job.ServiceType?.Code ?? await _jobRepository.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, cancellationToken);
+        if (string.Equals(serviceTypeCode, ServiceTypeCodes.CvSourcing, StringComparison.OrdinalIgnoreCase))
+        {
+            // CV_SOURCING has no posting fee: it opens when Platform Admin records the deposit (MF-05).
+            throw new ConflictException(
+                "Job CV Sourcing không có phí đăng tin. Platform Admin ghi nhận tiền cọc ở trang Tài chính để mở job.",
+                "JOB_REQUIRES_SOURCING_DEPOSIT");
+        }
+
         var fee = await _jobRepository.GetPostingFeeByJobIdAsync(request.JobId, cancellationToken);
         var now = DateTime.UtcNow;
         if (fee == null)

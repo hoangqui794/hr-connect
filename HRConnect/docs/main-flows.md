@@ -320,8 +320,6 @@ Internal HR thuộc đơn vị vận hành nền tảng, không thuộc công ty
 
 > Sơ đồ MF-05 chưa được lưu trong repository; phần mô tả bên dưới là nguồn tham chiếu hiện hành.
 
-Sơ đồ mô tả trường hợp `HEADHUNT_COD`; toàn bộ là thiết kế đề xuất.
-
 **Mục tiêu:** theo dõi ứng viên sau khi đi làm, tính phí dịch vụ, tính và chi hoa hồng cho Affiliate.
 
 **Actor:** Client Company User, Internal HR, Platform Admin, Affiliate.
@@ -332,14 +330,19 @@ Sơ đồ mô tả trường hợp `HEADHUNT_COD`; toàn bộ là thiết kế �
 
 > **Quy tắc phí và hoa hồng:** xem [QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md](QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md). Phần dưới chỉ tóm tắt; nếu khác nhau thì làm theo file đó.
 
-> **Đã có code cho `HEADHUNT_COD` (2026-10-09):** bảo hành 30 ngày, công nợ phí dịch vụ, hoa hồng nhận 100% khi đủ 30 ngày, báo nghỉ và Internal HR xác minh, Admin ghi nhận thu phí, duyệt/hủy/điều chỉnh hoa hồng, ghi nhận payout (API `/api/v1/service-fees`, `/api/v1/commissions`, `/api/v1/payouts`, `/api/v1/admin/...`, `/api/v1/placements/{id}/resignation`). **Đã có code (2026-10-15):** hoa hồng `IN_WARRANTY`, phí `DUE` và nhắc Client trước hạn. **[CHƯA CÓ CODE]:** `CV_SOURCING`, `CV_APPLICATION`, tuyển thay thế (đã có thiết kế), đánh giá Affiliate, thông báo, giao diện.
+> **Hiện trạng code (2026-10-17):**
+> - `HEADHUNT_COD`: bảo hành, công nợ phí, hoa hồng `IN_WARRANTY` → `EARNED` khi hết bảo hành, báo nghỉ và Internal HR xác minh, suất tuyển thay thế, nhắc Client trước hạn (`DUE`), ghi nhận thu phí, duyệt / hủy / điều chỉnh hoa hồng, payout.
+> - `CV_SOURCING` (nhánh `feature/mf05-sourcing-finance`): phiếu cọc khi duyệt job, job chỉ mở sau khi cọc được ghi nhận, hoa hồng mỗi CV được chấp nhận, quyết toán / hoàn cọc, điều kiện chi hoa hồng, báo cáo doanh thu.
+> - `CV_APPLICATION`: phí đăng tin theo gói (MF-01).
+> - Affiliate bị khóa: hoa hồng chưa đạt được tạm giữ, mở khóa thì trả lại.
+> - Đánh giá Affiliate có worker tính điểm; giao diện Admin / Client / Affiliate cho tài chính đã có.
 
 ## Phí dịch vụ (Client trả cho HR Connect)
 
 | Service Type | Cách tính | Thời điểm phát sinh |
 |---|---|---|
 | `HEADHUNT_COD` | Lương gross tháng × hệ số phí, tính riêng cho từng placement. Hệ số do **Internal HR tinh chỉnh khi duyệt job** theo thỏa thuận với Client; Admin chỉ cấu hình giá trị điền sẵn | Khi xác nhận đi làm thực tế |
-| `CV_SOURCING` | Số CV được tính tiền × giá mỗi CV (Internal HR chốt khi duyệt JD); đặt cọc 50%, thời hạn xem xét 7 ngày (đã chốt 2026-10-14) | Khi CV được Client chấp nhận, hoặc hết thời hạn xem xét mà Client không phản hồi |
+| `CV_SOURCING` | Số CV được tính tiền × giá mỗi CV (Internal HR chốt khi duyệt JD); đặt cọc 50%, thời hạn xem xét 7 ngày (đã chốt 2026-10-14). **Job chỉ mở sau khi Platform Admin ghi nhận cọc** (`PENDING_PAYMENT` → `ACTIVE`, chốt 2026-10-17). Quyết toán = số CV được tính × giá − cọc; giao thiếu thì **hoàn** phần cọc dư (phiếu `CREDIT`), không trừ vào lần sau (chốt 2026-10-17) | Cọc: khi duyệt job. Phần còn lại: khi đủ số CV hoặc job đóng |
 | `CV_APPLICATION` | Giá công khai theo gói đăng tin (thời hạn, số hồ sơ tối đa) | Sau khi job được duyệt (đã chốt 2026-10-14) (`PENDING_PAYMENT` → `PAID` → job `ACTIVE`) |
 
 Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ đi từ Client đến HR Connect, hoa hồng đi từ HR Connect đến Affiliate. Ứng viên không trả phí nào.
@@ -360,8 +363,8 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
    - Mỗi khoản phí chỉ được **thay thế miễn phí 1 lần**; người thay thế cũng nghỉ sớm thì bảo hành coi như hoàn thành, không thay tiếp, không hoàn tiền.
    - Suất thay thế chỉ mở khi Client **đã thanh toán** phí dịch vụ.
    - Suất có **hạn chót** (số ngày cấu hình được); quá hạn chưa có người đi làm thì suất hết hạn.
-   - Người thay thế đi làm: không phát sinh phí mới; bảo hành mới và hoa hồng mới tính trên khoản phí cũ. Thiết kế: `docs/MF05/mf05-thiet-ke-suat-thay-the.md` (đã chốt 2026-10-15) **[CHƯA CÓ CODE]**.
-4. Thử việc không dùng làm mốc tính hoa hồng, vì thời gian thử việc khác nhau theo vị trí; kết quả thử việc chỉ là thông tin theo dõi **[CẦN XÁC NHẬN]**.
+   - Người thay thế đi làm: không phát sinh phí mới; bảo hành mới và hoa hồng mới tính trên khoản phí cũ. Thiết kế: `docs/MF05/mf05-thiet-ke-suat-thay-the.md` (đã chốt 2026-10-15), đã có code.
+4. **Thử việc nằm ngoài phạm vi đồ án** (chốt 2026-10-17): không dùng làm mốc tính hoa hồng (thời gian thử việc khác nhau theo vị trí) và hệ thống không ghi kết quả thử việc. Bảng `probation` giữ trong cơ sở dữ liệu cho hướng phát triển sau.
 
 ## Hoa hồng
 
@@ -370,7 +373,7 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
 | Service Type | Cách tính hoa hồng |
 |---|---|
 | `HEADHUNT_COD` | Theo từng placement; nhận **100% một lần** khi ứng viên đi làm đủ 30 ngày. Commission Rule `PERCENT` tính trên phí dịch vụ, `FIXED` là số tiền cố định |
-| `CV_SOURCING` | Quỹ hoa hồng = phí dịch vụ × tỷ lệ chia (mặc định 60%); chia theo số CV được tính quota của từng Affiliate |
+| `CV_SOURCING` | Mỗi CV được Client chấp nhận (hoặc tự chấp nhận khi hết hạn xem xét) = giá mỗi CV × tỷ lệ Affiliate (mặc định 60%, Admin cấu hình), `EARNED` ngay. Chỉ duyệt chi khi job đã quyết toán, Client trả đủ cọc và quyết toán, và đã hết hạn xem xét của CV giao cuối (chốt 2026-10-17) |
 | `CV_APPLICATION` | Không có hoa hồng |
 
 **Trạng thái hoa hồng:** `PENDING` → `IN_WARRANTY` → `EARNED` → `PAYABLE` → `PAID`; nhánh phụ `ON_HOLD`, `CANCELLED`.
@@ -382,6 +385,7 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
 - `PAID`: đã ghi nhận chi.
 - `ON_HOLD`: tạm giữ vì Client báo ứng viên nghỉ, Internal HR đang xác minh. Xác nhận nghỉ → `CANCELLED`; bác bỏ → về `IN_WARRANTY`. `ON_HOLD` không tự lên `EARNED`.
 - `CANCELLED`: không đủ điều kiện hoặc ứng viên nghỉ trước mốc.
+- **Affiliate bị khóa tài khoản** (chốt 2026-10-17): hoa hồng đã `EARNED` / `PAYABLE` vẫn chi; `PENDING` / `IN_WARRANTY` chuyển `ON_HOLD` chờ Platform Admin quyết định (hủy, hoặc mở khóa tài khoản thì tự trả về trạng thái cũ; bảo hành đã qua trong lúc khóa thì thành `EARNED`).
 
 Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và người thực hiện.
 
@@ -395,7 +399,7 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 
 Điểm chất lượng tính theo tỷ lệ lượt giới thiệu dẫn đến tuyển dụng thành công, không theo số lượng lượt nộp.
 
-**Kết quả:** thử việc và bảo hành được theo dõi; hoa hồng được tính, duyệt và ghi nhận chi; mọi bước có audit.
+**Kết quả:** bảo hành được theo dõi; phí dịch vụ của 3 dịch vụ được ghi nhận; hoa hồng được tính, duyệt và ghi nhận chi; mọi bước có audit.
 
 ---
 

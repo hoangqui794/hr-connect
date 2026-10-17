@@ -38,7 +38,7 @@ import { FilterPills, PageHero, Surface } from '@/features/admin-console/ui';
 import { screeningApi } from '@/services/api/hrApi';
 import '@/features/admin-console/admin-console.css';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { useJobDetail, useJobMutations, useMyJobs } from './useJobQueries';
+import { formatMoney, useJobDetail, useJobMutations, useMyJobs } from './useJobQueries';
 import { JobDetailPanel, JobStatusTag } from './JobDetailPanel';
 import { PaymentDemoModal } from './PaymentDemoModal';
 import { ReasonModal } from './ReasonModal';
@@ -49,6 +49,8 @@ import {
   clientActions,
   formatDate,
   formatSalary,
+  isAwaitingSourcingDeposit,
+  sourcingDepositAmount,
 } from './jobDisplay';
 
 
@@ -200,7 +202,9 @@ export const ClientJobsListPage: React.FC = () => {
 
   const renderActions = (job: Job) => {
         const can = clientActions(job.status);
-        const needsPayment = job.status === 'PENDING_PAYMENT' || job.postingFeeStatus === 'PENDING';
+        // CV_SOURCING pays a deposit recorded by Platform Admin, not the posting fee.
+        const needsPayment =
+          !isAwaitingSourcingDeposit(job) && (job.status === 'PENDING_PAYMENT' || job.postingFeeStatus === 'PENDING');
         const busy =
           (mutations.submit.isPending && mutations.submit.variables?.jobId === job.jobId) ||
           (mutations.resume.isPending && mutations.resume.variables?.jobId === job.jobId);
@@ -499,7 +503,14 @@ export const ClientJobsListPage: React.FC = () => {
                       </div>
                       <div>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'}</div>
                     </div>
-                    {job.status === 'PENDING_PAYMENT' && (
+                    {isAwaitingSourcingDeposit(job) && (
+                      <div className="rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2 text-xs text-amber-900">
+                        <span className="font-medium">
+                          Chờ đặt cọc CV Sourcing ({formatMoney(sourcingDepositAmount(job) ?? 0, 'VND')}) · tin công bố khi HR Connect nhận cọc
+                        </span>
+                      </div>
+                    )}
+                    {job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
                       <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2 text-xs text-amber-900">
                         <span className="font-medium">Chờ thanh toán phí kích hoạt (1.5M đ)</span>
                         <Button
