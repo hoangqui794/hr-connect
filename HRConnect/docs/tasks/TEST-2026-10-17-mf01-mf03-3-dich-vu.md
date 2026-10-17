@@ -12,13 +12,13 @@
 | HEADHUNT_COD | `[TEST] Junior .NET Backend Developer (Headhunt COD)` (`bf19eeb2`) | Client đề xuất 1.5 tháng / 30 ngày / 20 ngày → HR chốt & duyệt → ACTIVE | Affiliate giới thiệu → ứng viên đồng ý qua email | AI 0/100 (CV thiết kế đồ họa, chấm đúng) → HR chọn gửi Client → Client thấy hồ sơ, **liên hệ và CV bị ẩn** | **Đạt** |
 | CV_SOURCING | `[TEST] Frontend ReactJS Developer (CV Sourcing)` (`0e22786a`) | Client đề xuất 3 CV × 600.000 đ → HR chốt (cọc 50%, duyệt CV 7 ngày, thanh toán 20 ngày) → ACTIVE | Affiliate giới thiệu → ứng viên đồng ý qua email | AI 92/100 → HR chọn → giao CV (hạn 7 ngày) → Client **thấy đủ liên hệ**, chấp nhận CV | **Đạt**, nhưng xem N20 (khoản cọc) |
 
-Luồng chính của cả 3 dịch vụ chạy hết từ đầu tới cuối. Có **24 điểm bất thường** dưới đây. Nặng nhất là **N20**: không thấy khoản cọc của job Sourcing sau khi duyệt.
+Luồng chính của cả 3 dịch vụ chạy hết từ đầu tới cuối. Có **27 điểm bất thường** dưới đây; N20 (cọc CV Sourcing) đã sửa và test lại ở mục 7.
 
 ## 2. Nghiệp vụ cần nhóm chốt
 
 | Mã | Mức | Màn hình | Hiện trạng | Đề xuất |
 |---|---|---|---|---|
-| **N20** | **Cao** | HR duyệt job CV_SOURCING | Duyệt xong job chuyển thẳng `ACTIVE`: **đúng thiết kế** MF-05 (mở tin, không chặn). Nhưng trên giao diện không thấy khoản cọc 900.000 đ (50% × 3 CV × 600.000 đ) nào được tạo | MF-05: kiểm tra `GET /api/v1/service-fees?jobId=…` có phiếu `DEPOSIT` `PENDING` sau `JobApproved` chưa ([mf05-viec-can-lam-theo-quy-tac-phi.md](../MF05/mf05-viec-can-lam-theo-quy-tac-phi.md) mục E8); hiện khoản cọc cho Client và HR |
+| ~~N20~~ | ✅ Đã sửa | HR duyệt job CV_SOURCING | Ban đầu: duyệt xong job `ACTIVE` mà không có khoản cọc. **Nhóm chốt 17/10:** chưa đóng cọc thì không mở job | Đã làm và test lại trên bản deploy, xem mục 7 |
 | N4 | Trung bình | HR > Duyệt tin > Ghi nhận thanh toán | Internal HR ghi nhận thanh toán thủ công được. `main-flows.md` ghi Platform Admin là bên ghi nhận thu phí | Chốt phân quyền ghi nhận thanh toán |
 | N16 | Trung bình | Client > hồ sơ Headhunt | Client không xem được nội dung CV, kể cả bản đã che liên hệ, trước khi lên lịch phỏng vấn. Chỉ có điểm AI để quyết định | Chốt có cho Client xem CV đã che email/SĐT không |
 | N12 | Thấp | Affiliate > chi tiết job | Affiliate không thấy điều khoản hoa hồng (tỉ lệ, 30 ngày bảo hành) khi chọn job | Hiện hoa hồng ước tính theo điều khoản đã chốt |
@@ -30,7 +30,8 @@ Luồng chính của cả 3 dịch vụ chạy hết từ đầu tới cuối. C
 | Mã | Mức | Hiện trạng | Đề xuất |
 |---|---|---|---|
 | N14 | Trung bình | Lịch sử hồ sơ do affiliate nộp ghi "Ứng viên Trương Hoàng Quí đã nộp hồ sơ" và người thực hiện là ứng viên. Không có tên affiliate | Ghi đúng nguồn: "Affiliate X giới thiệu, ứng viên đồng ý lúc …" |
-| N20 | Cao | Xem mục 2. Phần việc MF-05: tạo phiếu cọc `DEPOSIT` khi duyệt CV_SOURCING (nếu chưa có) | — |
+| ~~N20~~ | ✅ | Đã sửa: duyệt tạo phiếu `DEPOSIT`, job chờ cọc; ghi nhận cọc thì mở job | — |
+| N27 | Thấp | AI v2: `LOG_LEVEL=INFO` làm thư viện `httpx` in cả các request tải mô hình HuggingFace lúc khởi động, log khó đọc | Đặt logger `httpx` (và `huggingface_hub`) ở `WARNING` trong `ai-service-v2/app/main.py` |
 
 ## 4. Frontend
 
@@ -53,6 +54,8 @@ Luồng chính của cả 3 dịch vụ chạy hết từ đầu tới cuối. C
 | N3 | Thấp | HR > Duyệt tin > chi tiết | Cột Mức lương / Kinh nghiệm bị ép hẹp, số xuống dòng từng phần | Sửa bố cục cột |
 | N9 | Thấp | Client > tạo job Headhunt | Ô "Thời hạn bảo hành đề xuất" có ví dụ "60" ngày và ghi chú mẫu "cần bảo hành 60 ngày". Quy tắc phí đã chốt 30 ngày | Đổi ví dụ theo cấu hình |
 | N19 | Thấp | Thư viện mẫu JD | Mẫu .NET hiện "0 lượt dùng" dù đã dùng 2 lần | Cập nhật bộ đếm lượt dùng |
+| N25 | Thấp | HR > Duyệt tin > thẻ job bên trái | Job CV_SOURCING chờ cọc vẫn có nhãn chung "Chờ nộp phí" (khung chi tiết bên phải đã ghi đúng "Chờ đặt cọc CV Sourcing") | Dùng `isAwaitingSourcingDeposit` trong `JobReviewPage.tsx` để hiện "Chờ đặt cọc" |
+| N26 | Thấp | Admin > "Chi trả hoa hồng" (`/admin/payouts`) | Trang Tài chính đang chạy thật (công nợ phí, hoa hồng, payout) nhưng menu vẫn nằm dưới "CHƯA CÓ API" và bị làm mờ; tiêu đề ghi "MF-05 · HEADHUNT_COD" dù có phí CV Sourcing; ghi nhận đã thu xong không có thông báo | Chuyển menu khỏi nhóm "CHƯA CÓ API" (`AdminLayout.tsx`, `rbac.ts`), đổi tiêu đề thành "Tài chính MF-05", thêm toast khi ghi nhận |
 
 ## 5. Những phần chạy đúng
 
@@ -71,8 +74,25 @@ Luồng chính của cả 3 dịch vụ chạy hết từ đầu tới cuối. C
 ## 6. Dữ liệu test còn lại trên backend deploy
 
 - 3 job `[TEST]` ở trên, đều đang `ACTIVE`.
+- Job `[TEST2] Frontend ReactJS (CV Sourcing, chờ cọc)` (`f718b31d`): `ACTIVE`, cọc 600.000 đ đã ghi nhận (mã `TEST-COC-20261017`).
+- Phiếu cọc 900.000 đ của job Sourcing `0e22786a` do worker tạo, đang `PENDING`.
+- Hồ sơ `candidate@gmail.com` vào `[SEED] Flutter Mobile Developer` (AI 26,72).
 - Các hồ sơ:
   - CV_APPLICATION: ứng viên `candidate@gmail.com`, đang phỏng vấn.
   - Headhunt: "Trương Hoàng Quí", đã chọn gửi Client.
   - Sourcing: "Trương Hoàng Quí", Client đã chấp nhận.
 - Đóng hoặc xóa các job `[TEST]` trước khi demo.
+
+## 7. Test lại tối 17/10 sau khi sửa (backend deploy mới + AI v2 mới)
+
+| Bước | Kết quả |
+|---|---|
+| Backend Render chạy bản mới | ✅ Swagger có `POST /jobs/{jobId}/sourcing-settlement`, `/health/ready` Healthy |
+| AI v2 qua tunnel `ai-dev` | ✅ `/health` ok; `/docs`, `/openapi.json` 404; `match-file` không token 401 |
+| Client tạo `[TEST2]` CV Sourcing 2 CV × 600.000 đ, gửi duyệt | ✅ |
+| Internal HR chốt điều khoản và duyệt | ✅ Job `PENDING_PAYMENT`, phiếu `DEPOSIT` 600.000 đ `PENDING`, hạn 06/11 |
+| Màn Internal HR | ✅ "Chờ đặt cọc CV Sourcing", không còn nút "Ghi nhận thanh toán thủ công" (còn N25) |
+| Gọi API phí đăng tin cho job Sourcing | ✅ 409 `JOB_REQUIRES_SOURCING_DEPOSIT` |
+| Admin ghi nhận cọc ở trang Tài chính | ✅ Phí "Đã thanh toán", job `ACTIVE`, `postedAt` cập nhật (còn N26) |
+| Job Sourcing duyệt trước khi deploy (`0e22786a`) | ✅ Worker tạo phiếu cọc 900.000 đ, job giữ `ACTIVE` |
+| Candidate nộp CV IT vào `[SEED] Flutter Mobile Developer` | ✅ AI log đủ bước: nhận việc → lấy JD (9 yêu cầu) và CV (PDF 4 trang) → Gemini `gemini-3.5-flash-lite` 7,6 giây → trả kết quả **26,72** sau 49,9 giây (khoảng 38 giây là tải Sentence-BERT lần đầu sau khởi động; còn N27) |
