@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../apiClient';
-import { clientActionsApi, interviewHistoryApi } from './hrApi';
+import { clientActionsApi, interviewHistoryApi, placementCorrectionApi } from './hrApi';
 
 vi.mock('../apiClient', () => ({
   apiClient: {
@@ -11,7 +11,7 @@ vi.mock('../apiClient', () => ({
   },
 }));
 
-describe('clientActionsApi MF-04 fee and replacement contracts', () => {
+describe('MF-04 API contracts', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('sends salary basis and period when the Client creates an offer', async () => {
@@ -102,5 +102,27 @@ describe('clientActionsApi MF-04 fee and replacement contracts', () => {
 
     await expect(interviewHistoryApi.get('interview-1')).resolves.toEqual(history);
     expect(apiClient.get).toHaveBeenCalledWith('/interviews/interview-1/history');
+  });
+
+  it('uses the Internal-HR placement correction endpoint with only a date and reason', async () => {
+    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { success: true, message: 'Đã cập nhật ngày đi làm.' } });
+
+    await placementCorrectionApi.correctStartDate('placement-1', {
+      actualStartDate: '2026-10-15',
+      reason: 'Client nhập nhầm ngày bắt đầu làm việc.',
+    });
+
+    expect(apiClient.post).toHaveBeenCalledWith('/placements/placement-1/start-date-correction', {
+      actualStartDate: '2026-10-15',
+      reason: 'Client nhập nhầm ngày bắt đầu làm việc.',
+    });
+  });
+
+  it('loads the placement detail directly instead of calling MF-05 warranty endpoints', async () => {
+    const detail = { placementId: 'placement-1', actualStartDate: '2026-10-15' };
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: detail });
+
+    await expect(placementCorrectionApi.get('placement-1')).resolves.toEqual(detail);
+    expect(apiClient.get).toHaveBeenCalledWith('/placements/placement-1');
   });
 });

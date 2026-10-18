@@ -14,6 +14,7 @@ import type {
   OfferItem,
   PagedItems,
   PlacementItem,
+  PlacementCorrectionDetail,
   RecruitmentApplicationDetail,
   RecruitmentApplicationItem,
   RecruitmentApplicationSearchParams,
@@ -96,6 +97,26 @@ export const pipelineApi = {
     );
     const { totalCount, ...rest } = res.data;
     return { ...rest, total: totalCount };
+  },
+};
+
+/**
+ * MF-04 correction after the Client has confirmed a start date.
+ * Internal HR/Admin may correct a mistaken actual start date; the backend owns
+ * the seven-day, non-future and unpaid-service-fee rules and moves dependent
+ * warranty/payment deadlines. This API intentionally exposes no MF-05 money
+ * operations to the HR screen.
+ */
+export const placementCorrectionApi = {
+  list: (params: { status?: string; page: number; pageSize: number }) => pipelineApi.placements(params),
+
+  async get(placementId: string): Promise<PlacementCorrectionDetail> {
+    const response = await apiClient.get<PlacementCorrectionDetail>(`/placements/${placementId}`);
+    return response.data;
+  },
+
+  async correctStartDate(placementId: string, input: { actualStartDate: string; reason: string }) {
+    return (await apiClient.post<{ success?: boolean; message?: string }>(`/placements/${placementId}/start-date-correction`, input)).data;
   },
 };
 

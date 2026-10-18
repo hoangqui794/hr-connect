@@ -230,6 +230,33 @@ export interface PlacementItem {
   job: { jobId: string; title: string; companyId: string; companyName: string };
 }
 
+/**
+ * GET /placements/{placementId} for the narrowly scoped MF-04 Internal-HR
+ * start-date correction screen. It deliberately omits MF-05 payment and
+ * commission data: correcting the date is the only action on that screen.
+ */
+export interface PlacementCorrectionDetail {
+  placementId: string;
+  applicationId: string;
+  offerId: string;
+  actualStartDate: string;
+  position: string | null;
+  department: string | null;
+  status: string;
+  confirmedAt: string;
+  confirmedBy: string | null;
+  confirmedByName: string | null;
+  confirmationNote: string | null;
+  isReplacement: boolean;
+  replacementSlotId: string | null;
+  replacesPlacementId: string | null;
+  candidate: { candidateId: string; fullName: string; email: string; phone: string | null; summary: string | null };
+  job: { jobId: string; title: string; companyId: string; companyName: string };
+  allowedActions: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface InternalHrProfile {
   hrProfileId: string;
   userId: string;

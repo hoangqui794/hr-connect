@@ -139,17 +139,6 @@ export const HrProfilePage: React.FC = () => {
   );
 };
 
-export const HrPlacementReviewPlaceholder: React.FC = () => (
-  <div>
-    <PageHero
-      eyebrow="Chưa có API"
-      title="Đối soát nhận việc"
-      description="Xác minh ứng viên thực sự đi làm trước khi tính phí job Headhunt, và kiểm tra hồ sơ bị đánh dấu không nhận việc."
-    />
-    <NoApiYet feature="Đối soát nhận việc" detail="Tài liệu MF-04 ghi bước này [CHƯA CÓ CODE]; backend chưa có endpoint." />
-  </div>
-);
-
 export const HrWarrantyPlaceholder: React.FC = () => (
   <div>
     <PageHero eyebrow="Chưa có API" title="Bảo hành & thử việc" description="Theo dõi các mốc 15, 30, 60 ngày và xác minh khi ứng viên nghỉ việc trong thời hạn bảo hành." />
