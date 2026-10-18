@@ -25,6 +25,9 @@ public static class DemoAccountSeeder
     public const string Affiliate2Email = "affiliate2@gmail.com";
     public const string ClientEmail = "client@gmail.com";
     public const string Client2Email = "client2@gmail.com";
+    public const string Client3Email = "client3@gmail.com";
+    public const string Client4Email = "client4@gmail.com";
+    public const string Client5Email = "client5@gmail.com";
 
     // Demo account phones
     public const string CandidatePhone = "0900000001";
@@ -36,6 +39,9 @@ public static class DemoAccountSeeder
     public const string Affiliate2Phone = "0900000012";
     public const string Client2Phone = "0900000013";
     public const string InternalHr2Phone = "0900000014";
+    public const string Client3Phone = "0900000023";
+    public const string Client4Phone = "0900000033";
+    public const string Client5Phone = "0900000043";
 
     public const string DemoCompanyName = "HR Connect Demo Company";
     public const string DemoCompanyTaxCode = "DEMO-TAX-001";
@@ -43,9 +49,18 @@ public static class DemoAccountSeeder
     public const string DemoCompany2Name = "HR Connect Demo Company 2";
     public const string DemoCompany2TaxCode = "DEMO-TAX-002";
 
+    public const string DemoCompany3Name = "NovaTech Solutions Vietnam";
+    public const string DemoCompany3TaxCode = "DEMO-TAX-003";
+
+    public const string DemoCompany4Name = "Mekong Fintech";
+    public const string DemoCompany4TaxCode = "DEMO-TAX-004";
+
+    public const string DemoCompany5Name = "Lotus Commerce";
+    public const string DemoCompany5TaxCode = "DEMO-TAX-005";
+
     /// <summary>
     /// Nạp các tài khoản demo/phát triển cho toàn bộ các vai trò trong hệ thống (Platform Admin, Internal HR, Candidate, Affiliate Recruiter, Client Company User),
-    /// đồng thời tạo tài khoản thứ 2 cho các vai trò nghiệp vụ nhằm hỗ trợ kiểm thử đa người dùng (multi-user testing).
+    /// đồng thời tạo nhiều tài khoản Client/Company nhằm hỗ trợ kiểm thử đa người dùng và đa doanh nghiệp.
     /// Hoàn toàn idempotent và không bao giờ ghi đè mật khẩu của tài khoản đã tồn tại.
     /// </summary>
     public static async Task SeedAsync(
@@ -109,6 +124,21 @@ public static class DemoAccountSeeder
                 adminUser.UserId, Client2Email, "Demo Client 2", Client2Phone,
                 DemoCompany2Name, DemoCompany2TaxCode, now, logger, cancellationToken);
 
+            await EnsureClientWithCompanyAsync(
+                context, passwordHasher, emailNormalizer, phoneNormalizer,
+                adminUser.UserId, Client3Email, "Demo Client NovaTech", Client3Phone,
+                DemoCompany3Name, DemoCompany3TaxCode, now, logger, cancellationToken);
+
+            await EnsureClientWithCompanyAsync(
+                context, passwordHasher, emailNormalizer, phoneNormalizer,
+                adminUser.UserId, Client4Email, "Demo Client Mekong Fintech", Client4Phone,
+                DemoCompany4Name, DemoCompany4TaxCode, now, logger, cancellationToken);
+
+            await EnsureClientWithCompanyAsync(
+                context, passwordHasher, emailNormalizer, phoneNormalizer,
+                adminUser.UserId, Client5Email, "Demo Client Lotus Commerce", Client5Phone,
+                DemoCompany5Name, DemoCompany5TaxCode, now, logger, cancellationToken);
+
             // Demo accounts may be created after the candidate identity migration has already
             // backfilled existing users. Keep the login email and user_email_identity invariant
             // intact on every seed run, including databases that already contain demo accounts.
@@ -122,7 +152,10 @@ public static class DemoAccountSeeder
                 AffiliateEmail,
                 Affiliate2Email,
                 ClientEmail,
-                Client2Email
+                Client2Email,
+                Client3Email,
+                Client4Email,
+                Client5Email
             };
 
             var demoUsers = await context.AppUsers
@@ -135,7 +168,7 @@ public static class DemoAccountSeeder
                     context, demoUser, emailNormalizer, now, logger, cancellationToken);
             }
 
-            logger?.LogInformation("Demo accounts seeding completed successfully (9 accounts).");
+            logger?.LogInformation("Demo accounts seeding completed successfully (12 accounts).");
         }
         catch (DbUpdateException ex)
         {
