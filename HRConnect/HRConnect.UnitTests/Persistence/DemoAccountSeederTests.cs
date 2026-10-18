@@ -301,6 +301,51 @@ public class DemoAccountSeederTests
     }
 
     [Fact]
+    public async Task SeedAsync_ShouldCreateCompleteCompanyProfiles_AndRepairExistingProfileData()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+        await SeedDefaultRolesAsync(context);
+        await DemoAccountSeeder.SeedAsync(context);
+
+        var firstCompany = await context.Companies
+            .SingleAsync(company => company.TaxCode == DemoAccountSeeder.DemoCompanyTaxCode);
+        firstCompany.Industry = null;
+        firstCompany.CompanySize = null;
+        firstCompany.Website = null;
+        firstCompany.Address = null;
+        firstCompany.Description = null;
+        await context.SaveChangesAsync();
+
+        // Act - simulate application startup against a database seeded by an older version.
+        await DemoAccountSeeder.SeedAsync(context);
+
+        // Assert
+        var demoTaxCodes = new[]
+        {
+            DemoAccountSeeder.DemoCompanyTaxCode,
+            DemoAccountSeeder.DemoCompany2TaxCode,
+            DemoAccountSeeder.DemoCompany3TaxCode,
+            DemoAccountSeeder.DemoCompany4TaxCode,
+            DemoAccountSeeder.DemoCompany5TaxCode
+        };
+        var companies = await context.Companies
+            .Where(company => company.TaxCode != null && demoTaxCodes.Contains(company.TaxCode))
+            .ToListAsync();
+
+        companies.Should().HaveCount(5);
+        companies.Should().OnlyContain(company =>
+            !string.IsNullOrWhiteSpace(company.Industry) &&
+            !string.IsNullOrWhiteSpace(company.CompanySize) &&
+            !string.IsNullOrWhiteSpace(company.Website) &&
+            !string.IsNullOrWhiteSpace(company.Address) &&
+            !string.IsNullOrWhiteSpace(company.Description) &&
+            company.VerificationStatus == "VERIFIED" &&
+            company.VerifiedAt.HasValue);
+        companies.Select(company => company.Industry).Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
     public async Task SeedAsync_ShouldCreateAndRepairPrimaryEmailIdentities_ForDemoAccounts()
     {
         // Arrange

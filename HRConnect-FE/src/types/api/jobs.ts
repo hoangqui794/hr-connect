@@ -59,6 +59,19 @@ export interface JobStatusHistory {
   changedAt: string;
 }
 
+/** Public, sanitized company profile returned by GET /jobs/{jobId}. */
+export interface PublicJobCompany {
+  companyId: string;
+  companyName: string;
+  logoUrl: string | null;
+  industry: string | null;
+  companySize: string | null;
+  website: string | null;
+  address: string | null;
+  description: string | null;
+  isVerified: boolean;
+}
+
 /** JobProposedTermsRequest / JobProposedTermsDto — fees the Client proposes (MF-01 A2). */
 export interface ProposedTerms {
   feeMultiplier?: number | null;
@@ -123,6 +136,8 @@ export interface Job {
   jobId: string;
   companyId: string;
   companyName: string | null;
+  /** Present on Job detail; list endpoints only guarantee companyId/companyName. */
+  company?: PublicJobCompany | null;
   serviceTypeId: string;
   serviceTypeCode: ServiceTypeCode | null;
   title: string;

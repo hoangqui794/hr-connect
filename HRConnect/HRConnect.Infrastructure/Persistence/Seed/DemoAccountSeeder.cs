@@ -58,6 +58,41 @@ public static class DemoAccountSeeder
     public const string DemoCompany5Name = "Lotus Commerce";
     public const string DemoCompany5TaxCode = "DEMO-TAX-005";
 
+    private static readonly IReadOnlyDictionary<string, DemoCompanyProfile> DemoCompanyProfiles =
+        new Dictionary<string, DemoCompanyProfile>(StringComparer.Ordinal)
+        {
+            [DemoCompanyTaxCode] = new(
+                "Công nghệ nhân sự và tuyển dụng",
+                "51-200 nhân sự",
+                "https://hrconnectvn.online",
+                "Khu Công nghệ cao, Thành phố Thủ Đức, Thành phố Hồ Chí Minh",
+                "HR Connect phát triển nền tảng tuyển dụng kết nối doanh nghiệp, ứng viên và mạng lưới cộng tác viên. Công ty tập trung vào trải nghiệm tuyển dụng minh bạch, quản lý hồ sơ tập trung và hỗ trợ sàng lọc ứng viên bằng công nghệ."),
+            [DemoCompany2TaxCode] = new(
+                "Phát triển phần mềm doanh nghiệp",
+                "201-500 nhân sự",
+                "https://hrconnectvn.online",
+                "Quận Cầu Giấy, Hà Nội",
+                "HR Connect Demo Company 2 cung cấp giải pháp phần mềm cho doanh nghiệp trong các lĩnh vực vận hành, dữ liệu và chuyển đổi số. Môi trường làm việc chú trọng phát triển chuyên môn, cộng tác liên phòng ban và lộ trình nghề nghiệp rõ ràng."),
+            [DemoCompany3TaxCode] = new(
+                "Giải pháp công nghệ và điện toán đám mây",
+                "101-200 nhân sự",
+                "https://hrconnectvn.online",
+                "Quận Hải Châu, Đà Nẵng",
+                "NovaTech Solutions Vietnam xây dựng sản phẩm số, nền tảng cloud và hệ thống tích hợp cho khách hàng trong nước và quốc tế. Đội ngũ kỹ thuật làm việc theo mô hình linh hoạt, đề cao chất lượng sản phẩm và tinh thần học hỏi."),
+            [DemoCompany4TaxCode] = new(
+                "Công nghệ tài chính",
+                "51-100 nhân sự",
+                "https://hrconnectvn.online",
+                "Quận Ninh Kiều, Cần Thơ",
+                "Mekong Fintech phát triển các giải pháp thanh toán, phân tích dữ liệu và quản trị tài chính dành cho doanh nghiệp vừa và nhỏ. Công ty ưu tiên tính an toàn, khả năng mở rộng và trải nghiệm thân thiện cho người dùng."),
+            [DemoCompany5TaxCode] = new(
+                "Thương mại điện tử và bán lẻ",
+                "201-500 nhân sự",
+                "https://hrconnectvn.online",
+                "Quận 7, Thành phố Hồ Chí Minh",
+                "Lotus Commerce vận hành hệ sinh thái thương mại điện tử kết nối thương hiệu Việt với người tiêu dùng trên nhiều kênh. Công ty đầu tư vào công nghệ bán lẻ, logistics và dữ liệu để tạo trải nghiệm mua sắm thuận tiện, nhất quán."),
+        };
+
     /// <summary>
     /// Nạp các tài khoản demo/phát triển cho toàn bộ các vai trò trong hệ thống (Platform Admin, Internal HR, Candidate, Affiliate Recruiter, Client Company User),
     /// đồng thời tạo nhiều tài khoản Client/Company nhằm hỗ trợ kiểm thử đa người dùng và đa doanh nghiệp.
@@ -583,6 +618,8 @@ public static class DemoAccountSeeder
         var company = await context.Companies
             .FirstOrDefaultAsync(c => c.CompanyName == companyName || c.TaxCode == taxCode, cancellationToken);
 
+        var companyProfile = DemoCompanyProfiles[taxCode];
+
         if (company == null)
         {
             company = new Company
@@ -590,8 +627,11 @@ public static class DemoAccountSeeder
                 CompanyId = Guid.NewGuid(),
                 CompanyName = companyName,
                 TaxCode = taxCode,
-                Industry = "Technology",
-                CompanySize = "50-100",
+                Industry = companyProfile.Industry,
+                CompanySize = companyProfile.CompanySize,
+                Website = companyProfile.Website,
+                Address = companyProfile.Address,
+                Description = companyProfile.Description,
                 VerificationStatus = "VERIFIED",
                 VerifiedAt = now,
                 CreatedAt = now,
@@ -601,6 +641,22 @@ public static class DemoAccountSeeder
             await context.Companies.AddAsync(company, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
             logger?.LogInformation("Created demo Company: {CompanyName}", companyName);
+        }
+        else
+        {
+            // Seed runs on every startup in development. Refresh the demo profile so
+            // databases created by older seed versions receive the complete company data too.
+            company.Industry = companyProfile.Industry;
+            company.CompanySize = companyProfile.CompanySize;
+            company.Website = companyProfile.Website;
+            company.Address = companyProfile.Address;
+            company.Description = companyProfile.Description;
+            company.VerificationStatus = "VERIFIED";
+            company.VerifiedAt ??= now;
+            company.UpdatedAt = now;
+
+            context.Companies.Update(company);
+            await context.SaveChangesAsync(cancellationToken);
         }
 
         // 5.3 Đảm bảo CompanyUser liên kết Client với Company
@@ -663,6 +719,13 @@ public static class DemoAccountSeeder
 
         return user;
     }
+
+    private sealed record DemoCompanyProfile(
+        string Industry,
+        string CompanySize,
+        string Website,
+        string Address,
+        string Description);
 
     /// <summary>
     /// Đảm bảo một vai trò cụ thể được gán cho người dùng một cách idempotent

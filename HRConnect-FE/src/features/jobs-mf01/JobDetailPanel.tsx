@@ -8,20 +8,24 @@ import { useNavigate } from 'react-router-dom';
 import { Alert, Button, Descriptions, Drawer, Empty, Tag, Timeline, Typography } from 'antd';
 import {
   AuditOutlined,
+  BankOutlined,
   CalendarOutlined,
+  CheckCircleFilled,
   CheckCircleOutlined,
   ClockCircleOutlined,
   CreditCardOutlined,
   BookOutlined,
   DollarCircleOutlined,
   EnvironmentOutlined,
+  GlobalOutlined,
   InfoCircleOutlined,
   PlusOutlined,
   SafetyCertificateOutlined,
+  ShopOutlined,
   TeamOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
-import type { Job, JobRequirement } from '@/types/api/jobs';
+import type { Job, JobRequirement, PublicJobCompany } from '@/types/api/jobs';
 import { useAuthStore, UserRole } from '@/stores/authStore';
 import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
 import { SourcingDeliveriesView } from '@/features/sourcing/SourcingDeliveriesView';
@@ -103,6 +107,108 @@ const LongText: React.FC<{ value: string | null; emptyText: string }> = ({ value
   ) : (
     <Text type="secondary">{emptyText}</Text>
   );
+
+const companyInitials = (name: string) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toLocaleUpperCase('vi-VN'))
+    .join('') || 'DN';
+
+const safeWebsiteUrl = (website: string | null) => {
+  if (!website) return null;
+  try {
+    const url = new URL(website);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+};
+
+export const JobCompanyCard: React.FC<{ company: PublicJobCompany }> = ({ company }) => {
+  const websiteUrl = safeWebsiteUrl(company.website);
+  const facts = [
+    company.industry ? { icon: <BankOutlined aria-hidden />, label: 'Lĩnh vực', value: company.industry } : null,
+    company.companySize ? { icon: <TeamOutlined aria-hidden />, label: 'Quy mô', value: company.companySize } : null,
+    company.address ? { icon: <EnvironmentOutlined aria-hidden />, label: 'Địa điểm', value: company.address } : null,
+  ].filter((fact): fact is NonNullable<typeof fact> => fact !== null);
+
+  return (
+    <section
+      aria-label="Thông tin doanh nghiệp"
+      className="overflow-hidden rounded-2xl border border-solid border-blue-100 bg-gradient-to-br from-blue-50/80 via-white to-sky-50/60"
+    >
+      <div className="flex flex-col gap-5 p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            {company.logoUrl ? (
+              <img
+                src={company.logoUrl}
+                alt={`Logo ${company.companyName}`}
+                className="h-14 w-14 shrink-0 rounded-2xl border border-solid border-blue-100 bg-white object-contain p-1.5"
+              />
+            ) : (
+              <span
+                aria-hidden
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-lg font-extrabold tracking-wide text-white"
+              >
+                {companyInitials(company.companyName)}
+              </span>
+            )}
+
+            <div className="min-w-0">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
+                <h2 className="m-0 text-lg font-bold leading-snug text-slate-950">{company.companyName}</h2>
+                {company.isVerified && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                    <CheckCircleFilled aria-hidden /> Đã xác minh
+                  </span>
+                )}
+              </div>
+              <p className="m-0 flex items-center gap-1.5 text-sm font-medium text-blue-700">
+                <ShopOutlined aria-hidden /> Về doanh nghiệp tuyển dụng
+              </p>
+            </div>
+          </div>
+
+          {websiteUrl && (
+            <Button
+              href={websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              icon={<GlobalOutlined />}
+              className="!rounded-full !border-blue-200 !bg-white !font-semibold !text-blue-700 hover:!border-blue-400"
+            >
+              Website công ty
+            </Button>
+          )}
+        </div>
+
+        {facts.length > 0 && (
+          <dl className="m-0 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            {facts.map((fact) => (
+              <div key={fact.label} className="rounded-xl border border-solid border-slate-200/80 bg-white/90 px-3.5 py-3">
+                <dt className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                  <span className="text-blue-600">{fact.icon}</span>
+                  {fact.label}
+                </dt>
+                <dd className="m-0 mt-1 text-sm font-medium leading-relaxed text-slate-800">{fact.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+
+        <div className="border-0 border-t border-solid border-blue-100 pt-4">
+          <p className="m-0 text-sm leading-6 text-slate-600">
+            {company.description?.trim() || 'Doanh nghiệp chưa cập nhật phần giới thiệu.'}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+};
 
 interface JobDetailPanelProps {
   job: Job;
@@ -322,6 +428,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           </Descriptions.Item>
         )}
       </Descriptions>
+
+      {isApplicant && job.company && <JobCompanyCard company={job.company} />}
 
       {/* ── Thông tin dịch vụ & Phí đăng tin (CHỈ hiển thị cho Doanh nghiệp & Quản trị/HR, KHÔNG hiển thị cho Ứng viên) ── */}
       {!isApplicant && job.serviceTypeCode === 'CV_APPLICATION' && (
