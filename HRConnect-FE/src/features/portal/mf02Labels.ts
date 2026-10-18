@@ -18,7 +18,15 @@ export const fileSize = (bytes?: number | null) =>
   bytes == null ? '' : bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
 /** Candidate-facing stages, in order; each backend status maps onto one step. */
-export const CANDIDATE_STEPS = ['Đã nộp', 'Đang được xem', 'Được chọn', 'Phỏng vấn', 'Offer', 'Đi làm'] as const;
+export const CANDIDATE_STEPS = [
+  'Đã nộp',
+  'Đang được xem',
+  'Được chọn',
+  'Phỏng vấn',
+  'Chờ offer',
+  'Đã nhận offer',
+  'Đi làm',
+] as const;
 
 export interface CandidateDisplayStage {
   step: number;
@@ -38,8 +46,8 @@ export const candidateDisplayStage = (
     IN_REVIEW: { step: 1, label: 'Đang xem xét', tone: 'info', closed: false },
     SELECTED: { step: 2, label: 'Được chọn phỏng vấn', tone: 'success', closed: false },
     INTERVIEW: { step: 3, label: 'Phỏng vấn', tone: 'info', closed: false },
-    OFFER: { step: 4, label: 'Đã nhận lời mời', tone: 'success', closed: false },
-    HIRED: { step: 5, label: 'Đã tuyển', tone: 'success', closed: true },
+    OFFER: { step: 5, label: 'Đã nhận lời mời', tone: 'success', closed: false },
+    HIRED: { step: 6, label: 'Đã tuyển', tone: 'success', closed: true },
     NOT_SELECTED: {
       step: 1,
       label: 'Chưa phù hợp lần này',
@@ -56,7 +64,9 @@ export const candidateDisplayStage = (
     },
   };
   const stage = mapped[group] ?? mapped.IN_REVIEW;
-  return { ...stage, label: serverLabel?.trim() || stage.label };
+  const label = serverLabel?.trim() || stage.label;
+  const step = group === 'OFFER' && label.toLocaleLowerCase('vi').includes('chuẩn bị') ? 4 : stage.step;
+  return { ...stage, step, label };
 };
 
 const CANDIDATE_TIMELINE_STATUS_COPY: Record<string, { title: string; description: string }> = {
@@ -102,7 +112,10 @@ export const candidateTimelineEventCopy = (event: {
     : { title: 'Hồ sơ đã được cập nhật', description: 'Nhà tuyển dụng vừa cập nhật tiến trình hồ sơ của bạn.' };
 };
 
-export const candidateStage = (status: string): { step: number; label: string; tone: Tone; closed?: boolean } => {
+export const candidateStage = (
+  status: string,
+  offerStatuses: string[] = []
+): { step: number; label: string; tone: Tone; closed?: boolean } => {
   switch (status) {
     case 'SUBMITTED':
       return { step: 0, label: 'Đã nộp, chờ xem', tone: 'info' };
@@ -115,20 +128,22 @@ export const candidateStage = (status: string): { step: number; label: string; t
     case 'INTERVIEW':
       return { step: 3, label: 'Đang phỏng vấn', tone: 'info' };
     case 'OFFER_PENDING':
-      return { step: 4, label: 'Đang chuẩn bị offer', tone: 'success' };
+      return offerStatuses.some((offerStatus) => offerStatus.toUpperCase() === 'SENT')
+        ? { step: 5, label: 'Đã nhận offer', tone: 'success' }
+        : { step: 4, label: 'Đang chuẩn bị offer', tone: 'success' };
     case 'OFFER_ACCEPTED':
-      return { step: 4, label: 'Đã nhận offer', tone: 'success' };
+      return { step: 5, label: 'Đã chấp nhận offer', tone: 'success' };
     case 'PLACED':
-      return { step: 5, label: 'Đã đi làm', tone: 'success', closed: true };
+      return { step: 6, label: 'Đã đi làm', tone: 'success', closed: true };
     case 'REJECTED':
       return { step: 1, label: 'Chưa phù hợp lần này', tone: 'neutral', closed: true };
     case 'BACKUP_NOT_SELECTED':
     case 'INTERVIEW_FAILED':
       return { step: 3, label: 'Chưa phù hợp lần này', tone: 'neutral', closed: true };
     case 'OFFER_DECLINED':
-      return { step: 4, label: 'Đã từ chối offer', tone: 'neutral', closed: true };
+      return { step: 5, label: 'Đã từ chối offer', tone: 'neutral', closed: true };
     case 'NOT_STARTED':
-      return { step: 4, label: 'Không nhận việc', tone: 'neutral', closed: true };
+      return { step: 5, label: 'Không nhận việc', tone: 'neutral', closed: true };
     case 'WITHDRAWN':
       return { step: 0, label: 'Đã rút đơn', tone: 'neutral', closed: true };
     case 'CLOSED':

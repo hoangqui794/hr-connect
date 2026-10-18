@@ -100,17 +100,17 @@ export const useOpenSignedUrl = () => {
 
 // ─── Stage tracker ──────────────────────────────────────────────────────────
 
-const StageTracker: React.FC<{ status: string }> = ({ status }) => {
-  const st = candidateStage(status);
+const StageTracker: React.FC<{ status: string; offerStatuses?: string[] }> = ({ status, offerStatuses }) => {
+  const st = candidateStage(status, offerStatuses);
   return (
-    <ol className="m-0 flex list-none items-center gap-1 p-0" aria-label={`Tiến độ: ${st.label}`}>
+    <ol className="m-0 flex list-none items-start gap-1 p-0" aria-label={`Tiến độ: ${st.label}`}>
       {CANDIDATE_STEPS.map((label, i) => {
         const reached = i <= st.step;
         const color = st.closed && i === st.step && st.tone !== 'success' ? 'bg-slate-400' : reached ? 'bg-[color:var(--console-accent)]' : 'bg-slate-200';
         return (
           <li key={label} className="flex flex-1 flex-col gap-1">
             <span className={`h-1.5 rounded-full ${color}`} aria-hidden />
-            <span className={`hidden text-[11px] sm:block ${reached ? 'font-medium text-slate-700' : 'text-slate-400'}`}>{label}</span>
+            <span className={`hidden min-h-8 text-[11px] leading-4 sm:block ${reached ? 'font-medium text-slate-700' : 'text-slate-400'}`}>{label}</span>
           </li>
         );
       })}
@@ -138,13 +138,13 @@ const PublicApplicationProgress: React.FC<{ application: CandidateApplication }>
   }
 
   return (
-    <ol className={`candidate-application-progress candidate-application-progress--${statusClass} m-0 flex list-none items-center gap-1 p-0`} aria-label={`Tiến độ: ${stage.label}`}>
+    <ol className={`candidate-application-progress candidate-application-progress--${statusClass} m-0 flex list-none items-start gap-1 p-0`} aria-label={`Tiến độ: ${stage.label}`}>
       {CANDIDATE_STEPS.map((label, index) => {
         const reached = index <= stage.step;
         return (
           <li key={label} className="flex flex-1 flex-col gap-1">
             <span className={`candidate-application-progress__bar h-1.5 rounded-full ${reached ? 'candidate-application-progress__bar--reached' : 'bg-slate-200'}`} aria-hidden />
-            <span className={`hidden text-[11px] sm:block ${reached ? 'font-medium text-slate-700' : 'text-slate-400'}`}>{label}</span>
+            <span className={`hidden min-h-8 text-[11px] leading-4 sm:block ${reached ? 'font-medium text-slate-700' : 'text-slate-400'}`}>{label}</span>
           </li>
         );
       })}
@@ -398,7 +398,7 @@ export const CandidateApplicationsPage: React.FC = () => {
             ['IN_REVIEW', 'Đang xem xét'],
             ['SELECTED', 'Được chọn phỏng vấn'],
             ['INTERVIEW', 'Phỏng vấn'],
-            ['OFFER', 'Đã nhận lời mời'],
+            ['OFFER', 'Chờ / đã nhận offer'],
             ['HIRED', 'Đã tuyển'],
             ['NOT_SELECTED', 'Chưa phù hợp'],
             ['WITHDRAWN', 'Đã rút đơn'],
@@ -601,12 +601,13 @@ export const CandidateApplicationDetailPage: React.FC = () => {
   }
 
   const application: any = detail.data;
-  const stage = candidateStage(application.status);
   const allowedActions: string[] = application.allowedActions || [];
   const canWithdraw = allowedActions.includes('WITHDRAW_APPLICATION');
 
   const interviews: any[] = application.interviews || [];
   const offers: any[] = application.offers || [];
+  const offerStatuses = offers.map((offer) => String(offer.status || ''));
+  const stage = candidateStage(application.status, offerStatuses);
   const placement: any = application.placement || null;
   const timelineEvents: any[] = timelineQuery.data?.events || [];
 
@@ -644,7 +645,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
 
       {/* Main Info Surface */}
       <CandidateSurface className="space-y-5 p-6">
-        <StageTracker status={application.status} />
+        <StageTracker status={application.status} offerStatuses={offerStatuses} />
         <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-slate-500">CV đã nộp</dt>

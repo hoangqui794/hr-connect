@@ -18,7 +18,7 @@ public sealed class CandidateApplicationDisplayStatusMapperTests
         { ApplicationStates.Backup, "IN_REVIEW" },
         { ApplicationStates.BackupNotSelected, "NOT_SELECTED" },
         { ApplicationStates.InterviewFailed, "NOT_SELECTED" },
-        { ApplicationStates.OfferPending, "IN_REVIEW" },
+        { ApplicationStates.OfferPending, "OFFER" },
         { ApplicationStates.OfferAccepted, "HIRED" },
         { ApplicationStates.OfferDeclined, "WITHDRAWN" },
         { ApplicationStates.NotStarted, "WITHDRAWN" },
@@ -36,12 +36,19 @@ public sealed class CandidateApplicationDisplayStatusMapperTests
     }
 
     [Fact]
-    public void Map_OfferPendingOnlyBecomesOfferAfterOfferWasSent()
+    public void Map_OfferPendingAlwaysStaysInOfferStage_AndUsesAccurateLabel()
     {
-        CandidateApplicationDisplayStatusMapper.Map(ApplicationStates.OfferPending, [OfferStates.Draft])
-            .Group.Should().Be("IN_REVIEW");
-        CandidateApplicationDisplayStatusMapper.Map(ApplicationStates.OfferPending, [OfferStates.Sent])
-            .Group.Should().Be("OFFER");
+        var preparing = CandidateApplicationDisplayStatusMapper.Map(
+            ApplicationStates.OfferPending,
+            [OfferStates.Draft]);
+        var sent = CandidateApplicationDisplayStatusMapper.Map(
+            ApplicationStates.OfferPending,
+            [OfferStates.Sent]);
+
+        preparing.Group.Should().Be("OFFER");
+        preparing.Label.Should().Be("Đang chuẩn bị offer");
+        sent.Group.Should().Be("OFFER");
+        sent.Label.Should().Be("Đã nhận lời mời");
     }
 
     [Fact]
@@ -51,7 +58,10 @@ public sealed class CandidateApplicationDisplayStatusMapperTests
             .Should().BeEquivalentTo([ApplicationStates.Shortlisted]);
 
         CandidateApplicationDisplayStatusMapper.GetInternalStatuses("IN_REVIEW")
-            .Should().NotContain(ApplicationStates.Shortlisted);
+            .Should().NotContain([ApplicationStates.Shortlisted, ApplicationStates.OfferPending]);
+
+        CandidateApplicationDisplayStatusMapper.GetInternalStatuses("OFFER")
+            .Should().BeEquivalentTo([ApplicationStates.OfferPending]);
     }
 
     [Theory]
