@@ -32,7 +32,7 @@ public static class CandidateApplicationDisplayStatusMapper
             ApplicationStates.Shortlisted => new("SELECTED", "Được chọn phỏng vấn"),
             ApplicationStates.Interview => new("INTERVIEW", "Phỏng vấn"),
             ApplicationStates.OfferPending when hasSentOffer => new("OFFER", "Đã nhận lời mời"),
-            ApplicationStates.OfferPending => new("IN_REVIEW", "Đang xem xét"),
+            ApplicationStates.OfferPending => new("OFFER", "Đang chuẩn bị offer"),
             ApplicationStates.OfferAccepted or ApplicationStates.Placed => new("HIRED", "Đã tuyển"),
             ApplicationStates.Rejected or ApplicationStates.InterviewFailed or
                 ApplicationStates.BackupNotSelected or ApplicationStates.Closed
@@ -46,7 +46,7 @@ public static class CandidateApplicationDisplayStatusMapper
     public static IReadOnlyCollection<string> GetInternalStatuses(string displayGroup) => displayGroup switch
     {
         "SUBMITTED" => [ApplicationStates.Submitted],
-        "IN_REVIEW" => [ApplicationStates.Screening, ApplicationStates.Backup, ApplicationStates.OfferPending],
+        "IN_REVIEW" => [ApplicationStates.Screening, ApplicationStates.Backup],
         "SELECTED" => [ApplicationStates.Shortlisted],
         "INTERVIEW" => [ApplicationStates.Interview],
         "OFFER" => [ApplicationStates.OfferPending],
