@@ -234,9 +234,9 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
             </Tag>
             {getStatusBadge(interview.status)}
             {interview.isConfirmed && (
-              <Tag color="success" className="font-medium">
+              <Tag className="!m-0 !border-emerald-200 !bg-emerald-50 !px-2.5 !py-1 !font-semibold !text-emerald-700 !shadow-none">
                 <CheckCircleOutlined className="mr-1" />
-                Ứng viên đã xác nhận
+                Bạn đã xác nhận tham gia
               </Tag>
             )}
           </div>
@@ -469,22 +469,32 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
           </div>
 
           <Space wrap>
-            <Popconfirm
-              title="Xác nhận tham gia buổi phỏng vấn"
-              description="Bạn xác nhận sẽ tham gia đúng giờ và theo đúng hình thức đã quy định?"
-              onConfirm={() => confirmAttendance({})}
-              okText="Xác nhận"
-              cancelText="Hủy"
-            >
-              <Button
-                type="primary"
-                icon={<CheckCircleOutlined />}
-                loading={isConfirming}
-                className="bg-emerald-600 hover:bg-emerald-700 font-semibold"
+            {interview.isConfirmed ? (
+              <span
+                role="status"
+                className="inline-flex items-center gap-2 rounded-lg border border-solid border-emerald-200 bg-emerald-50 px-4 py-2 font-semibold text-emerald-700 shadow-none"
               >
-                {interview.isConfirmed ? 'Đã xác nhận sẵn sàng' : 'Xác nhận tham gia'}
-              </Button>
-            </Popconfirm>
+                <CheckCircleOutlined aria-hidden />
+                Bạn đã xác nhận tham gia
+              </span>
+            ) : (
+              <Popconfirm
+                title="Xác nhận tham gia buổi phỏng vấn"
+                description="Bạn xác nhận sẽ tham gia đúng giờ và theo đúng hình thức đã quy định?"
+                onConfirm={() => confirmAttendance({})}
+                okText="Xác nhận"
+                cancelText="Hủy"
+              >
+                <Button
+                  type="primary"
+                  icon={<CheckCircleOutlined />}
+                  loading={isConfirming}
+                  className="!bg-emerald-600 !font-semibold !shadow-none hover:!bg-emerald-700"
+                >
+                  Xác nhận tham gia
+                </Button>
+              </Popconfirm>
+            )}
 
             <Button
               icon={<HistoryOutlined />}

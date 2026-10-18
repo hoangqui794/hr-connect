@@ -26,6 +26,7 @@ Object.defineProperty(window, 'matchMedia', {
 describe('CandidateApplicationDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     vi.spyOn(message, 'warning').mockImplementation((() => undefined) as any);
     vi.spyOn(message, 'success').mockImplementation((() => undefined) as any);
     vi.spyOn(message, 'error').mockImplementation((() => undefined) as any);
@@ -128,6 +129,8 @@ describe('CandidateApplicationDetailPage', () => {
 
     // Check Interview
     expect(screen.getByText(/Vòng 1: Trực tuyến Google Meet/i)).toBeInTheDocument();
+    expect(screen.getByText('Đang chờ bạn xác nhận')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Xem và xác nhận/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Vào phòng họp/i })).toBeInTheDocument();
 
     // Check Offer - Accept and Decline buttons are rendered

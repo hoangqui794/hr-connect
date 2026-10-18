@@ -56,6 +56,7 @@ import 'dayjs/locale/vi';
 import { candidateApplicationsApi, candidateConsentApi, candidateCvApi } from '@/services/api/mf02Api';
 import { mf04Api, isCandidateOfferRespondable } from '@/services/api/mf04Api';
 import { CandidateInterviewDetailModal } from '@/features/candidates/CandidateInterviewDetailModal';
+import { isCandidateInterviewConfirmed } from '@/services/api/candidateInterviewApi';
 import type { CandidateOfferSummaryDto } from '@/types/api/mf04';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
@@ -700,46 +701,77 @@ export const CandidateApplicationDetailPage: React.FC = () => {
           />
         ) : (
           <div className="space-y-4">
-            {interviews.map((iv: any) => (
-              <Card
-                key={iv.interviewId}
-                size="small"
-                className="border border-slate-200 rounded-xl bg-slate-50/50"
-              >
-                <div className="flex items-start justify-between flex-wrap gap-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900">
-                        Vòng {iv.interviewRound}: {iv.interviewType || 'Phỏng vấn'}
-                      </span>
-                      <Tag color={iv.status === 'SCHEDULED' ? 'blue' : iv.status === 'COMPLETED' ? 'green' : 'default'}>
-                        {iv.status}
-                      </Tag>
-                    </div>
-                    <div className="mt-2 text-xs text-slate-600 flex flex-wrap gap-4">
-                      {iv.scheduledAt && (
-                        <span>
-                          <CalendarOutlined className="mr-1" />
-                          {dayjs(iv.scheduledAt).format('HH:mm - DD/MM/YYYY')}
+            {interviews.map((iv: any) => {
+              const normalizedStatus = String(iv.status || '').toUpperCase();
+              const isConfirmed =
+                Boolean(iv.isConfirmed) ||
+                normalizedStatus === 'CONFIRMED' ||
+                isCandidateInterviewConfirmed(iv.interviewId);
+              const isWaitingForConfirmation =
+                !isConfirmed && (normalizedStatus === 'SCHEDULED' || normalizedStatus === 'RESCHEDULED');
+              const statusCopy = normalizedStatus === 'COMPLETED'
+                ? { label: 'Đã hoàn thành', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' }
+                : normalizedStatus === 'CANCELLED'
+                  ? { label: 'Đã hủy', className: 'border-rose-200 bg-rose-50 text-rose-700' }
+                  : normalizedStatus === 'NO_SHOW'
+                    ? { label: 'Đã ghi nhận vắng mặt', className: 'border-slate-200 bg-slate-100 text-slate-600' }
+                    : isConfirmed
+                      ? { label: 'Bạn đã xác nhận tham gia', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' }
+                      : { label: 'Đang chờ bạn xác nhận', className: 'border-amber-200 bg-amber-50 text-amber-800' };
+
+              return (
+                <Card
+                  key={iv.interviewId}
+                  size="small"
+                  className={`rounded-xl border bg-white shadow-none ${
+                    isWaitingForConfirmation ? 'border-amber-200' : isConfirmed ? 'border-emerald-200' : 'border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-start justify-between flex-wrap gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-slate-900">
+                          Vòng {iv.interviewRound}: {iv.interviewType || 'Phỏng vấn'}
                         </span>
-                      )}
-                      {iv.durationMinutes && <span>Thời lượng: {iv.durationMinutes} phút</span>}
-                      {iv.location && (
-                        <span>
-                          <EnvironmentOutlined className="mr-1" />
-                          {iv.location}
+                        <span
+                          role="status"
+                          className={`inline-flex items-center gap-1.5 rounded-full border border-solid px-2.5 py-1 text-xs font-semibold shadow-none ${statusCopy.className}`}
+                        >
+                          {isConfirmed && <CheckCircleFilled aria-hidden />}
+                          {statusCopy.label}
                         </span>
+                      </div>
+                      <div className="mt-2 text-xs text-slate-600 flex flex-wrap gap-4">
+                        {iv.scheduledAt && (
+                          <span>
+                            <CalendarOutlined className="mr-1" />
+                            {dayjs(iv.scheduledAt).format('HH:mm - DD/MM/YYYY')}
+                          </span>
+                        )}
+                        {iv.durationMinutes && <span>Thời lượng: {iv.durationMinutes} phút</span>}
+                        {iv.location && (
+                          <span>
+                            <EnvironmentOutlined className="mr-1" />
+                            {iv.location}
+                          </span>
+                        )}
+                      </div>
+                      {isWaitingForConfirmation && (
+                        <p className="mb-0 mt-2 text-xs font-medium text-amber-800">
+                          Vui lòng mở chi tiết và xác nhận để nhà tuyển dụng biết bạn sẽ tham gia.
+                        </p>
                       )}
                     </div>
-                  </div>
-                  <Space wrap>
-                    <Button
-                      size="small"
-                      icon={<InfoCircleOutlined />}
-                      onClick={() => setSelectedInterviewId(iv.interviewId)}
-                    >
-                      Chi tiết
-                    </Button>
+                    <Space wrap>
+                      <Button
+                        size="small"
+                        type={isWaitingForConfirmation ? 'primary' : 'default'}
+                        icon={isWaitingForConfirmation ? <CheckCircleFilled /> : <InfoCircleOutlined />}
+                        onClick={() => setSelectedInterviewId(iv.interviewId)}
+                        className={isWaitingForConfirmation ? '!shadow-none' : ''}
+                      >
+                        {isWaitingForConfirmation ? 'Xem và xác nhận' : 'Chi tiết'}
+                      </Button>
                     {iv.meetingLink && (
                       <>
                         <Tooltip title="Sao chép link phòng họp">
@@ -768,10 +800,11 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                         </Button>
                       </>
                     )}
-                  </Space>
-                </div>
-              </Card>
-            ))}
+                    </Space>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         )}
       </CandidateSurface>

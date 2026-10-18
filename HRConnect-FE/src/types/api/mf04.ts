@@ -105,6 +105,8 @@ export interface CandidateInterviewSummaryDto {
   location?: string | null;
   meetingLink?: string | null;
   status: string;
+  /** Present when the backend exposes Candidate attendance confirmation. */
+  isConfirmed?: boolean;
   concurrencyToken: string;
 }
 

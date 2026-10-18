@@ -203,6 +203,20 @@ describe('CandidateInterviewDetailPage & CandidateInterviewDetailView', () => {
     });
   });
 
+  it('shows a light confirmed state and prevents duplicate confirmation', async () => {
+    vi.mocked(candidateInterviewApi.getInterviewDetail).mockResolvedValueOnce({
+      ...mockOnlineInterview,
+      isConfirmed: true,
+    } as any);
+
+    renderWithProviders(<CandidateInterviewDetailPage />, '/candidate/interviews/iv-online-1');
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Bạn đã xác nhận tham gia')).toHaveLength(2);
+    });
+    expect(screen.queryByRole('button', { name: /Xác nhận tham gia/i })).not.toBeInTheDocument();
+  });
+
   it('allows candidate to submit reschedule request modal', async () => {
     vi.mocked(candidateInterviewApi.getInterviewDetail).mockResolvedValue(mockOnlineInterview as any);
     vi.mocked(candidateInterviewApi.requestReschedule).mockResolvedValueOnce({

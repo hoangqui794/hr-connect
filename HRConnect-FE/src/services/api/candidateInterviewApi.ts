@@ -22,6 +22,10 @@ const getLocalConfirmedInterviews = (): Record<string, { confirmedAt: string; no
   }
 };
 
+/** Keeps summary cards in sync with the confirmation made in the detail dialog. */
+export const isCandidateInterviewConfirmed = (interviewId: string) =>
+  Boolean(getLocalConfirmedInterviews()[interviewId]);
+
 const saveLocalConfirmedInterview = (interviewId: string, note?: string) => {
   try {
     const map = getLocalConfirmedInterviews();
