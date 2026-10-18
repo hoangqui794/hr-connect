@@ -16,7 +16,7 @@ namespace HRConnect.Infrastructure.Persistence.Seed;
 /// 1. CV_APPLICATION: Ứng viên tự ứng tuyển (Candidate Self-Apply).
 /// 2. HEADHUNT_COD: Affiliate Recruiter giới thiệu ứng viên nhận hoa hồng COD.
 /// 3. CV_SOURCING: Affiliate Recruiter nộp hồ sơ ứng viên (Candidate không tự nộp CV_SOURCING).
-/// Hoàn toàn idempotent: kiểm tra sự tồn tại theo Company + Title + ServiceType trước khi nạp.
+/// Hoàn toàn idempotent: kiểm tra sự tồn tại theo Title + ServiceType trước khi nạp.
 /// </summary>
 public static class CandidateTestJobSeeder
 {
@@ -39,6 +39,7 @@ public static class CandidateTestJobSeeder
     public record SeedJobDef(
         string Title,
         string ServiceTypeCode,
+        string CompanyTaxCode,
         string Description,
         string Location,
         string EmploymentType,
@@ -58,6 +59,7 @@ public static class CandidateTestJobSeeder
         new SeedJobDef(
             Title: Job1Title,
             ServiceTypeCode: Job1ServiceTypeCode,
+            CompanyTaxCode: DemoAccountSeeder.DemoCompanyTaxCode,
             Description: "We are looking for a Junior .NET Backend Developer to join our engineering team and work with ASP.NET Core Web API, relational databases, and modern backend development practices.",
             Location: "Ho Chi Minh City",
             EmploymentType: "FULL_TIME",
@@ -89,6 +91,7 @@ public static class CandidateTestJobSeeder
         new SeedJobDef(
             Title: Job2Title,
             ServiceTypeCode: Job2ServiceTypeCode,
+            CompanyTaxCode: DemoAccountSeeder.DemoCompanyTaxCode,
             Description: "We are looking for an experienced .NET Backend Developer through our affiliate headhunting network. Strong experience with C#, ASP.NET Core, REST APIs, PostgreSQL, and backend architecture is preferred.",
             Location: "Ho Chi Minh City",
             EmploymentType: "FULL_TIME",
@@ -115,11 +118,12 @@ public static class CandidateTestJobSeeder
         ),
 
         // ----------------------------------------------------------------------
-        // JOB 3: CV_SOURCING (Both Candidate & Affiliate Recruiter Allowed)
+        // JOB 3: CV_SOURCING (Affiliate Recruiter submission)
         // ----------------------------------------------------------------------
         new SeedJobDef(
             Title: Job3Title,
             ServiceTypeCode: Job3ServiceTypeCode,
+            CompanyTaxCode: DemoAccountSeeder.DemoCompanyTaxCode,
             Description: "We are sourcing qualified Full Stack .NET Developers with experience in ASP.NET Core, frontend frameworks, REST APIs, SQL databases, and software development best practices.",
             Location: "Ho Chi Minh City",
             EmploymentType: "FULL_TIME",
@@ -152,6 +156,10 @@ public static class CandidateTestJobSeeder
         CreateAdditionalJob("[SEED] QA Automation Engineer", "CV_APPLICATION", "Create automated API and UI tests for business-critical recruitment workflows.", "Da Nang", 13000000m, 23000000m, 2, "Selenium", "SELENIUM", "Testing", "Postman", "POSTMAN", "API Testing"),
         CreateAdditionalJob("[SEED] Data Analyst", "CV_APPLICATION", "Turn recruitment and operations data into clear dashboards and actionable insights.", "Ho Chi Minh City", 14000000m, 25000000m, 2, "Power BI", "POWER BI", "Analytics", "Python", "PYTHON", "Programming Language"),
         CreateAdditionalJob("[SEED] Flutter Mobile Developer", "CV_APPLICATION", "Build candidate and recruiter mobile experiences with Flutter.", "Remote - Vietnam", 15000000m, 26000000m, 2, "Flutter", "FLUTTER", "Mobile Framework", "Dart", "DART", "Programming Language"),
+        CreateAdditionalJob("[SEED] UI/UX Designer", "CV_APPLICATION", "Design simple and accessible digital products for Vietnamese users.", "Ho Chi Minh City", 16000000m, 28000000m, 2, "Figma", "FIGMA", "Design", "User Research", "USER RESEARCH", "Product Design"),
+        CreateAdditionalJob("[SEED] Python Data Engineer", "CV_APPLICATION", "Build dependable data pipelines and curated datasets for analytics teams.", "Ha Noi", 22000000m, 38000000m, 2, "Python", "PYTHON", "Programming Language", "Apache Spark", "APACHE SPARK", "Data Engineering"),
+        CreateAdditionalJob("[SEED] Product Operations Specialist", "CV_APPLICATION", "Coordinate product operations, reporting, and cross-team delivery.", "Da Nang", 15000000m, 25000000m, 2, "Business Analysis", "BUSINESS ANALYSIS", "Analysis", "Agile", "AGILE", "Delivery"),
+        CreateAdditionalJob("[SEED] DevOps Engineer", "CV_APPLICATION", "Improve cloud infrastructure, delivery automation, and production observability.", "Remote - Vietnam", 26000000m, 45000000m, 2, "Docker", "DOCKER", "DevOps", "Kubernetes", "KUBERNETES", "DevOps"),
 
         // Additional HEADHUNT_COD jobs (Affiliate Recruiter submission)
         CreateAdditionalJob("[SEED] Engineering Manager - Headhunt", "HEADHUNT_COD", "Lead a cross-functional engineering team and own reliable product delivery.", "Ho Chi Minh City", 50000000m, 75000000m, 1, "Engineering Management", "ENGINEERING MANAGEMENT", "Leadership", "Agile", "AGILE", "Delivery"),
@@ -159,16 +167,24 @@ public static class CandidateTestJobSeeder
         CreateAdditionalJob("[SEED] Senior Java Engineer - Headhunt", "HEADHUNT_COD", "Design high-throughput Java services for a growing technology platform.", "Ho Chi Minh City", 35000000m, 55000000m, 2, "Java", "JAVA", "Programming Language", "Spring Boot", "SPRING BOOT", "Web Framework"),
         CreateAdditionalJob("[SEED] Cybersecurity Engineer - Headhunt", "HEADHUNT_COD", "Protect cloud applications through security monitoring, assessment, and response.", "Ha Noi", 38000000m, 60000000m, 1, "Cloud Security", "CLOUD SECURITY", "Security", "SIEM", "SIEM", "Security Operations"),
         CreateAdditionalJob("[SEED] Senior Data Engineer - Headhunt", "HEADHUNT_COD", "Build governed data pipelines and platforms for analytics at scale.", "Remote - Vietnam", 40000000m, 65000000m, 2, "Apache Spark", "APACHE SPARK", "Data Engineering", "Python", "PYTHON", "Programming Language"),
+        CreateAdditionalJob("[SEED] Head of Product - Headhunt", "HEADHUNT_COD", "Lead product strategy and grow a customer-focused product organization.", "Ho Chi Minh City", 60000000m, 95000000m, 1, "Product Strategy", "PRODUCT STRATEGY", "Leadership", "Agile", "AGILE", "Delivery"),
+        CreateAdditionalJob("[SEED] Principal Frontend Engineer - Headhunt", "HEADHUNT_COD", "Guide frontend architecture and engineering quality across product teams.", "Ha Noi", 45000000m, 70000000m, 1, "React", "REACT", "Frontend Framework", "TypeScript", "TYPESCRIPT", "Programming Language"),
+        CreateAdditionalJob("[SEED] Fintech Solution Architect - Headhunt", "HEADHUNT_COD", "Design secure financial platforms and resilient service integrations.", "Ho Chi Minh City", 55000000m, 90000000m, 1, "Cloud Security", "CLOUD SECURITY", "Security", "REST API", "REST API", "Architecture"),
+        CreateAdditionalJob("[SEED] Mobile Engineering Lead - Headhunt", "HEADHUNT_COD", "Lead cross-platform mobile delivery and mentor a growing engineering team.", "Da Nang", 42000000m, 68000000m, 1, "Flutter", "FLUTTER", "Mobile Framework", "Engineering Management", "ENGINEERING MANAGEMENT", "Leadership"),
 
         // Additional CV_SOURCING jobs (Affiliate Recruiter submission)
         CreateAdditionalJob("[SEED] Product Designer - CV Sourcing", "CV_SOURCING", "Design accessible candidate and recruiter experiences from research to delivery.", "Ho Chi Minh City", 22000000m, 35000000m, 2, "Figma", "FIGMA", "Design", "User Research", "USER RESEARCH", "Product Design"),
         CreateAdditionalJob("[SEED] Business Analyst - CV Sourcing", "CV_SOURCING", "Translate recruitment operations into clear product requirements and workflows.", "Ha Noi", 20000000m, 32000000m, 2, "Business Analysis", "BUSINESS ANALYSIS", "Analysis", "BPMN", "BPMN", "Process Modeling"),
         CreateAdditionalJob("[SEED] Node.js Backend Developer - CV Sourcing", "CV_SOURCING", "Develop secure Node.js APIs and event-driven integrations.", "Da Nang", 22000000m, 36000000m, 2, "Node.js", "NODE.JS", "Backend Framework", "TypeScript", "TYPESCRIPT", "Programming Language"),
         CreateAdditionalJob("[SEED] DevOps Engineer - CV Sourcing", "CV_SOURCING", "Automate delivery pipelines and operate reliable cloud infrastructure.", "Remote - Vietnam", 28000000m, 45000000m, 2, "Docker", "DOCKER", "DevOps", "Kubernetes", "KUBERNETES", "DevOps"),
-        CreateAdditionalJob("[SEED] React Native Developer - CV Sourcing", "CV_SOURCING", "Deliver stable cross-platform mobile applications for recruitment users.", "Ho Chi Minh City", 23000000m, 38000000m, 2, "React Native", "REACT NATIVE", "Mobile Framework", "TypeScript", "TYPESCRIPT", "Programming Language")
+        CreateAdditionalJob("[SEED] React Native Developer - CV Sourcing", "CV_SOURCING", "Deliver stable cross-platform mobile applications for recruitment users.", "Ho Chi Minh City", 23000000m, 38000000m, 2, "React Native", "REACT NATIVE", "Mobile Framework", "TypeScript", "TYPESCRIPT", "Programming Language"),
+        CreateAdditionalJob("[SEED] ERP Business Analyst - CV Sourcing", "CV_SOURCING", "Analyze enterprise workflows and prepare clear requirements for ERP delivery.", "Ha Noi", 24000000m, 40000000m, 2, "Business Analysis", "BUSINESS ANALYSIS", "Analysis", "BPMN", "BPMN", "Process Modeling"),
+        CreateAdditionalJob("[SEED] AI Product Designer - CV Sourcing", "CV_SOURCING", "Design transparent and useful AI-assisted workflows for business users.", "Ho Chi Minh City", 26000000m, 42000000m, 2, "Figma", "FIGMA", "Design", "User Research", "USER RESEARCH", "Product Design"),
+        CreateAdditionalJob("[SEED] Platform Reliability Engineer - CV Sourcing", "CV_SOURCING", "Improve platform reliability through automation, observability, and incident learning.", "Remote - Vietnam", 32000000m, 52000000m, 2, "Kubernetes", "KUBERNETES", "DevOps", "Docker", "DOCKER", "DevOps"),
+        CreateAdditionalJob("[SEED] Data Visualization Specialist - CV Sourcing", "CV_SOURCING", "Create trustworthy business dashboards and accessible analytical experiences.", "Da Nang", 20000000m, 34000000m, 2, "Power BI", "POWER BI", "Analytics", "Data Storytelling", "DATA STORYTELLING", "Communication")
     ];
 
-    public const int JobsPerServiceType = 6;
+    public const int JobsPerServiceType = 10;
     public const int TotalSeedJobCount = JobsPerServiceType * 3;
     public static readonly string[] AllSeedJobTitles = SeedJobs.Select(job => job.Title).ToArray();
 
@@ -190,6 +206,7 @@ public static class CandidateTestJobSeeder
         return new SeedJobDef(
             Title: title,
             ServiceTypeCode: serviceTypeCode,
+            CompanyTaxCode: ResolveCompanyTaxCode(title),
             Description: description,
             Location: location,
             EmploymentType: "FULL_TIME",
@@ -214,9 +231,30 @@ public static class CandidateTestJobSeeder
             ]);
     }
 
+    private static string ResolveCompanyTaxCode(string title) => title switch
+    {
+        "[SEED] UI/UX Designer" or
+        "[SEED] Head of Product - Headhunt" or
+        "[SEED] AI Product Designer - CV Sourcing" => DemoAccountSeeder.DemoCompany2TaxCode,
+
+        "[SEED] Python Data Engineer" or
+        "[SEED] Principal Frontend Engineer - Headhunt" or
+        "[SEED] ERP Business Analyst - CV Sourcing" => DemoAccountSeeder.DemoCompany3TaxCode,
+
+        "[SEED] Product Operations Specialist" or
+        "[SEED] Fintech Solution Architect - Headhunt" or
+        "[SEED] Platform Reliability Engineer - CV Sourcing" => DemoAccountSeeder.DemoCompany4TaxCode,
+
+        "[SEED] DevOps Engineer" or
+        "[SEED] Mobile Engineering Lead - Headhunt" or
+        "[SEED] Data Visualization Specialist - CV Sourcing" => DemoAccountSeeder.DemoCompany5TaxCode,
+
+        _ => DemoAccountSeeder.DemoCompanyTaxCode
+    };
+
     /// <summary>
     /// Nạp các công việc mẫu (Job) cho toàn bộ 3 loại hình dịch vụ: CV_APPLICATION, HEADHUNT_COD, CV_SOURCING.
-    /// Hoàn toàn idempotent: kiểm tra sự tồn tại theo Company + Title + ServiceType trước khi nạp.
+    /// Hoàn toàn idempotent: kiểm tra sự tồn tại theo Title + ServiceType trước khi nạp.
     /// </summary>
     public static async Task SeedAsync(
         ApplicationDbContext context,
@@ -243,87 +281,27 @@ public static class CandidateTestJobSeeder
         // 2. Xác thực cấu hình phân quyền service_type_allowed_role
         await VerifyServiceTypeAllowedRolesAsync(context, serviceTypes, logger, cancellationToken);
 
-        // 3. Phân giải Doanh nghiệp (Company) và Người tạo (CreatedBy)
-        var company = await context.Companies
-            .FirstOrDefaultAsync(c => c.CompanyName == "HR Connect Demo Company" || c.TaxCode == "DEMO-TAX-001", cancellationToken)
-            ?? await context.Companies.FirstOrDefaultAsync(c => c.VerificationStatus == "VERIFIED", cancellationToken);
+        // 3. Phân giải đúng doanh nghiệp và Client tạo Job cho từng dữ liệu seed.
+        var requiredCompanyTaxCodes = SeedJobs
+            .Select(job => job.CompanyTaxCode)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var companies = await context.Companies
+            .Include(company => company.CompanyUser)
+            .Where(company => company.TaxCode != null && requiredCompanyTaxCodes.Contains(company.TaxCode))
+            .ToDictionaryAsync(company => company.TaxCode!, StringComparer.OrdinalIgnoreCase, cancellationToken);
 
-        if (company == null)
+        foreach (var taxCode in requiredCompanyTaxCodes)
         {
-            company = new Company
+            if (!companies.TryGetValue(taxCode, out var company) ||
+                company.CompanyUser == null ||
+                !string.Equals(company.CompanyUser.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
             {
-                CompanyId = Guid.NewGuid(),
-                CompanyName = "HR Connect Demo Company",
-                TaxCode = "DEMO-TAX-001",
-                Industry = "Technology",
-                CompanySize = "50-100",
-                VerificationStatus = "VERIFIED",
-                VerifiedAt = now,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-            await context.Companies.AddAsync(company, cancellationToken);
-            await context.SaveChangesAsync(cancellationToken);
-            logger?.LogInformation("Đã khởi tạo công ty seed tối thiểu: {CompanyName}", company.CompanyName);
-        }
-
-        // Tìm người tạo: ưu tiên Client Company User liên kết với công ty
-        var companyUser = await context.CompanyUsers
-            .Include(cu => cu.User)
-            .FirstOrDefaultAsync(cu => cu.CompanyId == company.CompanyId && cu.Status == "ACTIVE", cancellationToken);
-
-        var creatorUserId = companyUser?.UserId;
-        if (!creatorUserId.HasValue)
-        {
-            var clientUser = await context.AppUsers
-                .FirstOrDefaultAsync(u => u.Email == "client@gmail.com", cancellationToken);
-            creatorUserId = clientUser?.UserId;
-        }
-
-        if (!creatorUserId.HasValue)
-        {
-            var anyUser = await context.AppUsers.FirstOrDefaultAsync(u => u.Status == "ACTIVE", cancellationToken);
-            if (anyUser != null)
-            {
-                creatorUserId = anyUser.UserId;
+                logger?.LogWarning(
+                    "Không tìm thấy doanh nghiệp đã xác minh và Client đang hoạt động cho mã số thuế '{TaxCode}'. Vui lòng đảm bảo DemoAccountSeeder đã chạy.",
+                    taxCode);
+                return;
             }
-            else
-            {
-                var newClientUser = new AppUser
-                {
-                    UserId = Guid.NewGuid(),
-                    Email = "client@gmail.com",
-                    DisplayName = "Demo Client",
-                    Status = "ACTIVE",
-                    EmailVerifiedAt = now,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                };
-                await context.AppUsers.AddAsync(newClientUser, cancellationToken);
-                await context.SaveChangesAsync(cancellationToken);
-                creatorUserId = newClientUser.UserId;
-                logger?.LogInformation("Đã khởi tạo người dùng seed tối thiểu: {Email}", newClientUser.Email);
-            }
-        }
-
-        // Đảm bảo liên kết CompanyUser tồn tại giữa Company và CreatorUser
-        var existingCompanyUser = await context.CompanyUsers
-            .FirstOrDefaultAsync(cu => cu.CompanyId == company.CompanyId && cu.UserId == creatorUserId.Value, cancellationToken);
-        if (existingCompanyUser == null)
-        {
-            existingCompanyUser = new CompanyUser
-            {
-                CompanyUserId = Guid.NewGuid(),
-                CompanyId = company.CompanyId,
-                UserId = creatorUserId.Value,
-                RoleInCompany = "HR Manager",
-                IsPrimaryContact = true,
-                Status = "ACTIVE",
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-            await context.CompanyUsers.AddAsync(existingCompanyUser, cancellationToken);
-            await context.SaveChangesAsync(cancellationToken);
         }
 
         // 4. Khởi tạo / phân giải danh mục toàn bộ kỹ năng (Skills) trên tất cả Jobs
@@ -363,11 +341,13 @@ public static class CandidateTestJobSeeder
         foreach (var jobDef in SeedJobs)
         {
             var serviceType = serviceTypes[jobDef.ServiceTypeCode];
+            var company = companies[jobDef.CompanyTaxCode];
+            var creatorUserId = company.CompanyUser!.UserId;
 
             var existingJob = await context.Jobs
                 .Include(j => j.JobRequirements)
                 .Include(j => j.JobSkills)
-                .FirstOrDefaultAsync(j => j.CompanyId == company.CompanyId && j.Title == jobDef.Title && j.ServiceTypeId == serviceType.ServiceTypeId, cancellationToken);
+                .FirstOrDefaultAsync(j => j.Title == jobDef.Title && j.ServiceTypeId == serviceType.ServiceTypeId, cancellationToken);
 
             if (existingJob != null)
             {
@@ -422,6 +402,7 @@ public static class CandidateTestJobSeeder
                         missingSkills.Count, jobDef.Title, existingJob.JobId);
                 }
 
+                await context.SaveChangesAsync(cancellationToken);
                 continue;
             }
 
@@ -431,7 +412,7 @@ public static class CandidateTestJobSeeder
                 JobId = Guid.NewGuid(),
                 CompanyId = company.CompanyId,
                 ServiceTypeId = serviceType.ServiceTypeId,
-                CreatedBy = creatorUserId.Value,
+                CreatedBy = creatorUserId,
                 Title = jobDef.Title,
                 Description = jobDef.Description,
                 Location = jobDef.Location,

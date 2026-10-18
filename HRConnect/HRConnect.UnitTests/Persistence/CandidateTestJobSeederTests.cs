@@ -25,7 +25,7 @@ public class CandidateTestJobSeederTests
     }
 
     [Fact]
-    public async Task SeedAsync_ShouldSeedSixJobsPerServiceType_WithValidBusinessData()
+    public async Task SeedAsync_ShouldSeedTenJobsPerServiceTypeAcrossCompanies_WithValidBusinessData()
     {
         // Arrange
         using var context = CreateInMemoryDbContext();
@@ -46,6 +46,9 @@ public class CandidateTestJobSeederTests
         jobs.Should().HaveCount(CandidateTestJobSeeder.TotalSeedJobCount);
         jobs.GroupBy(job => job.ServiceType.Code)
             .Should().OnlyContain(group => group.Count() == CandidateTestJobSeeder.JobsPerServiceType);
+        jobs.Select(job => job.CompanyId).Distinct().Should().HaveCount(5);
+        jobs.GroupBy(job => job.CompanyId).Should().OnlyContain(group =>
+            group.Select(job => job.ServiceType.Code).Distinct().Count() == 3);
         jobs.Should().OnlyContain(job =>
             job.Status == JobStatuses.Active &&
             job.SalaryMin > 0 &&
@@ -55,6 +58,17 @@ public class CandidateTestJobSeederTests
             job.JobSkills.Count >= 5);
         jobs.Should().OnlyContain(job => job.JobRequirements.Sum(requirement => requirement.Weight) == 1.00m);
         jobs.Should().OnlyContain(job => job.JobSkills.Sum(skill => skill.Weight) == 1.00m);
+        jobs.Should().OnlyContain(job => job.Company.VerificationStatus == "VERIFIED");
+
+        var seededCompanyTaxCodes = jobs.Select(job => job.Company.TaxCode).Distinct().ToArray();
+        seededCompanyTaxCodes.Should().BeEquivalentTo(
+        [
+            DemoAccountSeeder.DemoCompanyTaxCode,
+            DemoAccountSeeder.DemoCompany2TaxCode,
+            DemoAccountSeeder.DemoCompany3TaxCode,
+            DemoAccountSeeder.DemoCompany4TaxCode,
+            DemoAccountSeeder.DemoCompany5TaxCode
+        ]);
 
         var clientUser = await context.AppUsers.FirstOrDefaultAsync(u => u.Email == "client@gmail.com");
         clientUser.Should().NotBeNull();
