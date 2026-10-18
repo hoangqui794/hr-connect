@@ -110,4 +110,22 @@ describe('CandidateApplicationsPage', () => {
       status: 'SELECTED',
     })));
   });
+
+  it('keeps every application status in a dedicated row below the company name', async () => {
+    vi.mocked(candidateApplicationsApi.list).mockResolvedValue({
+      items: [{
+        applicationId: 'application-offer', jobId: 'job-offer', jobTitle: 'Junior .NET Developer',
+        companyName: 'HR Connect Demo Company', cvId: 'cv-1', cvTitle: 'CV_Test 1',
+        displayGroup: 'OFFER', displayLabel: 'Đang chuẩn bị offer', aiStatus: 'COMPLETED',
+        submissionSource: 'CANDIDATE', appliedAt: '2026-10-17T13:20:00Z',
+      }],
+      page: 1, pageSize: 10, total: 1, totalPages: 1,
+    });
+
+    renderPage();
+
+    const status = await screen.findByText('Đang chuẩn bị offer');
+    expect(status.parentElement).toHaveClass('candidate-application-card__status-row');
+    expect(status.closest('.candidate-application-card__heading')).toHaveTextContent('HR Connect Demo Company');
+  });
 });

@@ -63,6 +63,51 @@ html:has(.candidate-console) {
   gap: 0.625rem;
 }
 
+.candidate-detail-status {
+  display: inline-flex;
+  min-height: 2.35rem;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.825rem;
+  font-weight: 750;
+  line-height: 1.1;
+  white-space: nowrap;
+  box-shadow: 0 5px 14px rgb(15 23 42 / 5%);
+}
+
+.candidate-detail-status--info {
+  border-color: #bae6fd;
+  color: #0369a1;
+  background: #f0f9ff;
+}
+
+.candidate-detail-status--warning {
+  border-color: #fcd34d;
+  color: #a54b08;
+  background: #fffbeb;
+}
+
+.candidate-detail-status--success {
+  border-color: #86efac;
+  color: #047857;
+  background: #f0fdf4;
+}
+
+.candidate-detail-status--danger {
+  border-color: #fecaca;
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.candidate-detail-status--neutral {
+  border-color: #dbe3ee;
+  color: #475569;
+  background: #f8fafc;
+}
+
 .candidate-surface {
   min-width: 0;
   border: 1px solid var(--candidate-border);
