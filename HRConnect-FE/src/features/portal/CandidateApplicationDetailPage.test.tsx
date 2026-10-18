@@ -367,4 +367,24 @@ describe('CandidateApplicationDetailPage', () => {
     expect(await screen.findByRole('heading', { name: 'Senior .NET Developer (Legacy)' })).toBeInTheDocument();
     expect(screen.getByText('CV Backend Legacy')).toBeInTheDocument();
   });
+
+  it('highlights the current application status with its candidate-facing tone', async () => {
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValueOnce({
+      ...mockMf04Application,
+      status: 'OFFER_PENDING',
+      offers: [],
+    } as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValueOnce({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'OFFER_PENDING',
+      events: [],
+    });
+
+    renderComponent();
+
+    const status = (await screen.findByText('Đang chuẩn bị offer')).closest('[role="status"]');
+    expect(status).toHaveClass('candidate-detail-status', 'candidate-detail-status--warning');
+  });
 });

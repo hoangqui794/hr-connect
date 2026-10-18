@@ -118,6 +118,17 @@ const StageTracker: React.FC<{ status: string; offerStatuses?: string[] }> = ({ 
   );
 };
 
+const CandidateDetailStatus: React.FC<{ stage: ReturnType<typeof candidateStage> }> = ({ stage }) => (
+  <span className={`candidate-detail-status candidate-detail-status--${stage.tone}`} role="status">
+    {stage.tone === 'success'
+      ? <CheckCircleFilled aria-hidden />
+      : stage.closed
+        ? <CloseCircleOutlined aria-hidden />
+        : <HistoryOutlined aria-hidden />}
+    {stage.label}
+  </span>
+);
+
 const PublicApplicationProgress: React.FC<{ application: CandidateApplication }> = ({ application }) => {
   const stage = candidateDisplayStage(application.displayGroup, application.displayLabel);
   const statusClass = application.displayGroup.toLowerCase().replace(/_/g, '-');
@@ -160,15 +171,17 @@ const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
   const isClosedOutcome = a.displayGroup === 'NOT_SELECTED' || a.displayGroup === 'WITHDRAWN';
   return (
     <article className={`candidate-surface candidate-application-card candidate-application-card--${statusClass} flex flex-col gap-3 p-5 ${isClosedOutcome ? 'candidate-application-card--closed' : ''}`}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="candidate-application-card__heading min-w-0">
         <div className="min-w-0">
           <div className="text-[16px] font-semibold leading-snug text-slate-900">{a.jobTitle}</div>
           <div className="text-[13px] text-slate-600">{a.companyName}</div>
         </div>
-        <span className={`candidate-application-status candidate-application-status--${statusClass}`}>
-          {isPositiveOutcome ? <CheckCircleFilled aria-hidden /> : isClosedOutcome ? <CloseCircleOutlined aria-hidden /> : <HistoryOutlined aria-hidden />}
-          {stage.label}
-        </span>
+        <div className="candidate-application-card__status-row mt-3">
+          <span className={`candidate-application-status candidate-application-status--${statusClass}`}>
+            {isPositiveOutcome ? <CheckCircleFilled aria-hidden /> : isClosedOutcome ? <CloseCircleOutlined aria-hidden /> : <HistoryOutlined aria-hidden />}
+            {stage.label}
+          </span>
+        </div>
       </div>
       <PublicApplicationProgress application={a} />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
@@ -640,7 +653,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
         eyebrow="Chi tiết ứng tuyển"
         title={application.jobTitle}
         description={application.companyName}
-        actions={<StatusDot tone={stage.tone}>{stage.label}</StatusDot>}
+        actions={<CandidateDetailStatus stage={stage} />}
       />
 
       {/* Main Info Surface */}

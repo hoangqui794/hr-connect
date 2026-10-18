@@ -130,7 +130,7 @@ export const candidateStage = (
     case 'OFFER_PENDING':
       return offerStatuses.some((offerStatus) => offerStatus.toUpperCase() === 'SENT')
         ? { step: 5, label: 'Đã nhận offer', tone: 'success' }
-        : { step: 4, label: 'Đang chuẩn bị offer', tone: 'success' };
+        : { step: 4, label: 'Đang chuẩn bị offer', tone: 'warning' };
     case 'OFFER_ACCEPTED':
       return { step: 5, label: 'Đã chấp nhận offer', tone: 'success' };
     case 'PLACED':
