@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Avatar, Button, Popconfirm, Tooltip, Upload, App as AntApp, Spin } from 'antd';
 import { CameraOutlined, DeleteOutlined, LoadingOutlined, UserOutlined } from '@ant-design/icons';
 import { userApi } from '@/services/api/userApi';
-import { useAuthStore, getInitials } from '@/stores/authStore';
+import { useAuthStore, getAvatarImageUrl, getInitials } from '@/stores/authStore';
 import { getApiErrorMessage } from '@/services/apiClient';
 
 interface AvatarUploadProps {
@@ -26,12 +26,12 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
 
-  const isHttpUrl = (url?: string) => url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:'));
-  const hasCustomAvatar = Boolean(user?.avatar && isHttpUrl(user.avatar));
+  const avatarUrl = getAvatarImageUrl(user?.avatar);
+  const hasCustomAvatar = Boolean(avatarUrl);
   const initials = getInitials(user?.name || user?.email || 'User');
   const displayedAvatar = useMemo(
-    () => previewUrl || (hasCustomAvatar ? user?.avatar : null),
-    [hasCustomAvatar, previewUrl, user?.avatar]
+    () => previewUrl || avatarUrl || null,
+    [avatarUrl, previewUrl]
   );
 
   useEffect(() => {

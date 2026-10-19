@@ -9,7 +9,7 @@ import {
   SolutionOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '@/stores/authStore';
+import { getAvatarImageUrl, getInitials, useAuthStore } from '@/stores/authStore';
 import { SIDEBAR_MENU_ITEMS, SidebarMenuItem } from '@/constants/rbac';
 import { UserRole } from '@/types/roles';
 
@@ -47,7 +47,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
   const { role, user } = useAuthStore();
   const displayName = user?.name || 'Người dùng';
   const displayEmail = user?.email || '';
-  const displayAvatar = user?.avatar || (user?.name ? user.name.slice(0, 2).toUpperCase() : 'U');
+  const displayAvatarUrl = getAvatarImageUrl(user?.avatar);
+  const displayInitials = getInitials(user?.name);
 
   const menuItems = SIDEBAR_MENU_ITEMS[role] ?? [];
 
@@ -197,6 +198,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
       >
         <Tooltip title={collapsed ? displayName : ''} placement="right">
           <Avatar
+            src={displayAvatarUrl}
             size={32}
             style={{
               background: pal.logo,
@@ -206,7 +208,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
               flexShrink: 0,
             }}
           >
-            {displayAvatar}
+            {displayInitials}
           </Avatar>
         </Tooltip>
         {!collapsed && (
