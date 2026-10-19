@@ -936,6 +936,10 @@ export const JobFormPage: React.FC = () => {
             <Form.Item name="serviceTypeId" hidden noStyle>
               <Input type="hidden" />
             </Form.Item>
+            {/* Registered so getFieldsValue() keeps it: the backend counts template usage from it. */}
+            <Form.Item name="templateId" hidden noStyle>
+              <Input type="hidden" />
+            </Form.Item>
 
             {/* ═════════════════════════════════════════════════════════════════
                 BƯỚC 1: CHỌN DỊCH VỤ

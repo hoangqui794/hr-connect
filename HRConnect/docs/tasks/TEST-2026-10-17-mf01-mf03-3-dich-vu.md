@@ -53,7 +53,7 @@ Luồng chính của cả 3 dịch vụ chạy hết từ đầu tới cuối. C
 | N2 | Thấp | HR > sidebar | "Bảo hành & thử việc", "Đối soát nhận việc" nằm dưới nhóm "CHƯA CÓ API", trong khi API bảo hành MF-05 đã có | Chuyển nhóm khi đã gắn API |
 | N3 | Thấp | HR > Duyệt tin > chi tiết | Cột Mức lương / Kinh nghiệm bị ép hẹp, số xuống dòng từng phần | Sửa bố cục cột |
 | N9 | Thấp | Client > tạo job Headhunt | Ô "Thời hạn bảo hành đề xuất" có ví dụ "60" ngày và ghi chú mẫu "cần bảo hành 60 ngày". Quy tắc phí đã chốt 30 ngày | Đổi ví dụ theo cấu hình |
-| N19 | Thấp | Thư viện mẫu JD | Mẫu .NET hiện "0 lượt dùng" dù đã dùng 2 lần | Cập nhật bộ đếm lượt dùng |
+| ~~N19~~ | ✅ Đã sửa 19/10 | Thư viện mẫu JD | Mẫu .NET hiện "0 lượt dùng" dù đã dùng 2 lần. Nguyên nhân: form tạo job không đăng ký trường `templateId` nên không gửi lên backend | Đã thêm trường ẩn `templateId` trong `JobFormPage.tsx` |
 | N25 | Thấp | HR > Duyệt tin > thẻ job bên trái | Job CV_SOURCING chờ cọc vẫn có nhãn chung "Chờ nộp phí" (khung chi tiết bên phải đã ghi đúng "Chờ đặt cọc CV Sourcing") | Dùng `isAwaitingSourcingDeposit` trong `JobReviewPage.tsx` để hiện "Chờ đặt cọc" |
 | N26 | Thấp | Admin > "Chi trả hoa hồng" (`/admin/payouts`) | Trang Tài chính đang chạy thật (công nợ phí, hoa hồng, payout) nhưng menu vẫn nằm dưới "CHƯA CÓ API" và bị làm mờ; tiêu đề ghi "MF-05 · HEADHUNT_COD" dù có phí CV Sourcing; ghi nhận đã thu xong không có thông báo | Chuyển menu khỏi nhóm "CHƯA CÓ API" (`AdminLayout.tsx`, `rbac.ts`), đổi tiêu đề thành "Tài chính MF-05", thêm toast khi ghi nhận |
 
