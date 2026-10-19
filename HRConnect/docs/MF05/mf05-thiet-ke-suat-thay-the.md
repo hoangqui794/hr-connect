@@ -1,6 +1,6 @@
 # MF-05: thiết kế suất tuyển thay thế (`replacement_slot`)
 
-> **Phạm vi chính:** Backend MF-05. Phần MF-02 B4 (gắn lượt nộp vào suất) đã xong, merge 16/10. Phần MF-04 nằm ở tài liệu riêng [`MF04/mf04-lap-suat-thay-the.md`](../MF04/mf04-lap-suat-thay-the.md).
+> **Phạm vi chính:** Backend MF-05. Phần MF-02 B4 (gắn lượt nộp vào suất) đã xong, merge 16/10. Phần MF-04 nằm ở tài liệu riêng `MF04/mf04-lap-suat-thay-the.md` (đã làm xong trong `ConfirmStartWorkCommandHandler`, tài liệu đã xóa 19/10).
 > **Ngày:** 2026-10-15.
 > Thay cho phần mô tả ngắn ở mục E7 của [`mf05-viec-can-lam-theo-quy-tac-phi.md`](mf05-viec-can-lam-theo-quy-tac-phi.md).
 > **Hiện trạng code (15/10, nhánh `feature/mf05-replacement-slot`):** MF-05 đã làm xong bước 1 và 2 của mục 8: bảng, cột, hằng số `ReplacementSlotStates` / `ReplacementSlotErrorCodes`, cài đặt, migration `Mf05ReplacementSlot`, S1–S4 và API mục 6. Còn lại: MF-02 B4 và mục 5 (MF-04 + MF-05).
@@ -124,7 +124,7 @@ Job bình thường: `isReplacement: false`, hai trường kia `null`.
 
 ## 5. Lấp suất khi người thay thế đi làm (MF-04 + MF-05)
 
-Chi tiết ở tài liệu MF-04: [`MF04/mf04-lap-suat-thay-the.md`](../MF04/mf04-lap-suat-thay-the.md). Tóm tắt:
+Chi tiết ở tài liệu MF-04: `MF04/mf04-lap-suat-thay-the.md` (đã làm xong trong `ConfirmStartWorkCommandHandler`, tài liệu đã xóa 19/10). Tóm tắt:
 
 - **MF-04:** trong `ConfirmStartWorkCommandHandler`, khóa suất, lấp suất (`FILLED`) hoặc trả 409 `REPLACEMENT_SLOT_ALREADY_FILLED`; ghi `placement.replacement_slot_id`.
 - **MF-05:** `PlacementFinanceService.InitializeAsync` nhận thông tin người thay thế: không tạo phí mới, tạo bảo hành mới, hoa hồng `IN_WARRANTY` tính trên phí gốc. Người thay thế nghỉ sớm thì không mở suất mới (R1).
