@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HRConnect.Infrastructure.Persistence;
 
-/// <summary>MF-05 replacement slots (docs/MF05/mf05-thiet-ke-suat-thay-the.md), kept apart from the generated model.</summary>
+/// <summary>MF-05 replacement slots (docs/main-flows.md (MF-05, suất thay thế)), kept apart from the generated model.</summary>
 public partial class ApplicationDbContext
 {
     public virtual DbSet<ReplacementSlot> ReplacementSlots { get; set; }

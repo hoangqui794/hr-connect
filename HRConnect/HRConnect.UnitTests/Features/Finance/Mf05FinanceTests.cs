@@ -528,7 +528,7 @@ public class Mf05FinanceTests
         withoutBank.Items.Single().AffiliateBank.Should().BeNull();
     }
 
-    // ---- E2/E3: IN_WARRANTY and ON_HOLD (mf05-viec-can-lam-theo-quy-tac-phi.md) -------------
+    // ---- E2/E3: IN_WARRANTY and ON_HOLD (docs/main-flows.md, MF-05) -------------
 
     [Fact]
     public async Task Commission_under_a_resignation_review_is_not_earned_when_the_warranty_ends()
@@ -662,7 +662,7 @@ public class Mf05FinanceTests
         reminder.Max.Should().Be(30m);
     }
 
-    // ---- replacement slots (docs/MF05/mf05-thiet-ke-suat-thay-the.md) -----------------------
+    // ---- replacement slots (docs/main-flows.md (MF-05, suất thay thế)) -----------------------
 
     /// <summary>Placement started, Client reported the resignation; the fee is paid when <paramref name="feePaid"/>.</summary>
     private async Task<(Placement Placement, ServiceFee Fee)> ResignationReportedAsync(bool feePaid, string jobStatus = "ACTIVE")
