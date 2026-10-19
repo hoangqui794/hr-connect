@@ -10,6 +10,8 @@ public partial class ApplicationDbContext
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
     {
+        ConfigureBe04(modelBuilder);
+
         modelBuilder.Entity<ReplacementSlot>(entity =>
         {
             entity.HasKey(e => e.ReplacementSlotId).HasName("replacement_slot_pkey");
