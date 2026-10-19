@@ -34,6 +34,7 @@ import { getDashboardRouteForRole } from '@/routes/AppRoutes';
 import { authService, type LoginResponse, type CurrentUserResponse } from '@/services/authService';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { AuthPageShell, AUTH_INPUT_CLASS, AUTH_LABEL_CLASS } from './AuthPageShell';
+import { getSafeCandidateReturnPath } from './authReturnPath';
 
 interface DemoAccount {
   role: UserRole;
@@ -246,8 +247,11 @@ export const LoginPage: React.FC = () => {
       // may technically open it, but should land in the Admin console instead.
       const redirectState = location.state as { from?: string; intent?: string } | undefined;
       const redirectFrom = redirectState?.from;
+      const emailReturnTo = getSafeCandidateReturnPath(new URLSearchParams(location.search).get('returnTo'));
       const destination =
-        redirectFrom && redirectFrom !== '/login' && belongsToRoleWorkspace(resolvedRole, redirectFrom)
+        resolvedRole === UserRole.CANDIDATE && emailReturnTo
+          ? emailReturnTo
+          : redirectFrom && redirectFrom !== '/login' && belongsToRoleWorkspace(resolvedRole, redirectFrom)
           ? redirectFrom
           : getDashboardRouteForRole(resolvedRole);
 

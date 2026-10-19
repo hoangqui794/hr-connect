@@ -60,7 +60,7 @@ public class CandidateRecruitmentDeliveryServiceTests
         outbox!.TemplateCode.Should().Be(RecruitmentCandidateEmailTemplates.InterviewRescheduled);
         outbox.RecipientEmail.Should().Be("candidate@example.com");
         var payload = JsonSerializer.Deserialize<RecruitmentCandidateEmailPayload>(outbox.Payload)!;
-        payload.PortalUrl.Should().Be("https://portal.example/register?role=CANDIDATE");
+        payload.PortalUrl.Should().Be("https://portal.example/register?role=CANDIDATE&returnTo=%2Fcandidate%2Fdashboard");
         payload.Reason.Should().Be("Trùng lịch");
     }
 

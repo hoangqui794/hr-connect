@@ -30,6 +30,7 @@ import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-do
 import { authService } from '@/services/authService';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { AuthPageShell, AUTH_INPUT_CLASS } from './AuthPageShell';
+import { appendCandidateReturnPath, getSafeCandidateReturnPath } from './authReturnPath';
 
 export const VerifyOtpPage: React.FC = () => {
   const navigate = useNavigate();
@@ -41,6 +42,9 @@ export const VerifyOtpPage: React.FC = () => {
     searchParams.get('email') || (location.state as { email?: string } | undefined)?.email || '';
   const roleParam =
     searchParams.get('role') || (location.state as { role?: string } | undefined)?.role || '';
+  const candidateReturnTo = getSafeCandidateReturnPath(
+    searchParams.get('returnTo') || (location.state as { returnTo?: string } | undefined)?.returnTo
+  );
 
   const [email, setEmail] = useState<string>(emailParam);
   const [tempEmail, setTempEmail] = useState<string>(emailParam);
@@ -169,9 +173,9 @@ export const VerifyOtpPage: React.FC = () => {
           });
 
           // Redirect to /login with email and verified=true
-          navigate(`/login?email=${encodeURIComponent(cleanEmail)}&verified=true`, {
+          navigate(appendCandidateReturnPath(`/login?email=${encodeURIComponent(cleanEmail)}&verified=true`, candidateReturnTo), {
             replace: true,
-            state: { email: cleanEmail, verified: true },
+            state: { email: cleanEmail, verified: true, returnTo: candidateReturnTo },
           });
         }
       } else {

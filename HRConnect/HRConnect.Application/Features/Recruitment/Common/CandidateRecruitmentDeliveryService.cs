@@ -271,7 +271,7 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
             Reason: reason);
 
     private string BuildCandidatePortalUrl() =>
-        $"{_settings.PortalBaseUrl.TrimEnd('/')}/register?role=CANDIDATE";
+        $"{_settings.PortalBaseUrl.TrimEnd('/')}/register?role=CANDIDATE&returnTo=%2Fcandidate%2Fdashboard";
 
     private static string GetInterviewTemplateCode(InterviewCandidateDeliveryEvent deliveryEvent) => deliveryEvent switch
     {
