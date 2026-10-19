@@ -2,12 +2,11 @@
  * @file services/api/userApi.ts
  * @description User profile endpoints: avatar upload, removal, and presigned redirect URL.
  */
-import { apiClient } from '../apiClient';
+import { apiClient, resolveApiAssetUrl } from '../apiClient';
 
 export interface UploadAvatarData {
   userId: string;
   avatarUrl: string;
-  objectKey: string;
   updatedAt: string;
 }
 
@@ -20,6 +19,11 @@ export interface UploadAvatarResponse {
 export interface DeleteAvatarResponse {
   success: boolean;
   message: string;
+  data?: {
+    userId: string;
+    avatarUrl: null;
+    updatedAt: string;
+  };
 }
 
 export const userApi = {
@@ -36,7 +40,13 @@ export const userApi = {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return res.data;
+    return {
+      ...res.data,
+      data: {
+        ...res.data.data,
+        avatarUrl: resolveApiAssetUrl(res.data.data.avatarUrl) ?? res.data.data.avatarUrl,
+      },
+    };
   },
 
   /**
@@ -52,6 +62,6 @@ export const userApi = {
    * Get direct URL to user avatar
    */
   getAvatarUrl(userId: string): string {
-    return `/api/v1/users/${userId}/avatar`;
+    return resolveApiAssetUrl(`/api/v1/users/${encodeURIComponent(userId)}/avatar`)!;
   },
 };

@@ -2,7 +2,7 @@
  * @file components/common/AvatarUpload.tsx
  * @description User avatar uploader & manager (POST /api/v1/users/me/avatar & DELETE /api/v1/users/me/avatar).
  */
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Avatar, Button, Popconfirm, Tooltip, Upload, App as AntApp, Spin } from 'antd';
 import { CameraOutlined, DeleteOutlined, LoadingOutlined, UserOutlined } from '@ant-design/icons';
 import { userApi } from '@/services/api/userApi';
@@ -21,14 +21,29 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   showActions = true,
 }) => {
   const { message } = AntApp.useApp();
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, syncCurrentUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
 
   const isHttpUrl = (url?: string) => url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:'));
   const hasCustomAvatar = Boolean(user?.avatar && isHttpUrl(user.avatar));
   const initials = getInitials(user?.name || user?.email || 'User');
+  const displayedAvatar = useMemo(
+    () => previewUrl || (hasCustomAvatar ? user?.avatar : null),
+    [hasCustomAvatar, previewUrl, user?.avatar]
+  );
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [displayedAvatar]);
+
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   const handleUpload = async (file: File) => {
+    if (loading) return false;
     // Validate file type
     const isValidType = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(file.type);
     if (!isValidType) {
@@ -44,15 +59,25 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
     }
 
     try {
+      const nextPreviewUrl = URL.createObjectURL(file);
+      setPreviewUrl((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return nextPreviewUrl;
+      });
       setLoading(true);
       const res = await userApi.uploadAvatar(file);
       message.success(res.message || 'Cập nhật ảnh đại diện thành công!');
       if (res.data?.avatarUrl) {
         updateUser({ avatar: res.data.avatarUrl });
       }
+      await syncCurrentUser();
     } catch (err) {
       message.error(getApiErrorMessage(err, 'Không thể tải lên ảnh đại diện!'));
     } finally {
+      setPreviewUrl((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return null;
+      });
       setLoading(false);
     }
 
@@ -60,11 +85,13 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   };
 
   const handleDelete = async () => {
+    if (loading) return;
     try {
       setLoading(true);
       const res = await userApi.deleteAvatar();
       message.success(res.message || 'Đã xóa ảnh đại diện thành công!');
       updateUser({ avatar: initials });
+      await syncCurrentUser();
     } catch (err) {
       message.error(getApiErrorMessage(err, 'Không thể xóa ảnh đại diện!'));
     } finally {
@@ -81,11 +108,12 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
         >
           {loading ? (
             <Spin indicator={<LoadingOutlined style={{ fontSize: size * 0.35, color: '#fff' }} spin />} />
-          ) : hasCustomAvatar ? (
+          ) : displayedAvatar && !imageFailed ? (
             <img
-              src={user?.avatar}
+              src={displayedAvatar}
               alt={user?.name || 'Avatar'}
               className="w-full h-full object-cover"
+              onError={() => setImageFailed(true)}
             />
           ) : (
             <span>{initials}</span>
@@ -98,12 +126,14 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
             beforeUpload={handleUpload}
             showUploadList={false}
             accept=".jpg,.jpeg,.png,.webp"
+            disabled={loading}
           >
             <Tooltip title="Đổi ảnh đại diện">
               <button
                 type="button"
                 className="absolute inset-0 rounded-full bg-black/40 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity duration-200 border-0"
                 aria-label="Tải ảnh mới"
+                disabled={loading}
               >
                 <CameraOutlined style={{ fontSize: size * 0.28 }} />
               </button>
@@ -118,6 +148,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
             beforeUpload={handleUpload}
             showUploadList={false}
             accept=".jpg,.jpeg,.png,.webp"
+            disabled={loading}
           >
             <Button
               size="small"

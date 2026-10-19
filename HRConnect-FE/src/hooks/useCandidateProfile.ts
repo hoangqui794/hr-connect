@@ -6,6 +6,7 @@ import {
   CandidateProfileData,
   UpdateCandidateProfileCommand,
 } from '@/services/candidateService';
+import { resolveApiAssetUrl } from '@/services/apiClient';
 
 export const CANDIDATE_PROFILE_UPDATED_EVENT = 'hrconnect:candidate-profile-updated';
 
@@ -44,8 +45,9 @@ export const useCandidateProfile = () => {
           if (res.data.email && res.data.email !== user?.email) {
             updates.email = res.data.email;
           }
-          if (res.data.avatarUrl && res.data.avatarUrl !== user?.avatar) {
-            updates.avatar = res.data.avatarUrl;
+          const avatarUrl = resolveApiAssetUrl(res.data.avatarUrl);
+          if (avatarUrl && avatarUrl !== user?.avatar) {
+            updates.avatar = avatarUrl;
           }
           if (Object.keys(updates).length > 0) {
             updateUser(updates);

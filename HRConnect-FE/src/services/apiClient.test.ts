@@ -1,6 +1,7 @@
 import { AxiosError, AxiosHeaders, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
-import { apiClient, getApiError, getApiErrorMessage } from './apiClient';
+import { apiClient, getApiError, getApiErrorMessage, resolveApiAssetUrl } from './apiClient';
+import { userApi } from './api/userApi';
 import { affiliateApi, candidateAffiliateCvApi, candidateApplicationsApi, candidateConsentApi, candidateCvApi, candidateIdentityApi } from './api/mf02Api';
 
 describe('API client foundation', () => {
@@ -31,6 +32,42 @@ describe('API client foundation', () => {
       correlationId: 'corr-123',
     });
     expect(getApiErrorMessage(error)).toBe('Bạn thao tác quá nhanh. (Email không hợp lệ.)');
+  });
+
+  it('resolves backend-owned avatar paths against the API host', () => {
+    expect(resolveApiAssetUrl('/api/v1/users/user-1/avatar')).toBe(
+      `${window.location.origin}/api/v1/users/user-1/avatar`
+    );
+    expect(resolveApiAssetUrl('users/user-1/avatar')).toBe(
+      `${window.location.origin}/api/v1/users/user-1/avatar`
+    );
+    expect(resolveApiAssetUrl('https://cdn.example.com/avatar.webp')).toBe(
+      'https://cdn.example.com/avatar.webp'
+    );
+    expect(resolveApiAssetUrl(null)).toBeNull();
+  });
+
+  it('normalizes the upload response and keeps storage keys private', async () => {
+    apiClient.defaults.adapter = async (config) => ({
+      data: {
+        success: true,
+        message: 'OK',
+        data: {
+          userId: 'user-1',
+          avatarUrl: '/api/v1/users/user-1/avatar?v=123',
+          updatedAt: '2026-10-19T00:00:00Z',
+        },
+      },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config,
+    });
+
+    const result = await userApi.uploadAvatar(new File(['image'], 'avatar.png', { type: 'image/png' }));
+
+    expect(result.data.avatarUrl).toBe(`${window.location.origin}/api/v1/users/user-1/avatar?v=123`);
+    expect(result.data).not.toHaveProperty('objectKey');
   });
 
   it('removes the JSON content type so Axios can generate a multipart boundary', async () => {

@@ -25,6 +25,20 @@ const resolveBaseUrl = (): string => {
 
 export const API_BASE_URL = resolveBaseUrl();
 
+/** Resolves API-owned media paths against the configured backend, never the SPA host. */
+export const resolveApiAssetUrl = (value?: string | null): string | null => {
+  const candidate = value?.trim();
+  if (!candidate) return null;
+  if (/^(?:https?:|data:|blob:)/i.test(candidate)) return candidate;
+
+  const browserOrigin = typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
+  const apiUrl = new URL(API_BASE_URL, browserOrigin);
+  const apiOrigin = apiUrl.origin;
+
+  if (candidate.startsWith('/')) return new URL(candidate, apiOrigin).toString();
+  return new URL(candidate, `${apiUrl.toString().replace(/\/+$/, '')}/`).toString();
+};
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {

@@ -36,6 +36,23 @@ describe('auth store claims', () => {
     expect(state.hasPermission('submission.create')).toBe(true);
   });
 
+  it('stores relative backend avatar URLs as absolute API URLs', () => {
+    useAuthStore.getState().setAuthSession(
+      {
+        userId: 'user-avatar',
+        email: 'avatar@example.com',
+        displayName: 'Avatar User',
+        avatarUrl: '/api/v1/users/user-avatar/avatar?v=9',
+        roles: ['CANDIDATE'],
+      },
+      'access-token'
+    );
+
+    expect(useAuthStore.getState().user?.avatar).toBe(
+      `${window.location.origin}/api/v1/users/user-avatar/avatar?v=9`
+    );
+  });
+
   it('replaces the stored refresh token when the backend rotates it', () => {
     authTokenStorage.save({ accessToken: 'access-1', refreshToken: 'refresh-old' });
     authTokenStorage.save({ accessToken: 'access-2', refreshToken: 'refresh-new' });

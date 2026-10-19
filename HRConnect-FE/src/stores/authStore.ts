@@ -10,6 +10,7 @@ import { persist } from 'zustand/middleware';
 import { UserRole, UserProfile, DEMO_USERS, mapApiRoleToUserRole, mapApiRolesToUserRoles } from '@/types/roles';
 import { authService, type CurrentUserDto, AUTH_STORAGE_KEYS } from '@/services/authService';
 import { findRegisteredAccountByEmail, saveRegisteredAccount } from '@/services/accountService';
+import { resolveApiAssetUrl } from '@/services/apiClient';
 
 export type { UserProfile };
 export { UserRole, mapApiRoleToUserRole };
@@ -141,7 +142,7 @@ export const useAuthStore = create<AuthState>()(
           permissions: userDto.permissions ?? [],
           status: userDto.status ?? undefined,
           emailVerified: userDto.emailVerified,
-          avatar: userDto.avatarUrl || initials,
+          avatar: resolveApiAssetUrl(userDto.avatarUrl) || initials,
           trustRating: resolvedRole === UserRole.AFFILIATE ? 5.0 : undefined,
         };
 
@@ -177,7 +178,7 @@ export const useAuthStore = create<AuthState>()(
               permissions: dto.permissions ?? [],
               status: dto.status ?? undefined,
               emailVerified: dto.emailVerified,
-              avatar: dto.avatarUrl || getInitials(dto.displayName || dto.email || 'User'),
+              avatar: resolveApiAssetUrl(dto.avatarUrl) || getInitials(dto.displayName || dto.email || 'User'),
               trustRating: resolvedRole === UserRole.AFFILIATE ? 5.0 : undefined,
             };
 
