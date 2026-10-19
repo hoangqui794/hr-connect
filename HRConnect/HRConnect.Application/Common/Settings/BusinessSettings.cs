@@ -50,6 +50,10 @@ public static class BusinessSettingKeys
     public const string AffiliateRatingGoodMin = "affiliate.rating.good_min";
     public const string AffiliateRatingAverageMin = "affiliate.rating.average_min";
     public const string DisputeWindowDays = "dispute.window_days";
+    public const string ContactRateLimitPerHour = "contact.rate_limit_per_hour";
+    public const string JobMatchMinScore = "job_match.min_score";
+    public const string JobMatchMaxNotificationsPerDay = "job_match.max_notifications_per_day";
+    public const string JobMatchExpiryDays = "job_match.expiry_days";
 
     public static readonly IReadOnlyList<BusinessSettingDefinition> All =
     [
@@ -89,6 +93,18 @@ public static class BusinessSettingKeys
         new(FeeDueReminderDays, "SERVICE_FEE", "Số ngày nhắc trước hạn thanh toán",
             "Phí dịch vụ còn bằng hoặc ít hơn số ngày này tới hạn thì chuyển sang DUE (Sắp đến hạn) và nhắc Client.",
             BusinessSettingType.Integer, 5m, 1m, 30m, "ngày", "QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md, mục 1.1"),
+        new(ContactRateLimitPerHour, "CONTACT", "Số yêu cầu liên hệ tối đa mỗi giờ",
+            "Số lần một địa chỉ IP được gửi form liên hệ công khai trong 1 giờ; vượt quá thì trả 429.",
+            BusinessSettingType.Integer, 5m, 1m, 100m, "lần", "main-flows.md, form liên hệ"),
+        new(JobMatchMinScore, "JOB_MATCH", "Điểm tối thiểu để gợi ý việc",
+            "Điểm tương đồng CV↔JD (0-100) từ mức này trở lên mới hiện trong mục Việc phù hợp và được gửi thông báo cho ứng viên.",
+            BusinessSettingType.Decimal, 70m, 0m, 100m, "điểm", "main-flows.md, gợi ý việc làm"),
+        new(JobMatchMaxNotificationsPerDay, "JOB_MATCH", "Số thông báo việc phù hợp tối đa mỗi ngày",
+            "Mỗi ứng viên nhận tối đa ngần này thông báo việc phù hợp trong một ngày; gợi ý vẫn hiện trong danh sách. 0 là tắt thông báo.",
+            BusinessSettingType.Integer, 3m, 0m, 20m, "thông báo", "main-flows.md, gợi ý việc làm"),
+        new(JobMatchExpiryDays, "JOB_MATCH", "Thời hạn hiển thị gợi ý việc",
+            "Số ngày một gợi ý việc còn hiện cho ứng viên kể từ lúc được chấm.",
+            BusinessSettingType.Integer, 14m, 1m, 90m, "ngày", "main-flows.md, gợi ý việc làm"),
         new(DisputeWindowDays, "DISPUTE", "Thời hạn khiếu nại trùng ứng viên",
             "Số ngày Affiliate được khiếu nại kể từ lúc lượt nộp bị chặn trùng, hoặc từ lúc ứng viên đi làm (khiếu nại attribution). Bằng thời hạn bảo hành để khiếu nại kịp trước khi hoa hồng được duyệt chi.",
             BusinessSettingType.Integer, 30m, 1m, 180m, "ngày", "main-flows.md, SF-04"),
