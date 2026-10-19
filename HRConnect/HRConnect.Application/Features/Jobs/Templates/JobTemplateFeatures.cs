@@ -14,7 +14,7 @@ using MediatR;
 namespace HRConnect.Application.Features.Jobs.Templates;
 
 // MF-01: shared JD template library. Clients search it by keyword and copy a template into the job
-// form; Internal HR and Admin manage it. See HRConnect/docs/MF01/mf01-be-thu-vien-mau-jd.md.
+// form; Internal HR and Admin manage it. See HRConnect/docs/main-flows.md (MF-01, thư viện mẫu JD).
 
 public static class JobTemplateConstants
 {

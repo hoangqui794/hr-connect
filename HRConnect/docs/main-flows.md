@@ -99,6 +99,13 @@ DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
 - Giới hạn gói miễn phí: số job mở cùng lúc và chu kỳ mở lại đọc từ cài đặt Admin (`mf01.cv_application.free_active_limit`, `mf01.cv_application.free_cooldown_months`), kiểm tra khi gửi duyệt và khi mở lại job.
 - `CV_SOURCING` có tỷ lệ cọc > 0: duyệt xong job ở `PENDING_PAYMENT` và hệ thống tạo phiếu cọc; Platform Admin ghi nhận cọc thì job `ACTIVE` (chốt 2026-10-17, xem MF-05).
 
+**Thư viện mẫu JD** (đã có code):
+
+- Internal HR và Admin quản lý mẫu dùng chung (quyền `job_template.manage`): tạo, sửa (`concurrencyToken`), ẩn / hiện, có audit. Mỗi mẫu có ít nhất 1 yêu cầu `MUST_HAVE`. Seed sẵn 13 mẫu theo `code`, chạy lại không tạo trùng.
+- Client tìm mẫu ở bước 2 của form tạo job (`GET /api/v1/job-templates?keyword=`): tìm không dấu, mọi từ phải khớp, ưu tiên khớp tên rồi mẫu dùng nhiều. Kích thước trang đọc từ cài đặt Admin (`mf01.job_template.page_size_default`, `mf01.job_template.page_size_max`). Mẫu đã ẩn không hiện với Client.
+- Mẫu chỉ là bản nháp: không chứa lương, địa điểm, số lượng, hạn nộp hay phí; job tạo từ mẫu là bản sao độc lập, sửa / ẩn mẫu không đổi job đã tạo. Job lưu `templateId` và mẫu tăng `usage_count`; `templateId` sai không làm hỏng việc tạo job.
+- Giai đoạn 2 (chưa làm): AI viết nháp JD khi không có mẫu khớp.
+
 **Kết quả:** job `ACTIVE` sẵn sàng nhận hồ sơ, hoặc job `REJECTED` trả về Client để sửa.
 
 ---
