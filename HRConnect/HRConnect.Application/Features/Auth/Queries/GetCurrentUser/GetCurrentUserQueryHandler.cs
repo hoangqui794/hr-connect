@@ -14,15 +14,18 @@ public class GetCurrentUserQueryHandler : IRequestHandler<GetCurrentUserQuery, C
 {
     private readonly IUserRepository _userRepository;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IAvatarUrlResolver _avatarUrlResolver;
     private readonly ILogger<GetCurrentUserQueryHandler> _logger;
 
     public GetCurrentUserQueryHandler(
         IUserRepository userRepository,
         ICurrentUserService currentUserService,
+        IAvatarUrlResolver avatarUrlResolver,
         ILogger<GetCurrentUserQueryHandler> logger)
     {
         _userRepository = userRepository;
         _currentUserService = currentUserService;
+        _avatarUrlResolver = avatarUrlResolver;
         _logger = logger;
     }
 
@@ -71,7 +74,7 @@ public class GetCurrentUserQueryHandler : IRequestHandler<GetCurrentUserQuery, C
             Email = user.Email,
             DisplayName = user.DisplayName,
             Phone = user.Phone,
-            AvatarUrl = user.AvatarUrl,
+            AvatarUrl = _avatarUrlResolver.Resolve(user),
             Status = user.Status,
             EmailVerified = user.EmailVerifiedAt.HasValue,
             Roles = activeRoles,

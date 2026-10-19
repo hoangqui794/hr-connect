@@ -67,7 +67,7 @@ public class AdminUserManagementHandlerTests
         repository.Setup(item => item.GetByIdWithRolesAsync(
                 userId, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AppUser?)null);
-        var handler = new GetAdminUserDetailQueryHandler(repository.Object);
+        var handler = new GetAdminUserDetailQueryHandler(repository.Object, Mock.Of<IAvatarUrlResolver>());
 
         var action = () => handler.Handle(new GetAdminUserDetailQuery(userId), CancellationToken.None);
 
@@ -91,7 +91,7 @@ public class AdminUserManagementHandlerTests
             .Returns(Task.CompletedTask);
         var unitOfWork = new Mock<IUnitOfWork>();
         var handler = new ChangeUserStatusCommandHandler(
-            repository.Object, refreshTokens.Object, audit.Object, unitOfWork.Object);
+            repository.Object, refreshTokens.Object, audit.Object, unitOfWork.Object, Mock.Of<IAvatarUrlResolver>());
 
         var result = await handler.Handle(
             new ChangeUserStatusCommand(user.UserId, actorId, "SUSPENDED", "Vi phạm chính sách"),
@@ -120,7 +120,7 @@ public class AdminUserManagementHandlerTests
         var audit = new Mock<IAuditLogService>();
         var unitOfWork = new Mock<IUnitOfWork>();
         var handler = new ChangeUserStatusCommandHandler(
-            repository.Object, refreshTokens.Object, audit.Object, unitOfWork.Object);
+            repository.Object, refreshTokens.Object, audit.Object, unitOfWork.Object, Mock.Of<IAvatarUrlResolver>());
 
         var result = await handler.Handle(
             new ChangeUserStatusCommand(user.UserId, actorId, "ACTIVE", "Đã hoàn tất đối soát"),
@@ -160,7 +160,8 @@ public class AdminUserManagementHandlerTests
             repository.Object,
             new Mock<IRefreshTokenRepository>().Object,
             new Mock<IAuditLogService>().Object,
-            unitOfWork.Object);
+            unitOfWork.Object,
+            Mock.Of<IAvatarUrlResolver>());
 
         var action = () => handler.Handle(
             new ChangeUserStatusCommand(user.UserId, Guid.NewGuid(), "SUSPENDED", "reason"),
@@ -182,7 +183,8 @@ public class AdminUserManagementHandlerTests
             repository.Object,
             new Mock<IRefreshTokenRepository>().Object,
             new Mock<IAuditLogService>().Object,
-            new Mock<IUnitOfWork>().Object);
+            new Mock<IUnitOfWork>().Object,
+            Mock.Of<IAvatarUrlResolver>());
 
         var action = () => handler.Handle(
             new ChangeUserStatusCommand(user.UserId, Guid.NewGuid(), "ACTIVE", null),
@@ -204,7 +206,7 @@ public class AdminUserManagementHandlerTests
             .ReturnsAsync(user);
         var audit = new Mock<IAuditLogService>();
         var unitOfWork = new Mock<IUnitOfWork>();
-        var handler = new UnlockUserCommandHandler(repository.Object, audit.Object, unitOfWork.Object);
+        var handler = new UnlockUserCommandHandler(repository.Object, audit.Object, unitOfWork.Object, Mock.Of<IAvatarUrlResolver>());
 
         var result = await handler.Handle(
             new UnlockUserCommand(user.UserId, actorId),
@@ -233,7 +235,8 @@ public class AdminUserManagementHandlerTests
         var handler = new UnlockUserCommandHandler(
             repository.Object,
             new Mock<IAuditLogService>().Object,
-            unitOfWork.Object);
+            unitOfWork.Object,
+            Mock.Of<IAvatarUrlResolver>());
 
         var action = () => handler.Handle(
             new UnlockUserCommand(user.UserId, Guid.NewGuid()),

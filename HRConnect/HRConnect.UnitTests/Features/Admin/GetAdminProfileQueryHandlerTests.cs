@@ -1,5 +1,6 @@
 using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Admin.Queries.GetAdminProfile;
 using HRConnect.Domain.Entities;
@@ -16,7 +17,9 @@ public class GetAdminProfileQueryHandlerTests
     public GetAdminProfileQueryHandlerTests()
     {
         _adminProfileRepositoryMock = new Mock<IAdminProfileRepository>();
-        _handler = new GetAdminProfileQueryHandler(_adminProfileRepositoryMock.Object);
+        var avatarResolver = new Mock<IAvatarUrlResolver>();
+        avatarResolver.Setup(x => x.Resolve(It.IsAny<AppUser>())).Returns((AppUser user) => user.AvatarUrl);
+        _handler = new GetAdminProfileQueryHandler(_adminProfileRepositoryMock.Object, avatarResolver.Object);
     }
 
     [Fact]

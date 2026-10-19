@@ -13,15 +13,18 @@ public sealed class UnlockUserCommandHandler : IRequestHandler<UnlockUserCommand
     private readonly IAdminUserRepository _userRepository;
     private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAvatarUrlResolver _avatarUrlResolver;
 
     public UnlockUserCommandHandler(
         IAdminUserRepository userRepository,
         IAuditLogService auditLogService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAvatarUrlResolver avatarUrlResolver)
     {
         _userRepository = userRepository;
         _auditLogService = auditLogService;
         _unitOfWork = unitOfWork;
+        _avatarUrlResolver = avatarUrlResolver;
     }
 
     public async Task<AdminUserActionResponse> Handle(
@@ -66,7 +69,7 @@ public sealed class UnlockUserCommandHandler : IRequestHandler<UnlockUserCommand
             Message = wasLocked || oldFailedAttempts > 0
                 ? "Mở khóa đăng nhập thành công."
                 : "Tài khoản hiện không bị khóa đăng nhập.",
-            Data = AdminUserDetailDto.From(user, now)
+            Data = AdminUserDetailDto.From(user, now, _avatarUrlResolver)
         };
     }
 }

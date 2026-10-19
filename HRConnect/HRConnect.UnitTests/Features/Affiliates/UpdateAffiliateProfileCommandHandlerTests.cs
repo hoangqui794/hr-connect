@@ -35,6 +35,7 @@ public class UpdateAffiliateProfileCommandHandlerTests
             _userRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _phoneNormalizerMock.Object,
+            Mock.Of<IAvatarUrlResolver>(),
             _loggerMock.Object);
     }
 

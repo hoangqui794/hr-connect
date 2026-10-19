@@ -1,5 +1,6 @@
 using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 using HRConnect.Domain.Entities;
@@ -19,7 +20,9 @@ public class GetCandidateProfileQueryHandlerTests
     {
         _candidateRepositoryMock = new Mock<ICandidateRepository>();
         _loggerMock = new Mock<ILogger<GetCandidateProfileQueryHandler>>();
-        _handler = new GetCandidateProfileQueryHandler(_candidateRepositoryMock.Object, _loggerMock.Object);
+        var avatarResolver = new Mock<IAvatarUrlResolver>();
+        avatarResolver.Setup(x => x.Resolve(It.IsAny<AppUser>())).Returns((AppUser user) => user.AvatarUrl);
+        _handler = new GetCandidateProfileQueryHandler(_candidateRepositoryMock.Object, avatarResolver.Object, _loggerMock.Object);
     }
 
     [Fact]

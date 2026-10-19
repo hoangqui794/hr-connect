@@ -26,10 +26,13 @@ public class GetCurrentUserQueryHandlerTests
         _userRepositoryMock = new Mock<IUserRepository>();
         _currentUserServiceMock = new Mock<ICurrentUserService>();
         _loggerMock = new Mock<ILogger<GetCurrentUserQueryHandler>>();
+        var avatarResolver = new Mock<IAvatarUrlResolver>();
+        avatarResolver.Setup(x => x.Resolve(It.IsAny<AppUser>())).Returns((AppUser user) => user.AvatarUrl);
 
         _handler = new GetCurrentUserQueryHandler(
             _userRepositoryMock.Object,
             _currentUserServiceMock.Object,
+            avatarResolver.Object,
             _loggerMock.Object);
     }
 

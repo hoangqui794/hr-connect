@@ -3,10 +3,12 @@ using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Users.Commands.DeleteAvatar;
 using HRConnect.Application.Features.Users.Commands.UploadAvatar;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace HRConnect.Presentation.Endpoints.V1.Users;
 
@@ -59,12 +61,14 @@ public static class UserEndpoints
         // 2. GET /api/v1/users/{userId:guid}/avatar - Xem ảnh đại diện của người dùng
         group.MapGet("/{userId:guid}/avatar", async (
             Guid userId,
+            HttpContext context,
             [FromServices] IUserRepository userRepository,
             [FromServices] IFileStorageService fileStorageService,
+            [FromServices] IOptions<R2Settings> r2Options,
             CancellationToken cancellationToken) =>
         {
             var targetUser = await userRepository.GetByIdAsync(userId, cancellationToken);
-            if (targetUser == null || string.IsNullOrWhiteSpace(targetUser.AvatarUrl))
+            if (targetUser == null)
             {
                 return Results.NotFound(new
                 {
@@ -73,20 +77,31 @@ public static class UserEndpoints
                 });
             }
 
-            if (targetUser.AvatarUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                targetUser.AvatarUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            var objectKey = targetUser.AvatarObjectKey;
+            if (string.IsNullOrWhiteSpace(objectKey) && targetUser.AvatarUrl?.StartsWith($"avatars/{userId:D}/", StringComparison.OrdinalIgnoreCase) == true)
+                objectKey = targetUser.AvatarUrl;
+
+            if (string.IsNullOrWhiteSpace(objectKey))
             {
-                return Results.Redirect(targetUser.AvatarUrl);
+                if (targetUser.AvatarUrl?.StartsWith("https://", StringComparison.OrdinalIgnoreCase) == true ||
+                    targetUser.AvatarUrl?.StartsWith("http://", StringComparison.OrdinalIgnoreCase) == true)
+                    return Results.Redirect(targetUser.AvatarUrl);
+                return Results.NotFound(new { success = false, message = "Không tìm thấy ảnh đại diện của người dùng." });
             }
+
+            if (!objectKey.StartsWith($"avatars/{userId:D}/", StringComparison.OrdinalIgnoreCase))
+                return Results.NotFound(new { success = false, message = "Ảnh đại diện không hợp lệ." });
 
             try
             {
-                var presignedUrl = await fileStorageService.GetPresignedDownloadUrlAsync(
-                    targetUser.AvatarUrl,
-                    TimeSpan.FromHours(24),
-                    cancellationToken);
+                var settings = r2Options.Value;
+                var destination = !string.IsNullOrWhiteSpace(settings.PublicBaseUrl)
+                    ? $"{settings.PublicBaseUrl.TrimEnd('/')}/{objectKey}"
+                    : await fileStorageService.GetPresignedDownloadUrlAsync(objectKey,
+                        TimeSpan.FromMinutes(settings.AvatarPresignedUrlExpiryMinutes), cancellationToken);
 
-                return Results.Redirect(presignedUrl);
+                context.Response.Headers.CacheControl = "public, max-age=300";
+                return Results.Redirect(destination);
             }
             catch
             {

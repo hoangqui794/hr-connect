@@ -1,5 +1,6 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -8,13 +9,16 @@ namespace HRConnect.Application.Features.Affiliates.Queries.GetAffiliateProfile;
 public class GetAffiliateProfileQueryHandler : IRequestHandler<GetAffiliateProfileQuery, AffiliateProfileResponse>
 {
     private readonly IAffiliateProfileRepository _affiliateProfileRepository;
+    private readonly IAvatarUrlResolver _avatarUrlResolver;
     private readonly ILogger<GetAffiliateProfileQueryHandler> _logger;
 
     public GetAffiliateProfileQueryHandler(
         IAffiliateProfileRepository affiliateProfileRepository,
+        IAvatarUrlResolver avatarUrlResolver,
         ILogger<GetAffiliateProfileQueryHandler> logger)
     {
         _affiliateProfileRepository = affiliateProfileRepository;
+        _avatarUrlResolver = avatarUrlResolver;
         _logger = logger;
     }
 
@@ -37,7 +41,7 @@ public class GetAffiliateProfileQueryHandler : IRequestHandler<GetAffiliateProfi
                 AffiliateId = profile.AffiliateId,
                 UserId = profile.UserId,
                 Email = profile.User?.Email ?? string.Empty,
-                AvatarUrl = profile.User?.AvatarUrl,
+                AvatarUrl = profile.User is null ? null : _avatarUrlResolver.Resolve(profile.User),
                 AffiliateType = profile.AffiliateType,
                 DisplayName = profile.DisplayName,
                 TaxInformation = profile.TaxInformation,

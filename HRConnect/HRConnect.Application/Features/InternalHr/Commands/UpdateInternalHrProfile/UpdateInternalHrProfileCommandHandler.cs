@@ -12,6 +12,7 @@ public class UpdateInternalHrProfileCommandHandler : IRequestHandler<UpdateInter
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPhoneNormalizer _phoneNormalizer;
+    private readonly IAvatarUrlResolver _avatarUrlResolver;
     private readonly ILogger<UpdateInternalHrProfileCommandHandler> _logger;
 
     public UpdateInternalHrProfileCommandHandler(
@@ -19,12 +20,14 @@ public class UpdateInternalHrProfileCommandHandler : IRequestHandler<UpdateInter
         IUserRepository userRepository,
         IUnitOfWork unitOfWork,
         IPhoneNormalizer phoneNormalizer,
+        IAvatarUrlResolver avatarUrlResolver,
         ILogger<UpdateInternalHrProfileCommandHandler> logger)
     {
         _internalHrProfileRepository = internalHrProfileRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _phoneNormalizer = phoneNormalizer;
+        _avatarUrlResolver = avatarUrlResolver;
         _logger = logger;
     }
 
@@ -82,7 +85,8 @@ public class UpdateInternalHrProfileCommandHandler : IRequestHandler<UpdateInter
                 Email = user?.Email ?? profile.User?.Email ?? string.Empty,
                 DisplayName = user?.DisplayName ?? cleanDisplayName,
                 Phone = user?.Phone ?? cleanPhone,
-                AvatarUrl = user?.AvatarUrl ?? profile.User?.AvatarUrl,
+                AvatarUrl = user is not null ? _avatarUrlResolver.Resolve(user) :
+                    profile.User is not null ? _avatarUrlResolver.Resolve(profile.User) : null,
                 EmployeeCode = profile.EmployeeCode,
                 Department = profile.Department,
                 JobTitle = profile.JobTitle,

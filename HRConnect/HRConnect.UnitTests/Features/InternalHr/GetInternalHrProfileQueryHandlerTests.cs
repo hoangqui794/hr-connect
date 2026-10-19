@@ -1,5 +1,6 @@
 using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.InternalHr.Queries.GetInternalHrProfile;
 using HRConnect.Domain.Entities;
@@ -19,7 +20,9 @@ public class GetInternalHrProfileQueryHandlerTests
     {
         _internalHrProfileRepositoryMock = new Mock<IInternalHrProfileRepository>();
         _loggerMock = new Mock<ILogger<GetInternalHrProfileQueryHandler>>();
-        _handler = new GetInternalHrProfileQueryHandler(_internalHrProfileRepositoryMock.Object, _loggerMock.Object);
+        var avatarResolver = new Mock<IAvatarUrlResolver>();
+        avatarResolver.Setup(x => x.Resolve(It.IsAny<AppUser>())).Returns((AppUser user) => user.AvatarUrl);
+        _handler = new GetInternalHrProfileQueryHandler(_internalHrProfileRepositoryMock.Object, avatarResolver.Object, _loggerMock.Object);
     }
 
     [Fact]

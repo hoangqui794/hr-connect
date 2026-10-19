@@ -1,4 +1,5 @@
 using HRConnect.Domain.Entities;
+using HRConnect.Application.Common.Interfaces;
 
 namespace HRConnect.Application.Features.Admin.Users;
 
@@ -54,13 +55,13 @@ public sealed class AdminUserDetailDto
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
 
-    internal static AdminUserDetailDto From(AppUser user, DateTime nowUtc) => new()
+    internal static AdminUserDetailDto From(AppUser user, DateTime nowUtc, IAvatarUrlResolver avatarUrlResolver) => new()
     {
         UserId = user.UserId,
         Email = user.Email,
         DisplayName = user.DisplayName,
         Phone = user.Phone,
-        AvatarUrl = user.AvatarUrl,
+        AvatarUrl = avatarUrlResolver.Resolve(user),
         Status = user.Status,
         Roles = AdminUserListItemDto.ActiveRoles(user),
         IsEmailVerified = user.EmailVerifiedAt.HasValue,

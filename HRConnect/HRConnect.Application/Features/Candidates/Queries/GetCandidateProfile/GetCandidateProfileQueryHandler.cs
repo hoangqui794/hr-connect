@@ -1,5 +1,6 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -8,13 +9,16 @@ namespace HRConnect.Application.Features.Candidates.Queries.GetCandidateProfile;
 public class GetCandidateProfileQueryHandler : IRequestHandler<GetCandidateProfileQuery, CandidateProfileResponse>
 {
     private readonly ICandidateRepository _candidateRepository;
+    private readonly IAvatarUrlResolver _avatarUrlResolver;
     private readonly ILogger<GetCandidateProfileQueryHandler> _logger;
 
     public GetCandidateProfileQueryHandler(
         ICandidateRepository candidateRepository,
+        IAvatarUrlResolver avatarUrlResolver,
         ILogger<GetCandidateProfileQueryHandler> logger)
     {
         _candidateRepository = candidateRepository;
+        _avatarUrlResolver = avatarUrlResolver;
         _logger = logger;
     }
 
@@ -57,7 +61,7 @@ public class GetCandidateProfileQueryHandler : IRequestHandler<GetCandidateProfi
                 PreferredWorkModes = candidate.PreferredWorkModes,
                 ProfileVisibility = candidate.ProfileVisibility,
                 Status = candidate.Status,
-                AvatarUrl = candidate.User?.AvatarUrl,
+                AvatarUrl = candidate.User is null ? null : _avatarUrlResolver.Resolve(candidate.User),
                 CreatedAt = candidate.CreatedAt,
                 UpdatedAt = candidate.UpdatedAt,
                 Skills = candidate.CandidateSkills?.Select(cs => new CandidateSkillItemDto

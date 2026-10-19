@@ -12,6 +12,7 @@ public class UpdateAffiliateProfileCommandHandler : IRequestHandler<UpdateAffili
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPhoneNormalizer _phoneNormalizer;
+    private readonly IAvatarUrlResolver _avatarUrlResolver;
     private readonly ILogger<UpdateAffiliateProfileCommandHandler> _logger;
 
     public UpdateAffiliateProfileCommandHandler(
@@ -19,12 +20,14 @@ public class UpdateAffiliateProfileCommandHandler : IRequestHandler<UpdateAffili
         IUserRepository userRepository,
         IUnitOfWork unitOfWork,
         IPhoneNormalizer phoneNormalizer,
+        IAvatarUrlResolver avatarUrlResolver,
         ILogger<UpdateAffiliateProfileCommandHandler> logger)
     {
         _affiliateProfileRepository = affiliateProfileRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _phoneNormalizer = phoneNormalizer;
+        _avatarUrlResolver = avatarUrlResolver;
         _logger = logger;
     }
 
@@ -74,7 +77,8 @@ public class UpdateAffiliateProfileCommandHandler : IRequestHandler<UpdateAffili
                 AffiliateId = profile.AffiliateId,
                 UserId = profile.UserId,
                 Email = profile.User?.Email ?? user?.Email ?? string.Empty,
-                AvatarUrl = profile.User?.AvatarUrl ?? user?.AvatarUrl,
+                AvatarUrl = user is not null ? _avatarUrlResolver.Resolve(user) :
+                    profile.User is not null ? _avatarUrlResolver.Resolve(profile.User) : null,
                 AffiliateType = profile.AffiliateType,
                 DisplayName = profile.DisplayName,
                 ContactPerson = profile.ContactPerson,

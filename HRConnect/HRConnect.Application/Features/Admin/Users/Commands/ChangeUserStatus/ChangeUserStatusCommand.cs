@@ -39,17 +39,20 @@ public sealed class ChangeUserStatusCommandHandler : IRequestHandler<ChangeUserS
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAvatarUrlResolver _avatarUrlResolver;
 
     public ChangeUserStatusCommandHandler(
         IAdminUserRepository userRepository,
         IRefreshTokenRepository refreshTokenRepository,
         IAuditLogService auditLogService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAvatarUrlResolver avatarUrlResolver)
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _auditLogService = auditLogService;
         _unitOfWork = unitOfWork;
+        _avatarUrlResolver = avatarUrlResolver;
     }
 
     public async Task<AdminUserActionResponse> Handle(
@@ -103,7 +106,7 @@ public sealed class ChangeUserStatusCommandHandler : IRequestHandler<ChangeUserS
             Message = targetStatus == "SUSPENDED"
                 ? "Tạm khóa tài khoản thành công."
                 : "Kích hoạt lại tài khoản thành công.",
-            Data = AdminUserDetailDto.From(user, now)
+            Data = AdminUserDetailDto.From(user, now, _avatarUrlResolver)
         };
     }
 

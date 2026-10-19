@@ -1,5 +1,6 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Interfaces;
 using MediatR;
 
 namespace HRConnect.Application.Features.Admin.Queries.GetAdminProfile;
@@ -7,10 +8,12 @@ namespace HRConnect.Application.Features.Admin.Queries.GetAdminProfile;
 public class GetAdminProfileQueryHandler : IRequestHandler<GetAdminProfileQuery, AdminProfileResponse>
 {
     private readonly IAdminProfileRepository _adminProfileRepository;
+    private readonly IAvatarUrlResolver _avatarUrlResolver;
 
-    public GetAdminProfileQueryHandler(IAdminProfileRepository adminProfileRepository)
+    public GetAdminProfileQueryHandler(IAdminProfileRepository adminProfileRepository, IAvatarUrlResolver avatarUrlResolver)
     {
         _adminProfileRepository = adminProfileRepository;
+        _avatarUrlResolver = avatarUrlResolver;
     }
 
     public async Task<AdminProfileResponse> Handle(GetAdminProfileQuery request, CancellationToken cancellationToken)
@@ -33,7 +36,7 @@ public class GetAdminProfileQueryHandler : IRequestHandler<GetAdminProfileQuery,
                 Email         = profile.User?.Email,
                 DisplayName   = profile.User?.DisplayName,
                 Phone         = profile.User?.Phone,
-                AvatarUrl     = profile.User?.AvatarUrl,
+                AvatarUrl     = profile.User is null ? null : _avatarUrlResolver.Resolve(profile.User),
                 EmployeeCode  = profile.EmployeeCode,
                 JobTitle      = profile.JobTitle,
                 Status        = profile.Status,
