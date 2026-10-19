@@ -5,11 +5,11 @@
  * separate actions; Platform Admin accounts are read-only because the backend refuses them.
  */
 import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Drawer, Form, Input, Modal, Select, Skeleton, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { LockOutlined, ReloadOutlined, SearchOutlined, StopOutlined, UnlockOutlined } from '@ant-design/icons';
+import { KeyOutlined, LockOutlined, ReloadOutlined, SearchOutlined, StopOutlined, UnlockOutlined } from '@ant-design/icons';
 import { adminUsersApi } from '@/services/api/adminApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { AdminUserListItem, AdminUserStatus, RoleCode } from '@/types/api/admin';
@@ -72,6 +72,7 @@ const useUserCount = (status?: AdminUserStatus) =>
   });
 
 export const AdminUsersPage: React.FC = () => {
+  const navigate = useNavigate();
   const { message, modal } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -307,6 +308,14 @@ export const AdminUsersPage: React.FC = () => {
                   onClick={() => unlock.mutate()}
                 >
                   Mở khóa đăng nhập
+                </Button>
+                <Button
+                  size="large"
+                  block
+                  icon={<KeyOutlined />}
+                  onClick={() => navigate(`/admin/user-authorization?userId=${user.userId}`)}
+                >
+                  Phân quyền người dùng (RBAC)
                 </Button>
               </div>
             )}

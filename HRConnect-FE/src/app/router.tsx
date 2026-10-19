@@ -171,6 +171,8 @@ export const router = createBrowserRouter([
       { path: 'users', element: <AppRoutes.ConsoleUsersPage /> },
       { path: 'service-types', element: <AppRoutes.ConsoleServiceTypesPage /> },
       { path: 'commission-rules', element: <AppRoutes.ConsoleCommissionRulesPage /> },
+      { path: 'roles-permissions', element: <AppRoutes.ConsoleRolesPermissionsPage /> },
+      { path: 'user-authorization', element: <AppRoutes.ConsoleUserAuthorizationPage /> },
       { path: 'audit-trail', element: <AppRoutes.ConsoleAuditLogPage /> },
       { path: 'profile', element: <AppRoutes.ConsoleProfilePage /> },
       // No backend API yet: explicit empty state, no mock numbers.

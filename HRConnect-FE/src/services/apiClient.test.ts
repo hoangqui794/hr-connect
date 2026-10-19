@@ -1,6 +1,6 @@
 import { AxiosError, AxiosHeaders, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
-import { apiClient, getApiError, getApiErrorMessage, resolveApiAssetUrl } from './apiClient';
+import { apiClient, API_BASE_URL, getApiError, getApiErrorMessage, resolveApiAssetUrl } from './apiClient';
 import { userApi } from './api/userApi';
 import { affiliateApi, candidateAffiliateCvApi, candidateApplicationsApi, candidateConsentApi, candidateCvApi, candidateIdentityApi } from './api/mf02Api';
 
@@ -35,11 +35,12 @@ describe('API client foundation', () => {
   });
 
   it('resolves backend-owned avatar paths against the API host', () => {
+    const expectedOrigin = new URL(API_BASE_URL, window.location.origin).origin;
     expect(resolveApiAssetUrl('/api/v1/users/user-1/avatar')).toBe(
-      `${window.location.origin}/api/v1/users/user-1/avatar`
+      `${expectedOrigin}/api/v1/users/user-1/avatar`
     );
     expect(resolveApiAssetUrl('users/user-1/avatar')).toBe(
-      `${window.location.origin}/api/v1/users/user-1/avatar`
+      `${expectedOrigin}/api/v1/users/user-1/avatar`
     );
     expect(resolveApiAssetUrl('https://cdn.example.com/avatar.webp')).toBe(
       'https://cdn.example.com/avatar.webp'
@@ -66,7 +67,8 @@ describe('API client foundation', () => {
 
     const result = await userApi.uploadAvatar(new File(['image'], 'avatar.png', { type: 'image/png' }));
 
-    expect(result.data.avatarUrl).toBe(`${window.location.origin}/api/v1/users/user-1/avatar?v=123`);
+    const expectedOrigin = new URL(API_BASE_URL, window.location.origin).origin;
+    expect(result.data.avatarUrl).toBe(`${expectedOrigin}/api/v1/users/user-1/avatar?v=123`);
     expect(result.data).not.toHaveProperty('objectKey');
   });
 

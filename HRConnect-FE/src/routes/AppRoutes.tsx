@@ -92,6 +92,12 @@ const ConsolePayoutsPlaceholder = React.lazy(() =>
 const ConsoleSettingsPlaceholder = React.lazy(() =>
   import('@/features/admin-console/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage }))
 );
+const ConsoleRolesPermissionsPage = React.lazy(() =>
+  import('@/features/admin-console/AdminRolesPermissionsPage').then((m) => ({ default: m.AdminRolesPermissionsPage }))
+);
+const ConsoleUserAuthorizationPage = React.lazy(() =>
+  import('@/features/admin-console/AdminUserAuthorizationPage').then((m) => ({ default: m.AdminUserAuthorizationPage }))
+);
 
 // ── Candidate & Affiliate workspaces (features/portal), MF-02 on the real API ──
 const CandidateHomePage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateHomePage })));
@@ -387,6 +393,8 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/admin/candidate-identity-claims/:claimId': [UserRole.ADMIN],
   '/admin/service-types': [UserRole.ADMIN],
   '/admin/commission-rules': [UserRole.ADMIN],
+  '/admin/roles-permissions': [UserRole.ADMIN],
+  '/admin/user-authorization': [UserRole.ADMIN],
   '/admin/profile': [UserRole.ADMIN],
 };
 
@@ -417,6 +425,8 @@ export const AppRoutes = {
   ConsoleIdentityClaimsPage,
   ConsoleIdentityClaimDetailPage,
   ConsoleUsersPage,
+  ConsoleRolesPermissionsPage,
+  ConsoleUserAuthorizationPage,
   ConsoleServiceTypesPage,
   ConsoleCommissionRulesPage,
   ConsoleAuditLogPage,

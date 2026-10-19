@@ -15,6 +15,7 @@ import {
   DashboardOutlined,
   DollarOutlined,
   FileTextOutlined,
+  KeyOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuOutlined,
@@ -25,6 +26,7 @@ import {
   SolutionOutlined,
   TeamOutlined,
   UserOutlined,
+  UserSwitchOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
@@ -49,11 +51,13 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/admin/approvals', label: 'Phê duyệt tài khoản', icon: <SafetyCertificateOutlined /> },
       { to: '/admin/candidate-identity-claims', label: 'Danh tính Candidate', icon: <LinkOutlined /> },
       { to: '/admin/users', label: 'Người dùng', icon: <TeamOutlined /> },
+      { to: '/admin/user-authorization', label: 'Phân quyền người dùng', icon: <UserSwitchOutlined /> },
     ],
   },
   {
     group: 'Cấu hình',
     items: [
+      { to: '/admin/roles-permissions', label: 'Vai trò & Quyền', icon: <KeyOutlined /> },
       { to: '/admin/service-types', label: 'Loại dịch vụ', icon: <AppstoreOutlined /> },
       { to: '/admin/commission-rules', label: 'Quy tắc hoa hồng', icon: <DollarOutlined /> },
     ],
