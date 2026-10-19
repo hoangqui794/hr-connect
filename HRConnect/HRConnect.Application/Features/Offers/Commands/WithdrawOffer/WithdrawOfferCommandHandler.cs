@@ -22,6 +22,7 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
     private readonly ILogger<WithdrawOfferCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationRepository? _notificationRepository;
+    private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
 
     public WithdrawOfferCommandHandler(
         IOfferRepository offerRepository,
@@ -30,7 +31,8 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
         IUnitOfWork unitOfWork,
         ILogger<WithdrawOfferCommandHandler> logger,
         IAuditLogService auditLogService,
-        INotificationRepository? notificationRepository = null)
+        INotificationRepository? notificationRepository = null,
+        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
     {
         _offerRepository = offerRepository;
         _applicationRepository = applicationRepository;
@@ -39,6 +41,7 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
         _logger = logger;
         _auditLogService = auditLogService;
         _notificationRepository = notificationRepository;
+        _candidateDeliveryService = candidateDeliveryService;
     }
 
     public async Task<WithdrawOfferResponse> Handle(WithdrawOfferCommand request, CancellationToken cancellationToken)
@@ -154,7 +157,17 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
             }, cancellationToken);
         }
 
-        if (_notificationRepository != null && offer.Application?.Candidate?.UserId is { } candidateUserId)
+        CandidateRecruitmentDeliveryOutcome? deliveryOutcome = null;
+        if (_candidateDeliveryService != null)
+        {
+            deliveryOutcome = await _candidateDeliveryService.DeliverOfferAsync(
+                offer,
+                OfferCandidateDeliveryEvent.Withdrawn,
+                trimmedReason,
+                now,
+                cancellationToken: cancellationToken);
+        }
+        else if (_notificationRepository != null && offer.Application?.Candidate?.UserId is { } candidateUserId)
         {
             var companyName = offer.Application?.Job?.Company?.CompanyName;
             var jobTitle = offer.Application?.Job?.Title;
@@ -194,7 +207,8 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
             trimmedReason,
             application?.Status ?? "OFFER_PENDING",
             offer.ConcurrencyToken,
-            offer.UpdatedAt
+            offer.UpdatedAt,
+            deliveryOutcome?.Channel.ToString().ToUpperInvariant()
         );
     }
 }

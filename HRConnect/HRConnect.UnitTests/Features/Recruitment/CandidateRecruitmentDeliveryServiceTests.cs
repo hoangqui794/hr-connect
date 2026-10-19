@@ -77,6 +77,38 @@ public class CandidateRecruitmentDeliveryServiceTests
         _outboxes.Verify(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task DeliverOfferAsync_WithUnlinkedEmail_QueuesOfferWithoutSensitiveFields()
+    {
+        var (application, _) = CreateApplication(new Candidate
+        {
+            FullName = "An",
+            Email = "candidate@example.com"
+        });
+        var offer = new Offer
+        {
+            OfferId = Guid.NewGuid(),
+            ApplicationId = application.ApplicationId,
+            Application = application,
+            OfferVersion = 2,
+            Salary = 42_000_000m,
+            OfferDocumentUrl = "https://private.example/offer.pdf",
+            ExpiryDate = new DateOnly(2026, 10, 30)
+        };
+        EmailOutbox? outbox = null;
+        _outboxes.Setup(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailOutbox, CancellationToken>((value, _) => outbox = value)
+            .Returns(Task.CompletedTask);
+
+        var result = await CreateService().DeliverOfferAsync(
+            offer, OfferCandidateDeliveryEvent.Sent, null, DateTime.UtcNow);
+
+        result.Channel.Should().Be(CandidateRecruitmentDeliveryChannel.Email);
+        outbox!.TemplateCode.Should().Be(RecruitmentCandidateEmailTemplates.OfferSent);
+        outbox.Payload.Should().NotContain("42000000");
+        outbox.Payload.Should().NotContain("private.example");
+    }
+
     private static (JobApplication Application, Interview Interview) CreateApplication(Candidate candidate)
     {
         var application = new JobApplication

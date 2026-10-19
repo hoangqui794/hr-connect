@@ -22,6 +22,7 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
     private readonly ILogger<SendOfferCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationRepository? _notificationRepository;
+    private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
 
     public SendOfferCommandHandler(
         IOfferRepository offerRepository,
@@ -30,7 +31,8 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
         IUnitOfWork unitOfWork,
         ILogger<SendOfferCommandHandler> logger,
         IAuditLogService auditLogService,
-        INotificationRepository? notificationRepository = null)
+        INotificationRepository? notificationRepository = null,
+        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
     {
         _offerRepository = offerRepository;
         _applicationRepository = applicationRepository;
@@ -39,6 +41,7 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
         _logger = logger;
         _auditLogService = auditLogService;
         _notificationRepository = notificationRepository;
+        _candidateDeliveryService = candidateDeliveryService;
     }
 
     public async Task<SendOfferResponse> Handle(SendOfferCommand request, CancellationToken cancellationToken)
@@ -91,6 +94,10 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
             offer,
             offer.Application?.Job?.ServiceType?.Code);
 
+        // Sending an offer is a state transition visible to the Candidate. Do not persist it
+        // unless an account notification or a valid fallback email can be delivered.
+        var requiredDelivery = _candidateDeliveryService?.RequireReachable(offer.Application?.Candidate);
+
         var oldStatus = offer.Status;
         var now = DateTime.UtcNow;
         offer.Status = "SENT";
@@ -129,7 +136,18 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
             }
         }, cancellationToken);
 
-        if (_notificationRepository != null && offer.Application?.Candidate?.UserId is { } candidateUserId)
+        CandidateRecruitmentDeliveryOutcome? deliveryOutcome = null;
+        if (_candidateDeliveryService != null)
+        {
+            deliveryOutcome = await _candidateDeliveryService.DeliverOfferAsync(
+                offer,
+                OfferCandidateDeliveryEvent.Sent,
+                reason: null,
+                occurredAt: now,
+                decision: requiredDelivery,
+                cancellationToken: cancellationToken);
+        }
+        else if (_notificationRepository != null && offer.Application?.Candidate?.UserId is { } candidateUserId)
         {
             var companyName = offer.Application?.Job?.Company?.CompanyName;
             var jobTitle = offer.Application?.Job?.Title;
@@ -180,7 +198,8 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
             monthlyGrossSalary,
             offer.OfferDocumentUrl,
             offer.ConcurrencyToken,
-            offer.UpdatedAt
+            offer.UpdatedAt,
+            deliveryOutcome?.Channel.ToString().ToUpperInvariant()
         );
     }
 }

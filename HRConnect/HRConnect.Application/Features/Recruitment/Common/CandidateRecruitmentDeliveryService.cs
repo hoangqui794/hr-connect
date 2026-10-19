@@ -18,6 +18,14 @@ public interface ICandidateRecruitmentDeliveryService
         DateTime occurredAt,
         CandidateRecruitmentDeliveryDecision? decision = null,
         CancellationToken cancellationToken = default);
+
+    Task<CandidateRecruitmentDeliveryOutcome> DeliverOfferAsync(
+        Offer offer,
+        OfferCandidateDeliveryEvent deliveryEvent,
+        string? reason,
+        DateTime occurredAt,
+        CandidateRecruitmentDeliveryDecision? decision = null,
+        CancellationToken cancellationToken = default);
 }
 
 public enum InterviewCandidateDeliveryEvent
@@ -25,6 +33,13 @@ public enum InterviewCandidateDeliveryEvent
     Scheduled,
     Rescheduled,
     Cancelled
+}
+
+public enum OfferCandidateDeliveryEvent
+{
+    Sent,
+    Withdrawn,
+    Expired
 }
 
 public sealed record CandidateRecruitmentDeliveryOutcome(CandidateRecruitmentDeliveryChannel Channel)
@@ -103,6 +118,45 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
         return new CandidateRecruitmentDeliveryOutcome(resolved.Channel);
     }
 
+    public async Task<CandidateRecruitmentDeliveryOutcome> DeliverOfferAsync(
+        Offer offer,
+        OfferCandidateDeliveryEvent deliveryEvent,
+        string? reason,
+        DateTime occurredAt,
+        CandidateRecruitmentDeliveryDecision? decision = null,
+        CancellationToken cancellationToken = default)
+    {
+        var application = offer.Application;
+        var resolved = decision ?? CandidateRecruitmentDeliveryPolicy.Resolve(application?.Candidate);
+        if (resolved.Channel == CandidateRecruitmentDeliveryChannel.Unavailable)
+        {
+            return CandidateRecruitmentDeliveryOutcome.Unavailable;
+        }
+
+        if (resolved.Channel == CandidateRecruitmentDeliveryChannel.InApp)
+        {
+            await _notifications.AddAsync(CreateOfferNotification(
+                offer, deliveryEvent, resolved.UserId!.Value, occurredAt), cancellationToken);
+        }
+        else
+        {
+            var payload = CreateOfferEmailPayload(offer, reason);
+            await _emailOutboxes.AddAsync(new EmailOutbox
+            {
+                EmailOutboxId = Guid.NewGuid(),
+                RecipientEmail = resolved.RecipientEmail!,
+                TemplateCode = GetOfferTemplateCode(deliveryEvent),
+                Subject = null,
+                Payload = JsonSerializer.Serialize(payload),
+                Status = "PENDING",
+                RetryCount = 0,
+                CreatedAt = occurredAt
+            }, cancellationToken);
+        }
+
+        return new CandidateRecruitmentDeliveryOutcome(resolved.Channel);
+    }
+
     private Notification CreateInterviewNotification(
         JobApplication application,
         Interview interview,
@@ -162,6 +216,60 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
             interview.MeetingLink,
             Reason: reason);
 
+    private Notification CreateOfferNotification(
+        Offer offer,
+        OfferCandidateDeliveryEvent deliveryEvent,
+        Guid userId,
+        DateTime occurredAt)
+    {
+        var application = offer.Application;
+        var companyName = application?.Job?.Company?.CompanyName;
+        var jobTitle = application?.Job?.Title;
+        var companyPrefix = string.IsNullOrWhiteSpace(companyName) ? string.Empty : $" từ {companyName}";
+        var (title, message) = deliveryEvent switch
+        {
+            OfferCandidateDeliveryEvent.Sent => (
+                "Bạn nhận được lời mời nhận việc (Offer)",
+                $"Bạn vừa nhận được lời mời nhận việc cho vị trí {jobTitle}{companyPrefix}."),
+            OfferCandidateDeliveryEvent.Withdrawn => (
+                "Lời mời nhận việc đã bị thu hồi",
+                $"Lời mời nhận việc{companyPrefix} cho vị trí {jobTitle} đã bị thu hồi."),
+            _ => (
+                "Offer đã hết hạn phản hồi",
+                "Lời mời nhận việc của bạn đã hết hạn phản hồi.")
+        };
+
+        return new Notification
+        {
+            NotificationId = Guid.NewGuid(),
+            UserId = userId,
+            NotificationType = "OFFER",
+            Title = title,
+            Message = message,
+            RelatedEntityType = "OFFER",
+            RelatedEntityId = offer.OfferId,
+            Metadata = JsonSerializer.Serialize(new
+            {
+                applicationId = offer.ApplicationId,
+                offerId = offer.OfferId,
+                offerVersion = offer.OfferVersion,
+                expiryDate = offer.ExpiryDate,
+                eventType = deliveryEvent.ToString().ToUpperInvariant()
+            }),
+            IsRead = false,
+            CreatedAt = occurredAt
+        };
+    }
+
+    private RecruitmentCandidateEmailPayload CreateOfferEmailPayload(Offer offer, string? reason) =>
+        new(
+            offer.Application?.Candidate?.FullName ?? "bạn",
+            offer.Application?.Job?.Title ?? "vị trí ứng tuyển",
+            offer.Application?.Job?.Company?.CompanyName,
+            BuildCandidatePortalUrl(),
+            ExpiryDate: offer.ExpiryDate,
+            Reason: reason);
+
     private string BuildCandidatePortalUrl() =>
         $"{_settings.PortalBaseUrl.TrimEnd('/')}/register?role=CANDIDATE";
 
@@ -170,6 +278,14 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
         InterviewCandidateDeliveryEvent.Scheduled => RecruitmentCandidateEmailTemplates.InterviewScheduled,
         InterviewCandidateDeliveryEvent.Rescheduled => RecruitmentCandidateEmailTemplates.InterviewRescheduled,
         InterviewCandidateDeliveryEvent.Cancelled => RecruitmentCandidateEmailTemplates.InterviewCancelled,
+        _ => throw new ArgumentOutOfRangeException(nameof(deliveryEvent), deliveryEvent, null)
+    };
+
+    private static string GetOfferTemplateCode(OfferCandidateDeliveryEvent deliveryEvent) => deliveryEvent switch
+    {
+        OfferCandidateDeliveryEvent.Sent => RecruitmentCandidateEmailTemplates.OfferSent,
+        OfferCandidateDeliveryEvent.Withdrawn => RecruitmentCandidateEmailTemplates.OfferWithdrawn,
+        OfferCandidateDeliveryEvent.Expired => RecruitmentCandidateEmailTemplates.OfferExpired,
         _ => throw new ArgumentOutOfRangeException(nameof(deliveryEvent), deliveryEvent, null)
     };
 }
