@@ -175,7 +175,7 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
                 Reason = request.Reason.Trim(),
                 ConcurrencyToken = newConcurrencyToken,
                 CancelledAt = now,
-                DeliveryChannel = deliveryOutcome?.Channel.ToString().ToUpperInvariant()
+                DeliveryChannel = deliveryOutcome is null ? null : deliveryOutcome.Channel.ToApiValue()
             }
         };
     }

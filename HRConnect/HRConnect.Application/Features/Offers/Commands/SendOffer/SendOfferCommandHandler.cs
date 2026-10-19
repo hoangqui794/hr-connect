@@ -199,7 +199,7 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
             offer.OfferDocumentUrl,
             offer.ConcurrencyToken,
             offer.UpdatedAt,
-            deliveryOutcome?.Channel.ToString().ToUpperInvariant()
+            deliveryOutcome is null ? null : deliveryOutcome.Channel.ToApiValue()
         );
     }
 }

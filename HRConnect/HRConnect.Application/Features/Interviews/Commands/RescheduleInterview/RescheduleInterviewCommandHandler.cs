@@ -210,7 +210,7 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
                 Reason = request.Reason.Trim(),
                 ConcurrencyToken = newConcurrencyToken,
                 RescheduledAt = now,
-                DeliveryChannel = deliveryOutcome?.Channel.ToString().ToUpperInvariant()
+                DeliveryChannel = deliveryOutcome is null ? null : deliveryOutcome.Channel.ToApiValue()
             }
         };
     }

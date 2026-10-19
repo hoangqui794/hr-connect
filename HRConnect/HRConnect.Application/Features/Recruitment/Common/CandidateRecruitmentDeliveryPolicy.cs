@@ -79,3 +79,13 @@ public sealed record CandidateRecruitmentDeliveryDecision(
     CandidateRecruitmentDeliveryChannel Channel,
     Guid? UserId,
     string? RecipientEmail);
+
+public static class CandidateRecruitmentDeliveryChannelExtensions
+{
+    public static string ToApiValue(this CandidateRecruitmentDeliveryChannel channel) => channel switch
+    {
+        CandidateRecruitmentDeliveryChannel.InApp => "IN_APP",
+        CandidateRecruitmentDeliveryChannel.Email => "EMAIL",
+        _ => "UNAVAILABLE"
+    };
+}

@@ -208,7 +208,7 @@ public class WithdrawOfferCommandHandler : IRequestHandler<WithdrawOfferCommand,
             application?.Status ?? "OFFER_PENDING",
             offer.ConcurrencyToken,
             offer.UpdatedAt,
-            deliveryOutcome?.Channel.ToString().ToUpperInvariant()
+            deliveryOutcome is null ? null : deliveryOutcome.Channel.ToApiValue()
         );
     }
 }

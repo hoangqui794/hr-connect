@@ -38,6 +38,7 @@ import {
   getSourcingReviewDeadlineInfo,
 } from '@/features/sourcing/sourcingUtils';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
+import { deliveryFeedback, type CandidateDeliveryActionResult } from './candidateDeliveryFeedback';
 import type { RecruitmentApplicationDetail } from '@/types/api/hr';
 import { Initials, StatusDot } from '@/features/admin-console/ui';
 import {
@@ -230,8 +231,7 @@ export const ApplicationWorkbench: React.FC<{
     mutationFn: async (job: () => Promise<{ message?: string } | unknown>) => job(),
     onSuccess: (res, _vars) => {
       pendingStartWork.current = undefined;
-      const msg = (res as { message?: string } | undefined)?.message;
-      message.success(msg || 'Đã cập nhật hồ sơ.');
+      message.success(deliveryFeedback(res as CandidateDeliveryActionResult | undefined, 'Đã cập nhật hồ sơ.'));
       setOpen(null);
       form.resetFields();
       invalidateRecruitment(queryClient);

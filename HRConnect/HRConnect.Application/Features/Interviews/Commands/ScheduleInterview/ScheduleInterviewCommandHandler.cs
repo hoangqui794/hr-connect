@@ -296,8 +296,8 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
                 Status = InterviewStates.Scheduled,
                 ConcurrencyToken = concurrencyToken,
                 CreatedAt = now,
-                Participants = participantsDto.ToList()
-                ,DeliveryChannel = deliveryOutcome?.Channel.ToString().ToUpperInvariant()
+                Participants = participantsDto.ToList(),
+                DeliveryChannel = deliveryOutcome is null ? null : deliveryOutcome.Channel.ToApiValue()
             }
         };
     }
