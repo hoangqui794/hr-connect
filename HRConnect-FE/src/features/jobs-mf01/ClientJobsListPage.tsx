@@ -313,7 +313,7 @@ export const ClientJobsListPage: React.FC = () => {
           </Tooltip>
           {job.postingFeeStatus === 'PENDING' && (
             <div>
-              <Tag color="warning" className="m-0 text-[11px] font-medium">Chờ phí 1.5M đ</Tag>
+              <Tag color="warning" className="m-0 text-[11px] font-medium">Chờ phí đăng tin</Tag>
             </div>
           )}
           {job.postingFeeStatus === 'PAID' && (
@@ -512,7 +512,7 @@ export const ClientJobsListPage: React.FC = () => {
                     )}
                     {job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
                       <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2 text-xs text-amber-900">
-                        <span className="font-medium">Chờ thanh toán phí kích hoạt (1.5M đ)</span>
+                        <span className="font-medium">Chờ thanh toán phí kích hoạt</span>
                         <Button
                           type="primary"
                           size="small"

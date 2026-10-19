@@ -1,3 +1,4 @@
+using HRConnect.Application.Common.Settings;
 using System.Text.Json;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
@@ -20,6 +21,7 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
     private readonly IAuditLogService _audit;
     private readonly IUnitOfWork _unitOfWork;
     private readonly SubmissionConsentSettings _settings;
+    private readonly IAdminBusinessSettings? _businessSettings;
     private readonly ILogger<ResendSubmissionConsentCommandHandler> _logger;
     private readonly ISubmissionConsentExpiryService _expiryService;
 
@@ -31,7 +33,8 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         IUnitOfWork unitOfWork,
         IOptions<SubmissionConsentSettings> settings,
         ILogger<ResendSubmissionConsentCommandHandler> logger,
-        ISubmissionConsentExpiryService expiryService)
+        ISubmissionConsentExpiryService expiryService,
+        IAdminBusinessSettings? businessSettings = null)
     {
         _consents = consents;
         _outboxes = outboxes;
@@ -41,6 +44,7 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         _settings = settings.Value;
         _logger = logger;
         _expiryService = expiryService;
+        _businessSettings = businessSettings;
     }
 
     public async Task<ResendSubmissionConsentResponse> Handle(ResendSubmissionConsentCommand request, CancellationToken cancellationToken)
@@ -60,11 +64,13 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
             throw new ConflictException("Yêu cầu đã hết hạn. Vui lòng tạo lượt nộp mới.");
         }
 
-        var maxSends = Math.Clamp(_settings.MaxEmailSends, 1, 10);
+        var maxSends = Math.Clamp(await SubmissionConsentSettings.ReadAsync(
+            _businessSettings, BusinessSettingKeys.ConsentMaxEmailSends, _settings.MaxEmailSends, cancellationToken), 1, 10);
         if (consent.EmailSendCount >= maxSends)
             throw new ConflictException($"Đã đạt giới hạn {maxSends} lần gửi email cho yêu cầu này.");
 
-        var cooldown = TimeSpan.FromMinutes(Math.Clamp(_settings.ResendCooldownMinutes, 1, 60));
+        var cooldown = TimeSpan.FromMinutes(Math.Clamp(await SubmissionConsentSettings.ReadAsync(
+            _businessSettings, BusinessSettingKeys.ConsentResendCooldownMinutes, _settings.ResendCooldownMinutes, cancellationToken), 1, 60));
         var lastAttemptAt = consent.EmailSentAt ?? consent.UpdatedAt;
         if (consent.EmailSendCount > 0 && lastAttemptAt.Add(cooldown) > now)
             throw new ConflictException($"Vui lòng chờ đến {lastAttemptAt.Add(cooldown):O} trước khi gửi lại.");
@@ -72,7 +78,9 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
         var rawToken = SubmissionConsentToken.Create();
         consent.TokenHash = SubmissionConsentToken.Hash(rawToken);
         consent.RequestedAt = now;
-        consent.ExpiresAt = now.AddHours(Math.Clamp(_settings.ExpirationHours, 1, 168));
+        var expirationHours = await SubmissionConsentSettings.ReadAsync(
+            _businessSettings, BusinessSettingKeys.ConsentExpirationHours, _settings.ExpirationHours, cancellationToken);
+        consent.ExpiresAt = now.AddHours(Math.Clamp(expirationHours, 1, 168));
         consent.EmailSendCount += 1;
         consent.EmailSentAt = null;
         consent.LastEmailError = null;
