@@ -56,7 +56,8 @@ public sealed class StartScreeningCommandHandler : IRequestHandler<StartScreenin
                 || !ClientVisibilityPolicy.IsVisibleToClient(
                     serviceTypeCode,
                     application.Status,
-                    application.ApplicationStatusHistories.Select(h => h.NewStatus)))
+                    application.ApplicationStatusHistories.Select(h => h.NewStatus),
+                    application.SourcingDeliveries?.Any() ?? false))
             {
                 throw new NotFoundException(NotFoundMessage);
             }

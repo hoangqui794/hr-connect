@@ -2553,7 +2553,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.JobId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("sourcing_delivery_job_id_fkey");
-            entity.HasOne(d => d.Application).WithMany()
+            entity.HasOne(d => d.Application).WithMany(p => p.SourcingDeliveries)
                 .HasForeignKey(d => d.ApplicationId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("sourcing_delivery_application_id_fkey");

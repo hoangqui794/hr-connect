@@ -6128,7 +6128,7 @@ namespace HRConnect.Infrastructure.Migrations
             modelBuilder.Entity("HRConnect.Domain.Entities.SourcingDelivery", b =>
                 {
                     b.HasOne("HRConnect.Domain.Entities.Application", "Application")
-                        .WithMany()
+                        .WithMany("SourcingDeliveries")
                         .HasForeignKey("ApplicationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
@@ -6418,6 +6418,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Offers");
 
                     b.Navigation("Placement");
+
+                    b.Navigation("SourcingDeliveries");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Attribution", b =>

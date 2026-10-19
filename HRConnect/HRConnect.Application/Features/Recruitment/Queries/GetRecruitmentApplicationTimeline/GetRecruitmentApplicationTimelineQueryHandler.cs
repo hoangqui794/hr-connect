@@ -50,7 +50,8 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
             if (!ClientVisibilityPolicy.IsVisibleToClient(
                     app.Job?.ServiceType?.Code,
                     app.Status,
-                    (app.ApplicationStatusHistories ?? []).Select(h => h.NewStatus)))
+                    (app.ApplicationStatusHistories ?? []).Select(h => h.NewStatus),
+                    app.SourcingDeliveries?.Any() ?? false))
             {
                 throw new NotFoundException("Không tìm thấy thông tin hồ sơ ứng tuyển.");
             }

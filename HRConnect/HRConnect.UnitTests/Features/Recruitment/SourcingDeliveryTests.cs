@@ -313,4 +313,22 @@ public class SourcingDeliveryTests
 
         (await act.Should().ThrowAsync<ConflictException>()).Which.ErrorCode.Should().Be("DELIVERY_NOT_REJECTED");
     }
+
+    // MF-03 C3: the Client list shows a CV_SOURCING application only after Internal HR delivered it.
+    [Fact]
+    public async Task ClientList_ShouldHideShortlistedButUndeliveredSourcingCvs()
+    {
+        _context.Add(new Company { CompanyId = _companyId, CompanyName = "Tech Corp", TaxCode = "0123456789", VerificationStatus = "VERIFIED" });
+        var job = SeedJob();
+        var delivered = SeedApplication(job);
+        var undelivered = SeedApplication(job);
+        await DeliverOneAsync(job, delivered);
+
+        var (items, total) = await new ApplicationRepository(_context).GetRecruitmentApplicationsAsync(
+            _companyId, job.JobId, null, null, null, null, 1, 20);
+
+        items.Select(a => a.ApplicationId).Should().Equal(delivered.ApplicationId);
+        total.Should().Be(1);
+        undelivered.Status.Should().Be(ApplicationStates.Shortlisted);
+    }
 }
