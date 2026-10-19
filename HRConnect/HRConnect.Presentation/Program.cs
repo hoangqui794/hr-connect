@@ -1,4 +1,5 @@
 using HRConnect.Presentation.Endpoints.V1.Finance;
+using HRConnect.Presentation.Endpoints.V1.Disputes;
 using HRConnect.Presentation.Endpoints.V1.Reports;
 using System.Text;
 using System.Security.Claims;
@@ -385,6 +386,7 @@ app.MapInterviewEndpoints();
 app.MapOfferEndpoints();
 app.MapPlacementEndpoints();
 app.MapFinanceEndpoints();
+app.MapDisputeEndpoints();
 app.MapBusinessSettingEndpoints();
 app.MapSubmissionConsentEndpoints();
 app.MapCandidateSavedJobEndpoints();

@@ -49,6 +49,7 @@ public static class BusinessSettingKeys
     public const string AffiliateRatingExcellentMin = "affiliate.rating.excellent_min";
     public const string AffiliateRatingGoodMin = "affiliate.rating.good_min";
     public const string AffiliateRatingAverageMin = "affiliate.rating.average_min";
+    public const string DisputeWindowDays = "dispute.window_days";
 
     public static readonly IReadOnlyList<BusinessSettingDefinition> All =
     [
@@ -88,6 +89,9 @@ public static class BusinessSettingKeys
         new(FeeDueReminderDays, "SERVICE_FEE", "Số ngày nhắc trước hạn thanh toán",
             "Phí dịch vụ còn bằng hoặc ít hơn số ngày này tới hạn thì chuyển sang DUE (Sắp đến hạn) và nhắc Client.",
             BusinessSettingType.Integer, 5m, 1m, 30m, "ngày", "QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md, mục 1.1"),
+        new(DisputeWindowDays, "DISPUTE", "Thời hạn khiếu nại trùng ứng viên",
+            "Số ngày Affiliate được khiếu nại kể từ lúc lượt nộp bị chặn trùng, hoặc từ lúc ứng viên đi làm (khiếu nại attribution). Bằng thời hạn bảo hành để khiếu nại kịp trước khi hoa hồng được duyệt chi.",
+            BusinessSettingType.Integer, 30m, 1m, 180m, "ngày", "main-flows.md, SF-04"),
         new(ReplacementFillWindowDays, "HEADHUNT_COD", "Hạn tìm người thay thế",
             "Số ngày kể từ khi suất thay thế được mở (Client đã trả phí). Quá hạn mà chưa có người đi làm thì suất hết hạn.",
             BusinessSettingType.Integer, 30m, 1m, 180m, "ngày", "main-flows.md, MF-05 suất thay thế"),

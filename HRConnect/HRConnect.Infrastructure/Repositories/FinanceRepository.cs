@@ -184,6 +184,10 @@ public class FinanceRepository : IFinanceRepository
     public Task<bool> HasSourcingCommissionAsync(Guid deliveryId, CancellationToken cancellationToken = default) =>
         _context.Commissions.AnyAsync(c => c.SourcingDeliveryId == deliveryId, cancellationToken);
 
+    public Task<bool> HasActiveDisputeAsync(Guid commissionId, Guid attributionId, CancellationToken cancellationToken = default) =>
+        _context.Disputes.AnyAsync(d => DisputeStates.Active.Contains(d.Status)
+                                        && (d.CommissionId == commissionId || d.AttributionId == attributionId), cancellationToken);
+
     public async Task<IReadOnlyList<Commission>> GetCommissionsOfSuspendedAffiliatesAsync(int take, CancellationToken cancellationToken = default) =>
         await _context.Commissions
             .Where(c => (c.Status == CommissionStates.Pending || c.Status == CommissionStates.InWarranty)

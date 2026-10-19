@@ -178,7 +178,7 @@ DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
 
 ## Chưa có
 
-- Khiếu nại tranh chấp trùng và Platform Admin xử lý (SF-04) **[CHƯA CÓ CODE]**.
+- Khiếu nại tranh chấp trùng và Platform Admin xử lý (SF-04): **đã có code bản tối thiểu** (2026-10-19), xem mục 6.1.
 
 **Kết quả:** hồ sơ ứng tuyển `SUBMITTED` kèm nguồn và attribution (nếu có), hoặc lượt nộp bị chặn/dừng.
 
@@ -433,7 +433,7 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 | SF-01 | Client đăng ký → tạo hồ sơ công ty → gửi xác minh → Platform Admin duyệt/từ chối | MF-01 | Đã có code |
 | SF-02 | Đăng ký Affiliate → Platform Admin duyệt → kích hoạt → xem job → giới thiệu ứng viên | MF-02, MF-05 | Đã có code |
 | SF-03 | Ứng viên nhận email → đồng ý hoặc từ chối lượt giới thiệu | MF-02 | Đã có code; là bước bắt buộc của nhánh B |
-| SF-04 | Phát hiện trùng → người nộp khiếu nại → Platform Admin xem xét danh tính, lịch sử nộp, thời điểm, bằng chứng → chấp nhận/bác bỏ → ghi audit | MF-02 | **[CHƯA CÓ CODE]** |
+| SF-04 | Affiliate khiếu nại (lượt nộp bị `BLOCKED_DUPLICATE`, hoặc ứng viên đang được ghi nhận cho Affiliate khác) trong `dispute.window_days` (mặc định 30) → Platform Admin xem danh tính ứng viên, mọi lượt nộp vào job, consent, attribution, hoa hồng, bằng chứng → `UPHELD` (chuyển attribution, hoa hồng chưa chi đi theo; hoa hồng đã chi thì `409`, xử lý ngoài hệ thống trước) hoặc `REJECTED` → audit, thông báo. Mỗi lượt nộp 1 khiếu nại đang mở; khi khiếu nại mở, hoa hồng liên quan không duyệt chi được (`409 COMMISSION_UNDER_DISPUTE`). Affiliate không thấy tên Affiliate bên kia | MF-02, MF-05 | **Đã có code bản tối thiểu** (2026-10-19). Chưa làm: tải file bằng chứng, rút khiếu nại, bước `UNDER_REVIEW`; FE chưa có màn |
 
 ---
 
@@ -466,7 +466,7 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 | Hạng mục | Thuộc luồng |
 |---|---|
 | Sàng lọc: chuyển hồ sơ sang `SCREENING`, `SHORTLISTED`, `REJECTED`; phân quyền sàng lọc theo loại dịch vụ | MF-03 — đã có code |
-| Khiếu nại và xử lý tranh chấp trùng | SF-04 — **chưa có code** (task `tasks/BE-tasks-03-tranh-chap-trung-sf04.md`) |
+| Khiếu nại và xử lý tranh chấp trùng | SF-04 — đã có code bản tối thiểu (API `/api/v1/disputes`, `/api/v1/admin/disputes`); FE chưa có màn |
 | Định tuyến người liên hệ theo Service Type, che thông tin liên hệ | MF-03 — đã có code |
 | Giới hạn gói miễn phí | MF-01 — đã có code |
 | Sourcing Target, hệ số phí, thời hạn bảo hành, gói đăng tin trên job | MF-01 — đã có code |
@@ -584,5 +584,5 @@ Bước 1–4 của bản đầu (bảo vệ doanh thu, nối luồng sàng lọ
 1. **Kiểm chứng trên bản deploy** toàn luồng của 3 dịch vụ, nhất là `CV_SOURCING` (cọc → mở job → giao CV → hoa hồng → quyết toán) và `HEADHUNT_COD` tới bảo hành.
 2. **Hạ tầng AI:** nâng dịch vụ AI trên Render lên tối thiểu 1 CPU / 2 GB (gói Free bị Render tắt khi đang chấm), hoặc giữ AI chạy trên máy qua tunnel khi demo.
 3. **Bảo mật:** đổi các key / token đã lộ; thêm rule WAF cho tunnel AI.
-4. **Chốt và làm:** SF-04 bản tối thiểu; chặn tuyển quá `Quantity` (MF-04); đối soát placement của Internal HR (làm hay bỏ).
+4. **Chốt và làm:** chặn tuyển quá `Quantity` (MF-04); đối soát placement của Internal HR (làm hay bỏ); màn khiếu nại SF-04 cho Affiliate và Admin (FE).
 5. **Giao diện:** lỗi trong `tasks/BUGS-2026-10-17-test-mf02-mf03.md` và `tasks/TEST-2026-10-17-mf01-mf03-3-dich-vu.md`.
