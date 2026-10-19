@@ -87,6 +87,7 @@ public static class DependencyInjection
         services.AddScoped<IUserTokenRepository, UserTokenRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailOutboxRepository, EmailOutboxRepository>();
+        services.AddScoped<IStorageCleanupJobRepository, StorageCleanupJobRepository>();
         services.AddScoped<IServiceTypeRepository, ServiceTypeRepository>();
         services.AddScoped<ICommissionMilestoneRepository, CommissionMilestoneRepository>();
         services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
@@ -140,20 +141,13 @@ public static class DependencyInjection
         var r2Settings = new R2Settings();
         configuration.GetSection(R2Settings.SectionName).Bind(r2Settings);
 
-        if (string.IsNullOrWhiteSpace(r2Settings.AccountId))
-            r2Settings.AccountId = configuration["R2_ACCOUNT_ID"] ?? "ea997660e8c1f6c92b939eb22891843c";
-
-        if (string.IsNullOrWhiteSpace(r2Settings.AccessKeyId))
-            r2Settings.AccessKeyId = configuration["R2_ACCESS_KEY_ID"] ?? string.Empty;
-
-        if (string.IsNullOrWhiteSpace(r2Settings.SecretAccessKey))
-            r2Settings.SecretAccessKey = configuration["R2_SECRET_ACCESS_KEY"] ?? string.Empty;
-
-        if (string.IsNullOrWhiteSpace(r2Settings.BucketName))
-            r2Settings.BucketName = configuration["R2_BUCKET_NAME"] ?? "hrconnect-candidate-cvs";
-
-        if (string.IsNullOrWhiteSpace(r2Settings.Endpoint))
-            r2Settings.Endpoint = configuration["R2_ENDPOINT"] ?? "https://ea997660e8c1f6c92b939eb22891843c.r2.cloudflarestorage.com";
+        r2Settings.AccountId = configuration["R2_ACCOUNT_ID"] ?? r2Settings.AccountId;
+        r2Settings.AccessKeyId = configuration["R2_ACCESS_KEY_ID"] ?? r2Settings.AccessKeyId;
+        r2Settings.SecretAccessKey = configuration["R2_SECRET_ACCESS_KEY"] ?? r2Settings.SecretAccessKey;
+        r2Settings.BucketName = configuration["R2_BUCKET_NAME"] ?? r2Settings.BucketName;
+        r2Settings.Endpoint = configuration["R2_ENDPOINT"] ?? r2Settings.Endpoint;
+        r2Settings.PublicBaseUrl = configuration["R2_PUBLIC_BASE_URL"] ?? r2Settings.PublicBaseUrl;
+        r2Settings.PublicApiBaseUrl = configuration["PUBLIC_API_BASE_URL"] ?? r2Settings.PublicApiBaseUrl;
 
         if (int.TryParse(configuration["MAX_CV_FILE_SIZE_MB"], out var maxMb) && maxMb > 0)
             r2Settings.MaxCvFileSizeMb = maxMb;
@@ -163,6 +157,21 @@ public static class DependencyInjection
 
         if (int.TryParse(configuration["MAX_PRESIGNED_URL_EXPIRY_MINUTES"], out var maxExpiryMinutes) && maxExpiryMinutes > 0)
             r2Settings.MaxPresignedUrlExpiryMinutes = maxExpiryMinutes;
+
+        if (int.TryParse(configuration["MAX_AVATAR_FILE_SIZE_MB"], out var maxAvatarMb) && maxAvatarMb > 0)
+            r2Settings.MaxAvatarFileSizeMb = maxAvatarMb;
+        if (int.TryParse(configuration["MAX_AVATAR_WIDTH"], out var maxAvatarWidth) && maxAvatarWidth > 0)
+            r2Settings.MaxAvatarWidth = maxAvatarWidth;
+        if (int.TryParse(configuration["MAX_AVATAR_HEIGHT"], out var maxAvatarHeight) && maxAvatarHeight > 0)
+            r2Settings.MaxAvatarHeight = maxAvatarHeight;
+        if (long.TryParse(configuration["MAX_AVATAR_PIXELS"], out var maxAvatarPixels) && maxAvatarPixels > 0)
+            r2Settings.MaxAvatarPixels = maxAvatarPixels;
+        if (int.TryParse(configuration["AVATAR_OUTPUT_SIZE"], out var avatarOutputSize) && avatarOutputSize > 0)
+            r2Settings.AvatarOutputSize = avatarOutputSize;
+        if (int.TryParse(configuration["AVATAR_WEBP_QUALITY"], out var avatarQuality) && avatarQuality is >= 1 and <= 100)
+            r2Settings.AvatarWebpQuality = avatarQuality;
+        if (int.TryParse(configuration["AVATAR_PRESIGNED_URL_EXPIRY_MINUTES"], out var avatarExpiry) && avatarExpiry is >= 1 and <= 60)
+            r2Settings.AvatarPresignedUrlExpiryMinutes = avatarExpiry;
 
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(r2Settings));
 
@@ -183,6 +192,8 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IFileStorageService, HRConnect.Infrastructure.Services.Storage.CloudflareR2StorageService>();
+        services.AddScoped<IAvatarImageProcessor, HRConnect.Infrastructure.Services.Storage.AvatarImageProcessor>();
+        services.AddSingleton<IAvatarUrlResolver, HRConnect.Infrastructure.Services.Storage.AvatarUrlResolver>();
         services.AddSingleton<HRConnect.Infrastructure.Services.Storage.PdfCvValidator>();
         services.AddScoped<ICvStorageService, HRConnect.Infrastructure.Services.Storage.CvStorageService>();
 

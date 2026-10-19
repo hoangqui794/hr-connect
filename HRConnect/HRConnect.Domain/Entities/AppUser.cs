@@ -22,6 +22,12 @@ public partial class AppUser
 
     public string? AvatarUrl { get; set; }
 
+    /// <summary>Stable R2 object key. Public or signed URLs must never be persisted here.</summary>
+    public string? AvatarObjectKey { get; set; }
+
+    /// <summary>Changes only when the avatar changes and is used for cache versioning.</summary>
+    public DateTime? AvatarUpdatedAt { get; set; }
+
     public string Status { get; set; } = null!;
 
     public DateTime? EmailVerifiedAt { get; set; }
@@ -72,6 +78,8 @@ public partial class AppUser
     public virtual ICollection<Dispute> DisputeResolvedByNavigations { get; set; } = new List<Dispute>();
 
     public virtual ICollection<EmailOutbox> EmailOutboxes { get; set; } = new List<EmailOutbox>();
+
+    public virtual ICollection<StorageCleanupJob> StorageCleanupJobs { get; set; } = new List<StorageCleanupJob>();
 
     public virtual InternalHrProfile? InternalHrProfile { get; set; }
 

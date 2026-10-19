@@ -4,15 +4,15 @@ public class R2Settings
 {
     public const string SectionName = "R2";
 
-    public string AccountId { get; set; } = "ea997660e8c1f6c92b939eb22891843c";
+    public string AccountId { get; set; } = string.Empty;
 
     public string AccessKeyId { get; set; } = string.Empty;
 
     public string SecretAccessKey { get; set; } = string.Empty;
 
-    public string BucketName { get; set; } = "hrconnect-candidate-cvs";
+    public string BucketName { get; set; } = string.Empty;
 
-    public string Endpoint { get; set; } = "https://ea997660e8c1f6c92b939eb22891843c.r2.cloudflarestorage.com";
+    public string Endpoint { get; set; } = string.Empty;
 
     public int MaxCvFileSizeMb { get; set; } = 10;
 
@@ -27,6 +27,20 @@ public class R2Settings
     public int MaxAvatarFileSizeMb { get; set; } = 5;
 
     public long MaxAvatarFileSizeBytes => (long)MaxAvatarFileSizeMb * 1024 * 1024;
+
+    public int MaxAvatarWidth { get; set; } = 4096;
+
+    public int MaxAvatarHeight { get; set; } = 4096;
+
+    public long MaxAvatarPixels { get; set; } = 16_000_000;
+
+    public int AvatarOutputSize { get; set; } = 1024;
+
+    public int AvatarWebpQuality { get; set; } = 85;
+
+    public int AvatarPresignedUrlExpiryMinutes { get; set; } = 10;
+
+    public string? PublicApiBaseUrl { get; set; }
 
     public string? PublicBaseUrl { get; set; }
 }

@@ -124,6 +124,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<ServiceTypeAllowedRole> ServiceTypeAllowedRoles { get; set; }
 
+    public virtual DbSet<StorageCleanupJob> StorageCleanupJobs { get; set; }
+
     public virtual DbSet<Skill> Skills { get; set; }
 
     public virtual DbSet<Submission> Submissions { get; set; }
@@ -450,6 +452,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("user_id");
             entity.Property(e => e.AvatarUrl).HasColumnName("avatar_url");
+            entity.Property(e => e.AvatarObjectKey)
+                .HasMaxLength(1024)
+                .HasColumnName("avatar_object_key");
+            entity.Property(e => e.AvatarUpdatedAt).HasColumnName("avatar_updated_at");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
@@ -485,6 +491,36 @@ public partial class ApplicationDbContext : DbContext
                 .IsConcurrencyToken()
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("authorization_concurrency_token");
+        });
+
+        modelBuilder.Entity<StorageCleanupJob>(entity =>
+        {
+            entity.HasKey(e => e.StorageCleanupJobId).HasName("storage_cleanup_job_pkey");
+            entity.ToTable("storage_cleanup_job", "public", table =>
+            {
+                table.HasCheckConstraint("ck_storage_cleanup_job_avatar_namespace", "object_key LIKE 'avatars/%'");
+                table.HasCheckConstraint("ck_storage_cleanup_job_status", "status IN ('PENDING','PROCESSING','COMPLETED','FAILED','DEAD')");
+            });
+            entity.HasIndex(e => new { e.Status, e.NextAttemptAt }, "idx_storage_cleanup_job_due");
+            entity.HasIndex(e => e.ObjectKey, "uq_storage_cleanup_job_active_key")
+                .IsUnique()
+                .HasFilter("status IN ('PENDING','PROCESSING','FAILED')");
+            entity.Property(e => e.StorageCleanupJobId).HasColumnName("storage_cleanup_job_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.ObjectKey).HasMaxLength(1024).HasColumnName("object_key");
+            entity.Property(e => e.Reason).HasMaxLength(40).HasColumnName("reason");
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
+            entity.Property(e => e.AttemptCount).HasDefaultValue(0).HasColumnName("attempt_count");
+            entity.Property(e => e.NextAttemptAt).HasColumnName("next_attempt_at");
+            entity.Property(e => e.ProcessingStartedAt).HasColumnName("processing_started_at");
+            entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
+            entity.Property(e => e.LastError).HasMaxLength(2000).HasColumnName("last_error");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
+            entity.HasOne(e => e.User).WithMany(e => e.StorageCleanupJobs)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("storage_cleanup_job_user_id_fkey");
         });
 
         modelBuilder.Entity<HRConnect.Domain.Entities.Application>(entity =>

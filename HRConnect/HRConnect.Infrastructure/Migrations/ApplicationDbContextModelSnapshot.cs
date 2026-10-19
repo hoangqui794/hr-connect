@@ -498,6 +498,15 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("authorization_concurrency_token")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<string>("AvatarObjectKey")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("avatar_object_key");
+
+                    b.Property<DateTime?>("AvatarUpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("avatar_updated_at");
+
                     b.Property<string>("AvatarUrl")
                         .HasColumnType("text")
                         .HasColumnName("avatar_url");
@@ -4455,6 +4464,91 @@ namespace HRConnect.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.StorageCleanupJob", b =>
+                {
+                    b.Property<Guid>("StorageCleanupJobId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("storage_cleanup_job_id");
+
+                    b.Property<int>("AttemptCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("object_key");
+
+                    b.Property<DateTime?>("ProcessingStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processing_started_at");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("PENDING")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("StorageCleanupJobId")
+                        .HasName("storage_cleanup_job_pkey");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex(new[] { "Status", "NextAttemptAt" }, "idx_storage_cleanup_job_due");
+
+                    b.HasIndex(new[] { "ObjectKey" }, "uq_storage_cleanup_job_active_key")
+                        .IsUnique()
+                        .HasFilter("status IN ('PENDING','PROCESSING','FAILED')");
+
+                    b.ToTable("storage_cleanup_job", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_storage_cleanup_job_avatar_namespace", "object_key LIKE 'avatars/%'");
+
+                            t.HasCheckConstraint("ck_storage_cleanup_job_status", "status IN ('PENDING','PROCESSING','COMPLETED','FAILED','DEAD')");
+                        });
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.Submission", b =>
                 {
                     b.Property<Guid>("SubmissionId")
@@ -6052,6 +6146,17 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Job");
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.StorageCleanupJob", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "User")
+                        .WithMany("StorageCleanupJobs")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("storage_cleanup_job_user_id_fkey");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.Submission", b =>
                 {
                     b.HasOne("HRConnect.Domain.Entities.Candidate", "Candidate")
@@ -6282,6 +6387,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Probations");
 
                     b.Navigation("RefreshTokens");
+
+                    b.Navigation("StorageCleanupJobs");
 
                     b.Navigation("Submissions");
 
