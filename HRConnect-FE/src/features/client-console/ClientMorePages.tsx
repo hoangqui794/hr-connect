@@ -17,10 +17,13 @@ import { NoApiYet } from '@/features/admin-console/adminTheme';
 import { Initials, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { HrPipelinePage } from '@/features/hr-console/HrPipelinePage';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
+import { ClientInterviewDetailDrawer } from '@/features/client-console/ClientInterviewDetailDrawer';
 
 export const ClientInterviewsOffersPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const openId = searchParams.get('open') ?? undefined;
+  const [openInterviewId, setOpenInterviewId] = React.useState<string | null>(null);
+
   const setOpen = (id?: string) => {
     const next = new URLSearchParams(searchParams);
     if (id) next.set('open', id);
@@ -32,14 +35,23 @@ export const ClientInterviewsOffersPage: React.FC = () => {
     <>
       <HrPipelinePage
         eyebrow="Tuyển dụng"
-        description="Lịch phỏng vấn, offer đã gửi và ứng viên đã đi làm. Bấm một dòng để dời lịch, ghi kết quả, gửi hoặc thu hồi offer."
+        description="Lịch phỏng vấn, offer đã gửi và ứng viên đã đi làm. Bấm một dòng phỏng vấn để xem chi tiết, sửa thông tin, dời lịch, ghi kết quả hoặc xem lịch sử."
         onOpenApplication={setOpen}
+        onOpenInterview={(iv) => setOpenInterviewId(iv.interviewId)}
         emptyHints={{
           interviews: 'Chưa có lịch phỏng vấn. Vào “Hồ sơ ứng viên”, chọn một hồ sơ rồi bấm “Lên lịch phỏng vấn”.',
           offers: 'Chưa có offer. Offer được tạo khi ứng viên đạt phỏng vấn vòng cuối.',
         }}
       />
       <ApplicationWorkbench applicationId={openId} audience="client" onClose={() => setOpen(undefined)} />
+      <ClientInterviewDetailDrawer
+        interviewId={openInterviewId}
+        onClose={() => setOpenInterviewId(null)}
+        onOpenApplication={(appId) => {
+          setOpenInterviewId(null);
+          setOpen(appId);
+        }}
+      />
     </>
   );
 };

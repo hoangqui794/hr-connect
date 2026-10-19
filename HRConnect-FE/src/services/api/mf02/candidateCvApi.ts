@@ -3,6 +3,8 @@ import type { ApiEnvelope } from '@/types/api/admin';
 import type { CandidateCv } from '@/types/api/mf02';
 import { createMultipartBody } from './shared';
 
+import { cvBuilderApi } from '../cvBuilderApi';
+
 export const candidateCvApi = {
   async list(): Promise<CandidateCv[]> {
     return (await apiClient.get<ApiEnvelope<CandidateCv[]>>('/candidates/cv')).data.data;
@@ -23,4 +25,7 @@ export const candidateCvApi = {
   async downloadUrl(cvId: string): Promise<{ downloadUrl: string }> {
     return (await apiClient.get<ApiEnvelope<{ downloadUrl: string }>>(`/candidates/cv/${cvId}/download-url`)).data.data;
   },
+  createStructured: cvBuilderApi.createStructuredCv,
+  getStructured: cvBuilderApi.getStructuredCv,
+  updateStructured: cvBuilderApi.updateStructuredCv,
 };

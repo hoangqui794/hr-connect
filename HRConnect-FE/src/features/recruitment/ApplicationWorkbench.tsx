@@ -27,7 +27,7 @@ import {
   Tag,
   Tooltip,
 } from 'antd';
-import { CheckOutlined, CloseOutlined, EditOutlined, ExperimentOutlined, FileOutlined, HistoryOutlined, LockOutlined, SendOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, EditOutlined, ExperimentOutlined, FileOutlined, HistoryOutlined, LoadingOutlined, LockOutlined, SendOutlined, WarningOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { clientActionsApi, interviewHistoryApi, screeningApi, type ConfirmStartWorkInput } from '@/services/api/hrApi';
 import { sourcingApi } from '@/services/api/sourcingApi';
@@ -124,13 +124,26 @@ const SALARY_PERIOD_OPTIONS = [
 
 type StartWorkAttempt = { applicationId: string; input: ConfirmStartWorkInput };
 
-export const invalidateRecruitment = (qc: ReturnType<typeof useQueryClient>) =>
-  qc.invalidateQueries({
-    predicate: (q) => {
-      const k = String(q.queryKey[0] ?? '');
-      return k.startsWith('hr-') || k.startsWith('client-');
-    },
-  });
+export const invalidateRecruitment = async (
+  qc: ReturnType<typeof useQueryClient>,
+  applicationId?: string
+) => {
+  const promises: Promise<unknown>[] = [
+    qc.invalidateQueries({
+      predicate: (q) => {
+        const k = String(q.queryKey[0] ?? '');
+        return k.startsWith('hr-') || k.startsWith('client-');
+      },
+    }),
+  ];
+  if (applicationId) {
+    promises.push(
+      qc.invalidateQueries({ queryKey: ['hr-application', applicationId], refetchType: 'all' }),
+      qc.invalidateQueries({ queryKey: ['hr-application-timeline', applicationId], refetchType: 'all' })
+    );
+  }
+  await Promise.all(promises);
+};
 
 export const ApplicationWorkbench: React.FC<{
   applicationId?: string;
@@ -140,6 +153,7 @@ export const ApplicationWorkbench: React.FC<{
   const { message, modal } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState<ModalKind | null>(null);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [historyInterviewId, setHistoryInterviewId] = useState<string | null>(null);
   const [form] = Form.useForm();
   const startedFor = useRef<string>();
@@ -172,7 +186,14 @@ export const ApplicationWorkbench: React.FC<{
   // MF-03: opening an application starts screening (idempotent on the backend).
   const start = useMutation({
     mutationFn: (x: RecruitmentApplicationDetail) => screeningApi.startScreening(x.jobId, x.applicationId),
-    onSuccess: (res) => res.changed && invalidateRecruitment(queryClient),
+    onSuccess: async (res) => {
+      if (res.changed) {
+        await invalidateRecruitment(queryClient, applicationId);
+        if (applicationId) {
+          await Promise.all([detail.refetch(), timeline.refetch()]);
+        }
+      }
+    },
   });
   useEffect(() => {
     if (d && d.allowedActions.includes('START_SCREENING') && startedFor.current !== d.applicationId) {
@@ -194,10 +215,13 @@ export const ApplicationWorkbench: React.FC<{
   // Deliver CV to Client (Internal HR)
   const deliverMutation = useMutation({
     mutationFn: () => sourcingApi.deliverCvs(d!.jobId, [d!.applicationId]),
-    onSuccess: () => {
+    onSuccess: async () => {
       message.success('Đã giao CV cho khách hàng thành công. Doanh nghiệp có 7 ngày để phản hồi.');
-      invalidateRecruitment(queryClient);
+      await invalidateRecruitment(queryClient, applicationId);
       queryClient.invalidateQueries({ queryKey: ['sourcing-deliveries', d?.jobId] });
+      if (applicationId) {
+        await Promise.all([detail.refetch(), timeline.refetch()]);
+      }
     },
     onError: (err) => {
       message.error(getApiErrorMessage(err, 'Không thể giao CV cho khách hàng.'));
@@ -209,7 +233,7 @@ export const ApplicationWorkbench: React.FC<{
     mutationFn: (variables: { decision: 'ACCEPTED' | 'REJECTED'; reasonCode?: string; note?: string }) =>
       sourcingApi.decideDelivery(d!.jobId, sourcingDelivery!.deliveryId, variables),
     onSuccess: async (_res, vars) => {
-      message.success(vars.decision === 'ACCEPTED' ? 'Đã chấp nhận CV.' : 'Đã từ chối CV.');
+      message.success(vars.decision === 'ACCEPTED' ? 'Đã chấp nhận CV thành công.' : 'Đã từ chối CV với lý do hợp lệ.');
       setOpen(null);
       // N23: show the new status at once instead of waiting for a page reload.
       queryClient.setQueryData<typeof sourcingDeliveries.data>(['sourcing-deliveries', d?.jobId], (old) =>
@@ -217,7 +241,8 @@ export const ApplicationWorkbench: React.FC<{
           ? { ...old, items: old.items.map((item) => (item.deliveryId === sourcingDelivery?.deliveryId ? { ...item, status: vars.decision } : item)) }
           : old
       );
-      invalidateRecruitment(queryClient);
+      await invalidateRecruitment(queryClient, applicationId);
+      queryClient.invalidateQueries({ queryKey: ['sourcing-deliveries', d?.jobId] });
       await Promise.all([sourcingDeliveries.refetch(), detail.refetch(), timeline.refetch()]);
     },
     onError: (err) => {
@@ -228,15 +253,18 @@ export const ApplicationWorkbench: React.FC<{
   /** Runs one write; closes the modal and refreshes everything on success. */
   const run = useMutation({
     mutationFn: async (job: () => Promise<{ message?: string } | unknown>) => job(),
-    onSuccess: (res, _vars) => {
+    onSuccess: async (res, _vars) => {
       pendingStartWork.current = undefined;
       const msg = (res as { message?: string } | undefined)?.message;
       message.success(msg || 'Đã cập nhật hồ sơ.');
       setOpen(null);
       form.resetFields();
-      invalidateRecruitment(queryClient);
+      await invalidateRecruitment(queryClient, applicationId);
+      if (applicationId) {
+        await Promise.all([detail.refetch(), timeline.refetch()]);
+      }
     },
-    onError: (err) => {
+    onError: async (err) => {
       const attempt = pendingStartWork.current;
       pendingStartWork.current = undefined;
       const error = getApiError(err, 'Không thực hiện được thao tác.');
@@ -259,24 +287,35 @@ export const ApplicationWorkbench: React.FC<{
             } catch (retryError) {
               message.error(getApiErrorMessage(retryError, 'Không thể nhận ứng viên như tuyển mới.'));
             } finally {
-              invalidateRecruitment(queryClient);
+              await invalidateRecruitment(queryClient, applicationId);
+              if (applicationId) {
+                await Promise.all([detail.refetch(), timeline.refetch()]);
+              }
             }
           },
         });
       } else {
         message.error(error.message);
       }
-      invalidateRecruitment(queryClient); // a 409 means someone else changed it
+      await invalidateRecruitment(queryClient, applicationId); // a 409 means someone else changed it
+      if (applicationId) {
+        await Promise.all([detail.refetch(), timeline.refetch()]);
+      }
     },
   });
-  const busy = run.isPending || start.isPending || clientDecisionMutation.isPending || deliverMutation.isPending;
+  const isUpdating = run.isPending || start.isPending || deliverMutation.isPending || clientDecisionMutation.isPending;
+  const isRefetching = detail.isFetching || timeline.isFetching;
+  const busy = isUpdating || isRefetching || Boolean(pendingAction);
   const token = d?.concurrencyToken ?? '';
 
   const retry = useMutation({
     mutationFn: () => screeningApi.retryAiScoring(applicationId!),
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       message.success(res.message || 'Đã gửi yêu cầu AI chấm lại.');
-      invalidateRecruitment(queryClient);
+      await invalidateRecruitment(queryClient, applicationId);
+      if (applicationId) {
+        await Promise.all([detail.refetch(), timeline.refetch()]);
+      }
     },
     onError: (err) => message.error(getApiErrorMessage(err, 'Không gửi được yêu cầu chấm lại.')),
   });
@@ -361,7 +400,15 @@ export const ApplicationWorkbench: React.FC<{
             : `Client sẽ thấy hồ sơ của ${d?.candidateFullName} (đã che liên hệ) và có thể lên lịch phỏng vấn.`,
       okText: audience === 'hr' ? 'Chọn gửi Client' : 'Chọn ứng viên',
       cancelText: 'Hủy',
-      onOk: () => run.mutateAsync(() => screeningApi.updateStatus(d!.jobId, d!.applicationId, { targetStatus: 'SHORTLISTED', concurrencyToken: token })),
+      okButtonProps: { loading: run.isPending || pendingAction === 'short' },
+      onOk: async () => {
+        setPendingAction('short');
+        try {
+          await run.mutateAsync(() => screeningApi.updateStatus(d!.jobId, d!.applicationId, { targetStatus: 'SHORTLISTED', concurrencyToken: token }));
+        } finally {
+          setPendingAction(null);
+        }
+      },
     });
 
   const confirmSendOffer = () =>
@@ -370,7 +417,15 @@ export const ApplicationWorkbench: React.FC<{
       content: `Offer ${money(offer?.salary ?? null, offer?.currencyCode ?? 'VND')} sẽ được gửi tới ${d?.candidateFullName}. Sau khi gửi, bạn không sửa được nội dung.`,
       okText: 'Gửi offer',
       cancelText: 'Hủy',
-      onOk: () => run.mutateAsync(() => clientActionsApi.sendOffer(offer!.offerId, offer!.concurrencyToken)),
+      okButtonProps: { loading: run.isPending || pendingAction === 'send' },
+      onOk: async () => {
+        setPendingAction('send');
+        try {
+          await run.mutateAsync(() => clientActionsApi.sendOffer(offer!.offerId, offer!.concurrencyToken));
+        } finally {
+          setPendingAction(null);
+        }
+      },
     });
 
   const confirmBackup = () =>
@@ -379,109 +434,122 @@ export const ApplicationWorkbench: React.FC<{
       content: 'Ứng viên được giữ lại và có thể được chọn sau nếu cần.',
       okText: 'Đưa vào dự phòng',
       cancelText: 'Hủy',
-      onOk: () => run.mutateAsync(() => screeningApi.updateStatus(d!.jobId, d!.applicationId, { targetStatus: 'BACKUP', concurrencyToken: token })),
+      okButtonProps: { loading: run.isPending || pendingAction === 'backup' },
+      onOk: async () => {
+        setPendingAction('backup');
+        try {
+          await run.mutateAsync(() => screeningApi.updateStatus(d!.jobId, d!.applicationId, { targetStatus: 'BACKUP', concurrencyToken: token }));
+        } finally {
+          setPendingAction(null);
+        }
+      },
     });
 
-  const submitModal = (v: Record<string, any>) => {
+  const submitModal = async (v: Record<string, any>) => {
     if (!d || !open) return;
     const day = (x?: Dayjs) => (x ? x.format('YYYY-MM-DD') : undefined);
     const trim = (x?: string) => x?.trim() || undefined;
-    switch (open) {
-      case 'reject':
-        return run.mutate(() => screeningApi.updateStatus(d.jobId, d.applicationId, { targetStatus: 'REJECTED', reasonCode: v.reasonCode, reason: trim(v.reason), concurrencyToken: token }));
-      case 'schedule':
-        return run.mutate(() =>
-          clientActionsApi.scheduleInterview(d.applicationId, {
-            scheduledAt: (v.scheduledAt as Dayjs).toISOString(),
-            durationMinutes: v.durationMinutes,
-            interviewType: v.interviewType,
-            location: trim(v.location),
-            meetingLink: trim(v.meetingLink),
-            applicationConcurrencyToken: token,
-          })
-        );
-      case 'editInterview':
-        return run.mutate(() =>
-          clientActionsApi.updateInterview(interview!.interviewId, {
-            durationMinutes: v.durationMinutes,
-            interviewType: v.interviewType,
-            location: trim(v.location),
-            meetingLink: trim(v.meetingLink),
-            concurrencyToken: interview!.concurrencyToken,
-          })
-        );
-      case 'reschedule':
-        return run.mutate(() =>
-          clientActionsApi.rescheduleInterview(interview!.interviewId, {
-            newScheduledAt: (v.newScheduledAt as Dayjs).toISOString(),
-            reason: v.reason.trim(),
-            durationMinutes: v.durationMinutes,
-            location: trim(v.location),
-            meetingLink: trim(v.meetingLink),
-            concurrencyToken: interview!.concurrencyToken,
-          })
-        );
-      case 'cancel':
-        return run.mutate(() => clientActionsApi.cancelInterview(interview!.interviewId, { reason: v.reason.trim(), concurrencyToken: interview!.concurrencyToken }));
-      case 'noshow':
-        return run.mutate(() => clientActionsApi.recordNoShow(interview!.interviewId, { reason: v.reason.trim(), concurrencyToken: interview!.concurrencyToken }));
-      case 'result':
-        return run.mutate(() =>
-          clientActionsApi.recordResult(interview!.interviewId, {
-            result: v.result,
-            feedback: trim(v.feedback),
-            nextAction: v.nextAction || undefined,
-            concurrencyToken: interview!.concurrencyToken,
-          })
-        );
-      case 'rejectBackup':
-        return run.mutate(() => clientActionsApi.decideBackup(d.applicationId, { decision: 'REJECT', reason: trim(v.reason), concurrencyToken: token }));
-      case 'offer':
-        return run.mutate(() =>
-          has('UPDATE_OFFER') && offer
-            ? clientActionsApi.updateOffer(offer.offerId, {
-                salary: v.salary,
-                currencyCode: v.currencyCode,
-                salaryBasis: v.salaryBasis,
-                salaryPeriod: v.salaryPeriod,
-                startDate: day(v.startDate),
-                expiryDate: day(v.expiryDate),
-                concurrencyToken: offer.concurrencyToken,
-              })
-            : clientActionsApi.createOffer(d.applicationId, {
-                salary: v.salary,
-                currencyCode: v.currencyCode,
-                salaryBasis: v.salaryBasis,
-                salaryPeriod: v.salaryPeriod,
-                startDate: day(v.startDate),
-                expiryDate: day(v.expiryDate),
-                concurrencyToken: token,
-              })
-        );
-      case 'withdraw':
-        return run.mutate(() => clientActionsApi.withdrawOffer(offer!.offerId, { reason: v.reason.trim(), concurrencyToken: offer!.concurrencyToken }));
-      case 'plannedStart':
-        return run.mutate(() => clientActionsApi.setPlannedStart(d.applicationId, { plannedStartDate: day(v.plannedStartDate)!, reason: trim(v.reason), concurrencyToken: token }));
-      case 'startWork': {
-        const input: ConfirmStartWorkInput = {
-          offerId: acceptedOffer!.offerId,
-          actualStartDate: day(v.actualStartDate)!,
-          position: trim(v.position),
-          department: trim(v.department),
-          confirmationNote: trim(v.note),
-          concurrencyToken: token,
-        };
-        pendingStartWork.current = { applicationId: d.applicationId, input };
-        return run.mutate(() => clientActionsApi.confirmStartWork(d.applicationId, input));
+    setPendingAction(open);
+    try {
+      switch (open) {
+        case 'reject':
+          return await run.mutateAsync(() => screeningApi.updateStatus(d.jobId, d.applicationId, { targetStatus: 'REJECTED', reasonCode: v.reasonCode, reason: trim(v.reason), concurrencyToken: token }));
+        case 'schedule':
+          return await run.mutateAsync(() =>
+            clientActionsApi.scheduleInterview(d.applicationId, {
+              scheduledAt: (v.scheduledAt as Dayjs).toISOString(),
+              durationMinutes: v.durationMinutes,
+              interviewType: v.interviewType,
+              location: trim(v.location),
+              meetingLink: trim(v.meetingLink),
+              applicationConcurrencyToken: token,
+            })
+          );
+        case 'editInterview':
+          return await run.mutateAsync(() =>
+            clientActionsApi.updateInterview(interview!.interviewId, {
+              durationMinutes: v.durationMinutes,
+              interviewType: v.interviewType,
+              location: trim(v.location),
+              meetingLink: trim(v.meetingLink),
+              concurrencyToken: interview!.concurrencyToken,
+            })
+          );
+        case 'reschedule':
+          return await run.mutateAsync(() =>
+            clientActionsApi.rescheduleInterview(interview!.interviewId, {
+              newScheduledAt: (v.newScheduledAt as Dayjs).toISOString(),
+              reason: v.reason.trim(),
+              durationMinutes: v.durationMinutes,
+              location: trim(v.location),
+              meetingLink: trim(v.meetingLink),
+              concurrencyToken: interview!.concurrencyToken,
+            })
+          );
+        case 'cancel':
+          return await run.mutateAsync(() => clientActionsApi.cancelInterview(interview!.interviewId, { reason: v.reason.trim(), concurrencyToken: interview!.concurrencyToken }));
+        case 'noshow':
+          return await run.mutateAsync(() => clientActionsApi.recordNoShow(interview!.interviewId, { reason: v.reason.trim(), concurrencyToken: interview!.concurrencyToken }));
+        case 'result':
+          return await run.mutateAsync(() =>
+            clientActionsApi.recordResult(interview!.interviewId, {
+              result: v.result,
+              feedback: trim(v.feedback),
+              nextAction: v.nextAction || undefined,
+              concurrencyToken: interview!.concurrencyToken,
+            })
+          );
+        case 'rejectBackup':
+          return await run.mutateAsync(() => clientActionsApi.decideBackup(d.applicationId, { decision: 'REJECT', reason: trim(v.reason), concurrencyToken: token }));
+        case 'offer':
+          return await run.mutateAsync(() =>
+            has('UPDATE_OFFER') && offer
+              ? clientActionsApi.updateOffer(offer.offerId, {
+                  salary: v.salary,
+                  currencyCode: v.currencyCode,
+                  salaryBasis: v.salaryBasis,
+                  salaryPeriod: v.salaryPeriod,
+                  startDate: day(v.startDate),
+                  expiryDate: day(v.expiryDate),
+                  concurrencyToken: offer.concurrencyToken,
+                })
+              : clientActionsApi.createOffer(d.applicationId, {
+                  salary: v.salary,
+                  currencyCode: v.currencyCode,
+                  salaryBasis: v.salaryBasis,
+                  salaryPeriod: v.salaryPeriod,
+                  startDate: day(v.startDate),
+                  expiryDate: day(v.expiryDate),
+                  concurrencyToken: token,
+                })
+          );
+        case 'withdraw':
+          return await run.mutateAsync(() => clientActionsApi.withdrawOffer(offer!.offerId, { reason: v.reason.trim(), concurrencyToken: offer!.concurrencyToken }));
+        case 'plannedStart':
+          return await run.mutateAsync(() => clientActionsApi.setPlannedStart(d.applicationId, { plannedStartDate: day(v.plannedStartDate)!, reason: trim(v.reason), concurrencyToken: token }));
+        case 'startWork': {
+          const input: ConfirmStartWorkInput = {
+            offerId: acceptedOffer!.offerId,
+            actualStartDate: day(v.actualStartDate)!,
+            position: trim(v.position),
+            department: trim(v.department),
+            confirmationNote: trim(v.note),
+            concurrencyToken: token,
+          };
+          pendingStartWork.current = { applicationId: d.applicationId, input };
+          return await run.mutateAsync(() => clientActionsApi.confirmStartWork(d.applicationId, input));
+        }
+        case 'notStarted':
+          return await run.mutateAsync(() => clientActionsApi.markNotStarted(d.applicationId, { reason: v.reason.trim(), concurrencyToken: token }));
+        case 'clientRejectSourcing':
+          return await clientDecisionMutation.mutateAsync({
+            decision: 'REJECTED',
+            reasonCode: v.reasonCode,
+            note: trim(v.note),
+          });
       }
-      case 'notStarted':
-        return run.mutate(() => clientActionsApi.markNotStarted(d.applicationId, { reason: v.reason.trim(), concurrencyToken: token }));
-      case 'clientRejectSourcing':
-        return clientDecisionMutation.mutate({
-          decision: 'REJECTED',
-          reasonCode: v.reasonCode,
-          note: trim(v.note),
-        });
+    } finally {
+      setPendingAction(null);
     }
   };
 
@@ -490,9 +558,23 @@ export const ApplicationWorkbench: React.FC<{
 
   // Footer buttons: secondary/danger on the left, the main step on the right.
   const footer: React.ReactNode[] = [];
-  const btn = (key: string, label: string, onClick: () => void, o: { type?: 'primary'; danger?: boolean; icon?: React.ReactNode } = {}) =>
+  const btn = (
+    key: string,
+    label: string,
+    onClick: () => void,
+    o: { type?: 'primary'; danger?: boolean; icon?: React.ReactNode; loading?: boolean } = {}
+  ) =>
     footer.push(
-      <Button key={key} size="large" type={o.type} danger={o.danger} icon={o.icon} disabled={busy} onClick={onClick}>
+      <Button
+        key={key}
+        size="large"
+        type={o.type}
+        danger={o.danger}
+        icon={o.icon}
+        disabled={busy}
+        loading={o.loading ?? (pendingAction === key || (busy && !pendingAction && o.type === 'primary'))}
+        onClick={onClick}
+      >
         {label}
       </Button>
     );
@@ -507,7 +589,20 @@ export const ApplicationWorkbench: React.FC<{
   if (has('MARK_NOT_STARTED')) btn('nostart', 'Không nhận việc', () => openModal('notStarted'), { danger: true });
   if (has('CONFIRM_PLANNED_START_DATE')) btn('planned', 'Ngày dự kiến', () => openModal('plannedStart'));
   if (has('UPDATE_OFFER')) btn('upd', 'Sửa offer', () => openModal('offer'));
-  if (has('SELECT_BACKUP')) btn('selb', 'Chọn ứng viên dự phòng', () => run.mutate(() => clientActionsApi.decideBackup(d!.applicationId, { decision: 'SELECT', concurrencyToken: token })), { type: 'primary' });
+  if (has('SELECT_BACKUP'))
+    btn(
+      'selb',
+      'Chọn ứng viên dự phòng',
+      async () => {
+        setPendingAction('selb');
+        try {
+          await run.mutateAsync(() => clientActionsApi.decideBackup(d!.applicationId, { decision: 'SELECT', concurrencyToken: token }));
+        } finally {
+          setPendingAction(null);
+        }
+      },
+      { type: 'primary' }
+    );
   if (has('SHORTLIST'))
     btn('short', audience === 'hr' ? 'Chọn gửi Client' : 'Chọn ứng viên', confirmShortlist, { type: 'primary', icon: <CheckOutlined /> });
   if (has('SCHEDULE_INTERVIEW')) btn('sched', 'Lên lịch phỏng vấn', () => openModal('schedule'), { type: 'primary' });
@@ -778,41 +873,104 @@ export const ApplicationWorkbench: React.FC<{
               )
             }
           >
-            {!d.aiMatch ? (
-              <p className="m-0 text-sm text-slate-600">Hồ sơ chưa được AI chấm điểm.</p>
-            ) : (
-              <div className="flex flex-col gap-4 sm:flex-row">
-                <div className="flex shrink-0 flex-col items-center justify-center rounded-xl bg-slate-50 px-6 py-4">
-                  <span className="text-[34px] font-bold leading-none tabular-nums text-slate-900">{d.aiMatch.matchScore != null ? Math.round(d.aiMatch.matchScore) : '—'}</span>
-                  <span className="mt-1 text-xs text-slate-600">điểm phù hợp / 100</span>
-                  {d.aiMatch.requiresManualReview && <span className="mt-2 text-xs font-semibold text-amber-800">Cần xem tay</span>}
-                </div>
-                <div className="min-w-0 flex-1 space-y-3 text-sm">
-                  {highlights.length > 0 && (
+            {(() => {
+              if (!d.aiMatch) {
+                return <p className="m-0 text-sm text-slate-600">Hồ sơ chưa được AI chấm điểm.</p>;
+              }
+              const aiStatus = (d.aiMatch.status || '').toUpperCase();
+              if (aiStatus === 'PENDING' || aiStatus === 'PROCESSING') {
+                return (
+                  <div className="flex items-center gap-3 rounded-xl bg-sky-50 px-5 py-4 text-sky-950">
+                    <LoadingOutlined className="text-lg text-sky-600" />
                     <div>
-                      <div className="mb-1 font-medium text-slate-900">Điểm khớp</div>
-                      <ul className="m-0 space-y-1 pl-5 text-slate-700">
-                        {highlights.slice(0, 6).map((h) => (
-                          <li key={h}>{h}</li>
-                        ))}
-                      </ul>
+                      <div className="font-semibold text-sky-900">AI đang chấm điểm…</div>
+                      <div className="mt-0.5 text-xs text-sky-700">
+                        Hệ thống đang xử lý và đánh giá độ phù hợp của CV với yêu cầu công việc.
+                      </div>
                     </div>
-                  )}
-                  {d.aiMatch.missingRequirements.length > 0 && (
-                    <div>
-                      <div className="mb-1 font-medium text-slate-900">Còn thiếu</div>
-                      <ul className="m-0 space-y-1 pl-5 text-slate-700">
-                        {d.aiMatch.missingRequirements.map((h) => (
-                          <li key={h}>{h}</li>
-                        ))}
-                      </ul>
+                  </div>
+                );
+              }
+              if (aiStatus === 'FAILED') {
+                return (
+                  <div className="rounded-xl border border-solid border-amber-200 bg-amber-50/70 p-4 text-amber-950">
+                    <div className="flex items-start gap-3">
+                      <WarningOutlined className="mt-0.5 text-base text-amber-600" />
+                      <div className="flex-1 text-sm">
+                        <div className="font-semibold text-amber-900">
+                          AI chưa chấm được hồ sơ này, vui lòng xem CV trực tiếp
+                        </div>
+                        <div className="mt-1 text-xs text-amber-700">
+                          Quá trình chấm điểm tự động không thành công hoặc không trích xuất được thông tin CV.
+                        </div>
+                        {audience === 'hr' && (
+                          <div className="mt-3">
+                            <Button
+                              type="primary"
+                              size="small"
+                              icon={<ExperimentOutlined />}
+                              loading={retry.isPending}
+                              onClick={() => retry.mutate()}
+                              className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600"
+                            >
+                              Yêu cầu chấm lại
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                  {d.aiMatch.warnings.length > 0 && <div className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-900">{d.aiMatch.warnings.join(' · ')}</div>}
-                  {highlights.length === 0 && d.aiMatch.missingRequirements.length === 0 && <p className="m-0 text-slate-600">AI chưa trả về giải thích chi tiết.</p>}
+                  </div>
+                );
+              }
+              return (
+                <div className="flex flex-col gap-4 sm:flex-row">
+                  <div className="flex shrink-0 flex-col items-center justify-center rounded-xl bg-slate-50 px-6 py-4">
+                    <span className="text-[34px] font-bold leading-none tabular-nums text-slate-900">
+                      {d.aiMatch.matchScore != null ? Math.round(d.aiMatch.matchScore) : '—'}
+                    </span>
+                    <span className="mt-1 text-xs text-slate-600">điểm phù hợp / 100</span>
+                    {d.aiMatch.matchTier && (
+                      <span className="mt-1.5 inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                        Tier {d.aiMatch.matchTier}
+                      </span>
+                    )}
+                    {d.aiMatch.requiresManualReview && (
+                      <span className="mt-2 text-xs font-semibold text-amber-800">Cần xem tay</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-3 text-sm">
+                    {highlights.length > 0 && (
+                      <div>
+                        <div className="mb-1 font-medium text-slate-900">Điểm khớp</div>
+                        <ul className="m-0 space-y-1 pl-5 text-slate-700">
+                          {highlights.slice(0, 6).map((h) => (
+                            <li key={h}>{h}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {d.aiMatch.missingRequirements.length > 0 && (
+                      <div>
+                        <div className="mb-1 font-medium text-slate-900">Còn thiếu</div>
+                        <ul className="m-0 space-y-1 pl-5 text-slate-700">
+                          {d.aiMatch.missingRequirements.map((h) => (
+                            <li key={h}>{h}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {d.aiMatch.warnings.length > 0 && (
+                      <div className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
+                        {d.aiMatch.warnings.join(' · ')}
+                      </div>
+                    )}
+                    {highlights.length === 0 && d.aiMatch.missingRequirements.length === 0 && (
+                      <p className="m-0 text-slate-600">AI chưa trả về giải thích chi tiết.</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </Panel>
 
           <Panel title="Thông tin ứng viên">
@@ -888,9 +1046,11 @@ export const ApplicationWorkbench: React.FC<{
         open={open !== null}
         title={open ? (open === 'offer' && has('UPDATE_OFFER') ? 'Sửa offer' : MODAL_TITLE[open]) : ''}
         okText={open === 'startWork' ? 'Xác nhận' : open === 'schedule' ? 'Lên lịch' : open === 'offer' ? 'Lưu offer' : 'Xác nhận'}
-        cancelText="Hủy"
-        okButtonProps={{ danger: open ? DANGER_MODALS.includes(open) : false, loading: run.isPending }}
-        onCancel={() => setOpen(null)}
+        okButtonProps={{ danger: open ? DANGER_MODALS.includes(open) : false, loading: run.isPending || Boolean(pendingAction) }}
+        cancelButtonProps={{ disabled: busy }}
+        closable={!busy}
+        maskClosable={!busy}
+        onCancel={() => !busy && setOpen(null)}
         onOk={() => form.submit()}
         destroyOnClose
       >

@@ -126,11 +126,35 @@ export interface AffiliateProfile {
   updatedAt?: string | null;
 }
 
-export interface AffiliatePerformance {
+export interface AffiliatePerformanceHistoryItem {
+  affiliatePerformanceId: string;
+  periodStart: string;
+  periodEnd: string;
   totalSubmissions: number;
   totalShortlisted: number;
   totalInterviews: number;
   totalPlacements: number;
   submissionToHireRate: number;
+  qualityRating: number;
   ratingLabel: string;
+  calculationVersion?: string;
+  calculatedAt: string;
+}
+
+export interface AffiliatePerformance {
+  affiliateId?: string;
+  displayName?: string;
+  affiliateType?: string;
+  status?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  totalSubmissions: number;
+  totalShortlisted: number;
+  totalInterviews: number;
+  totalPlacements: number;
+  submissionToHireRate: number;
+  qualityRating?: number;
+  ratingLabel: string;
+  calculatedAt?: string;
+  history?: AffiliatePerformanceHistoryItem[];
 }
