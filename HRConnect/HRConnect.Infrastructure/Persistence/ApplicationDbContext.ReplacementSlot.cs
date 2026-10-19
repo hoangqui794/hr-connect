@@ -11,6 +11,7 @@ public partial class ApplicationDbContext
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
     {
         ConfigureBe04(modelBuilder);
+        ConfigureCandidateIdentityDedup(modelBuilder);
 
         modelBuilder.Entity<ReplacementSlot>(entity =>
         {

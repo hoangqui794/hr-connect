@@ -33,6 +33,10 @@ public partial class Dispute
 
     public DateTime UpdatedAt { get; set; }
 
+    public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
+
+    public Guid? CandidateDuplicateCaseId { get; set; }
+
     public virtual Attribution? Attribution { get; set; }
 
     public virtual Commission? Commission { get; set; }
@@ -42,5 +46,7 @@ public partial class Dispute
     public virtual AppUser? ResolvedByNavigation { get; set; }
 
     public virtual Submission? Submission { get; set; }
+
+    public virtual CandidateDuplicateCase? CandidateDuplicateCase { get; set; }
 }
 

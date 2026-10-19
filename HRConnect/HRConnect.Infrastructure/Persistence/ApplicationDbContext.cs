@@ -40,6 +40,10 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<CandidateIdentityClaim> CandidateIdentityClaims { get; set; }
 
+    public virtual DbSet<CandidateDuplicateCase> CandidateDuplicateCases { get; set; }
+
+    public virtual DbSet<CandidateDuplicateSignal> CandidateDuplicateSignals { get; set; }
+
     public virtual DbSet<CandidateCv> CandidateCvs { get; set; }
 
     public virtual DbSet<CandidateJobMatch> CandidateJobMatches { get; set; }
@@ -131,6 +135,8 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<Submission> Submissions { get; set; }
 
     public virtual DbSet<SubmissionConsent> SubmissionConsents { get; set; }
+
+    public virtual DbSet<SubmissionIdentitySnapshot> SubmissionIdentitySnapshots { get; set; }
 
     public virtual DbSet<UserRole> UserRoles { get; set; }
 
@@ -2944,7 +2950,7 @@ public partial class ApplicationDbContext : DbContext
                 table.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed.");
                 table.HasCheckConstraint(
                     "submission_status_check",
-                    "status IN ('RECEIVED','PENDING_CONSENT','ACCEPTED','BLOCKED_DUPLICATE','BLOCKED_CLIENT_OWNED','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
+                    "status IN ('RECEIVED','PENDING_CONSENT','PENDING_IDENTITY_REVIEW','ACCEPTED','BLOCKED_DUPLICATE','BLOCKED_CLIENT_OWNED','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
             });
 
             entity.HasIndex(e => new { e.JobId, e.CandidateId, e.SubmittedAt }, "idx_submission_job_candidate");
@@ -2957,9 +2963,9 @@ public partial class ApplicationDbContext : DbContext
                 .IsUnique()
                 .HasFilter("((status)::text = 'ACCEPTED'::text)");
 
-            entity.HasIndex(e => new { e.JobId, e.CandidateId }, "uq_submission_one_pending_consent")
+            entity.HasIndex(e => new { e.JobId, e.CandidateId, e.SubmittedBy }, "uq_submission_one_pending_consent")
                 .IsUnique()
-                .HasFilter("((status)::text = 'PENDING_CONSENT'::text)");
+                .HasFilter("status IN ('PENDING_CONSENT','PENDING_IDENTITY_REVIEW')");
 
             entity.Property(e => e.SubmissionId)
                 .HasDefaultValueSql("gen_random_uuid()")

@@ -52,6 +52,14 @@ public partial class CandidateCv
 
     public long? FileSizeBytes { get; set; }
 
+    /// <summary>SHA-256 of the immutable PDF bytes, encoded as lowercase hexadecimal.</summary>
+    public string? ContentSha256 { get; set; }
+
+    /// <summary>Versioned, non-reversible fingerprint used only to shortlist duplicate reviews.</summary>
+    public string? TextFingerprint { get; set; }
+
+    public string? FingerprintVersion { get; set; }
+
     public bool IsPrimary { get; set; }
 
     public string Status { get; set; } = null!;
