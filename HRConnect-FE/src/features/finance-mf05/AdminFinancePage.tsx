@@ -1,7 +1,8 @@
 /**
- * Admin › Chi trả hoa hồng (MF-05, HEADHUNT_COD).
+ * Admin › Tài chính MF-05 (HEADHUNT_COD, CV_SOURCING, CV_APPLICATION).
  * Commissions: approve (only after the Client paid the service fee), record payouts, adjust, cancel.
- * Service fees: record that the Client paid. Payouts: history of transfers.
+ * Service fees: record that the Client paid. Posting fees: record CV_APPLICATION posting fees (N4).
+ * Payouts: history of transfers.
  */
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,9 +14,10 @@ import { financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Commission, CommissionStatus, Payout, ServiceFee, ServiceFeeStatus } from '@/types/api/finance';
 import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { PostingFeePaymentsPanel } from './PostingFeePaymentsPanel';
 import { COMMISSION_STATUS, PAYOUT_STATUS, SERVICE_FEE_KIND, SERVICE_FEE_STATUS, date, labelOf, money } from './financeLabels';
 
-type Tab = 'commissions' | 'fees' | 'payouts';
+type Tab = 'commissions' | 'fees' | 'postingFees' | 'payouts';
 type Dialog =
   | { kind: 'payout'; commission: Commission }
   | { kind: 'adjust'; commission: Commission }
@@ -55,7 +57,7 @@ export const AdminFinancePage: React.FC = () => {
   const action = useMutation({
     mutationFn: (run: () => Promise<unknown>) => run(),
     onSuccess: () => {
-      message.success('Đã cập nhật.');
+      message.success('Đã lưu thay đổi.');
       setDialog(null);
       form.resetFields();
       refresh();
@@ -198,11 +200,11 @@ export const AdminFinancePage: React.FC = () => {
     { title: 'Kết quả', dataIndex: 'status', render: (v) => { const s = labelOf(PAYOUT_STATUS, v); return <StatusDot tone={s.tone}>{s.label}</StatusDot>; } },
   ];
 
-  const active = tab === 'commissions' ? commissions : tab === 'fees' ? fees : payouts;
+  const active = tab === 'commissions' ? commissions : tab === 'fees' ? fees : tab === 'payouts' ? payouts : null;
   const pagination = {
     current: page,
     pageSize: PAGE_SIZE,
-    total: active.data?.totalCount ?? 0,
+    total: active?.data?.totalCount ?? 0,
     onChange: setPage,
     showSizeChanger: false,
   };
@@ -210,9 +212,9 @@ export const AdminFinancePage: React.FC = () => {
   return (
     <div>
       <PageHero
-        eyebrow="MF-05 · HEADHUNT_COD"
-        title="Chi trả hoa hồng"
-        description="Hoa hồng được nhận 100% khi ứng viên đi làm đủ thời hạn bảo hành, và chỉ được duyệt chi sau khi Client đã thanh toán phí dịch vụ."
+        eyebrow="MF-05 · 3 dịch vụ"
+        title="Tài chính"
+        description="Ghi nhận tiền Client đã trả (phí dịch vụ, cọc CV Sourcing, phí đăng tin) và chi hoa hồng cho Affiliate. Hoa hồng chỉ được duyệt chi sau khi Client đã thanh toán phí."
         actions={<Button icon={<ReloadOutlined />} onClick={refresh}>Làm mới</Button>}
       />
 
@@ -224,6 +226,7 @@ export const AdminFinancePage: React.FC = () => {
           options={[
             { value: 'commissions', label: 'Hoa hồng' },
             { value: 'fees', label: 'Công nợ phí' },
+            { value: 'postingFees', label: 'Phí đăng tin' },
             { value: 'payouts', label: 'Lịch sử chi' },
           ]}
         />
@@ -245,7 +248,7 @@ export const AdminFinancePage: React.FC = () => {
         )}
       </div>
 
-      {active.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(active.error)} />}
+      {active?.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(active.error)} />}
       <Surface>
         {tab === 'commissions' && (
           <Table rowKey="commissionId" columns={commissionColumns} dataSource={commissions.data?.items} loading={commissions.isFetching} pagination={pagination} scroll={{ x: 900 }} locale={{ emptyText: 'Chưa có hoa hồng nào.' }} />
@@ -253,6 +256,7 @@ export const AdminFinancePage: React.FC = () => {
         {tab === 'fees' && (
           <Table rowKey="serviceFeeId" columns={feeColumns} dataSource={fees.data?.items} loading={fees.isFetching} pagination={pagination} scroll={{ x: 800 }} locale={{ emptyText: 'Chưa có công nợ phí nào.' }} />
         )}
+        {tab === 'postingFees' && <PostingFeePaymentsPanel enabled={tab === 'postingFees'} />}
         {tab === 'payouts' && (
           <Table rowKey="payoutId" columns={payoutColumns} dataSource={payouts.data?.items} loading={payouts.isFetching} pagination={pagination} scroll={{ x: 700 }} locale={{ emptyText: 'Chưa có lần chi nào.' }} />
         )}

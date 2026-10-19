@@ -239,7 +239,7 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
     { key: '/hr/screening', label: 'Sàng lọc hồ sơ', icon: 'TeamOutlined' },
     { key: '/hr/pipeline', label: 'Tiến độ tuyển dụng', icon: 'CalendarOutlined' },
     { key: '/hr/placement-review', label: 'Sửa ngày đi làm thực tế', icon: 'AuditOutlined' },
-    { key: '/hr/warranty-tracking', label: 'Bảo hành & thử việc', icon: 'SafetyCertificateOutlined' },
+    { key: '/hr/warranty-tracking', label: 'Bảo hành', icon: 'SafetyCertificateOutlined' },
   ],
   // Admin console ("Slate Command"): pages map to backend endpoints; groups marked
   // "Chưa có API" open an explicit empty state instead of mock numbers.
@@ -268,6 +268,13 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
       ],
     },
     {
+      label: 'Tài chính',
+      type: 'group',
+      children: [
+        { key: '/admin/payouts', label: 'Tài chính MF-05', icon: 'BankOutlined' },
+      ],
+    },
+    {
       label: 'Giám sát',
       type: 'group',
       children: [
@@ -279,7 +286,6 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
       type: 'group',
       children: [
         { key: '/admin/disputes', label: 'Tranh chấp', icon: 'SolutionOutlined' },
-        { key: '/admin/payouts', label: 'Chi trả hoa hồng', icon: 'BankOutlined' },
         { key: '/admin/settings', label: 'Cài đặt hệ thống', icon: 'SettingOutlined' },
       ],
     },

@@ -62,12 +62,12 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/admin/commission-rules', label: 'Quy tắc hoa hồng', icon: <DollarOutlined /> },
     ],
   },
+  { group: 'Tài chính', items: [{ to: '/admin/payouts', label: 'Tài chính MF-05', icon: <BankOutlined /> }] },
   { group: 'Giám sát', items: [{ to: '/admin/audit-trail', label: 'Nhật ký hệ thống', icon: <AuditOutlined /> }] },
   {
     group: 'Chưa có API',
     items: [
       { to: '/admin/disputes', label: 'Tranh chấp', icon: <SolutionOutlined />, muted: true },
-      { to: '/admin/payouts', label: 'Chi trả hoa hồng', icon: <BankOutlined />, muted: true },
       { to: '/admin/settings', label: 'Cài đặt hệ thống', icon: <SettingOutlined />, muted: true },
     ],
   },

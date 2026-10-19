@@ -11,6 +11,7 @@ public partial class ApplicationDbContext
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
     {
         ConfigureBe04(modelBuilder);
+        ConfigureBe02(modelBuilder);
 
         modelBuilder.Entity<ReplacementSlot>(entity =>
         {

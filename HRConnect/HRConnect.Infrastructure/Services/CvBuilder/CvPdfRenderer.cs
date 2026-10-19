@@ -25,6 +25,31 @@ public sealed class CvPdfRenderer
         return SKTypeface.FromStream(stream);
     });
 
+    /// <summary>N16: a plain text document (title, muted note, one paragraph per line) in the same style.</summary>
+    public byte[] RenderPlain(string title, string note, IReadOnlyList<string> paragraphs)
+    {
+        using var output = new MemoryStream();
+        using (var document = SKDocument.CreatePdf(output, new SKDocumentPdfMetadata
+               {
+                   Title = title,
+                   Creator = "HR Connect",
+                   Producer = "HR Connect",
+               }))
+        {
+            var writer = new PageWriter(document, SKColor.Parse(DefaultAccent), 1f);
+            writer.Title(title);
+            writer.Body(note, muted: true);
+            writer.Rule();
+            foreach (var paragraph in paragraphs)
+            {
+                writer.Body(paragraph);
+            }
+            writer.Finish();
+        }
+
+        return output.ToArray();
+    }
+
     public byte[] Render(StructuredCvContent cv, string? templateConfig)
     {
         var (accent, scale) = ReadConfig(templateConfig);

@@ -86,4 +86,7 @@ public class RecruitmentApplicationItemDto
 
     /// <summary>True when email and phone are hidden from the Client (HEADHUNT_COD before PLACED).</summary>
     public bool IsContactMasked { get; set; }
+
+    /// <summary>CV_SOURCING: status of the latest delivery (DELIVERED, ACCEPTED, REJECTED, ...); null when not delivered.</summary>
+    public string? SourcingDeliveryStatus { get; set; }
 }

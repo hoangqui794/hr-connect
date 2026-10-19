@@ -1,4 +1,4 @@
-# FE task: Form liên hệ, tạo CV theo mẫu, việc phù hợp, chuông realtime, lỗi FE còn mở
+# FE task: Form liên hệ, tạo CV theo mẫu, việc phù hợp, chuông realtime, danh bạ công ty, lỗi FE còn mở
 
 **Người làm:** Sang · **Backend:** đã merge vào `dev` và `main` (BE-04, 2026-10-19)
 **Nghiệp vụ chi tiết:** `HRConnect/docs/main-flows.md`, mục 6.1, SF-05 → SF-08.
@@ -165,3 +165,15 @@ Commit `e92650a` mới làm chi tiết phỏng vấn cho Candidate. Client (`Cli
 - Khiếu nại trùng ứng viên (SF-04): Affiliate `/api/v1/disputes`, Platform Admin `/api/v1/admin/disputes` (xem `main-flows.md`, SF-04).
 
 **Nhắc chung:** làm giao diện thì theo quyết định thiết kế từng vai trò đã chốt (Admin, HR, Client, Candidate/Affiliate).
+
+---
+
+## 6. Danh bạ công ty, bảng ngành, lọc kinh nghiệm (SF-09, backend đã có 19/10)
+
+- Thay `src/constants/industries.ts` bằng `GET /api/v1/industries?tree=true` (cây ngành) và `GET /api/v1/company-sizes`. Hồ sơ công ty gửi `industryId`, `companySizeId` (`PUT /api/v1/companies/profile/me`); response có lại 2 id này.
+- Trang danh bạ công ty công khai: `GET /api/v1/public/companies?search=&industryId=&companySizeId=&location=&page=&pageSize=` trả `{ items, page, pageSize, totalCount, totalPages }`, mỗi công ty có `industry {industryId, name}`, `companySize {companySizeId, label}`, `activeJobCount`, `isFeatured`.
+- Khối Top Companies ở trang chủ: `GET /api/v1/public/companies/featured`.
+- Trang hồ sơ công ty: `GET /api/v1/public/companies/{companyId}` → `{ company, jobs }`; công ty chưa xác minh → `404`.
+- Admin: quản lý ngành `GET/POST/PUT /api/v1/admin/industries`; chọn Top Companies `PUT /api/v1/admin/companies/{id}/featured` `{ isFeatured, featuredOrder }`.
+- Trang tìm việc: thêm bộ lọc **Số năm kinh nghiệm** → query `experienceYears` (0–60). Bộ lọc lĩnh vực / chuyên môn chờ backend theo plan job taxonomy của Trí.
+- Đã sửa sẵn (19/10, khỏi làm lại): nút thanh toán của Client chỉ hiện khi tin chờ thanh toán và mở hướng dẫn chuyển khoản; Admin ghi nhận phí đăng tin ở **Tài chính › Phí đăng tin**; nhãn trạng thái theo dịch vụ; drawer hồ sơ co theo màn hình; Client xem CV Headhunt đã che; Affiliate xem chi tiết job trong layout Affiliate kèm hoa hồng ước tính; nhắc HR CV Sourcing chưa giao.

@@ -229,6 +229,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/affiliate/dashboard" replace /> },
       { path: 'dashboard', element: <AppRoutes.AffiliateHomePage /> },
       { path: 'jobs', element: <AppRoutes.Mf01InAppJobDiscoveryPage /> },
+      { path: 'jobs/:jobId', element: <AppRoutes.Mf01AffiliateJobDetailPage /> },
       { path: 'submit-candidate', element: <AppRoutes.AffiliateSubmitPage /> },
       { path: 'submissions', element: <AppRoutes.AffiliateMySubmissionsPage /> },
       { path: 'submissions/:submissionId', element: <AppRoutes.AffiliateSubmissionDetailPage /> },

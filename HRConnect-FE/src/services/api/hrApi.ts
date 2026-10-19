@@ -72,6 +72,12 @@ export const screeningApi = {
     return res.data.data;
   },
 
+  /** N16: GET …/cv/masked — PDF rebuilt from the CV text with email, phone and links hidden (409 CV_NO_TEXT_LAYER for scans). */
+  async maskedCv(applicationId: string): Promise<Blob> {
+    const res = await apiClient.get<Blob>(`/recruitment/applications/${applicationId}/cv/masked`, { responseType: 'blob' });
+    return res.data;
+  },
+
   /** POST /internal/applications/{id}/ai-scoring/retry */
   async retryAiScoring(applicationId: string) {
     const res = await apiClient.post<{ success: boolean; message?: string }>(

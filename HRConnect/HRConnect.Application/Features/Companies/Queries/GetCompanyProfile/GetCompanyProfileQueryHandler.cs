@@ -41,6 +41,8 @@ public class GetCompanyProfileQueryHandler : IRequestHandler<GetCompanyProfileQu
                 CompanyName = company.CompanyName,
                 TaxCode = company.TaxCode,
                 Industry = company.Industry,
+                IndustryId = company.IndustryId,
+                CompanySizeId = company.CompanySizeId,
                 CompanySize = company.CompanySize,
                 Website = company.Website,
                 Address = company.Address,

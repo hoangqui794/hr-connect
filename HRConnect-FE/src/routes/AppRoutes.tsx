@@ -207,6 +207,9 @@ const Mf01InAppJobDiscoveryPage = React.lazy(() =>
 const Mf01PublicJobSearchPage = React.lazy(() =>
   import('@/features/jobs-mf01/PublicJobPages').then((m) => ({ default: m.PublicJobSearchPage }))
 );
+const Mf01AffiliateJobDetailPage = React.lazy(() =>
+  import('@/features/jobs-mf01/PublicJobPages').then((m) => ({ default: m.AffiliateJobDetailPage }))
+);
 const Mf01PublicJobDetailPage = React.lazy(() =>
   import('@/features/jobs-mf01/PublicJobPages').then((m) => ({ default: m.PublicJobDetailPage }))
 );
@@ -368,6 +371,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/affiliate/refer': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/submit-candidate': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/jobs': [UserRole.AFFILIATE, UserRole.ADMIN],
+  '/affiliate/jobs/:jobId': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/submissions': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/submissions/:submissionId': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/candidates': [UserRole.AFFILIATE, UserRole.ADMIN],
@@ -420,6 +424,7 @@ export const AppRoutes = {
   Mf01InAppJobDiscoveryPage,
   Mf01PublicJobSearchPage,
   Mf01PublicJobDetailPage,
+  Mf01AffiliateJobDetailPage,
   ConsoleOverviewPage,
   ConsoleApprovalsPage,
   ConsoleIdentityClaimsPage,

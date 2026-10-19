@@ -51,12 +51,8 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { to: '/hr/pipeline', label: 'Tiến độ tuyển dụng', icon: <CalendarOutlined /> },
       { to: '/hr/placement-review', label: 'Sửa ngày đi làm', icon: <AuditOutlined /> },
-    ],
-  },
-  {
-    group: 'Chưa có API',
-    items: [
-      { to: '/hr/warranty-tracking', label: 'Bảo hành & thử việc', icon: <SafetyCertificateOutlined />, muted: true },
+      // N2: MF-05 warranty API is live (no probation tracking, chốt 17/10).
+      { to: '/hr/warranty-tracking', label: 'Bảo hành', icon: <SafetyCertificateOutlined /> },
     ],
   },
 ];

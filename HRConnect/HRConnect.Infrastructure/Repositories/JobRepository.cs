@@ -112,7 +112,7 @@ public class JobRepository : IJobRepository
     public Task<IReadOnlyList<Job>> GetPendingReviewAsync(CancellationToken cancellationToken = default) =>
         GetForReviewAsync("PENDING_REVIEW", cancellationToken);
 
-    public async Task<(IReadOnlyList<Job> Items, int TotalCount)> GetVisibleJobsAsync(
+    public Task<(IReadOnlyList<Job> Items, int TotalCount)> GetVisibleJobsAsync(
         IReadOnlyCollection<string> roleCodes,
         bool bypassServiceTypeRoleCheck,
         string? search,
@@ -125,7 +125,43 @@ public class JobRepository : IJobRepository
         int pageSize,
         string? sortBy = null,
         string? sortDirection = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        QueryVisibleJobsAsync(roleCodes, bypassServiceTypeRoleCheck, search, location, employmentType, serviceTypeId,
+            salaryMin, salaryMax, null, page, pageSize, sortBy, sortDirection, cancellationToken);
+
+    public Task<(IReadOnlyList<Job> Items, int TotalCount)> GetVisibleJobsWithExperienceAsync(
+        IReadOnlyCollection<string> roleCodes,
+        bool bypassServiceTypeRoleCheck,
+        string? search,
+        string? location,
+        string? employmentType,
+        Guid? serviceTypeId,
+        decimal? salaryMin,
+        decimal? salaryMax,
+        int experienceYears,
+        int page,
+        int pageSize,
+        string? sortBy = null,
+        string? sortDirection = null,
+        CancellationToken cancellationToken = default) =>
+        QueryVisibleJobsAsync(roleCodes, bypassServiceTypeRoleCheck, search, location, employmentType, serviceTypeId,
+            salaryMin, salaryMax, experienceYears, page, pageSize, sortBy, sortDirection, cancellationToken);
+
+    private async Task<(IReadOnlyList<Job> Items, int TotalCount)> QueryVisibleJobsAsync(
+        IReadOnlyCollection<string> roleCodes,
+        bool bypassServiceTypeRoleCheck,
+        string? search,
+        string? location,
+        string? employmentType,
+        Guid? serviceTypeId,
+        decimal? salaryMin,
+        decimal? salaryMax,
+        int? experienceYears,
+        int page,
+        int pageSize,
+        string? sortBy,
+        string? sortDirection,
+        CancellationToken cancellationToken)
     {
         var allowedServiceTypeIds = _context.ServiceTypeAllowedRoles.AsNoTracking()
             .Where(mapping => mapping.CanView && mapping.Role.IsActive && roleCodes.Contains(mapping.Role.Code))
@@ -167,6 +203,13 @@ public class JobRepository : IJobRepository
 
         if (salaryMax.HasValue)
             query = query.Where(job => job.SalaryMin == null || job.SalaryMin <= salaryMax.Value);
+
+        if (experienceYears.HasValue)
+        {
+            var years = experienceYears.Value;
+            query = query.Where(job => (job.MinExperienceYears == null || job.MinExperienceYears <= years) &&
+                                       (job.MaxExperienceYears == null || job.MaxExperienceYears >= years));
+        }
 
         var totalCount = await query.CountAsync(cancellationToken);
 
