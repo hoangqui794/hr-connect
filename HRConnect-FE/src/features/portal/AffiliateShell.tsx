@@ -21,7 +21,7 @@ import {
   UserOutlined,
   KeyOutlined,
 } from '@ant-design/icons';
-import { useAuthStore } from '@/stores/authStore';
+import { getAvatarImageUrl, useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { Initials } from '@/features/admin-console/ui';
@@ -96,6 +96,7 @@ export const AffiliateShell: React.FC = () => {
   };
 
   const name = user?.name || 'Cộng tác viên';
+  const avatarUrl = getAvatarImageUrl(user?.avatar);
   const width = collapsed ? 76 : 256;
 
   return (
@@ -224,9 +225,9 @@ export const AffiliateShell: React.FC = () => {
                 className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
                 aria-label="Tài khoản"
               >
-                {user?.avatarUrl ? (
+                {avatarUrl ? (
                   <img
-                    src={user.avatarUrl}
+                    src={avatarUrl}
                     alt={name}
                     className="h-[34px] w-[34px] rounded-full object-cover border border-solid border-slate-200"
                   />

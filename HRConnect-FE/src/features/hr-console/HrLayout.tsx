@@ -22,7 +22,7 @@ import {
   SafetyCertificateOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { useAuthStore } from '@/stores/authStore';
+import { getAvatarImageUrl, useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { Initials } from '@/features/admin-console/ui';
@@ -128,6 +128,7 @@ export const HrLayout: React.FC = () => {
   };
 
   const name = user?.name || 'Chuyên viên nhân sự';
+  const avatarUrl = getAvatarImageUrl(user?.avatar);
   const width = collapsed ? 76 : 256;
 
   return (
@@ -251,7 +252,11 @@ export const HrLayout: React.FC = () => {
               className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700"
               aria-label="Tài khoản"
             >
-              <Initials name={name} size={34} />
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={name} className="h-[34px] w-[34px] rounded-full border border-solid border-slate-200 object-cover" />
+              ) : (
+                <Initials name={name} size={34} />
+              )}
               <span className="hidden text-left leading-tight sm:block">
                 <span className="block text-sm font-semibold text-slate-900">{name}</span>
                 <span className="block text-xs text-slate-500">{user?.email}</span>

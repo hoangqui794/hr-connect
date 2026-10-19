@@ -15,6 +15,7 @@ import {
   DashboardOutlined,
   DollarOutlined,
   FileTextOutlined,
+  KeyOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuOutlined,
@@ -25,8 +26,9 @@ import {
   SolutionOutlined,
   TeamOutlined,
   UserOutlined,
+  UserSwitchOutlined,
 } from '@ant-design/icons';
-import { useAuthStore } from '@/stores/authStore';
+import { getAvatarImageUrl, useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
 import { useCompactLayout } from './useCompactLayout';
 import { Initials } from './ui';
@@ -49,11 +51,13 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/admin/approvals', label: 'Phê duyệt tài khoản', icon: <SafetyCertificateOutlined /> },
       { to: '/admin/candidate-identity-claims', label: 'Danh tính Candidate', icon: <LinkOutlined /> },
       { to: '/admin/users', label: 'Người dùng', icon: <TeamOutlined /> },
+      { to: '/admin/user-authorization', label: 'Phân quyền người dùng', icon: <UserSwitchOutlined /> },
     ],
   },
   {
     group: 'Cấu hình',
     items: [
+      { to: '/admin/roles-permissions', label: 'Vai trò & Quyền', icon: <KeyOutlined /> },
       { to: '/admin/service-types', label: 'Loại dịch vụ', icon: <AppstoreOutlined /> },
       { to: '/admin/commission-rules', label: 'Quy tắc hoa hồng', icon: <DollarOutlined /> },
     ],
@@ -134,6 +138,7 @@ export const AdminLayout: React.FC = () => {
   };
 
   const name = user?.name || 'Quản trị viên';
+  const avatarUrl = getAvatarImageUrl(user?.avatar);
   const width = collapsed ? 76 : 260;
 
   return (
@@ -257,7 +262,11 @@ export const AdminLayout: React.FC = () => {
                 className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"
                 aria-label="Tài khoản"
               >
-                <Initials name={name} size={34} />
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={name} className="h-[34px] w-[34px] rounded-full border border-solid border-slate-200 object-cover" />
+                ) : (
+                  <Initials name={name} size={34} />
+                )}
                 <span className="hidden text-left leading-tight sm:block">
                   <span className="block text-sm font-semibold text-slate-900">{name}</span>
                   <span className="block text-xs text-slate-500">{user?.email}</span>

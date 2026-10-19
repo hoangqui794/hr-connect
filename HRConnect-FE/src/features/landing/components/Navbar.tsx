@@ -13,7 +13,7 @@ import {
   UserAddOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore, getInitials } from '@/stores/authStore';
+import { useAuthStore, getAvatarImageUrl, getInitials } from '@/stores/authStore';
 import { useAlertStore } from '@/stores/alertStore';
 import { useI18nStore } from '@/i18n';
 import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWorkspaceMenu';
@@ -31,7 +31,8 @@ export const Navbar: React.FC = () => {
 
   const userName = user?.name || 'Người dùng';
   const userEmail = user?.email || '';
-  const userAvatar = user?.avatar || getInitials(userName);
+  const userAvatarUrl = getAvatarImageUrl(user?.avatar);
+  const userInitials = getInitials(userName);
 
   const handleLogout = () => {
     logout();
@@ -256,6 +257,7 @@ export const Navbar: React.FC = () => {
                   }}
                 >
                   <Avatar
+                    src={userAvatarUrl}
                     size={28}
                     style={{
                       background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
@@ -263,7 +265,7 @@ export const Navbar: React.FC = () => {
                       fontSize: 12,
                     }}
                   >
-                    {userAvatar}
+                    {userInitials}
                   </Avatar>
                   <span style={{ color: '#0f172a', fontSize: 13, fontWeight: 600 }}>
                     {userName.split(' ').slice(-1)[0]}
@@ -433,6 +435,7 @@ export const Navbar: React.FC = () => {
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-100">
               <Avatar
+                src={userAvatarUrl}
                 size={36}
                 style={{
                   background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
@@ -440,7 +443,7 @@ export const Navbar: React.FC = () => {
                   fontSize: 14,
                 }}
               >
-                {userAvatar}
+                {userInitials}
               </Avatar>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-bold text-slate-900 truncate">{userName}</div>

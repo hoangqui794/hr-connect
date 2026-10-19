@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { authTokenStorage } from '@/services/authTokenStorage';
+import { resolveApiAssetUrl } from '@/services/apiClient';
 import { UserRole } from '@/types/roles';
 import { followSessionChangeFromOtherTab, useAuthStore } from './authStore';
 
@@ -49,7 +50,7 @@ describe('auth store claims', () => {
     );
 
     expect(useAuthStore.getState().user?.avatar).toBe(
-      `${window.location.origin}/api/v1/users/user-avatar/avatar?v=9`
+      resolveApiAssetUrl('/api/v1/users/user-avatar/avatar?v=9')
     );
   });
 
