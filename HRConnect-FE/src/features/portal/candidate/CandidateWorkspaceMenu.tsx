@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Button, Dropdown, Space } from 'antd';
+import { Button, Dropdown, Space } from 'antd';
 import {
   CheckCircleOutlined,
   DashboardOutlined,
@@ -11,7 +11,8 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '@/services/authService';
-import { getAvatarImageUrl, getInitials, useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/stores/authStore';
+import { AccountAvatar } from '@/components/common/AccountAvatar';
 
 interface CandidateWorkspaceMenuProps {
   showWorkspaceButton?: boolean;
@@ -23,7 +24,6 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const name = user?.name || 'Ứng viên';
-  const avatarUrl = getAvatarImageUrl(user?.avatar);
   const email = user?.email || '';
 
   const signOut = async () => {
@@ -112,9 +112,7 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
           aria-label="Mở menu tài khoản Candidate"
           className="flex h-[38px] cursor-pointer items-center gap-2 rounded-full border border-solid border-slate-200 bg-white py-1 pl-1 pr-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
-          <Avatar src={avatarUrl} size={30} style={{ background: '#2563eb', fontSize: 12, fontWeight: 700 }}>
-            {getInitials(name)}
-          </Avatar>
+          <AccountAvatar name={name} avatar={user?.avatar} size={30} />
           <span className="max-w-28 truncate text-sm font-semibold text-slate-800">
             {name.trim().split(/\s+/).slice(-1)[0] || 'Ứng viên'}
           </span>

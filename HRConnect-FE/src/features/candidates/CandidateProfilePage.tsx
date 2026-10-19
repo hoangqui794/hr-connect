@@ -557,22 +557,11 @@ export const CandidateProfilePage: React.FC = () => {
 
         <Row align="middle" justify="space-between" gutter={[24, 20]}>
           <Col xs={24} md={16} style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative' }}>
-              <AvatarUpload size={84} />
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: 2,
-                  right: 2,
-                  width: 14,
-                  height: 14,
-                  borderRadius: '50%',
-                  background: isPublic ? '#10b981' : '#f59e0b',
-                  border: '2px solid #0B0F17',
-                }}
-                title={isPublic ? 'Hồ sơ Công khai' : 'Hồ sơ Riêng tư'}
-              />
-            </div>
+            <AvatarUpload
+              size={84}
+              statusColor={isPublic ? '#10b981' : '#f59e0b'}
+              statusLabel={isPublic ? 'Hồ sơ công khai' : 'Hồ sơ riêng tư'}
+            />
 
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>

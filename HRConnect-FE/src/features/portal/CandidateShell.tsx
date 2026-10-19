@@ -17,8 +17,8 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
+import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { authService } from '@/services/authService';
-import { Initials } from '@/features/admin-console/ui';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -148,7 +148,7 @@ export const CandidateShell: React.FC = () => {
                 onClick={() => setAccountOpen(true)}
                 className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full border-0 bg-transparent p-1 pr-2 text-left hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
               >
-                <Initials name={name} size={36} />
+                <AccountAvatar name={name} avatar={user?.avatar} size={36} />
                 <span className="max-w-28 truncate text-sm font-semibold text-slate-800">{name}</span>
               </button>
             ) : (
@@ -170,7 +170,7 @@ export const CandidateShell: React.FC = () => {
                       : 'bg-transparent hover:bg-slate-100'
                   }`}
                 >
-                  <Initials name={name} size={36} />
+                  <AccountAvatar name={name} avatar={user?.avatar} size={36} />
                   <span className="text-left leading-tight">
                     <span className="block max-w-[170px] truncate text-sm font-semibold text-slate-900">{name}</span>
                     <span className="block max-w-[170px] truncate text-xs text-slate-500">{user?.email}</span>
@@ -195,7 +195,7 @@ export const CandidateShell: React.FC = () => {
         >
           <div className="mb-5 flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <Initials name={name} size={44} />
+              <AccountAvatar name={name} avatar={user?.avatar} size={44} />
               <div className="min-w-0">
                 <p className="m-0 truncate text-sm font-bold text-slate-900">{name}</p>
                 <p className="m-0 mt-0.5 truncate text-xs text-slate-500">{user?.email}</p>

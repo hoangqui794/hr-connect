@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Space, Tag, Avatar, Dropdown, Badge, List, message, Drawer, Divider } from 'antd';
+import { Button, Space, Tag, Dropdown, Badge, List, message, Drawer, Divider } from 'antd';
 import {
   LogoutOutlined,
   DashboardOutlined,
@@ -13,7 +13,8 @@ import {
   UserAddOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore, getAvatarImageUrl, getInitials } from '@/stores/authStore';
+import { useAuthStore } from '@/stores/authStore';
+import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { useAlertStore } from '@/stores/alertStore';
 import { useI18nStore } from '@/i18n';
 import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWorkspaceMenu';
@@ -31,8 +32,6 @@ export const Navbar: React.FC = () => {
 
   const userName = user?.name || 'Người dùng';
   const userEmail = user?.email || '';
-  const userAvatarUrl = getAvatarImageUrl(user?.avatar);
-  const userInitials = getInitials(userName);
 
   const handleLogout = () => {
     logout();
@@ -256,17 +255,7 @@ export const Navbar: React.FC = () => {
                     border: '1px solid rgba(226, 232, 240, 0.9)',
                   }}
                 >
-                  <Avatar
-                    src={userAvatarUrl}
-                    size={28}
-                    style={{
-                      background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                      fontWeight: 700,
-                      fontSize: 12,
-                    }}
-                  >
-                    {userInitials}
-                  </Avatar>
+                  <AccountAvatar name={userName} avatar={user?.avatar} size={28} />
                   <span style={{ color: '#0f172a', fontSize: 13, fontWeight: 600 }}>
                     {userName.split(' ').slice(-1)[0]}
                   </span>
@@ -434,17 +423,7 @@ export const Navbar: React.FC = () => {
         {isAuthenticated ? (
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-100">
-              <Avatar
-                src={userAvatarUrl}
-                size={36}
-                style={{
-                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                  fontWeight: 700,
-                  fontSize: 14,
-                }}
-              >
-                {userInitials}
-              </Avatar>
+              <AccountAvatar name={userName} avatar={user?.avatar} size={36} />
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-bold text-slate-900 truncate">{userName}</div>
                 <div className="text-xs text-slate-500 truncate">{userEmail}</div>

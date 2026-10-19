@@ -31,6 +31,7 @@ vi.mock('@/stores/authStore', () => ({
     updateUser: mockUpdateUser,
   }),
   getInitials: (name?: string) => (name ? name.charAt(0).toUpperCase() : 'U'),
+  getAvatarImageUrl: (avatar?: string | null) => avatar ?? undefined,
 }));
 
 describe('CandidateProfilePage', () => {

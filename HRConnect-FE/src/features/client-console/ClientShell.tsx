@@ -10,9 +10,9 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Dropdown } from 'antd';
 import { BankOutlined, CloseOutlined, LogoutOutlined, MenuOutlined, PlusOutlined, KeyOutlined } from '@ant-design/icons';
-import { getAvatarImageUrl, useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
-import { Initials } from '@/features/admin-console/ui';
+import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
@@ -64,7 +64,6 @@ export const ClientShell: React.FC = () => {
   };
 
   const name = user?.name || 'Doanh nghiệp';
-  const avatarUrl = getAvatarImageUrl(user?.avatar);
   const isActive = (to: string) => location.pathname === to || location.pathname.startsWith(`${to}/`);
 
   return (
@@ -134,15 +133,7 @@ export const ClientShell: React.FC = () => {
                 aria-label="Tài khoản"
                 className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-2 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] sm:pr-3"
               >
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={name}
-                    className="h-[34px] w-[34px] rounded-full object-cover border border-solid border-slate-200"
-                  />
-                ) : (
-                  <Initials name={name} size={34} />
-                )}
+                <AccountAvatar name={name} avatar={user?.avatar} size={34} />
                 <span className="hidden text-left leading-tight md:block">
                   <span className="block max-w-[160px] truncate text-sm font-semibold text-slate-900">{name}</span>
                   <span className="block max-w-[160px] truncate text-xs text-slate-500">{user?.email}</span>

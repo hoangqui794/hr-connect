@@ -1,0 +1,673 @@
+
+> hr-connect@1.0.0 test
+> vitest run --run
+
+
+ RUN  v2.1.9 D:/Ki_9/HRConnect/HRConnect-FE
+
+ ✓ src/services/api/rbacApi.test.ts (15 tests) 21ms
+stderr | src/features/portal/CandidateApplicationDetailPage.test.tsx > CandidateApplicationDetailPage > loads MF-04 application with interviews, offers, and allowedActions
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+stderr | src/features/portal/CandidateApplicationDetailPage.test.tsx > CandidateApplicationDetailPage > submits ACCEPTED offer response when clicking Chấp nhận
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\@rc-component\portal\lib\useScrollLocker.js:27:72
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/portal/CandidateApplicationDetailPage.test.tsx > CandidateApplicationDetailPage > submits DECLINED offer response with reason when clicking Từ chối
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\@rc-component\portal\lib\useScrollLocker.js:27:72
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/portal/CandidateApplicationDetailPage.test.tsx > CandidateApplicationDetailPage > handles 409 Conflict gracefully when withdrawing application
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\@rc-component\portal\lib\useScrollLocker.js:27:72
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/portal/CandidateApplicationDetailPage.test.tsx > CandidateApplicationDetailPage > renders error state with retry button when detail request fails
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/v1/recruitment/applications/application-1/timeline
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | src/features/portal/CandidateApplicationDetailPage.test.tsx > CandidateApplicationDetailPage > falls back to legacy MF-02 endpoint if recruitment detail fails
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/v1/recruitment/applications/application-1/timeline
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ✓ src/features/portal/CandidateApplicationDetailPage.test.tsx (10 tests) 12642ms
+   ✓ CandidateApplicationDetailPage > loads MF-04 application with interviews, offers, and allowedActions 1250ms
+   ✓ CandidateApplicationDetailPage > submits ACCEPTED offer response when clicking Chấp nhận 822ms
+   ✓ CandidateApplicationDetailPage > submits DECLINED offer response with reason when clicking Từ chối 3850ms
+   ✓ CandidateApplicationDetailPage > hides Chấp nhận / Từ chối buttons if offer is expired or status is not SENT 1582ms
+   ✓ CandidateApplicationDetailPage > renders empty states for interviews and offers when arrays are empty 654ms
+   ✓ CandidateApplicationDetailPage > handles 409 Conflict gracefully when withdrawing application 3173ms
+   ✓ CandidateApplicationDetailPage > renders error state with retry button when detail request fails 448ms
+   ✓ CandidateApplicationDetailPage > falls back to legacy MF-02 endpoint if recruitment detail fails 660ms
+ ✓ src/services/apiClient.test.ts (14 tests) 25ms
+ ✓ src/services/api/mf04Api.test.ts (11 tests) 22ms
+stderr | src/features/finance-mf05/PlacementDetailPage.test.tsx > PlacementDetailPage & PlacementDetailView > renders loading state initially
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+stderr | src/features/finance-mf05/PlacementDetailPage.test.tsx > PlacementDetailPage & PlacementDetailView > allows client to report resignation when warranty is active
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\@rc-component\portal\lib\useScrollLocker.js:27:72
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/finance-mf05/PlacementDetailPage.test.tsx > PlacementDetailPage & PlacementDetailView > allows client to report resignation when warranty is active
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["placements","plc-1"]
+
+stderr | src/features/finance-mf05/PlacementDetailPage.test.tsx > PlacementDetailPage & PlacementDetailView > allows internal HR to resolve resignation when warranty is claimed
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\@rc-component\portal\lib\useScrollLocker.js:27:72
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/finance-mf05/PlacementDetailPage.test.tsx > PlacementDetailPage & PlacementDetailView > allows internal HR to resolve resignation when warranty is claimed
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["placements","plc-1"]
+
+ ✓ src/features/finance-mf05/PlacementDetailPage.test.tsx (6 tests) 9416ms
+   ✓ PlacementDetailPage & PlacementDetailView > renders error state with retry button when query fails 952ms
+   ✓ PlacementDetailPage & PlacementDetailView > renders full placement details (candidate, job, company, salary, probation, warranty, progress bars) 783ms
+   ✓ PlacementDetailPage & PlacementDetailView > allows client to report resignation when warranty is active 4015ms
+   ✓ PlacementDetailPage & PlacementDetailView > allows internal HR to resolve resignation when warranty is claimed 3253ms
+stderr | src/features/admin-console/AdminUserAuthorizationPage.test.tsx > AdminUserAuthorizationPage > renders prompt when no user is selected
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+stderr | src/features/admin-console/AdminUserAuthorizationPage.test.tsx > AdminUserAuthorizationPage > loads user authorization details and displays roles and effective permissions with sourceRoles
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/admin-console/AdminUserAuthorizationPage.test.tsx > AdminUserAuthorizationPage > loads user authorization details and displays roles and effective permissions with sourceRoles
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/admin-console/AdminUserAuthorizationPage.test.tsx > AdminUserAuthorizationPage > enforces self-role mutation prevention when logged-in admin views themselves
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/admin-console/AdminUserAuthorizationPage.test.tsx > AdminUserAuthorizationPage > enforces self-role mutation prevention when logged-in admin views themselves
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/admin-console/AdminUserAuthorizationPage.test.tsx > AdminUserAuthorizationPage > allows opening Assign Custom Role modal for another user
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/admin-console/AdminUserAuthorizationPage.test.tsx > AdminUserAuthorizationPage > allows opening Assign Custom Role modal for another user
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/admin-console/AdminUserAuthorizationPage.test.tsx > AdminUserAuthorizationPage > allows opening Assign Custom Role modal for another user
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\@rc-component\portal\lib\useScrollLocker.js:27:72
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/admin-console/AdminUserAuthorizationPage.test.tsx > AdminUserAuthorizationPage > allows opening Revoke Custom Role modal and confirms revoke
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/admin-console/AdminUserAuthorizationPage.test.tsx > AdminUserAuthorizationPage > allows opening Revoke Custom Role modal and confirms revoke
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/admin-console/AdminUserAuthorizationPage.test.tsx > AdminUserAuthorizationPage > allows opening Revoke Custom Role modal and confirms revoke
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\@rc-component\portal\lib\useScrollLocker.js:27:72
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+ ✓ src/features/admin-console/AdminUserAuthorizationPage.test.tsx (5 tests) 18334ms
+stderr | src/features/admin-console/AdminUserAuthorizationPage.test.tsx > AdminUserAuthorizationPage > allows opening Revoke Custom Role modal and confirms revoke
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+   ✓ AdminUserAuthorizationPage > loads user authorization details and displays roles and effective permissions with sourceRoles 3918ms
+   ✓ AdminUserAuthorizationPage > enforces self-role mutation prevention when logged-in admin views themselves 3218ms
+   ✓ AdminUserAuthorizationPage > allows opening Assign Custom Role modal for another user 3639ms
+   ✓ AdminUserAuthorizationPage > allows opening Revoke Custom Role modal and confirms revoke 7285ms
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > renders loading state when fetching data
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > renders error state with retry button when API fails
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > renders error state with retry button when API fails
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > renders empty state when there are no deliveries
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > renders empty state when there are no deliveries
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > renders progress summary and delivery items with 7-day deadline countdown
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > renders progress summary and delivery items with 7-day deadline countdown
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > allows Client to accept CV and calls decideDelivery API
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > allows Client to accept CV and calls decideDelivery API
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > allows Client to accept CV and calls decideDelivery API
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\@rc-component\portal\lib\useScrollLocker.js:27:72
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > allows Client to accept CV and calls decideDelivery API
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: Instance created by `useForm` is not connected to any Form element. Forget to pass `form` prop?
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > allows Client to reject CV with a valid reason code
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > allows Client to reject CV with a valid reason code
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > allows Client to reject CV with a valid reason code
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\@rc-component\portal\lib\useScrollLocker.js:27:72
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > allows Client to reject CV with a valid reason code
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > displays overdue label and disables decision buttons when 7-day review window has closed
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/sourcing/SourcingDeliveriesView.test.tsx > SourcingDeliveriesView > displays overdue label and disables decision buttons when 7-day review window has closed
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+ ✓ src/features/sourcing/SourcingDeliveriesView.test.tsx (7 tests) 11555ms
+   ✓ SourcingDeliveriesView > renders error state with retry button when API fails 339ms
+   ✓ SourcingDeliveriesView > renders progress summary and delivery items with 7-day deadline countdown 825ms
+   ✓ SourcingDeliveriesView > allows Client to accept CV and calls decideDelivery API 2817ms
+   ✓ SourcingDeliveriesView > allows Client to reject CV with a valid reason code 5631ms
+   ✓ SourcingDeliveriesView > displays overdue label and disables decision buttons when 7-day review window has closed 1558ms
+stderr | src/features/candidates/CandidateSavedJobsPage.test.tsx > CandidateSavedJobsPage component > renders loading state initially
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/features/candidates/CandidateSavedJobsPage.test.tsx (6 tests) 1522ms
+   ✓ CandidateSavedJobsPage component > renders error state with retry button when query fails 385ms
+   ✓ CandidateSavedJobsPage component > renders list of saved jobs with status badges, metadata, and quick action buttons 304ms
+   ✓ CandidateSavedJobsPage component > calls unsaveJob when user confirms unsave 394ms
+stderr | src/features/admin-console/AdminCommissionRulesPage.test.tsx > AdminCommissionRulesPage & Toggle Commission Rule > renders loading skeleton initially when query is in progress
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["admin-service-types"]
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["admin-milestones"]
+
+stderr | src/features/admin-console/AdminCommissionRulesPage.test.tsx > AdminCommissionRulesPage & Toggle Commission Rule > renders error state with retry button when query fails
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["admin-service-types"]
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["admin-milestones"]
+
+stderr | src/features/admin-console/AdminCommissionRulesPage.test.tsx > AdminCommissionRulesPage & Toggle Commission Rule > renders error state with retry button when query fails
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/admin-console/AdminCommissionRulesPage.test.tsx > AdminCommissionRulesPage & Toggle Commission Rule > renders empty state when there are no commission rules matching filter
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["admin-service-types"]
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["admin-milestones"]
+
+stderr | src/features/admin-console/AdminCommissionRulesPage.test.tsx > AdminCommissionRulesPage & Toggle Commission Rule > renders commission rules list with switches reflecting active state
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["admin-service-types"]
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["admin-milestones"]
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/admin-console/AdminCommissionRulesPage.test.tsx > AdminCommissionRulesPage & Toggle Commission Rule > activates an inactive commission rule when switch is clicked
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["admin-service-types"]
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["admin-milestones"]
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/admin-console/AdminCommissionRulesPage.test.tsx > AdminCommissionRulesPage & Toggle Commission Rule > shows confirmation modal before deactivating an active rule
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["admin-service-types"]
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["admin-milestones"]
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/admin-console/AdminCommissionRulesPage.test.tsx > AdminCommissionRulesPage & Toggle Commission Rule > shows confirmation modal before deactivating an active rule
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\@rc-component\portal\lib\useScrollLocker.js:27:72
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+ ✓ src/features/admin-console/AdminCommissionRulesPage.test.tsx (6 tests) 5541ms
+   ✓ AdminCommissionRulesPage & Toggle Commission Rule > renders loading skeleton initially when query is in progress 330ms
+   ✓ AdminCommissionRulesPage & Toggle Commission Rule > renders error state with retry button when query fails 1165ms
+   ✓ AdminCommissionRulesPage & Toggle Commission Rule > renders empty state when there are no commission rules matching filter 974ms
+   ✓ AdminCommissionRulesPage & Toggle Commission Rule > renders commission rules list with switches reflecting active state 512ms
+   ✓ AdminCommissionRulesPage & Toggle Commission Rule > activates an inactive commission rule when switch is clicked 563ms
+   ✓ AdminCommissionRulesPage & Toggle Commission Rule > shows confirmation modal before deactivating an active rule 1992ms
+stderr | src/features/finance-mf05/ReplacementQuotaCard.test.tsx > ReplacementQuotaCard > renders loading skeleton when fetching data
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+stderr | src/features/finance-mf05/ReplacementQuotaCard.test.tsx > ReplacementQuotaCard > renders error state with retry button when query fails
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/finance-mf05/ReplacementQuotaCard.test.tsx > ReplacementQuotaCard > renders error state with retry button when query fails
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/finance-mf05/ReplacementQuotaCard.test.tsx > ReplacementQuotaCard > renders empty state when there are no replacement slots
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/finance-mf05/ReplacementQuotaCard.test.tsx > ReplacementQuotaCard > renders empty state when there are no replacement slots
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/finance-mf05/ReplacementQuotaCard.test.tsx > ReplacementQuotaCard > renders replacement slot items with countdown and status badges
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/finance-mf05/ReplacementQuotaCard.test.tsx > ReplacementQuotaCard > renders replacement slot items with countdown and status badges
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/finance-mf05/ReplacementQuotaCard.test.tsx > ReplacementQuotaCard > allows Client to click "Sử dụng suất" to navigate to job creation with replacement quota
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/finance-mf05/ReplacementQuotaCard.test.tsx > ReplacementQuotaCard > allows Client to click "Sử dụng suất" to navigate to job creation with replacement quota
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/finance-mf05/ReplacementQuotaCard.test.tsx > ReplacementQuotaCard > allows Internal HR to cancel a slot with a reason
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+
+stderr | src/features/finance-mf05/ReplacementQuotaCard.test.tsx > ReplacementQuotaCard > allows Internal HR to cancel a slot with a reason
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-table\lib\Table.js:427:71
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+stderr | src/features/finance-mf05/ReplacementQuotaCard.test.tsx > ReplacementQuotaCard > allows Internal HR to cancel a slot with a reason
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Error: Not implemented: window.getComputedStyle(elt, pseudoElt)
+    at module.exports (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\not-implemented.js:9:17)
+    at window.getComputedStyle (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\jsdom\lib\jsdom\browser\Window.js:895:7)
+    at measureScrollbarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:35:32)
+    at getTargetScrollBarSize (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\getScrollBarSize.js:83:10)
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\@rc-component\portal\lib\useScrollLocker.js:27:72
+    at D:\Ki_9\HRConnect\HRConnect-FE\node_modules\rc-util\lib\hooks\useLayoutEffect.js:18:12
+    at commitHookEffectListMount (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:23189:26)
+    at commitPassiveMountOnFiber (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24970:11)
+    at commitPassiveMountEffects_complete (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24930:9)
+    at commitPassiveMountEffects_begin (D:\Ki_9\HRConnect\HRConnect-FE\node_modules\react-dom\cjs\react-dom.development.js:24917:7) undefined
+
+ ✓ src/features/finance-mf05/ReplacementQuotaCard.test.tsx (6 tests) 12883ms
+   ✓ ReplacementQuotaCard > renders error state with retry button when query fails 442ms
+   ✓ ReplacementQuotaCard > renders replacement slot items with countdown and status badges 1285ms
+   ✓ ReplacementQuotaCard > allows Client to click "Sử dụng suất" to navigate to job creation with replacement quota 4353ms
+   ✓ ReplacementQuotaCard > allows Internal HR to cancel a slot with a reason 6418ms
+stderr | src/features/finance-mf05/ReplacementQuotaCard.test.tsx > ReplacementQuotaCard > allows Internal HR to cancel a slot with a reason
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+

@@ -13,12 +13,16 @@ interface AvatarUploadProps {
   size?: number;
   className?: string;
   showActions?: boolean;
+  statusColor?: string;
+  statusLabel?: string;
 }
 
 export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   size = 80,
   className = '',
   showActions = true,
+  statusColor,
+  statusLabel = 'Trạng thái hồ sơ',
 }) => {
   const { message } = AntApp.useApp();
   const { user, updateUser, syncCurrentUser } = useAuthStore();
@@ -117,6 +121,15 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
             />
           ) : (
             <span>{initials}</span>
+          )}
+          {statusColor && (
+            <span
+              role="status"
+              aria-label={statusLabel}
+              title={statusLabel}
+              className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-solid border-white shadow-sm"
+              style={{ backgroundColor: statusColor }}
+            />
           )}
         </div>
 

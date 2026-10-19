@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
-  Layout, Input, Badge, Dropdown, Avatar, Space, Modal, List,
+  Layout, Input, Badge, Dropdown, Space, Modal, List,
   Typography, Tooltip, Button, Tag, message,
 } from 'antd';
 import {
@@ -8,7 +8,8 @@ import {
   ThunderboltOutlined, KeyOutlined, UserOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { getAvatarImageUrl, getInitials, useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/stores/authStore';
+import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { RoleBadge } from '@/components/common/RoleBadge';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
@@ -44,8 +45,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
   // Dynamic user display without mock fallback
   const userName = user?.name || 'Người dùng';
   const userEmail = user?.email || '';
-  const userAvatarUrl = getAvatarImageUrl(user?.avatar);
-  const userInitials = getInitials(user?.name);
 
   const filteredSearch = SEARCH_ITEMS.filter(
     (item) =>
@@ -182,19 +181,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
 
           {/* User Avatar Menu */}
           <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomRight">
-            <Avatar
-              src={userAvatarUrl}
-              size={34}
-              style={{
-                background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                cursor: 'pointer',
-                fontWeight: 700,
-                fontSize: 13,
-                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
-              }}
-            >
-              {userInitials}
-            </Avatar>
+            <AccountAvatar name={userName} avatar={user?.avatar} size={34} />
           </Dropdown>
         </Space>
       </Header>
