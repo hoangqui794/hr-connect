@@ -304,6 +304,7 @@ export const ApplicationWorkbench: React.FC<{
         salaryPeriod: offer.salaryPeriod ?? 'MONTHLY',
         startDate: offer.startDate ? dayjs(offer.startDate) : undefined,
         expiryDate: offer.expiryDate ? dayjs(offer.expiryDate) : undefined,
+        offerDocumentUrl: offer.offerDocumentUrl ?? undefined,
       });
     } else if (kind === 'offer') form.setFieldsValue({ currencyCode: 'VND', salaryBasis: 'GROSS', salaryPeriod: 'MONTHLY' });
     if (kind === 'schedule') form.setFieldsValue({ durationMinutes: 60, interviewType: 'Trực tiếp' });
@@ -417,6 +418,8 @@ export const ApplicationWorkbench: React.FC<{
                 salaryPeriod: v.salaryPeriod,
                 startDate: day(v.startDate),
                 expiryDate: day(v.expiryDate),
+                // Sending an empty value intentionally clears a previously attached link.
+                offerDocumentUrl: trim(v.offerDocumentUrl) ?? '',
                 concurrencyToken: offer.concurrencyToken,
               })
             : clientActionsApi.createOffer(d.applicationId, {
@@ -426,6 +429,7 @@ export const ApplicationWorkbench: React.FC<{
                 salaryPeriod: v.salaryPeriod,
                 startDate: day(v.startDate),
                 expiryDate: day(v.expiryDate),
+                offerDocumentUrl: trim(v.offerDocumentUrl),
                 concurrencyToken: token,
               })
         );
@@ -1063,6 +1067,23 @@ export const ApplicationWorkbench: React.FC<{
                   <DatePicker format="DD/MM/YYYY" disabledDate={notPast} className="w-full" />
                 </Form.Item>
               </div>
+              <Form.Item
+                name="offerDocumentUrl"
+                label="Link tài liệu/PDF Offer (không bắt buộc)"
+                extra={has('UPDATE_OFFER') ? 'Để trống rồi lưu để gỡ link tài liệu hiện có.' : undefined}
+                rules={[
+                  { type: 'url', message: 'Link tài liệu không hợp lệ.' },
+                  { max: 2048, message: 'Link tối đa 2048 ký tự.' },
+                  {
+                    validator: (_, value: string | undefined) =>
+                      !value || /^https?:\/\//i.test(value.trim())
+                        ? Promise.resolve()
+                        : Promise.reject(new Error('Link tài liệu phải bắt đầu bằng http:// hoặc https://.')),
+                  },
+                ]}
+              >
+                <Input placeholder="https://example.com/offer.pdf" />
+              </Form.Item>
             </>
           )}
 

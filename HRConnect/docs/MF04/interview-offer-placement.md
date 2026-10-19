@@ -139,6 +139,11 @@ chính mình. Người tham gia Interview phải là Company User đang hoạt �
 feedback nội bộ, actor nội bộ, lý do history nội bộ hoặc concurrency token của
 Interview.
 
+Khi Company tạo lịch, dời lịch hoặc hủy lịch, hệ thống tạo notification in-app
+an toàn cho Candidate. Nội dung chỉ nêu thay đổi của lịch thuộc Candidate đó;
+không tiết lộ người phỏng vấn, feedback hay thông tin nội bộ. Việc cập nhật
+nội dung lịch không tự tạo notification riêng.
+
 Khi ghi kết quả, Interview chuyển sang `COMPLETED`. Kết quả có ba giá trị:
 
 | Kết quả | Điều kiện tiếp theo | Application sau thao tác |
@@ -195,10 +200,10 @@ lệ.
 Candidate chỉ phản hồi Offer của chính mình. Candidate không được sửa nội dung,
 lương, hạn phản hồi hay trạng thái Offer của Candidate khác.
 
-> **Lưu ý về notification hiện có:** background worker hiện tạo in-app
-> notification an toàn cho Candidate khi Offer hết hạn. Không mô tả việc gửi
-> notification khi Company tạo lịch Interview hoặc nhấn gửi Offer là chức năng
-> đã có, vì các handler hiện tại chưa thực hiện side effect đó.
+Hệ thống tạo notification in-app an toàn cho Candidate khi Company gửi hoặc
+thu hồi Offer, và khi worker cho Offer hết hạn. Khi Candidate chấp nhận hoặc
+từ chối Offer, hệ thống thông báo lại cho người đã tạo Offer. Tạo hay sửa draft
+không gửi notification vì Candidate chưa nhận Offer.
 
 ### 5.5. Ngày dự kiến, không đi làm và Placement
 
@@ -345,6 +350,5 @@ ownership.
 
 - probation, warranty, commission, payout và đối soát phí;
 - quy trình Internal HR điều phối Interview, Offer hoặc Placement thay Company;
-- thông báo tự động khi tạo/dời Interview hoặc khi Company gửi Offer;
 - workflow tự động chuyển Placement sang MF-05;
 - hiển thị chi tiết Interview/Offer/Placement cho Affiliate.
