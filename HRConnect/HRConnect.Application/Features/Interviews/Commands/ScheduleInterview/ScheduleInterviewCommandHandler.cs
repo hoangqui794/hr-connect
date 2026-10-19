@@ -25,6 +25,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
     private readonly ILogger<ScheduleInterviewCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationRepository? _notificationRepository;
+    private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
 
     public ScheduleInterviewCommandHandler(
         IInterviewRepository interviewRepository,
@@ -33,7 +34,8 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
         IUnitOfWork unitOfWork,
         ILogger<ScheduleInterviewCommandHandler> logger,
         IAuditLogService auditLogService,
-        INotificationRepository? notificationRepository = null)
+        INotificationRepository? notificationRepository = null,
+        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
     {
         _interviewRepository = interviewRepository;
         _applicationRepository = applicationRepository;
@@ -42,6 +44,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
         _logger = logger;
         _auditLogService = auditLogService;
         _notificationRepository = notificationRepository;
+        _candidateDeliveryService = candidateDeliveryService;
     }
 
     public async Task<ScheduleInterviewResponse> Handle(ScheduleInterviewCommand request, CancellationToken cancellationToken)
@@ -113,6 +116,11 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             _logger.LogWarning("User {UserId} không có quyền tạo lịch phỏng vấn.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền tạo lịch phỏng vấn.");
         }
+
+        // A new interview changes the recruitment stage, so it must not be created without
+        // a reachable Candidate delivery channel. Existing accounts use in-app delivery;
+        // unlinked candidates receive a durable email outbox row.
+        var requiredDelivery = _candidateDeliveryService?.RequireReachable(application.Candidate);
 
         if (application.Interviews.Any(i => i.Status == InterviewStates.Scheduled))
         {
@@ -234,7 +242,19 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             }, cancellationToken);
         }
 
-        if (_notificationRepository != null && application.Candidate?.UserId is { } candidateUserId)
+        CandidateRecruitmentDeliveryOutcome? deliveryOutcome = null;
+        if (_candidateDeliveryService != null)
+        {
+            deliveryOutcome = await _candidateDeliveryService.DeliverInterviewAsync(
+                application,
+                interview,
+                InterviewCandidateDeliveryEvent.Scheduled,
+                reason: null,
+                occurredAt: now,
+                decision: requiredDelivery,
+                cancellationToken: cancellationToken);
+        }
+        else if (_notificationRepository != null && application.Candidate?.UserId is { } candidateUserId)
         {
             await _notificationRepository.AddAsync(new Notification
             {
@@ -277,6 +297,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
                 ConcurrencyToken = concurrencyToken,
                 CreatedAt = now,
                 Participants = participantsDto.ToList()
+                ,DeliveryChannel = deliveryOutcome?.Channel.ToString().ToUpperInvariant()
             }
         };
     }

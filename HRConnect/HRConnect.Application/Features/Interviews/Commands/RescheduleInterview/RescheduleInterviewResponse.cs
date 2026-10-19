@@ -30,4 +30,6 @@ public class RescheduleInterviewData
     public Guid ConcurrencyToken { get; set; }
 
     public DateTime RescheduledAt { get; set; }
+
+    public string? DeliveryChannel { get; set; }
 }

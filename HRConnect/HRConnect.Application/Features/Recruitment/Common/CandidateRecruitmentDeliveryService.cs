@@ -1,0 +1,175 @@
+using System.Text.Json;
+using HRConnect.Application.Common.Email;
+using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Domain.Entities;
+using JobApplication = HRConnect.Domain.Entities.Application;
+
+namespace HRConnect.Application.Features.Recruitment.Common;
+
+public interface ICandidateRecruitmentDeliveryService
+{
+    CandidateRecruitmentDeliveryDecision RequireReachable(Candidate? candidate);
+
+    Task<CandidateRecruitmentDeliveryOutcome> DeliverInterviewAsync(
+        JobApplication application,
+        Interview interview,
+        InterviewCandidateDeliveryEvent deliveryEvent,
+        string? reason,
+        DateTime occurredAt,
+        CandidateRecruitmentDeliveryDecision? decision = null,
+        CancellationToken cancellationToken = default);
+}
+
+public enum InterviewCandidateDeliveryEvent
+{
+    Scheduled,
+    Rescheduled,
+    Cancelled
+}
+
+public sealed record CandidateRecruitmentDeliveryOutcome(CandidateRecruitmentDeliveryChannel Channel)
+{
+    public static CandidateRecruitmentDeliveryOutcome Unavailable { get; } =
+        new(CandidateRecruitmentDeliveryChannel.Unavailable);
+}
+
+public sealed class CandidateRecruitmentDeliverySettings
+{
+    public const string SectionName = "CandidateRecruitmentDelivery";
+
+    /// <summary>Public web application origin used by email call-to-action links.</summary>
+    public string PortalBaseUrl { get; set; } = "https://hrconnectvn.online";
+}
+
+/// <summary>
+/// Persists a Candidate notification through the correct durable channel. It deliberately
+/// creates either an in-app notification or an email outbox row, never both, to avoid duplicate messages.
+/// </summary>
+public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentDeliveryService
+{
+    private readonly INotificationRepository _notifications;
+    private readonly IEmailOutboxRepository _emailOutboxes;
+    private readonly CandidateRecruitmentDeliverySettings _settings;
+
+    public CandidateRecruitmentDeliveryService(
+        INotificationRepository notifications,
+        IEmailOutboxRepository emailOutboxes,
+        Microsoft.Extensions.Options.IOptions<CandidateRecruitmentDeliverySettings> settings)
+    {
+        _notifications = notifications;
+        _emailOutboxes = emailOutboxes;
+        _settings = settings.Value;
+    }
+
+    public CandidateRecruitmentDeliveryDecision RequireReachable(Candidate? candidate) =>
+        CandidateRecruitmentDeliveryPolicy.RequireReachable(candidate);
+
+    public async Task<CandidateRecruitmentDeliveryOutcome> DeliverInterviewAsync(
+        JobApplication application,
+        Interview interview,
+        InterviewCandidateDeliveryEvent deliveryEvent,
+        string? reason,
+        DateTime occurredAt,
+        CandidateRecruitmentDeliveryDecision? decision = null,
+        CancellationToken cancellationToken = default)
+    {
+        var resolved = decision ?? CandidateRecruitmentDeliveryPolicy.Resolve(application.Candidate);
+        if (resolved.Channel == CandidateRecruitmentDeliveryChannel.Unavailable)
+        {
+            return CandidateRecruitmentDeliveryOutcome.Unavailable;
+        }
+
+        if (resolved.Channel == CandidateRecruitmentDeliveryChannel.InApp)
+        {
+            await _notifications.AddAsync(CreateInterviewNotification(
+                application, interview, deliveryEvent, resolved.UserId!.Value, occurredAt), cancellationToken);
+        }
+        else
+        {
+            var payload = CreateInterviewEmailPayload(application, interview, reason);
+            await _emailOutboxes.AddAsync(new EmailOutbox
+            {
+                EmailOutboxId = Guid.NewGuid(),
+                RecipientEmail = resolved.RecipientEmail!,
+                TemplateCode = GetInterviewTemplateCode(deliveryEvent),
+                Subject = null,
+                Payload = JsonSerializer.Serialize(payload),
+                Status = "PENDING",
+                RetryCount = 0,
+                CreatedAt = occurredAt
+            }, cancellationToken);
+        }
+
+        return new CandidateRecruitmentDeliveryOutcome(resolved.Channel);
+    }
+
+    private Notification CreateInterviewNotification(
+        JobApplication application,
+        Interview interview,
+        InterviewCandidateDeliveryEvent deliveryEvent,
+        Guid userId,
+        DateTime occurredAt)
+    {
+        var (title, message) = deliveryEvent switch
+        {
+            InterviewCandidateDeliveryEvent.Scheduled => (
+                $"Lịch phỏng vấn Vòng {interview.InterviewRound}",
+                $"Bạn có lịch phỏng vấn Vòng {interview.InterviewRound} vào lúc {interview.ScheduledAt:dd/MM/yyyy HH:mm}."),
+            InterviewCandidateDeliveryEvent.Rescheduled => (
+                $"Dời lịch phỏng vấn Vòng {interview.InterviewRound}",
+                $"Lịch phỏng vấn Vòng {interview.InterviewRound} đã được dời sang {interview.ScheduledAt:dd/MM/yyyy HH:mm}."),
+            _ => (
+                $"Huỷ lịch phỏng vấn Vòng {interview.InterviewRound}",
+                $"Lịch phỏng vấn Vòng {interview.InterviewRound} đã bị huỷ.")
+        };
+
+        return new Notification
+        {
+            NotificationId = Guid.NewGuid(),
+            UserId = userId,
+            NotificationType = "INTERVIEW",
+            Title = title,
+            Message = message,
+            RelatedEntityType = "INTERVIEW",
+            RelatedEntityId = interview.InterviewId,
+            Metadata = JsonSerializer.Serialize(new
+            {
+                applicationId = application.ApplicationId,
+                interviewId = interview.InterviewId,
+                round = interview.InterviewRound,
+                scheduledAt = interview.ScheduledAt,
+                eventType = deliveryEvent.ToString().ToUpperInvariant()
+            }),
+            IsRead = false,
+            CreatedAt = occurredAt
+        };
+    }
+
+    private RecruitmentCandidateEmailPayload CreateInterviewEmailPayload(
+        JobApplication application,
+        Interview interview,
+        string? reason) =>
+        new(
+            application.Candidate?.FullName ?? "bạn",
+            application.Job?.Title ?? "vị trí ứng tuyển",
+            application.Job?.Company?.CompanyName,
+            BuildCandidatePortalUrl(),
+            interview.InterviewRound,
+            interview.ScheduledAt,
+            interview.DurationMinutes,
+            interview.InterviewType,
+            interview.Location,
+            interview.MeetingLink,
+            Reason: reason);
+
+    private string BuildCandidatePortalUrl() =>
+        $"{_settings.PortalBaseUrl.TrimEnd('/')}/register?role=CANDIDATE";
+
+    private static string GetInterviewTemplateCode(InterviewCandidateDeliveryEvent deliveryEvent) => deliveryEvent switch
+    {
+        InterviewCandidateDeliveryEvent.Scheduled => RecruitmentCandidateEmailTemplates.InterviewScheduled,
+        InterviewCandidateDeliveryEvent.Rescheduled => RecruitmentCandidateEmailTemplates.InterviewRescheduled,
+        InterviewCandidateDeliveryEvent.Cancelled => RecruitmentCandidateEmailTemplates.InterviewCancelled,
+        _ => throw new ArgumentOutOfRangeException(nameof(deliveryEvent), deliveryEvent, null)
+    };
+}

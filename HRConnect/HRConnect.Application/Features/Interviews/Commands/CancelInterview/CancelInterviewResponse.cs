@@ -26,4 +26,6 @@ public class CancelInterviewData
     public Guid ConcurrencyToken { get; set; }
 
     public DateTime CancelledAt { get; set; }
+
+    public string? DeliveryChannel { get; set; }
 }

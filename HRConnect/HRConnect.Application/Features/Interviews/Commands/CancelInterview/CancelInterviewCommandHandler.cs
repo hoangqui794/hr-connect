@@ -21,6 +21,7 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
     private readonly ILogger<CancelInterviewCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationRepository? _notificationRepository;
+    private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
 
     public CancelInterviewCommandHandler(
         IInterviewRepository interviewRepository,
@@ -28,7 +29,8 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
         IUnitOfWork unitOfWork,
         ILogger<CancelInterviewCommandHandler> logger,
         IAuditLogService auditLogService,
-        INotificationRepository? notificationRepository = null)
+        INotificationRepository? notificationRepository = null,
+        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
     {
         _interviewRepository = interviewRepository;
         _companyUserRepository = companyUserRepository;
@@ -36,6 +38,7 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
         _logger = logger;
         _auditLogService = auditLogService;
         _notificationRepository = notificationRepository;
+        _candidateDeliveryService = candidateDeliveryService;
     }
 
     public async Task<CancelInterviewResponse> Handle(CancelInterviewCommand request, CancellationToken cancellationToken)
@@ -124,7 +127,18 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
             }
         }, cancellationToken);
 
-        if (_notificationRepository != null && interview.Application?.Candidate?.UserId is { } candidateUserId)
+        CandidateRecruitmentDeliveryOutcome? deliveryOutcome = null;
+        if (_candidateDeliveryService != null && interview.Application != null)
+        {
+            deliveryOutcome = await _candidateDeliveryService.DeliverInterviewAsync(
+                interview.Application,
+                interview,
+                InterviewCandidateDeliveryEvent.Cancelled,
+                request.Reason.Trim(),
+                now,
+                cancellationToken: cancellationToken);
+        }
+        else if (_notificationRepository != null && interview.Application?.Candidate?.UserId is { } candidateUserId)
         {
             await _notificationRepository.AddAsync(new Notification
             {
@@ -160,7 +174,8 @@ public class CancelInterviewCommandHandler : IRequestHandler<CancelInterviewComm
                 Status = InterviewStates.Cancelled,
                 Reason = request.Reason.Trim(),
                 ConcurrencyToken = newConcurrencyToken,
-                CancelledAt = now
+                CancelledAt = now,
+                DeliveryChannel = deliveryOutcome?.Channel.ToString().ToUpperInvariant()
             }
         };
     }
