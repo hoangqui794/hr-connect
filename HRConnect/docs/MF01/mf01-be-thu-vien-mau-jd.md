@@ -4,6 +4,8 @@
 > **Ngày:** 2026-10-15.
 > **Hiện trạng** được đối chiếu với code trên `main` ngày 15/10: chưa có bảng, API hay seed nào về mẫu JD. Tài liệu nghiệp vụ (`main-flows.md`) cũng chưa nhắc tới.
 
+> **Trạng thái 19/10:** B1–B7 đã có code và test (`JobTemplateFeatures`, `JobTemplateTests`). Lỗi bộ đếm lượt dùng luôn 0 (N19) đã sửa: form tạo job không gửi `templateId`. B8 để giai đoạn 2. File giữ lại vì code và trang Cài đặt Admin trích dẫn làm nguồn đặc tả.
+
 Ký hiệu: 🔴 làm trước · 🟠 cần làm · ⚪ để giai đoạn 2, chưa làm.
 
 ---
