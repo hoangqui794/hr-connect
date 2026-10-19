@@ -462,6 +462,7 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 
 10. Attribution ghi theo lúc ứng viên đồng ý, không theo lúc Affiliate nộp (khác cách diễn đạt "người nộp trước" trong đề tài).
 11. Dùng `SCREENING` thay cho `NEED_MORE_INFORMATION / UNDER_REVIEW`.
+12. Job `CV_SOURCING` phải đóng cọc mới mở (đã có code 17/10). Chỉ Platform Admin ghi nhận cọc ở trang Tài chính; Internal HR có được ghi nhận cọc như phí đăng tin không thì cần chốt. Job `CV_SOURCING` duyệt trước bản này vẫn `ACTIVE`, worker MF-05 chỉ tạo phiếu cọc cho chúng, không đóng lại.
 
 ---
 
@@ -590,4 +591,4 @@ Bước 1–4 của bản đầu (bảo vệ doanh thu, nối luồng sàng lọ
 2. **Hạ tầng AI:** nâng dịch vụ AI trên Render lên tối thiểu 1 CPU / 2 GB (gói Free bị Render tắt khi đang chấm), hoặc giữ AI chạy trên máy qua tunnel khi demo.
 3. **Bảo mật:** đổi các key / token đã lộ; thêm rule WAF cho tunnel AI.
 4. **Chốt và làm:** chặn tuyển quá `Quantity` (MF-04); đối soát placement của Internal HR (làm hay bỏ); màn khiếu nại SF-04 cho Affiliate và Admin (FE).
-5. **Giao diện:** lỗi trong `tasks/BUGS-2026-10-17-test-mf02-mf03.md` và `tasks/TEST-2026-10-17-mf01-mf03-3-dich-vu.md`.
+5. **Giao diện:** lỗi FE còn mở trong `tasks/FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md` (mục 5) và `tasks/TEST-2026-10-17-mf01-mf03-3-dich-vu.md`; việc hạ tầng trong `deploy/render-be-ai-local.md` (mục 7).

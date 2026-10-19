@@ -51,6 +51,9 @@ public static class BusinessSettingKeys
     public const string AffiliateRatingAverageMin = "affiliate.rating.average_min";
     public const string DisputeWindowDays = "dispute.window_days";
     public const string ContactRateLimitPerHour = "contact.rate_limit_per_hour";
+    public const string ConsentExpirationHours = "consent.expiration_hours";
+    public const string ConsentResendCooldownMinutes = "consent.resend_cooldown_minutes";
+    public const string ConsentMaxEmailSends = "consent.max_email_sends";
     public const string JobMatchMinScore = "job_match.min_score";
     public const string JobMatchMaxNotificationsPerDay = "job_match.max_notifications_per_day";
     public const string JobMatchExpiryDays = "job_match.expiry_days";
@@ -96,6 +99,15 @@ public static class BusinessSettingKeys
         new(ContactRateLimitPerHour, "CONTACT", "Số yêu cầu liên hệ tối đa mỗi giờ",
             "Số lần một địa chỉ IP được gửi form liên hệ công khai trong 1 giờ; vượt quá thì trả 429.",
             BusinessSettingType.Integer, 5m, 1m, 100m, "lần", "main-flows.md, form liên hệ"),
+        new(ConsentExpirationHours, "MF02", "Thời hạn ứng viên xác nhận lượt giới thiệu",
+            "Số giờ ứng viên có để đồng ý hoặc từ chối lượt Affiliate giới thiệu; quá hạn thì lượt nộp hết hạn. Áp dụng cho lượt gửi mới và lượt gửi lại.",
+            BusinessSettingType.Integer, 48m, 1m, 168m, "giờ", "main-flows.md, MF-02 nhánh B, SF-03"),
+        new(ConsentResendCooldownMinutes, "MF02", "Thời gian chờ giữa hai lần gửi lại email xác nhận",
+            "Affiliate phải chờ ngần này phút mới được gửi lại email xác nhận cho ứng viên.",
+            BusinessSettingType.Integer, 2m, 1m, 60m, "phút", "main-flows.md, MF-02 nhánh B, SF-03"),
+        new(ConsentMaxEmailSends, "MF02", "Số lần gửi email xác nhận tối đa",
+            "Tổng số email xác nhận (kể cả lần đầu) được gửi cho một lượt giới thiệu.",
+            BusinessSettingType.Integer, 5m, 1m, 10m, "lần", "main-flows.md, MF-02 nhánh B, SF-03"),
         new(JobMatchMinScore, "JOB_MATCH", "Điểm tối thiểu để gợi ý việc",
             "Điểm tương đồng CV↔JD (0-100) từ mức này trở lên mới hiện trong mục Việc phù hợp và được gửi thông báo cho ứng viên.",
             BusinessSettingType.Decimal, 70m, 0m, 100m, "điểm", "main-flows.md, gợi ý việc làm"),

@@ -2,7 +2,7 @@
 
 > **Môi trường:** backend deploy `https://hr-connect-0ykm.onrender.com`, FE chạy local (`localhost:5173`, proxy về backend Render), AI v2 chạy trên máy Quí qua tunnel `https://ai-dev.hrconnectvn.online`.
 > **Tài khoản:** Client, `internalhr@gmail.com`, `affiliate@gmail.com`, `candidate@gmail.com`. Người dùng tự đăng nhập; ứng viên affiliate xác nhận qua link email.
-> **Liên quan:** [`BUGS-2026-10-17-test-mf02-mf03.md`](BUGS-2026-10-17-test-mf02-mf03.md) (FE-1..4, BE-1..6, AI-1..5, OPS-1..4).
+> **Liên quan:** lỗi FE còn mở ở [`FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md`](FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md) mục 5; việc hạ tầng ở [`../deploy/render-be-ai-local.md`](../deploy/render-be-ai-local.md) mục 7. BE và AI của buổi test 17/10 đã sửa xong.
 
 ## 1. Kết quả tổng
 

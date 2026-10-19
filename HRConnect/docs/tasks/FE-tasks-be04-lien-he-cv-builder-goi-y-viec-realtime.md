@@ -1,4 +1,4 @@
-# FE task: Form liên hệ, tạo CV theo mẫu, việc phù hợp, chuông realtime
+# FE task: Form liên hệ, tạo CV theo mẫu, việc phù hợp, chuông realtime, lỗi FE còn mở
 
 **Người làm:** Sang · **Backend:** đã merge vào `dev` và `main` (BE-04, 2026-10-19)
 **Nghiệp vụ chi tiết:** `HRConnect/docs/main-flows.md`, mục 6.1, SF-05 → SF-08.
@@ -120,3 +120,48 @@ Màn "Tạo CV" có 3 lựa chọn: **Tải file lên** (đã có), **Chọn m�
 **Nghiệm thu:**
 - Client lên lịch phỏng vấn thì chuông của ứng viên tăng số ngay, không cần tải lại trang.
 - Tắt mạng rồi bật lại thì vẫn nhận được thông báo.
+
+---
+
+## 5. Lỗi FE còn mở từ buổi test 17/10 (MF-02 → MF-03)
+
+### 5.1. Hộp chi tiết hồ sơ không cập nhật sau khi loại / chọn
+
+- **Màn hình:** Client → Hồ sơ ứng viên → mở hồ sơ → Loại hồ sơ → chọn lý do → Xác nhận.
+- **Hiện tượng:** `PATCH /api/v1/jobs/{jobId}/applications/{applicationId}/status` trả `200` nhưng hộp chi tiết vẫn "Đang sàng lọc", 3 nút *Đưa vào dự phòng / Loại hồ sơ / Chọn ứng viên* vẫn bấm được; phải tải lại trang. Bấm tiếp sẽ gửi `concurrencyToken` cũ → `409`.
+- **Sửa:** sau khi đổi trạng thái, invalidate/refetch `GET /recruitment/applications/{id}`, `/timeline` và danh sách; khóa nút trong lúc gửi.
+- **Nghiệm thu:** loại hoặc chọn xong thì hộp chi tiết đổi trạng thái ngay, nút theo `allowedActions` mới.
+
+### 5.2. Không hiện trạng thái AI thất bại
+
+Ô **Đánh giá của AI** đang hiện "—" cho cả lúc chờ lẫn lúc `FAILED`. Hiển thị theo `aiMatch.status`:
+
+| `status` | Hiển thị |
+|---|---|
+| `PENDING` / `PROCESSING` | "AI đang chấm điểm…" |
+| `COMPLETED` | Điểm, tier, giải thích (như hiện tại) |
+| `FAILED` | "AI chưa chấm được hồ sơ này, vui lòng xem CV trực tiếp". Internal HR có thêm nút **Yêu cầu chấm lại** (API đã có) |
+
+### 5.3. Còn trang dùng mock
+
+Các file còn import `services/mockData` hoặc `mockWebSocket`:
+- `components/layout/AppShell.tsx`, `ClientLayout.tsx`, `Header.tsx`
+- `features/admin/AdminDashboard.tsx`
+- `features/affiliate/ReferralForm.tsx`
+- `features/jobs/ClientJobsPage.tsx`
+- `pages/client/ClientDashboardPage.tsx`, `pages/hr/HRDashboardPage.tsx`
+- `services/localStorageService.ts`, `services/queries/useCandidates.ts`
+
+`stores/alertStore.ts` có câu mẫu viết cứng "1.500.000 đ"; khi thay mock thì lấy số tiền từ API, không viết cứng. Chuông thông báo nên chuyển sang SignalR ở mục 4 thay cho `mockWebSocket`.
+
+### 5.4. Chi tiết phỏng vấn cho Client
+
+Commit `e92650a` mới làm chi tiết phỏng vấn cho Candidate. Client (`ClientWorkspaceInterviewsOffersPage`) cần: xem chi tiết, sửa `PUT /interviews/{id}`, tab lịch sử `GET /interviews/{id}/history`. Kiểm tra đã có chưa; chưa có thì làm.
+
+### 5.5. Màn mới (backend đã có API)
+
+- Dashboard báo cáo Admin: `GET /api/v1/reports/{overview, revenue, top-affiliates, top-companies}`.
+- Hiệu suất của tôi (Affiliate): `GET /api/v1/affiliates/me/performance`.
+- Khiếu nại trùng ứng viên (SF-04): Affiliate `/api/v1/disputes`, Platform Admin `/api/v1/admin/disputes` (xem `main-flows.md`, SF-04).
+
+**Nhắc chung:** làm giao diện thì theo quyết định thiết kế từng vai trò đã chốt (Admin, HR, Client, Candidate/Affiliate).
