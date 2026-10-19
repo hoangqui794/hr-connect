@@ -6,19 +6,23 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Avatar, Button, Popconfirm, Tooltip, Upload, App as AntApp, Spin } from 'antd';
 import { CameraOutlined, DeleteOutlined, LoadingOutlined, UserOutlined } from '@ant-design/icons';
 import { userApi } from '@/services/api/userApi';
-import { useAuthStore, getInitials } from '@/stores/authStore';
+import { useAuthStore, getAvatarImageUrl, getInitials } from '@/stores/authStore';
 import { getApiErrorMessage } from '@/services/apiClient';
 
 interface AvatarUploadProps {
   size?: number;
   className?: string;
   showActions?: boolean;
+  statusColor?: string;
+  statusLabel?: string;
 }
 
 export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   size = 80,
   className = '',
   showActions = true,
+  statusColor,
+  statusLabel = 'Trạng thái hồ sơ',
 }) => {
   const { message } = AntApp.useApp();
   const { user, updateUser, syncCurrentUser } = useAuthStore();
@@ -26,12 +30,12 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
 
-  const isHttpUrl = (url?: string) => url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:'));
-  const hasCustomAvatar = Boolean(user?.avatar && isHttpUrl(user.avatar));
+  const avatarUrl = getAvatarImageUrl(user?.avatar);
+  const hasCustomAvatar = Boolean(avatarUrl);
   const initials = getInitials(user?.name || user?.email || 'User');
   const displayedAvatar = useMemo(
-    () => previewUrl || (hasCustomAvatar ? user?.avatar : null),
-    [hasCustomAvatar, previewUrl, user?.avatar]
+    () => previewUrl || avatarUrl || null,
+    [avatarUrl, previewUrl]
   );
 
   useEffect(() => {
@@ -117,6 +121,15 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
             />
           ) : (
             <span>{initials}</span>
+          )}
+          {statusColor && (
+            <span
+              role="status"
+              aria-label={statusLabel}
+              title={statusLabel}
+              className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-solid border-white shadow-sm"
+              style={{ backgroundColor: statusColor }}
+            />
           )}
         </div>
 

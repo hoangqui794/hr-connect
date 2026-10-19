@@ -1,0 +1,157 @@
+code,name_en,name_vi,level,parent_code,sort_order
+technology,Technology & Software,,1,,1
+tech-software,Software Development,,2,technology,1
+tech-it-services,IT Services & IT Consulting,,2,technology,2
+tech-cloud,Cloud Computing,,2,technology,3
+tech-ai,Artificial Intelligence,,2,technology,4
+tech-cybersecurity,Computer and Network Security,,2,technology,5
+tech-data,Data Infrastructure & Analytics,,2,technology,6
+tech-blockchain,Blockchain & Cryptocurrency,,2,technology,7
+tech-iot,Internet of Things (IoT),,2,technology,8
+tech-hardware,Computer Hardware Manufacturing,,2,technology,9
+tech-semiconductor,Semiconductor Manufacturing,,2,technology,10
+tech-telecom,Telecommunications,,2,technology,11
+tech-mobile,Mobile App Development,,2,technology,12
+tech-gaming,Computer Games,,2,technology,13
+tech-saas,SaaS — Software as a Service,,2,technology,14
+tech-ecommerce,E-Commerce Platform,,2,technology,15
+tech-fintech,Financial Technology (FinTech),,2,technology,16
+tech-edtech,Education Technology (EdTech),,2,technology,17
+tech-healthtech,Health Technology (HealthTech),,2,technology,18
+tech-legaltech,Legal Technology (LegalTech),,2,technology,19
+tech-proptech,Property Technology (PropTech),,2,technology,20
+tech-hrtech,HR Technology (HRTech),,2,technology,21
+tech-martech,Marketing Technology (MarTech),,2,technology,22
+finance,Finance & Banking,,1,,2
+fin-banking,Banking,,2,finance,1
+fin-investment,Investment Management,,2,finance,2
+fin-insurance,Insurance,,2,finance,3
+fin-capital-markets,Capital Markets,,2,finance,4
+fin-venture,Venture Capital & Private Equity,,2,finance,5
+fin-accounting,Accounting,,2,finance,6
+fin-audit,Audit & Compliance,,2,finance,7
+fin-credit,Credit Services,,2,finance,8
+fin-wealth,Wealth Management,,2,finance,9
+fin-payments,Payments & Digital Wallets,,2,finance,10
+fin-leasing,Leasing & Finance,,2,finance,11
+fin-microfinance,Microfinance,,2,finance,12
+healthcare,Healthcare & Life Sciences,,1,,3
+hc-hospitals,Hospitals & Healthcare Systems,,2,healthcare,1
+hc-pharma,Pharmaceutical Manufacturing,,2,healthcare,2
+hc-biotech,Biotechnology Research,,2,healthcare,3
+hc-medical-devices,Medical Equipment Manufacturing,,2,healthcare,4
+hc-clinical,Clinical Research,,2,healthcare,5
+hc-dental,Dental Practices,,2,healthcare,6
+hc-veterinary,Veterinary Services,,2,healthcare,7
+hc-wellness,Wellness & Fitness Services,,2,healthcare,8
+hc-mental-health,Mental Health Services,,2,healthcare,9
+hc-diagnostics,Medical Laboratories & Diagnostics,,2,healthcare,10
+hc-telehealth,Telemedicine,,2,healthcare,11
+manufacturing,Manufacturing & Industrial,,1,,4
+mfg-auto,Automobile Manufacturing,,2,manufacturing,1
+mfg-auto-parts,Automobile Parts Manufacturing,,2,manufacturing,2
+mfg-aerospace,Aviation & Aerospace,,2,manufacturing,3
+mfg-electronics,Electronics Manufacturing,,2,manufacturing,4
+mfg-textile,Textile & Apparel Manufacturing,,2,manufacturing,5
+mfg-food,Food & Beverage Manufacturing,,2,manufacturing,6
+mfg-chemicals,Chemical Manufacturing,,2,manufacturing,7
+mfg-plastics,Plastics & Rubber Manufacturing,,2,manufacturing,8
+mfg-metals,Metal & Steel Manufacturing,,2,manufacturing,9
+mfg-packaging,Packaging & Containers,,2,manufacturing,10
+mfg-machinery,Industrial Machinery Manufacturing,,2,manufacturing,11
+mfg-furniture,Furniture & Home Furnishings,,2,manufacturing,12
+mfg-paper,Paper & Forest Products,,2,manufacturing,13
+mfg-glass,"Glass, Ceramics & Concrete Manufacturing",,2,manufacturing,14
+retail,Retail & Consumer Goods,,1,,5
+ret-fashion,Apparel & Fashion,,2,retail,1
+ret-luxury,Luxury Goods & Jewelry,,2,retail,2
+ret-grocery,Grocery Retail,,2,retail,3
+ret-eretail,Online Retail,,2,retail,4
+ret-cosmetics,Cosmetics & Personal Care,,2,retail,5
+ret-sporting,Sporting Goods,,2,retail,6
+ret-home,Home Improvement Retail,,2,retail,7
+ret-electronics,Consumer Electronics Retail,,2,retail,8
+ret-convenience,Convenience Stores,,2,retail,9
+ret-franchise,Franchise Networks,,2,retail,10
+consulting,Professional Services & Consulting,,1,,6
+con-management,Management Consulting,,2,consulting,1
+con-strategy,Strategy & Business Design,,2,consulting,2
+con-hr,Human Resources Services,,2,consulting,3
+con-legal,Legal Services,,2,consulting,4
+con-marketing,Marketing Services,,2,consulting,5
+con-pr,Public Relations & Communications,,2,consulting,6
+con-research,Market Research,,2,consulting,7
+con-executive,Executive Search,,2,consulting,8
+con-staffing,Staffing & Recruiting,,2,consulting,9
+con-outsourcing,Outsourcing & Offshoring,,2,consulting,10
+education,Education & Training,,1,,7
+edu-primary,Primary & Secondary Education,,2,education,1
+edu-higher,Higher Education,,2,education,2
+edu-vocational,Vocational & Trade Schools,,2,education,3
+edu-elearning,E-Learning & Online Education,,2,education,4
+edu-corporate,Corporate Training & L&D,,2,education,5
+edu-language,Language & Language Schools,,2,education,6
+realestate,Real Estate & Construction,,1,,8
+re-residential,Residential Real Estate,,2,realestate,1
+re-commercial,Commercial Real Estate,,2,realestate,2
+re-construction,Construction,,2,realestate,3
+re-architecture,Architecture & Planning,,2,realestate,4
+re-civil-eng,Civil Engineering,,2,realestate,5
+re-interior,Interior Design,,2,realestate,6
+re-property-mgmt,Property Management,,2,realestate,7
+media,"Media, Entertainment & Creative",,1,,9
+med-broadcasting,Broadcasting Media,,2,media,1
+med-print,Book & Periodical Publishing,,2,media,2
+med-digital,Digital Media & Online Publishing,,2,media,3
+med-film,Motion Picture & Film,,2,media,4
+med-music,Music Production,,2,media,5
+med-animation,Animation & Post-Production,,2,media,6
+med-advertising,Advertising Services,,2,media,7
+med-graphic,Graphic Design,,2,media,8
+med-photography,Photography,,2,media,9
+med-events,Events Services,,2,media,10
+med-sports,Spectator Sports,,2,media,11
+logistics,"Logistics, Transport & Supply Chain",,1,,10
+log-freight,Freight & Logistics Services,,2,logistics,1
+log-trucking,Trucking & Transportation,,2,logistics,2
+log-maritime,Maritime Shipping,,2,logistics,3
+log-aviation,Airlines & Aviation,,2,logistics,4
+log-warehousing,Warehousing & Storage,,2,logistics,5
+log-courier,Package/Freight Delivery,,2,logistics,6
+log-supply,Supply Chain Management,,2,logistics,7
+log-customs,Import & Export,,2,logistics,8
+log-railway,Railroad Equipment Manufacturing,,2,logistics,9
+energy,Energy & Environment,,1,,11
+eng-oil-gas,Oil and Gas,,2,energy,1
+eng-renewable,Renewable Energy & Solar,,2,energy,2
+eng-utilities,"Utilities — Electric, Water, Gas",,2,energy,3
+eng-nuclear,Nuclear Electric Power Generation,,2,energy,4
+eng-environment,Environmental Services,,2,energy,5
+eng-mining,Mining & Metals,,2,energy,6
+hospitality,Hospitality & Tourism,,1,,12
+hos-hotels,Hotels & Resorts,,2,hospitality,1
+hos-restaurants,Restaurants & Food Services,,2,hospitality,2
+hos-travel,Travel Agencies,,2,hospitality,3
+hos-tourism,"Leisure, Travel & Tourism",,2,hospitality,4
+hos-airlines,Airlines & Aviation,,2,hospitality,5
+hos-recreation,Amusement Parks & Attractions,,2,hospitality,6
+government,Government & Public Sector,,1,,13
+gov-federal,Government Administration,,2,government,1
+gov-defense,Armed Forces,,2,government,2
+gov-law,Law Enforcement,,2,government,3
+gov-public-safety,Public Safety,,2,government,4
+gov-international,International Affairs,,2,government,5
+gov-policy,Public Policy Offices,,2,government,6
+nonprofit,Non-Profit & Social Impact,,1,,14
+npo-charity,Philanthropic Fundraising Services,,2,nonprofit,1
+npo-civic,Civic and Social Organizations,,2,nonprofit,2
+npo-international,International Trade & Development,,2,nonprofit,3
+npo-environment,Environmental Non-profit,,2,nonprofit,4
+npo-health,Health & Medical Non-profit,,2,nonprofit,5
+npo-education,Education Non-profit,,2,nonprofit,6
+agriculture,Agriculture & Food Science,,1,,15
+agr-farming,Farming & Animal Husbandry,,2,agriculture,1
+agr-aqua,Aquaculture,,2,agriculture,2
+agr-food-science,Food Science & Technology,,2,agriculture,3
+agr-forestry,Forestry & Logging,,2,agriculture,4
+agr-agritech,Agricultural Technology (AgriTech),,2,agriculture,5

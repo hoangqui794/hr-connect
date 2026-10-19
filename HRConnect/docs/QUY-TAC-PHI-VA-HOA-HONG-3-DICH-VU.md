@@ -160,7 +160,7 @@ Nếu ABC trả phí **sau** ngày 01/12 thì hoa hồng của Hùng nằm ở `
 Tất cả mục 🟡 trước đây đã được chốt như sau:
 
 1. **Thêm trạng thái `IN_WARRANTY`** cho giai đoạn ứng viên đã đi làm nhưng chưa đủ 30 ngày. `PENDING` chỉ còn nghĩa "chưa đi làm".
-2. **Ứng viên nghỉ trong bảo hành:** Client không được hoàn phí, HR Connect tìm người thay thế miễn phí; hoa hồng của ứng viên đã nghỉ bị hủy; Affiliate giới thiệu người thay thế được hoa hồng từ khoản phí cũ sau khi người đó đi làm đủ 30 ngày. **Bổ sung 15/10:** chỉ thay 1 lần mỗi khoản phí, chỉ mở suất khi Client đã trả phí, có hạn chót cấu hình được (chi tiết: `MF05/mf05-thiet-ke-suat-thay-the.md`).
+2. **Ứng viên nghỉ trong bảo hành:** Client không được hoàn phí, HR Connect tìm người thay thế miễn phí; hoa hồng của ứng viên đã nghỉ bị hủy; Affiliate giới thiệu người thay thế được hoa hồng từ khoản phí cũ sau khi người đó đi làm đủ 30 ngày. **Bổ sung 15/10:** chỉ thay 1 lần mỗi khoản phí, chỉ mở suất khi Client đã trả phí, có hạn chót cấu hình được (chi tiết: `main-flows.md` mục MF-05).
 3. **CV_SOURCING:** đặt cọc 50% khi job được duyệt (cấu hình được); thời hạn xem xét mặc định **7 ngày** (cấu hình được); hết hạn mà Client không phản hồi thì coi như chấp nhận; giao thiếu thì hoàn hoặc trừ phần cọc dư.
 4. **CV_APPLICATION:** duyệt trước, trả tiền sau (`PENDING_PAYMENT` → `PAID` → job `ACTIVE`).
 5. **Hệ số phí Headhunt điền sẵn: 1,5.** Đây chỉ là giá trị điền sẵn; Internal HR tinh chỉnh theo thỏa thuận với từng Client khi duyệt job.

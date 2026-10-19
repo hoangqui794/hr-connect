@@ -40,6 +40,7 @@ import {
   formatDateTime,
   formatExperience,
   formatSalary,
+  formatHeadcount,
   isAwaitingSourcingDeposit,
   sourcingDepositAmount,
 } from './jobDisplay';
@@ -326,7 +327,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   icon={<CreditCardOutlined />}
                   onClick={() => setShowPaymentModal(true)}
                 >
-                  Thanh toán ngay
+                  Hướng dẫn thanh toán
                 </Button>
               ) : undefined
             }
@@ -395,17 +396,25 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         )}
       </header>
 
-      <Descriptions size="small" column={{ xs: 1, sm: 2 }} colon={false} labelStyle={{ color: '#475569' }}>
-        <Descriptions.Item label="Mức lương">{formatSalary(job)}</Descriptions.Item>
+      {/* N3: two columns only on wide screens; labels never wrap, amounts stay on one line. */}
+      <Descriptions
+        size="small"
+        column={{ xs: 1, sm: 1, md: 2, lg: 1, xl: 2 }}
+        colon={false}
+        labelStyle={{ color: '#475569', whiteSpace: 'nowrap' }}
+      >
+        <Descriptions.Item label="Mức lương">
+          <span className="whitespace-nowrap tabular-nums">{formatSalary(job)}</span>
+        </Descriptions.Item>
         <Descriptions.Item label="Kinh nghiệm">
           {formatExperience(job.minExperienceYears, job.maxExperienceYears)}
         </Descriptions.Item>
         <Descriptions.Item label="Hình thức">
           {job.employmentType ? EMPLOYMENT_TYPE_LABEL[job.employmentType] : '—'}
         </Descriptions.Item>
-        <Descriptions.Item label="Số lượng">
+        <Descriptions.Item label={job.serviceTypeCode === 'CV_SOURCING' ? 'Số CV cần nhận' : 'Số lượng'}>
           <TeamOutlined aria-hidden className="mr-1" />
-          {job.quantity} người
+          {formatHeadcount(job)}
         </Descriptions.Item>
         <Descriptions.Item label="Địa điểm">
           <EnvironmentOutlined aria-hidden className="mr-1" />

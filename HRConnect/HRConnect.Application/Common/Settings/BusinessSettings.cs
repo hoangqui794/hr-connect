@@ -49,6 +49,14 @@ public static class BusinessSettingKeys
     public const string AffiliateRatingExcellentMin = "affiliate.rating.excellent_min";
     public const string AffiliateRatingGoodMin = "affiliate.rating.good_min";
     public const string AffiliateRatingAverageMin = "affiliate.rating.average_min";
+    public const string DisputeWindowDays = "dispute.window_days";
+    public const string ContactRateLimitPerHour = "contact.rate_limit_per_hour";
+    public const string ConsentExpirationHours = "consent.expiration_hours";
+    public const string ConsentResendCooldownMinutes = "consent.resend_cooldown_minutes";
+    public const string ConsentMaxEmailSends = "consent.max_email_sends";
+    public const string JobMatchMinScore = "job_match.min_score";
+    public const string JobMatchMaxNotificationsPerDay = "job_match.max_notifications_per_day";
+    public const string JobMatchExpiryDays = "job_match.expiry_days";
 
     public static readonly IReadOnlyList<BusinessSettingDefinition> All =
     [
@@ -88,36 +96,60 @@ public static class BusinessSettingKeys
         new(FeeDueReminderDays, "SERVICE_FEE", "Số ngày nhắc trước hạn thanh toán",
             "Phí dịch vụ còn bằng hoặc ít hơn số ngày này tới hạn thì chuyển sang DUE (Sắp đến hạn) và nhắc Client.",
             BusinessSettingType.Integer, 5m, 1m, 30m, "ngày", "QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md, mục 1.1"),
+        new(ContactRateLimitPerHour, "CONTACT", "Số yêu cầu liên hệ tối đa mỗi giờ",
+            "Số lần một địa chỉ IP được gửi form liên hệ công khai trong 1 giờ; vượt quá thì trả 429.",
+            BusinessSettingType.Integer, 5m, 1m, 100m, "lần", "main-flows.md, form liên hệ"),
+        new(ConsentExpirationHours, "MF02", "Thời hạn ứng viên xác nhận lượt giới thiệu",
+            "Số giờ ứng viên có để đồng ý hoặc từ chối lượt Affiliate giới thiệu; quá hạn thì lượt nộp hết hạn. Áp dụng cho lượt gửi mới và lượt gửi lại.",
+            BusinessSettingType.Integer, 48m, 1m, 168m, "giờ", "main-flows.md, MF-02 nhánh B, SF-03"),
+        new(ConsentResendCooldownMinutes, "MF02", "Thời gian chờ giữa hai lần gửi lại email xác nhận",
+            "Affiliate phải chờ ngần này phút mới được gửi lại email xác nhận cho ứng viên.",
+            BusinessSettingType.Integer, 2m, 1m, 60m, "phút", "main-flows.md, MF-02 nhánh B, SF-03"),
+        new(ConsentMaxEmailSends, "MF02", "Số lần gửi email xác nhận tối đa",
+            "Tổng số email xác nhận (kể cả lần đầu) được gửi cho một lượt giới thiệu.",
+            BusinessSettingType.Integer, 5m, 1m, 10m, "lần", "main-flows.md, MF-02 nhánh B, SF-03"),
+        new(JobMatchMinScore, "JOB_MATCH", "Điểm tối thiểu để gợi ý việc",
+            "Điểm tương đồng CV↔JD (0-100) từ mức này trở lên mới hiện trong mục Việc phù hợp và được gửi thông báo cho ứng viên.",
+            BusinessSettingType.Decimal, 70m, 0m, 100m, "điểm", "main-flows.md, gợi ý việc làm"),
+        new(JobMatchMaxNotificationsPerDay, "JOB_MATCH", "Số thông báo việc phù hợp tối đa mỗi ngày",
+            "Mỗi ứng viên nhận tối đa ngần này thông báo việc phù hợp trong một ngày; gợi ý vẫn hiện trong danh sách. 0 là tắt thông báo.",
+            BusinessSettingType.Integer, 3m, 0m, 20m, "thông báo", "main-flows.md, gợi ý việc làm"),
+        new(JobMatchExpiryDays, "JOB_MATCH", "Thời hạn hiển thị gợi ý việc",
+            "Số ngày một gợi ý việc còn hiện cho ứng viên kể từ lúc được chấm.",
+            BusinessSettingType.Integer, 14m, 1m, 90m, "ngày", "main-flows.md, gợi ý việc làm"),
+        new(DisputeWindowDays, "DISPUTE", "Thời hạn khiếu nại trùng ứng viên",
+            "Số ngày Affiliate được khiếu nại kể từ lúc lượt nộp bị chặn trùng, hoặc từ lúc ứng viên đi làm (khiếu nại attribution). Bằng thời hạn bảo hành để khiếu nại kịp trước khi hoa hồng được duyệt chi.",
+            BusinessSettingType.Integer, 30m, 1m, 180m, "ngày", "main-flows.md, SF-04"),
         new(ReplacementFillWindowDays, "HEADHUNT_COD", "Hạn tìm người thay thế",
             "Số ngày kể từ khi suất thay thế được mở (Client đã trả phí). Quá hạn mà chưa có người đi làm thì suất hết hạn.",
-            BusinessSettingType.Integer, 30m, 1m, 180m, "ngày", "docs/MF05/mf05-thiet-ke-suat-thay-the.md, R3"),
+            BusinessSettingType.Integer, 30m, 1m, 180m, "ngày", "main-flows.md, MF-05 suất thay thế"),
         new(JobTemplatePageSizeDefault, "JOB_TEMPLATE", "Số mẫu JD mỗi trang (mặc định)",
             "Số mẫu JD hiển thị mỗi trang khi Client tìm mẫu ở bước 2 của form tạo job.",
-            BusinessSettingType.Integer, 8m, 1m, 50m, "mẫu", "mf01-be-thu-vien-mau-jd.md, B2"),
+            BusinessSettingType.Integer, 8m, 1m, 50m, "mẫu", "main-flows.md, MF-01 thư viện mẫu JD"),
         new(JobTemplatePageSizeMax, "JOB_TEMPLATE", "Số mẫu JD tối đa mỗi trang",
             "Giới hạn trên cho tham số pageSize khi tìm mẫu JD.",
-            BusinessSettingType.Integer, 20m, 1m, 100m, "mẫu", "mf01-be-thu-vien-mau-jd.md, B2"),
+            BusinessSettingType.Integer, 20m, 1m, 100m, "mẫu", "main-flows.md, MF-01 thư viện mẫu JD"),
         new(AffiliateRatingWeightHire, "AFFILIATE_RATING", "Trọng số tỷ lệ tuyển được",
             "Trọng số của tỷ lệ tuyển được trong công thức tính QualityRating của Affiliate (mặc định 0.7).",
-            BusinessSettingType.Decimal, 0.7m, 0m, 1m, "trọng số", "BE-tasks-01 B1"),
+            BusinessSettingType.Decimal, 0.7m, 0m, 1m, "trọng số", "main-flows.md, MF-05 đánh giá Affiliate"),
         new(AffiliateRatingWeightShortlist, "AFFILIATE_RATING", "Trọng số tỷ lệ qua sàng lọc",
             "Trọng số của tỷ lệ CV qua sàng lọc trong công thức tính QualityRating của Affiliate (mặc định 0.3).",
-            BusinessSettingType.Decimal, 0.3m, 0m, 1m, "trọng số", "BE-tasks-01 B1"),
+            BusinessSettingType.Decimal, 0.3m, 0m, 1m, "trọng số", "main-flows.md, MF-05 đánh giá Affiliate"),
         new(AffiliateRatingHireRateTarget, "AFFILIATE_RATING", "Mục tiêu tỷ lệ tuyển được",
             "Mục tiêu tỷ lệ tuyển được để đạt điểm tối đa phần tuyển dụng (mặc định 0.20 = 20%).",
-            BusinessSettingType.Decimal, 0.20m, 0.01m, 1m, "tỷ lệ", "BE-tasks-01 B1"),
+            BusinessSettingType.Decimal, 0.20m, 0.01m, 1m, "tỷ lệ", "main-flows.md, MF-05 đánh giá Affiliate"),
         new(AffiliateRatingMinSubmissions, "AFFILIATE_RATING", "Số lượt nộp tối thiểu để xếp hạng",
             "Số lượt nộp tối thiểu trong kỳ để được đánh giá xếp hạng và tính QualityRating (dưới ngưỡng này được gắn nhãn NEW).",
-            BusinessSettingType.Integer, 5m, 1m, 100m, "lượt", "BE-tasks-01 B1"),
+            BusinessSettingType.Integer, 5m, 1m, 100m, "lượt", "main-flows.md, MF-05 đánh giá Affiliate"),
         new(AffiliateRatingExcellentMin, "AFFILIATE_RATING", "Ngưỡng đánh giá Xuất sắc (EXCELLENT)",
             "Điểm QualityRating tối thiểu để đạt xếp loại EXCELLENT (mặc định 4.0).",
-            BusinessSettingType.Decimal, 4.0m, 0m, 5m, "điểm", "BE-tasks-01 B1"),
+            BusinessSettingType.Decimal, 4.0m, 0m, 5m, "điểm", "main-flows.md, MF-05 đánh giá Affiliate"),
         new(AffiliateRatingGoodMin, "AFFILIATE_RATING", "Ngưỡng đánh giá Tốt (GOOD)",
             "Điểm QualityRating tối thiểu để đạt xếp loại GOOD (mặc định 3.0).",
-            BusinessSettingType.Decimal, 3.0m, 0m, 5m, "điểm", "BE-tasks-01 B1"),
+            BusinessSettingType.Decimal, 3.0m, 0m, 5m, "điểm", "main-flows.md, MF-05 đánh giá Affiliate"),
         new(AffiliateRatingAverageMin, "AFFILIATE_RATING", "Ngưỡng đánh giá Trung bình (AVERAGE)",
             "Điểm QualityRating tối thiểu để đạt xếp loại AVERAGE (mặc định 2.0). Dưới ngưỡng này là LOW.",
-            BusinessSettingType.Decimal, 2.0m, 0m, 5m, "điểm", "BE-tasks-01 B1"),
+            BusinessSettingType.Decimal, 2.0m, 0m, 5m, "điểm", "main-flows.md, MF-05 đánh giá Affiliate"),
     ];
 
     public static BusinessSettingDefinition Get(string key) =>

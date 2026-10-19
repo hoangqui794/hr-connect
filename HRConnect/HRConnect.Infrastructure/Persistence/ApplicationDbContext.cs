@@ -1528,7 +1528,17 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.DisputeId).HasName("dispute_pkey");
 
-            entity.ToTable("dispute", "public");
+            entity.ToTable("dispute", "public", tb =>
+            {
+                tb.HasCheckConstraint("ck_dispute_type", "dispute_type IN ('DUPLICATE_SUBMISSION','ATTRIBUTION')");
+                tb.HasCheckConstraint("ck_dispute_status", "status IN ('OPEN','UNDER_REVIEW','UPHELD','REJECTED','WITHDRAWN')");
+            });
+
+            // SF-04 D2: one open dispute per submission.
+            entity.HasIndex(e => e.SubmissionId, "uq_dispute_submission_open")
+                .IsUnique()
+                .HasFilter("status IN ('OPEN','UNDER_REVIEW')");
+            entity.HasIndex(e => new { e.Status, e.CreatedAt }, "idx_dispute_status_created");
 
             entity.Property(e => e.DisputeId)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -2553,7 +2563,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.JobId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("sourcing_delivery_job_id_fkey");
-            entity.HasOne(d => d.Application).WithMany()
+            entity.HasOne(d => d.Application).WithMany(p => p.SourcingDeliveries)
                 .HasForeignKey(d => d.ApplicationId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("sourcing_delivery_application_id_fkey");

@@ -85,3 +85,17 @@ Bấm **Save, rebuild, and deploy** → đợi trạng thái **Live** → mở `
 - Trong lúc tunnel mở, AI trên máy công khai trên Internet. Từ 17/10 `/api/v1/scoring-jobs` và `/api/v1/match-file` đều cần token, `/docs` tắt, **miễn là `.env` không bật `ALLOW_UNAUTHENTICATED_TEST_ENDPOINTS`**. Không chia sẻ địa chỉ tunnel ra ngoài nhóm, test xong tắt ngay.
 - CV demo sẽ được gửi lên Gemini để chấm.
 - Muốn AI chạy ổn định trên Render (không cần máy ai bật) thì phải nâng `hrconnect-ai-service-v2` lên gói **tối thiểu 1 CPU / 2 GB RAM**.
+
+## 7. Việc hạ tầng còn mở (từ buổi test 17/10)
+
+Làm tay trên Render / Cloudflare, không phải code.
+
+| # | Việc | Người làm |
+|---|---|---|
+| OPS-1 | AI v2 trên Render gói Free (0,1 CPU, 512 MB) không chạy nổi. Nâng `hrconnect-ai-service-v2` lên tối thiểu **1 CPU / 2 GB RAM**. Trong lúc chưa nâng thì dùng AI trên máy qua tunnel (`cloudflare-ai-dev-tunnel.md`). | Người giữ Render |
+| OPS-2 | Thêm rule WAF cho `ai-dev.hrconnectvn.online` theo mục 2.1 của `cloudflare-ai-dev-tunnel.md`. AI đã tắt `/docs` và bắt token cho `match-file`, rule WAF là lớp chặn thêm. | Trí |
+| OPS-3 | Đổi các key đã lộ qua ảnh chụp, chat: tunnel token `hrconnect-ai-dev`, `HRCONNECT_SERVICE_TOKEN`, Resend API key, R2 access key/secret, mật khẩu Supabase (nếu còn dùng), `JwtSettings__Secret` trên Render. Gemini key đã đổi. Đổi xong cập nhật Render và `.env` từng máy. | Cả nhóm |
+| OPS-4 | `SUBMISSION_CONSENT_URL_BASE` trên Render phải là địa chỉ FE thật (`https://<fe>/submission-consent`), không phải `localhost`; nếu sai thì link trong email xác nhận gửi ứng viên không mở được. | Người giữ Render |
+| OPS-5 | Khi deploy BE-04: chạy migration `AddContactRequest`, deploy lại AI v2 (endpoint `/api/v1/semantic-match`), đặt `CONTACT_NOTIFY_EMAIL`. | Người deploy |
+
+Chuỗi kết nối: backend đọc `DATABASE_URL` dạng `postgresql://...` (ưu tiên hơn `ConnectionStrings__DefaultConnection`). Khi môi trường không phải Development (hoặc chạy trên Render) mà chuỗi trỏ `localhost` thì backend dừng ngay với thông báo rõ ràng.

@@ -83,6 +83,12 @@ public static class AuditActions
     public const string ServiceFeePaymentRecorded = "SERVICE_FEE_PAYMENT_RECORDED";
     public const string CommissionEarned = "COMMISSION_EARNED";
     public const string SourcingDepositCreated = "SOURCING_DEPOSIT_CREATED";
+    public const string DisputeCreated = "DISPUTE_CREATED";
+    public const string DisputeResolved = "DISPUTE_RESOLVED";
+    public const string AttributionTransferred = "ATTRIBUTION_TRANSFERRED";
+    public const string ContactRequestUpdated = "CONTACT_REQUEST_UPDATED";
+    public const string IndustryChanged = "INDUSTRY_CHANGED";
+    public const string CompanyFeaturedChanged = "COMPANY_FEATURED_CHANGED";
     public const string SourcingSettlementCreated = "SOURCING_SETTLEMENT_CREATED";
     public const string CommissionHeldAffiliateSuspended = "COMMISSION_HELD_AFFILIATE_SUSPENDED";
     public const string CommissionReleasedAffiliateReactivated = "COMMISSION_RELEASED_AFFILIATE_REACTIVATED";

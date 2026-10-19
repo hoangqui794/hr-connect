@@ -470,6 +470,19 @@ export const AffiliateSubmitPage: React.FC = () => {
 
 const STATUSES = ['all', 'PENDING_CONSENT', 'ACCEPTED', 'CONSENT_REJECTED', 'CONSENT_EXPIRED', 'BLOCKED_DUPLICATE', 'JOB_UNAVAILABLE'] as const;
 
+/** N13: GET /affiliates/referrals progressStatus codes in Vietnamese. */
+const REFERRAL_PROGRESS: Record<string, string> = {
+  WAITING_CONSENT: 'Chờ ứng viên xác nhận',
+  SUBMITTED: 'Đã nộp',
+  CV_REVIEW: 'Đang xem xét CV',
+  SHORTLISTED: 'Đã được chọn',
+  INTERVIEW: 'Đang phỏng vấn',
+  OFFER: 'Đang ở bước offer',
+  BACKUP: 'Dự phòng',
+  PLACED: 'Đã đi làm',
+  CLOSED: 'Đã kết thúc',
+};
+
 export const AffiliateSubmissionsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -495,7 +508,10 @@ export const AffiliateSubmissionsPage: React.FC = () => {
   });
   // Hiring progress of accepted referrals, keyed by submission.
   const progress = useQuery({ queryKey: [...keys.submissions, 'progress'], queryFn: () => affiliateApi.referrals({ page: 1, pageSize: 100 }) });
-  const progressOf = (id: string) => progress.data?.items.find((p) => p.submissionId === id)?.progressStatus;
+  const progressOf = (id: string) => {
+    const code = progress.data?.items.find((p) => p.submissionId === id)?.progressStatus;
+    return code ? REFERRAL_PROGRESS[code] ?? code : undefined;
+  };
 
   const columns: ColumnsType<AffiliateSubmission> = [
     { title: 'Ứng viên', key: 'c', render: (_, r) => <PersonCell name={r.candidateName} /> },

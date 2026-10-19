@@ -25,7 +25,7 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
-import { Initials } from '@/features/admin-console/ui';
+import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import '@/features/admin-console/admin-console.css';
@@ -51,12 +51,8 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { to: '/hr/pipeline', label: 'Tiến độ tuyển dụng', icon: <CalendarOutlined /> },
       { to: '/hr/placement-review', label: 'Sửa ngày đi làm', icon: <AuditOutlined /> },
-    ],
-  },
-  {
-    group: 'Chưa có API',
-    items: [
-      { to: '/hr/warranty-tracking', label: 'Bảo hành & thử việc', icon: <SafetyCertificateOutlined />, muted: true },
+      // N2: MF-05 warranty API is live (no probation tracking, chốt 17/10).
+      { to: '/hr/warranty-tracking', label: 'Bảo hành', icon: <SafetyCertificateOutlined /> },
     ],
   },
 ];
@@ -251,7 +247,7 @@ export const HrLayout: React.FC = () => {
               className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700"
               aria-label="Tài khoản"
             >
-              <Initials name={name} size={34} />
+              <AccountAvatar name={name} avatar={user?.avatar} size={34} />
               <span className="hidden text-left leading-tight sm:block">
                 <span className="block text-sm font-semibold text-slate-900">{name}</span>
                 <span className="block text-xs text-slate-500">{user?.email}</span>

@@ -14,6 +14,7 @@ using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplications;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
 using HRConnect.Application.Features.Recruitment.Queries.GetApplicationCvDownloadUrl;
+using HRConnect.Application.Features.Recruitment.Queries.GetApplicationMaskedCv;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationTimeline;
 using HRConnect.Presentation.Authorization;
 using MediatR;
@@ -296,6 +297,44 @@ public static class RecruitmentEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
+
+        // N16: GET /api/v1/recruitment/applications/{applicationId:guid}/cv/masked
+        group.MapGet("/applications/{applicationId:guid}/cv/masked", async (
+            Guid applicationId,
+            [FromServices] ISender sender = null!,
+            ClaimsPrincipal user = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null) return Results.Unauthorized();
+            var isClient = user.IsInRole("CLIENT_COMPANY_USER") && PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
+            var isInternal = (user.IsInRole("INTERNAL_HR") && PermissionAuthorization.HasPermission(user, ViewAllPermission)) || user.IsInRole("PLATFORM_ADMIN");
+            if (!isClient && !isInternal) return PermissionAuthorization.Forbidden(ViewCompanyPermission);
+            try
+            {
+                var file = await sender.Send(new GetApplicationMaskedCvQuery(applicationId, userId.Value, isClient && !isInternal, isInternal), cancellationToken);
+                return Results.File(file.Content, "application/pdf", file.FileName);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, code = ex.ErrorCode, message = ex.Message });
+            }
+        })
+        .WithName("GetApplicationMaskedCv")
+        .WithSummary("Xem CV đã che thông tin liên hệ (PDF)")
+        .WithDescription("Dùng cho Client với hồ sơ HEADHUNT_COD trước khi ứng viên đi làm: trả PDF dựng lại từ chữ của CV, email, số điện thoại và đường link được thay bằng [đã ẩn]. CV dạng ảnh scan trả 409 CV_NO_TEXT_LAYER. Cùng quy tắc xem hồ sơ như chi tiết hồ sơ; có audit.")
+        .Produces(StatusCodes.Status200OK, contentType: "application/pdf")
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
 
         // GET /api/v1/recruitment/applications/{applicationId:guid}/cv/download-url
         group.MapGet("/applications/{applicationId:guid}/cv/download-url", async (

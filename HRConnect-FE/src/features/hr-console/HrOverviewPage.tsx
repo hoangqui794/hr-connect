@@ -16,7 +16,7 @@ import { jobsApi } from '@/services/api/jobsApi';
 import { pipelineApi, screeningApi } from '@/services/api/hrApi';
 import { useAuthStore } from '@/stores/authStore';
 import { PersonCell, StatTile, StatusDot, Surface } from '@/features/admin-console/ui';
-import { pick, INTERVIEW_STATUS, statusOf } from './hrLabels';
+import { pick, INTERVIEW_STATUS, applicationStatusOf } from './hrLabels';
 
 dayjs.extend(relativeTimePlugin);
 dayjs.locale('vi');
@@ -24,10 +24,16 @@ dayjs.locale('vi');
 const Count: React.FC<{ q: { isLoading: boolean; isError: boolean; data?: number } }> = ({ q }) =>
   q.isLoading ? <Skeleton.Input active size="small" /> : <>{q.isError ? '—' : q.data}</>;
 
+/**
+ * N6: Internal HR screens HEADHUNT_COD and CV_SOURCING only; Client screens CV_APPLICATION itself,
+ * so those are left out of the HR counters (counted from the first 100 matches).
+ */
+const isHrScreened = (item: { serviceTypeCode?: string | null }) => item.serviceTypeCode !== 'CV_APPLICATION';
+
 const useApplicationCount = (status: string) =>
   useQuery({
     queryKey: ['hr-overview', 'applications', status],
-    queryFn: async () => (await screeningApi.list({ status, page: 1, pageSize: 1 })).total,
+    queryFn: async () => (await screeningApi.list({ status, page: 1, pageSize: 100 })).items.filter(isHrScreened).length,
   });
 
 export const HrOverviewPage: React.FC = () => {
@@ -40,7 +46,7 @@ export const HrOverviewPage: React.FC = () => {
   const shortlisted = useApplicationCount('SHORTLISTED');
   const recent = useQuery({
     queryKey: ['hr-overview', 'recent'],
-    queryFn: async () => (await screeningApi.list({ page: 1, pageSize: 6 })).items,
+    queryFn: async () => (await screeningApi.list({ page: 1, pageSize: 30 })).items.filter(isHrScreened).slice(0, 6),
   });
   const upcoming = useQuery({
     queryKey: ['hr-overview', 'interviews'],
@@ -111,7 +117,7 @@ export const HrOverviewPage: React.FC = () => {
         ) : (
           <ol className="m-0 list-none space-y-1 p-0">
             {recent.data!.map((a) => {
-              const st = statusOf(a.status);
+              const st = applicationStatusOf(a.status, a.serviceTypeCode, a.sourcingDeliveryStatus);
               return (
                 <li key={a.applicationId}>
                   <button
@@ -166,7 +172,7 @@ export const HrOverviewPage: React.FC = () => {
           <Skeleton active paragraph={{ rows: 2 }} />
         ) : (upcoming.data ?? []).length === 0 ? (
           <p className="m-0 text-sm text-slate-600">
-            Chưa có lịch phỏng vấn nào. Client lên lịch sau khi bạn chọn hồ sơ gửi đi.
+            Chưa có lịch phỏng vấn nào. Với Headhunt, Client lên lịch sau khi bạn chọn hồ sơ gửi đi.
           </p>
         ) : (
           <ul className="m-0 list-none space-y-2 p-0">

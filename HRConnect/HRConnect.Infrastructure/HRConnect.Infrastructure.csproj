@@ -38,4 +38,11 @@
     <ProjectReference Include="..\HRConnect.Application\HRConnect.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- BE-04 B: Roboto (Apache License 2.0) for Vietnamese text in rendered CV PDFs. -->
+    <EmbeddedResource Include="Assets\Fonts\Roboto-Regular.ttf" />
+    <!-- BE-02 A: industry / company size seed data; replace the CSV to load a new taxonomy. -->
+    <EmbeddedResource Include="Persistence\Seed\Data\*.csv" />
+  </ItemGroup>
+
 </Project>

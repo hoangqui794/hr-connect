@@ -23,6 +23,11 @@ export const getInitials = (fullName?: string | null): string => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
+export const getAvatarImageUrl = (avatar?: string | null): string | undefined => {
+  const value = avatar?.trim();
+  return value && /^(?:https?:|data:|blob:)/i.test(value) ? value : undefined;
+};
+
 export interface RegisterData {
   role: UserRole;
   fullName: string;

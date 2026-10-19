@@ -73,14 +73,25 @@ public sealed class GetRecruitmentApplicationDetailMf03Tests
     }
 
     [Fact]
-    public async Task Client_WhenCvSourcingShortlisted_ShouldSeeContactBecauseClientContactsCandidate()
+    public async Task Client_WhenCvSourcingDelivered_ShouldSeeContactBecauseClientContactsCandidate()
     {
         var app = Setup("CV_SOURCING", ApplicationStates.Shortlisted);
+        app.SourcingDeliveries.Add(new SourcingDelivery { Status = SourcingDeliveryStates.Delivered });
 
         var result = await CreateHandler().Handle(ClientQuery(app), CancellationToken.None);
 
         result.Data.CandidatePhone.Should().Be("0912345678");
         result.Data.ContactOwner.Should().Be(nameof(ContactOwner.ClientCompany));
+    }
+
+    [Fact]
+    public async Task Client_WhenCvSourcingShortlistedButNotDelivered_ShouldNotFindIt()
+    {
+        var app = Setup("CV_SOURCING", ApplicationStates.Shortlisted);
+
+        var act = () => CreateHandler().Handle(ClientQuery(app), CancellationToken.None);
+
+        await act.Should().ThrowAsync<NotFoundException>();
     }
 
     [Fact]

@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from app.config import Settings, get_settings
 from app.documents import UnsupportedDocumentError, prepare_document
 from app.hrconnect_client import HRConnectClient
+from app.job_match import router as job_match_router
 from app.llm import LlmError, make_assessor
 from app.pipeline import MatchingPipeline
 from app.schemas import FileMatchingResponse, MatchingMetadata, ParseResult
@@ -41,6 +42,9 @@ async def lifespan(_: FastAPI):
 _startup_settings = get_settings()
 logging.basicConfig(level=_startup_settings.log_level.upper(),
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# Library request logs (model downloads at startup, every HTTP call) drown the scoring steps at INFO.
+for _noisy in ("httpx", "httpcore", "huggingface_hub", "urllib3", "sentence_transformers"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
 
 # API docs only in local testing: on a public URL they advertise the unauthenticated test endpoint.
 _docs_enabled = _startup_settings.allow_unauthenticated_test_endpoints
@@ -49,6 +53,7 @@ app = FastAPI(title="HR Connect AI Service v2", version="2.0.0", lifespan=lifesp
               redoc_url="/redoc" if _docs_enabled else None,
               openapi_url="/openapi.json" if _docs_enabled else None)
 app.include_router(scoring_router)
+app.include_router(job_match_router)
 
 
 def require_test_access(

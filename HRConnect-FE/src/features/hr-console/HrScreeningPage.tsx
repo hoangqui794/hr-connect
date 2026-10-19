@@ -17,7 +17,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import type { RecruitmentApplicationItem } from '@/types/api/hr';
 import { FilterPills, PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
-import { statusOf } from './hrLabels';
+import { applicationStatusOf } from './hrLabels';
 
 const STATUS_FILTERS = ['SUBMITTED', 'SCREENING', 'SHORTLISTED', 'REJECTED', 'all'] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
@@ -80,6 +80,16 @@ export const HrScreeningPage: React.FC = () => {
     placeholderData: (prev) => prev,
   });
 
+  // N22: "Chọn gửi Client" and "Giao CV" stay two steps for CV_SOURCING; remind HR of CVs chosen but not delivered.
+  const undelivered = useQuery({
+    queryKey: ['hr-screening', 'sourcing-undelivered'],
+    queryFn: async () =>
+      (await screeningApi.list({ status: 'SHORTLISTED', page: 1, pageSize: 100 })).items.filter(
+        (item) => item.serviceTypeCode === 'CV_SOURCING' && !item.sourcingDeliveryStatus
+      ),
+  });
+  const undeliveredItems = undelivered.data ?? [];
+
   const columns: ColumnsType<RecruitmentApplicationItem> = [
     {
       title: 'Ứng viên',
@@ -101,8 +111,8 @@ export const HrScreeningPage: React.FC = () => {
       title: 'Trạng thái',
       dataIndex: 'status',
       width: 190,
-      render: (v: string) => {
-        const st = statusOf(v);
+      render: (v: string, r) => {
+        const st = applicationStatusOf(v, r.serviceTypeCode, r.sourcingDeliveryStatus);
         return <StatusDot tone={st.tone}>{st.label}</StatusDot>;
       },
     },
@@ -121,6 +131,21 @@ export const HrScreeningPage: React.FC = () => {
           </Button>
         }
       />
+
+      {undeliveredItems.length > 0 && (
+        <Alert
+          className="mb-4"
+          type="warning"
+          showIcon
+          message={`${undeliveredItems.length} hồ sơ CV Sourcing đã chọn nhưng chưa giao cho Client`}
+          description="Client chỉ thấy và chấp nhận CV sau khi bạn bấm “Giao CV cho khách hàng” trong hồ sơ. CV chưa giao không được tính vào số CV đã bàn giao."
+          action={
+            <Button size="small" onClick={() => setParam('open', undeliveredItems[0].applicationId)}>
+              Mở hồ sơ đầu tiên
+            </Button>
+          }
+        />
+      )}
 
       <Surface>
         <div key={searchParams.get('q') ?? ''} className="flex flex-wrap items-center gap-3 px-5 pb-3 pt-5">

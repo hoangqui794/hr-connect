@@ -103,7 +103,8 @@ public class GetRecruitmentApplicationsQueryHandler : IRequestHandler<GetRecruit
                 ConcurrencyToken = a.ConcurrencyToken,
                 ServiceTypeCode = serviceTypeCode,
                 ContactOwner = ClientVisibilityPolicy.GetContactOwner(serviceTypeCode).ToString(),
-                IsContactMasked = maskContact
+                IsContactMasked = maskContact,
+                SourcingDeliveryStatus = a.SourcingDeliveries?.OrderByDescending(x => x.DeliveredAt).FirstOrDefault()?.Status
             };
         }).ToList();
 

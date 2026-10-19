@@ -1,4 +1,6 @@
 using HRConnect.Presentation.Endpoints.V1.Finance;
+using HRConnect.Presentation.Endpoints.V1.Disputes;
+using HRConnect.Presentation.Endpoints.V1.Contact;
 using HRConnect.Presentation.Endpoints.V1.Reports;
 using System.Text;
 using System.Security.Claims;
@@ -271,6 +273,17 @@ builder.Services.AddAuthentication(options =>
     };
     options.Events = new JwtBearerEvents
     {
+        // SignalR cannot send headers on WebSockets: the hub takes the JWT from ?access_token=.
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        },
         OnChallenge = async context =>
         {
             context.HandleResponse();
@@ -294,6 +307,8 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddSignalR();
+builder.Services.AddScoped<HRConnect.Application.Common.Interfaces.INotificationPublisher, HRConnect.Presentation.Hubs.SignalRNotificationPublisher>();
 
 // Clean Architecture: Dang ky cac dich vu cua tung tang
 builder.Services.AddApplicationServices();
@@ -385,6 +400,13 @@ app.MapInterviewEndpoints();
 app.MapOfferEndpoints();
 app.MapPlacementEndpoints();
 app.MapFinanceEndpoints();
+app.MapDisputeEndpoints();
+app.MapContactRequestEndpoints();
+app.MapCvBuilderEndpoints();
+app.MapJobMatchEndpoints();
+app.MapCompanyDirectoryEndpoints();
+app.MapAffiliateCommissionEstimateEndpoints();
+app.MapHub<HRConnect.Presentation.Hubs.NotificationHub>(HRConnect.Presentation.Hubs.NotificationHub.Path);
 app.MapBusinessSettingEndpoints();
 app.MapSubmissionConsentEndpoints();
 app.MapCandidateSavedJobEndpoints();

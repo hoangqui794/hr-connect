@@ -51,6 +51,7 @@ import {
   formatSalary,
   isAwaitingSourcingDeposit,
   sourcingDepositAmount,
+  formatHeadcount,
 } from './jobDisplay';
 
 
@@ -203,8 +204,8 @@ export const ClientJobsListPage: React.FC = () => {
   const renderActions = (job: Job) => {
         const can = clientActions(job.status);
         // CV_SOURCING pays a deposit recorded by Platform Admin, not the posting fee.
-        const needsPayment =
-          !isAwaitingSourcingDeposit(job) && (job.status === 'PENDING_PAYMENT' || job.postingFeeStatus === 'PENDING');
+        // N1: only once HR approved the content (PENDING_PAYMENT), never while still waiting for review.
+        const needsPayment = !isAwaitingSourcingDeposit(job) && job.status === 'PENDING_PAYMENT';
         const busy =
           (mutations.submit.isPending && mutations.submit.variables?.jobId === job.jobId) ||
           (mutations.resume.isPending && mutations.resume.variables?.jobId === job.jobId);
@@ -311,9 +312,9 @@ export const ClientJobsListPage: React.FC = () => {
               <JobStatusTag status={job.status} />
             </span>
           </Tooltip>
-          {job.postingFeeStatus === 'PENDING' && (
+          {job.postingFeeStatus === 'PENDING' && job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
             <div>
-              <Tag color="warning" className="m-0 text-[11px] font-medium">Chờ phí 1.5M đ</Tag>
+              <Tag color="warning" className="m-0 text-[11px] font-medium">Chờ phí đăng tin</Tag>
             </div>
           )}
           {job.postingFeeStatus === 'PAID' && (
@@ -333,7 +334,7 @@ export const ClientJobsListPage: React.FC = () => {
         const count = applicationsOf(job.jobId);
         return (
           <div className="text-xs space-y-0.5">
-            <div>Tuyển: <span className="font-semibold text-slate-800">{job.quantity} người</span></div>
+            <div>{job.serviceTypeCode === 'CV_SOURCING' ? 'Cần nhận' : 'Tuyển'}: <span className="font-semibold text-slate-800">{formatHeadcount(job)}</span></div>
             {job.maxApplications && (
               <div className="text-slate-500">
                 Hồ sơ: <span className="font-semibold text-emerald-700">{count?.data ?? 0}/{job.maxApplications}</span>
@@ -512,14 +513,14 @@ export const ClientJobsListPage: React.FC = () => {
                     )}
                     {job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
                       <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2 text-xs text-amber-900">
-                        <span className="font-medium">Chờ thanh toán phí kích hoạt (1.5M đ)</span>
+                        <span className="font-medium">Chờ thanh toán phí kích hoạt</span>
                         <Button
                           type="primary"
                           size="small"
                           className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600 !text-xs !h-6"
                           onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
                         >
-                          Thanh toán ngay
+                          Hướng dẫn thanh toán
                         </Button>
                       </div>
                     )}
@@ -541,7 +542,7 @@ export const ClientJobsListPage: React.FC = () => {
                         </button>
                       ) : (
                         <span className="text-xs text-slate-500">
-                          {job.maxApplications ? `Tối đa ${job.maxApplications} hồ sơ • ` : ''}Cần {job.quantity} người
+                          {job.maxApplications ? `Tối đa ${job.maxApplications} hồ sơ • ` : ''}Cần {formatHeadcount(job)}
                         </span>
                       )}
                       {renderActions(job)}

@@ -13,9 +13,11 @@ public enum ContactOwner
 
 /// <summary>
 /// What a Client Company user may see of an application (MF-03, docs/main-flows.md).
-/// HEADHUNT_COD and CV_SOURCING applications are screened by Internal HR first, so the
-/// Client only sees them once they have been SHORTLISTED. For HEADHUNT_COD, Internal HR
-/// owns candidate contact, so contact details are hidden from the Client until PLACED.
+/// HEADHUNT_COD applications are screened by Internal HR first, so the Client only sees them
+/// once they have been SHORTLISTED. CV_SOURCING applications are billed per delivered CV, so
+/// the Client only sees those Internal HR has delivered (a shortlisted or BACKUP CV that was
+/// never delivered stays hidden). For HEADHUNT_COD, Internal HR owns candidate contact, so
+/// contact details are hidden from the Client until PLACED.
 /// </summary>
 public static class ClientVisibilityPolicy
 {
@@ -37,13 +39,21 @@ public static class ClientVisibilityPolicy
     /// </summary>
     public static readonly Expression<Func<JobApplication, bool>> IsVisibleToClientExpression = a =>
         a.Job.ServiceType.Code == ServiceTypeCodes.CvApplication
-        || PostShortlistStatuses.Contains(a.Status)
-        || a.ApplicationStatusHistories.Any(h => h.NewStatus == ApplicationStates.Shortlisted);
+        || (a.Job.ServiceType.Code == ServiceTypeCodes.CvSourcing
+            ? a.SourcingDeliveries.Any()
+            : PostShortlistStatuses.Contains(a.Status)
+              || a.ApplicationStatusHistories.Any(h => h.NewStatus == ApplicationStates.Shortlisted));
 
-    public static bool IsVisibleToClient(string? serviceTypeCode, string? status, IEnumerable<string?> historyNewStatuses)
+    /// <param name="hasSourcingDelivery">CV_SOURCING only: the application has been delivered at least once.</param>
+    public static bool IsVisibleToClient(
+        string? serviceTypeCode, string? status, IEnumerable<string?> historyNewStatuses, bool hasSourcingDelivery = false)
     {
         if (string.Equals(serviceTypeCode?.Trim(), ServiceTypeCodes.CvApplication, StringComparison.OrdinalIgnoreCase))
             return true;
+
+        // A delivered CV stays visible after it is accepted, rejected or replaced: the Client has seen it.
+        if (string.Equals(serviceTypeCode?.Trim(), ServiceTypeCodes.CvSourcing, StringComparison.OrdinalIgnoreCase))
+            return hasSourcingDelivery;
 
         var normalized = status?.Trim().ToUpperInvariant();
         return (normalized != null && PostShortlistStatuses.Contains(normalized))

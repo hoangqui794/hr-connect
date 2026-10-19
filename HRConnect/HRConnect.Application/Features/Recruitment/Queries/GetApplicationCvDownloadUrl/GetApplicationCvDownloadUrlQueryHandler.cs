@@ -59,7 +59,8 @@ public class GetApplicationCvDownloadUrlQueryHandler
             if (!ClientVisibilityPolicy.IsVisibleToClient(
                     serviceTypeCode,
                     app.Status,
-                    (app.ApplicationStatusHistories ?? []).Select(h => h.NewStatus)))
+                    (app.ApplicationStatusHistories ?? []).Select(h => h.NewStatus),
+                    app.SourcingDeliveries?.Any() ?? false))
             {
                 throw new NotFoundException("Không tìm thấy thông tin hồ sơ ứng tuyển.");
             }

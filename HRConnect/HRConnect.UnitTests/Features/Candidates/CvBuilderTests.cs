@@ -1,0 +1,71 @@
+using FluentAssertions;
+using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Candidates.CvBuilder;
+using HRConnect.Infrastructure.Services.CvBuilder;
+using HRConnect.Infrastructure.Services.Storage;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using UglyToad.PdfPig;
+using Xunit;
+
+namespace HRConnect.UnitTests.Features.Candidates;
+
+/// <summary>BE-04 B: a built CV is a readable text PDF that passes the same checks as an uploaded CV.</summary>
+public class CvBuilderTests
+{
+    private static StructuredCvContent Sample(int experiences = 1) => new(
+        "Phạm Minh Hiếu", "Lập trình viên Backend .NET", "hieu@example.com", "0901234567", "Hà Nội",
+        "Mong muốn phát triển hệ thống API hiệu năng cao bằng ASP.NET Core.",
+        Enumerable.Range(1, experiences).Select(i => new CvExperience(
+            "Kỹ sư phần mềm", $"Công ty {i}", "2022", "2024",
+            "Xây dựng RESTful API bằng ASP.NET Core, tối ưu truy vấn SQL Server, viết unit test.")).ToList(),
+        [new CvEducation("Đại học Bách khoa", "Kỹ sư CNTT", "2017", "2022", null)],
+        ["C#", "ASP.NET Core", "SQL Server", "Docker"], ["Tiếng Anh (IELTS 6.5)"], ["AWS Cloud Practitioner"]);
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("{\"accentColor\":\"#1D4ED8\",\"density\":\"compact\"}")]
+    [InlineData("not json")]
+    public void Render_ShouldProduceReadableVietnamesePdfThatPassesCvChecks(string? templateConfig)
+    {
+        var pdf = new CvPdfRenderer().Render(Sample(), templateConfig);
+
+        new PdfCvValidator(Options.Create(new R2Settings { MaxCvPdfPages = 30 }), NullLogger<PdfCvValidator>.Instance)
+            .Validate(pdf);
+        using var document = PdfDocument.Open(pdf);
+        var text = string.Join(" ", document.GetPages().Select(p => p.Text));
+        text.Should().Contain("Phạm").And.Contain("Hiếu").And.Contain("ASP.NET");
+        text.Should().Contain("KINH NGHIỆM");
+    }
+
+    [Fact]
+    public void Render_LongCv_ShouldFlowOntoMorePages()
+    {
+        var pdf = new CvPdfRenderer().Render(Sample(experiences: 25), null);
+
+        using var document = PdfDocument.Open(pdf);
+        document.NumberOfPages.Should().BeGreaterThan(1);
+    }
+
+    [Fact]
+    public void Validate_EmptyCv_ShouldBeRejected()
+    {
+        var empty = new StructuredCvContent("Nguyễn Văn A", null, null, null, null, null, [], [], [], [], []);
+
+        var act = () => CvBuilderHandlers.Validate(empty);
+
+        act.Should().Throw<BadRequestException>().Which.ErrorCode.Should().Be("CV_CONTENT_EMPTY");
+    }
+
+    [Fact]
+    public void Validate_ShouldTrimAndDropEmptyEntries()
+    {
+        var content = Sample() with { Skills = ["  C#  ", " ", "SQL"], Experiences = [new CvExperience(" ", null, null, null, null)] };
+
+        var result = CvBuilderHandlers.Validate(content);
+
+        result.Skills.Should().Equal("C#", "SQL");
+        result.Experiences.Should().BeEmpty();
+    }
+}

@@ -28,6 +28,7 @@ public class ApplicationRepository : IApplicationRepository
     public async Task<JobApplication?> GetByIdAsync(Guid applicationId, CancellationToken cancellationToken = default)
     {
         return await _context.Applications
+            .Include(a => a.SourcingDeliveries)
             .Include(a => a.Job)
                 .ThenInclude(j => j.Company)
             .Include(a => a.Job)
@@ -233,6 +234,7 @@ public class ApplicationRepository : IApplicationRepository
             .Include(a => a.AiMatchResults)
             .Include(a => a.Submission)
                 .ThenInclude(s => s!.CandidateCv)
+            .Include(a => a.SourcingDeliveries)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .AsSplitQuery()
@@ -245,6 +247,7 @@ public class ApplicationRepository : IApplicationRepository
     {
         return await _context.Applications
             .AsNoTracking()
+            .Include(a => a.SourcingDeliveries)
             .Include(a => a.Job)
                 .ThenInclude(j => j.Company)
             .Include(a => a.Job)
@@ -274,6 +277,7 @@ public class ApplicationRepository : IApplicationRepository
     {
         return await _context.Applications
             .AsNoTracking()
+            .Include(a => a.SourcingDeliveries)
             .Include(a => a.Job)
                 .ThenInclude(j => j.Company)
             .Include(a => a.Job)
@@ -292,6 +296,11 @@ public class ApplicationRepository : IApplicationRepository
                 .ThenInclude(o => o.CreatedByNavigation)
             .Include(a => a.Placement)
                 .ThenInclude(p => p!.ConfirmedByNavigation)
+            .Include(a => a.Submission)
+                .ThenInclude(s => s!.Consent)
+            .Include(a => a.Submission)
+                .ThenInclude(s => s!.SubmittedByNavigation)
+                    .ThenInclude(u => u.AffiliateProfile)
             .AsSplitQuery()
             .FirstOrDefaultAsync(a => a.ApplicationId == applicationId, cancellationToken);
     }
