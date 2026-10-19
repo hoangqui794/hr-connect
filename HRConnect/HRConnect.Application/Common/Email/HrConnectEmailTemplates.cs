@@ -244,7 +244,7 @@ public static class HrConnectEmailTemplates
         var location = string.IsNullOrWhiteSpace(payload.Location) ? string.Empty :
             $"<li><strong>Địa điểm:</strong> {E(payload.Location.Trim())}</li>";
         var meeting = string.IsNullOrWhiteSpace(payload.MeetingLink) ? string.Empty :
-            $"<li><strong>Liên kết tham gia:</strong> <a href=\"{E(payload.MeetingLink.Trim())}\">Mở cuộc họp</a></li>";
+            $"<li><strong>Liên kết tham gia:</strong> {SafeMeetingLink(payload.MeetingLink)}</li>";
         var duration = payload.DurationMinutes is { } minutes && minutes > 0
             ? $"<li><strong>Thời lượng dự kiến:</strong> {minutes} phút</li>"
             : string.Empty;
@@ -268,6 +268,20 @@ public static class HrConnectEmailTemplates
 
     private static DateTime ToVietnamTime(DateTime value) =>
         (value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime()).AddHours(7);
+
+    private static string SafeMeetingLink(string rawUrl)
+    {
+        var trimmed = rawUrl.Trim();
+        if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        {
+            return $"<a href=\"{E(uri.AbsoluteUri)}\">Mở cuộc họp</a>";
+        }
+
+        // The API retains the original value for the authenticated Candidate view, but an email
+        // must never turn an untrusted scheme such as javascript: into a clickable link.
+        return E(trimmed);
+    }
 
     private static string Render(string title, string content, string previewText)
     {

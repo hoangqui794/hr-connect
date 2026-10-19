@@ -45,4 +45,16 @@ public class RecruitmentCandidateEmailTemplateTests
         email.HtmlBody.Should().Contain("Nội dung &lt;không tin cậy&gt;");
         email.HtmlBody.Should().NotContain("Nội dung <không tin cậy>");
     }
+
+    [Fact]
+    public void InterviewScheduled_DoesNotMakeUnsafeMeetingSchemeClickable()
+    {
+        var email = HrConnectEmailTemplates.InterviewScheduled(Payload with
+        {
+            MeetingLink = "javascript:alert('unsafe')"
+        });
+
+        email.HtmlBody.Should().Contain("javascript:alert");
+        email.HtmlBody.Should().NotContain("href=\"javascript:");
+    }
 }

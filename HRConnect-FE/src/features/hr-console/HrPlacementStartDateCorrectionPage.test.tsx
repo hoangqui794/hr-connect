@@ -59,7 +59,7 @@ const findButtonWithText = (text: string) => {
     (candidate) => candidate.textContent?.replace(/\s+/g, ' ').trim() === text
   );
 
-  expect(button, `Expected a button labelled \"${text}\"`).toBeDefined();
+  expect(button, `Expected a button labelled "${text}"`).toBeDefined();
   return button!;
 };
 
