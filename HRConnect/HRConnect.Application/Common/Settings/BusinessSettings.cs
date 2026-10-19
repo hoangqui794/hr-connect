@@ -90,7 +90,7 @@ public static class BusinessSettingKeys
             BusinessSettingType.Integer, 5m, 1m, 30m, "ngày", "QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md, mục 1.1"),
         new(ReplacementFillWindowDays, "HEADHUNT_COD", "Hạn tìm người thay thế",
             "Số ngày kể từ khi suất thay thế được mở (Client đã trả phí). Quá hạn mà chưa có người đi làm thì suất hết hạn.",
-            BusinessSettingType.Integer, 30m, 1m, 180m, "ngày", "docs/MF05/mf05-thiet-ke-suat-thay-the.md, R3"),
+            BusinessSettingType.Integer, 30m, 1m, 180m, "ngày", "main-flows.md, MF-05 suất thay thế"),
         new(JobTemplatePageSizeDefault, "JOB_TEMPLATE", "Số mẫu JD mỗi trang (mặc định)",
             "Số mẫu JD hiển thị mỗi trang khi Client tìm mẫu ở bước 2 của form tạo job.",
             BusinessSettingType.Integer, 8m, 1m, 50m, "mẫu", "main-flows.md, MF-01 thư viện mẫu JD"),

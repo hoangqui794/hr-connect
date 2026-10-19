@@ -22,7 +22,7 @@ using JobApplication = HRConnect.Domain.Entities.Application;
 namespace HRConnect.UnitTests.Features.Finance;
 
 /// <summary>
-/// MF-05 CV_SOURCING money (docs/MF05/mf05-viec-can-lam-theo-quy-tac-phi.md, E8 and E9 items 8–9):
+/// MF-05 CV_SOURCING money (docs/main-flows.md MF-05 and QUY-TAC-PHI section 2; former MF-05 task items 8–9):
 /// deposit on approval, one commission per accepted CV, settlement by counted CVs.
 /// </summary>
 public class SourcingFinanceTests

@@ -186,7 +186,7 @@ public sealed class ResolveResignationCommandHandler : IRequestHandler<ResolveRe
     }
 
     /// <summary>
-    /// S1 of docs/MF05/mf05-thiet-ke-suat-thay-the.md: one slot per fee, OPEN when the fee is paid,
+    /// S1 of docs/main-flows.md (MF-05, suất thay thế): one slot per fee, OPEN when the fee is paid,
     /// otherwise WAITING_PAYMENT until it is. Returns null (and audits why) when no slot is allowed.
     /// </summary>
     private async Task<ReplacementSlot?> OpenReplacementSlotAsync(Placement placement, Guid actorUserId, DateTime now, CancellationToken cancellationToken)

@@ -40,7 +40,7 @@ public interface IFinanceRepository
 
     Task<IReadOnlyList<Guid>> GetOverdueServiceFeeIdsAsync(DateOnly dueBefore, int take, CancellationToken cancellationToken = default);
 
-    // ---- replacement slots (docs/MF05/mf05-thiet-ke-suat-thay-the.md) ----
+    // ---- replacement slots (docs/main-flows.md (MF-05, suất thay thế)) ----
 
     Task AddReplacementSlotAsync(ReplacementSlot slot, CancellationToken cancellationToken = default);
 

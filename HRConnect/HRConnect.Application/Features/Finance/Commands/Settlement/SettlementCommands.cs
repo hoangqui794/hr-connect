@@ -113,7 +113,7 @@ public sealed class SettlementCommandHandlers :
         await AuditAsync(AuditActions.ServiceFeePaymentRecorded, "SERVICE_FEE", fee.ServiceFeeId, request.CurrentUserId,
             new { status = oldStatus }, new { status = fee.Status, fee.PaidAt, fee.PaymentReference, fee.Amount }, cancellationToken);
 
-        // S2: a replacement slot waiting for this payment opens now (docs/MF05/mf05-thiet-ke-suat-thay-the.md).
+        // S2: a replacement slot waiting for this payment opens now (docs/main-flows.md (MF-05, suất thay thế)).
         var slot = await _financeRepository.GetReplacementSlotByServiceFeeForUpdateAsync(fee.ServiceFeeId, cancellationToken);
         if (slot is { Status: ReplacementSlotStates.WaitingPayment })
         {
