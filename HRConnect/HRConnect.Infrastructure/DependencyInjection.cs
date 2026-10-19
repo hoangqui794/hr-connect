@@ -174,6 +174,8 @@ public static class DependencyInjection
         if (int.TryParse(configuration["AVATAR_PRESIGNED_URL_EXPIRY_MINUTES"], out var avatarExpiry) && avatarExpiry is >= 1 and <= 60)
             r2Settings.AvatarPresignedUrlExpiryMinutes = avatarExpiry;
 
+        ValidateProductionR2Settings(r2Settings, configuration);
+
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(r2Settings));
 
         services.AddSingleton<Amazon.S3.IAmazonS3>(sp =>
@@ -182,7 +184,7 @@ public static class DependencyInjection
             var s3Config = new Amazon.S3.AmazonS3Config
             {
                 ServiceURL = string.IsNullOrWhiteSpace(options.Endpoint)
-                    ? "https://ea997660e8c1f6c92b939eb22891843c.r2.cloudflarestorage.com"
+                    ? "http://localhost:9000"
                     : options.Endpoint,
                 ForcePathStyle = true
             };
@@ -225,4 +227,27 @@ public static class DependencyInjection
         return services;
 
     }
+
+    internal static void ValidateProductionR2Settings(R2Settings settings, IConfiguration configuration)
+    {
+        var environment = configuration["ASPNETCORE_ENVIRONMENT"] ?? configuration["DOTNET_ENVIRONMENT"];
+        if (!string.Equals(environment, "Production", StringComparison.OrdinalIgnoreCase)) return;
+
+        var missing = new List<string>();
+        if (string.IsNullOrWhiteSpace(settings.AccountId)) missing.Add("R2_ACCOUNT_ID");
+        if (string.IsNullOrWhiteSpace(settings.AccessKeyId)) missing.Add("R2_ACCESS_KEY_ID");
+        if (string.IsNullOrWhiteSpace(settings.SecretAccessKey)) missing.Add("R2_SECRET_ACCESS_KEY");
+        if (string.IsNullOrWhiteSpace(settings.BucketName)) missing.Add("R2_BUCKET_NAME");
+        if (!IsAbsoluteHttpsUrl(settings.Endpoint)) missing.Add("R2_ENDPOINT (HTTPS URL)");
+        if (!IsAbsoluteHttpsUrl(settings.PublicApiBaseUrl)) missing.Add("PUBLIC_API_BASE_URL (HTTPS URL)");
+
+        if (missing.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Production object storage configuration is incomplete: {string.Join(", ", missing)}.");
+        }
+    }
+
+    private static bool IsAbsoluteHttpsUrl(string? value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps;
 }
