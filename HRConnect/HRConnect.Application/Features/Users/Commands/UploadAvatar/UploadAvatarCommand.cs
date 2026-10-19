@@ -29,6 +29,5 @@ public class UploadAvatarData
 {
     public Guid UserId { get; set; }
     public string AvatarUrl { get; set; } = string.Empty;
-    public string ObjectKey { get; set; } = string.Empty;
     public DateTime UpdatedAt { get; set; }
 }

@@ -17,73 +17,7 @@ public static class UserEndpoints
         var group = app.MapGroup("/api/v1/users")
                        .WithTags("Users");
 
-        // 1. POST /api/v1/users/me/avatar - Tải lên ảnh đại diện của người dùng hiện tại
-        group.MapPost("/me/avatar", async (
-            ClaimsPrincipal user,
-            IFormFile? file,
-            [FromServices] ISender sender,
-            [FromServices] IValidator<UploadAvatarCommand> validator,
-            CancellationToken cancellationToken) =>
-        {
-            var userId = GetUserIdFromClaims(user);
-            if (userId == null)
-            {
-                return Results.Unauthorized();
-            }
-
-            if (file == null || file.Length == 0)
-            {
-                return Results.BadRequest(new
-                {
-                    success = false,
-                    message = "Vui lòng đính kèm tập tin ảnh đại diện (.jpg, .jpeg, .png, .webp)."
-                });
-            }
-
-            var command = new UploadAvatarCommand
-            {
-                UserId = userId.Value,
-                FileStream = file.OpenReadStream(),
-                FileName = file.FileName,
-                ContentType = file.ContentType,
-                FileSizeBytes = file.Length
-            };
-
-            var validationResult = await validator.ValidateAsync(command, cancellationToken);
-            if (!validationResult.IsValid)
-            {
-                return Results.BadRequest(new
-                {
-                    success = false,
-                    message = "Tập tin ảnh đại diện không hợp lệ.",
-                    errors = validationResult.Errors
-                        .GroupBy(e => e.PropertyName)
-                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
-                });
-            }
-
-            try
-            {
-                var result = await sender.Send(command, cancellationToken);
-                return Results.Ok(result);
-            }
-            catch (NotFoundException ex)
-            {
-                return Results.NotFound(new { success = false, message = ex.Message });
-            }
-            catch (ForbiddenException ex)
-            {
-                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
-            }
-            catch (BadRequestException ex)
-            {
-                return Results.BadRequest(new { success = false, message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem(detail: ex.Message, statusCode: 500);
-            }
-        })
+        group.MapPost("/me/avatar", HandleAvatarUploadAsync)
         .RequireAuthorization()
         .DisableAntiforgery()
         .WithName("UploadUserAvatar")
@@ -94,86 +28,33 @@ public static class UserEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
-        .Produces(StatusCodes.Status500InternalServerError);
+        .Produces(StatusCodes.Status413PayloadTooLarge)
+        .Produces(StatusCodes.Status415UnsupportedMediaType)
+        .Produces(StatusCodes.Status422UnprocessableEntity)
+        .Produces(StatusCodes.Status503ServiceUnavailable);
 
-        // Alias: POST /api/v1/users/avatar
-        group.MapPost("/avatar", async (
-            ClaimsPrincipal user,
-            IFormFile? file,
-            [FromServices] ISender sender,
-            [FromServices] IValidator<UploadAvatarCommand> validator,
-            CancellationToken cancellationToken) =>
-        {
-            var userId = GetUserIdFromClaims(user);
-            if (userId == null)
+        group.MapPost("/avatar", async (HttpContext context, IFormFile? file, ISender sender,
+                IValidator<UploadAvatarCommand> validator, CancellationToken cancellationToken) =>
             {
-                return Results.Unauthorized();
-            }
-
-            if (file == null || file.Length == 0)
-            {
-                return Results.BadRequest(new
-                {
-                    success = false,
-                    message = "Vui lòng đính kèm tập tin ảnh đại diện (.jpg, .jpeg, .png, .webp)."
-                });
-            }
-
-            var command = new UploadAvatarCommand
-            {
-                UserId = userId.Value,
-                FileStream = file.OpenReadStream(),
-                FileName = file.FileName,
-                ContentType = file.ContentType,
-                FileSizeBytes = file.Length
-            };
-
-            var validationResult = await validator.ValidateAsync(command, cancellationToken);
-            if (!validationResult.IsValid)
-            {
-                return Results.BadRequest(new
-                {
-                    success = false,
-                    message = "Tập tin ảnh đại diện không hợp lệ.",
-                    errors = validationResult.Errors
-                        .GroupBy(e => e.PropertyName)
-                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
-                });
-            }
-
-            try
-            {
-                var result = await sender.Send(command, cancellationToken);
-                return Results.Ok(result);
-            }
-            catch (NotFoundException ex)
-            {
-                return Results.NotFound(new { success = false, message = ex.Message });
-            }
-            catch (ForbiddenException ex)
-            {
-                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
-            }
-            catch (BadRequestException ex)
-            {
-                return Results.BadRequest(new { success = false, message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem(detail: ex.Message, statusCode: 500);
-            }
-        })
+                context.Response.Headers.Append("Deprecation", "true");
+                context.Response.Headers.Append("Sunset", "Sat, 31 Oct 2027 00:00:00 GMT");
+                context.Response.Headers.Append("Link", "</api/v1/users/me/avatar>; rel=\"successor-version\"");
+                return await HandleAvatarUploadAsync(context.User, file, sender, validator, cancellationToken);
+            })
         .RequireAuthorization()
         .DisableAntiforgery()
         .WithName("UploadUserAvatarAlias")
         .WithSummary("Tải lên ảnh đại diện cho người dùng hiện tại (Alias)")
-        .WithDescription("Đường dẫn thay thế cho /api/v1/users/me/avatar.")
+        .WithDescription("Đường dẫn cũ, sẽ được loại bỏ sau giai đoạn chuyển tiếp. Dùng /api/v1/users/me/avatar.")
         .Produces<UploadAvatarResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
-        .Produces(StatusCodes.Status500InternalServerError);
+        .Produces(StatusCodes.Status413PayloadTooLarge)
+        .Produces(StatusCodes.Status415UnsupportedMediaType)
+        .Produces(StatusCodes.Status422UnprocessableEntity)
+        .Produces(StatusCodes.Status503ServiceUnavailable);
 
         // 2. GET /api/v1/users/{userId:guid}/avatar - Xem ảnh đại diện của người dùng
         group.MapGet("/{userId:guid}/avatar", async (
@@ -258,6 +139,58 @@ public static class UserEndpoints
         .Produces(StatusCodes.Status500InternalServerError);
 
         return app;
+    }
+
+    private static async Task<IResult> HandleAvatarUploadAsync(
+        ClaimsPrincipal user,
+        IFormFile? file,
+        ISender sender,
+        IValidator<UploadAvatarCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserIdFromClaims(user);
+        if (userId is null) return Results.Unauthorized();
+        if (file is null || file.Length == 0)
+            return Results.BadRequest(new { success = false, message = "Vui lòng đính kèm ảnh JPEG, PNG hoặc WebP." });
+
+        await using var stream = file.OpenReadStream();
+        var command = new UploadAvatarCommand
+        {
+            UserId = userId.Value,
+            FileStream = stream,
+            FileName = file.FileName,
+            ContentType = file.ContentType,
+            FileSizeBytes = file.Length
+        };
+        var validation = await validator.ValidateAsync(command, cancellationToken);
+        if (!validation.IsValid)
+        {
+            var status = validation.Errors.Any(error => error.PropertyName == nameof(UploadAvatarCommand.FileSizeBytes))
+                ? StatusCodes.Status413PayloadTooLarge
+                : validation.Errors.Any(error => error.PropertyName is nameof(UploadAvatarCommand.FileName) or nameof(UploadAvatarCommand.ContentType))
+                    ? StatusCodes.Status415UnsupportedMediaType
+                    : StatusCodes.Status400BadRequest;
+            return Results.Json(new
+            {
+                success = false,
+                message = "Tập tin ảnh đại diện không hợp lệ.",
+                errors = validation.Errors.GroupBy(error => error.PropertyName)
+                    .ToDictionary(group => group.Key, group => group.Select(error => error.ErrorMessage).ToArray())
+            }, statusCode: status);
+        }
+
+        try
+        {
+            return Results.Ok(await sender.Send(command, cancellationToken));
+        }
+        catch (NotFoundException ex) { return Results.NotFound(new { success = false, message = ex.Message }); }
+        catch (ForbiddenException ex) { return Results.Json(new { success = false, message = ex.Message }, statusCode: 403); }
+        catch (BadRequestException ex) when (ex.ErrorCode == "AVATAR_UNSUPPORTED_MEDIA_TYPE")
+        { return Results.Json(new { success = false, message = ex.Message }, statusCode: 415); }
+        catch (BadRequestException ex)
+        { return Results.Json(new { success = false, message = ex.Message }, statusCode: 422); }
+        catch (InvalidOperationException ex)
+        { return Results.Json(new { success = false, message = ex.Message }, statusCode: 503); }
     }
 
     private static Guid? GetUserIdFromClaims(ClaimsPrincipal user)

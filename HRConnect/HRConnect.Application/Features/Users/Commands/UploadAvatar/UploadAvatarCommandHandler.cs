@@ -1,130 +1,140 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
-using HRConnect.Application.Common.Models;
+using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace HRConnect.Application.Features.Users.Commands.UploadAvatar;
 
-public class UploadAvatarCommandHandler : IRequestHandler<UploadAvatarCommand, UploadAvatarResponse>
+public sealed class UploadAvatarCommandHandler : IRequestHandler<UploadAvatarCommand, UploadAvatarResponse>
 {
     private readonly IUserRepository _userRepository;
+    private readonly IStorageCleanupJobRepository _cleanupRepository;
     private readonly IFileStorageService _fileStorageService;
+    private readonly IAvatarImageProcessor _imageProcessor;
+    private readonly IAvatarUrlResolver _urlResolver;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly R2Settings _r2Settings;
     private readonly ILogger<UploadAvatarCommandHandler> _logger;
 
     public UploadAvatarCommandHandler(
         IUserRepository userRepository,
+        IStorageCleanupJobRepository cleanupRepository,
         IFileStorageService fileStorageService,
+        IAvatarImageProcessor imageProcessor,
+        IAvatarUrlResolver urlResolver,
         IUnitOfWork unitOfWork,
-        IOptions<R2Settings> r2Options,
         ILogger<UploadAvatarCommandHandler> logger)
     {
         _userRepository = userRepository;
+        _cleanupRepository = cleanupRepository;
         _fileStorageService = fileStorageService;
+        _imageProcessor = imageProcessor;
+        _urlResolver = urlResolver;
         _unitOfWork = unitOfWork;
-        _r2Settings = r2Options.Value;
         _logger = logger;
     }
 
     public async Task<UploadAvatarResponse> Handle(UploadAvatarCommand request, CancellationToken cancellationToken)
     {
         var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
-        if (user == null)
-        {
-            _logger.LogWarning("Không tìm thấy người dùng với UserId {UserId} để cập nhật avatar", request.UserId);
+        if (user is null)
             throw new NotFoundException("Không tìm thấy thông tin tài khoản người dùng tương ứng.");
-        }
-
         if (!string.Equals(user.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogWarning("Tài khoản UserId {UserId} đang ở trạng thái không hoạt động ({Status})", request.UserId, user.Status);
             throw new ForbiddenException("Tài khoản của bạn đang bị khóa hoặc không hoạt động.");
-        }
 
-        var ext = Path.GetExtension(request.FileName).ToLowerInvariant();
-        if (string.IsNullOrEmpty(ext))
+        ProcessedAvatarImage processed;
+        try
         {
-            ext = ".jpg";
+            processed = await _imageProcessor.ProcessAsync(request.FileStream, cancellationToken);
+        }
+        catch (NotSupportedException ex)
+        {
+            throw new BadRequestException(ex.Message, "AVATAR_UNSUPPORTED_MEDIA_TYPE");
+        }
+        catch (InvalidDataException ex)
+        {
+            throw new BadRequestException(ex.Message, "AVATAR_INVALID_IMAGE");
         }
 
-        var avatarId = Guid.NewGuid();
-        var objectKey = $"avatars/{user.UserId}/{avatarId}{ext}";
-
-        // Upload to Cloudflare R2
+        var objectKey = $"avatars/{user.UserId:D}/{Guid.NewGuid():N}{processed.Extension}";
         string uploadedKey;
         try
         {
+            await using var normalizedStream = processed.OpenReadStream();
             uploadedKey = await _fileStorageService.UploadAsync(
-                request.FileStream,
-                objectKey,
-                request.ContentType,
-                cancellationToken);
+                normalizedStream, objectKey, processed.ContentType, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            _logger.LogError(ex, "Lỗi khi upload avatar lên R2 cho UserId {UserId}", user.UserId);
-            throw new InvalidOperationException("Không thể lưu trữ ảnh đại diện lên hệ thống lưu trữ đám mây.", ex);
-        }
-
-        // Determine accessible avatar URL
-        string avatarUrl;
-        if (!string.IsNullOrWhiteSpace(_r2Settings.PublicBaseUrl))
-        {
-            avatarUrl = $"{_r2Settings.PublicBaseUrl.TrimEnd('/')}/{uploadedKey}";
-        }
-        else
-        {
-            try
-            {
-                avatarUrl = await _fileStorageService.GetPresignedDownloadUrlAsync(
-                    uploadedKey,
-                    TimeSpan.FromDays(7),
-                    cancellationToken);
-            }
-            catch
-            {
-                avatarUrl = uploadedKey;
-            }
-        }
-
-        // Clean up previous avatar if it was stored in R2
-        var oldAvatarKey = user.AvatarUrl;
-        if (!string.IsNullOrWhiteSpace(oldAvatarKey) && oldAvatarKey.StartsWith("avatars/", StringComparison.OrdinalIgnoreCase))
-        {
-            try
-            {
-                await _fileStorageService.DeleteAsync(oldAvatarKey, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Không thể xóa avatar cũ ({OldKey}) trên R2", oldAvatarKey);
-            }
+            _logger.LogError(ex, "Avatar upload to object storage failed for user {UserId}", user.UserId);
+            throw new InvalidOperationException("Hệ thống lưu trữ ảnh đang tạm thời gián đoạn. Vui lòng thử lại sau.", ex);
         }
 
         var now = DateTime.UtcNow;
-        user.AvatarUrl = avatarUrl;
-        user.UpdatedAt = now;
+        var oldObjectKey = GetOwnedAvatarKey(user);
+        try
+        {
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+            user.AvatarObjectKey = uploadedKey;
+            user.AvatarUpdatedAt = now;
+            user.AvatarUrl = null;
+            user.UpdatedAt = now;
+            _userRepository.Update(user);
 
-        _userRepository.Update(user);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+            if (!string.IsNullOrWhiteSpace(oldObjectKey) && !string.Equals(oldObjectKey, uploadedKey, StringComparison.Ordinal))
+                await _cleanupRepository.AddAsync(CreateCleanupJob(user.UserId, oldObjectKey, "AVATAR_REPLACED", now), cancellationToken);
 
-        _logger.LogInformation("Người dùng {UserId} đã cập nhật avatar thành công. ObjectKey: {ObjectKey}", user.UserId, uploadedKey);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+        }
+        catch
+        {
+            await CompensateUploadedObjectAsync(uploadedKey, cancellationToken);
+            throw;
+        }
 
+        var avatarUrl = _urlResolver.Resolve(user)
+            ?? throw new InvalidOperationException("Không thể tạo đường dẫn ảnh đại diện.");
+        _logger.LogInformation("Avatar updated for user {UserId}", user.UserId);
         return new UploadAvatarResponse
         {
-            Success = true,
-            Message = "Tải lên ảnh đại diện thành công.",
-            Data = new UploadAvatarData
-            {
-                UserId = user.UserId,
-                AvatarUrl = avatarUrl,
-                ObjectKey = uploadedKey,
-                UpdatedAt = now
-            }
+            Data = new UploadAvatarData { UserId = user.UserId, AvatarUrl = avatarUrl, UpdatedAt = now }
         };
+    }
+
+    private static string? GetOwnedAvatarKey(AppUser user)
+    {
+        var key = user.AvatarObjectKey;
+        if (string.IsNullOrWhiteSpace(key) && user.AvatarUrl?.StartsWith($"avatars/{user.UserId:D}/", StringComparison.OrdinalIgnoreCase) == true)
+            key = user.AvatarUrl;
+        return key?.StartsWith($"avatars/{user.UserId:D}/", StringComparison.OrdinalIgnoreCase) == true ? key : null;
+    }
+
+    private static StorageCleanupJob CreateCleanupJob(Guid? userId, string objectKey, string reason, DateTime now) => new()
+    {
+        StorageCleanupJobId = Guid.NewGuid(), UserId = userId, ObjectKey = objectKey, Reason = reason,
+        Status = "PENDING", NextAttemptAt = now, CreatedAt = now, UpdatedAt = now
+    };
+
+    private async Task CompensateUploadedObjectAsync(string uploadedKey, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _fileStorageService.DeleteAsync(uploadedKey, cancellationToken.IsCancellationRequested ? CancellationToken.None : cancellationToken);
+        }
+        catch (Exception deleteException)
+        {
+            _logger.LogError(deleteException, "Could not compensate uploaded avatar object; recovery queued");
+            try
+            {
+                var now = DateTime.UtcNow;
+                await _cleanupRepository.AddAsync(CreateCleanupJob(null, uploadedKey, "UPLOAD_COMPENSATION", now), CancellationToken.None);
+                await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+            }
+            catch (Exception queueException)
+            {
+                _logger.LogCritical(queueException, "Could not queue avatar object compensation");
+            }
+        }
     }
 }
