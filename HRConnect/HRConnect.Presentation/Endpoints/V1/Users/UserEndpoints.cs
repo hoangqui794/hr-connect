@@ -139,17 +139,22 @@ public static class UserEndpoints
             {
                 return Results.NotFound(new { success = false, message = ex.Message });
             }
-            catch (Exception ex)
+            catch (ForbiddenException ex)
             {
-                return Results.Problem(detail: ex.Message, statusCode: 500);
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: 403);
+            }
+            catch (Exception)
+            {
+                return Results.Json(new { success = false, message = "Không thể xóa ảnh đại diện lúc này. Vui lòng thử lại." }, statusCode: 500);
             }
         })
         .RequireAuthorization()
         .WithName("DeleteUserAvatar")
         .WithSummary("Xóa ảnh đại diện của người dùng hiện tại")
-        .WithDescription("Xóa ảnh đại diện trên Cloudflare R2 và xóa avatar_url trong tài khoản người dùng.")
+        .WithDescription("Gỡ ảnh đại diện khỏi tài khoản và đưa object cũ vào hàng đợi dọn dẹp an toàn.")
         .Produces<DeleteAvatarResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status500InternalServerError);
 

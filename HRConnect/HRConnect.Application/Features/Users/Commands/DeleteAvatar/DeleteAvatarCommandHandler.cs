@@ -1,26 +1,27 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace HRConnect.Application.Features.Users.Commands.DeleteAvatar;
 
-public class DeleteAvatarCommandHandler : IRequestHandler<DeleteAvatarCommand, DeleteAvatarResponse>
+public sealed class DeleteAvatarCommandHandler : IRequestHandler<DeleteAvatarCommand, DeleteAvatarResponse>
 {
     private readonly IUserRepository _userRepository;
-    private readonly IFileStorageService _fileStorageService;
+    private readonly IStorageCleanupJobRepository _cleanupRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<DeleteAvatarCommandHandler> _logger;
 
     public DeleteAvatarCommandHandler(
         IUserRepository userRepository,
-        IFileStorageService fileStorageService,
+        IStorageCleanupJobRepository cleanupRepository,
         IUnitOfWork unitOfWork,
         ILogger<DeleteAvatarCommandHandler> logger)
     {
         _userRepository = userRepository;
-        _fileStorageService = fileStorageService;
+        _cleanupRepository = cleanupRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -28,37 +29,49 @@ public class DeleteAvatarCommandHandler : IRequestHandler<DeleteAvatarCommand, D
     public async Task<DeleteAvatarResponse> Handle(DeleteAvatarCommand request, CancellationToken cancellationToken)
     {
         var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
-        if (user == null)
-        {
-            _logger.LogWarning("Không tìm thấy người dùng với UserId {UserId} để xóa avatar", request.UserId);
+        if (user is null)
             throw new NotFoundException("Không tìm thấy thông tin tài khoản người dùng tương ứng.");
-        }
+        if (!string.Equals(user.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+            throw new ForbiddenException("Tài khoản của bạn đang bị khóa hoặc không hoạt động.");
 
-        var oldAvatarKey = user.AvatarUrl;
-        if (!string.IsNullOrWhiteSpace(oldAvatarKey) && oldAvatarKey.StartsWith("avatars/", StringComparison.OrdinalIgnoreCase))
+        var now = DateTime.UtcNow;
+        var oldObjectKey = GetOwnedAvatarKey(user);
+        var hadAvatar = !string.IsNullOrWhiteSpace(user.AvatarObjectKey) || !string.IsNullOrWhiteSpace(user.AvatarUrl);
+        if (hadAvatar)
         {
-            try
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+            user.AvatarObjectKey = null;
+            user.AvatarUrl = null;
+            user.AvatarUpdatedAt = now;
+            user.UpdatedAt = now;
+            _userRepository.Update(user);
+
+            if (!string.IsNullOrWhiteSpace(oldObjectKey))
             {
-                await _fileStorageService.DeleteAsync(oldAvatarKey, cancellationToken);
+                await _cleanupRepository.AddAsync(new StorageCleanupJob
+                {
+                    StorageCleanupJobId = Guid.NewGuid(), UserId = user.UserId, ObjectKey = oldObjectKey,
+                    Reason = "AVATAR_DELETED", Status = "PENDING", NextAttemptAt = now,
+                    CreatedAt = now, UpdatedAt = now
+                }, cancellationToken);
             }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Không thể xóa avatar cũ ({OldKey}) trên R2", oldAvatarKey);
-            }
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
 
-        user.AvatarUrl = null;
-        user.UpdatedAt = DateTime.UtcNow;
-
-        _userRepository.Update(user);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        _logger.LogInformation("Người dùng {UserId} đã xóa ảnh đại diện thành công", user.UserId);
-
+        _logger.LogInformation("Avatar cleared for user {UserId}; storage cleanup queued: {CleanupQueued}",
+            user.UserId, oldObjectKey is not null);
         return new DeleteAvatarResponse
         {
-            Success = true,
-            Message = "Xóa ảnh đại diện thành công."
+            Message = hadAvatar ? "Xóa ảnh đại diện thành công." : "Tài khoản hiện chưa có ảnh đại diện.",
+            Data = new DeleteAvatarData { UserId = user.UserId, AvatarUrl = null, UpdatedAt = now }
         };
+    }
+
+    private static string? GetOwnedAvatarKey(AppUser user)
+    {
+        var key = user.AvatarObjectKey;
+        if (string.IsNullOrWhiteSpace(key) && user.AvatarUrl?.StartsWith($"avatars/{user.UserId:D}/", StringComparison.OrdinalIgnoreCase) == true)
+            key = user.AvatarUrl;
+        return key?.StartsWith($"avatars/{user.UserId:D}/", StringComparison.OrdinalIgnoreCase) == true ? key : null;
     }
 }

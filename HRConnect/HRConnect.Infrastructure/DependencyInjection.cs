@@ -130,6 +130,7 @@ public static class DependencyInjection
         services.AddHostedService<HRConnect.Infrastructure.Services.Integration.Mf03ScoringDispatcher>();
         services.AddHostedService<HRConnect.Infrastructure.Services.SubmissionConsents.SubmissionConsentExpiryWorker>();
         services.AddHostedService<AccountLifecycleEmailOutboxWorker>();
+        services.AddHostedService<HRConnect.Infrastructure.Services.Storage.AvatarStorageCleanupWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Offers.OfferExpiryWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Finance.WarrantyProgressWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Finance.SourcingFinanceWorker>();

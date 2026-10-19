@@ -13,4 +13,12 @@ public class DeleteAvatarResponse
 {
     public bool Success { get; set; } = true;
     public string Message { get; set; } = "Xóa ảnh đại diện thành công.";
+    public DeleteAvatarData? Data { get; set; }
+}
+
+public sealed class DeleteAvatarData
+{
+    public Guid UserId { get; set; }
+    public string? AvatarUrl { get; set; }
+    public DateTime UpdatedAt { get; set; }
 }
