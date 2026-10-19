@@ -2164,9 +2164,18 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex("ResolvedBy");
 
-                    b.HasIndex("SubmissionId");
+                    b.HasIndex(new[] { "Status", "CreatedAt" }, "idx_dispute_status_created");
 
-                    b.ToTable("dispute", "public");
+                    b.HasIndex(new[] { "SubmissionId" }, "uq_dispute_submission_open")
+                        .IsUnique()
+                        .HasFilter("status IN ('OPEN','UNDER_REVIEW')");
+
+                    b.ToTable("dispute", "public", t =>
+                        {
+                            t.HasCheckConstraint("ck_dispute_status", "status IN ('OPEN','UNDER_REVIEW','UPHELD','REJECTED','WITHDRAWN')");
+
+                            t.HasCheckConstraint("ck_dispute_type", "dispute_type IN ('DUPLICATE_SUBMISSION','ATTRIBUTION')");
+                        });
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.EmailOutbox", b =>

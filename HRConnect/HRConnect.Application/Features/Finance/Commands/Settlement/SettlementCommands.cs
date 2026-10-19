@@ -152,6 +152,13 @@ public sealed class SettlementCommandHandlers :
                 $"Chỉ duyệt hoa hồng đã EARNED (ứng viên đi làm đủ thời hạn bảo hành). Trạng thái hiện tại: {commission.Status}.");
         }
 
+        if (await _financeRepository.HasActiveDisputeAsync(commission.CommissionId, commission.AttributionId, cancellationToken))
+        {
+            throw new ConflictException(
+                "Hoa hồng đang có khiếu nại trùng / attribution chưa xử lý (SF-04). Xử lý khiếu nại trước khi duyệt chi.",
+                DisputeErrorCodes.CommissionUnderDispute);
+        }
+
         var now = DateTime.UtcNow;
         Guid? serviceFeeId;
         if (commission.SourcingDeliveryId.HasValue)

@@ -99,6 +99,9 @@ public interface IFinanceRepository
 
     Task<bool> HasSourcingCommissionAsync(Guid deliveryId, CancellationToken cancellationToken = default);
 
+    /// <summary>SF-04 D3: an OPEN / UNDER_REVIEW dispute targets this commission or its attribution.</summary>
+    Task<bool> HasActiveDisputeAsync(Guid commissionId, Guid attributionId, CancellationToken cancellationToken = default);
+
     // ---- suspended affiliates (decision 2026-10-17) ----
 
     /// <summary>PENDING / IN_WARRANTY commissions of affiliates whose account is SUSPENDED, tracked for update.</summary>
