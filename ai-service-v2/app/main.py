@@ -42,6 +42,9 @@ async def lifespan(_: FastAPI):
 _startup_settings = get_settings()
 logging.basicConfig(level=_startup_settings.log_level.upper(),
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# Library request logs (model downloads at startup, every HTTP call) drown the scoring steps at INFO.
+for _noisy in ("httpx", "httpcore", "huggingface_hub", "urllib3", "sentence_transformers"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
 
 # API docs only in local testing: on a public URL they advertise the unauthenticated test endpoint.
 _docs_enabled = _startup_settings.allow_unauthenticated_test_endpoints

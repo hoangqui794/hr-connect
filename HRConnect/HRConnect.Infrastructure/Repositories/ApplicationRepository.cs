@@ -295,6 +295,11 @@ public class ApplicationRepository : IApplicationRepository
                 .ThenInclude(o => o.CreatedByNavigation)
             .Include(a => a.Placement)
                 .ThenInclude(p => p!.ConfirmedByNavigation)
+            .Include(a => a.Submission)
+                .ThenInclude(s => s!.Consent)
+            .Include(a => a.Submission)
+                .ThenInclude(s => s!.SubmittedByNavigation)
+                    .ThenInclude(u => u.AffiliateProfile)
             .AsSplitQuery()
             .FirstOrDefaultAsync(a => a.ApplicationId == applicationId, cancellationToken);
     }

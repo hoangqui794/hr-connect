@@ -38,15 +38,15 @@ public static class JobEndpoints
 
         publicJobs.MapGet("", async (string? search, string? location, string? employmentType,
             Guid? serviceTypeId, decimal? salaryMin, decimal? salaryMax, int? page, int? pageSize,
-            string? sortBy, string? sortDirection,
+            string? sortBy, string? sortDirection, int? experienceYears,
             ISender sender, CancellationToken ct) =>
             await Run(async () => Results.Ok(await sender.Send(new GetPublicJobsQuery(
                 [JobAccessPolicy.CandidateRole], false, search, location, employmentType, serviceTypeId,
                 salaryMin, salaryMax, page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : 20,
-                sortBy, sortDirection), ct))))
+                sortBy, sortDirection, experienceYears), ct))))
         .WithName("GetGuestCandidateJobs")
         .WithSummary("Guest tìm Job Candidate được phép xem")
-        .WithDescription("Không cần đăng nhập. API cố định phạm vi CANDIDATE: chỉ trả Job ACTIVE thuộc Service Type có can_view cho role CANDIDATE (cấu hình trong service_type_allowed_role). Hỗ trợ sắp xếp sortBy=POSTED_AT|SALARY và sortDirection=DESC|ASC.")
+        .WithDescription("Không cần đăng nhập. API cố định phạm vi CANDIDATE: chỉ trả Job ACTIVE thuộc Service Type có can_view cho role CANDIDATE (cấu hình trong service_type_allowed_role). Hỗ trợ sắp xếp sortBy=POSTED_AT|SALARY và sortDirection=DESC|ASC. experienceYears (0-60): chỉ lấy job có khoảng kinh nghiệm chứa số năm này; job không ghi kinh nghiệm luôn được lấy.")
         .RequireRateLimiting("public-read")
         .Produces<JobPageDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
@@ -115,13 +115,18 @@ public static class JobEndpoints
         jobs.MapPost("/{jobId:guid}/posting-fee/pay", async (Guid jobId, ClaimsPrincipal user, [FromBody] PayPostingFeeRequest? request, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized();
+            // N4 (chốt 19/10): chỉ Platform Admin ghi nhận tiền đã thu; Client chuyển khoản ngoài hệ thống.
+            if (!user.IsInRole("PLATFORM_ADMIN")) return Forbidden();
+            if (string.IsNullOrWhiteSpace(request?.PaymentReference))
+                return Results.BadRequest(new { success = false, code = "PAYMENT_REFERENCE_REQUIRED", message = "Nhập mã tham chiếu / số biên lai chuyển khoản." });
             return await Run(async Task<IResult> () => Results.Ok(await sender.Send(new RecordJobPostingFeePaymentCommand
             {
                 JobId = jobId,
                 PaymentReference = request?.PaymentReference ?? string.Empty,
                 UserId = id.Value
             }, ct)));
-        }).WithName("RecordJobPostingFeePayment").WithSummary("Ghi nhận thanh toán phí đăng tin CV_APPLICATION");
+        }).WithName("RecordJobPostingFeePayment").WithSummary("Ghi nhận thanh toán phí đăng tin CV_APPLICATION")
+        .WithDescription("Chỉ Platform Admin (403 với vai trò khác). Bắt buộc paymentReference (400 PAYMENT_REFERENCE_REQUIRED). Job đang chờ thanh toán sẽ được mở.");
 
         jobs.MapGet("/mine", async (ClaimsPrincipal user, string? status, ISender sender, CancellationToken ct) =>
         {
@@ -131,16 +136,16 @@ public static class JobEndpoints
         ).WithName("GetMyJobs").WithSummary("Lấy danh sách Job của doanh nghiệp hiện tại");
         jobs.MapGet("", async (ClaimsPrincipal user, string? search, string? location, string? employmentType,
             Guid? serviceTypeId, decimal? salaryMin, decimal? salaryMax, int? page, int? pageSize,
-            string? sortBy, string? sortDirection, ISender sender, CancellationToken ct) =>
+            string? sortBy, string? sortDirection, int? experienceYears, ISender sender, CancellationToken ct) =>
         {
             if (!user.HasClaim("permission", "job.view")) return Forbidden();
             var internalAccess = ReviewerCan(user, "job.review");
             return await Run(async () => Results.Ok(await sender.Send(new GetPublicJobsQuery(
                 RoleCodes(user), internalAccess, search, location, employmentType, serviceTypeId, salaryMin, salaryMax,
                 page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : 20,
-                sortBy, sortDirection), ct)));
+                sortBy, sortDirection, experienceYears), ct)));
         }).WithName("GetPublicJobs").WithSummary("Tìm Job đang hoạt động theo quyền xem của Service Type")
-        .WithDescription("Yêu cầu đăng nhập và permission job.view. Kết quả được lọc theo role thật và Service Type. Hỗ trợ search, location, employmentType, serviceTypeId, salaryMin, salaryMax; sortBy=POSTED_AT|SALARY; sortDirection=DESC|ASC; page mặc định 1, pageSize mặc định 20 và tối đa 100.")
+        .WithDescription("Yêu cầu đăng nhập và permission job.view. Kết quả được lọc theo role thật và Service Type. Hỗ trợ search, location, employmentType, serviceTypeId, salaryMin, salaryMax, experienceYears (0-60, job không ghi kinh nghiệm luôn được lấy); sortBy=POSTED_AT|SALARY; sortDirection=DESC|ASC; page mặc định 1, pageSize mặc định 20 và tối đa 100.")
         .Produces<JobPageDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -321,6 +326,8 @@ public static class JobEndpoints
             var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ReviewerCan(user, "job.publish")) return Forbidden();
             var token = body?.ConcurrencyToken ?? concurrencyToken ?? Guid.Empty;
             var payRef = body?.PaymentReference ?? paymentReference;
+            // N4: Internal HR duyệt tin nhưng không ghi nhận tiền; chỉ Platform Admin được kèm mã thanh toán.
+            if (!string.IsNullOrWhiteSpace(payRef) && !user.IsInRole("PLATFORM_ADMIN")) return Forbidden();
             return await Run(async Task<IResult> () => Results.Ok(await sender.Send(new ApproveJobCommand
             {
                 JobId = jobId,

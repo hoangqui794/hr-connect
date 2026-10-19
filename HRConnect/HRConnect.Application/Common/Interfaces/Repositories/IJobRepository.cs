@@ -39,6 +39,26 @@ public interface IJobRepository
         string? sortDirection = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Same as <see cref="GetVisibleJobsAsync"/> plus BE-02 C: keeps jobs whose experience range contains
+    /// <paramref name="experienceYears"/> (an empty bound matches).
+    /// </summary>
+    Task<(IReadOnlyList<Job> Items, int TotalCount)> GetVisibleJobsWithExperienceAsync(
+        IReadOnlyCollection<string> roleCodes,
+        bool bypassServiceTypeRoleCheck,
+        string? search,
+        string? location,
+        string? employmentType,
+        Guid? serviceTypeId,
+        decimal? salaryMin,
+        decimal? salaryMax,
+        int experienceYears,
+        int page,
+        int pageSize,
+        string? sortBy = null,
+        string? sortDirection = null,
+        CancellationToken cancellationToken = default);
+
     Task<bool> CanAnyRoleViewJobAsync(
         Guid serviceTypeId,
         IReadOnlyCollection<string> roleCodes,

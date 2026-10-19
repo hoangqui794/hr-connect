@@ -16,7 +16,8 @@ public sealed record GetPublicJobsQuery(
     int Page = 1,
     int PageSize = 20,
     string? SortBy = null,
-    string? SortDirection = null) : IRequest<JobPageDto>;
+    string? SortDirection = null,
+    int? ExperienceYears = null) : IRequest<JobPageDto>;
 
 public sealed record JobPageDto(
     IReadOnlyList<JobDto> Items,
@@ -58,8 +59,16 @@ public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQue
             sortDirection = normalizedSortDirection;
         }
 
+        if (request.ExperienceYears is < 0 or > 60)
+            throw new HRConnect.Application.Common.Exceptions.BadRequestException("experienceYears phải từ 0 đến 60.");
+
         var roleCodes = request.RoleCodes.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var (items, totalCount) = await _jobs.GetVisibleJobsAsync(
+        var (items, totalCount) = request.ExperienceYears.HasValue
+            ? await _jobs.GetVisibleJobsWithExperienceAsync(
+                roleCodes, request.HasInternalAccess, request.Search, request.Location, request.EmploymentType,
+                request.ServiceTypeId, request.SalaryMin, request.SalaryMax, request.ExperienceYears.Value,
+                page, pageSize, sortBy, sortDirection, cancellationToken)
+            : await _jobs.GetVisibleJobsAsync(
             roleCodes,
             request.HasInternalAccess,
             request.Search,

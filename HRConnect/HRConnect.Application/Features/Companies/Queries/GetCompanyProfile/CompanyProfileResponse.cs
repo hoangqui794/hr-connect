@@ -13,6 +13,8 @@ public class CompanyProfileData
     public string CompanyName { get; set; } = string.Empty;
     public string? TaxCode { get; set; }
     public string? Industry { get; set; }
+    public Guid? IndustryId { get; set; }
+    public Guid? CompanySizeId { get; set; }
     public string? CompanySize { get; set; }
     public string? Website { get; set; }
     public string? Address { get; set; }

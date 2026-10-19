@@ -74,19 +74,43 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
         var jobTitle = app.Job?.Title ?? "Vị trí tuyển dụng";
         var events = new List<ApplicationTimelineEventDto>();
 
-        // 1. Hồ sơ được nộp
-        events.Add(new ApplicationTimelineEventDto
+        // 1. Hồ sơ được nộp (ứng viên tự nộp hoặc Affiliate giới thiệu và ứng viên đồng ý)
+        var submission = app.Submission;
+        if (!request.IsCandidate && string.Equals(submission?.Source, "AFFILIATE", StringComparison.OrdinalIgnoreCase))
         {
-            EventType = "APPLICATION_APPLIED",
-            Title = request.IsCandidate ? "Hồ sơ đã được gửi" : "Nộp hồ sơ ứng tuyển",
-            Description = request.IsCandidate
-                ? $"Hồ sơ của bạn đã được gửi đến nhà tuyển dụng cho vị trí {jobTitle}."
-                : $"Ứng viên {candidateName} đã nộp hồ sơ ứng tuyển vào vị trí {jobTitle}.",
-            Timestamp = app.AppliedAt,
-            ActorUserId = app.Candidate?.UserId,
-            ActorName = candidateName,
-            Status = ApplicationStates.Submitted
-        });
+            var affiliateName = submission!.SubmittedByNavigation?.AffiliateProfile?.DisplayName
+                ?? submission.SubmittedByNavigation?.DisplayName ?? "Affiliate";
+            var consentAt = submission.Consent?.RespondedAt;
+            var consentText = consentAt.HasValue ? $"; ứng viên đồng ý lúc {VietnamTime(consentAt.Value)}" : string.Empty;
+            // Client không thấy tên Affiliate (chỉ HR Connect quản lý nguồn giới thiệu).
+            events.Add(new ApplicationTimelineEventDto
+            {
+                EventType = "APPLICATION_APPLIED",
+                Title = "Affiliate giới thiệu hồ sơ",
+                Description = request.IsClientCompanyUser
+                    ? $"Ứng viên {candidateName} được giới thiệu qua mạng lưới Affiliate của HR Connect vào vị trí {jobTitle}{consentText}."
+                    : $"Affiliate {affiliateName} giới thiệu ứng viên {candidateName} vào vị trí {jobTitle}{consentText}.",
+                Timestamp = app.AppliedAt,
+                ActorUserId = request.IsClientCompanyUser ? null : submission.SubmittedBy,
+                ActorName = request.IsClientCompanyUser ? "HR Connect" : affiliateName,
+                Status = ApplicationStates.Submitted
+            });
+        }
+        else
+        {
+            events.Add(new ApplicationTimelineEventDto
+            {
+                EventType = "APPLICATION_APPLIED",
+                Title = request.IsCandidate ? "Hồ sơ đã được gửi" : "Nộp hồ sơ ứng tuyển",
+                Description = request.IsCandidate
+                    ? $"Hồ sơ của bạn đã được gửi đến nhà tuyển dụng cho vị trí {jobTitle}."
+                    : $"Ứng viên {candidateName} đã nộp hồ sơ ứng tuyển vào vị trí {jobTitle}.",
+                Timestamp = app.AppliedAt,
+                ActorUserId = app.Candidate?.UserId,
+                ActorName = candidateName,
+                Status = ApplicationStates.Submitted
+            });
+        }
 
         // 2. Lịch sử thay đổi trạng thái hồ sơ
         if (app.ApplicationStatusHistories != null)
@@ -98,12 +122,12 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                 events.Add(new ApplicationTimelineEventDto
                 {
                     EventType = "APPLICATION_STATUS_CHANGED",
-                    Title = request.IsCandidate ? candidateCopy.Title : $"Chuyển trạng thái: {h.NewStatus}",
+                    Title = request.IsCandidate ? candidateCopy.Title : $"Chuyển trạng thái: {StatusLabel(h.NewStatus)}",
                     Description = request.IsCandidate
                         ? candidateCopy.Description
                         : !string.IsNullOrWhiteSpace(h.Reason)
                             ? h.Reason
-                            : $"Trạng thái chuyển từ {h.OldStatus ?? "Mới"} sang {h.NewStatus}.",
+                            : $"Trạng thái chuyển từ {(h.OldStatus == null ? "Mới" : StatusLabel(h.OldStatus))} sang {StatusLabel(h.NewStatus)}.",
                     Timestamp = h.ChangedAt,
                     ActorUserId = request.IsCandidate ? null : h.ChangedBy,
                     ActorName = request.IsCandidate ? null : (h.ChangedByNavigation?.DisplayName ?? h.ChangedByNavigation?.Email),
@@ -304,4 +328,27 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
             _ => string.IsNullOrWhiteSpace(interviewType) ? "Trực tiếp" : interviewType
         };
     }
+
+    /// <summary>Nhãn tiếng Việt cho HR và Client (N15, N17); mã trạng thái vẫn trả ở trường Status.</summary>
+    public static string StatusLabel(string status) => status switch
+    {
+        ApplicationStates.Submitted => "Đã nộp",
+        ApplicationStates.Screening => "Đang sàng lọc",
+        ApplicationStates.Shortlisted => "Đã chọn",
+        ApplicationStates.Rejected => "Đã loại",
+        ApplicationStates.Interview => "Phỏng vấn",
+        ApplicationStates.Backup => "Dự phòng",
+        ApplicationStates.BackupNotSelected => "Dự phòng không được chọn",
+        ApplicationStates.InterviewFailed => "Không đạt phỏng vấn",
+        ApplicationStates.OfferPending => "Chờ phản hồi offer",
+        ApplicationStates.OfferAccepted => "Đã nhận offer",
+        ApplicationStates.OfferDeclined => "Từ chối offer",
+        ApplicationStates.NotStarted => "Không nhận việc",
+        ApplicationStates.Withdrawn => "Đã rút hồ sơ",
+        ApplicationStates.Placed => "Đã đi làm",
+        ApplicationStates.Closed => "Đã đóng",
+        _ => status,
+    };
+
+    private static string VietnamTime(DateTime utc) => utc.AddHours(7).ToString("HH:mm dd/MM/yyyy");
 }

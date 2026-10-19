@@ -404,6 +404,8 @@ app.MapDisputeEndpoints();
 app.MapContactRequestEndpoints();
 app.MapCvBuilderEndpoints();
 app.MapJobMatchEndpoints();
+app.MapCompanyDirectoryEndpoints();
+app.MapAffiliateCommissionEstimateEndpoints();
 app.MapHub<HRConnect.Presentation.Hubs.NotificationHub>(HRConnect.Presentation.Hubs.NotificationHub.Path);
 app.MapBusinessSettingEndpoints();
 app.MapSubmissionConsentEndpoints();
