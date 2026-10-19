@@ -161,6 +161,114 @@ public static class HrConnectEmailTemplates
                 $"Xác nhận hồ sơ cho vị trí {jobTitle} trước khi hết hạn."));
     }
 
+    public static HrConnectEmail InterviewScheduled(RecruitmentCandidateEmailPayload payload) =>
+        InterviewNotice(payload, "Bạn có lịch phỏng vấn mới", "Lịch phỏng vấn mới");
+
+    public static HrConnectEmail InterviewRescheduled(RecruitmentCandidateEmailPayload payload) =>
+        InterviewNotice(payload, "Lịch phỏng vấn đã được dời", "Lịch phỏng vấn đã thay đổi");
+
+    public static HrConnectEmail InterviewCancelled(RecruitmentCandidateEmailPayload payload)
+    {
+        var organization = CompanyOrPlatform(payload.CompanyName);
+        var reason = string.IsNullOrWhiteSpace(payload.Reason)
+            ? string.Empty
+            : $"<p style=\"margin:0 0 16px\">Lý do: {E(payload.Reason.Trim())}</p>";
+        return new HrConnectEmail(
+            SubjectText($"Lịch phỏng vấn vị trí {payload.JobTitle} đã bị hủy"),
+            Render(
+                "Lịch phỏng vấn đã bị hủy",
+                Greeting(payload.CandidateName) +
+                $"<p style=\"margin:0 0 16px\">{organization} đã hủy lịch phỏng vấn Vòng {payload.InterviewRound ?? 1} cho vị trí <strong>{E(payload.JobTitle)}</strong>.</p>" +
+                reason +
+                "<p style=\"margin:0 0 18px\">Bạn có thể đăng ký hoặc đăng nhập để theo dõi các cập nhật tiếp theo cho hồ sơ của mình.</p>" +
+                Button("Đăng ký / đăng nhập HR Connect", payload.PortalUrl),
+                $"Cập nhật lịch phỏng vấn cho vị trí {payload.JobTitle}."));
+    }
+
+    public static HrConnectEmail OfferSent(RecruitmentCandidateEmailPayload payload)
+    {
+        var company = CompanyOrPlatform(payload.CompanyName);
+        var expiry = payload.ExpiryDate is { } value
+            ? $" Vui lòng phản hồi trước ngày <strong>{value:dd/MM/yyyy}</strong>."
+            : string.Empty;
+        return new HrConnectEmail(
+            SubjectText($"Bạn nhận được Offer cho vị trí {payload.JobTitle}"),
+            Render(
+                "Bạn có một lời mời nhận việc",
+                Greeting(payload.CandidateName) +
+                $"<p style=\"margin:0 0 16px\">{company} đã gửi lời mời nhận việc cho vị trí <strong>{E(payload.JobTitle)}</strong>.{expiry}</p>" +
+                "<p style=\"margin:0 0 18px\">Đăng ký hoặc đăng nhập HR Connect để xem nội dung Offer và phản hồi. Vì an toàn thông tin, email này không chứa chi tiết lương hoặc tài liệu Offer.</p>" +
+                Button("Đăng ký / đăng nhập để xem Offer", payload.PortalUrl),
+                $"Bạn có Offer mới cho vị trí {payload.JobTitle}."));
+    }
+
+    public static HrConnectEmail OfferWithdrawn(RecruitmentCandidateEmailPayload payload)
+    {
+        var reason = string.IsNullOrWhiteSpace(payload.Reason)
+            ? string.Empty
+            : $"<p style=\"margin:0 0 16px\">Lý do: {E(payload.Reason.Trim())}</p>";
+        return new HrConnectEmail(
+            SubjectText($"Offer cho vị trí {payload.JobTitle} đã được thu hồi"),
+            Render(
+                "Offer đã được thu hồi",
+                Greeting(payload.CandidateName) +
+                $"<p style=\"margin:0 0 16px\">Lời mời nhận việc cho vị trí <strong>{E(payload.JobTitle)}</strong> đã được thu hồi.</p>" +
+                reason +
+                "<p style=\"margin:0 0 18px\">Bạn có thể đăng ký hoặc đăng nhập HR Connect để theo dõi trạng thái hồ sơ.</p>" +
+                Button("Đăng ký / đăng nhập HR Connect", payload.PortalUrl),
+                $"Cập nhật Offer cho vị trí {payload.JobTitle}."));
+    }
+
+    public static HrConnectEmail OfferExpired(RecruitmentCandidateEmailPayload payload) =>
+        new(
+            SubjectText($"Offer cho vị trí {payload.JobTitle} đã hết hạn phản hồi"),
+            Render(
+                "Offer đã hết hạn phản hồi",
+                Greeting(payload.CandidateName) +
+                $"<p style=\"margin:0 0 16px\">Lời mời nhận việc cho vị trí <strong>{E(payload.JobTitle)}</strong> đã hết hạn phản hồi.</p>" +
+                "<p style=\"margin:0 0 18px\">Bạn có thể đăng ký hoặc đăng nhập HR Connect để xem lại trạng thái hồ sơ của mình.</p>" +
+                Button("Đăng ký / đăng nhập HR Connect", payload.PortalUrl),
+                $"Offer cho vị trí {payload.JobTitle} đã hết hạn phản hồi."));
+
+    private static HrConnectEmail InterviewNotice(
+        RecruitmentCandidateEmailPayload payload,
+        string heading,
+        string preview)
+    {
+        var scheduledAt = payload.ScheduledAt is { } value
+            ? ToVietnamTime(value).ToString("HH:mm 'ngày' dd/MM/yyyy")
+            : "sẽ được cập nhật trên HR Connect";
+        var organization = CompanyOrPlatform(payload.CompanyName);
+        var format = string.IsNullOrWhiteSpace(payload.InterviewType) ? string.Empty :
+            $"<li><strong>Hình thức:</strong> {E(payload.InterviewType.Trim())}</li>";
+        var location = string.IsNullOrWhiteSpace(payload.Location) ? string.Empty :
+            $"<li><strong>Địa điểm:</strong> {E(payload.Location.Trim())}</li>";
+        var meeting = string.IsNullOrWhiteSpace(payload.MeetingLink) ? string.Empty :
+            $"<li><strong>Liên kết tham gia:</strong> <a href=\"{E(payload.MeetingLink.Trim())}\">Mở cuộc họp</a></li>";
+        var duration = payload.DurationMinutes is { } minutes && minutes > 0
+            ? $"<li><strong>Thời lượng dự kiến:</strong> {minutes} phút</li>"
+            : string.Empty;
+
+        return new HrConnectEmail(
+            SubjectText($"{preview}: {payload.JobTitle}"),
+            Render(
+                heading,
+                Greeting(payload.CandidateName) +
+                $"<p style=\"margin:0 0 16px\">{organization} đã cập nhật lịch phỏng vấn Vòng {payload.InterviewRound ?? 1} cho vị trí <strong>{E(payload.JobTitle)}</strong>.</p>" +
+                $"<ul style=\"margin:0 0 18px;padding-left:20px\"><li><strong>Thời gian:</strong> {E(scheduledAt)} (giờ Việt Nam)</li>{duration}{format}{location}{meeting}</ul>" +
+                "<p style=\"margin:0 0 18px\">Đăng ký hoặc đăng nhập HR Connect để theo dõi hồ sơ và các cập nhật tiếp theo.</p>" +
+                Button("Đăng ký / đăng nhập HR Connect", payload.PortalUrl),
+                $"{preview} cho vị trí {payload.JobTitle}."));
+    }
+
+    private static string CompanyOrPlatform(string? companyName) =>
+        string.IsNullOrWhiteSpace(companyName)
+            ? "HR Connect"
+            : $"<strong>{E(companyName.Trim())}</strong>";
+
+    private static DateTime ToVietnamTime(DateTime value) =>
+        (value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime()).AddHours(7);
+
     private static string Render(string title, string content, string previewText)
     {
         return $"""
