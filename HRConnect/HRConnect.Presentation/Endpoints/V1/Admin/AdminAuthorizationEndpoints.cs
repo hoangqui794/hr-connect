@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Admin.Authorization;
 using HRConnect.Presentation.Authorization;
@@ -22,12 +22,14 @@ public static class AdminAuthorizationEndpoints
         group.MapGet("/permissions", async (
             [FromQuery] string? search, [FromQuery] string? resource, [FromQuery] string? action,
             [FromQuery] bool? isActive, [FromQuery] bool? isDelegable,
-            [FromQuery] int page, [FromQuery] int pageSize,
+            [FromQuery] int? page, [FromQuery] int? pageSize,
             IAuthorizationAdminService service, ClaimsPrincipal user, CancellationToken ct) =>
         {
             if (!PermissionAuthorization.HasPermission(user, PermissionView)) return PermissionAuthorization.Forbidden(PermissionView);
+            var pageNum = page.GetValueOrDefault(1);
+            var sizeNum = pageSize.GetValueOrDefault(20);
             var data = await service.GetPermissionsAsync(search, resource, action, isActive, isDelegable,
-                page <= 0 ? 1 : page, pageSize <= 0 ? 20 : pageSize, ct);
+                pageNum <= 0 ? 1 : pageNum, sizeNum <= 0 ? 20 : sizeNum, ct);
             return Results.Ok(new { success = true, data });
         }).WithName("GetAdminPermissions").WithSummary("Xem danh mục quyền hệ thống")
           .Produces(StatusCodes.Status200OK).Produces(StatusCodes.Status401Unauthorized).Produces(StatusCodes.Status403Forbidden);
@@ -54,12 +56,14 @@ public static class AdminAuthorizationEndpoints
 
         group.MapGet("/roles", async (
             [FromQuery] string? search, [FromQuery] bool? isSystem, [FromQuery] bool? isActive,
-            [FromQuery] int page, [FromQuery] int pageSize,
+            [FromQuery] int? page, [FromQuery] int? pageSize,
             IAuthorizationAdminService service, ClaimsPrincipal user, CancellationToken ct) =>
         {
             if (!PermissionAuthorization.HasPermission(user, RoleView)) return PermissionAuthorization.Forbidden(RoleView);
+            var pageNum = page.GetValueOrDefault(1);
+            var sizeNum = pageSize.GetValueOrDefault(20);
             var data = await service.GetRolesAsync(search, isSystem, isActive,
-                page <= 0 ? 1 : page, pageSize <= 0 ? 20 : pageSize, ct);
+                pageNum <= 0 ? 1 : pageNum, sizeNum <= 0 ? 20 : sizeNum, ct);
             return Results.Ok(new { success = true, data });
         }).WithName("GetAdminRoles").WithSummary("Xem danh sách vai trò")
           .Produces(StatusCodes.Status200OK).Produces(StatusCodes.Status403Forbidden);
