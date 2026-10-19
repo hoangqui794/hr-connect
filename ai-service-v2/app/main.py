@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from app.config import Settings, get_settings
 from app.documents import UnsupportedDocumentError, prepare_document
 from app.hrconnect_client import HRConnectClient
+from app.job_match import router as job_match_router
 from app.llm import LlmError, make_assessor
 from app.pipeline import MatchingPipeline
 from app.schemas import FileMatchingResponse, MatchingMetadata, ParseResult
@@ -49,6 +50,7 @@ app = FastAPI(title="HR Connect AI Service v2", version="2.0.0", lifespan=lifesp
               redoc_url="/redoc" if _docs_enabled else None,
               openapi_url="/openapi.json" if _docs_enabled else None)
 app.include_router(scoring_router)
+app.include_router(job_match_router)
 
 
 def require_test_access(

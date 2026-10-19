@@ -62,6 +62,7 @@ public static class DatabaseSeeder
         // 3. Khởi tạo danh mục gói đăng tin (Job Posting Package)
         await JobPostingPackageSeeder.SeedAsync(context, logger, cancellationToken);
         await JobTemplateSeeder.SeedAsync(context, logger, cancellationToken);
+        await CvTemplateSeeder.SeedAsync(context, logger, cancellationToken);
 
         // 4. Khởi tạo ma trận quyền xem/nộp theo Service Type và Role.
         await ServiceTypeAllowedRoleSeeder.SeedAsync(context, logger, cancellationToken);
@@ -214,7 +215,8 @@ public static class DatabaseSeeder
         ('system_config.view', 'system_config', 'view', 'View system configuration'),
         ('system_config.manage', 'system_config', 'manage', 'Manage system configuration'),
         ('report.view', 'report', 'view', 'View reports and dashboards'),
-        ('audit.view', 'audit_log', 'view', 'View audit logs')
+        ('audit.view', 'audit_log', 'view', 'View audit logs'),
+        ('contact_request.manage', 'contact_request', 'manage', 'Follow up public contact requests')
     ON CONFLICT (code) DO UPDATE
     SET resource = EXCLUDED.resource, action = EXCLUDED.action, description = EXCLUDED.description, is_active = true, updated_at = now();
 
@@ -261,7 +263,7 @@ public static class DatabaseSeeder
         'job.view', 'notification.view_own', 'company.view', 'job.review', 'job.publish', 'candidate.view',
         'application.view', 'application.screen', 'application.retry_ai_scoring', 'submission.view', 'attribution.view',
         'probation.manage', 'warranty.manage', 'job_template.manage',
-        'commission.view', 'payout.view'
+        'commission.view', 'payout.view', 'contact_request.manage'
     )
     WHERE r.code = 'INTERNAL_HR'
     ON CONFLICT (role_id, permission_id) DO NOTHING;
@@ -274,7 +276,8 @@ public static class DatabaseSeeder
         'permission.view', 'permission.manage', 'company.verify', 'affiliate.verify', 'candidate.identity.review',
         'dispute.view', 'dispute.resolve', 'commission.manage', 'payout.manage',
         'system_config.view', 'system_config.manage', 'report.view', 'audit.view', 'application.retry_ai_scoring',
-        'interview.record_result', 'application.decide_backup', 'offer.send', 'offer.withdraw', 'placement.confirm', 'application.mark_not_started'
+        'interview.record_result', 'application.decide_backup', 'offer.send', 'offer.withdraw', 'placement.confirm', 'application.mark_not_started',
+        'contact_request.manage'
     )
     WHERE r.code = 'PLATFORM_ADMIN'
     ON CONFLICT (role_id, permission_id) DO NOTHING;

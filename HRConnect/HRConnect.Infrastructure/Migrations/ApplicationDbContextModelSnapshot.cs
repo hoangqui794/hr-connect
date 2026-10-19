@@ -2017,6 +2017,106 @@ namespace HRConnect.Infrastructure.Migrations
                     b.ToTable("company_verification_request", "public");
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.ContactRequest", b =>
+                {
+                    b.Property<Guid>("ContactRequestId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("contact_request_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("CompanyName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("company_name");
+
+                    b.Property<bool>("ConsentAccepted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("consent_accepted");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("full_name");
+
+                    b.Property<Guid?>("HandledBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("handled_by");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("message");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("ServiceInterest")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("service_interest");
+
+                    b.Property<string>("SourceIpHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("source_ip_hash");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status")
+                        .HasDefaultValueSql("'NEW'::character varying");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.HasKey("ContactRequestId")
+                        .HasName("contact_request_pkey");
+
+                    b.HasIndex(new[] { "SourceIpHash", "CreatedAt" }, "idx_contact_request_ip_created");
+
+                    b.HasIndex(new[] { "Status", "CreatedAt" }, "idx_contact_request_status_created");
+
+                    b.ToTable("contact_request", "public", t =>
+                        {
+                            t.HasComment("BE-04 A: public contact form. Stored only with consent (Decree 13/2023).");
+
+                            t.HasCheckConstraint("ck_contact_request_consent", "consent_accepted");
+
+                            t.HasCheckConstraint("ck_contact_request_service", "service_interest IN ('HEADHUNT_COD','CV_SOURCING','CV_APPLICATION','OTHER')");
+
+                            t.HasCheckConstraint("ck_contact_request_status", "status IN ('NEW','CONTACTED','CLOSED')");
+                        });
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.CvTemplate", b =>
                 {
                     b.Property<Guid>("CvTemplateId")

@@ -8,6 +8,7 @@ using HRConnect.Infrastructure.Services.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.AspNetCore.Authentication;
 using HRConnect.Infrastructure.Authentication;
 using HRConnect.Infrastructure.Services.Audit;
@@ -23,13 +24,20 @@ public static class DependencyInjection
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-        services.AddDbContext<ApplicationDbContext>(options =>
+        // BE-04 D: notifications are pushed in real time after they are saved. The API replaces the
+        // no-op publisher with the SignalR one.
+        services.TryAddScoped<HRConnect.Application.Common.Interfaces.INotificationPublisher, NoOpNotificationPublisher>();
+        services.AddScoped<NotificationPushInterceptor>();
+        services.AddDbContext<ApplicationDbContext>((provider, options) =>
             options.UseNpgsql(connectionString, o =>
-                o.MigrationsHistoryTable("__EFMigrationsHistory", "public")));
+                    o.MigrationsHistoryTable("__EFMigrationsHistory", "public"))
+                .AddInterceptors(provider.GetRequiredService<NotificationPushInterceptor>()));
 
         // 1. Dịch vụ Email (Resend)
         services.Configure<ResendSettings>(configuration.GetSection(ResendSettings.SectionName));
         services.Configure<SubmissionConsentSettings>(configuration.GetSection(SubmissionConsentSettings.SectionName));
+        services.Configure<HRConnect.Application.Features.Contact.ContactSettings>(settings =>
+            settings.NotifyEmail = configuration["CONTACT_NOTIFY_EMAIL"]);
         services.PostConfigure<SubmissionConsentSettings>(settings =>
         {
             settings.ConfirmationUrlBase = configuration["SUBMISSION_CONSENT_URL_BASE"] ?? settings.ConfirmationUrlBase;
@@ -67,6 +75,7 @@ public static class DependencyInjection
         // 4. Repositories & UnitOfWork
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IDisputeRepository, DisputeRepository>();
+        services.AddScoped<HRConnect.Application.Features.Contact.IContactRequestRepository, ContactRequestRepository>();
         services.AddScoped<IUserEmailIdentityRepository, UserEmailIdentityRepository>();
         services.AddScoped<ICandidateIdentityClaimRepository, CandidateIdentityClaimRepository>();
         services.AddScoped<IAdminUserRepository, AdminUserRepository>();
@@ -129,6 +138,19 @@ public static class DependencyInjection
                 client.DefaultRequestHeaders.Add("X-Service-Token", settings.ServiceToken);
         });
         services.AddHostedService<HRConnect.Infrastructure.Services.Integration.Mf03ScoringDispatcher>();
+        // BE-04 C: job suggestions use the same AI service; semantic scoring of a batch needs a longer timeout.
+        services.AddHttpClient(HRConnect.Infrastructure.Services.JobMatching.JobMatchAiClient.HttpClientName, (provider, client) =>
+        {
+            var settings = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Mf03IntegrationSettings>>().Value;
+            client.BaseAddress = new Uri(settings.BaseUrl);
+            client.Timeout = TimeSpan.FromMinutes(3);
+            if (!string.IsNullOrWhiteSpace(settings.ServiceToken))
+                client.DefaultRequestHeaders.Add("X-Service-Token", settings.ServiceToken);
+        });
+        services.AddScoped<HRConnect.Application.Features.Candidates.JobMatches.IJobMatchAiClient, HRConnect.Infrastructure.Services.JobMatching.JobMatchAiClient>();
+        services.AddScoped<HRConnect.Application.Features.Candidates.JobMatches.IJobMatchReader, HRConnect.Infrastructure.Services.JobMatching.JobMatchReader>();
+        services.AddScoped<HRConnect.Infrastructure.Services.JobMatching.JobMatchRunner>();
+        services.AddHostedService<HRConnect.Infrastructure.Services.JobMatching.JobMatchWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.SubmissionConsents.SubmissionConsentExpiryWorker>();
         services.AddHostedService<AccountLifecycleEmailOutboxWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Storage.AvatarStorageCleanupWorker>();
@@ -199,6 +221,10 @@ public static class DependencyInjection
         services.AddScoped<IAvatarImageProcessor, HRConnect.Infrastructure.Services.Storage.AvatarImageProcessor>();
         services.AddSingleton<IAvatarUrlResolver, HRConnect.Infrastructure.Services.Storage.AvatarUrlResolver>();
         services.AddSingleton<HRConnect.Infrastructure.Services.Storage.PdfCvValidator>();
+        // BE-04 B: CV builder (render, store, templates).
+        services.AddSingleton<HRConnect.Infrastructure.Services.CvBuilder.CvPdfRenderer>();
+        services.AddScoped<HRConnect.Application.Features.Candidates.CvBuilder.IStructuredCvService, HRConnect.Infrastructure.Services.CvBuilder.StructuredCvService>();
+        services.AddScoped<HRConnect.Application.Features.Candidates.CvBuilder.ICvTemplateRepository, HRConnect.Infrastructure.Services.CvBuilder.CvTemplateRepository>();
         services.AddScoped<ICvStorageService, HRConnect.Infrastructure.Services.Storage.CvStorageService>();
 
         // 6. Dịch vụ AI & HRConnect Client (MF-03 Integration)
