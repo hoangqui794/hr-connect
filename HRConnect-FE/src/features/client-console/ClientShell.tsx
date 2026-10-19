@@ -10,7 +10,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Dropdown } from 'antd';
 import { BankOutlined, CloseOutlined, LogoutOutlined, MenuOutlined, PlusOutlined, KeyOutlined } from '@ant-design/icons';
-import { useAuthStore } from '@/stores/authStore';
+import { getAvatarImageUrl, useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
 import { Initials } from '@/features/admin-console/ui';
 import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
@@ -64,6 +64,7 @@ export const ClientShell: React.FC = () => {
   };
 
   const name = user?.name || 'Doanh nghiệp';
+  const avatarUrl = getAvatarImageUrl(user?.avatar);
   const isActive = (to: string) => location.pathname === to || location.pathname.startsWith(`${to}/`);
 
   return (
@@ -133,9 +134,9 @@ export const ClientShell: React.FC = () => {
                 aria-label="Tài khoản"
                 className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-2 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] sm:pr-3"
               >
-                {user?.avatarUrl ? (
+                {avatarUrl ? (
                   <img
-                    src={user.avatarUrl}
+                    src={avatarUrl}
                     alt={name}
                     className="h-[34px] w-[34px] rounded-full object-cover border border-solid border-slate-200"
                   />

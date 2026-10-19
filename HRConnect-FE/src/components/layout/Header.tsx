@@ -8,7 +8,7 @@ import {
   ThunderboltOutlined, KeyOutlined, UserOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/stores/authStore';
+import { getAvatarImageUrl, getInitials, useAuthStore } from '@/stores/authStore';
 import { RoleBadge } from '@/components/common/RoleBadge';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
@@ -44,7 +44,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
   // Dynamic user display without mock fallback
   const userName = user?.name || 'Người dùng';
   const userEmail = user?.email || '';
-  const userAvatar = user?.avatar || (user?.name ? user.name.trim().split(/\s+/).filter(Boolean).map(w => w[0]).slice(-2).join('').toUpperCase() : 'U');
+  const userAvatarUrl = getAvatarImageUrl(user?.avatar);
+  const userInitials = getInitials(user?.name);
 
   const filteredSearch = SEARCH_ITEMS.filter(
     (item) =>
@@ -182,6 +183,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
           {/* User Avatar Menu */}
           <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomRight">
             <Avatar
+              src={userAvatarUrl}
               size={34}
               style={{
                 background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
@@ -191,7 +193,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
                 boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
               }}
             >
-              {userAvatar}
+              {userInitials}
             </Avatar>
           </Dropdown>
         </Space>
