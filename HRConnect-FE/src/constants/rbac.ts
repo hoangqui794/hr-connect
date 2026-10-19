@@ -238,7 +238,7 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
     { key: '/hr/jobs', label: 'Duyệt tin tuyển dụng', icon: 'FileTextOutlined' },
     { key: '/hr/screening', label: 'Sàng lọc hồ sơ', icon: 'TeamOutlined' },
     { key: '/hr/pipeline', label: 'Tiến độ tuyển dụng', icon: 'CalendarOutlined' },
-    { key: '/hr/placement-review', label: 'Đối soát nhận việc', icon: 'AuditOutlined' },
+    { key: '/hr/placement-review', label: 'Sửa ngày đi làm thực tế', icon: 'AuditOutlined' },
     { key: '/hr/warranty-tracking', label: 'Bảo hành & thử việc', icon: 'SafetyCertificateOutlined' },
   ],
   // Admin console ("Slate Command"): pages map to backend endpoints; groups marked

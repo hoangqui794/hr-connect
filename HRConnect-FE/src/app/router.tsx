@@ -313,8 +313,7 @@ export const router = createBrowserRouter([
       { path: 'candidates', element: <Navigate to="/hr/screening?status=all" replace /> },
       { path: 'interviews', element: <Navigate to="/hr/pipeline?tab=interviews" replace /> },
       { path: 'offers', element: <Navigate to="/hr/pipeline?tab=offers" replace /> },
-      // No backend API yet: explicit empty state, no mock numbers.
-      { path: 'placement-review', element: <AppRoutes.HrPlacementReviewPlaceholder /> },
+      { path: 'placement-review', element: <AppRoutes.HrPlacementStartDateCorrectionPage /> },
       { path: 'warranty-tracking', element: <AppRoutes.HrWarrantyPlaceholder /> },
       { path: 'placements/:placementId', element: <AppRoutes.PlacementDetailPage /> },
     ],

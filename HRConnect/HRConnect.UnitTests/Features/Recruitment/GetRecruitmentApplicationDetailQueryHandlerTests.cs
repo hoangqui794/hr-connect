@@ -123,6 +123,7 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
         result.Data.CompanyId.Should().Be(companyA);
         result.Data.Interviews.Should().HaveCount(1);
         result.Data.AllowedActions.Should().Contain("RECORD_INTERVIEW_RESULT");
+        result.Data.AllowedActions.Should().Contain("UPDATE_INTERVIEW");
         result.Data.AllowedActions.Should().Contain("RESCHEDULE_INTERVIEW");
     }
 

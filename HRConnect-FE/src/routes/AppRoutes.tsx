@@ -175,8 +175,8 @@ const HrPipelinePage = React.lazy(() =>
 const HrProfilePage = React.lazy(() =>
   import('@/features/hr-console/HrProfileAndPlaceholders').then((m) => ({ default: m.HrProfilePage }))
 );
-const HrPlacementReviewPlaceholder = React.lazy(() =>
-  import('@/features/hr-console/HrProfileAndPlaceholders').then((m) => ({ default: m.HrPlacementReviewPlaceholder }))
+const HrPlacementStartDateCorrectionPage = React.lazy(() =>
+  import('@/features/hr-console/HrPlacementStartDateCorrectionPage').then((m) => ({ default: m.HrPlacementStartDateCorrectionPage }))
 );
 const HrWarrantyPlaceholder = React.lazy(() =>
   import('@/features/finance-mf05/WarrantyPages').then((m) => ({ default: m.HrWarrantyPage }))
@@ -453,6 +453,6 @@ export const AppRoutes = {
   HrScreeningPage,
   HrPipelinePage,
   HrProfilePage,
-  HrPlacementReviewPlaceholder,
+  HrPlacementStartDateCorrectionPage,
   HrWarrantyPlaceholder,
 } as const;
