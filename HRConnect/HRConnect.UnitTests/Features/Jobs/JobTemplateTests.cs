@@ -17,7 +17,7 @@ using Xunit;
 
 namespace HRConnect.UnitTests.Features.Jobs;
 
-/// <summary>MF-01 JD template library (HRConnect/docs/MF01/mf01-be-thu-vien-mau-jd.md, B1–B7).</summary>
+/// <summary>MF-01 JD template library (HRConnect/docs/main-flows.md, MF-01 thư viện mẫu JD).</summary>
 public class JobTemplateTests
 {
     private readonly ApplicationDbContext _context = new(new DbContextOptionsBuilder<ApplicationDbContext>()
