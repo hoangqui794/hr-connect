@@ -15,7 +15,6 @@ public sealed class ClientVisibilityPolicyTests
     [InlineData("HEADHUNT_COD", "BACKUP", false)]
     [InlineData("HEADHUNT_COD", "SHORTLISTED", true)]
     [InlineData("HEADHUNT_COD", "INTERVIEW", true)]
-    [InlineData("CV_SOURCING", "PLACED", true)]
     public void IsVisibleToClient_WithoutHistory_ShouldFollowStatus(string serviceType, string status, bool expected)
     {
         ClientVisibilityPolicy.IsVisibleToClient(serviceType, status, []).Should().Be(expected);
@@ -31,15 +30,31 @@ public sealed class ClientVisibilityPolicyTests
             .Should().BeTrue();
     }
 
+    // MF-03 C3: a CV_SOURCING CV is paid per delivery, so the Client sees it only once it was delivered,
+    // whatever its status (a shortlisted or BACKUP CV that was never delivered stays hidden).
+    [Theory]
+    [InlineData("SHORTLISTED", new[] { "SCREENING" }, false, false)]
+    [InlineData("BACKUP", new[] { "SCREENING", "SHORTLISTED" }, false, false)]
+    [InlineData("PLACED", new string[0], false, false)]
+    [InlineData("SHORTLISTED", new[] { "SCREENING" }, true, true)]
+    [InlineData("INTERVIEW", new[] { "SHORTLISTED" }, true, true)]
+    public void IsVisibleToClient_CvSourcing_ShouldRequireDelivery(
+        string status, string[] history, bool delivered, bool expected)
+    {
+        ClientVisibilityPolicy.IsVisibleToClient("CV_SOURCING", status, history, delivered).Should().Be(expected);
+    }
+
     [Fact]
     public void IsVisibleToClientExpression_ShouldMatchInMemoryRule()
     {
         var predicate = ClientVisibilityPolicy.IsVisibleToClientExpression.Compile();
 
         predicate(App("HEADHUNT_COD", ApplicationStates.Submitted)).Should().BeFalse();
+        predicate(App("HEADHUNT_COD", ApplicationStates.Backup, ApplicationStates.Shortlisted)).Should().BeTrue();
         predicate(App("CV_APPLICATION", ApplicationStates.Submitted)).Should().BeTrue();
-        predicate(App("CV_SOURCING", ApplicationStates.Backup, ApplicationStates.Shortlisted)).Should().BeTrue();
-        predicate(App("CV_SOURCING", ApplicationStates.Backup)).Should().BeFalse();
+        predicate(App("CV_SOURCING", ApplicationStates.Backup, ApplicationStates.Shortlisted)).Should().BeFalse();
+        predicate(App("CV_SOURCING", ApplicationStates.Shortlisted)).Should().BeFalse();
+        predicate(Delivered(App("CV_SOURCING", ApplicationStates.Shortlisted))).Should().BeTrue();
     }
 
     [Theory]
@@ -70,4 +85,10 @@ public sealed class ClientVisibilityPolicyTests
         Job = new Job { ServiceType = new ServiceType { Code = serviceType } },
         ApplicationStatusHistories = history.Select(h => new ApplicationStatusHistory { NewStatus = h }).ToList()
     };
+
+    private static HRConnect.Domain.Entities.Application Delivered(HRConnect.Domain.Entities.Application app)
+    {
+        app.SourcingDeliveries.Add(new SourcingDelivery { Status = SourcingDeliveryStates.Delivered });
+        return app;
+    }
 }

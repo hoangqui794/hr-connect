@@ -230,8 +230,16 @@ Code: quy tắc nằm ở `ScreeningPolicy`; sai người theo loại dịch v�
 | `HEADHUNT_COD` | Internal HR |
 | `CV_SOURCING`, `CV_APPLICATION` | HR của Client |
 
-- Với `HEADHUNT_COD` và `CV_SOURCING`, Client chỉ thấy hồ sơ đã từng được `SHORTLISTED`; hồ sơ chưa qua sàng lọc không có trong danh sách và trả 404 khi mở.
+- Với `HEADHUNT_COD`, Client chỉ thấy hồ sơ đã từng được `SHORTLISTED`; hồ sơ chưa qua sàng lọc không có trong danh sách và trả 404 khi mở. Với `CV_SOURCING`, Client chỉ thấy hồ sơ **đã được Internal HR giao** (có bản ghi giao CV), kể cả sau khi chấp nhận, từ chối hay bị thay; hồ sơ đã chọn mà chưa giao, hoặc CV dự phòng (`BACKUP`), không hiện và trả 404 (2026-10-19).
 - Với `HEADHUNT_COD`, Client không thấy email, số điện thoại, địa chỉ và file CV của ứng viên cho tới khi hồ sơ `PLACED` (`isContactMasked = true`). `CV_SOURCING` và `CV_APPLICATION` không che vì HR của Client là người liên hệ.
+
+**Giao CV `CV_SOURCING`** (đã có code):
+
+1. Internal HR giao các hồ sơ `SHORTLISTED` đã có consent `CONFIRMED`: `POST /api/v1/jobs/{jobId}/sourcing/deliveries`. Không vượt Sourcing Target (`409 SOURCING_TARGET_REACHED`); phần dư để `BACKUP`.
+2. Client có `reviewDays` của job (mặc định 7) để chấp nhận hoặc từ chối kèm mã lý do hợp lệ (`DUPLICATE_ALREADY_OWNED`, `FALSE_INFORMATION`, `UNREACHABLE`, `WRONG_JOB`, `OTHER` có ghi chú). "Không chọn phỏng vấn" không phải lý do từ chối. Quá hạn → `409 REVIEW_WINDOW_CLOSED`.
+3. Hết hạn không phản hồi → worker chuyển `AUTO_ACCEPTED`. Lý do `OTHER` do Internal HR xác minh; bác bỏ thì tính như chấp nhận.
+4. CV bị từ chối hợp lệ có thể được thay bằng CV dự phòng (`replace`): CV cũ `REPLACED`, CV mới có hạn xem xét mới.
+5. CV `ACCEPTED` / `AUTO_ACCEPTED` được tính tiền và hoa hồng ở MF-05.
 
 **Kết quả:** `SHORTLISTED` → MF-04, hoặc `REJECTED` → kết thúc.
 
