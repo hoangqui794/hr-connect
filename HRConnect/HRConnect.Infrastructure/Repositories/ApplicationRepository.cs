@@ -234,6 +234,7 @@ public class ApplicationRepository : IApplicationRepository
             .Include(a => a.AiMatchResults)
             .Include(a => a.Submission)
                 .ThenInclude(s => s!.CandidateCv)
+            .Include(a => a.SourcingDeliveries)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .AsSplitQuery()

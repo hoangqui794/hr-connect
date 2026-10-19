@@ -437,6 +437,7 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 | SF-05 | Khách (chưa đăng nhập) gửi form liên hệ tư vấn `POST /api/v1/public/contact-requests` (họ tên, email, SĐT, công ty, dịch vụ quan tâm `HEADHUNT_COD`/`CV_SOURCING`/`CV_APPLICATION`/`OTHER`, nội dung, **bắt buộc đồng ý xử lý dữ liệu** theo Nghị định 13/2023, thiếu thì `400 CONSENT_REQUIRED`) → lưu `contact_request` trạng thái `NEW`, chỉ lưu hash SHA-256 của IP → email báo tới `CONTACT_NOTIFY_EMAIL` (lỗi email không chặn). Mỗi IP tối đa `contact.rate_limit_per_hour` (mặc định 5) lần/giờ, vượt thì `429 CONTACT_RATE_LIMITED`. Internal HR / Platform Admin (quyền `contact_request.manage`) xem `GET /api/v1/admin/contact-requests` và đổi `NEW → CONTACTED → CLOSED` kèm ghi chú `PATCH /api/v1/admin/contact-requests/{id}`, có audit | MF-01 | **Đã có code** (2026-10-19); FE chưa có màn |
 | SF-06 | Ứng viên tạo CV theo 3 cách: tải file lên (đã có), chọn mẫu (`TEMPLATE_FORM`, `GET /api/v1/cv-templates`, 3 mẫu seed `CLASSIC_TEAL`, `MODERN_BLUE`, `COMPACT_GRAPHITE`, Admin sửa trong DB không bị seed ghi đè) hoặc dựng trên nền tảng (`PLATFORM_BUILDER`, bố cục mặc định). `POST/PUT /api/v1/candidates/cv/structured`, `GET .../structured/{cvId}`: server render PDF A4 có chữ (font Roboto nhúng, đọc được tiếng Việt, tự sang trang), qua cùng kiểm tra như CV tải lên, lưu R2 → CV `ACTIVE` trong kho, nộp vào job và AI chấm như CV thường. Sửa CV thì render file mới; hồ sơ đã nộp giữ file cũ | MF-02, MF-03 | **Đã có code** (2026-10-19); FE chưa có màn |
 | SF-07 | Gợi ý việc phù hợp: worker chạy định kỳ (`JobMatch:IntervalMinutes`, mặc định 60) lấy job `ACTIVE` còn hạn nộp mà vai trò Candidate có `can_view`, chọn ứng viên hồ sơ `PUBLIC` có CV chính `ACTIVE`, chưa nộp job đó, chưa được chấm với job đó → AI service `POST /api/v1/semantic-match` (chỉ điểm ngữ nghĩa Sentence-BERT, không gọi LLM, `X-Service-Token`) → lưu `candidate_job_match` (`GENERATED`; CV không đọc được thì `FAILED` để không chấm lại) hết hạn sau `job_match.expiry_days` (mặc định 14). Điểm ≥ `job_match.min_score` (mặc định 70) → thông báo loại `JOB_FIT` kèm `routeHint` `/jobs/{jobId}`, tối đa `job_match.max_notifications_per_day` (mặc định 3) mỗi ứng viên mỗi ngày. Ứng viên xem `GET /api/v1/candidates/me/job-matches` (20 gợi ý còn hạn, điểm từ ngưỡng, chưa nộp, job còn `ACTIVE`) | MF-01, MF-03 | **Đã có code** (2026-10-19); FE chưa có màn |
+| SF-09 | Ngành và danh bạ công ty: bảng `industry` (3 cấp, seed 15 ngành cấp 1 + 141 ngành cấp 2 từ `Seed/Data/industry.csv`; thay CSV là nạp bộ mới, không sửa code) và `company_size` (9 mức). `GET /api/v1/industries` (`?tree=true` trả cây), `GET /api/v1/company-sizes`; Platform Admin thêm/sửa/tắt ngành (`/api/v1/admin/industries`, không xóa cứng, có audit). Hồ sơ công ty nhận `industryId`, `companySizeId` (sai → `400 INDUSTRY_NOT_FOUND` / `COMPANY_SIZE_NOT_FOUND`); chuỗi ngành cũ tự gắn theo mã/tên. Danh bạ công khai `GET /api/v1/public/companies` (chỉ `VERIFIED`, lọc tên, ngành gồm ngành con, quy mô, địa chỉ; không trả mã số thuế), `GET /api/v1/public/companies/featured` (Top Companies, Admin chọn bằng `PUT /api/v1/admin/companies/{id}/featured`), `GET /api/v1/public/companies/{id}` (job `ACTIVE` mà Candidate được xem). Lọc job theo `experienceYears` ở `GET /api/v1/public/jobs` và `GET /api/v1/jobs` (job không ghi kinh nghiệm luôn được lấy). Lọc job theo lĩnh vực / chuyên môn làm theo `docs/plans/2026-10-19-gitnexus-plan-job-location-category-filter.md` (không lọc job theo ngành của công ty) | MF-01 | **Đã có code** (2026-10-19), trừ lọc lĩnh vực/chuyên môn. Chưa làm: chọn ngành ở bước đăng ký Client; FE chưa có màn |
 | SF-08 | Realtime: SignalR hub `/hubs/notifications` (JWT, WebSocket đọc `access_token` từ query string), mỗi user một group. Mọi notification được lưu ở bất kỳ luồng nào đều được đẩy sau khi lưu thành công: `notification.created` `{notification, unreadCount}`; notification về phỏng vấn đẩy thêm `interview.updated` `{interviewId}`. Đẩy lỗi chỉ ghi log, không làm hỏng giao dịch. FE giữ gọi API định kỳ làm dự phòng | Mọi luồng | **Đã có code** (2026-10-19); FE chưa kết nối |
 
 ---
@@ -458,11 +459,18 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 8. Tuyển thay thế trong bảo hành: có thu thêm phí không, có bảo hành mới không, Affiliate giới thiệu người thay thế có hoa hồng không.
 9. Các con số 1,5; 30 ngày; 60%; giá gói là giá trị mặc định cấu hình được, không phải số cứng.
 
+**Chốt 19/10 sau buổi test 17/10**
+
+13. N16: Client `HEADHUNT_COD` xem được CV trước khi ứng viên đi làm dưới dạng bản che: `GET /api/v1/recruitment/applications/{id}/cv/masked` trả PDF dựng lại từ chữ của CV, email, số điện thoại và đường link thay bằng `[đã ẩn]`; CV dạng ảnh scan trả `409 CV_NO_TEXT_LAYER`. CV gốc vẫn chỉ mở sau khi đi làm.
+14. N12: Affiliate thấy hoa hồng ước tính trên chi tiết job: `GET /api/v1/affiliates/jobs/{jobId}/commission-estimate` (Headhunt: tỷ lệ quy tắc × hệ số phí × lương đăng tin, kèm số ngày bảo hành; Sourcing: số tiền mỗi CV được chấp nhận).
+15. N22: `CV_SOURCING` giữ 2 bước "Chọn gửi Client" và "Giao CV"; trang sàng lọc của Internal HR nhắc các hồ sơ đã chọn mà chưa giao (danh sách hồ sơ trả thêm `sourcingDeliveryStatus`).
+16. N14: lịch sử hồ sơ do Affiliate giới thiệu ghi "Affiliate X giới thiệu, ứng viên đồng ý lúc …" (Client không thấy tên Affiliate); mã trạng thái hiện bằng tiếng Việt.
+
 **Quy tắc khác**
 
 10. Attribution ghi theo lúc ứng viên đồng ý, không theo lúc Affiliate nộp (khác cách diễn đạt "người nộp trước" trong đề tài).
 11. Dùng `SCREENING` thay cho `NEED_MORE_INFORMATION / UNDER_REVIEW`.
-12. Job `CV_SOURCING` phải đóng cọc mới mở (đã có code 17/10). Chỉ Platform Admin ghi nhận cọc ở trang Tài chính; Internal HR có được ghi nhận cọc như phí đăng tin không thì cần chốt. Job `CV_SOURCING` duyệt trước bản này vẫn `ACTIVE`, worker MF-05 chỉ tạo phiếu cọc cho chúng, không đóng lại.
+12. Job `CV_SOURCING` phải đóng cọc mới mở (đã có code 17/10). **Đã chốt 19/10 (N4):** chỉ Platform Admin ghi nhận mọi khoản tiền Client trả (cọc, phí dịch vụ, phí đăng tin `CV_APPLICATION`) ở trang Tài chính; Internal HR duyệt tin nhưng không ghi nhận tiền, Client chuyển khoản ngoài hệ thống (`POST /jobs/{id}/posting-fee/pay` chỉ Platform Admin, bắt buộc mã tham chiếu). Job `CV_SOURCING` duyệt trước bản này vẫn `ACTIVE`, worker MF-05 chỉ tạo phiếu cọc cho chúng, không đóng lại.
 
 ---
 
@@ -485,6 +493,7 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 | Ghi kết quả thử việc | MF-05 — **ngoài phạm vi** (chốt 2026-10-17) |
 | Đổi mã vai trò `AFFILIATE_RECRUITER` thành `AFFILIATE` | Toàn hệ thống — **chưa làm** |
 | Form liên hệ, tạo CV theo mẫu / dựng trên nền tảng, gợi ý việc phù hợp, thông báo realtime | SF-05 → SF-08 — đã có code backend; FE chưa có màn |
+| Bảng ngành, danh bạ công ty, Top Companies, lọc job theo kinh nghiệm | SF-09 — đã có code backend; FE chưa có màn. Lọc job theo lĩnh vực/chuyên môn: theo plan job taxonomy |
 
 ---
 
@@ -591,4 +600,4 @@ Bước 1–4 của bản đầu (bảo vệ doanh thu, nối luồng sàng lọ
 2. **Hạ tầng AI:** nâng dịch vụ AI trên Render lên tối thiểu 1 CPU / 2 GB (gói Free bị Render tắt khi đang chấm), hoặc giữ AI chạy trên máy qua tunnel khi demo.
 3. **Bảo mật:** đổi các key / token đã lộ; thêm rule WAF cho tunnel AI.
 4. **Chốt và làm:** chặn tuyển quá `Quantity` (MF-04); đối soát placement của Internal HR (làm hay bỏ); màn khiếu nại SF-04 cho Affiliate và Admin (FE).
-5. **Giao diện:** lỗi FE còn mở trong `tasks/FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md` (mục 5) và `tasks/TEST-2026-10-17-mf01-mf03-3-dich-vu.md`; việc hạ tầng trong `deploy/render-be-ai-local.md` (mục 7).
+5. **Giao diện:** lỗi FE còn mở trong `tasks/FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md` (mục 5, 6); việc hạ tầng trong `deploy/render-be-ai-local.md` (mục 7). Lỗi của buổi test 3 dịch vụ 17/10 (N1–N27) đã sửa 19/10.

@@ -193,7 +193,13 @@ export const useJobTemplateMutations = () => {
 /** All write operations, each refreshing every MF-01 cache on success. */
 export const useJobMutations = () => {
   const queryClient = useQueryClient();
-  const refresh = () => queryClient.invalidateQueries({ queryKey: jobQueryKeys.all });
+  // N10: dashboards keep their own job counters (HR overview, admin finance), refresh them too.
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: jobQueryKeys.all }),
+      queryClient.invalidateQueries({ queryKey: ['hr-overview'] }),
+      queryClient.invalidateQueries({ queryKey: ['mf05-posting-fees'] }),
+    ]);
 
   return {
     create: useMutation({ mutationFn: (input: JobUpsertInput) => jobsApi.create(input), onSuccess: refresh }),

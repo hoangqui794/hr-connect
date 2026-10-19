@@ -49,7 +49,7 @@ import {
   parseHighlights,
   pick,
   reasonLabel,
-  statusOf,
+  applicationStatusOf,
 } from '@/features/hr-console/hrLabels';
 
 export type WorkbenchAudience = 'hr' | 'client';
@@ -208,11 +208,17 @@ export const ApplicationWorkbench: React.FC<{
   const clientDecisionMutation = useMutation({
     mutationFn: (variables: { decision: 'ACCEPTED' | 'REJECTED'; reasonCode?: string; note?: string }) =>
       sourcingApi.decideDelivery(d!.jobId, sourcingDelivery!.deliveryId, variables),
-    onSuccess: (res, vars) => {
-      message.success(vars.decision === 'ACCEPTED' ? 'Đã chấp nhận CV thành công.' : 'Đã từ chối CV với lý do hợp lệ.');
-      invalidateRecruitment(queryClient);
-      queryClient.invalidateQueries({ queryKey: ['sourcing-deliveries', d?.jobId] });
+    onSuccess: async (_res, vars) => {
+      message.success(vars.decision === 'ACCEPTED' ? 'Đã chấp nhận CV.' : 'Đã từ chối CV.');
       setOpen(null);
+      // N23: show the new status at once instead of waiting for a page reload.
+      queryClient.setQueryData<typeof sourcingDeliveries.data>(['sourcing-deliveries', d?.jobId], (old) =>
+        old
+          ? { ...old, items: old.items.map((item) => (item.deliveryId === sourcingDelivery?.deliveryId ? { ...item, status: vars.decision } : item)) }
+          : old
+      );
+      invalidateRecruitment(queryClient);
+      await Promise.all([sourcingDeliveries.refetch(), detail.refetch(), timeline.refetch()]);
     },
     onError: (err) => {
       message.error(getApiErrorMessage(err, 'Không thể thực hiện phản hồi cho CV này.'));
@@ -263,7 +269,7 @@ export const ApplicationWorkbench: React.FC<{
       invalidateRecruitment(queryClient); // a 409 means someone else changed it
     },
   });
-  const busy = run.isPending || start.isPending;
+  const busy = run.isPending || start.isPending || clientDecisionMutation.isPending || deliverMutation.isPending;
   const token = d?.concurrencyToken ?? '';
 
   const retry = useMutation({
@@ -279,6 +285,27 @@ export const ApplicationWorkbench: React.FC<{
   const viewCv = useMutation({
     mutationFn: () => screeningApi.cvDownloadUrl(applicationId!),
   });
+  const viewMaskedCv = useMutation({ mutationFn: () => screeningApi.maskedCv(applicationId!) });
+  const openMaskedCv = () => {
+    const tab = window.open('', '_blank');
+    if (tab) tab.opener = null;
+    viewMaskedCv.mutate(undefined, {
+      onSuccess: (blob) => {
+        const url = URL.createObjectURL(blob);
+        if (tab) tab.location.href = url;
+        else window.location.href = url;
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      onError: async (err) => {
+        tab?.close();
+        // Errors come back as a Blob because of responseType: 'blob'.
+        const data = (err as { response?: { data?: unknown } })?.response?.data;
+        const text = data instanceof Blob ? await data.text().catch(() => '') : '';
+        const parsed = (() => { try { return JSON.parse(text) as { message?: string }; } catch { return null; } })();
+        message.error(parsed?.message ?? getApiErrorMessage(err, 'Không mở được CV.'));
+      },
+    });
+  };
   const openCv = () => {
     const tab = window.open('', '_blank');
     if (tab) tab.opener = null;
@@ -327,9 +354,11 @@ export const ApplicationWorkbench: React.FC<{
     modal.confirm({
       title: audience === 'hr' ? 'Chọn hồ sơ này gửi Client?' : 'Chọn ứng viên này để phỏng vấn?',
       content:
-        audience === 'hr'
-          ? `Client sẽ thấy hồ sơ của ${d?.candidateFullName} và có thể lên lịch phỏng vấn.`
-          : `${d?.candidateFullName} sẽ chuyển sang bước phỏng vấn.`,
+        audience !== 'hr'
+          ? `${d?.candidateFullName} sẽ chuyển sang bước phỏng vấn.`
+          : isCvSourcing
+            ? `Hồ sơ của ${d?.candidateFullName} được chọn. Bấm "Giao CV cho khách hàng" ở bước tiếp theo để Client chấp nhận hoặc từ chối CV.`
+            : `Client sẽ thấy hồ sơ của ${d?.candidateFullName} (đã che liên hệ) và có thể lên lịch phỏng vấn.`,
       okText: audience === 'hr' ? 'Chọn gửi Client' : 'Chọn ứng viên',
       cancelText: 'Hủy',
       onOk: () => run.mutateAsync(() => screeningApi.updateStatus(d!.jobId, d!.applicationId, { targetStatus: 'SHORTLISTED', concurrencyToken: token })),
@@ -456,7 +485,7 @@ export const ApplicationWorkbench: React.FC<{
     }
   };
 
-  const st = d ? statusOf(d.status) : null;
+  const st = d ? applicationStatusOf(d.status, d.serviceTypeCode, sourcingDelivery?.status) : null;
   const highlights = parseHighlights(d?.aiMatch?.candidateHighlight);
 
   // Footer buttons: secondary/danger on the left, the main step on the right.
@@ -556,11 +585,12 @@ export const ApplicationWorkbench: React.FC<{
   return (
     <Drawer
       open={Boolean(applicationId)}
-      width="min(760px, 100vw)"
+      // N7: a fixed width plus a viewport cap keeps the panel on screen at ~800px and on phones.
+      width={760}
       onClose={onClose}
       title="Hồ sơ ứng tuyển"
       destroyOnClose
-      styles={{ body: { background: '#F4F7FB', padding: 20 } }}
+      styles={{ wrapper: { maxWidth: '100vw' }, body: { background: '#F4F7FB', padding: 'clamp(12px, 3vw, 20px)' } }}
       footer={footer.length ? <div className="flex flex-wrap justify-end gap-2 py-1">{footer}</div> : null}
     >
       {detail.isLoading ? (
@@ -795,9 +825,20 @@ export const ApplicationWorkbench: React.FC<{
               {!d.cv ? (
                 '—'
               ) : audience === 'client' && d.isContactMasked ? (
-                <span className="inline-flex items-center gap-1.5 font-normal text-slate-600">
-                  <LockOutlined aria-hidden /> Hiển thị sau khi ứng viên đi làm
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="small"
+                    icon={<FileOutlined />}
+                    loading={viewMaskedCv.isPending}
+                    onClick={openMaskedCv}
+                    aria-label="Xem CV đã che thông tin liên hệ"
+                  >
+                    Xem CV (đã che liên hệ)
+                  </Button>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-normal text-slate-600">
+                    <LockOutlined aria-hidden /> CV gốc hiển thị sau khi ứng viên đi làm
+                  </span>
+                </div>
               ) : (
                 <Button
                   size="small"

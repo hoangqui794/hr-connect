@@ -1,61 +1,36 @@
 /**
  * @file PaymentDemoModal.tsx
- * @description Modal mô phỏng thanh toán phí gói đăng tin STANDARD (MF-01 Giai đoạn 3).
+ * @description Hướng dẫn Client thanh toán phí gói đăng tin (MF-01). N4 (chốt 19/10): Client chuyển khoản ngoài
+ * hệ thống, chỉ Platform Admin ghi nhận tiền đã thu; tin được công bố ngay sau khi Admin ghi nhận.
  * Số tiền, tên gói, thời hạn và hạn mức hồ sơ đọc từ backend (GET /jobs/{id}/posting-fee, /jobs/posting-packages).
  */
-import React, { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, Divider, Modal, Space, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, CreditCardOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import { jobsApi } from '@/services/api/jobsApi';
-import { getApiErrorMessage } from '@/services/apiClient';
-import { formatMoney, jobQueryKeys, usePostingFee, usePostingPackages } from './useJobQueries';
+import React from 'react';
+import { Alert, Button, Divider, Modal, Tag, Typography } from 'antd';
+import { CheckCircleOutlined, CreditCardOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { formatMoney, usePostingFee, usePostingPackages } from './useJobQueries';
 
-const { Text, Title, Paragraph } = Typography;
+const { Text } = Typography;
 
 interface PaymentDemoModalProps {
   open?: boolean;
   visible?: boolean;
   jobId: string;
   jobTitle: string;
+  /** Kept for callers; payment is now confirmed by Platform Admin, not in this modal. */
   onSuccess?: () => void;
   onPaymentSuccess?: () => void;
   onClose: () => void;
 }
 
-export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
-  open,
-  visible,
-  jobId,
-  jobTitle,
-  onSuccess,
-  onPaymentSuccess,
-  onClose,
-}) => {
-  const { message } = App.useApp();
-  const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(false);
+/** Nội dung chuyển khoản giúp Platform Admin đối chiếu đúng tin. */
+export const transferNote = (jobId: string) => `HRC ${jobId.slice(0, 8).toUpperCase()}`;
+
+export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({ open, visible, jobId, jobTitle, onClose }) => {
   const isOpen = Boolean(open ?? visible);
   const fee = usePostingFee(jobId, isOpen);
   const packages = usePostingPackages();
   const pkg = packages.data?.find((p) => p.packageId === fee.data?.packageId);
-  const amount = fee.data?.amount ?? null;
-
-  const handlePay = async () => {
-    setLoading(true);
-    try {
-      const demoRef = `PAY-${Date.now().toString().slice(-6)}`;
-      await jobsApi.payPostingFee(jobId, demoRef);
-      message.success('Thanh toán thành công! Phí đăng tin đã được ghi nhận và tin đã được kích hoạt.');
-      queryClient.invalidateQueries({ queryKey: jobQueryKeys.all });
-      onSuccess?.();
-      onPaymentSuccess?.();
-    } catch (err) {
-      message.error(getApiErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const paid = fee.data?.status === 'PAID';
 
   return (
     <Modal
@@ -67,76 +42,73 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
       width={520}
       title={
         <div className="flex items-center gap-2 text-slate-800">
-          <CreditCardOutlined className="text-indigo-600 text-lg" />
-          <span>Thanh toán phí gói đăng tin tuyển dụng</span>
+          <CreditCardOutlined className="text-indigo-600 text-lg" aria-hidden />
+          <span>Thanh toán phí gói đăng tin</span>
         </div>
       }
     >
       <div className="py-2 space-y-4">
-        <Alert
-          type="info"
-          showIcon
-          message="Cổng thanh toán HR Connect"
-          description="Quý khách vui lòng kiểm tra thông tin gói đăng tin và xác nhận thanh toán để kích hoạt tin tuyển dụng."
-        />
+        {paid ? (
+          <Alert type="success" showIcon message="HR Connect đã nhận phí đăng tin. Tin đã được công bố." />
+        ) : (
+          <Alert
+            type="info"
+            showIcon
+            message="Chuyển khoản theo thông tin trong hợp đồng / email HR Connect gửi"
+            description="Ghi đúng nội dung chuyển khoản bên dưới. Sau khi HR Connect đối chiếu và ghi nhận tiền, tin được công bố ngay và bạn nhận thông báo."
+          />
+        )}
 
         <div className="rounded-xl border border-solid border-slate-200 bg-slate-50 p-4 space-y-3">
-          <div className="flex justify-between items-start">
-            <div>
+          <div className="flex justify-between items-start gap-3">
+            <div className="min-w-0">
               <Text type="secondary" className="text-xs">Vị trí tuyển dụng</Text>
-              <div className="font-semibold text-slate-900 text-base">{jobTitle}</div>
+              <div className="font-semibold text-slate-900 text-base break-words">{jobTitle}</div>
             </div>
-            <Tag color="blue" className="m-0 font-medium">{fee.data?.packageCode ?? '—'}</Tag>
+            <Tag color="blue" className="m-0 font-medium shrink-0">{fee.data?.packageCode ?? '—'}</Tag>
           </div>
 
           <Divider className="my-2" />
 
-          <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
             <div>
-              <Text type="secondary" className="text-xs">Gói dịch vụ:</Text>
+              <Text type="secondary" className="text-xs">Gói dịch vụ</Text>
               <div className="font-medium text-slate-800">
                 {fee.data?.packageName ?? '—'}
                 {pkg?.durationDays ? ` (${pkg.durationDays} ngày)` : ''}
               </div>
             </div>
             <div>
-              <Text type="secondary" className="text-xs">Quyền lợi gói:</Text>
+              <Text type="secondary" className="text-xs">Quyền lợi gói</Text>
               <div className="font-medium text-emerald-700 flex items-center gap-1">
-                <CheckCircleOutlined />{' '}
+                <CheckCircleOutlined aria-hidden />
                 {pkg?.maxApplications ? `Tối đa ${pkg.maxApplications} hồ sơ & AI chấm điểm CV` : 'AI chấm điểm CV'}
               </div>
             </div>
           </div>
 
-          <div className="pt-2 flex justify-between items-baseline border-t border-dashed border-slate-300">
-            <span className="font-semibold text-slate-700">Tổng thanh toán:</span>
-            <span className="text-2xl font-bold text-indigo-600">
-              {fee.isLoading ? '…' : formatMoney(amount, fee.data?.currencyCode)}
+          <div className="pt-2 flex justify-between items-baseline gap-3 border-t border-dashed border-slate-300">
+            <span className="font-semibold text-slate-700">Số tiền</span>
+            <span className="text-2xl font-bold text-indigo-600 tabular-nums">
+              {fee.isLoading ? '…' : formatMoney(fee.data?.amount ?? null, fee.data?.currencyCode)}
             </span>
           </div>
-        </div>
-
-        <div className="text-xs text-slate-500 space-y-1">
-          <div className="flex items-center gap-1 text-slate-600 font-medium">
-            <SafetyCertificateOutlined className="text-emerald-600" /> Thanh toán an toàn qua cổng HRConnect
+          <div className="flex justify-between items-center gap-3 text-sm">
+            <span className="text-slate-600">Nội dung chuyển khoản</span>
+            <Text copyable={{ text: transferNote(jobId) }} className="font-semibold tabular-nums">
+              {transferNote(jobId)}
+            </Text>
           </div>
-          <p className="m-0">
-            Sau khi thanh toán thành công, tin tuyển dụng đã duyệt nội dung sẽ được kích hoạt công khai ngay lập tức, bắt đầu tính thời hạn hiển thị của gói và mở nhận hồ sơ ứng viên.
-          </p>
         </div>
 
-        <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
-          <Button onClick={onClose} disabled={loading}>
-            Để sau
-          </Button>
-          <Button
-            type="primary"
-            className="!bg-indigo-600 hover:!bg-indigo-500"
-            loading={loading}
-            disabled={!fee.data || fee.data.status !== 'PENDING'}
-            onClick={handlePay}
-          >
-            Xác nhận thanh toán ngay
+        <p className="m-0 flex gap-1.5 text-xs text-slate-500">
+          <InfoCircleOutlined className="mt-0.5 text-slate-400" aria-hidden />
+          Thời hạn hiển thị của gói bắt đầu tính từ lúc tin được công bố.
+        </p>
+
+        <div className="pt-3 flex justify-end border-t border-slate-100">
+          <Button type="primary" className="!bg-indigo-600 hover:!bg-indigo-500" onClick={onClose}>
+            Đã hiểu
           </Button>
         </div>
       </div>
