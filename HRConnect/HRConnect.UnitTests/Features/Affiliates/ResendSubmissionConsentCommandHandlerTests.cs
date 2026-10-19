@@ -74,6 +74,28 @@ public sealed class ResendSubmissionConsentCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_AdminSettingOverridesAppSettings_ForMaxSends()
+    {
+        var ownerId = Guid.NewGuid();
+        var consent = CreateConsent(ownerId);
+        var repository = new Mock<ISubmissionConsentRepository>();
+        repository.Setup(x => x.GetBySubmissionIdAsync(consent.SubmissionId, It.IsAny<CancellationToken>())).ReturnsAsync(consent);
+        var settings = new Mock<HRConnect.Application.Common.Settings.IAdminBusinessSettings>();
+        settings.Setup(s => s.GetIntAsync(HRConnect.Application.Common.Settings.BusinessSettingKeys.ConsentMaxEmailSends, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(consent.EmailSendCount);
+        var handler = new ResendSubmissionConsentCommandHandler(
+            repository.Object, Mock.Of<IEmailOutboxRepository>(), Mock.Of<IEmailService>(),
+            Mock.Of<IAuditLogService>(), Mock.Of<IUnitOfWork>(),
+            Options.Create(new SubmissionConsentSettings { ResendCooldownMinutes = 2, MaxEmailSends = 5 }),
+            Mock.Of<ILogger<ResendSubmissionConsentCommandHandler>>(),
+            Mock.Of<ISubmissionConsentExpiryService>(), settings.Object);
+
+        var action = () => handler.Handle(new ResendSubmissionConsentCommand(consent.SubmissionId, ownerId), CancellationToken.None);
+
+        await action.Should().ThrowAsync<ConflictException>();
+    }
+
+    [Fact]
     public async Task Handle_DifferentAffiliate_IsForbidden()
     {
         var consent = CreateConsent(Guid.NewGuid());

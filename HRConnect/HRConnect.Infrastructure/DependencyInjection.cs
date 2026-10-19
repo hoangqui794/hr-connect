@@ -22,7 +22,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        var connectionString = DatabaseConnectionString.Resolve(configuration);
 
         // BE-04 D: notifications are pushed in real time after they are saved. The API replaces the
         // no-op publisher with the SignalR one.

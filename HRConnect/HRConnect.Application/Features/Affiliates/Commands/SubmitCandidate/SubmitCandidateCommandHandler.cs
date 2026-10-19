@@ -406,7 +406,9 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         Guid cvId = Guid.Empty;
         var rawToken = CreateOpaqueToken();
         var tokenHash = HashToken(rawToken);
-        var expirationHours = Math.Clamp(_consentSettings.ExpirationHours, 1, 168);
+        var expirationHours = Math.Clamp(
+            await SubmissionConsentSettings.ReadAsync(_businessSettings, BusinessSettingKeys.ConsentExpirationHours, _consentSettings.ExpirationHours, cancellationToken),
+            1, 168);
         var expiresAt = now.AddHours(expirationHours);
 
         try
