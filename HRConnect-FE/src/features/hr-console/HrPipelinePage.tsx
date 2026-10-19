@@ -101,8 +101,9 @@ export const HrPipelinePage: React.FC<{
   eyebrow?: string;
   description?: string;
   onOpenApplication?: (applicationId: string) => void;
+  onOpenInterview?: (interview: InterviewItem) => void;
   emptyHints?: Partial<Record<Tab, string>>;
-}> = ({ eyebrow = 'Theo dõi', description, onOpenApplication, emptyHints }) => {
+}> = ({ eyebrow = 'Theo dõi', description, onOpenApplication, onOpenInterview, emptyHints }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = (TABS as string[]).includes(searchParams.get('tab') ?? '') ? (searchParams.get('tab') as Tab) : 'interviews';
   const page = Number(searchParams.get('page')) || 1;
@@ -132,15 +133,25 @@ export const HrPipelinePage: React.FC<{
     onChange: (p: number) => go({ page: p }),
   };
   const empty = { emptyText: <div className="py-10 text-slate-600">{emptyHints?.[tab] ?? EMPTY[tab]}</div> };
-  const rowProps = (r: { applicationId: string }) =>
-    onOpenApplication
-      ? {
-          onClick: () => onOpenApplication(r.applicationId),
-          onKeyDown: (e: React.KeyboardEvent) => e.key === 'Enter' && onOpenApplication(r.applicationId),
-          tabIndex: 0,
-          className: 'cursor-pointer',
-        }
-      : {};
+  const rowProps = (r: { applicationId: string; interviewId?: string }) => {
+    if (tab === 'interviews' && onOpenInterview) {
+      return {
+        onClick: () => onOpenInterview(r as unknown as InterviewItem),
+        onKeyDown: (e: React.KeyboardEvent) => e.key === 'Enter' && onOpenInterview(r as unknown as InterviewItem),
+        tabIndex: 0,
+        className: 'cursor-pointer',
+      };
+    }
+    if (onOpenApplication) {
+      return {
+        onClick: () => onOpenApplication(r.applicationId),
+        onKeyDown: (e: React.KeyboardEvent) => e.key === 'Enter' && onOpenApplication(r.applicationId),
+        tabIndex: 0,
+        className: 'cursor-pointer',
+      };
+    }
+    return {};
+  };
   const items = (list.data?.items ?? []) as never[];
 
   return (

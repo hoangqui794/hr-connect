@@ -277,6 +277,121 @@ Với từng file: kiểm tra trong `app/router.tsx` còn được route không.
 
 ---
 
+## 12. ✅ Form liên hệ tư vấn dịch vụ (SF-05) - ĐÃ HOÀN THÀNH
+
+> **Căn cứ:** [`FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md`](../../../HRConnect/docs/tasks/FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md) Mục 1 (SF-05).
+
+### A. Phía Trang Công Khai (Guest - không cần đăng nhập)
+- **API Client:** `POST /public/contact-requests` (`contactApi.submit`).
+- **Body:** `{ fullName, email, phone?, companyName?, serviceInterest, message, consentAccepted }`.
+- **Giao diện:**
+  - Trang công khai `/contact` (`ContactPage.tsx`) và form tư vấn (`ContactConsultationForm.tsx`).
+  - Liên kết điều hướng từ `Navbar.tsx` (mục "Liên hệ" trên desktop & drawer mobile) và CTA trong `ServicesPage.tsx`.
+  - Checkbox bắt buộc đồng ý xử lý dữ liệu cá nhân theo Nghị định 13/2023/NĐ-CP (chặn submit client-side & bắt lỗi `400 CONSENT_REQUIRED` từ backend).
+  - Bắt lỗi `429 CONTACT_RATE_LIMITED`: hiển thị thông báo "Bạn gửi quá nhiều, vui lòng thử lại sau" kèm thời gian chờ nếu có.
+  - Thành công: hiển thị Receipt mã yêu cầu, thời gian gửi, trạng thái `NEW` và nút gửi yêu cầu khác (reset form).
+
+### B. Phía Màn Quản Lý (Platform Admin, Internal HR)
+- **API Clients:**
+  - `GET /admin/contact-requests?status=&page=&pageSize=` (`contactApi.list`).
+  - `PATCH /admin/contact-requests/{id}` (`contactApi.updateStatus`).
+- **Giao diện:**
+  - Trang `/admin/contact-requests` và `/hr/contact-requests` (`AdminContactRequestsPage.tsx`).
+  - Tích hợp menu vào Sidebar `AdminLayout.tsx` và `HrLayout.tsx` (nhóm "Vận hành").
+  - Bảng danh sách với các cột: Họ tên, Email, Số điện thoại, Công ty, Dịch vụ quan tâm, Trạng thái (`NEW` / `CONTACTED` / `CLOSED`), Ngày tạo, Ghi chú, Thao tác.
+  - Bộ lọc trạng thái bằng `FilterPills` (`Tất cả`, `Mới tiếp nhận`, `Đã liên hệ`, `Đã đóng`) và ô tìm kiếm nhanh.
+  - Drawer xem chi tiết toàn bộ nội dung yêu cầu và Modal cập nhật trạng thái + ghi chú nội bộ.
+
+---
+
+## 13. ✅ Gợi ý "Việc phù hợp" cho Candidate (SF-07) - ĐÃ HOÀN THÀNH
+
+> **Căn cứ:** [`FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md`](../../../HRConnect/docs/tasks/FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md) Mục 3 (SF-07).
+
+### A. API Client & Types
+- **API Client:** `GET /candidates/me/job-matches` (`candidateJobMatchApi.getJobMatches`).
+- **Response DTO:** Mảng tối đa 20 gợi ý:
+  `Array<{ candidateJobMatchId, jobId, jobTitle, companyName, location, matchScore, generatedAt, expiresAt }>`.
+
+### B. Giao diện Candidate & Điều hướng thông báo
+- **Giao diện:**
+  - Component `CandidateJobMatchesSection.tsx`: hiển thị thẻ việc làm kèm điểm phù hợp nổi bật (ví dụ: `Phù hợp 83%`, badge tone theo ngưỡng điểm).
+  - Tích hợp Tabs trên trang Tìm việc `/candidate/jobs` (`CandidateJobPages.tsx`): tab **Việc phù hợp với bạn** và tab **Tất cả việc làm**, đồng bộ URL param `?tab=matches` / `?tab=all`.
+  - Tích hợp section gợi ý việc làm trên Candidate Dashboard `/candidate/dashboard` (`CandidateHomePage` trong `CandidatePages.tsx`).
+  - Xử lý trạng thái rỗng (Empty State): hiển thị lời nhắc *"Bật hồ sơ công khai và đặt CV chính để nhận gợi ý việc làm"* kèm 2 nút điều hướng tới **Hồ sơ cá nhân** (`/candidate/profile`) và **Kho CV** (`/candidate/cvs`). Không đặt nút làm mới liên tục vì backend cập nhật định kỳ (~1h/lần).
+- **Điều hướng thông báo (Notification routing):**
+  - Cập nhật `NotificationBell.tsx`: xử lý thông báo loại `JOB_FIT`, đọc `metadata.routeHint` (hoặc `metadata.jobId`) để chuyển hướng trực tiếp tới trang chi tiết công việc `/jobs/{jobId}` (hoặc danh sách việc phù hợp). Icon thông báo dạng tia sét (`ThunderboltOutlined`).
+
+---
+
+## 14. ✅ Chuông thông báo realtime với SignalR cho mọi vai trò (SF-08) - ĐÃ HOÀN THÀNH
+
+> **Căn cứ:** [`FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md`](../../../HRConnect/docs/tasks/FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md) Mục 4 (SF-08).
+
+### A. Thư viện & Khởi tạo Kết nối SignalR
+- **Thư viện:** `@microsoft/signalr` (^8.0.7).
+- **Service:** `src/services/signalRNotificationService.ts`:
+  - **Hub URL Resolution:** Tự động cắt bỏ `/api/v1` từ `API_BASE_URL` -> kết nối đến `${API_ORIGIN}/hubs/notifications`.
+  - **Vite Proxy:** Bổ sung rule `/hubs` với `ws: true` trong `vite.config.ts`.
+  - **Xác thực:** Truyền Bearer JWT Token qua `accessTokenFactory: () => authTokenStorage.getAccessToken() || ''`.
+  - **Tự động kết nối lại:** `.withAutomaticReconnect()`.
+  - **Quản lý vòng đời:** Kết nối khi đăng nhập (có token); ngắt kết nối (`stop()`) khi đăng xuất hoặc khi nhận sự kiện `hrconnect:unauthorized`.
+
+### B. Hook & Xử lý sự kiện Realtime (`useNotificationSignalR.ts`)
+- **Sự kiện `notification.created`:**
+  - Nhận payload `{ notification, unreadCount }`.
+  - Cập nhật ngay lập tức query cache unreadCount (`['notifications', 'unread-count']`).
+  - Chèn trực tiếp notification mới vào đầu danh sách `['notifications', 'list']` mà không reload trang.
+  - Hiển thị Ant Design toast notification (`antNotification.info`) góc trên bên phải màn hình kèm route click để điều hướng nhanh.
+- **Sự kiện `interview.updated`:**
+  - Nhận payload `{ interviewId }`.
+  - Tự động invalidate / refetch tất cả query liên quan tới lịch phỏng vấn: `['interviews']`, `['hr-pipeline']`, `['client-overview', 'interviews']`, `['candidate', 'interviews']`, `['candidate-interviews']`, `['client-interviews']`, `['candidate-applications']`.
+
+### C. Cơ chế dự phòng (Fallback & Adaptive Polling)
+- Tích hợp hook vào `NotificationBell.tsx` dùng chung cho toàn bộ layout (Candidate, Client, HR, Affiliate, Admin).
+- Khi SignalR kết nối thành công (`isConnected === true`): tạm dừng polling định kỳ (`refetchInterval: false`) để tối ưu 100% tài nguyên server.
+- Khi mất kết nối hoặc đang reconnecting: tự động kích hoạt polling định kỳ 60s làm dự phòng.
+- Hiển thị chấm trạng thái tinh tế (xanh lục khi realtime hoạt động) trong popover thông báo.
+
+---
+
+## 15. ✅ Tạo CV theo mẫu / Dựng trên nền tảng cho Candidate (SF-06) - ĐÃ HOÀN THÀNH
+
+> **Căn cứ:** [`FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md`](../../../HRConnect/docs/tasks/FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md) Mục 2 (SF-06).
+
+### A. API Client & Types
+- **Thư viện/File:** `src/types/api/cvBuilder.ts` và `src/services/api/cvBuilderApi.ts` (cũng được re-export tiện lợi qua `candidateCvApi`).
+- **Endpoints:**
+  - `GET /api/v1/cv-templates`: Danh sách mẫu CV (`cvTemplateId`, `code`, `name`, `description`, `templateConfig` gồm `accentColor`, `density`, `sections`).
+  - `POST /api/v1/candidates/cv/structured`: Tạo CV mới có cấu trúc từ mẫu hoặc tự dựng (`cvTemplateId = null`).
+  - `GET /api/v1/candidates/cv/structured/{cvId}`: Lấy dữ liệu CV có cấu trúc để điền vào form chỉnh sửa.
+  - `PUT /api/v1/candidates/cv/structured/{cvId}`: Cập nhật nội dung CV có cấu trúc.
+- **Quy tắc nghiệp vụ & Validation (`validateStructuredCvContent`):**
+  - Bắt buộc phải có `fullName` và `title`.
+  - Bắt buộc phải có ít nhất 1 trong 4 mục: `summary` (mục tiêu), `experiences` (kinh nghiệm), `educations` (học vấn), hoặc `skills` (kỹ năng). Chặn submit ngay từ client nếu trống và hiển thị thông báo tiếng Việt trực quan khi backend trả lỗi 400 `CV_CONTENT_EMPTY`.
+  - Phân quyền & hiển thị nút: Nút **"Sửa nội dung"** trong Kho CV (`/candidate/cvs`) chỉ hiển thị cho CV có `creationMethod` là `TEMPLATE_FORM` hoặc `PLATFORM_BUILDER`. CV tải tệp lên (`UPLOAD`) ẩn nút sửa hoặc chặn báo lỗi 400 `CV_NOT_STRUCTURED`.
+
+### B. Giao diện (Candidate CV Creation & Builder UI)
+- **Modal CV Builder (`CandidateCvBuilderModal.tsx`):**
+  - **Bước 1 (Chọn phương thức tạo CV):**
+    1. Tải file PDF có sẵn (Upload).
+    2. Dựng CV theo mẫu đẹp: hiển thị danh sách từ `/cv-templates` với badge màu chủ đạo (`accentColor`) và chế độ hiển thị (`density`).
+    3. Tự dựng CV nhanh (Chuẩn ATS, `cvTemplateId = null`).
+  - **Bước 2 (Form nhập liệu nội dung CV):**
+    - Thông tin cá nhân & liên hệ (Họ tên, chức danh, email, SĐT, địa chỉ).
+    - Mục tiêu nghề nghiệp (Summary) kèm bộ đếm ký tự.
+    - Kinh nghiệm làm việc (Thêm/xóa dòng linh hoạt, chức danh, công ty, thời gian bắt đầu/kết thúc, mô tả).
+    - Học vấn & bằng cấp (Thêm/xóa dòng, trường học, bằng cấp, thời gian).
+    - Kỹ năng, Ngôn ngữ & Chứng chỉ: Tag input gõ Enter hoặc bấm nút thêm, kèm gợi ý kỹ năng phổ biến.
+    - Thanh đo độ hoàn thiện hồ sơ (Completeness progress bar) cập nhật theo thời gian thực.
+  - **Tích hợp Kho CV (`/candidate/cvs`):**
+    - Nút "Tạo CV mới" trên header và khung điều hướng bên cạnh.
+    - Nút "Sửa nội dung" trên từng thẻ CV có cấu trúc.
+    - Nhãn phân loại trực quan: badge "Mẫu thiết kế" (tím), "Tự dựng" (xanh dương), "CV chính" (amber/primary).
+    - Hỗ trợ URL redirect: `/cv-builder` chuyển hướng mượt mà sang `/candidate/cvs?action=builder`.
+
+---
+
 ## Chưa làm được (backend chưa có API)
 
 Danh bạ công ty, bộ lọc kinh nghiệm/ngành ([`BE-tasks-02`](../../../HRConnect/docs/tasks/BE-tasks-02-nganh-danh-ba-cong-ty-loc-job.md)); khiếu nại tranh chấp trùng ([`BE-tasks-03`](../../../HRConnect/docs/tasks/BE-tasks-03-tranh-chap-trung-sf04.md)). Đợi backend merge rồi giao tiếp; không làm số liệu giả.

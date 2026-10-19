@@ -21,6 +21,7 @@ import {
   MenuUnfoldOutlined,
   SafetyCertificateOutlined,
   UserOutlined,
+  CustomerServiceOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
@@ -44,6 +45,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { to: '/hr/jobs', label: 'Duyệt tin tuyển dụng', icon: <FileTextOutlined /> },
       { to: '/hr/screening', label: 'Sàng lọc hồ sơ', icon: <FileSearchOutlined /> },
+      { to: '/hr/contact-requests', label: 'Yêu cầu tư vấn', icon: <CustomerServiceOutlined /> },
     ],
   },
   {

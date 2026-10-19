@@ -101,6 +101,10 @@ export const router = createBrowserRouter([
     element: <ServicesPage />,
   },
   {
+    path: '/contact',
+    element: withSuspense(<AppRoutes.ContactPage />),
+  },
+  {
     path: '/submission-consent',
     element: (
       <CandidateScope>
@@ -169,11 +173,13 @@ export const router = createBrowserRouter([
       { path: 'jobs', element: <AppRoutes.Mf01JobReviewPage /> },
       { path: 'job-templates', element: <AppRoutes.Mf01JobTemplatesAdminPage /> },
       { path: 'users', element: <AppRoutes.ConsoleUsersPage /> },
+      { path: 'contact-requests', element: <AppRoutes.AdminContactRequestsPage /> },
       { path: 'service-types', element: <AppRoutes.ConsoleServiceTypesPage /> },
       { path: 'commission-rules', element: <AppRoutes.ConsoleCommissionRulesPage /> },
       { path: 'roles-permissions', element: <AppRoutes.ConsoleRolesPermissionsPage /> },
       { path: 'user-authorization', element: <AppRoutes.ConsoleUserAuthorizationPage /> },
       { path: 'audit-trail', element: <AppRoutes.ConsoleAuditLogPage /> },
+      { path: 'reports', element: <AppRoutes.AdminReportsPage /> },
       { path: 'profile', element: <AppRoutes.ConsoleProfilePage /> },
       // No backend API yet: explicit empty state, no mock numbers.
       { path: 'disputes', element: <AppRoutes.ConsoleDisputesPlaceholder /> },
@@ -213,7 +219,7 @@ export const router = createBrowserRouter([
     ],
   },
   { path: '/profile', element: <Navigate to="/candidate/profile" replace /> },
-  { path: '/cv-builder', element: <Navigate to="/candidate/cvs" replace /> },
+  { path: '/cv-builder', element: <Navigate to="/candidate/cvs?action=builder" replace /> },
 
   // ── Affiliate workspace (MF-02 branch B): light sidebar, violet accent ──────
   {
@@ -234,6 +240,8 @@ export const router = createBrowserRouter([
       { path: 'submissions/:submissionId', element: <AppRoutes.AffiliateSubmissionDetailPage /> },
       { path: 'candidates', element: <AppRoutes.AffiliateCandidatesPage /> },
       { path: 'attributions', element: <AppRoutes.AffiliateAttributionsPage /> },
+      { path: 'performance', element: <AppRoutes.AffiliatePerformancePage /> },
+      { path: 'disputes', element: <AppRoutes.AffiliateDisputesPage /> },
       { path: 'profile', element: <AppRoutes.AffiliateProfilePage /> },
       // MF-05 commissions have no API yet.
       { path: 'commissions', element: <AppRoutes.AffiliateCommissionsPlaceholder /> },
@@ -310,6 +318,7 @@ export const router = createBrowserRouter([
       { path: 'job-templates', element: <AppRoutes.Mf01JobTemplatesAdminPage /> },
       { path: 'screening', element: <AppRoutes.HrScreeningPage /> },
       { path: 'pipeline', element: <AppRoutes.HrPipelinePage /> },
+      { path: 'contact-requests', element: <AppRoutes.AdminContactRequestsPage /> },
       { path: 'profile', element: <AppRoutes.HrProfilePage /> },
       // Old menu entries: "Kho hồ sơ" and AI screening were the same list; interviews/offers are now one read-only page.
       { path: 'candidates', element: <Navigate to="/hr/screening?status=all" replace /> },

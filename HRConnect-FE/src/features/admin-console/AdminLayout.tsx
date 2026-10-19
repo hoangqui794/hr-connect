@@ -27,6 +27,8 @@ import {
   TeamOutlined,
   UserOutlined,
   UserSwitchOutlined,
+  CustomerServiceOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
@@ -50,7 +52,9 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/admin/jobs', label: 'Duyệt tin tuyển dụng', icon: <FileTextOutlined /> },
       { to: '/admin/approvals', label: 'Phê duyệt tài khoản', icon: <SafetyCertificateOutlined /> },
       { to: '/admin/candidate-identity-claims', label: 'Danh tính Candidate', icon: <LinkOutlined /> },
+      { to: '/admin/disputes', label: 'Tranh chấp & Khiếu nại', icon: <SolutionOutlined /> },
       { to: '/admin/users', label: 'Người dùng', icon: <TeamOutlined /> },
+      { to: '/admin/contact-requests', label: 'Yêu cầu tư vấn', icon: <CustomerServiceOutlined /> },
       { to: '/admin/user-authorization', label: 'Phân quyền người dùng', icon: <UserSwitchOutlined /> },
     ],
   },
@@ -62,11 +66,16 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/admin/commission-rules', label: 'Quy tắc hoa hồng', icon: <DollarOutlined /> },
     ],
   },
-  { group: 'Giám sát', items: [{ to: '/admin/audit-trail', label: 'Nhật ký hệ thống', icon: <AuditOutlined /> }] },
+  {
+    group: 'Giám sát',
+    items: [
+      { to: '/admin/reports', label: 'Báo cáo & Thống kê', icon: <BarChartOutlined /> },
+      { to: '/admin/audit-trail', label: 'Nhật ký hệ thống', icon: <AuditOutlined /> },
+    ],
+  },
   {
     group: 'Chưa có API',
     items: [
-      { to: '/admin/disputes', label: 'Tranh chấp', icon: <SolutionOutlined />, muted: true },
       { to: '/admin/payouts', label: 'Chi trả hoa hồng', icon: <BankOutlined />, muted: true },
       { to: '/admin/settings', label: 'Cài đặt hệ thống', icon: <SettingOutlined />, muted: true },
     ],

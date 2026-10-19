@@ -8,6 +8,7 @@ export interface RoutePermission {
 
 export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { path: '/', allowedRoles: Object.values(UserRole), redirectTo: '/' },
+  { path: '/contact', allowedRoles: Object.values(UserRole), redirectTo: '/' },
   { path: '/login', allowedRoles: [UserRole.GUEST], redirectTo: '/dashboard' },
   { path: '/register', allowedRoles: [UserRole.GUEST], redirectTo: '/dashboard' },
   {
@@ -126,6 +127,11 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     redirectTo: '/dashboard',
   },
   {
+    path: '/admin/contact-requests',
+    allowedRoles: [UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
     path: '/admin/companies',
     allowedRoles: [UserRole.ADMIN],
     redirectTo: '/dashboard',
@@ -167,6 +173,11 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   },
   {
     path: '/hr/jobs',
+    allowedRoles: [UserRole.INTERNAL_HR, UserRole.ADMIN],
+    redirectTo: '/dashboard',
+  },
+  {
+    path: '/hr/contact-requests',
     allowedRoles: [UserRole.INTERNAL_HR, UserRole.ADMIN],
     redirectTo: '/dashboard',
   },

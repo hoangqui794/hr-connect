@@ -11,11 +11,12 @@ import {
   MenuOutlined,
   LoginOutlined,
   UserAddOutlined,
+  CustomerServiceOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { AccountAvatar } from '@/components/common/AccountAvatar';
-import { useAlertStore } from '@/stores/alertStore';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useI18nStore } from '@/i18n';
 import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWorkspaceMenu';
 import { UserRole } from '@/types/roles';
@@ -26,8 +27,6 @@ export const Navbar: React.FC = () => {
   const location = useLocation();
   const { t } = useI18nStore();
   const { isAuthenticated, role, user, logout } = useAuthStore();
-  const { alerts, unreadCount, markAllRead, dismissAlert } = useAlertStore();
-  const [notifOpen, setNotifOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const userName = user?.name || 'Người dùng';
@@ -77,6 +76,7 @@ export const Navbar: React.FC = () => {
   const isHomeActive = location.pathname === '/' && !isRolesActive;
   const isJobsActive = location.pathname === '/jobs' || location.pathname.startsWith('/jobs/');
   const isServicesActive = location.pathname === '/services';
+  const isContactActive = location.pathname === '/contact';
 
   // Ẩn mục "Bảng giá dịch vụ" đối với CANDIDATE; Chỉ hiển thị khi là Khách (chưa đăng nhập) hoặc Doanh nghiệp
   const showServicesPricing =
@@ -170,73 +170,26 @@ export const Navbar: React.FC = () => {
               Giải pháp dịch vụ
             </Button>
           )}
+
+          <Button
+            type="text"
+            icon={<CustomerServiceOutlined />}
+            onClick={() => navigate('/contact')}
+            style={{
+              color: isContactActive ? '#1d4ed8' : '#475569',
+              fontWeight: 600,
+              fontSize: 14,
+              background: isContactActive ? '#eff6ff' : 'transparent',
+              borderRadius: 8,
+            }}
+          >
+            Liên hệ
+          </Button>
         </nav>
 
         {/* Desktop Right Controls */}
         <div className="hidden lg:flex items-center gap-3">
-          {isAuthenticated && (
-            <Dropdown
-              open={notifOpen}
-              onOpenChange={(open) => {
-                setNotifOpen(open);
-                if (open && unreadCount > 0) markAllRead();
-              }}
-              trigger={['click']}
-              dropdownRender={() => (
-                <div
-                  style={{
-                    background: '#ffffff',
-                    borderRadius: 14,
-                    boxShadow: '0 16px 36px -4px rgba(0, 0, 0, 0.08)',
-                    width: 340,
-                    maxHeight: 400,
-                    overflow: 'hidden',
-                    border: '1px solid rgba(226, 232, 240, 0.9)',
-                  }}
-                >
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(241, 245, 249, 0.9)', display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>Thông báo</span>
-                    <span style={{ color: '#2563eb', fontSize: 11, cursor: 'pointer', fontWeight: 600 }} onClick={() => useAlertStore.getState().clearAll()}>
-                      Xóa tất cả
-                    </span>
-                  </div>
-                  <div style={{ maxHeight: 320, overflowY: 'auto' }}>
-                    {alerts.length === 0 ? (
-                      <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
-                        Chưa có thông báo mới
-                      </div>
-                    ) : (
-                      <List
-                        dataSource={alerts.slice(0, 8)}
-                        renderItem={(alert) => (
-                          <List.Item
-                            key={alert.id}
-                            style={{
-                              padding: '10px 14px',
-                              background: alert.read ? 'transparent' : 'rgba(239, 246, 255, 0.9)',
-                              borderBottom: '1px solid rgba(241, 245, 249, 0.9)',
-                            }}
-                            actions={[
-                              <span key="del" style={{ fontSize: 10, color: '#94a3b8', cursor: 'pointer' }} onClick={() => dismissAlert(alert.id)}>✕</span>,
-                            ]}
-                          >
-                            <List.Item.Meta
-                              title={<span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{alert.title}</span>}
-                              description={<span style={{ fontSize: 11, color: '#64748b' }}>{alert.message}</span>}
-                            />
-                          </List.Item>
-                        )}
-                      />
-                    )}
-                  </div>
-                </div>
-              )}
-            >
-              <Badge count={unreadCount} size="small" offset={[-2, 2]}>
-                <Button type="text" shape="circle" icon={<BellOutlined style={{ fontSize: 17, color: '#475569' }} />} />
-              </Badge>
-            </Dropdown>
-          )}
+          {isAuthenticated && <NotificationBell />}
 
           {isAuthenticated ? (
             role === UserRole.CANDIDATE ? (
@@ -299,35 +252,7 @@ export const Navbar: React.FC = () => {
 
         {/* Mobile / Tablet Controls (< lg) */}
         <div className="flex lg:hidden items-center gap-2">
-          {isAuthenticated && (
-            <Dropdown
-              open={notifOpen}
-              onOpenChange={(open) => {
-                setNotifOpen(open);
-                if (open && unreadCount > 0) markAllRead();
-              }}
-              trigger={['click']}
-              dropdownRender={() => (
-                <div className="w-80 rounded-xl bg-white p-2 shadow-xl border border-slate-100">
-                  <div className="flex justify-between p-2 text-xs font-bold border-b border-slate-100">
-                    <span>Thông báo</span>
-                    <span className="text-blue-600 cursor-pointer" onClick={() => useAlertStore.getState().clearAll()}>
-                      Xóa tất cả
-                    </span>
-                  </div>
-                  <div className="max-h-60 overflow-y-auto text-xs p-2">
-                    {alerts.length === 0 ? 'Chưa có thông báo' : alerts.slice(0, 5).map(a => (
-                      <div key={a.id} className="py-1 border-b border-slate-50">{a.title}</div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            >
-              <Badge count={unreadCount} size="small">
-                <Button type="text" shape="circle" icon={<BellOutlined className="text-base text-slate-700" />} />
-              </Badge>
-            </Dropdown>
-          )}
+          {isAuthenticated && <NotificationBell />}
 
           {!isAuthenticated && (
             <Button
@@ -416,6 +341,18 @@ export const Navbar: React.FC = () => {
               Giải pháp dịch vụ
             </Button>
           )}
+
+          <Button
+            type="text"
+            block
+            icon={<CustomerServiceOutlined />}
+            onClick={() => navigateAndClose('/contact')}
+            className={`flex items-center justify-start h-10 px-3 font-semibold rounded-lg text-left ${
+              isContactActive ? 'bg-blue-50 text-blue-600' : 'text-slate-700'
+            }`}
+          >
+            Liên hệ tư vấn
+          </Button>
         </div>
 
         <Divider className="my-4" />

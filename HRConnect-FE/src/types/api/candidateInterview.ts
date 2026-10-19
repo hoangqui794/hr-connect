@@ -41,6 +41,17 @@ export interface CandidateInterviewDetailDto {
   location?: string | null;
   meetingLink?: string | null;
   status: InterviewStatus;
+  candidateName?: string;
+  candidateFullName?: string;
+  candidateEmail?: string | null;
+  candidatePhone?: string | null;
+  result?: string | null;
+  feedback?: string | null;
+  concurrencyToken?: string;
+  createdByName?: string | null;
+  recordedByName?: string | null;
+  recordedAt?: string | null;
+  participants?: Array<{ userId: string; name?: string; role: string }>;
   createdAt: string;
   updatedAt: string;
   statusHistories: CandidateInterviewStatusHistoryDto[];

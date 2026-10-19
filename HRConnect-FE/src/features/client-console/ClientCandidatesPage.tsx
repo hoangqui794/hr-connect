@@ -54,8 +54,13 @@ const BOARD: { code: string; label: string; dot: string }[] = [
 ];
 const BOARD_LIMIT = 20;
 
-const AiScore: React.FC<{ score: number | null }> = ({ score }) => {
-  if (score == null) return <span className="text-xs text-slate-500">—</span>;
+const AiScore: React.FC<{ score: number | null; status?: string | null }> = ({ score, status }) => {
+  if (score == null) {
+    const st = status?.toUpperCase();
+    if (st === 'FAILED') return <span className="text-xs font-semibold text-red-600">Lỗi AI</span>;
+    if (st === 'PENDING' || st === 'PROCESSING') return <span className="text-xs text-sky-600">Đang chấm…</span>;
+    return <span className="text-xs text-slate-500">—</span>;
+  }
   const s = Math.round(score);
   const tone = s >= 75 ? 'bg-emerald-50 text-emerald-800' : s >= 50 ? 'bg-indigo-50 text-indigo-900' : 'bg-amber-50 text-amber-800';
   return <span className={`inline-flex min-w-[44px] justify-center rounded-md px-2 py-0.5 text-sm font-bold tabular-nums ${tone}`}>{s}</span>;
@@ -139,7 +144,7 @@ export const ClientCandidatesPage: React.FC = () => {
       key: 'j',
       render: (_, r) => <div className="max-w-[320px] truncate font-medium text-slate-900">{r.jobTitle}</div>,
     },
-    { title: 'AI', key: 'ai', width: 90, render: (_, r) => <AiScore score={r.aiMatchScore} /> },
+    { title: 'AI', key: 'ai', width: 90, render: (_, r) => <AiScore score={r.aiMatchScore} status={r.aiStatus} /> },
     {
       title: 'Giai đoạn',
       dataIndex: 'status',
@@ -339,6 +344,14 @@ export const ClientCandidatesPage: React.FC = () => {
                                 {a.aiMatchScore != null ? (
                                   <Tooltip title="Điểm phù hợp do AI chấm">
                                     <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-blue-800">AI {Math.round(a.aiMatchScore)}</span>
+                                  </Tooltip>
+                                ) : a.aiStatus?.toUpperCase() === 'FAILED' ? (
+                                  <Tooltip title="AI chưa chấm được hồ sơ này">
+                                    <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-700">Lỗi AI</span>
+                                  </Tooltip>
+                                ) : a.aiStatus?.toUpperCase() === 'PENDING' || a.aiStatus?.toUpperCase() === 'PROCESSING' ? (
+                                  <Tooltip title="AI đang chấm điểm hồ sơ">
+                                    <span className="rounded-md bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-700">Đang chấm…</span>
                                   </Tooltip>
                                 ) : (
                                   <span />
