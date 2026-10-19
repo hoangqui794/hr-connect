@@ -28,6 +28,7 @@ public class ApplicationRepository : IApplicationRepository
     public async Task<JobApplication?> GetByIdAsync(Guid applicationId, CancellationToken cancellationToken = default)
     {
         return await _context.Applications
+            .Include(a => a.SourcingDeliveries)
             .Include(a => a.Job)
                 .ThenInclude(j => j.Company)
             .Include(a => a.Job)
@@ -245,6 +246,7 @@ public class ApplicationRepository : IApplicationRepository
     {
         return await _context.Applications
             .AsNoTracking()
+            .Include(a => a.SourcingDeliveries)
             .Include(a => a.Job)
                 .ThenInclude(j => j.Company)
             .Include(a => a.Job)
@@ -274,6 +276,7 @@ public class ApplicationRepository : IApplicationRepository
     {
         return await _context.Applications
             .AsNoTracking()
+            .Include(a => a.SourcingDeliveries)
             .Include(a => a.Job)
                 .ThenInclude(j => j.Company)
             .Include(a => a.Job)

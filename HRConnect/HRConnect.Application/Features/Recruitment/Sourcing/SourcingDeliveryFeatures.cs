@@ -13,7 +13,7 @@ namespace HRConnect.Application.Features.Recruitment.Sourcing;
 
 // MF-03 (CV_SOURCING): Internal HR hands qualified CVs to the Client; the Client accepts or rejects
 // each one within the review window (default 7 days); no answer counts as accepted. Only accepted
-// CVs are billed. See HRConnect/docs/MF03/mf03-viec-can-lam-theo-quy-tac-phi.md, section C2.
+// CVs are billed. See HRConnect/docs/main-flows.md (MF-03, CV_SOURCING) and QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md section 2.
 
 public sealed record SourcingDeliveryDto(
     Guid DeliveryId,

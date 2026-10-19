@@ -51,6 +51,9 @@ public partial class Application
 
     public virtual ICollection<Offer> Offers { get; set; } = new List<Offer>();
 
+    /// <summary>CV_SOURCING: times Internal HR handed this application to the Client (MF-03 C2).</summary>
+    public virtual ICollection<SourcingDelivery> SourcingDeliveries { get; set; } = new List<SourcingDelivery>();
+
     public virtual Placement? Placement { get; set; }
 
     public virtual Submission? Submission { get; set; }
