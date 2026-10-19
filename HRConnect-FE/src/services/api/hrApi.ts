@@ -14,6 +14,7 @@ import type {
   OfferItem,
   PagedItems,
   PlacementItem,
+  PlacementCorrectionDetail,
   RecruitmentApplicationDetail,
   RecruitmentApplicationItem,
   RecruitmentApplicationSearchParams,
@@ -99,6 +100,26 @@ export const pipelineApi = {
   },
 };
 
+/**
+ * MF-04 correction after the Client has confirmed a start date.
+ * Internal HR/Admin may correct a mistaken actual start date; the backend owns
+ * the seven-day, non-future and unpaid-service-fee rules and moves dependent
+ * warranty/payment deadlines. This API intentionally exposes no MF-05 money
+ * operations to the HR screen.
+ */
+export const placementCorrectionApi = {
+  list: (params: { status?: string; page: number; pageSize: number }) => pipelineApi.placements(params),
+
+  async get(placementId: string): Promise<PlacementCorrectionDetail> {
+    const response = await apiClient.get<PlacementCorrectionDetail>(`/placements/${placementId}`);
+    return response.data;
+  },
+
+  async correctStartDate(placementId: string, input: { actualStartDate: string; reason: string }) {
+    return (await apiClient.post<{ success?: boolean; message?: string }>(`/placements/${placementId}/start-date-correction`, input)).data;
+  },
+};
+
 export const hrProfileApi = {
   async get(): Promise<InternalHrProfile> {
     return (await apiClient.get<ApiEnvelope<InternalHrProfile>>('/internal/profile/me')).data.data;
@@ -131,6 +152,27 @@ export interface OfferInput {
   concurrencyToken?: string;
 }
 
+export interface UpdateInterviewInput {
+  durationMinutes?: number;
+  interviewType?: string;
+  location?: string;
+  meetingLink?: string;
+  concurrencyToken: string;
+}
+
+export interface InterviewHistoryItem {
+  historyId: string;
+  interviewId: string;
+  oldStatus: string | null;
+  newStatus: string;
+  oldScheduledAt: string | null;
+  newScheduledAt: string | null;
+  reason: string | null;
+  changedBy: string | null;
+  changedByName: string | null;
+  changedAt: string;
+}
+
 export interface ConfirmStartWorkInput {
   offerId: string;
   actualStartDate: string;
@@ -151,6 +193,8 @@ export const clientActionsApi = {
     post(`/recruitment/applications/${applicationId}/interviews`, input),
   rescheduleInterview: (interviewId: string, input: { newScheduledAt: string; reason: string; durationMinutes?: number; location?: string; meetingLink?: string; concurrencyToken: string }) =>
     post(`/interviews/${interviewId}/reschedule`, input),
+  updateInterview: (interviewId: string, input: UpdateInterviewInput) =>
+    put(`/interviews/${interviewId}`, input),
   cancelInterview: (interviewId: string, input: { reason: string; concurrencyToken: string }) =>
     post(`/interviews/${interviewId}/cancel`, input),
   recordResult: (interviewId: string, input: { result: 'PASS' | 'FAIL' | 'BACKUP'; feedback?: string; isFinalRound?: boolean; nextAction?: string; concurrencyToken: string }) =>
@@ -169,6 +213,14 @@ export const clientActionsApi = {
     post(`/recruitment/applications/${applicationId}/start-work`, input),
   markNotStarted: (applicationId: string, input: { reason: string; concurrencyToken: string }) =>
     post(`/recruitment/applications/${applicationId}/not-started`, input),
+};
+
+/** Read-only audit trail shared by Client Company and Internal HR. */
+export const interviewHistoryApi = {
+  async get(interviewId: string): Promise<InterviewHistoryItem[]> {
+    const response = await apiClient.get<ApiEnvelope<InterviewHistoryItem[]>>(`/interviews/${interviewId}/history`);
+    return response.data.data ?? [];
+  },
 };
 
 /** GET/PUT /companies/profile/me */

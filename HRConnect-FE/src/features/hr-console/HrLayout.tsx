@@ -46,11 +46,16 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/hr/screening', label: 'Sàng lọc hồ sơ', icon: <FileSearchOutlined /> },
     ],
   },
-  { group: 'Theo dõi', items: [{ to: '/hr/pipeline', label: 'Tiến độ tuyển dụng', icon: <CalendarOutlined /> }] },
+  {
+    group: 'Theo dõi',
+    items: [
+      { to: '/hr/pipeline', label: 'Tiến độ tuyển dụng', icon: <CalendarOutlined /> },
+      { to: '/hr/placement-review', label: 'Sửa ngày đi làm', icon: <AuditOutlined /> },
+    ],
+  },
   {
     group: 'Chưa có API',
     items: [
-      { to: '/hr/placement-review', label: 'Đối soát nhận việc', icon: <AuditOutlined />, muted: true },
       { to: '/hr/warranty-tracking', label: 'Bảo hành & thử việc', icon: <SafetyCertificateOutlined />, muted: true },
     ],
   },

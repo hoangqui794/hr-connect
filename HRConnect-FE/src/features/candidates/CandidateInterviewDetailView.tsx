@@ -5,7 +5,7 @@
  * and status timeline.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Card,
   Tag,
@@ -14,13 +14,7 @@ import {
   Skeleton,
   Empty,
   Tooltip,
-  Modal,
-  Form,
-  Input,
-  DatePicker,
-  Popconfirm,
   Timeline,
-  Space,
   Typography,
   message,
 } from 'antd';
@@ -34,7 +28,6 @@ import {
   ExclamationCircleOutlined,
   ReloadOutlined,
   GoogleOutlined,
-  UserOutlined,
   BankOutlined,
   HistoryOutlined,
   InfoCircleOutlined,
@@ -64,23 +57,9 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
   onBack,
   showBackAction = false,
 }) => {
-  const {
-    interview: fetchedInterview,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isRefetching,
-    confirmAttendance,
-    isConfirming,
-    requestReschedule,
-    isRequestingReschedule,
-  } = useCandidateInterviewDetail(interviewId);
+  const { interview: fetchedInterview, isLoading, isError, error, refetch, isRefetching } = useCandidateInterviewDetail(interviewId);
 
   const interview = fetchedInterview || initialData;
-
-  const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
-  const [rescheduleForm] = Form.useForm();
 
   // Helper copy to clipboard
   const handleCopy = (text: string, label: string) => {
@@ -111,21 +90,6 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
     )}&dates=${startStr}/${endStr}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(
       location
     )}`;
-  };
-
-  // Handle Reschedule submit
-  const handleRescheduleSubmit = async () => {
-    try {
-      const values = await rescheduleForm.validateFields();
-      await requestReschedule({
-        reason: values.reason,
-        preferredTime: values.preferredTime ? values.preferredTime.toISOString() : undefined,
-      });
-      setRescheduleModalOpen(false);
-      rescheduleForm.resetFields();
-    } catch {
-      // Validation failure
-    }
   };
 
   // 1. Loading State
@@ -233,12 +197,6 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
               {isOnline ? 'Trực tuyến (Online)' : 'Trực tiếp (Tại văn phòng)'}
             </Tag>
             {getStatusBadge(interview.status)}
-            {interview.isConfirmed && (
-              <Tag className="!m-0 !border-emerald-200 !bg-emerald-50 !px-2.5 !py-1 !font-semibold !text-emerald-700 !shadow-none">
-                <CheckCircleOutlined className="mr-1" />
-                Bạn đã xác nhận tham gia
-              </Tag>
-            )}
           </div>
           <Title level={4} className="!m-0 text-slate-900 font-extrabold">
             {interview.jobTitle || 'Buổi phỏng vấn tuyển dụng'}
@@ -422,91 +380,6 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
         </Card>
       </div>
 
-      {/* Interviewers / Participants (if exposed to candidate) */}
-      {interview.participants && interview.participants.length > 0 && (
-        <Card
-          size="small"
-          className="rounded-xl border border-slate-200 shadow-sm"
-          title={
-            <div className="flex items-center gap-2 text-slate-800 font-bold">
-              <UserOutlined className="text-indigo-600" />
-              <span>Hội đồng / Người tham gia phỏng vấn ({interview.participants.length})</span>
-            </div>
-          }
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {interview.participants.map((p, idx) => (
-              <div
-                key={p.userId || idx}
-                className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200/80"
-              >
-                <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-sm uppercase">
-                  {(p.name || p.role || 'HR').substring(0, 2)}
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">{p.name || 'Người phỏng vấn'}</div>
-                  <div className="text-xs text-slate-500">{p.role || 'Hội đồng chuyên môn'}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Candidate Action Buttons */}
-      <Card
-        size="small"
-        className="rounded-xl border border-blue-200/80 bg-blue-50/30 shadow-sm"
-      >
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-2">
-          <div>
-            <div className="text-sm font-bold text-slate-900">
-              Phản hồi lịch phỏng vấn
-            </div>
-            <div className="text-xs text-slate-600 mt-0.5">
-              Xác nhận sẵn sàng tham gia để nhà tuyển dụng chuẩn bị chu đáo hoặc gửi yêu cầu dời lịch nếu có việc đột xuất.
-            </div>
-          </div>
-
-          <Space wrap>
-            {interview.isConfirmed ? (
-              <span
-                role="status"
-                className="inline-flex items-center gap-2 rounded-lg border border-solid border-emerald-200 bg-emerald-50 px-4 py-2 font-semibold text-emerald-700 shadow-none"
-              >
-                <CheckCircleOutlined aria-hidden />
-                Bạn đã xác nhận tham gia
-              </span>
-            ) : (
-              <Popconfirm
-                title="Xác nhận tham gia buổi phỏng vấn"
-                description="Bạn xác nhận sẽ tham gia đúng giờ và theo đúng hình thức đã quy định?"
-                onConfirm={() => confirmAttendance({})}
-                okText="Xác nhận"
-                cancelText="Hủy"
-              >
-                <Button
-                  type="primary"
-                  icon={<CheckCircleOutlined />}
-                  loading={isConfirming}
-                  className="!bg-emerald-600 !font-semibold !shadow-none hover:!bg-emerald-700"
-                >
-                  Xác nhận tham gia
-                </Button>
-              </Popconfirm>
-            )}
-
-            <Button
-              icon={<HistoryOutlined />}
-              onClick={() => setRescheduleModalOpen(true)}
-              className="font-medium"
-            >
-              Yêu cầu dời lịch
-            </Button>
-          </Space>
-        </div>
-      </Card>
-
       {/* Status History / Timeline */}
       {interview.statusHistories && interview.statusHistories.length > 0 && (
         <Card
@@ -543,11 +416,6 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
                         )}
                       </div>
                     )}
-                    {h.reason && (
-                      <div className="mt-0.5 text-slate-500 italic">
-                        Lý do: {h.reason}
-                      </div>
-                    )}
                   </div>
                 ),
               };
@@ -556,50 +424,6 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
         </Card>
       )}
 
-      {/* Modal: Request Reschedule */}
-      <Modal
-        title={
-          <div className="flex items-center gap-2 text-slate-900 font-bold text-base">
-            <HistoryOutlined className="text-amber-600" />
-            <span>Yêu cầu dời lịch phỏng vấn</span>
-          </div>
-        }
-        open={rescheduleModalOpen}
-        onCancel={() => setRescheduleModalOpen(false)}
-        onOk={handleRescheduleSubmit}
-        confirmLoading={isRequestingReschedule}
-        okText="Gửi yêu cầu dời lịch"
-        cancelText="Đóng"
-      >
-        <div className="text-xs text-slate-600 mb-4 bg-amber-50 p-3 rounded-lg border border-amber-200">
-          Nhà tuyển dụng sẽ nhận được lý do và thời gian đề xuất của bạn để sắp xếp lại lịch phỏng vấn phù hợp nhất.
-        </div>
-
-        <Form form={rescheduleForm} layout="vertical">
-          <Form.Item
-            name="reason"
-            label="Lý do xin dời lịch"
-            rules={[{ required: true, message: 'Vui lòng nhập lý do xin dời lịch' }]}
-          >
-            <Input.TextArea
-              rows={3}
-              placeholder="Ví dụ: Tôi có lịch thi/công tác đột xuất không thể sắp xếp được..."
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="preferredTime"
-            label="Thời gian bạn có thể tham gia (Thời gian đề xuất)"
-          >
-            <DatePicker
-              showTime={{ format: 'HH:mm' }}
-              format="YYYY-MM-DD HH:mm"
-              className="w-full"
-              placeholder="Chọn ngày và giờ bạn có thể tham gia"
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 };
