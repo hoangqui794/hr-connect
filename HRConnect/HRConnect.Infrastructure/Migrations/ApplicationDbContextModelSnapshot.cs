@@ -1838,6 +1838,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("company_size");
 
+                    b.Property<Guid?>("CompanySizeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_size_id");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -1848,10 +1852,24 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<int?>("FeaturedOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("featured_order");
+
                     b.Property<string>("Industry")
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)")
                         .HasColumnName("industry");
+
+                    b.Property<Guid?>("IndustryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("industry_id");
+
+                    b.Property<bool>("IsFeatured")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_featured");
 
                     b.Property<string>("TaxCode")
                         .HasMaxLength(80)
@@ -1884,11 +1902,67 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasKey("CompanyId")
                         .HasName("company_pkey");
 
+                    b.HasIndex("CompanySizeId");
+
+                    b.HasIndex(new[] { "IsFeatured", "FeaturedOrder" }, "idx_company_featured");
+
+                    b.HasIndex(new[] { "IndustryId" }, "idx_company_industry");
+
                     b.HasIndex(new[] { "TaxCode" }, "uq_company_tax_code")
                         .IsUnique()
                         .HasFilter("(tax_code IS NOT NULL)");
 
                     b.ToTable("company", "public");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.CompanySizeOption", b =>
+                {
+                    b.Property<Guid>("CompanySizeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_size_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("code");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("label");
+
+                    b.Property<int?>("MaxEmployees")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_employees");
+
+                    b.Property<int>("MinEmployees")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_employees");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("CompanySizeId")
+                        .HasName("company_size_pkey");
+
+                    b.HasIndex(new[] { "Code" }, "company_size_code_key")
+                        .IsUnique();
+
+                    b.ToTable("company_size", "public", t =>
+                        {
+                            t.HasComment("BE-02 A: company size bands, seeded from Seed/Data/company_size.csv.");
+                        });
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.CompanyUser", b =>
@@ -2355,6 +2429,77 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasFilter("((status)::text = ANY ((ARRAY['PENDING'::character varying, 'FAILED'::character varying])::text[]))");
 
                     b.ToTable("email_outbox", "public");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.Industry", b =>
+                {
+                    b.Property<Guid>("IndustryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("industry_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<short>("Level")
+                        .HasColumnType("smallint")
+                        .HasColumnName("level");
+
+                    b.Property<string>("NameEn")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name_en");
+
+                    b.Property<string>("NameVi")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name_vi");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.HasKey("IndustryId")
+                        .HasName("industry_pkey");
+
+                    b.HasIndex(new[] { "ParentId", "IsActive", "SortOrder" }, "idx_industry_parent");
+
+                    b.HasIndex(new[] { "Code" }, "industry_code_key")
+                        .IsUnique();
+
+                    b.ToTable("industry", "public", t =>
+                        {
+                            t.HasComment("BE-02 A: industry taxonomy L1/L2/L3, seeded from Seed/Data/industry.csv, edited by Platform Admin.");
+
+                            t.HasCheckConstraint("ck_industry_level", "level BETWEEN 1 AND 3");
+                        });
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.InternalHrProfile", b =>
@@ -5623,6 +5768,25 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("ServiceType");
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.Company", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.CompanySizeOption", "CompanySizeRef")
+                        .WithMany("Companies")
+                        .HasForeignKey("CompanySizeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("company_company_size_id_fkey");
+
+                    b.HasOne("HRConnect.Domain.Entities.Industry", "IndustryRef")
+                        .WithMany("Companies")
+                        .HasForeignKey("IndustryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("company_industry_id_fkey");
+
+                    b.Navigation("CompanySizeRef");
+
+                    b.Navigation("IndustryRef");
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.CompanyUser", b =>
                 {
                     b.HasOne("HRConnect.Domain.Entities.Company", "Company")
@@ -5726,6 +5890,17 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasConstraintName("email_outbox_user_id_fkey");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.Industry", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.Industry", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("industry_parent_id_fkey");
+
+                    b.Navigation("Parent");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.InternalHrProfile", b =>
@@ -6596,9 +6771,21 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Jobs");
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.CompanySizeOption", b =>
+                {
+                    b.Navigation("Companies");
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.CvTemplate", b =>
                 {
                     b.Navigation("CandidateCvs");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.Industry", b =>
+                {
+                    b.Navigation("Children");
+
+                    b.Navigation("Companies");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.Interview", b =>

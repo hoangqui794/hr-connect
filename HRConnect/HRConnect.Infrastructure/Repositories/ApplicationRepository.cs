@@ -234,6 +234,7 @@ public class ApplicationRepository : IApplicationRepository
             .Include(a => a.AiMatchResults)
             .Include(a => a.Submission)
                 .ThenInclude(s => s!.CandidateCv)
+            .Include(a => a.SourcingDeliveries)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .AsSplitQuery()
@@ -295,6 +296,11 @@ public class ApplicationRepository : IApplicationRepository
                 .ThenInclude(o => o.CreatedByNavigation)
             .Include(a => a.Placement)
                 .ThenInclude(p => p!.ConfirmedByNavigation)
+            .Include(a => a.Submission)
+                .ThenInclude(s => s!.Consent)
+            .Include(a => a.Submission)
+                .ThenInclude(s => s!.SubmittedByNavigation)
+                    .ThenInclude(u => u.AffiliateProfile)
             .AsSplitQuery()
             .FirstOrDefaultAsync(a => a.ApplicationId == applicationId, cancellationToken);
     }

@@ -87,6 +87,7 @@ public static class DependencyInjection
         services.AddScoped<IAffiliateProfileRepository, AffiliateProfileRepository>();
         services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<ICompanyUserRepository, CompanyUserRepository>();
+        services.AddScoped<HRConnect.Application.Features.Companies.Directory.ICompanyDirectoryRepository, CompanyDirectoryRepository>();
         services.AddScoped<ICompanyVerificationRequestRepository, CompanyVerificationRequestRepository>();
         services.AddScoped<IInternalHrProfileRepository, InternalHrProfileRepository>();
         services.AddScoped<IAdminProfileRepository, AdminProfileRepository>();
@@ -223,6 +224,9 @@ public static class DependencyInjection
         services.AddSingleton<HRConnect.Infrastructure.Services.Storage.PdfCvValidator>();
         // BE-04 B: CV builder (render, store, templates).
         services.AddSingleton<HRConnect.Infrastructure.Services.CvBuilder.CvPdfRenderer>();
+        // N16: masked CV preview for Client (Headhunt before start).
+        services.AddHttpClient(HRConnect.Infrastructure.Services.CvBuilder.MaskedCvService.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(30));
+        services.AddScoped<HRConnect.Application.Features.Recruitment.Queries.GetApplicationMaskedCv.IMaskedCvService, HRConnect.Infrastructure.Services.CvBuilder.MaskedCvService>();
         services.AddScoped<HRConnect.Application.Features.Candidates.CvBuilder.IStructuredCvService, HRConnect.Infrastructure.Services.CvBuilder.StructuredCvService>();
         services.AddScoped<HRConnect.Application.Features.Candidates.CvBuilder.ICvTemplateRepository, HRConnect.Infrastructure.Services.CvBuilder.CvTemplateRepository>();
         services.AddScoped<ICvStorageService, HRConnect.Infrastructure.Services.Storage.CvStorageService>();

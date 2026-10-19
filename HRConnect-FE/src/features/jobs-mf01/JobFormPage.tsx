@@ -1745,14 +1745,14 @@ export const JobFormPage: React.FC = () => {
                         name="warrantyDays"
                         label="Thời hạn bảo hành đề xuất (ngày)"
                         rules={[{ type: 'number', min: 0, max: 365, message: 'Từ 0 đến 365 ngày.' }]}
-                        extra="Bảo hành tuyển thay thế miễn phí nếu ứng viên nghỉ việc."
+                        extra="Bảo hành tuyển thay thế miễn phí nếu ứng viên nghỉ việc. Để trống để dùng mức mặc định của HR Connect."
                       >
                         <InputNumber
                           size="large"
                           min={0}
                           max={365}
                           className="w-full"
-                          placeholder="Ví dụ: 60"
+                          placeholder="Theo mặc định"
                           addonAfter="ngày"
                         />
                       </Form.Item>
@@ -1782,7 +1782,7 @@ export const JobFormPage: React.FC = () => {
                     >
                       <Input.TextArea
                         rows={3}
-                        placeholder="Ví dụ: Mong muốn phí 1,5 tháng vì tuyển số lượng 2 người, cần bảo hành 60 ngày..."
+                        placeholder="Ví dụ: Tuyển 2 người cùng vị trí, mong muốn hạn thanh toán dài hơn..."
                       />
                     </Form.Item>
                   </div>

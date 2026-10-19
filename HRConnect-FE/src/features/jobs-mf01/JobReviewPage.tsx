@@ -108,7 +108,7 @@ const QueueItem: React.FC<{ job: Job; selected: boolean; onSelect: () => void }>
           )}
           {job.status === 'PENDING_PAYMENT' && (
             <Tag color="warning" className="m-0 text-[10px] font-medium rounded">
-              Chờ nộp phí
+              {isAwaitingSourcingDeposit(job) ? 'Chờ đặt cọc' : 'Chờ nộp phí'}
             </Tag>
           )}
           <span className="text-[11px] text-slate-400 ml-auto">
@@ -140,9 +140,6 @@ export const JobReviewPage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string>();
   const [rejectOpen, setRejectOpen] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
-  const [manualPayOpen, setManualPayOpen] = useState(false);
-  const [manualPayRef, setManualPayRef] = useState('');
-  const [manualPayLoading, setManualPayLoading] = useState(false);
 
   // Hook lấy danh sách theo trạng thái filter
   const queue = useJobReviewQueue(statusFilter);
@@ -519,27 +516,12 @@ export const JobReviewPage: React.FC = () => {
                               </>
                             ) : (
                               <>
-                                Đã tạo yêu cầu thanh toán <strong>{feeText}</strong> gửi tới Doanh nghiệp. Tin sẽ tự động chuyển sang trạng thái <strong>Đang tuyển</strong> ngay khi doanh nghiệp hoàn tất phí.
+                                Đã tạo yêu cầu thanh toán <strong>{feeText}</strong> gửi tới Doanh nghiệp. Platform Admin ghi nhận tiền ở trang <strong>Tài chính › Phí đăng tin</strong>; tin tự chuyển sang <strong>Đang tuyển</strong> ngay sau đó.
                               </>
                             )}
                           </p>
                         </div>
                       </div>
-                      {!isAwaitingSourcingDeposit(job) && (
-                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                        <Button
-                          type="default"
-                          className="!border-indigo-300 !text-indigo-700 hover:!border-indigo-500 font-medium text-xs shadow-2xs"
-                          icon={<CreditCardOutlined />}
-                          onClick={() => {
-                            setManualPayRef(`UNC-${Date.now().toString().slice(-6)}`);
-                            setManualPayOpen(true);
-                          }}
-                        >
-                          Ghi nhận thanh toán thủ công
-                        </Button>
-                      </div>
-                      )}
                     </div>
                   </div>
                 ) : job.status === 'ACTIVE' ? (
@@ -647,72 +629,6 @@ export const JobReviewPage: React.FC = () => {
         }
       />
 
-      <Modal
-        open={manualPayOpen}
-        title="Ghi nhận thu phí thủ công (Admin/HR)"
-        okText="Xác nhận đã thu & Kích hoạt tin"
-        cancelText="Hủy bỏ"
-        confirmLoading={manualPayLoading}
-        onCancel={() => setManualPayOpen(false)}
-        onOk={async () => {
-          if (!job) return;
-          setManualPayLoading(true);
-          try {
-            await jobsApi.payPostingFee(job.jobId, manualPayRef || `MANUAL-${Date.now().toString().slice(-6)}`);
-            message.success('Đã ghi nhận thanh toán thành công! Tin tuyển dụng đã được kích hoạt công khai (ACTIVE).');
-
-            // 1. Thông báo cho Internal HR
-            useAlertStore.getState().addAlert({
-              targetRole: 'INTERNAL_HR',
-              type: 'success',
-              title: 'Đã thu phí & Kích hoạt tin',
-              message: `Đã ghi nhận thanh toán thành công cho tin "${job.title}". Tin đã chuyển sang trạng thái Đang tuyển (ACTIVE).`,
-              actionLabel: 'Xem tin',
-              actionRoute: `/internal/jobs/review?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}`,
-              relatedEntityId: job.jobId,
-            });
-
-            // 2. Thông báo cho Client
-            useAlertStore.getState().addAlert({
-              targetRole: 'CLIENT',
-              type: 'success',
-              title: 'Tin tuyển dụng đã kích hoạt công khai',
-              message: `Phí đăng tin "${job.title}" đã được xác nhận thanh toán! Tin đã hiển thị công khai để nhận hồ sơ.`,
-              actionLabel: 'Xem tin tuyển dụng',
-              actionRoute: `/client/jobs?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
-              relatedEntityId: job.jobId,
-            });
-
-            setManualPayOpen(false);
-            detail.refetch();
-            queue.refetch();
-          } catch (err) {
-            message.error(getApiErrorMessage(err));
-          } finally {
-            setManualPayLoading(false);
-          }
-        }}
-      >
-        <div className="py-2 space-y-3 text-xs leading-relaxed text-slate-700">
-          <Alert
-            type="info"
-            showIcon
-            message="Kích hoạt tin cho Doanh nghiệp thanh toán ngoài hệ thống"
-            description="Chức năng này dùng khi Doanh nghiệp thanh toán trực tiếp qua chuyển khoản ngân hàng (UNC), tiền mặt hoặc hợp đồng riêng với HR Connect."
-          />
-          <div>
-            <div className="font-semibold text-slate-800 mb-1">Mã tham chiếu / Số biên lai:</div>
-            <Input
-              value={manualPayRef}
-              onChange={(e) => setManualPayRef(e.target.value)}
-              placeholder="Ví dụ: UNC-123456 hoặc VCB-987654"
-            />
-          </div>
-          <div className="text-slate-500">
-            Số tiền cần thu: <strong className="text-indigo-700 font-bold">{feeText}</strong> ({packageLabel}).
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 };

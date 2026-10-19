@@ -26,6 +26,32 @@ export const APPLICATION_STATUS: Record<string, { label: string; tone: Tone }> =
 
 export const statusOf = (code: string) => APPLICATION_STATUS[code] ?? { label: code, tone: 'neutral' as Tone };
 
+const SOURCING_DELIVERY_STATUS: Record<string, { label: string; tone: Tone }> = {
+  DELIVERED: { label: 'Đã giao CV · chờ phản hồi', tone: 'warning' },
+  ACCEPTED: { label: 'Client đã chấp nhận CV', tone: 'success' },
+  AUTO_ACCEPTED: { label: 'Tự động chấp nhận CV', tone: 'success' },
+  REJECTED: { label: 'Client từ chối CV', tone: 'danger' },
+  REPLACED: { label: 'CV đã được thay', tone: 'neutral' },
+};
+
+/**
+ * N8, N24: the SHORTLISTED step means different things per service. CV_APPLICATION: the Client picked the
+ * candidate for interview. CV_SOURCING: the CV hand-over status matters more than the screening status.
+ */
+export const applicationStatusOf = (
+  code: string,
+  serviceTypeCode?: string | null,
+  sourcingDeliveryStatus?: string | null,
+) => {
+  if (serviceTypeCode === 'CV_SOURCING' && sourcingDeliveryStatus && SOURCING_DELIVERY_STATUS[sourcingDeliveryStatus])
+    return SOURCING_DELIVERY_STATUS[sourcingDeliveryStatus];
+  if (code === 'SHORTLISTED') {
+    if (serviceTypeCode === 'CV_APPLICATION') return { label: 'Đã chọn phỏng vấn', tone: 'success' as Tone };
+    if (serviceTypeCode === 'CV_SOURCING') return { label: 'Đã chọn · chưa giao CV', tone: 'warning' as Tone };
+  }
+  return statusOf(code);
+};
+
 /** ApplicationReasonCodes.ScreeningRejectionCodes, in backend order. */
 export const REJECTION_REASONS: { value: string; label: string }[] = [
   { value: 'SKILL_MISMATCH', label: 'Thiếu kỹ năng yêu cầu' },

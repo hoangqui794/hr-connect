@@ -136,6 +136,12 @@ export const REASON_CODE_LABEL: Record<string, string> = {
  * CV_SOURCING waiting for its deposit (PENDING_PAYMENT): it has no posting fee; the job opens when
  * Platform Admin records the deposit in MF-05. Amount = target × price per CV × deposit percent.
  */
+/** N18: CV_SOURCING asks for a number of CVs, not hires. */
+export const formatHeadcount = (job: { serviceTypeCode?: string | null; quantity?: number | null; sourcingTarget?: number | null }): string =>
+  job.serviceTypeCode === 'CV_SOURCING' && job.sourcingTarget
+    ? `${job.sourcingTarget} CV`
+    : `${job.quantity ?? 1} người`;
+
 export const isAwaitingSourcingDeposit = (job: Pick<Job, 'status' | 'serviceTypeCode'>): boolean =>
   job.status === 'PENDING_PAYMENT' && job.serviceTypeCode === 'CV_SOURCING';
 

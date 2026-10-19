@@ -16,6 +16,12 @@ public class UpdateCompanyProfileCommand : IRequest<UpdateCompanyProfileResponse
 
     public string? CompanySize { get; set; }
 
+    /// <summary>BE-02: industry from GET /api/v1/industries. Takes precedence over the free-text Industry.</summary>
+    public Guid? IndustryId { get; set; }
+
+    /// <summary>BE-02: size band from GET /api/v1/company-sizes. Takes precedence over the free-text CompanySize.</summary>
+    public Guid? CompanySizeId { get; set; }
+
     public string? Website { get; set; }
 
     public string? Address { get; set; }
@@ -37,6 +43,8 @@ public class UpdateCompanyProfileData
     public string? TaxCode { get; set; }
     public string? Industry { get; set; }
     public string? CompanySize { get; set; }
+    public Guid? IndustryId { get; set; }
+    public Guid? CompanySizeId { get; set; }
     public string? Website { get; set; }
     public string? Address { get; set; }
     public string? Description { get; set; }

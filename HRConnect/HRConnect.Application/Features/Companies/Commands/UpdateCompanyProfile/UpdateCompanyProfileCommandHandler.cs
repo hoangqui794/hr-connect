@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Companies.Directory;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -12,13 +13,16 @@ public class UpdateCompanyProfileCommandHandler : IRequestHandler<UpdateCompanyP
     private readonly ICompanyRepository _companyRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateCompanyProfileCommandHandler> _logger;
+    private readonly ICompanyDirectoryRepository? _directory;
 
     public UpdateCompanyProfileCommandHandler(
         ICompanyUserRepository companyUserRepository,
         ICompanyRepository companyRepository,
         IUnitOfWork unitOfWork,
-        ILogger<UpdateCompanyProfileCommandHandler> logger)
+        ILogger<UpdateCompanyProfileCommandHandler> logger,
+        ICompanyDirectoryRepository? directory = null)
     {
+        _directory = directory;
         _companyUserRepository = companyUserRepository;
         _companyRepository = companyRepository;
         _unitOfWork = unitOfWork;
@@ -61,6 +65,7 @@ public class UpdateCompanyProfileCommandHandler : IRequestHandler<UpdateCompanyP
         company.TaxCode = newTaxCode;
         company.Industry = string.IsNullOrWhiteSpace(request.Industry) ? null : request.Industry.Trim();
         company.CompanySize = string.IsNullOrWhiteSpace(request.CompanySize) ? null : request.CompanySize.Trim();
+        await ApplyTaxonomyAsync(company, request, cancellationToken);
         company.Website = string.IsNullOrWhiteSpace(request.Website) ? null : request.Website.Trim();
         company.Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim();
         company.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
@@ -82,6 +87,8 @@ public class UpdateCompanyProfileCommandHandler : IRequestHandler<UpdateCompanyP
                 TaxCode = company.TaxCode,
                 Industry = company.Industry,
                 CompanySize = company.CompanySize,
+                IndustryId = company.IndustryId,
+                CompanySizeId = company.CompanySizeId,
                 Website = company.Website,
                 Address = company.Address,
                 Description = company.Description,
@@ -93,5 +100,53 @@ public class UpdateCompanyProfileCommandHandler : IRequestHandler<UpdateCompanyP
                 UpdatedAt = company.UpdatedAt
             }
         };
+    }
+
+    /// <summary>
+    /// BE-02 A: an id must be an active industry / size (400 otherwise) and also refreshes the free-text column.
+    /// Without an id the free text is matched to a code or name so old clients keep a linked value.
+    /// </summary>
+    private async Task ApplyTaxonomyAsync(HRConnect.Domain.Entities.Company company, UpdateCompanyProfileCommand request, CancellationToken cancellationToken)
+    {
+        if (_directory == null) return;
+
+        if (request.IndustryId.HasValue)
+        {
+            var industry = await _directory.GetIndustryAsync(request.IndustryId.Value, cancellationToken);
+            if (industry == null || !industry.IsActive)
+                throw new BadRequestException("Ngành không tồn tại hoặc đã ngừng sử dụng.", "INDUSTRY_NOT_FOUND");
+            company.IndustryId = industry.IndustryId;
+            company.Industry = industry.NameEn;
+        }
+        else
+        {
+            var industries = await _directory.GetIndustriesAsync(includeInactive: false, cancellationToken);
+            company.IndustryId = MatchIndustry(industries, company.Industry)?.IndustryId;
+        }
+
+        if (request.CompanySizeId.HasValue)
+        {
+            var size = await _directory.GetCompanySizeAsync(request.CompanySizeId.Value, cancellationToken);
+            if (size == null || !size.IsActive)
+                throw new BadRequestException("Quy mô công ty không tồn tại hoặc đã ngừng sử dụng.", "COMPANY_SIZE_NOT_FOUND");
+            company.CompanySizeId = size.CompanySizeId;
+            company.CompanySize = size.Code;
+        }
+        else
+        {
+            var sizes = await _directory.GetActiveCompanySizesAsync(cancellationToken);
+            company.CompanySizeId = string.IsNullOrWhiteSpace(company.CompanySize) ? null
+                : sizes.FirstOrDefault(s => string.Equals(s.Code, company.CompanySize, StringComparison.OrdinalIgnoreCase)
+                                            || string.Equals(s.Label, company.CompanySize, StringComparison.OrdinalIgnoreCase))?.CompanySizeId;
+        }
+    }
+
+    private static HRConnect.Domain.Entities.Industry? MatchIndustry(IEnumerable<HRConnect.Domain.Entities.Industry> industries, string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var value = text.Trim();
+        return industries.FirstOrDefault(i => string.Equals(i.Code, value, StringComparison.OrdinalIgnoreCase)
+                                              || string.Equals(i.NameEn, value, StringComparison.OrdinalIgnoreCase)
+                                              || string.Equals(i.NameVi, value, StringComparison.OrdinalIgnoreCase));
     }
 }

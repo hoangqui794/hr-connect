@@ -21,7 +21,7 @@ import type { RecruitmentApplicationItem } from '@/types/api/hr';
 import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
 import { FilterPills, Initials, PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
-import { statusOf } from '@/features/hr-console/hrLabels';
+import { applicationStatusOf } from '@/features/hr-console/hrLabels';
 
 const STAGES = ['all', 'SUBMITTED', 'SCREENING', 'SHORTLISTED', 'INTERVIEW', 'OFFER_PENDING', 'OFFER_ACCEPTED', 'PLACED', 'BACKUP', 'REJECTED'] as const;
 type Stage = (typeof STAGES)[number];
@@ -144,8 +144,8 @@ export const ClientCandidatesPage: React.FC = () => {
       title: 'Giai đoạn',
       dataIndex: 'status',
       width: 190,
-      render: (v: string) => {
-        const st = statusOf(v);
+      render: (v: string, r) => {
+        const st = applicationStatusOf(v, r.serviceTypeCode, r.sourcingDeliveryStatus);
         return <StatusDot tone={st.tone}>{st.label}</StatusDot>;
       },
     },

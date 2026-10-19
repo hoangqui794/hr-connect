@@ -50,6 +50,9 @@ export interface RecruitmentApplicationItem {
   aiMatchTier: string | null;
   aiStatus: string | null;
   latestInterviewRound: number | null;
+  serviceTypeCode?: string | null;
+  /** CV_SOURCING: latest delivery status (DELIVERED, ACCEPTED, AUTO_ACCEPTED, REJECTED, ...). */
+  sourcingDeliveryStatus?: string | null;
 }
 
 export interface RecruitmentApplicationSearchParams {
