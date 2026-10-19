@@ -6,7 +6,7 @@ using HRConnect.Domain.Entities;
 namespace HRConnect.Application.Features.Finance.Common;
 
 /// <summary>
-/// Shared state changes for replacement slots (docs/MF05/mf05-thiet-ke-suat-thay-the.md, section 3),
+/// Shared state changes for replacement slots (docs/main-flows.md (MF-05, suất thay thế), section 3),
 /// used when a resignation is confirmed (S1), when the Client pays (S2) and by the worker (S3).
 /// </summary>
 internal static class ReplacementSlotLifecycle
