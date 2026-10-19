@@ -21,6 +21,7 @@ import {
   UserOutlined,
   KeyOutlined,
 } from '@ant-design/icons';
+import { TrophyOutlined, SolutionOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
@@ -38,7 +39,13 @@ interface NavItem {
 }
 
 const NAV: { group: string; items: NavItem[] }[] = [
-  { group: 'Tổng quan', items: [{ to: '/affiliate/dashboard', label: 'Tổng quan', icon: <DashboardOutlined /> }] },
+  {
+    group: 'Tổng quan',
+    items: [
+      { to: '/affiliate/dashboard', label: 'Tổng quan', icon: <DashboardOutlined /> },
+      { to: '/affiliate/performance', label: 'Hiệu suất của tôi', icon: <TrophyOutlined /> },
+    ],
+  },
   {
     group: 'Giới thiệu',
     items: [
@@ -48,7 +55,13 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/affiliate/candidates', label: 'Kho ứng viên', icon: <TeamOutlined /> },
     ],
   },
-  { group: 'Ghi nhận', items: [{ to: '/affiliate/attributions', label: 'Attribution', icon: <SafetyCertificateOutlined /> }] },
+  {
+    group: 'Ghi nhận',
+    items: [
+      { to: '/affiliate/attributions', label: 'Attribution', icon: <SafetyCertificateOutlined /> },
+      { to: '/affiliate/disputes', label: 'Khiếu nại nguồn (SF-04)', icon: <SolutionOutlined /> },
+    ],
+  },
   {
     group: 'Cá nhân & Cài đặt',
     items: [

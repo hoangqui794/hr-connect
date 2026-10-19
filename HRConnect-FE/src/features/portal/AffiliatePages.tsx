@@ -116,6 +116,13 @@ export const AffiliateHomePage: React.FC = () => {
         <Alert type="warning" showIcon message="Tài khoản Affiliate chưa được duyệt" description="Bạn chỉ giới thiệu được ứng viên sau khi HR Connect duyệt hồ sơ đăng ký." />
       )}
 
+      <div className="flex items-center justify-between">
+        <h2 className="m-0 text-base font-bold text-slate-900">Hiệu suất tuyển dụng</h2>
+        <Button type="link" className="!px-0" onClick={() => navigate('/affiliate/performance')}>
+          Xem chi tiết hiệu suất & xếp hạng →
+        </Button>
+      </div>
+
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k) => (
           <div key={k.label} className="admin-surface p-5">

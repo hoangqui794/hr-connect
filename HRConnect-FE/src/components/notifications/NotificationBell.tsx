@@ -20,12 +20,14 @@ import {
   ReloadOutlined,
   RightOutlined,
   SolutionOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationApi } from '@/services/api/notificationApi';
 import type { NotificationDto } from '@/types/api/notification';
 import { useAuthStore } from '@/stores/authStore';
+import { useNotificationSignalR } from '@/hooks/useNotificationSignalR';
 
 const formatTimeAgo = (isoString?: string | null): string => {
   if (!isoString) return '';
@@ -50,6 +52,9 @@ const renderNotificationIcon = (type?: string, entityType?: string | null) => {
   const normType = (type || '').trim().toUpperCase();
   const normEntity = (entityType || '').trim().toUpperCase();
 
+  if (normEntity === 'JOB_FIT' || normType === 'JOB_FIT') {
+    return <ThunderboltOutlined style={{ color: '#d97706', fontSize: 18 }} />;
+  }
   if (normEntity === 'JOB' || normType === 'JOB') {
     return <FileTextOutlined style={{ color: '#2563eb', fontSize: 18 }} />;
   }
@@ -98,16 +103,21 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated) || !!user;
 
+  // Realtime SignalR connection
+  const { isConnected } = useNotificationSignalR();
+
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
-  // 1. Query: Số lượng thông báo chưa đọc (làm mới mỗi 60 giây và khi mở chuông)
+  // 1. Query: Số lượng thông báo chưa đọc
+  // Fallback: Khi SignalR kết nối thành công (State === Connected): tạm dừng polling định kỳ.
+  // Khi mất kết nối hoặc reconnecting: tự động kích hoạt polling định kỳ 60s làm dự phòng.
   const { data: unreadData, refetch: refetchUnreadCount } = useQuery({
     queryKey: ['notifications', 'unread-count'],
     queryFn: () => notificationApi.getUnreadCount(),
     enabled: isAuthenticated,
-    refetchInterval: 60000,
-    staleTime: 30000,
+    refetchInterval: isConnected ? false : 60000,
+    staleTime: isConnected ? Infinity : 30000,
   });
 
   const unreadCount = unreadData?.unreadCount ?? 0;
@@ -164,9 +174,36 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
     }
     setOpen(false);
 
-    if (item.routeHint && item.routeHint.trim()) {
-      let targetRoute = item.routeHint.trim();
+    let targetRoute = item.routeHint?.trim();
 
+    // Đọc metadata.routeHint nếu routeHint trực tiếp chưa có (đặc biệt với loại JOB_FIT)
+    if (!targetRoute && item.metadata) {
+      try {
+        const meta = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
+        if (meta && typeof meta === 'object') {
+          if (meta.routeHint && typeof meta.routeHint === 'string') {
+            targetRoute = meta.routeHint.trim();
+          } else if (meta.jobId && typeof meta.jobId === 'string') {
+            targetRoute = `/jobs/${meta.jobId}`;
+          }
+        }
+      } catch {
+        if (typeof item.metadata === 'string' && item.metadata.startsWith('/')) {
+          targetRoute = item.metadata.trim();
+        }
+      }
+    }
+
+    // Fallback cho thông báo loại JOB_FIT nếu chưa có route
+    if (!targetRoute && (item.notificationType === 'JOB_FIT' || (item as any).type === 'JOB_FIT')) {
+      if (item.relatedEntityId) {
+        targetRoute = `/jobs/${item.relatedEntityId}`;
+      } else {
+        targetRoute = '/candidate/jobs?tab=matches';
+      }
+    }
+
+    if (targetRoute) {
       // Nếu đường dẫn đến trang tin tuyển dụng và chưa có param highlight, tự động trích xuất tên bài trong ngoặc kép
       if (targetRoute.startsWith('/client/jobs') && !targetRoute.includes('highlight=')) {
         const titleMatch = item.message.match(/"([^"]+)"/);
@@ -193,6 +230,14 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
               {unreadCount} mới
             </span>
           )}
+          <Tooltip title={isConnected ? 'Realtime SignalR: Đang kết nối' : 'Dự phòng: Polling định kỳ'}>
+            <span
+              className={`inline-block h-2 w-2 rounded-full transition-colors ${
+                isConnected ? 'bg-emerald-500 shadow-xs' : 'bg-slate-300'
+              }`}
+              aria-label={isConnected ? 'SignalR realtime active' : 'Polling fallback active'}
+            />
+          </Tooltip>
         </div>
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (

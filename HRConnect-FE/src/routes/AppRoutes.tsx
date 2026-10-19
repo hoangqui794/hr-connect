@@ -34,6 +34,9 @@ const LoginPage = React.lazy(() =>
 const RegisterPage = React.lazy(() =>
   import('@/features/auth/RegisterPage').then((m: any) => ({ default: m.default || m.RegisterPage }))
 );
+const ContactPage = React.lazy(() =>
+  import('@/features/contact/ContactPage').then((m: any) => ({ default: m.default || m.ContactPage }))
+);
 const VerifyOtpPage = React.lazy(() =>
   import('@/features/auth/VerifyOtpPage').then((m: any) => ({ default: m.default || m.VerifyOtpPage }))
 );
@@ -98,6 +101,12 @@ const ConsoleRolesPermissionsPage = React.lazy(() =>
 const ConsoleUserAuthorizationPage = React.lazy(() =>
   import('@/features/admin-console/AdminUserAuthorizationPage').then((m) => ({ default: m.AdminUserAuthorizationPage }))
 );
+const AdminContactRequestsPage = React.lazy(() =>
+  import('@/features/admin-console/AdminContactRequestsPage').then((m) => ({ default: m.AdminContactRequestsPage }))
+);
+const AdminReportsPage = React.lazy(() =>
+  import('@/features/admin-console/AdminReportsPage').then((m) => ({ default: m.AdminReportsPage }))
+);
 
 // ── Candidate & Affiliate workspaces (features/portal), MF-02 on the real API ──
 const CandidateHomePage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateHomePage })));
@@ -143,6 +152,12 @@ const AffiliateAttributionsPage = React.lazy(() =>
 );
 const AffiliateProfilePage = React.lazy(() =>
   import('@/features/portal/AffiliateProfilePage').then((m) => ({ default: m.AffiliateProfilePage }))
+);
+const AffiliatePerformancePage = React.lazy(() =>
+  import('@/features/portal/AffiliatePerformancePage').then((m) => ({ default: m.AffiliatePerformancePage }))
+);
+const AffiliateDisputesPage = React.lazy(() =>
+  import('@/features/portal/AffiliateDisputesPage').then((m) => ({ default: m.AffiliateDisputesPage }))
 );
 const AffiliateCommissionsPlaceholder = React.lazy(() =>
   import('@/features/finance-mf05/AffiliateCommissionsPage').then((m) => ({ default: m.AffiliateCommissionsPage }))
@@ -335,6 +350,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/affiliate/dashboard': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/hr/dashboard': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/jobs': [UserRole.INTERNAL_HR, UserRole.ADMIN],
+  '/hr/contact-requests': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/job-templates': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/candidates': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/screening': [UserRole.INTERNAL_HR, UserRole.ADMIN],
@@ -375,6 +391,8 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/affiliate/submissions': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/submissions/:submissionId': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/candidates': [UserRole.AFFILIATE, UserRole.ADMIN],
+  '/affiliate/performance': [UserRole.AFFILIATE, UserRole.ADMIN],
+  '/affiliate/disputes': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/commissions': [UserRole.AFFILIATE, UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/affiliate/ledger': [UserRole.AFFILIATE, UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/screening': [UserRole.INTERNAL_HR, UserRole.ADMIN, UserRole.CLIENT],
@@ -399,6 +417,8 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/admin/commission-rules': [UserRole.ADMIN],
   '/admin/roles-permissions': [UserRole.ADMIN],
   '/admin/user-authorization': [UserRole.ADMIN],
+  '/admin/contact-requests': [UserRole.ADMIN],
+  '/admin/reports': [UserRole.ADMIN],
   '/admin/profile': [UserRole.ADMIN],
 };
 
@@ -439,6 +459,9 @@ export const AppRoutes = {
   ConsoleDisputesPlaceholder,
   ConsolePayoutsPlaceholder,
   ConsoleSettingsPlaceholder,
+  AdminContactRequestsPage,
+  AdminReportsPage,
+  ContactPage,
   CandidateHomePage,
   CandidateJobsPage,
   CandidateJobDetailPage,
@@ -457,6 +480,8 @@ export const AppRoutes = {
   AffiliateCandidatesPage,
   AffiliateAttributionsPage,
   AffiliateProfilePage,
+  AffiliatePerformancePage,
+  AffiliateDisputesPage,
   AffiliateCommissionsPlaceholder,
   ClientOverviewPage,
   ClientCandidatesPage,

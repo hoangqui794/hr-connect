@@ -49,6 +49,9 @@ import {
   HistoryOutlined,
   CopyOutlined,
   InfoCircleOutlined,
+  PlusOutlined,
+  LayoutOutlined,
+  FormOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
@@ -56,6 +59,7 @@ import 'dayjs/locale/vi';
 import { candidateApplicationsApi, candidateConsentApi, candidateCvApi } from '@/services/api/mf02Api';
 import { mf04Api, isCandidateOfferRespondable } from '@/services/api/mf04Api';
 import { CandidateInterviewDetailModal } from '@/features/candidates/CandidateInterviewDetailModal';
+import { CandidateCvBuilderModal } from './candidate/CandidateCvBuilderModal';
 import type { CandidateOfferSummaryDto } from '@/types/api/mf04';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
@@ -63,6 +67,7 @@ import type { CandidateApplication, CandidateApplicationDisplayGroup } from '@/t
 import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { CANDIDATE_STEPS, MAX_CV_MB, candidateDisplayStage, candidateStage, candidateTimelineEventCopy, cvFileError, fileSize } from './mf02Labels';
 import { CandidatePageHeader, CandidateSurface } from './candidate/CandidateUi';
+import { CandidateJobMatchesSection } from './candidate/CandidateJobMatchesSection';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 
 dayjs.extend(relativeTimePlugin);
@@ -267,6 +272,10 @@ export const CandidateHomePage: React.FC = () => {
           </button>
         ))}
       </div>
+
+      <section className="candidate-dashboard-section">
+        <CandidateJobMatchesSection limit={4} showHeader={true} viewAllLink="/candidate/jobs?tab=matches" />
+      </section>
 
       <section className="candidate-dashboard-section">
         <div className="candidate-section-heading">
@@ -1107,11 +1116,19 @@ export const CvUploader: React.FC<{ onUploaded?: () => void; compact?: boolean }
 export const CandidateCvsPage: React.FC = () => {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const cvs = useCandidateCvs();
   const openSigned = useOpenSignedUrl();
   const [busyId, setBusyId] = useState<string>();
   const [editing, setEditing] = useState<{ cvId: string; title: string }>();
+
+  // Structured CV builder modal states
+  const [createBuilderOpen, setCreateBuilderOpen] = useState(
+    searchParams.get('action') === 'builder' || searchParams.get('action') === 'new'
+  );
+  const [editStructuredCvId, setEditStructuredCvId] = useState<string>();
+
   const canView = hasPermission('cv.view_own');
   const canCreate = hasPermission('cv.create');
   const canUpdate = hasPermission('cv.update_own');
@@ -1149,7 +1166,23 @@ export const CandidateCvsPage: React.FC = () => {
 
   return (
     <div className="candidate-page candidate-cv-page">
-      <CandidatePageHeader eyebrow="Hồ sơ" title="Kho CV" description="CV bạn tải lên được dùng để ứng tuyển. CV chính được chọn sẵn khi bạn bấm Ứng tuyển." />
+      <CandidatePageHeader
+        eyebrow="Hồ sơ"
+        title="Kho CV"
+        description="CV bạn tải lên hoặc tự dựng được dùng để ứng tuyển. CV chính được chọn sẵn khi bạn bấm Ứng tuyển."
+        actions={
+          canCreate ? (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              className="!rounded-xl !bg-blue-600 hover:!bg-blue-700 font-semibold"
+              onClick={() => setCreateBuilderOpen(true)}
+            >
+              Tạo CV mới
+            </Button>
+          ) : undefined
+        }
+      />
       {!canView && <Alert className="mb-5" type="error" showIcon message="Bạn không có quyền xem kho CV cá nhân." />}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-3">
@@ -1158,81 +1191,153 @@ export const CandidateCvsPage: React.FC = () => {
           ) : cvs.isError ? (
             <Alert type="error" showIcon message={getApiErrorMessage(cvs.error)} />
           ) : list.length === 0 ? (
-            <CandidateSurface className="candidate-empty-surface p-10 text-center text-sm text-slate-600">Chưa có CV nào. Tải CV đầu tiên ở khung bên cạnh.</CandidateSurface>
+            <CandidateSurface className="candidate-empty-surface p-10 text-center text-sm text-slate-600">
+              <p className="mb-4">Chưa có CV nào. Tạo CV theo mẫu hoặc tải CV có sẵn ở khung bên cạnh.</p>
+              {canCreate && (
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => setCreateBuilderOpen(true)}
+                  className="!rounded-xl !bg-blue-600"
+                >
+                  Tạo CV đầu tiên
+                </Button>
+              )}
+            </CandidateSurface>
           ) : (
-            list.map((cv) => (
-              <article key={cv.cvId} className="candidate-surface candidate-cv-card flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl text-red-700" aria-hidden>
-                  <FilePdfOutlined />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-semibold text-slate-900">{cv.title || cv.fileName || 'CV'}</span>
-                    {cv.isPrimary && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[color:var(--console-accent-soft)] px-2 py-0.5 text-xs font-medium text-[color:var(--console-accent-strong)]">
-                        <CheckCircleFilled aria-hidden /> CV chính
-                      </span>
+            list.map((cv) => {
+              const isStructured =
+                cv.creationMethod === 'TEMPLATE_FORM' ||
+                cv.creationMethod === 'PLATFORM_BUILDER';
+
+              return (
+                <article key={cv.cvId} className="candidate-surface candidate-cv-card flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl text-red-700" aria-hidden>
+                    <FilePdfOutlined />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="truncate font-semibold text-slate-900">{cv.title || cv.fileName || 'CV'}</span>
+                      {cv.isPrimary && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[color:var(--console-accent-soft)] px-2 py-0.5 text-xs font-medium text-[color:var(--console-accent-strong)]">
+                          <CheckCircleFilled aria-hidden /> CV chính
+                        </span>
+                      )}
+                      {cv.creationMethod === 'TEMPLATE_FORM' && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-purple-50 border border-purple-200 px-2 py-0.5 text-[11px] font-medium text-purple-700">
+                          <LayoutOutlined aria-hidden /> Mẫu thiết kế
+                        </span>
+                      )}
+                      {cv.creationMethod === 'PLATFORM_BUILDER' && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                          <FormOutlined aria-hidden /> Tự dựng
+                        </span>
+                      )}
+                    </div>
+                    <div className="truncate text-xs text-slate-500">
+                      {cv.fileName} · {fileSize(cv.fileSizeBytes)} · cập nhật {dayjs(cv.updatedAt).format('DD/MM/YYYY')}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {cv.applicationUsageCount > 0
+                        ? `Đang được lưu trong ${cv.applicationUsageCount} đơn ứng tuyển${cv.submissionUsageCount > cv.applicationUsageCount ? ` và ${cv.submissionUsageCount - cv.applicationUsageCount} lượt nộp khác` : ''}.`
+                        : cv.submissionUsageCount > 0
+                          ? `Đã được dùng trong ${cv.submissionUsageCount} lượt nộp hồ sơ.`
+                          : 'Chưa được dùng trong lượt nộp nào.'}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {canView && (
+                      <Tooltip title="Xem CV">
+                        <Button icon={<EyeOutlined />} aria-label={`Xem ${cv.title ?? 'CV'}`} onClick={() => openSigned(() => candidateCvApi.downloadUrl(cv.cvId))} />
+                      </Tooltip>
                     )}
+                    {canUpdate && isStructured && (
+                      <Tooltip title="Sửa nội dung CV">
+                        <Button
+                          icon={<FormOutlined />}
+                          aria-label={`Sửa nội dung ${cv.title ?? 'CV'}`}
+                          className="text-blue-600 hover:text-blue-700"
+                          onClick={() => setEditStructuredCvId(cv.cvId)}
+                        />
+                      </Tooltip>
+                    )}
+                    {canUpdate && (
+                      <Tooltip title="Đổi tên CV">
+                        <Button icon={<EditOutlined />} aria-label={`Đổi tên ${cv.title ?? 'CV'}`} onClick={() => setEditing({ cvId: cv.cvId, title: cv.title || cv.fileName || '' })} />
+                      </Tooltip>
+                    )}
+                    {canUpdate && !cv.isPrimary && (
+                      <Tooltip title="Đặt làm CV chính">
+                        <Button
+                          icon={busyId === cv.cvId ? undefined : <StarOutlined />}
+                          loading={busyId === cv.cvId}
+                          aria-label="Đặt làm CV chính"
+                          onClick={() => act(cv.cvId, () => candidateCvApi.setPrimary(cv.cvId), 'Đã đặt làm CV chính.')}
+                        />
+                      </Tooltip>
+                    )}
+                    {cv.isPrimary && (
+                      <Button icon={<StarFilled />} disabled aria-label="CV chính" className="!text-amber-600" />
+                    )}
+                    {canDelete && <Popconfirm
+                      title="Gỡ CV khỏi kho?"
+                      description={cv.deleteBehavior === 'ARCHIVE_HISTORY'
+                        ? 'CV sẽ ẩn khỏi kho cá nhân nhưng bản đã gắn với lượt nộp và đơn ứng tuyển vẫn được giữ làm lịch sử.'
+                        : 'CV chưa được sử dụng nên sẽ được xóa khỏi kho.'}
+                      okText="Gỡ khỏi kho"
+                      okButtonProps={{ danger: true }}
+                      cancelText="Hủy"
+                      onConfirm={() => act(cv.cvId, () => candidateCvApi.remove(cv.cvId), 'Đã gỡ CV khỏi kho.')}
+                    >
+                      <Button danger icon={<DeleteOutlined />} aria-label={`Gỡ ${cv.title ?? 'CV'} khỏi kho`} />
+                    </Popconfirm>}
                   </div>
-                  <div className="truncate text-xs text-slate-500">
-                    {cv.fileName} · {fileSize(cv.fileSizeBytes)} · cập nhật {dayjs(cv.updatedAt).format('DD/MM/YYYY')}
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    {cv.applicationUsageCount > 0
-                      ? `Đang được lưu trong ${cv.applicationUsageCount} đơn ứng tuyển${cv.submissionUsageCount > cv.applicationUsageCount ? ` và ${cv.submissionUsageCount - cv.applicationUsageCount} lượt nộp khác` : ''}.`
-                      : cv.submissionUsageCount > 0
-                        ? `Đã được dùng trong ${cv.submissionUsageCount} lượt nộp hồ sơ.`
-                        : 'Chưa được dùng trong lượt nộp nào.'}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  {canView && (
-                    <Tooltip title="Xem CV">
-                      <Button icon={<EyeOutlined />} aria-label={`Xem ${cv.title ?? 'CV'}`} onClick={() => openSigned(() => candidateCvApi.downloadUrl(cv.cvId))} />
-                    </Tooltip>
-                  )}
-                  {canUpdate && (
-                    <Tooltip title="Đổi tên CV">
-                      <Button icon={<EditOutlined />} aria-label={`Đổi tên ${cv.title ?? 'CV'}`} onClick={() => setEditing({ cvId: cv.cvId, title: cv.title || cv.fileName || '' })} />
-                    </Tooltip>
-                  )}
-                  {canUpdate && !cv.isPrimary && (
-                    <Tooltip title="Đặt làm CV chính">
-                      <Button
-                        icon={busyId === cv.cvId ? undefined : <StarOutlined />}
-                        loading={busyId === cv.cvId}
-                        aria-label="Đặt làm CV chính"
-                        onClick={() => act(cv.cvId, () => candidateCvApi.setPrimary(cv.cvId), 'Đã đặt làm CV chính.')}
-                      />
-                    </Tooltip>
-                  )}
-                  {cv.isPrimary && (
-                    <Button icon={<StarFilled />} disabled aria-label="CV chính" className="!text-amber-600" />
-                  )}
-                  {canDelete && <Popconfirm
-                    title="Gỡ CV khỏi kho?"
-                    description={cv.deleteBehavior === 'ARCHIVE_HISTORY'
-                      ? 'CV sẽ ẩn khỏi kho cá nhân nhưng bản đã gắn với lượt nộp và đơn ứng tuyển vẫn được giữ làm lịch sử.'
-                      : 'CV chưa được sử dụng nên sẽ được xóa khỏi kho.'}
-                    okText="Gỡ khỏi kho"
-                    okButtonProps={{ danger: true }}
-                    cancelText="Hủy"
-                    onConfirm={() => act(cv.cvId, () => candidateCvApi.remove(cv.cvId), 'Đã gỡ CV khỏi kho.')}
-                  >
-                    <Button danger icon={<DeleteOutlined />} aria-label={`Gỡ ${cv.title ?? 'CV'} khỏi kho`} />
-                  </Popconfirm>}
-                </div>
-              </article>
-            ))
+                </article>
+              );
+            })
           )}
         </div>
-        {canCreate && <aside className="lg:sticky lg:top-24 lg:self-start">
-          <CandidateSurface className="candidate-cv-upload p-5">
-            <h2 className="m-0 mb-3 text-base font-semibold text-slate-900">Tải CV mới</h2>
-            <CvUploader />
-          </CandidateSurface>
-        </aside>}
+        {canCreate && (
+          <aside className="lg:sticky lg:top-24 lg:self-start space-y-4">
+            <CandidateSurface className="candidate-cv-upload p-5">
+              <h2 className="m-0 mb-3 text-base font-semibold text-slate-900">Tạo CV mới</h2>
+
+              {/* 3 clear choices */}
+              <div className="space-y-2 mb-4">
+                <Button
+                  type="primary"
+                  icon={<LayoutOutlined />}
+                  block
+                  className="!rounded-xl !h-10 !bg-purple-600 hover:!bg-purple-700 text-xs font-semibold flex items-center justify-center gap-2"
+                  onClick={() => setCreateBuilderOpen(true)}
+                >
+                  Dựng CV theo mẫu đẹp
+                </Button>
+                <Button
+                  icon={<FormOutlined />}
+                  block
+                  className="!rounded-xl !h-10 text-xs font-semibold flex items-center justify-center gap-2 text-slate-700 hover:text-blue-600 hover:border-blue-500"
+                  onClick={() => setCreateBuilderOpen(true)}
+                >
+                  Tự dựng CV nhanh (Chuẩn ATS)
+                </Button>
+              </div>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-slate-200"></div>
+                <span className="flex-shrink mx-2 text-[11px] text-slate-400">hoặc tải PDF có sẵn</span>
+                <div className="flex-grow border-t border-slate-200"></div>
+              </div>
+
+              <div className="mt-2">
+                <CvUploader />
+              </div>
+            </CandidateSurface>
+          </aside>
+        )}
       </div>
+
+      {/* Rename Modal */}
       <Modal
         title="Đổi tên CV"
         open={Boolean(editing)}
@@ -1253,6 +1358,28 @@ export const CandidateCvsPage: React.FC = () => {
           onPressEnter={saveTitle}
         />
       </Modal>
+
+      {/* Create Structured CV Modal */}
+      <CandidateCvBuilderModal
+        open={createBuilderOpen}
+        onClose={() => {
+          setCreateBuilderOpen(false);
+          if (searchParams.get('action')) {
+            const next = new URLSearchParams(searchParams);
+            next.delete('action');
+            setSearchParams(next, { replace: true });
+          }
+        }}
+        mode="create"
+      />
+
+      {/* Edit Structured CV Modal */}
+      <CandidateCvBuilderModal
+        open={Boolean(editStructuredCvId)}
+        editCvId={editStructuredCvId}
+        onClose={() => setEditStructuredCvId(undefined)}
+        mode="edit"
+      />
     </div>
   );
 };

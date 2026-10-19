@@ -149,12 +149,9 @@ export const AdminProfilePage: React.FC = () => {
   );
 };
 
-export const AdminDisputesPlaceholder: React.FC = () => (
-  <div>
-    <PageHero eyebrow="Chưa có API" title="Tranh chấp" description="Khiếu nại về ghi nhận nguồn ứng viên và hoa hồng." />
-    <NoApiYet feature="Xử lý tranh chấp" detail="Quyền dispute.view / dispute.resolve đã có, nhưng chưa có endpoint." />
-  </div>
-);
+import { AdminDisputesPage } from './AdminDisputesPage';
+
+export const AdminDisputesPlaceholder: React.FC = () => <AdminDisputesPage />;
 
 export const AdminPayoutsPlaceholder: React.FC = () => (
   <div>

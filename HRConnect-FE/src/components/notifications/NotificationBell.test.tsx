@@ -209,4 +209,46 @@ describe('NotificationBell component', () => {
       expect(markAllSpy).toHaveBeenCalledTimes(1);
     });
   });
+
+  it('navigates to metadata.routeHint when clicking a JOB_FIT notification', async () => {
+    vi.spyOn(notificationApi, 'getUnreadCount').mockResolvedValue({ unreadCount: 1 });
+    vi.spyOn(notificationApi, 'getNotifications').mockResolvedValue({
+      items: [
+        {
+          notificationId: 'notif-fit-1',
+          notificationType: 'JOB_FIT',
+          title: 'Việc làm phù hợp mới: Python Engineer',
+          message: 'Hệ thống gợi ý việc làm phù hợp 85% với bạn',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+          metadata: JSON.stringify({ routeHint: '/jobs/job-python-123', jobId: 'job-python-123' }),
+        },
+      ],
+      page: 1,
+      pageSize: 20,
+      totalCount: 1,
+      totalPages: 1,
+    });
+    const markReadSpy = vi.spyOn(notificationApi, 'markAsRead').mockResolvedValueOnce({
+      success: true,
+      message: 'OK',
+      updatedCount: 1,
+    });
+
+    renderBell();
+
+    const bellBtn = screen.getByRole('button', { name: /Thông báo hệ thống/i });
+    fireEvent.click(bellBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Việc làm phù hợp mới: Python Engineer')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Việc làm phù hợp mới: Python Engineer'));
+
+    await waitFor(() => {
+      expect(markReadSpy).toHaveBeenCalledWith('notif-fit-1');
+    });
+    expect(mockNavigate).toHaveBeenCalledWith('/jobs/job-python-123');
+  });
 });
