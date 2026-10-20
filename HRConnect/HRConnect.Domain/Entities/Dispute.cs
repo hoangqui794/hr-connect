@@ -35,6 +35,8 @@ public partial class Dispute
 
     public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
 
+    public string? ResolutionIdempotencyKey { get; set; }
+
     public Guid? CandidateDuplicateCaseId { get; set; }
 
     public virtual Attribution? Attribution { get; set; }

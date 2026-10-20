@@ -2462,6 +2462,11 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("resolution");
 
+                    b.Property<string>("ResolutionIdempotencyKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("resolution_idempotency_key");
+
                     b.Property<DateTime?>("ResolvedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("resolved_at");
@@ -2503,6 +2508,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasFilter("candidate_duplicate_case_id IS NOT NULL");
 
                     b.HasIndex(new[] { "Status", "CreatedAt" }, "idx_dispute_status_created");
+
+                    b.HasIndex(new[] { "ResolutionIdempotencyKey" }, "uq_dispute_resolution_idempotency")
+                        .IsUnique()
+                        .HasFilter("resolution_idempotency_key IS NOT NULL");
 
                     b.HasIndex(new[] { "SubmissionId" }, "uq_dispute_submission_open")
                         .IsUnique()

@@ -1571,6 +1571,14 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("'OPEN'::character varying")
                 .HasColumnName("status");
             entity.Property(e => e.SubmissionId).HasColumnName("submission_id");
+            entity.Property(e => e.CandidateDuplicateCaseId).HasColumnName("candidate_duplicate_case_id");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
+            entity.Property(e => e.ResolutionIdempotencyKey)
+                .HasMaxLength(100)
+                .HasColumnName("resolution_idempotency_key");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
@@ -1599,6 +1607,17 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.SubmissionId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("dispute_submission_id_fkey");
+
+            entity.HasOne(d => d.CandidateDuplicateCase).WithMany(p => p.Disputes)
+                .HasForeignKey(d => d.CandidateDuplicateCaseId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_dispute_candidate_duplicate_case");
+
+            entity.HasIndex(e => e.CandidateDuplicateCaseId, "idx_dispute_candidate_duplicate_case")
+                .HasFilter("candidate_duplicate_case_id IS NOT NULL");
+            entity.HasIndex(e => e.ResolutionIdempotencyKey, "uq_dispute_resolution_idempotency")
+                .IsUnique()
+                .HasFilter("resolution_idempotency_key IS NOT NULL");
         });
 
         modelBuilder.Entity<EmailOutbox>(entity =>

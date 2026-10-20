@@ -39,6 +39,10 @@ public static class DisputeErrorCodes
     public const string CommissionUnderDispute = "COMMISSION_UNDER_DISPUTE";
     /// <summary>UPHELD would move a commission that was already paid out; settle it outside the system first.</summary>
     public const string CommissionAlreadyPaid = "DISPUTE_COMMISSION_ALREADY_PAID";
+    public const string StaleResolution = "STALE_DISPUTE_RESOLUTION";
+    public const string AttributionMissing = "DISPUTE_ATTRIBUTION_MISSING";
+    public const string AffiliateMissing = "DISPUTE_AFFILIATE_MISSING";
+    public const string TransferNotRequired = "DISPUTE_TRANSFER_NOT_REQUIRED";
 }
 
 public static class AttributionRules
