@@ -124,7 +124,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         }
 
         var affiliate = await _affiliateRepository.GetByUserIdWithDetailsAsync(consent.Submission.SubmittedBy, cancellationToken);
-        if (affiliate == null || !IsAffiliateEligible(affiliate))
+        if (!SubmissionAcceptancePolicy.IsAffiliateEligible(affiliate))
         {
             await SetTerminalWithoutApplicationAsync(consent, "CANCELLED", "CANCELLED", request, now, cancellationToken);
             throw new ConflictException("Affiliate đã bị khóa, chưa được phê duyệt hoặc không còn hoạt động nên lượt nộp không thể tiếp tục.");
@@ -132,7 +132,8 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
 
         JobApplication application;
         var transactionCompleted = false;
-        var enforcesClientOwnership = IsClientOwnershipService(consent.Submission.Job.ServiceType?.Code);
+        var enforcesClientOwnership = SubmissionAcceptancePolicy.EnforcesClientOwnership(
+            consent.Submission.Job.ServiceType?.Code);
         var ownershipDays = enforcesClientOwnership
             ? await _businessSettings.GetIntAsync(BusinessSettingKeys.Mf02ClientOwnershipDays, cancellationToken)
             : 0;
@@ -281,7 +282,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             {
                 AttributionId = Guid.NewGuid(),
                 ApplicationId = application.ApplicationId,
-                AffiliateId = affiliate.AffiliateId,
+                AffiliateId = affiliate!.AffiliateId,
                 WinningSubmissionId = consent.SubmissionId,
                 AttributionRule = "CANDIDATE_CONSENT_THEN_FIRST_ACCEPTED",
                 Status = "ACTIVE",
@@ -567,29 +568,6 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
 
     private static string? Limit(string? value, int max) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Length <= max ? value : value[..max];
-
-    private static bool IsAffiliateEligible(HRConnect.Domain.Entities.AffiliateProfile affiliate)
-    {
-        var profileIsEligible =
-            string.Equals(affiliate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(affiliate.Status, "VERIFIED", StringComparison.OrdinalIgnoreCase);
-        var user = affiliate.User;
-        if (!profileIsEligible ||
-            user == null ||
-            !string.Equals(user.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return user.UserRoleUsers.Any(userRole =>
-            string.Equals(userRole.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
-            userRole.Role.IsActive &&
-            string.Equals(userRole.Role.Code, JobAccessPolicy.AffiliateRole, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static bool IsClientOwnershipService(string? serviceTypeCode) =>
-        string.Equals(serviceTypeCode, "HEADHUNT_COD", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(serviceTypeCode, "CV_SOURCING", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsUniqueViolation(Exception exception)
     {

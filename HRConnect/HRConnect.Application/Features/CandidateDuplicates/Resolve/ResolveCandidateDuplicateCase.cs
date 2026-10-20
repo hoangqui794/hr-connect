@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.CandidateDuplicates.Common;
+using HRConnect.Application.Features.CandidateDuplicates.Finalization;
 using HRConnect.Domain.Entities;
 using MediatR;
 
@@ -24,6 +25,7 @@ public sealed record ResolveCandidateDuplicateCaseResponse(
     Guid? CanonicalCandidateId,
     Guid? SourceCandidateId,
     IReadOnlyList<Guid> PendingFinalizationSubmissionIds,
+    IReadOnlyList<IdentityReviewFinalizationResult> FinalizationResults,
     Guid ConcurrencyToken,
     bool IdempotentReplay);
 
@@ -56,6 +58,7 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandler
     private readonly INotificationRepository _notifications;
     private readonly IAuditLogService _audit;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IFinalizeIdentityReviewedSubmissionService _finalizer;
 
     public ResolveCandidateDuplicateCaseCommandHandler(
         ICandidateDuplicateRepository duplicates,
@@ -65,7 +68,8 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandler
         IAttributionRepository attributions,
         INotificationRepository notifications,
         IAuditLogService audit,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IFinalizeIdentityReviewedSubmissionService finalizer)
     {
         _duplicates = duplicates;
         _candidates = candidates;
@@ -75,6 +79,7 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandler
         _notifications = notifications;
         _audit = audit;
         _unitOfWork = unitOfWork;
+        _finalizer = finalizer;
     }
 
     public async Task<ResolveCandidateDuplicateCaseResponse> Handle(
@@ -95,7 +100,12 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandler
             {
                 await _unitOfWork.CommitTransactionAsync(cancellationToken);
                 transactionCompleted = true;
-                return CreateResponse(duplicateCase, null, Array.Empty<Guid>(), true);
+                return CreateResponse(
+                    duplicateCase,
+                    GetSourceCandidateId(duplicateCase),
+                    Array.Empty<Guid>(),
+                    Array.Empty<IdentityReviewFinalizationResult>(),
+                    true);
             }
 
             if (duplicateCase.Status is "MERGED" or "DISMISSED")
@@ -106,6 +116,7 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandler
             var now = DateTime.UtcNow;
             Guid? sourceCandidateId = null;
             var pendingFinalization = new List<Guid>();
+            var finalizationResults = new List<IdentityReviewFinalizationResult>();
 
             if (decision == "NEED_MORE_EVIDENCE")
             {
@@ -122,10 +133,25 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandler
                     duplicateCase.CandidateAId,
                     duplicateCase.CandidateBId,
                     cancellationToken);
-                pendingFinalization.AddRange(related
+                var heldSubmissions = related
                     .Where(item => item.Status == "PENDING_IDENTITY_REVIEW" &&
                                    (!duplicateCase.JobId.HasValue || item.JobId == duplicateCase.JobId.Value))
-                    .Select(item => item.SubmissionId));
+                    .OrderBy(item => item.Consent?.RespondedAt ?? DateTime.MaxValue)
+                    .ThenBy(item => item.SubmittedAt)
+                    .ThenBy(item => item.SubmissionId)
+                    .ToArray();
+                foreach (var heldSubmission in heldSubmissions)
+                {
+                    var result = await _finalizer.FinalizeAsync(
+                        heldSubmission,
+                        request.AdminUserId,
+                        duplicateCase.DuplicateCaseId,
+                        now,
+                        cancellationToken);
+                    finalizationResults.Add(result);
+                    if (result.Status is not ("ACCEPTED" or "ALREADY_FINALIZED"))
+                        pendingFinalization.Add(heldSubmission.SubmissionId);
+                }
             }
             else
             {
@@ -176,7 +202,28 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandler
 
                 foreach (var jobGroup in related.GroupBy(item => item.JobId))
                 {
-                    var winner = CandidateMergePolicy.SelectEarliestConfirmedWinner(jobGroup);
+                    Submission? winner = null;
+                    foreach (var candidateSubmission in CandidateMergePolicy.OrderConfirmedCandidates(jobGroup))
+                    {
+                        if (candidateSubmission.Status == "ACCEPTED")
+                        {
+                            winner = candidateSubmission;
+                            break;
+                        }
+
+                        var result = await _finalizer.FinalizeAsync(
+                            candidateSubmission,
+                            request.AdminUserId,
+                            duplicateCase.DuplicateCaseId,
+                            now,
+                            cancellationToken);
+                        finalizationResults.Add(result);
+                        if (result.Status is "ACCEPTED" or "ALREADY_FINALIZED")
+                        {
+                            winner = candidateSubmission;
+                            break;
+                        }
+                    }
                     if (winner == null) continue;
 
                     foreach (var loser in jobGroup.Where(item =>
@@ -206,9 +253,11 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandler
                         }
                     }
 
-                    if (winner.Status == "PENDING_IDENTITY_REVIEW")
-                        pendingFinalization.Add(winner.SubmissionId);
                 }
+
+                pendingFinalization.AddRange(related
+                    .Where(item => item.Status == "PENDING_IDENTITY_REVIEW")
+                    .Select(item => item.SubmissionId));
 
                 ApplyResolutionMetadata(duplicateCase, request, idempotencyKey, now);
                 duplicateCase.Status = "MERGED";
@@ -227,7 +276,12 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandler
                 cancellationToken);
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
             transactionCompleted = true;
-            return CreateResponse(duplicateCase, sourceCandidateId, pendingFinalization, false);
+            return CreateResponse(
+                duplicateCase,
+                sourceCandidateId,
+                pendingFinalization,
+                finalizationResults,
+                false);
         }
         catch
         {
@@ -304,6 +358,7 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandler
         CandidateDuplicateCase duplicateCase,
         Guid? sourceCandidateId,
         IReadOnlyList<Guid> pendingFinalization,
+        IReadOnlyList<IdentityReviewFinalizationResult> finalizationResults,
         bool idempotentReplay) => new(
         duplicateCase.DuplicateCaseId,
         duplicateCase.Status,
@@ -311,6 +366,15 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandler
         duplicateCase.CanonicalCandidateId,
         sourceCandidateId,
         pendingFinalization,
+        finalizationResults,
         duplicateCase.ConcurrencyToken,
         idempotentReplay);
+
+    private static Guid? GetSourceCandidateId(CandidateDuplicateCase duplicateCase) =>
+        duplicateCase.CanonicalCandidateId switch
+        {
+            Guid canonical when canonical == duplicateCase.CandidateAId => duplicateCase.CandidateBId,
+            Guid canonical when canonical == duplicateCase.CandidateBId => duplicateCase.CandidateAId,
+            _ => null
+        };
 }

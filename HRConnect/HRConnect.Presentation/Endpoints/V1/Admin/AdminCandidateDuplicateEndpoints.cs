@@ -166,7 +166,7 @@ public static class AdminCandidateDuplicateEndpoints
         })
         .WithName("ResolveCandidateDuplicateCase")
         .WithSummary("Admin xử lý hồ sơ Candidate nghi trùng")
-        .WithDescription("Yêu cầu quyền candidate_duplicate.resolve. Hỗ trợ MERGE, DISMISS và NEED_MORE_EVIDENCE; bắt buộc concurrencyToken, idempotencyKey và lý do. MERGE bị chặn khi có payout COMPLETED.")
+        .WithDescription("Yêu cầu quyền candidate_duplicate.resolve. Hỗ trợ MERGE, DISMISS và NEED_MORE_EVIDENCE; bắt buộc concurrencyToken, idempotencyKey và lý do. MERGE bị chặn khi có payout COMPLETED. Các Submission đã được Candidate xác nhận sẽ được xét theo thời điểm xác nhận và tự động hoàn tất Application, Attribution, MF03; kết quả từng lượt nằm trong finalizationResults.")
         .Produces<ResolveCandidateDuplicateCaseResponse>(StatusCodes.Status200OK)
         .ProducesValidationProblem(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)

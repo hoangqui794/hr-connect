@@ -30,6 +30,7 @@ public static class AuditActions
     public const string SubmissionDuplicateBlocked = "SUBMISSION_DUPLICATE_BLOCKED";
     public const string SubmissionConsentConfirmed = "SUBMISSION_CONSENT_CONFIRMED";
     public const string SubmissionIdentityReviewHeld = "SUBMISSION_IDENTITY_REVIEW_HELD";
+    public const string SubmissionIdentityReviewFinalized = "SUBMISSION_IDENTITY_REVIEW_FINALIZED";
     public const string CandidateDuplicateCaseResolved = "CANDIDATE_DUPLICATE_CASE_RESOLVED";
     public const string CandidateIdentityMerged = "CANDIDATE_IDENTITY_MERGED";
     public const string SubmissionConsentDeclined = "SUBMISSION_CONSENT_DECLINED";

@@ -34,7 +34,7 @@ public static class CandidateMergePolicy
             : (right, left, "DETERMINISTIC_CANDIDATE_ID_TIE_BREAK");
     }
 
-    public static HRConnect.Domain.Entities.Submission? SelectEarliestConfirmedWinner(
+    public static IReadOnlyList<HRConnect.Domain.Entities.Submission> OrderConfirmedCandidates(
         IEnumerable<HRConnect.Domain.Entities.Submission> submissions) =>
         submissions
             .Where(item => item.Consent is { Status: "CONFIRMED", RespondedAt: not null } &&
@@ -42,7 +42,11 @@ public static class CandidateMergePolicy
             .OrderBy(item => item.Consent!.RespondedAt)
             .ThenBy(item => item.SubmittedAt)
             .ThenBy(item => item.SubmissionId)
-            .FirstOrDefault();
+            .ToArray();
+
+    public static HRConnect.Domain.Entities.Submission? SelectEarliestConfirmedWinner(
+        IEnumerable<HRConnect.Domain.Entities.Submission> submissions) =>
+        OrderConfirmedCandidates(submissions).FirstOrDefault();
 
     public static bool HasCompletedPayout(IEnumerable<HRConnect.Domain.Entities.Application> applications) =>
         applications.Any(application => application.Attribution?.Commissions.Any(

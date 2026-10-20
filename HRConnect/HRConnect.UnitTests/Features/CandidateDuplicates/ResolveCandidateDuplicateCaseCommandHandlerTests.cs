@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.CandidateDuplicates.Resolve;
+using HRConnect.Application.Features.CandidateDuplicates.Finalization;
 using HRConnect.Domain.Entities;
 using Moq;
 
@@ -19,6 +20,7 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandlerTests
     private readonly Mock<INotificationRepository> _notifications = new();
     private readonly Mock<IAuditLogService> _audit = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IFinalizeIdentityReviewedSubmissionService> _finalizer = new();
 
     [Fact]
     public async Task Merge_SelectsEarliestConfirmedWinnerAndArchivesSource()
@@ -33,13 +35,16 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandlerTests
         late.Applications.Add(lateApplication);
         late.Attribution = lateAttribution;
         SetupLocks(fixture, [early, late], [lateApplication]);
+        SetupAcceptedFinalization(early);
 
         var response = await CreateHandler().Handle(CreateCommand(fixture), CancellationToken.None);
 
         response.Status.Should().Be("MERGED");
         response.CanonicalCandidateId.Should().Be(fixture.CandidateB.CandidateId);
         response.SourceCandidateId.Should().Be(fixture.CandidateA.CandidateId);
-        response.PendingFinalizationSubmissionIds.Should().Equal(early.SubmissionId);
+        response.PendingFinalizationSubmissionIds.Should().BeEmpty();
+        response.FinalizationResults.Should().ContainSingle(result =>
+            result.SubmissionId == early.SubmissionId && result.Status == "ACCEPTED");
         fixture.CandidateA.Status.Should().Be("ARCHIVED");
         fixture.CandidateA.MergedIntoCandidateId.Should().Be(fixture.CandidateB.CandidateId);
         late.Status.Should().Be("BLOCKED_DUPLICATE");
@@ -84,6 +89,43 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandlerTests
         fixture.CandidateB.Status.Should().Be("ACTIVE");
         _unitOfWork.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Merge_WhenEarliestConfirmedSubmissionIsInvalid_FinalizesNextValidSubmission()
+    {
+        var fixture = CreateFixture();
+        var early = CreateHeldSubmission(fixture.CandidateA, fixture.Job, DateTime.UtcNow.AddMinutes(-5));
+        var late = CreateHeldSubmission(fixture.CandidateB, fixture.Job, DateTime.UtcNow.AddMinutes(-1));
+        SetupLocks(fixture, [early, late], Array.Empty<HRConnect.Domain.Entities.Application>());
+        _finalizer.Setup(x => x.FinalizeAsync(
+                early,
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .Callback(() => early.Status = "CANCELLED")
+            .ReturnsAsync(new IdentityReviewFinalizationResult(
+                early.SubmissionId,
+                "CANCELLED",
+                ReasonCode: "AFFILIATE_NOT_ELIGIBLE"));
+        SetupAcceptedFinalization(late);
+
+        var response = await CreateHandler().Handle(CreateCommand(fixture), CancellationToken.None);
+
+        response.FinalizationResults.Should().SatisfyRespectively(
+            first =>
+            {
+                first.SubmissionId.Should().Be(early.SubmissionId);
+                first.Status.Should().Be("CANCELLED");
+            },
+            second =>
+            {
+                second.SubmissionId.Should().Be(late.SubmissionId);
+                second.Status.Should().Be("ACCEPTED");
+            });
+        late.Status.Should().Be("ACCEPTED");
+        response.PendingFinalizationSubmissionIds.Should().BeEmpty();
     }
 
     [Fact]
@@ -137,14 +179,16 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandlerTests
                 fixture.CandidateB.CandidateId,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([heldA, heldB]);
+        SetupAcceptedFinalization(heldA);
+        SetupAcceptedFinalization(heldB);
 
         var response = await CreateHandler().Handle(
             CreateCommand(fixture) with { Decision = "DISMISS" }, CancellationToken.None);
 
         response.Status.Should().Be("DISMISSED");
         response.Resolution.Should().Be("NOT_DUPLICATE");
-        response.PendingFinalizationSubmissionIds.Should().BeEquivalentTo(
-            new[] { heldA.SubmissionId, heldB.SubmissionId });
+        response.PendingFinalizationSubmissionIds.Should().BeEmpty();
+        response.FinalizationResults.Should().HaveCount(2);
     }
 
     [Fact]
@@ -172,7 +216,22 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandlerTests
         _attributions.Object,
         _notifications.Object,
         _audit.Object,
-        _unitOfWork.Object);
+        _unitOfWork.Object,
+        _finalizer.Object);
+
+    private void SetupAcceptedFinalization(Submission submission) =>
+        _finalizer.Setup(x => x.FinalizeAsync(
+                submission,
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .Callback(() => submission.Status = "ACCEPTED")
+            .ReturnsAsync(new IdentityReviewFinalizationResult(
+                submission.SubmissionId,
+                "ACCEPTED",
+                Guid.NewGuid(),
+                AiStatus: "PENDING"));
 
     private void SetupLocks(
         Fixture fixture,

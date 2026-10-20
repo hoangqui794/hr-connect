@@ -163,7 +163,8 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
 
         return await query
             .Include(item => item.Consent)
-            .Include(item => item.Job)
+            .Include(item => item.Candidate)
+            .Include(item => item.Job).ThenInclude(job => job.ServiceType)
             .Include(item => item.Applications)
             .Include(item => item.Attribution).ThenInclude(attribution => attribution!.Commissions)
                 .ThenInclude(commission => commission.Payouts)
@@ -179,7 +180,8 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
         await _context.Submissions
             .FromSqlInterpolated($"SELECT * FROM public.submission WHERE candidate_id IN ({candidateAId}, {candidateBId}) ORDER BY submission_id FOR UPDATE")
             .Include(item => item.Consent)
-            .Include(item => item.Job)
+            .Include(item => item.Candidate)
+            .Include(item => item.Job).ThenInclude(job => job.ServiceType)
             .Include(item => item.Applications)
             .Include(item => item.Attribution).ThenInclude(attribution => attribution!.Commissions)
                 .ThenInclude(commission => commission.Payouts)
