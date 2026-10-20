@@ -39,7 +39,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { UserRole } from '@/types/roles';
 import { authService } from '@/services/authService';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { AuthPageShell, AUTH_INPUT_CLASS, AUTH_LABEL_CLASS } from './AuthPageShell';
+import { AuthPageShell, AUTH_INPUT_CLASS, AUTH_LABEL_CLASS, AUTH_LINK_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from './AuthPageShell';
 import { appendCandidateReturnPath, getSafeCandidateReturnPath } from './authReturnPath';
 
 type RegisterableRole = UserRole.CANDIDATE | UserRole.CLIENT | UserRole.AFFILIATE;
@@ -47,6 +47,8 @@ type RegisterableRole = UserRole.CANDIDATE | UserRole.CLIENT | UserRole.AFFILIAT
 interface RoleOption {
   role: RegisterableRole;
   title: string;
+  shortTitle: string;
+  hint: string;
   badge: string;
   subtitle: string;
   accentColor: string;
@@ -58,6 +60,8 @@ const ROLE_OPTIONS: RoleOption[] = [
   {
     role: UserRole.CANDIDATE,
     title: 'Ứng viên tìm việc',
+    shortTitle: 'Ứng viên',
+    hint: 'Tìm việc, tạo CV',
     badge: 'Talent',
     subtitle: 'Tìm việc công nghệ, tạo CV ATS & AI Match',
     accentColor: '#8b5cf6', // purple-500
@@ -67,6 +71,8 @@ const ROLE_OPTIONS: RoleOption[] = [
   {
     role: UserRole.CLIENT,
     title: 'Doanh nghiệp',
+    shortTitle: 'Doanh nghiệp',
+    hint: 'Đăng tin tuyển dụng',
     badge: 'Employer',
     subtitle: 'Đăng tin tuyển dụng, thẩm định AI & bảo hành',
     accentColor: '#0284c7', // sky-600
@@ -76,6 +82,8 @@ const ROLE_OPTIONS: RoleOption[] = [
   {
     role: UserRole.AFFILIATE,
     title: 'Cộng tác viên (Headhunter)',
+    shortTitle: 'Headhunter',
+    hint: 'Giới thiệu ứng viên',
     badge: 'Partner',
     subtitle: 'Giới thiệu ứng viên & nhận hoa hồng minh bạch',
     accentColor: '#f59e0b', // amber-500
@@ -240,8 +248,8 @@ export const RegisterPage: React.FC = () => {
   };
 
   const COMPACT_INPUT_CLASS =
-    'h-10 text-xs sm:text-sm rounded-xl border border-white/70 bg-white/80 backdrop-blur-md text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-[#53B7E8] focus:border-[#1E9EDB] focus:bg-white transition-all';
-  const COMPACT_LABEL_CLASS = 'text-xs font-bold text-slate-700';
+    'h-11 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 hover:border-[#0EA5E9] focus:border-[#0369A1] transition-colors duration-150';
+  const COMPACT_LABEL_CLASS = 'text-sm font-semibold text-slate-700';
 
   return (
     <AuthPageShell
@@ -254,76 +262,59 @@ export const RegisterPage: React.FC = () => {
       sideDescription="Trải nghiệm chuyên biệt cho từng chủ thể tuyển dụng."
       benefits={[
         {
-          icon: <SolutionOutlined className="text-blue-600" />,
+          icon: <SolutionOutlined />,
           title: 'Ứng viên tìm việc',
           desc: 'Quản lý CV, khớp nối việc làm phù hợp',
         },
         {
-          icon: <BankOutlined className="text-emerald-600" />,
+          icon: <BankOutlined />,
           title: 'Doanh nghiệp tuyển dụng',
           desc: 'Tiếp cận nguồn ứng viên chất lượng cao',
         },
         {
-          icon: <TeamOutlined className="text-amber-600" />,
+          icon: <TeamOutlined />,
           title: 'Cộng tác viên Headhunter',
           desc: 'Gửi nguồn giới thiệu, nhận thưởng minh bạch',
         },
       ]}
-      extraVisual={
-        <div className="mt-4 overflow-hidden rounded-2xl border border-white/70 bg-white/50 p-3.5 text-slate-800 backdrop-blur-md shadow-md shadow-[#1E9EDB]/15">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-white text-sm font-black shadow-sm">
-                AI
-              </span>
-              <div>
-                <strong className="block text-xs font-bold text-slate-900">Smart Match & Verification</strong>
-                <span className="text-[11px] font-medium text-slate-600">Khớp nối ứng viên & doanh nghiệp tự động</span>
-              </div>
-            </div>
-            <span className="rounded-full border border-emerald-400/60 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-600">
-              98% Fit
-            </span>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between border-t border-white/60 pt-2.5 text-[11px] text-slate-600 font-medium">
-            <span className="flex items-center gap-1.5">
-              <SafetyCertificateOutlined className="text-emerald-500 text-xs" />
-              <span>Bảo hành tuyển dụng 60 ngày</span>
-            </span>
-            <span className="font-bold text-slate-800">Hoa hồng minh bạch</span>
-          </div>
-        </div>
-      }
     >
-      {/* Role Selection Segmented Control */}
-      <div className="mb-3">
-        <p className="mb-1.5 text-xs font-bold text-slate-700">Bạn đăng ký với vai trò nào?</p>
-        <div className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100/80 backdrop-blur-sm p-1 border border-white/60">
+      {/* Role selection: three equal cards, short label + one-line hint, radio dot */}
+      <fieldset className="mb-5 border-0 p-0">
+        <legend className="mb-2 text-sm font-semibold text-slate-700">Bạn đăng ký với vai trò nào?</legend>
+        <div className="grid grid-cols-3 gap-2.5" role="radiogroup">
           {ROLE_OPTIONS.map((option) => {
             const isSelected = selectedRole === option.role;
             return (
               <button
                 type="button"
                 key={option.role}
+                role="radio"
+                aria-checked={isSelected}
                 onClick={() => {
                   setSelectedRole(option.role);
                   setErrorMessage(null);
                 }}
-                className={`flex items-center justify-center gap-1.5 rounded-lg py-2 px-1 text-xs font-bold transition-all cursor-pointer border-0 ${
-                  isSelected
-                    ? 'bg-white text-[#1E9EDB] shadow-sm'
-                    : 'bg-transparent text-slate-600 hover:text-slate-900'
+                className={`flex min-h-[64px] cursor-pointer items-start gap-2.5 rounded-xl border border-solid bg-white px-3 py-3 text-left transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1] ${
+                  isSelected ? 'border-[#0369A1] bg-sky-50/60 ring-1 ring-[#0369A1]' : 'border-slate-300 hover:border-slate-400'
                 }`}
-                aria-pressed={isSelected}
               >
-                <span className="text-sm">{option.icon}</span>
-                <span className="truncate">{option.title}</span>
+                <span
+                  className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[1.5px] border-solid ${
+                    isSelected ? 'border-[#0369A1]' : 'border-slate-400'
+                  }`}
+                  aria-hidden="true"
+                >
+                  {isSelected && <span className="h-2 w-2 rounded-full bg-[#0369A1]" />}
+                </span>
+                <span className="min-w-0">
+                  <strong className="block text-sm font-semibold leading-tight text-slate-900">{option.shortTitle}</strong>
+                  <span className="mt-1 block text-xs leading-snug text-slate-500">{option.hint}</span>
+                </span>
               </button>
             );
           })}
         </div>
-      </div>
+      </fieldset>
 
       {errorMessage && (
         <Alert
@@ -337,10 +328,10 @@ export const RegisterPage: React.FC = () => {
         />
       )}
 
-      <Form form={form} layout="vertical" onFinish={onFinish} requiredMark={false} scrollToFirstError className="[&_.ant-form-item]:mb-2 sm:[&_.ant-form-item]:mb-2">
+      <Form form={form} layout="vertical" onFinish={onFinish} requiredMark={false} scrollToFirstError className="[&_.ant-form-item]:mb-3">
         {selectedRole === UserRole.CLIENT && (
-          <Row gutter={10}>
-            <Col xs={24} sm={14}>
+          <Row gutter={12}>
+            <Col xs={24} sm={12}>
               <Form.Item
                 name="companyName"
                 label={<span className={COMPACT_LABEL_CLASS}>Tên doanh nghiệp</span>}
@@ -352,7 +343,7 @@ export const RegisterPage: React.FC = () => {
                 <Input prefix={<BankOutlined className="mr-1 text-slate-400" />} placeholder="Công ty Cổ phần Công nghệ XYZ" className={COMPACT_INPUT_CLASS} disabled={submitting} />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={10}>
+            <Col xs={24} sm={12}>
               <Form.Item
                 name="taxCode"
                 label={<span className={COMPACT_LABEL_CLASS}>Mã số thuế</span>}
@@ -367,8 +358,8 @@ export const RegisterPage: React.FC = () => {
           </Row>
         )}
 
-        <Row gutter={10}>
-          <Col xs={24} sm={13}>
+        <Row gutter={12}>
+          <Col xs={24} sm={12}>
             <Form.Item
               name="fullName"
               label={<span className={COMPACT_LABEL_CLASS}>{selectedRole === UserRole.CLIENT ? 'Người đại diện' : 'Họ và tên'}</span>}
@@ -380,7 +371,7 @@ export const RegisterPage: React.FC = () => {
               <Input autoComplete="name" prefix={<UserOutlined className="mr-1 text-slate-400" />} placeholder="Nguyễn Văn An" className={COMPACT_INPUT_CLASS} disabled={submitting} />
             </Form.Item>
           </Col>
-          <Col xs={24} sm={11}>
+          <Col xs={24} sm={12}>
             <Form.Item
               name="phone"
               label={<span className={COMPACT_LABEL_CLASS}>Số điện thoại</span>}
@@ -405,7 +396,7 @@ export const RegisterPage: React.FC = () => {
           <Input type="email" autoComplete="email" prefix={<MailOutlined className="mr-1 text-slate-400" />} placeholder={selectedRole === UserRole.CLIENT ? 'tuyendung@congty.com' : 'ten@email.com'} className={COMPACT_INPUT_CLASS} disabled={submitting} />
         </Form.Item>
 
-        <Row gutter={10}>
+        <Row gutter={12}>
           <Col xs={24} sm={12}>
             <Form.Item
               name="password"
@@ -459,19 +450,19 @@ export const RegisterPage: React.FC = () => {
           className="!mb-2.5"
         >
           <Checkbox className="text-xs leading-5 text-slate-600">
-            Tôi đồng ý với <a href="#terms" onClick={(event) => event.preventDefault()} className="font-semibold text-[#1E9EDB]">Điều khoản dịch vụ</a> và <a href="#privacy" onClick={(event) => event.preventDefault()} className="font-semibold text-[#1E9EDB]">Chính sách bảo mật</a>.
+            Tôi đồng ý với <a href="#terms" onClick={(event) => event.preventDefault()} className={AUTH_LINK_CLASS}>Điều khoản dịch vụ</a> và <a href="#privacy" onClick={(event) => event.preventDefault()} className={AUTH_LINK_CLASS}>Chính sách bảo mật</a>.
           </Checkbox>
         </Form.Item>
 
-        <Button type="primary" htmlType="submit" size="large" loading={submitting} disabled={submitting} className="flex h-10 sm:h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-sm font-bold text-white shadow-md shadow-[#1E9EDB]/30 hover:opacity-95 transition-all">
+        <Button type="primary" htmlType="submit" size="large" loading={submitting} disabled={submitting} className={AUTH_PRIMARY_BUTTON_CLASS}>
           <span>{submitting ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}</span>
           {!submitting && <ArrowRightOutlined />}
         </Button>
       </Form>
 
-      <div className="mt-2 rounded-xl border border-white/70 bg-white/60 backdrop-blur-md py-1.5 px-3 text-center text-xs text-slate-600">
+      <div className="mt-5 text-center text-sm text-slate-600">
         Đã có tài khoản?{' '}
-        <Link to="/login" className="font-bold text-[#1E9EDB] hover:text-[#168ec6]">Đăng nhập</Link>
+        <Link to="/login" className={AUTH_LINK_CLASS}>Đăng nhập</Link>
       </div>
     </AuthPageShell>
   );

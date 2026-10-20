@@ -21,6 +21,7 @@ import { useI18nStore } from '@/i18n';
 import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWorkspaceMenu';
 import { UserRole } from '@/types/roles';
 import { ROLE_DASHBOARD_ROUTES } from '@/routes/AppRoutes';
+import { BrandMark } from '@/components/common/BrandMark';
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -94,9 +95,7 @@ export const Navbar: React.FC = () => {
           title="HR Connect — AI-Powered Recruitment Platform"
           className="flex cursor-pointer select-none items-center gap-2.5 sm:gap-3 shrink-0"
         >
-          <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-lg sm:text-xl font-black text-white shadow-md shadow-[#1E9EDB]/30">
-            H
-          </div>
+          <BrandMark size={36} />
           <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap">
             HR Connect
           </span>
@@ -284,9 +283,7 @@ export const Navbar: React.FC = () => {
         styles={{ body: { padding: '16px 20px' } }}
         title={
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-sm font-black text-white shadow-sm shadow-[#1E9EDB]/30">
-              H
-            </div>
+            <BrandMark size={32} />
             <span className="font-bold text-slate-900">HR Connect</span>
           </div>
         }
