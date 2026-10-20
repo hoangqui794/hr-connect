@@ -99,6 +99,9 @@ export class SignalRNotificationService {
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, {
         accessTokenFactory: () => authTokenStorage.getAccessToken() || '',
+        // Auth uses the JWT (access_token), not cookies. The API's CORS allows any origin without credentials,
+        // so a credentialed negotiate from the Vercel domain to Render would be blocked by the browser.
+        withCredentials: false,
       })
       .withAutomaticReconnect()
       .configureLogging(logLevel)

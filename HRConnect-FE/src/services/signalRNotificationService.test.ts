@@ -105,6 +105,17 @@ describe('signalRNotificationService', () => {
       expect(service.getConnectionState()).toBe(signalR.HubConnectionState.Connected);
     });
 
+    it('connects without cookies so the cross-origin negotiate passes the API CORS policy', async () => {
+      vi.spyOn(authTokenStorage, 'getAccessToken').mockReturnValue('mock-jwt-token');
+
+      await service.start();
+
+      expect(signalR.HubConnectionBuilder.prototype.withUrl).toHaveBeenCalledWith(
+        '/hubs/notifications',
+        expect.objectContaining({ withCredentials: false }),
+      );
+    });
+
     it('registers handlers for notification.created and interview.updated', async () => {
       vi.spyOn(authTokenStorage, 'getAccessToken').mockReturnValue('mock-jwt-token');
 
