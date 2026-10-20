@@ -22,7 +22,7 @@ public class RecruitmentCandidateEmailTemplateTests
         var email = HrConnectEmailTemplates.InterviewScheduled(Payload);
 
         email.Subject.Should().Contain("Backend Developer");
-        email.HtmlBody.Should().Contain("09:30 ngày 21/10/2026");
+        email.HtmlBody.Should().Contain(System.Net.WebUtility.HtmlEncode("09:30 ngày 21/10/2026"));
         email.HtmlBody.Should().Contain("Nguyễn &lt;An&gt;");
         email.HtmlBody.Should().NotContain("Nguyễn <An>");
     }
@@ -42,7 +42,7 @@ public class RecruitmentCandidateEmailTemplateTests
     {
         var email = HrConnectEmailTemplates.OfferWithdrawn(Payload with { Reason = "Nội dung <không tin cậy>" });
 
-        email.HtmlBody.Should().Contain("Nội dung &lt;không tin cậy&gt;");
+        email.HtmlBody.Should().Contain(System.Net.WebUtility.HtmlEncode("Nội dung <không tin cậy>"));
         email.HtmlBody.Should().NotContain("Nội dung <không tin cậy>");
     }
 
