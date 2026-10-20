@@ -29,6 +29,7 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ICandidateCompanyTransactionLock> _candidateCompanyLock = new();
     private readonly Mock<IAdminBusinessSettings> _businessSettings = new();
+    private readonly Mock<ICandidateDuplicateRepository> _duplicates = new();
 
     public RespondSubmissionConsentCommandHandlerTests()
     {
@@ -99,6 +100,77 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         persistenceOrder.Should().Equal("submission", "application");
+    }
+
+    [Fact]
+    public async Task Confirm_WhenSameJobIdentityReviewIsActive_HoldsSubmissionWithoutDownstreamSideEffects()
+    {
+        var fixture = CreateConsent();
+        SetupPendingConfirmation(fixture);
+        _affiliates.Setup(x => x.GetByUserIdWithDetailsAsync(
+                fixture.Submission.SubmittedBy, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateEligibleAffiliate(fixture.Submission.SubmittedBy));
+        var duplicateCase = CreateActiveDuplicateCase(fixture);
+        _duplicates.Setup(x => x.GetActiveSameJobCaseForSubmissionAsync(
+                fixture.Submission.SubmissionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(duplicateCase);
+
+        var response = await Handler().Handle(new RespondSubmissionConsentCommand
+        {
+            Token = "valid-token",
+            Decision = "CONFIRM",
+            AllowFutureReuse = true,
+            RequesterUserId = fixture.Candidate.UserId
+        }, CancellationToken.None);
+
+        response.SubmissionStatus.Should().Be("PENDING_IDENTITY_REVIEW");
+        response.AiStatus.Should().Be("NOT_QUEUED");
+        response.RequiresIdentityReview.Should().BeTrue();
+        response.DuplicateCaseId.Should().Be(duplicateCase.DuplicateCaseId);
+        fixture.Consent.Status.Should().Be("CONFIRMED");
+        fixture.Submission.Status.Should().Be("PENDING_IDENTITY_REVIEW");
+        fixture.Cv.Status.Should().Be("ACTIVE");
+        fixture.Cv.AffiliateReuseStatus.Should().Be("ALLOWED");
+        _applications.Verify(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
+        _attributions.Verify(x => x.AddAsync(It.IsAny<Attribution>(), It.IsAny<CancellationToken>()), Times.Never);
+        _scoring.Verify(x => x.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
+        _audit.Verify(x => x.AddAsync(It.Is<AuditEntry>(entry =>
+            entry.Action == AuditActions.SubmissionIdentityReviewHeld &&
+            entry.EntityId == fixture.Submission.SubmissionId &&
+            entry.CorrelationId == duplicateCase.DuplicateCaseId), It.IsAny<CancellationToken>()), Times.Once);
+        _notifications.Verify(x => x.AddAsync(It.Is<Notification>(notification =>
+            notification.UserId == fixture.Submission.SubmittedBy &&
+            notification.Title.Contains("đối chiếu")), It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Confirm_WhenHeldConsentIsRetried_ReturnsSameIdentityReviewWithoutNewWrites()
+    {
+        var fixture = CreateConsent();
+        fixture.Consent.Status = "CONFIRMED";
+        fixture.Submission.Status = "PENDING_IDENTITY_REVIEW";
+        var duplicateCase = CreateActiveDuplicateCase(fixture);
+        _consents.Setup(x => x.GetByTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fixture.Consent);
+        _duplicates.Setup(x => x.GetActiveSameJobCaseForSubmissionAsync(
+                fixture.Submission.SubmissionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(duplicateCase);
+
+        var response = await Handler().Handle(new RespondSubmissionConsentCommand
+        {
+            Token = "valid-token",
+            Decision = "CONFIRM",
+            RequesterUserId = fixture.Candidate.UserId
+        }, CancellationToken.None);
+
+        response.SubmissionStatus.Should().Be("PENDING_IDENTITY_REVIEW");
+        response.AiStatus.Should().Be("NOT_QUEUED");
+        response.RequiresIdentityReview.Should().BeTrue();
+        response.DuplicateCaseId.Should().Be(duplicateCase.DuplicateCaseId);
+        _applications.Verify(x => x.AddAsync(It.IsAny<JobApplication>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]
@@ -510,7 +582,22 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         _unitOfWork.Object,
         Mock.Of<ILogger<RespondSubmissionConsentCommandHandler>>(),
         _candidateCompanyLock.Object,
-        _businessSettings.Object);
+        _businessSettings.Object,
+        _duplicates.Object);
+
+    private static CandidateDuplicateCase CreateActiveDuplicateCase(Fixture fixture) => new()
+    {
+        DuplicateCaseId = Guid.NewGuid(),
+        CandidateAId = fixture.Candidate.CandidateId,
+        CandidateBId = Guid.NewGuid(),
+        SubmissionId = fixture.Submission.SubmissionId,
+        JobId = fixture.Job.JobId,
+        RiskLevel = "HIGH",
+        Status = "AWAITING_CANDIDATE",
+        IdempotencyKey = Guid.NewGuid().ToString("N"),
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow
+    };
 
     private static Fixture CreateConsent(bool candidateHasAccount = true, string? serviceCode = null)
     {

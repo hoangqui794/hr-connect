@@ -184,9 +184,30 @@ public class FinanceRepository : IFinanceRepository
     public Task<bool> HasSourcingCommissionAsync(Guid deliveryId, CancellationToken cancellationToken = default) =>
         _context.Commissions.AnyAsync(c => c.SourcingDeliveryId == deliveryId, cancellationToken);
 
-    public Task<bool> HasActiveDisputeAsync(Guid commissionId, Guid attributionId, CancellationToken cancellationToken = default) =>
-        _context.Disputes.AnyAsync(d => DisputeStates.Active.Contains(d.Status)
-                                        && (d.CommissionId == commissionId || d.AttributionId == attributionId), cancellationToken);
+    public async Task<bool> HasActiveDisputeAsync(
+        Guid commissionId,
+        Guid attributionId,
+        CancellationToken cancellationToken = default)
+    {
+        if (await _context.Disputes.AnyAsync(d =>
+                DisputeStates.Active.Contains(d.Status) &&
+                (d.CommissionId == commissionId || d.AttributionId == attributionId), cancellationToken))
+        {
+            return true;
+        }
+
+        return await _context.CandidateDuplicateCases.AnyAsync(duplicateCase =>
+            (duplicateCase.Status == "OPEN" ||
+             duplicateCase.Status == "AWAITING_CANDIDATE" ||
+             duplicateCase.Status == "UNDER_REVIEW" ||
+             duplicateCase.Status == "BLOCKED_FINANCE") &&
+            _context.Attributions.Any(attribution =>
+                attribution.AttributionId == attributionId &&
+                (attribution.Application.CandidateId == duplicateCase.CandidateAId ||
+                 attribution.Application.CandidateId == duplicateCase.CandidateBId) &&
+                (duplicateCase.JobId == null || duplicateCase.JobId == attribution.Application.JobId)),
+            cancellationToken);
+    }
 
     public async Task<IReadOnlyList<Commission>> GetCommissionsOfSuspendedAffiliatesAsync(int take, CancellationToken cancellationToken = default) =>
         await _context.Commissions

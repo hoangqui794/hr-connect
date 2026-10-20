@@ -15,6 +15,7 @@ public sealed class VerifyCandidateIdentityClaimCommandHandler
     private readonly ICandidateIdentityClaimRepository _claims;
     private readonly ICandidateRepository _candidates;
     private readonly IUserEmailIdentityRepository _identities;
+    private readonly ICandidateDuplicateRepository _duplicateCases;
     private readonly IOtpService _otp;
     private readonly IAuditLogService _audit;
     private readonly IUnitOfWork _unitOfWork;
@@ -23,6 +24,7 @@ public sealed class VerifyCandidateIdentityClaimCommandHandler
         ICandidateIdentityClaimRepository claims,
         ICandidateRepository candidates,
         IUserEmailIdentityRepository identities,
+        ICandidateDuplicateRepository duplicateCases,
         IOtpService otp,
         IAuditLogService audit,
         IUnitOfWork unitOfWork)
@@ -30,6 +32,7 @@ public sealed class VerifyCandidateIdentityClaimCommandHandler
         _claims = claims;
         _candidates = candidates;
         _identities = identities;
+        _duplicateCases = duplicateCases;
         _otp = otp;
         _audit = audit;
         _unitOfWork = unitOfWork;
@@ -105,6 +108,7 @@ public sealed class VerifyCandidateIdentityClaimCommandHandler
             }
 
             Guid? canonicalCandidateId = claim.RequesterCandidateId;
+            Guid? duplicateCaseId = null;
             string? reviewReason = null;
             if (!requiresReview && claim.TargetCandidateId.HasValue &&
                 claim.TargetCandidateId.Value != claim.RequesterCandidateId)
@@ -117,6 +121,16 @@ public sealed class VerifyCandidateIdentityClaimCommandHandler
                 {
                     requiresReview = true;
                     reviewReason = "CANDIDATE_SWAP_REQUIRES_ADMIN_REVIEW";
+                    if (target != null && target.Status == "ACTIVE" && !target.MergedIntoCandidateId.HasValue)
+                    {
+                        var duplicateCase = await _duplicateCases.GetOrCreateVerifiedIdentityClaimCaseAsync(
+                            claim.RequesterCandidateId,
+                            target.CandidateId,
+                            claim.ClaimId,
+                            now,
+                            cancellationToken);
+                        duplicateCaseId = duplicateCase.DuplicateCaseId;
+                    }
                 }
                 else if (!await _candidates.TrySwapIdentityCandidateAsync(
                              claim.RequesterCandidateId,
@@ -184,7 +198,8 @@ public sealed class VerifyCandidateIdentityClaimCommandHandler
                 claim.ClaimId,
                 finalStatus,
                 canonicalCandidateId,
-                finalToken);
+                finalToken,
+                duplicateCaseId);
         }
         catch
         {

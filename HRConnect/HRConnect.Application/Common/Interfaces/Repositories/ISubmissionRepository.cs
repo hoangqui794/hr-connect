@@ -183,4 +183,6 @@ public sealed record AffiliateCandidateCvRecord(
 public sealed record AffiliateCandidateCvAccessRecord(
     Guid CandidateId,
     Guid CvId,
-    string? FileName);
+    string? FileName,
+    string? ContentSha256 = null,
+    string? FingerprintVersion = null);

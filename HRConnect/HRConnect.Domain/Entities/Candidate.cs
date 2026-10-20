@@ -62,6 +62,9 @@ public partial class Candidate
     /// </summary>
     public Guid? MergedIntoCandidateId { get; set; }
 
+    /// <summary>Optimistic concurrency token used by identity merge operations.</summary>
+    public Guid MergeConcurrencyToken { get; set; } = Guid.NewGuid();
+
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
 
     public virtual ICollection<CandidateCv> CandidateCvs { get; set; } = new List<CandidateCv>();

@@ -83,11 +83,23 @@ public class DisputeRepository : IDisputeRepository
         return (items, total);
     }
 
-    public Task<Dispute?> GetForUpdateAsync(Guid disputeId, CancellationToken cancellationToken = default) =>
-        _context.Disputes
+    public Task<Dispute?> GetByIdAsync(Guid disputeId, CancellationToken cancellationToken = default) =>
+        _context.Disputes.AsNoTracking()
             .Include(d => d.Submission!).ThenInclude(s => s.Job)
             .Include(d => d.Submission!).ThenInclude(s => s.Candidate)
             .FirstOrDefaultAsync(d => d.DisputeId == disputeId, cancellationToken);
+
+    public Task<Dispute?> GetForUpdateAsync(Guid disputeId, CancellationToken cancellationToken = default)
+    {
+        var query = _context.Database.IsRelational()
+            ? _context.Disputes.FromSqlInterpolated(
+                $"SELECT * FROM public.dispute WHERE dispute_id = {disputeId} FOR UPDATE")
+            : _context.Disputes.Where(d => d.DisputeId == disputeId);
+        return query
+            .Include(d => d.Submission!).ThenInclude(s => s.Job)
+            .Include(d => d.Submission!).ThenInclude(s => s.Candidate)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 
     public async Task<IReadOnlyList<Submission>> GetSubmissionsForCandidateJobAsync(
         Guid candidateId, Guid jobId, CancellationToken cancellationToken = default) =>

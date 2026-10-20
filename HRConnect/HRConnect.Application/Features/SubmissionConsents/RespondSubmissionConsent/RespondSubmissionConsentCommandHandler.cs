@@ -28,6 +28,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
     private readonly ILogger<RespondSubmissionConsentCommandHandler> _logger;
     private readonly ICandidateCompanyTransactionLock _candidateCompanyLock;
     private readonly IAdminBusinessSettings _businessSettings;
+    private readonly ICandidateDuplicateRepository _candidateDuplicateRepository;
 
     public RespondSubmissionConsentCommandHandler(
         ISubmissionConsentRepository consentRepository,
@@ -43,7 +44,8 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         IUnitOfWork unitOfWork,
         ILogger<RespondSubmissionConsentCommandHandler> logger,
         ICandidateCompanyTransactionLock candidateCompanyLock,
-        IAdminBusinessSettings businessSettings)
+        IAdminBusinessSettings businessSettings,
+        ICandidateDuplicateRepository candidateDuplicateRepository)
     {
         _consentRepository = consentRepository;
         _submissionRepository = submissionRepository;
@@ -59,6 +61,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         _logger = logger;
         _candidateCompanyLock = candidateCompanyLock;
         _businessSettings = businessSettings;
+        _candidateDuplicateRepository = candidateDuplicateRepository;
     }
 
     public async Task<RespondSubmissionConsentResponse> Handle(RespondSubmissionConsentCommand request, CancellationToken cancellationToken)
@@ -70,7 +73,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         {
             if ((consent.Status == "CONFIRMED" && decision == "CONFIRM") ||
                 (consent.Status == "DECLINED" && decision == "DECLINE"))
-                return ExistingResponse(consent);
+                return await ExistingResponseAsync(consent, cancellationToken);
 
             throw new ConflictException($"Yêu cầu xác nhận đã kết thúc với trạng thái {consent.Status}.");
         }
@@ -121,7 +124,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         }
 
         var affiliate = await _affiliateRepository.GetByUserIdWithDetailsAsync(consent.Submission.SubmittedBy, cancellationToken);
-        if (affiliate == null || !IsAffiliateEligible(affiliate))
+        if (!SubmissionAcceptancePolicy.IsAffiliateEligible(affiliate))
         {
             await SetTerminalWithoutApplicationAsync(consent, "CANCELLED", "CANCELLED", request, now, cancellationToken);
             throw new ConflictException("Affiliate đã bị khóa, chưa được phê duyệt hoặc không còn hoạt động nên lượt nộp không thể tiếp tục.");
@@ -129,13 +132,54 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
 
         JobApplication application;
         var transactionCompleted = false;
-        var enforcesClientOwnership = IsClientOwnershipService(consent.Submission.Job.ServiceType?.Code);
+        var enforcesClientOwnership = SubmissionAcceptancePolicy.EnforcesClientOwnership(
+            consent.Submission.Job.ServiceType?.Code);
         var ownershipDays = enforcesClientOwnership
             ? await _businessSettings.GetIntAsync(BusinessSettingKeys.Mf02ClientOwnershipDays, cancellationToken)
             : 0;
         try
         {
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+            var identityReviewCase = await _candidateDuplicateRepository
+                .GetActiveSameJobCaseForSubmissionAsync(consent.SubmissionId, cancellationToken);
+            if (identityReviewCase != null)
+            {
+                await ApplyConfirmedConsentAndCvReuseAsync(consent, request, now, cancellationToken);
+                consent.Submission.Status = "PENDING_IDENTITY_REVIEW";
+                consent.Submission.UpdatedAt = now;
+
+                await _audit.AddAsync(new AuditEntry
+                {
+                    Action = AuditActions.SubmissionIdentityReviewHeld,
+                    EntityType = "SUBMISSION",
+                    EntityId = consent.SubmissionId,
+                    ActorUserId = request.RequesterUserId,
+                    CorrelationId = identityReviewCase.DuplicateCaseId,
+                    OldValues = new { status = "PENDING_CONSENT" },
+                    NewValues = new
+                    {
+                        status = "PENDING_IDENTITY_REVIEW",
+                        duplicateCaseId = identityReviewCase.DuplicateCaseId,
+                        aiStatus = "NOT_QUEUED"
+                    }
+                }, cancellationToken);
+                await AddAffiliateResultNotificationAsync(consent, "IDENTITY_REVIEW", now, cancellationToken);
+                await _unitOfWork.CommitTransactionAsync(cancellationToken);
+                transactionCompleted = true;
+
+                return new RespondSubmissionConsentResponse
+                {
+                    Message = "Đã xác nhận. Hồ sơ đang được đối chiếu danh tính trước khi chuyển sang bước tuyển dụng tiếp theo.",
+                    SubmissionId = consent.SubmissionId,
+                    SubmissionStatus = "PENDING_IDENTITY_REVIEW",
+                    AiStatus = "NOT_QUEUED",
+                    AffiliateReuseStatus = consent.Submission.CandidateCv.AffiliateReuseStatus,
+                    ReuseConcurrencyToken = consent.Submission.CandidateCv.AffiliateReuseConcurrencyToken,
+                    RequiresIdentityReview = true,
+                    DuplicateCaseId = identityReviewCase.DuplicateCaseId
+                };
+            }
 
             if (consent.Submission.ReplacementSlotId.HasValue)
             {
@@ -211,61 +255,9 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
                 }
             }
 
-            consent.Status = "CONFIRMED";
-            consent.RespondedAt = now;
-            consent.ResponseIp = Limit(request.IpAddress, 64);
-            consent.ResponseUserAgent = Limit(request.UserAgent, 512);
-            consent.UpdatedAt = now;
-            consent.ConcurrencyToken = Guid.NewGuid();
-
+            await ApplyConfirmedConsentAndCvReuseAsync(consent, request, now, cancellationToken);
             consent.Submission.Status = "ACCEPTED";
             consent.Submission.UpdatedAt = now;
-            var candidateCv = consent.Submission.CandidateCv;
-            if (candidateCv.Status == "PENDING_CONSENT")
-            {
-                candidateCv.Status = "ACTIVE";
-                candidateCv.UpdatedAt = now;
-            }
-
-            if (request.AllowFutureReuse.HasValue &&
-                string.Equals(candidateCv.CreationMethod, "AFFILIATE_UPLOAD", StringComparison.Ordinal))
-            {
-                var previousReuseStatus = candidateCv.AffiliateReuseStatus ?? "NOT_GRANTED";
-                var nextReuseStatus = request.AllowFutureReuse.Value
-                    ? "ALLOWED"
-                    : previousReuseStatus == "ALLOWED" ? "REVOKED" : "NOT_GRANTED";
-
-                if (!string.Equals(previousReuseStatus, nextReuseStatus, StringComparison.Ordinal))
-                {
-                    candidateCv.AffiliateReuseStatus = nextReuseStatus;
-                    candidateCv.AffiliateReuseChangedAt = now;
-                    candidateCv.AffiliateReuseChangedByUserId = request.RequesterUserId;
-                    candidateCv.AffiliateReuseConcurrencyToken = Guid.NewGuid();
-                    candidateCv.UpdatedAt = now;
-                    await _audit.AddAsync(new AuditEntry
-                    {
-                        Action = nextReuseStatus == "ALLOWED"
-                            ? AuditActions.AffiliateCvReuseGranted
-                            : AuditActions.AffiliateCvReuseRevoked,
-                        EntityType = "CANDIDATE_CV",
-                        EntityId = candidateCv.CvId,
-                        ActorUserId = request.RequesterUserId,
-                        CorrelationId = consent.ConsentId,
-                        OldValues = new { affiliateReuseStatus = previousReuseStatus },
-                        NewValues = new
-                        {
-                            affiliateReuseStatus = nextReuseStatus,
-                            consent.SubmissionId,
-                            consent.Submission.JobId,
-                            consent.Submission.CandidateId,
-                            affiliateUserId = consent.Submission.SubmittedBy,
-                            accessMethod = request.RequesterUserId.HasValue ? "CANDIDATE_ACCOUNT" : "EMAIL_LINK"
-                        }
-                    }, cancellationToken);
-                }
-            }
-
-            _cvRepository.Update(candidateCv);
 
             // Persist the accepted submission first inside the same transaction.
             // PostgreSQL validates accepted_submission_id when the application row is
@@ -290,7 +282,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             {
                 AttributionId = Guid.NewGuid(),
                 ApplicationId = application.ApplicationId,
-                AffiliateId = affiliate.AffiliateId,
+                AffiliateId = affiliate!.AffiliateId,
                 WinningSubmissionId = consent.SubmissionId,
                 AttributionRule = "CANDIDATE_CONSENT_THEN_FIRST_ACCEPTED",
                 Status = "ACTIVE",
@@ -372,6 +364,67 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             AffiliateReuseStatus = consent.Submission.CandidateCv.AffiliateReuseStatus,
             ReuseConcurrencyToken = consent.Submission.CandidateCv.AffiliateReuseConcurrencyToken
         };
+    }
+
+    private async Task ApplyConfirmedConsentAndCvReuseAsync(
+        HRConnect.Domain.Entities.SubmissionConsent consent,
+        RespondSubmissionConsentCommand request,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        consent.Status = "CONFIRMED";
+        consent.RespondedAt = now;
+        consent.ResponseIp = Limit(request.IpAddress, 64);
+        consent.ResponseUserAgent = Limit(request.UserAgent, 512);
+        consent.UpdatedAt = now;
+        consent.ConcurrencyToken = Guid.NewGuid();
+
+        var candidateCv = consent.Submission.CandidateCv;
+        if (candidateCv.Status == "PENDING_CONSENT")
+        {
+            candidateCv.Status = "ACTIVE";
+            candidateCv.UpdatedAt = now;
+        }
+
+        if (request.AllowFutureReuse.HasValue &&
+            string.Equals(candidateCv.CreationMethod, "AFFILIATE_UPLOAD", StringComparison.Ordinal))
+        {
+            var previousReuseStatus = candidateCv.AffiliateReuseStatus ?? "NOT_GRANTED";
+            var nextReuseStatus = request.AllowFutureReuse.Value
+                ? "ALLOWED"
+                : previousReuseStatus == "ALLOWED" ? "REVOKED" : "NOT_GRANTED";
+
+            if (!string.Equals(previousReuseStatus, nextReuseStatus, StringComparison.Ordinal))
+            {
+                candidateCv.AffiliateReuseStatus = nextReuseStatus;
+                candidateCv.AffiliateReuseChangedAt = now;
+                candidateCv.AffiliateReuseChangedByUserId = request.RequesterUserId;
+                candidateCv.AffiliateReuseConcurrencyToken = Guid.NewGuid();
+                candidateCv.UpdatedAt = now;
+                await _audit.AddAsync(new AuditEntry
+                {
+                    Action = nextReuseStatus == "ALLOWED"
+                        ? AuditActions.AffiliateCvReuseGranted
+                        : AuditActions.AffiliateCvReuseRevoked,
+                    EntityType = "CANDIDATE_CV",
+                    EntityId = candidateCv.CvId,
+                    ActorUserId = request.RequesterUserId,
+                    CorrelationId = consent.ConsentId,
+                    OldValues = new { affiliateReuseStatus = previousReuseStatus },
+                    NewValues = new
+                    {
+                        affiliateReuseStatus = nextReuseStatus,
+                        consent.SubmissionId,
+                        consent.Submission.JobId,
+                        consent.Submission.CandidateId,
+                        affiliateUserId = consent.Submission.SubmittedBy,
+                        accessMethod = request.RequesterUserId.HasValue ? "CANDIDATE_ACCOUNT" : "EMAIL_LINK"
+                    }
+                }, cancellationToken);
+            }
+        }
+
+        _cvRepository.Update(candidateCv);
     }
 
     private async Task SetTerminalWithoutApplicationAsync(
@@ -488,42 +541,33 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             throw new ForbiddenException("Vui lòng đăng nhập đúng tài khoản Candidate để xác nhận hồ sơ.");
     }
 
-    private static RespondSubmissionConsentResponse ExistingResponse(HRConnect.Domain.Entities.SubmissionConsent consent) => new()
+    private async Task<RespondSubmissionConsentResponse> ExistingResponseAsync(
+        HRConnect.Domain.Entities.SubmissionConsent consent,
+        CancellationToken cancellationToken)
     {
-        Message = consent.Status == "CONFIRMED" ? "Yêu cầu đã được xác nhận trước đó." : "Yêu cầu đã được từ chối trước đó.",
-        SubmissionId = consent.SubmissionId,
-        SubmissionStatus = consent.Submission.Status,
-        ApplicationId = consent.Submission.Applications.FirstOrDefault()?.ApplicationId,
-        AiStatus = consent.Status == "CONFIRMED" ? "PENDING" : "NOT_QUEUED",
-        AffiliateReuseStatus = consent.Submission.CandidateCv.AffiliateReuseStatus,
-        ReuseConcurrencyToken = consent.Submission.CandidateCv.AffiliateReuseConcurrencyToken
-    };
+        var requiresIdentityReview = consent.Submission.Status == "PENDING_IDENTITY_REVIEW";
+        var duplicateCase = requiresIdentityReview
+            ? await _candidateDuplicateRepository.GetActiveSameJobCaseForSubmissionAsync(
+                consent.SubmissionId,
+                cancellationToken)
+            : null;
+
+        return new RespondSubmissionConsentResponse
+        {
+            Message = consent.Status == "CONFIRMED" ? "Yêu cầu đã được xác nhận trước đó." : "Yêu cầu đã được từ chối trước đó.",
+            SubmissionId = consent.SubmissionId,
+            SubmissionStatus = consent.Submission.Status,
+            ApplicationId = consent.Submission.Applications.FirstOrDefault()?.ApplicationId,
+            AiStatus = consent.Submission.Status == "ACCEPTED" ? "PENDING" : "NOT_QUEUED",
+            AffiliateReuseStatus = consent.Submission.CandidateCv.AffiliateReuseStatus,
+            ReuseConcurrencyToken = consent.Submission.CandidateCv.AffiliateReuseConcurrencyToken,
+            RequiresIdentityReview = requiresIdentityReview,
+            DuplicateCaseId = duplicateCase?.DuplicateCaseId
+        };
+    }
 
     private static string? Limit(string? value, int max) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Length <= max ? value : value[..max];
-
-    private static bool IsAffiliateEligible(HRConnect.Domain.Entities.AffiliateProfile affiliate)
-    {
-        var profileIsEligible =
-            string.Equals(affiliate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(affiliate.Status, "VERIFIED", StringComparison.OrdinalIgnoreCase);
-        var user = affiliate.User;
-        if (!profileIsEligible ||
-            user == null ||
-            !string.Equals(user.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return user.UserRoleUsers.Any(userRole =>
-            string.Equals(userRole.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
-            userRole.Role.IsActive &&
-            string.Equals(userRole.Role.Code, JobAccessPolicy.AffiliateRole, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static bool IsClientOwnershipService(string? serviceTypeCode) =>
-        string.Equals(serviceTypeCode, "HEADHUNT_COD", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(serviceTypeCode, "CV_SOURCING", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsUniqueViolation(Exception exception)
     {

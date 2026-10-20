@@ -41,6 +41,8 @@ public class SubmitCandidateCommandHandlerTests
     private readonly Mock<IAuditLogService> _auditLogServiceMock;
     private readonly Mock<ILogger<SubmitCandidateCommandHandler>> _loggerMock;
     private readonly Mock<IAdminBusinessSettings> _businessSettingsMock;
+    private readonly Mock<ICandidateIdentityEvidenceProtector> _identityEvidenceProtectorMock;
+    private readonly Mock<ICandidateDuplicateRepository> _candidateDuplicateRepositoryMock;
     private readonly SubmitCandidateCommandHandler _handler;
 
     public SubmitCandidateCommandHandlerTests()
@@ -67,6 +69,8 @@ public class SubmitCandidateCommandHandlerTests
         _auditLogServiceMock = new Mock<IAuditLogService>();
         _loggerMock = new Mock<ILogger<SubmitCandidateCommandHandler>>();
         _businessSettingsMock = new Mock<IAdminBusinessSettings>();
+        _identityEvidenceProtectorMock = new Mock<ICandidateIdentityEvidenceProtector>();
+        _candidateDuplicateRepositoryMock = new Mock<ICandidateDuplicateRepository>();
 
         _emailNormalizerMock.Setup(n => n.Normalize(It.IsAny<string>()))
             .Returns<string>(s => s?.Trim().ToLowerInvariant() ?? string.Empty);
@@ -78,6 +82,9 @@ public class SubmitCandidateCommandHandlerTests
         _businessSettingsMock.Setup(s => s.GetIntAsync(
                 BusinessSettingKeys.Mf02ClientOwnershipDays, It.IsAny<CancellationToken>()))
             .ReturnsAsync(30);
+        _identityEvidenceProtectorMock.Setup(service => service.Protect(
+                It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .Returns(new CandidateIdentityEvidence(false, null, null, null, null));
 
         _handler = new SubmitCandidateCommandHandler(
             _affiliateProfileRepositoryMock.Object,
@@ -101,7 +108,9 @@ public class SubmitCandidateCommandHandlerTests
             Options.Create(new SubmissionConsentSettings()),
             _loggerMock.Object,
             Mock.Of<ISubmissionConsentExpiryService>(),
-            _businessSettingsMock.Object);
+            _businessSettingsMock.Object,
+            _identityEvidenceProtectorMock.Object,
+            _candidateDuplicateRepositoryMock.Object);
     }
 
     [Fact]
@@ -452,6 +461,90 @@ public class SubmitCandidateCommandHandlerTests
         result.Data.Status.Should().Be("PENDING_CONSENT");
         result.Data.AffiliateId.Should().Be(affiliateId);
         _candidateCvRepositoryMock.Verify(r => r.Update(It.IsAny<CandidateCv>()), Times.Never);
+        _candidateDuplicateRepositoryMock.Verify(repository => repository.AddSnapshotAsync(
+            It.Is<SubmissionIdentitySnapshot>(snapshot =>
+                snapshot.SubmissionId == result.Data.SubmissionId &&
+                snapshot.CvContentSha256 == null &&
+                snapshot.AssertedContactSource == "AFFILIATE" &&
+                snapshot.VerificationLevel == "ASSERTED"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_DifferentContactWithExactCvAndName_CreatesReviewCaseWithoutHoldingConsent()
+    {
+        var userId = Guid.NewGuid();
+        var affiliateId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+        var matchedCandidateId = Guid.NewGuid();
+        var duplicateCaseId = Guid.NewGuid();
+        const string contentHash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+        _affiliateProfileRepositoryMock.Setup(repository => repository.GetByUserIdAsync(
+                userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateProfile { AffiliateId = affiliateId, UserId = userId, Status = "ACTIVE" });
+        _jobRepositoryMock.Setup(repository => repository.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job { JobId = jobId, Title = "Backend", Status = JobStatuses.Active, ServiceTypeId = serviceTypeId });
+        _jobRepositoryMock.Setup(repository => repository.CanAnyRoleSubmitJobAsync(
+                serviceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _candidateRepositoryMock.Setup(repository => repository.GetByNormalizedEmailAsync(
+                "new-contact@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Candidate?)null);
+        _candidateRepositoryMock.Setup(repository => repository.GetByNormalizedPhoneAsync(
+                "0900000002", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Candidate?)null);
+        _cvStorageServiceMock.Setup(service => service.UploadAffiliateCvPdfAsync(
+                It.IsAny<Guid>(), userId, It.IsAny<Stream>(), "cv.pdf", 3, null,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UploadCvResult
+            {
+                CvId = Guid.NewGuid(),
+                ObjectKey = "candidate/new/cv.pdf",
+                FileName = "cv.pdf",
+                ContentSha256 = contentHash,
+                FingerprintVersion = "binary-sha256-v1"
+            });
+        _identityEvidenceProtectorMock.Setup(service => service.Protect(
+                "Nguyen Van A", "new-contact@example.com", "0900000002"))
+            .Returns(new CandidateIdentityEvidence(
+                true, "name-hmac", "email-hmac", "phone-hmac", "2026-10"));
+        _candidateDuplicateRepositoryMock.Setup(repository => repository.FindStrongCvNameMatchAsync(
+                It.IsAny<Guid>(), jobId, "name-hmac", contentHash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CandidateDuplicateMatch(matchedCandidateId, Guid.NewGuid(), true));
+        _candidateDuplicateRepositoryMock.Setup(repository => repository.GetOrCreateStrongMatchCaseAsync(
+                It.IsAny<Guid>(), matchedCandidateId, It.IsAny<Guid>(), jobId, "2026-10",
+                It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CandidateDuplicateCase { DuplicateCaseId = duplicateCaseId });
+
+        var response = await _handler.Handle(new SubmitCandidateCommand
+        {
+            UserId = userId,
+            JobId = jobId,
+            FullName = "Nguyen Van A",
+            Email = "new-contact@example.com",
+            Phone = "0900000002",
+            FileStream = new MemoryStream([1, 2, 3]),
+            FileName = "cv.pdf",
+            FileSizeBytes = 3,
+            RoleCodes = [JobAccessPolicy.AffiliateRole]
+        }, CancellationToken.None);
+
+        response.Success.Should().BeTrue();
+        response.Data!.Status.Should().Be("PENDING_CONSENT");
+        _candidateDuplicateRepositoryMock.Verify(repository => repository.AddSnapshotAsync(
+            It.Is<SubmissionIdentitySnapshot>(snapshot =>
+                snapshot.NormalizedNameHash == "name-hmac" &&
+                snapshot.EmailHmac == "email-hmac" &&
+                snapshot.PhoneHmac == "phone-hmac" &&
+                snapshot.CvContentSha256 == contentHash &&
+                snapshot.HmacKeyVersion == "2026-10"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _candidateDuplicateRepositoryMock.Verify(repository => repository.GetOrCreateStrongMatchCaseAsync(
+            It.IsAny<Guid>(), matchedCandidateId, response.Data.SubmissionId, jobId, "2026-10",
+            It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

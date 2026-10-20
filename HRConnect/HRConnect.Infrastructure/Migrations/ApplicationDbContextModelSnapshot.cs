@@ -761,6 +761,13 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("attribution_rule")
                         .HasDefaultValueSql("'FIRST_SUBMISSION_TIMESTAMP_PRECEDENCE'::character varying");
 
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<DateTime>("EstablishedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -994,6 +1001,13 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(120)")
                         .HasColumnName("highest_education");
 
+                    b.Property<Guid>("MergeConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("merge_concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<Guid?>("MergedIntoCandidateId")
                         .HasColumnType("uuid")
                         .HasColumnName("merged_into_candidate_id")
@@ -1067,10 +1081,10 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasKey("CandidateId")
                         .HasName("candidate_pkey");
 
-                    b.HasIndex("MergedIntoCandidateId");
-
                     b.HasIndex(new[] { "UserId" }, "candidate_user_id_key")
                         .IsUnique();
+
+                    b.HasIndex(new[] { "MergedIntoCandidateId" }, "idx_candidate_merged_into");
 
                     b.HasIndex(new[] { "Status" }, "idx_candidate_status");
 
@@ -1121,6 +1135,11 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("candidate_id");
 
+                    b.Property<string>("ContentSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("content_sha256");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -1145,6 +1164,11 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Property<long?>("FileSizeBytes")
                         .HasColumnType("bigint")
                         .HasColumnName("file_size_bytes");
+
+                    b.Property<string>("FingerprintVersion")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("fingerprint_version");
 
                     b.Property<bool>("IsPrimary")
                         .ValueGeneratedOnAdd()
@@ -1181,6 +1205,11 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("structured_content");
 
+                    b.Property<string>("TextFingerprint")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("text_fingerprint");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(180)
@@ -1208,6 +1237,9 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex(new[] { "CandidateId", "CreatedAt" }, "idx_candidate_cv_candidate")
                         .IsDescending(false, true);
+
+                    b.HasIndex(new[] { "ContentSha256" }, "idx_candidate_cv_content_sha256")
+                        .HasFilter("content_sha256 IS NOT NULL");
 
                     b.HasIndex(new[] { "CreationMethod", "Status" }, "idx_candidate_cv_creation_method");
 
@@ -1239,6 +1271,198 @@ namespace HRConnect.Infrastructure.Migrations
                             t.HasCheckConstraint("ck_candidate_cv_affiliate_uploader", "creation_method <> 'AFFILIATE_UPLOAD' OR uploaded_by_user_id IS NOT NULL");
 
                             t.HasCheckConstraint("ck_candidate_cv_creation_method", "((creation_method = 'PLATFORM_BUILDER' AND structured_content IS NOT NULL) OR (creation_method = 'TEMPLATE_FORM' AND structured_content IS NOT NULL AND cv_template_id IS NOT NULL) OR (creation_method IN ('FILE_UPLOAD','AFFILIATE_UPLOAD','AFFILIATE_ADOPTED') AND source_file_url IS NOT NULL))");
+                        });
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.CandidateDuplicateCase", b =>
+                {
+                    b.Property<Guid>("DuplicateCaseId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("duplicate_case_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("CandidateAId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("candidate_a_id");
+
+                    b.Property<Guid>("CandidateBId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("candidate_b_id");
+
+                    b.Property<Guid?>("CanonicalCandidateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("canonical_candidate_id");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<Guid?>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<string>("Resolution")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("resolution");
+
+                    b.Property<string>("ResolutionIdempotencyKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("resolution_idempotency_key");
+
+                    b.Property<string>("ResolutionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("resolution_reason");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by");
+
+                    b.Property<string>("RiskLevel")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("risk_level");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.HasKey("DuplicateCaseId")
+                        .HasName("candidate_duplicate_case_pkey");
+
+                    b.HasIndex("CandidateBId");
+
+                    b.HasIndex("JobId");
+
+                    b.HasIndex("ReviewedBy");
+
+                    b.HasIndex("SubmissionId");
+
+                    b.HasIndex(new[] { "CanonicalCandidateId" }, "idx_candidate_duplicate_case_canonical")
+                        .HasFilter("canonical_candidate_id IS NOT NULL");
+
+                    b.HasIndex(new[] { "Status", "CreatedAt" }, "idx_candidate_duplicate_case_status_created");
+
+                    b.HasIndex(new[] { "CandidateAId", "CandidateBId" }, "uq_candidate_duplicate_case_active_global")
+                        .IsUnique()
+                        .HasFilter("job_id IS NULL AND status IN ('OPEN','AWAITING_CANDIDATE','UNDER_REVIEW','BLOCKED_FINANCE')");
+
+                    b.HasIndex(new[] { "CandidateAId", "CandidateBId", "JobId" }, "uq_candidate_duplicate_case_active_job")
+                        .IsUnique()
+                        .HasFilter("job_id IS NOT NULL AND status IN ('OPEN','AWAITING_CANDIDATE','UNDER_REVIEW','BLOCKED_FINANCE')");
+
+                    b.HasIndex(new[] { "IdempotencyKey" }, "uq_candidate_duplicate_case_idempotency")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "ResolutionIdempotencyKey" }, "uq_candidate_duplicate_case_resolution_idempotency")
+                        .IsUnique()
+                        .HasFilter("resolution_idempotency_key IS NOT NULL");
+
+                    b.ToTable("candidate_duplicate_case", "public", t =>
+                        {
+                            t.HasComment("Reviewable duplicate identity case. Similarity alone never merges Candidates.");
+
+                            t.HasCheckConstraint("ck_candidate_duplicate_case_order", "candidate_a_id < candidate_b_id");
+
+                            t.HasCheckConstraint("ck_candidate_duplicate_case_resolution", "resolution IS NULL OR resolution IN ('MERGED','NOT_DUPLICATE','NO_ACTION','FINANCE_BLOCKED')");
+
+                            t.HasCheckConstraint("ck_candidate_duplicate_case_risk", "risk_level IN ('REVIEW','HIGH')");
+
+                            t.HasCheckConstraint("ck_candidate_duplicate_case_status", "status IN ('OPEN','AWAITING_CANDIDATE','UNDER_REVIEW','MERGED','DISMISSED','BLOCKED_FINANCE')");
+                        });
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.CandidateDuplicateSignal", b =>
+                {
+                    b.Property<Guid>("DuplicateSignalId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("duplicate_signal_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("DetectorVersion")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("detector_version");
+
+                    b.Property<Guid>("DuplicateCaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("duplicate_case_id");
+
+                    b.Property<string>("Evidence")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("evidence");
+
+                    b.Property<string>("KeyVersion")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("key_version");
+
+                    b.Property<string>("ReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("reason_code");
+
+                    b.Property<decimal>("Score")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)")
+                        .HasColumnName("score");
+
+                    b.HasKey("DuplicateSignalId")
+                        .HasName("candidate_duplicate_signal_pkey");
+
+                    b.HasIndex(new[] { "DuplicateCaseId", "ReasonCode" }, "uq_candidate_duplicate_signal_reason")
+                        .IsUnique();
+
+                    b.ToTable("candidate_duplicate_signal", "public", t =>
+                        {
+                            t.HasComment("Minimized explainable evidence; raw PII and CV text are prohibited.");
+
+                            t.HasCheckConstraint("ck_candidate_duplicate_signal_score", "score >= 0 AND score <= 1");
                         });
                 });
 
@@ -2265,9 +2489,20 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("attribution_id");
 
+                    b.Property<Guid?>("CandidateDuplicateCaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("candidate_duplicate_case_id");
+
                     b.Property<Guid?>("CommissionId")
                         .HasColumnType("uuid")
                         .HasColumnName("commission_id");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -2300,6 +2535,11 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Property<string>("Resolution")
                         .HasColumnType("text")
                         .HasColumnName("resolution");
+
+                    b.Property<string>("ResolutionIdempotencyKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("resolution_idempotency_key");
 
                     b.Property<DateTime?>("ResolvedAt")
                         .HasColumnType("timestamp with time zone")
@@ -2338,7 +2578,14 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex("ResolvedBy");
 
+                    b.HasIndex(new[] { "CandidateDuplicateCaseId" }, "idx_dispute_candidate_duplicate_case")
+                        .HasFilter("candidate_duplicate_case_id IS NOT NULL");
+
                     b.HasIndex(new[] { "Status", "CreatedAt" }, "idx_dispute_status_created");
+
+                    b.HasIndex(new[] { "ResolutionIdempotencyKey" }, "uq_dispute_resolution_idempotency")
+                        .IsUnique()
+                        .HasFilter("resolution_idempotency_key IS NOT NULL");
 
                     b.HasIndex(new[] { "SubmissionId" }, "uq_dispute_submission_open")
                         .IsUnique()
@@ -4886,15 +5133,15 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("((status)::text = 'ACCEPTED'::text)");
 
-                    b.HasIndex(new[] { "JobId", "CandidateId" }, "uq_submission_one_pending_consent")
+                    b.HasIndex(new[] { "JobId", "CandidateId", "SubmittedBy" }, "uq_submission_one_pending_consent")
                         .IsUnique()
-                        .HasFilter("((status)::text = 'PENDING_CONSENT'::text)");
+                        .HasFilter("status IN ('PENDING_CONSENT','PENDING_IDENTITY_REVIEW')");
 
                     b.ToTable("submission", "public", t =>
                         {
                             t.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed.");
 
-                            t.HasCheckConstraint("submission_status_check", "status IN ('RECEIVED','PENDING_CONSENT','ACCEPTED','BLOCKED_DUPLICATE','BLOCKED_CLIENT_OWNED','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
+                            t.HasCheckConstraint("submission_status_check", "status IN ('RECEIVED','PENDING_CONSENT','PENDING_IDENTITY_REVIEW','ACCEPTED','BLOCKED_DUPLICATE','BLOCKED_CLIENT_OWNED','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
                         });
                 });
 
@@ -5001,6 +5248,87 @@ namespace HRConnect.Infrastructure.Migrations
                             t.HasCheckConstraint("ck_submission_consent_expiry", "expires_at > requested_at");
 
                             t.HasCheckConstraint("ck_submission_consent_status", "status IN ('PENDING','CONFIRMED','DECLINED','EXPIRED','CANCELLED')");
+                        });
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.SubmissionIdentitySnapshot", b =>
+                {
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.Property<string>("AssertedContactSource")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("asserted_contact_source");
+
+                    b.Property<DateTime>("CapturedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("captured_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("CvContentSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("cv_content_sha256");
+
+                    b.Property<string>("CvTextFingerprint")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("cv_text_fingerprint");
+
+                    b.Property<string>("EmailHmac")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("email_hmac");
+
+                    b.Property<string>("FingerprintVersion")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("fingerprint_version");
+
+                    b.Property<string>("HmacKeyVersion")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("hmac_key_version");
+
+                    b.Property<string>("NormalizedNameHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("normalized_name_hash");
+
+                    b.Property<string>("PhoneHmac")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("phone_hmac");
+
+                    b.Property<string>("VerificationLevel")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("verification_level");
+
+                    b.HasKey("SubmissionId")
+                        .HasName("submission_identity_snapshot_pkey");
+
+                    b.HasIndex(new[] { "CvContentSha256" }, "idx_submission_identity_cv_sha256")
+                        .HasFilter("cv_content_sha256 IS NOT NULL");
+
+                    b.HasIndex(new[] { "EmailHmac", "HmacKeyVersion" }, "idx_submission_identity_email_hmac")
+                        .HasFilter("email_hmac IS NOT NULL");
+
+                    b.HasIndex(new[] { "PhoneHmac", "HmacKeyVersion" }, "idx_submission_identity_phone_hmac")
+                        .HasFilter("phone_hmac IS NOT NULL");
+
+                    b.ToTable("submission_identity_snapshot", "public", t =>
+                        {
+                            t.HasComment("Immutable privacy-minimized identity evidence captured at submission intake.");
+
+                            t.HasCheckConstraint("ck_submission_identity_snapshot_contact_source", "asserted_contact_source IN ('AFFILIATE','CANDIDATE','SYSTEM')");
+
+                            t.HasCheckConstraint("ck_submission_identity_snapshot_verification", "verification_level IN ('ASSERTED','EMAIL_VERIFIED','PHONE_VERIFIED','CANDIDATE_CONFIRMED')");
                         });
                 });
 
@@ -5558,6 +5886,71 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("CvTemplate");
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.CandidateDuplicateCase", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.Candidate", "CandidateA")
+                        .WithMany()
+                        .HasForeignKey("CandidateAId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_candidate_duplicate_case_candidate_a");
+
+                    b.HasOne("HRConnect.Domain.Entities.Candidate", "CandidateB")
+                        .WithMany()
+                        .HasForeignKey("CandidateBId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_candidate_duplicate_case_candidate_b");
+
+                    b.HasOne("HRConnect.Domain.Entities.Candidate", "CanonicalCandidate")
+                        .WithMany()
+                        .HasForeignKey("CanonicalCandidateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_candidate_duplicate_case_canonical");
+
+                    b.HasOne("HRConnect.Domain.Entities.Job", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_candidate_duplicate_case_job");
+
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "Reviewer")
+                        .WithMany()
+                        .HasForeignKey("ReviewedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_candidate_duplicate_case_reviewer");
+
+                    b.HasOne("HRConnect.Domain.Entities.Submission", "Submission")
+                        .WithMany()
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_candidate_duplicate_case_submission");
+
+                    b.Navigation("CandidateA");
+
+                    b.Navigation("CandidateB");
+
+                    b.Navigation("CanonicalCandidate");
+
+                    b.Navigation("Job");
+
+                    b.Navigation("Reviewer");
+
+                    b.Navigation("Submission");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.CandidateDuplicateSignal", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.CandidateDuplicateCase", "DuplicateCase")
+                        .WithMany("Signals")
+                        .HasForeignKey("DuplicateCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_candidate_duplicate_signal_case");
+
+                    b.Navigation("DuplicateCase");
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.CandidateIdentityClaim", b =>
                 {
                     b.HasOne("HRConnect.Domain.Entities.Candidate", "RequesterCandidate")
@@ -5845,6 +6238,12 @@ namespace HRConnect.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("dispute_attribution_id_fkey");
 
+                    b.HasOne("HRConnect.Domain.Entities.CandidateDuplicateCase", "CandidateDuplicateCase")
+                        .WithMany("Disputes")
+                        .HasForeignKey("CandidateDuplicateCaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_dispute_candidate_duplicate_case");
+
                     b.HasOne("HRConnect.Domain.Entities.Commission", "Commission")
                         .WithMany("Disputes")
                         .HasForeignKey("CommissionId")
@@ -5871,6 +6270,8 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasConstraintName("dispute_submission_id_fkey");
 
                     b.Navigation("Attribution");
+
+                    b.Navigation("CandidateDuplicateCase");
 
                     b.Navigation("Commission");
 
@@ -6509,6 +6910,18 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Submission");
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.SubmissionIdentitySnapshot", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.Submission", "Submission")
+                        .WithOne("IdentitySnapshot")
+                        .HasForeignKey("HRConnect.Domain.Entities.SubmissionIdentitySnapshot", "SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_submission_identity_snapshot_submission");
+
+                    b.Navigation("Submission");
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.SystemSetting", b =>
                 {
                     b.HasOne("HRConnect.Domain.Entities.AppUser", "UpdatedByNavigation")
@@ -6741,6 +7154,13 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Submissions");
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.CandidateDuplicateCase", b =>
+                {
+                    b.Navigation("Disputes");
+
+                    b.Navigation("Signals");
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.Commission", b =>
                 {
                     b.Navigation("CommissionAdjustments");
@@ -6895,6 +7315,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Consent");
 
                     b.Navigation("Disputes");
+
+                    b.Navigation("IdentitySnapshot");
 
                     b.Navigation("InverseDuplicateOfSubmission");
                 });

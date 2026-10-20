@@ -50,6 +50,16 @@ VALUES
      'review',
      'Review Candidate identity claims'),
 
+    ('candidate_duplicate.view',
+     'candidate_duplicate',
+     'view',
+     'View Candidate duplicate review cases'),
+
+    ('candidate_duplicate.resolve',
+     'candidate_duplicate',
+     'resolve',
+     'Resolve and merge Candidate duplicate cases'),
+
     ('cv.create',
      'candidate_cv',
      'create',
@@ -637,6 +647,8 @@ JOIN public.permission p
         'company.verify',
         'affiliate.verify',
         'candidate.identity.review',
+        'candidate_duplicate.view',
+        'candidate_duplicate.resolve',
 
         'dispute.view',
         'dispute.resolve',
