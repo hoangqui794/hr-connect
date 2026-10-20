@@ -7,6 +7,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { candidateConsentApi } from '@/services/api/mf02Api';
 import { getApiError } from '@/services/apiClient';
 import { StatusDot, Surface } from '@/features/admin-console/ui';
+import { BrandMark } from '@/components/common/BrandMark';
 
 export const PublicSubmissionConsentPage: React.FC = () => {
   const { message } = AntApp.useApp();
@@ -122,9 +123,7 @@ export const PublicSubmissionConsentPage: React.FC = () => {
       <div className="mx-auto max-w-3xl space-y-5">
         <header className="text-center">
           <a href="/" className="inline-flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-slate-900 no-underline hover:opacity-90 transition-opacity">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-base font-black text-white shadow-md shadow-[#1E9EDB]/30">
-              H
-            </span>
+            <BrandMark size={36} />
             <span>HR Connect</span>
           </a>
           <h1 className="m-0 mt-5 text-3xl font-extrabold text-slate-900">Xác nhận hồ sơ ứng tuyển</h1>

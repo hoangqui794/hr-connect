@@ -13,6 +13,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWorkspaceMenu';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { BrandMark } from '@/components/common/BrandMark';
 
 const { Header } = Layout;
 
@@ -49,23 +50,7 @@ export const CandidateHeader: React.FC = () => {
           style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}
           title="HR Connect — Nền tảng Tuyển dụng AI"
         >
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: 'linear-gradient(135deg, #1E9EDB 0%, #53B7E8 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              color: '#fff',
-              fontSize: 18,
-              boxShadow: '0 3px 10px rgba(30, 158, 219, 0.35)',
-            }}
-          >
-            H
-          </div>
+          <BrandMark size={36} className="shrink-0" />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontWeight: 800, fontSize: 18, color: '#0f172a', letterSpacing: '-0.3px' }}>
               HR Connect

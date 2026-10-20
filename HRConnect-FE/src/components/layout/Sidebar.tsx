@@ -12,6 +12,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { getAvatarImageUrl, getInitials, useAuthStore } from '@/stores/authStore';
 import { SIDEBAR_MENU_ITEMS, SidebarMenuItem } from '@/constants/rbac';
 import { UserRole } from '@/types/roles';
+import { BrandMark } from '@/components/common/BrandMark';
 
 const { Sider } = Layout;
 
@@ -124,25 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
           userSelect: 'none',
         }}
       >
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            background: pal.logo,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 16,
-            fontWeight: 800,
-            color: '#fff',
-            flexShrink: 0,
-            boxShadow: '0 2px 8px rgba(30, 158, 219, 0.35)',
-            transition: 'transform 0.2s',
-          }}
-        >
-          H
-        </div>
+        <BrandMark size={32} className="shrink-0" />
         {!collapsed && (
           <span
             style={{
