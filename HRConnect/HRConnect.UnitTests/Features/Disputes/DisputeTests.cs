@@ -24,6 +24,10 @@ public class DisputeTests
     private readonly Mock<IAuditLogService> _audit = new();
     private readonly Guid _adminUserId = Guid.NewGuid();
 
+    /// <summary>Values of the ck_notification_type check constraint.</summary>
+    private static readonly string[] AllowedNotificationTypes =
+        ["ACCOUNT", "COMPANY", "JOB", "SUBMISSION", "SUBMISSION_CONSENT_RESULT", "JOB_FIT", "APPLICATION_STATUS", "INTERVIEW", "OFFER", "AFFILIATE", "COMMISSION", "PAYOUT", "SYSTEM"];
+
     private DisputeHandlers Handlers() => new(
         new DisputeRepository(_context), new CandidateDuplicateRepository(_context),
         new BusinessSettingsService(new SystemSettingRepository(_context)),
@@ -192,6 +196,8 @@ public class DisputeTests
         _context.Commissions.Single().AttributionId.Should().Be(attribution.AttributionId);
         _audit.Verify(a => a.AddAsync(It.Is<AuditEntry>(e => e.Action == "ATTRIBUTION_TRANSFERRED"), It.IsAny<CancellationToken>()), Times.Once);
         _context.Notifications.Should().Contain(n => n.UserId == s.Winner.UserId && !n.Message.Contains("Affiliate B"));
+        // BUG-07: every type must be allowed by ck_notification_type (InMemory does not enforce it).
+        _context.Notifications.Should().OnlyContain(n => AllowedNotificationTypes.Contains(n.NotificationType));
     }
 
     [Fact]
