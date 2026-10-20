@@ -21,6 +21,8 @@ export const PublicSubmissionConsentPage: React.FC = () => {
   });
   const [allowFutureReuse, setAllowFutureReuse] = useState(false);
   const [completed, setCompleted] = useState<string>();
+  // UI-03: lỗi không thể làm lại (job đóng, yêu cầu hết hạn, đã xử lý) thì đóng form thay vì giữ nút.
+  const [closedReason, setClosedReason] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     if (!submissionId && location.hash) {
@@ -53,6 +55,7 @@ export const PublicSubmissionConsentPage: React.FC = () => {
     },
     onError: (error) => {
       const apiError = getApiError(error, 'Không thể ghi nhận lựa chọn của bạn.');
+      if (apiError.status === 409 || apiError.status === 410) setClosedReason(apiError.message);
       message.error(
         apiError.status === 429 && apiError.retryAfterSeconds
           ? `${apiError.message} Vui lòng thử lại sau ${apiError.retryAfterSeconds} giây.`
@@ -71,6 +74,17 @@ export const PublicSubmissionConsentPage: React.FC = () => {
         status="warning"
         title="Liên kết xác nhận không hợp lệ"
         subTitle="Vui lòng mở lại liên kết mới nhất được HR Connect gửi qua email."
+        extra={<Button type="primary" href="/">Về trang chủ</Button>}
+      />
+    );
+  }
+
+  if (closedReason) {
+    return (
+      <Result
+        status="warning"
+        title="Yêu cầu này không còn xử lý được"
+        subTitle={closedReason}
         extra={<Button type="primary" href="/">Về trang chủ</Button>}
       />
     );

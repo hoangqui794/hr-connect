@@ -86,3 +86,7 @@ tmp/
 .tmp/
 .dotnet/
 
+
+# Deployed e2e: saved sessions (tokens) and local evidence never go to git
+HRConnect-FE/e2e-deploy/.auth/
+test-evidence/
