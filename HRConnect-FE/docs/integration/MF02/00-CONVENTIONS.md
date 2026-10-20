@@ -22,6 +22,10 @@ Các permission chính:
 | `referral.progress.view_own` | Affiliate xem tiến độ referral tổng quát |
 | `attribution.view_own` | Affiliate xem Attribution của mình |
 | `candidate.identity.review` | Admin xử lý Identity Claim |
+| `candidate_duplicate.view` | Admin xem hồ sơ Candidate nghi trùng |
+| `candidate_duplicate.resolve` | Admin preview và xử lý hợp nhất |
+| `dispute.create`, `dispute.view_own` | Affiliate tạo/xem khiếu nại của mình |
+| `dispute.view`, `dispute.resolve` | Admin xem/xử lý khiếu nại |
 | `audit.view` | Admin xem audit log |
 
 ## HTTP client
@@ -69,3 +73,5 @@ Không tạo vòng lặp refresh cho login, refresh và logout.
 | Adopt CV | Candidate affiliate CV detail và kho CV cá nhân |
 | Identity Claim hoàn tất | Auth/me, email identities, CV, applications |
 | Admin xử lý claim | Admin claim list/detail |
+| Admin xử lý duplicate case | Duplicate case list/detail/preview, Candidate profile/CV/application, Attribution/Commission |
+| Admin xử lý dispute | Dispute list/detail, Attribution/Commission và notification |

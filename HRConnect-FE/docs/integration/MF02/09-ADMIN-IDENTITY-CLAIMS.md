@@ -37,7 +37,7 @@ Hiển thị tách biệt:
 - reason khiến claim phải review;
 - `concurrencyToken` hiện tại.
 
-Nếu cả hai Candidate đều có lịch sử, hiển thị cảnh báo rõ. Không tạo nút “force merge”.
+Nếu cả hai Candidate đều có lịch sử, Identity Claim không tự swap. FE dẫn Admin sang hàng đợi duplicate case để preview và xử lý có kiểm soát.
 
 ## Approve/reject
 
@@ -49,7 +49,7 @@ Nếu cả hai Candidate đều có lịch sử, hiển thị cảnh báo rõ. K
 ## Lỗi cần xử lý
 
 - `409` stale/concurrent update: reload detail trước khi thao tác lại.
-- `IDENTITY_CLAIM_MANUAL_MERGE_REQUIRED`: giữ record trong hàng đợi và báo chưa thể tự động gộp.
+- `IDENTITY_CLAIM_MANUAL_MERGE_REQUIRED`: mở hàng đợi `/admin/candidate-duplicate-cases`; không thử approve lặp lại.
 - `404`: claim đã bị đóng/xóa khỏi phạm vi hiện tại; quay về danh sách.
 - `403`: ẩn toàn bộ action và hiển thị thiếu quyền.
 
@@ -60,3 +60,4 @@ Nếu cả hai Candidate đều có lịch sử, hiển thị cảnh báo rõ. K
 - [ ] Không retry với concurrency token cũ.
 - [ ] Manual merge conflict không bị hiển thị thành lỗi 500.
 - [ ] Sau quyết định, Candidate nhận đúng trạng thái/notification khi reload.
+- [ ] Hồ sơ có dữ liệu hai phía được xử lý bằng preview/resolve duplicate case, không có nút force merge trực tiếp.

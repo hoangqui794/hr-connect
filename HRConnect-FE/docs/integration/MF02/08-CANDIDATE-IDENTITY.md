@@ -65,7 +65,7 @@ Sau resend, thay ngay `concurrencyToken`, `expiresAt`, `resendAfter` và số l�
 | Status | UI |
 |---|---|
 | `COMPLETED` | Liên kết hoàn tất; reload auth/me, email identities, CV và applications |
-| `PENDING_ADMIN_REVIEW` | Đã xác minh email nhưng cần Admin đối chiếu; khóa verify/resend |
+| `PENDING_ADMIN_REVIEW` | Đã xác minh email nhưng cần Admin đối chiếu; khóa verify/resend. Nếu response có `duplicateCaseId`, dẫn tới trang case của Candidate |
 
 ## Mã lỗi cần map
 
@@ -79,9 +79,12 @@ Sau resend, thay ngay `concurrencyToken`, `expiresAt`, `resendAfter` và số l�
 | `IDENTITY_CLAIM_RESEND_LIMIT_REACHED` | Khóa resend; không gọi tiếp |
 | `CANDIDATE_IDENTITY_MERGE_PENDING` | Báo hồ sơ cần Admin xử lý |
 
-## Giới hạn release hiện tại
+## API liên quan sau khi xác minh
 
-FE chỉ triển khai list/start/resend/verify. Chưa hiển thị nút revoke alias hoặc make-primary vì chưa có API phát hành.
+- `GET /api/v1/candidates/me/duplicate-cases`
+- `GET /api/v1/candidates/me/duplicate-cases/{caseId}`
+
+Không tự hiển thị dữ liệu hồ sơ còn lại. Xem contract đầy đủ tại [13-CANDIDATE-DUPLICATE-CASES.md](./13-CANDIDATE-DUPLICATE-CASES.md).
 
 ## Checklist
 
@@ -91,3 +94,4 @@ FE chỉ triển khai list/start/resend/verify. Chưa hiển thị nút revoke a
 - [ ] Resend thay token ngay lập tức.
 - [ ] `COMPLETED` reload toàn bộ dữ liệu MF02.
 - [ ] `PENDING_ADMIN_REVIEW` không cho verify lại.
+- [ ] Có `duplicateCaseId` thì mở đúng trang theo dõi case.
