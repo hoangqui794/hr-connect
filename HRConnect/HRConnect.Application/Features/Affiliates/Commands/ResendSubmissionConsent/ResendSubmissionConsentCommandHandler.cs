@@ -73,7 +73,8 @@ public sealed class ResendSubmissionConsentCommandHandler : IRequestHandler<Rese
             _businessSettings, BusinessSettingKeys.ConsentResendCooldownMinutes, _settings.ResendCooldownMinutes, cancellationToken), 1, 60));
         var lastAttemptAt = consent.EmailSentAt ?? consent.UpdatedAt;
         if (consent.EmailSendCount > 0 && lastAttemptAt.Add(cooldown) > now)
-            throw new ConflictException($"Vui lòng chờ đến {lastAttemptAt.Add(cooldown):O} trước khi gửi lại.");
+            // UI-02: giờ Việt Nam dễ đọc thay cho chuỗi UTC thô.
+            throw new ConflictException($"Vui lòng chờ đến {lastAttemptAt.Add(cooldown).AddHours(7):HH:mm:ss dd/MM/yyyy} (giờ Việt Nam) trước khi gửi lại.");
 
         var rawToken = SubmissionConsentToken.Create();
         consent.TokenHash = SubmissionConsentToken.Hash(rawToken);

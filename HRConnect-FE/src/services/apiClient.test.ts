@@ -331,10 +331,10 @@ describe('API client foundation', () => {
     expect(requests[0].url).toBe('/submission-consents/review');
     expect(JSON.parse(requests[0].data as string)).toEqual({ token: 'one-time-token' });
     expect(requests[1].url).toBe('/submission-consents/respond');
+    // BUG-04: declining never carries the reuse flag (the API rejects it on DECLINE).
     expect(JSON.parse(requests[1].data as string)).toEqual({
       token: 'one-time-token',
       decision: 'DECLINE',
-      allowFutureReuse: false,
     });
   });
 });
