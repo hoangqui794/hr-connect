@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using System.Security.Cryptography;
 
 namespace HRConnect.Infrastructure.Services.Storage;
 
@@ -142,6 +143,9 @@ public class CvStorageService : ICvStorageService
                 FileName = source.FileName ?? $"{cvId}.pdf",
                 MimeType = source.MimeType ?? "application/pdf",
                 FileSizeBytes = source.FileSizeBytes,
+                ContentSha256 = source.ContentSha256,
+                TextFingerprint = source.TextFingerprint,
+                FingerprintVersion = source.FingerprintVersion,
                 IsPrimary = false,
                 Status = "ACTIVE",
                 CreatedAt = now,
@@ -207,6 +211,8 @@ public class CvStorageService : ICvStorageService
         FileName = cv.FileName ?? $"{cv.CvId}.pdf",
         MimeType = cv.MimeType ?? "application/pdf",
         FileSizeBytes = cv.FileSizeBytes ?? 0,
+        ContentSha256 = cv.ContentSha256 ?? string.Empty,
+        FingerprintVersion = cv.FingerprintVersion ?? "binary-sha256-v1",
         IsPrimary = cv.IsPrimary,
         Status = cv.Status,
         CreatedAt = cv.CreatedAt
@@ -232,6 +238,9 @@ public class CvStorageService : ICvStorageService
             fileName,
             fileSizeBytes,
             cancellationToken);
+        var contentSha256 = Convert.ToHexString(SHA256.HashData(
+            validatedPdf.GetBuffer().AsSpan(0, checked((int)validatedPdf.Length))))
+            .ToLowerInvariant();
 
         // 2. Tạo mã định danh duy nhất và object key chuẩn
         var cvId = Guid.NewGuid();
@@ -293,6 +302,8 @@ public class CvStorageService : ICvStorageService
                 FileName = Path.GetFileName(fileName),
                 MimeType = "application/pdf",
                 FileSizeBytes = fileSizeBytes,
+                ContentSha256 = contentSha256,
+                FingerprintVersion = "binary-sha256-v1",
                 IsPrimary = isPrimary,
                 Status = initialStatus,
                 CreatedAt = now,
@@ -336,6 +347,8 @@ public class CvStorageService : ICvStorageService
                 FileName = candidateCv.FileName,
                 MimeType = candidateCv.MimeType,
                 FileSizeBytes = fileSizeBytes,
+                ContentSha256 = contentSha256,
+                FingerprintVersion = "binary-sha256-v1",
                 IsPrimary = isPrimary,
                 Status = candidateCv.Status,
                 CreatedAt = now

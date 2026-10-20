@@ -9,6 +9,8 @@ public class UploadCvResult
     public string FileName { get; set; } = string.Empty;
     public string MimeType { get; set; } = "application/pdf";
     public long FileSizeBytes { get; set; }
+    public string ContentSha256 { get; set; } = string.Empty;
+    public string FingerprintVersion { get; set; } = "binary-sha256-v1";
     public bool IsPrimary { get; set; }
     public string Status { get; set; } = "ACTIVE";
     public DateTime CreatedAt { get; set; }
