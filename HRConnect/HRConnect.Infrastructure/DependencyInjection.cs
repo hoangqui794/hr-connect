@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Infrastructure.Persistence;
 using HRConnect.Infrastructure.Repositories;
 using HRConnect.Infrastructure.Services.Email;
