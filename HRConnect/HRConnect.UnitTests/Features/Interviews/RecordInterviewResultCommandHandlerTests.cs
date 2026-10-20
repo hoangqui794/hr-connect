@@ -399,4 +399,52 @@ public class RecordInterviewResultCommandHandlerTests
         application.Status.Should().Be("INTERVIEW_FAILED");
         _applicationRepositoryMock.Verify(r => r.Update(application), Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_WhenClientCompanyUser_FailsNonFinalRoundWithoutNextAction_ShouldSetInterviewFailed()
+    {
+        var interviewId = Guid.NewGuid();
+        var clientUserId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var application = new HRConnect.Domain.Entities.Application
+        {
+            ApplicationId = Guid.NewGuid(),
+            Status = "INTERVIEW",
+            Job = new Job { CompanyId = companyId }
+        };
+        var interview = new Interview
+        {
+            InterviewId = interviewId,
+            ApplicationId = application.ApplicationId,
+            Status = "SCHEDULED",
+            Application = application,
+            InterviewStatusHistories = new List<InterviewStatusHistory>()
+        };
+
+        _interviewRepositoryMock
+            .Setup(r => r.GetByIdForUpdateAsync(interviewId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(interview);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(clientUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = clientUserId, CompanyId = companyId, Status = "ACTIVE" });
+        _unitOfWorkMock
+            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var result = await CreateHandler().Handle(new RecordInterviewResultCommand(
+            InterviewId: interviewId,
+            Result: "FAIL",
+            Feedback: "Không đạt ở vòng chuyên môn",
+            IsFinalRound: false,
+            NextAction: null,
+            ConcurrencyToken: interview.ConcurrencyToken,
+            CurrentUserId: clientUserId,
+            IsClientCompanyUser: true), CancellationToken.None);
+
+        result.Data.ApplicationStatus.Should().Be("INTERVIEW_FAILED");
+        application.Status.Should().Be("INTERVIEW_FAILED");
+        application.ApplicationStatusHistories.Should().ContainSingle(history =>
+            history.OldStatus == "INTERVIEW" && history.NewStatus == "INTERVIEW_FAILED");
+        _applicationRepositoryMock.Verify(r => r.Update(application), Times.Once);
+    }
 }

@@ -95,7 +95,7 @@ Candidate xem lịch và tham gia Interview
 Company ghi nhận PASS / FAIL / BACKUP
         ↓
 PASS + vòng cuối hoặc MAKE_OFFER  → OFFER_PENDING → Offer → Candidate phản hồi
-FAIL + vòng cuối hoặc REJECT      → INTERVIEW_FAILED → kết thúc
+FAIL                              → INTERVIEW_FAILED → kết thúc
 BACKUP                             → BACKUP → Company quyết định tiếp
 ```
 
@@ -158,13 +158,13 @@ Khi ghi kết quả, Interview chuyển sang `COMPLETED`. Kết quả có ba gi�
 | --- | --- | --- |
 | `PASS` | Là vòng cuối hoặc Company chọn `MAKE_OFFER` | `OFFER_PENDING` |
 | `PASS` | Chưa là vòng cuối và chưa chọn `MAKE_OFFER` | Giữ `INTERVIEW` để tạo vòng tiếp theo |
-| `FAIL` | Là vòng cuối hoặc Company chọn `REJECT` | `INTERVIEW_FAILED` |
-| `FAIL` | Chưa là vòng cuối và chưa chọn `REJECT` | Giữ `INTERVIEW`; Company quyết định vòng tiếp theo |
+| `FAIL` | Mọi vòng phỏng vấn | `INTERVIEW_FAILED` |
 | `BACKUP` | Không cần điều kiện bổ sung | `BACKUP` |
 
-Do đó không được viết đơn giản rằng mọi `PASS` đều sang Offer hay mọi `FAIL`
-đều kết thúc. Hai chuyển trạng thái này phụ thuộc vào `isFinalRound` hoặc
-`nextAction` của Company.
+`PASS` chỉ sang Offer khi đây là vòng cuối hoặc Company chọn `MAKE_OFFER`;
+nếu không, hồ sơ giữ `INTERVIEW` để tạo vòng tiếp theo. `FAIL` luôn kết thúc
+hồ sơ ở `INTERVIEW_FAILED`. Nếu Company muốn tiếp tục cân nhắc Candidate thay
+vì loại, phải dùng `PASS` để đi tiếp hoặc `BACKUP` để giữ dự phòng.
 
 ### 5.3. Backup
 
@@ -353,8 +353,8 @@ ownership.
 2. Internal HR không có endpoint mutation cho Interview, Backup decision,
    Offer hoặc Placement.
 3. Candidate chỉ phản hồi Offer và withdraw Application của chính mình.
-4. `PASS`/`FAIL` nhiều vòng chỉ đi tới Offer/kết thúc khi Company chọn action
-   phù hợp hoặc đây là vòng cuối.
+4. `PASS` nhiều vòng chỉ đi tới Offer khi Company chọn `MAKE_OFFER` hoặc đây là
+   vòng cuối; `FAIL` luôn kết thúc hồ sơ ở `INTERVIEW_FAILED`.
 5. `BACKUP` không phải một kết quả bị loại; Company phải ra quyết định tiếp.
 6. `PLACED` chỉ xuất hiện sau xác nhận đi làm thực tế của Company.
 7. Affiliate chỉ thấy progress đã được sanitize, không thấy dữ liệu tuyển dụng

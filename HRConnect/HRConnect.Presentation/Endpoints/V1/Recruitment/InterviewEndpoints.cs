@@ -540,7 +540,7 @@ public static class InterviewEndpoints
         })
         .WithName("RecordInterviewResult")
         .WithSummary("Ghi nhận kết quả đánh giá phỏng vấn")
-        .WithDescription("Chỉ Client Company sở hữu Job với quyền interview.record_result được ghi kết quả PASS, FAIL hoặc BACKUP. Kết quả cuối chuyển hồ sơ lần lượt sang OFFER_PENDING, INTERVIEW_FAILED hoặc BACKUP.")
+        .WithDescription("Chỉ Client Company sở hữu Job với quyền interview.record_result được ghi kết quả PASS, FAIL hoặc BACKUP. FAIL luôn kết thúc hồ sơ ở INTERVIEW_FAILED; BACKUP chuyển sang BACKUP; PASS chuyển sang OFFER_PENDING khi là vòng cuối hoặc chọn MAKE_OFFER, nếu không thì giữ INTERVIEW để phỏng vấn vòng tiếp theo.")
         .Produces<RecordInterviewResultResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
