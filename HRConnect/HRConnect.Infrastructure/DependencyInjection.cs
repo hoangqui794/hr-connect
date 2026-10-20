@@ -107,6 +107,10 @@ public static class DependencyInjection
         services.AddScoped<ISubmissionConsentRepository, SubmissionConsentRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IApplicationRepository, ApplicationRepository>();
+        services.Configure<CandidateRecruitmentDeliverySettings>(configuration.GetSection(CandidateRecruitmentDeliverySettings.SectionName));
+        services.PostConfigure<CandidateRecruitmentDeliverySettings>(settings =>
+            settings.PortalBaseUrl = configuration["CANDIDATE_PORTAL_BASE_URL"] ?? settings.PortalBaseUrl);
+        services.AddScoped<ICandidateRecruitmentDeliveryService, CandidateRecruitmentDeliveryService>();
         services.AddScoped<IInterviewRepository, InterviewRepository>();
         services.AddScoped<IOfferRepository, OfferRepository>();
         services.AddScoped<IPlacementRepository, PlacementRepository>();

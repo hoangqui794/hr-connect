@@ -17,5 +17,6 @@ public record SendOfferResponse(
     decimal? MonthlyGrossSalary,
     string? OfferDocumentUrl,
     Guid ConcurrencyToken,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string? DeliveryChannel = null
 );

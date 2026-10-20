@@ -38,6 +38,7 @@ import {
   getSourcingReviewDeadlineInfo,
 } from '@/features/sourcing/sourcingUtils';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
+import { deliveryFeedback, type CandidateDeliveryActionResult } from './candidateDeliveryFeedback';
 import type { RecruitmentApplicationDetail } from '@/types/api/hr';
 import { Initials, StatusDot } from '@/features/admin-console/ui';
 import {
@@ -255,8 +256,7 @@ export const ApplicationWorkbench: React.FC<{
     mutationFn: async (job: () => Promise<{ message?: string } | unknown>) => job(),
     onSuccess: async (res, _vars) => {
       pendingStartWork.current = undefined;
-      const msg = (res as { message?: string } | undefined)?.message;
-      message.success(msg || 'Đã cập nhật hồ sơ.');
+      message.success(deliveryFeedback(res as CandidateDeliveryActionResult | undefined, 'Đã cập nhật hồ sơ.'));
       setOpen(null);
       form.resetFields();
       await invalidateRecruitment(queryClient, applicationId);
@@ -370,6 +370,7 @@ export const ApplicationWorkbench: React.FC<{
         salaryPeriod: offer.salaryPeriod ?? 'MONTHLY',
         startDate: offer.startDate ? dayjs(offer.startDate) : undefined,
         expiryDate: offer.expiryDate ? dayjs(offer.expiryDate) : undefined,
+        offerDocumentUrl: offer.offerDocumentUrl ?? undefined,
       });
     } else if (kind === 'offer') form.setFieldsValue({ currencyCode: 'VND', salaryBasis: 'GROSS', salaryPeriod: 'MONTHLY' });
     if (kind === 'schedule') form.setFieldsValue({ durationMinutes: 60, interviewType: 'Trực tiếp' });
@@ -511,6 +512,8 @@ export const ApplicationWorkbench: React.FC<{
                   salaryPeriod: v.salaryPeriod,
                   startDate: day(v.startDate),
                   expiryDate: day(v.expiryDate),
+                  // An empty value deliberately clears an existing document link.
+                  offerDocumentUrl: trim(v.offerDocumentUrl) ?? '',
                   concurrencyToken: offer.concurrencyToken,
                 })
               : clientActionsApi.createOffer(d.applicationId, {
@@ -520,6 +523,7 @@ export const ApplicationWorkbench: React.FC<{
                   salaryPeriod: v.salaryPeriod,
                   startDate: day(v.startDate),
                   expiryDate: day(v.expiryDate),
+                  offerDocumentUrl: trim(v.offerDocumentUrl),
                   concurrencyToken: token,
                 })
           );
@@ -1264,6 +1268,17 @@ export const ApplicationWorkbench: React.FC<{
                   <DatePicker format="DD/MM/YYYY" disabledDate={notPast} className="w-full" />
                 </Form.Item>
               </div>
+              <Form.Item
+                name="offerDocumentUrl"
+                label="Link tài liệu/PDF Offer (không bắt buộc)"
+                extra={has('UPDATE_OFFER') ? 'Để trống rồi lưu để gỡ link tài liệu hiện có.' : undefined}
+                rules={[
+                  { type: 'url', message: 'Link tài liệu không hợp lệ.' },
+                  { max: 2048, message: 'Link tối đa 2048 ký tự.' },
+                ]}
+              >
+                <Input placeholder="https://..." />
+              </Form.Item>
             </>
           )}
 

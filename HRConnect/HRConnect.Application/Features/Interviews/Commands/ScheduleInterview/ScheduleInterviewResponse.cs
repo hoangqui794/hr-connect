@@ -36,5 +36,8 @@ public class ScheduleInterviewData
 
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>IN_APP for a linked account, EMAIL when an outbox email was queued.</summary>
+    public string? DeliveryChannel { get; set; }
+
     public List<ScheduleInterviewParticipantDto> Participants { get; set; } = new();
 }

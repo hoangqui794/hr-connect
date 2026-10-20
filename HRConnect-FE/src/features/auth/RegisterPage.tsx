@@ -40,6 +40,7 @@ import { UserRole } from '@/types/roles';
 import { authService } from '@/services/authService';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { AuthPageShell, AUTH_INPUT_CLASS, AUTH_LABEL_CLASS } from './AuthPageShell';
+import { appendCandidateReturnPath, getSafeCandidateReturnPath } from './authReturnPath';
 
 type RegisterableRole = UserRole.CANDIDATE | UserRole.CLIENT | UserRole.AFFILIATE;
 
@@ -90,6 +91,7 @@ export const RegisterPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [passwordValue, setPasswordValue] = useState<string>('');
+  const candidateReturnTo = getSafeCandidateReturnPath(searchParams.get('returnTo'));
 
   // Initial role from query param (?role=candidate|client|affiliate)
   const initialRole = ((): RegisterableRole => {
@@ -210,14 +212,16 @@ export const RegisterPage: React.FC = () => {
 
         // Redirect immediately to OTP Verification page with encoded query params
         navigate(
-          `/verify-otp?email=${encodeURIComponent(emailTrimmed)}&role=${encodeURIComponent(
-            selectedRole
-          )}`,
+          appendCandidateReturnPath(
+            `/verify-otp?email=${encodeURIComponent(emailTrimmed)}&role=${encodeURIComponent(selectedRole)}`,
+            selectedRole === UserRole.CANDIDATE ? candidateReturnTo : undefined
+          ),
           {
             replace: true,
             state: {
               email: emailTrimmed,
               role: selectedRole,
+              returnTo: selectedRole === UserRole.CANDIDATE ? candidateReturnTo : undefined,
               message: serverMessage,
             },
           }
