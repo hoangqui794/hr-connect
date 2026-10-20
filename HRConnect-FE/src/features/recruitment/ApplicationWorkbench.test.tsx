@@ -89,6 +89,7 @@ describe('ApplicationWorkbench MF-04', () => {
     vi.clearAllMocks();
     vi.mocked(interviewHistoryApi.get).mockResolvedValue([]);
     vi.mocked(clientActionsApi.updateOffer).mockResolvedValue({ message: 'Đã lưu offer.' });
+    vi.mocked(clientActionsApi.recordResult).mockResolvedValue({ message: 'Đã ghi kết quả.' });
   });
 
   it('loads the existing offer document link and sends its edited value when Client updates a draft', async () => {
@@ -143,5 +144,44 @@ describe('ApplicationWorkbench MF-04', () => {
     expect(screen.queryByRole('button', { name: 'Lên lịch phỏng vấn' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Tạo offer' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Xác nhận đã đi làm' })).not.toBeInTheDocument();
+  });
+
+  it('treats a failed interview as rejection without offering another interview round', async () => {
+    renderWorkbench({
+      ...baseApplication,
+      status: 'INTERVIEW',
+      currentStage: 'INTERVIEW',
+      allowedActions: ['RECORD_INTERVIEW_RESULT'],
+      offers: [],
+      interviews: [
+        {
+          interviewId: 'interview-1',
+          interviewRound: 1,
+          scheduledAt: '2026-10-01T08:00:00Z',
+          status: 'SCHEDULED',
+          result: null,
+          concurrencyToken: 'interview-token',
+        },
+      ],
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ghi kết quả' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Đạt' }));
+    expect(screen.getByRole('radio', { name: 'Phỏng vấn thêm vòng nữa' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: 'Không đạt' }));
+
+    expect(screen.getByText(/“Không đạt” sẽ kết thúc quy trình tuyển dụng/)).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'Phỏng vấn thêm vòng nữa' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận' }));
+
+    await waitFor(() => {
+      expect(clientActionsApi.recordResult).toHaveBeenCalledWith('interview-1', {
+        result: 'FAIL',
+        feedback: undefined,
+        nextAction: undefined,
+        concurrencyToken: 'interview-token',
+      });
+    });
   });
 });

@@ -143,10 +143,10 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
 
             if (normalizedResult == InterviewResults.Fail)
             {
-                if (request.IsFinalRound || normalizedNextAction == "REJECT")
-                {
-                    targetApplicationStatus = ApplicationStates.InterviewFailed;
-                }
+                // A failed interview is a terminal hiring decision for this application.
+                // Continuing to another round is represented by PASS; keeping a candidate
+                // for later consideration is represented by BACKUP.
+                targetApplicationStatus = ApplicationStates.InterviewFailed;
             }
             else if (normalizedResult == InterviewResults.Pass)
             {

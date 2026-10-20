@@ -496,7 +496,7 @@ export const ApplicationWorkbench: React.FC<{
             clientActionsApi.recordResult(interview!.interviewId, {
               result: v.result,
               feedback: trim(v.feedback),
-              nextAction: v.nextAction || undefined,
+              nextAction: v.result === 'PASS' ? v.nextAction || undefined : undefined,
               concurrencyToken: interview!.concurrencyToken,
             })
           );
@@ -1190,12 +1190,9 @@ export const ApplicationWorkbench: React.FC<{
                 </Form.Item>
               )}
               {watchedResult === 'FAIL' && (
-                <Form.Item name="nextAction" label="Bước tiếp theo" initialValue="REJECT">
-                  <Radio.Group>
-                    <Radio value="REJECT">Loại ứng viên</Radio>
-                    <Radio value="">Phỏng vấn thêm vòng nữa</Radio>
-                  </Radio.Group>
-                </Form.Item>
+                <p className="-mt-2 text-sm text-red-700">
+                  Kết quả “Không đạt” sẽ kết thúc quy trình tuyển dụng của hồ sơ này.
+                </p>
               )}
               <Form.Item name="feedback" label="Nhận xét (không bắt buộc)">
                 <Input.TextArea rows={3} maxLength={2000} showCount />
