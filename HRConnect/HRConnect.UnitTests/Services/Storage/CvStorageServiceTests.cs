@@ -8,6 +8,7 @@ using HRConnect.Infrastructure.Services.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using System.Security.Cryptography;
 using System.Text;
 using Xunit;
 
@@ -93,6 +94,9 @@ public class CvStorageServiceTests
         result.FileSizeBytes.Should().Be(fileSize);
         result.IsPrimary.Should().BeTrue();
         result.Status.Should().Be("ACTIVE");
+        var expectedSha256 = Convert.ToHexString(SHA256.HashData(fileBytes)).ToLowerInvariant();
+        result.ContentSha256.Should().Be(expectedSha256);
+        result.FingerprintVersion.Should().Be("binary-sha256-v1");
 
         // Verify object key format: candidates/{candidateId}/cvs/{cvId}.pdf
         capturedKey.Should().NotBeNull();
@@ -110,6 +114,8 @@ public class CvStorageServiceTests
         savedCv.FileSizeBytes.Should().Be(fileSize);
         savedCv.IsPrimary.Should().BeTrue();
         savedCv.Status.Should().Be("ACTIVE");
+        savedCv.ContentSha256.Should().Be(expectedSha256);
+        savedCv.FingerprintVersion.Should().Be("binary-sha256-v1");
 
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _auditLogServiceMock.Verify(a => a.AddAsync(

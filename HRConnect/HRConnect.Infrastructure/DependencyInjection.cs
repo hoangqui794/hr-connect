@@ -2,6 +2,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Recruitment.Common;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Infrastructure.Persistence;
 using HRConnect.Infrastructure.Repositories;
 using HRConnect.Infrastructure.Services.Email;
@@ -37,6 +38,23 @@ public static class DependencyInjection
         // 1. Dịch vụ Email (Resend)
         services.Configure<ResendSettings>(configuration.GetSection(ResendSettings.SectionName));
         services.Configure<SubmissionConsentSettings>(configuration.GetSection(SubmissionConsentSettings.SectionName));
+        services.Configure<CandidateIdentityEvidenceSettings>(
+            configuration.GetSection(CandidateIdentityEvidenceSettings.SectionName));
+        services.PostConfigure<CandidateIdentityEvidenceSettings>(settings =>
+        {
+            if (bool.TryParse(configuration["CANDIDATE_IDENTITY_DEDUP_ENABLED"], out var enabled))
+                settings.Enabled = enabled;
+            if (bool.TryParse(configuration["CANDIDATE_IDENTITY_DEDUP_SHADOW_MODE"], out var shadowMode))
+                settings.ShadowMode = shadowMode;
+
+            var keyVersion = configuration["CANDIDATE_IDENTITY_HMAC_KEY_VERSION"];
+            if (!string.IsNullOrWhiteSpace(keyVersion))
+                settings.ActiveKeyVersion = keyVersion.Trim();
+
+            var activeKey = configuration["CANDIDATE_IDENTITY_HMAC_KEY"];
+            if (!string.IsNullOrWhiteSpace(activeKey))
+                settings.Keys[settings.ActiveKeyVersion] = activeKey.Trim();
+        });
         services.Configure<HRConnect.Application.Features.Contact.ContactSettings>(settings =>
             settings.NotifyEmail = configuration["CONTACT_NOTIFY_EMAIL"]);
         services.PostConfigure<SubmissionConsentSettings>(settings =>
@@ -64,6 +82,7 @@ public static class DependencyInjection
         services.AddSingleton<IOtpService, OtpService>();
         services.AddSingleton<IPhoneNormalizer, PhoneNormalizer>();
         services.AddSingleton<IEmailNormalizer, EmailNormalizer>();
+        services.AddSingleton<ICandidateIdentityEvidenceProtector, CandidateIdentityEvidenceProtector>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
         services.AddHttpContextAccessor();
@@ -81,6 +100,7 @@ public static class DependencyInjection
         services.AddScoped<ICandidateIdentityClaimRepository, CandidateIdentityClaimRepository>();
         services.AddScoped<IAdminUserRepository, AdminUserRepository>();
         services.AddScoped<ICandidateRepository, CandidateRepository>();
+        services.AddScoped<ICandidateDuplicateRepository, CandidateDuplicateRepository>();
         services.AddScoped<ISkillRepository, SkillRepository>();
         services.AddScoped<ICandidateCvRepository, CandidateCvRepository>();
         services.AddScoped<ICandidateSavedJobRepository, CandidateSavedJobRepository>();

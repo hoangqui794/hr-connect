@@ -381,6 +381,7 @@ app.MapCandidateEndpoints();
 app.MapCandidateSkillEndpoints();
 app.MapAffiliateEndpoints();
 app.MapAdminApprovalEndpoints();
+app.MapAdminCandidateDuplicateEndpoints();
 app.MapAdminProfileEndpoints();
 app.MapAdminUserEndpoints();
 app.MapAdminAuthorizationEndpoints();

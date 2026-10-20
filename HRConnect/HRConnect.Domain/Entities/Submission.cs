@@ -46,6 +46,8 @@ public partial class Submission
 
     public virtual SubmissionConsent? Consent { get; set; }
 
+    public virtual SubmissionIdentitySnapshot? IdentitySnapshot { get; set; }
+
     public virtual Job Job { get; set; } = null!;
 
     /// <summary>MF-05 replacement slot this record belongs to; null for a normal hire.</summary>

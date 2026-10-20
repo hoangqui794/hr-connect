@@ -1,6 +1,7 @@
 using System.Reflection;
 using FluentValidation;
 using HRConnect.Application.Features.Offers.Common;
+using HRConnect.Application.Features.CandidateDuplicates.Finalization;
 using HRConnect.Application.Features.SubmissionConsents.Common;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,6 +16,7 @@ public static class DependencyInjection
 
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
         services.AddScoped<ISubmissionConsentExpiryService, SubmissionConsentExpiryService>();
+        services.AddScoped<IFinalizeIdentityReviewedSubmissionService, FinalizeIdentityReviewedSubmissionService>();
         services.AddScoped<IOfferExpiryService, OfferExpiryService>();
         services.AddScoped<HRConnect.Application.Common.Settings.IAdminBusinessSettings, HRConnect.Application.Features.Settings.BusinessSettingsService>();
         services.AddScoped<HRConnect.Application.Features.Finance.Common.IPlacementFinanceService, HRConnect.Application.Features.Finance.Common.PlacementFinanceService>();

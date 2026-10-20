@@ -21,7 +21,8 @@ public sealed record MyDisputeDto(
 
 public sealed record AdminDisputeListItemDto(
     Guid DisputeId, string DisputeType, string Status, string? JobTitle, string? CandidateName,
-    Guid RaisedBy, string? RaisedByAffiliateName, DateTime CreatedAt, DateTime? ResolvedAt);
+    Guid RaisedBy, string? RaisedByAffiliateName, DateTime CreatedAt, DateTime? ResolvedAt,
+    Guid ConcurrencyToken);
 
 public sealed record DisputeSubmissionDto(
     Guid SubmissionId, Guid SubmittedBy, string? AffiliateName, string Source, string Status,
@@ -38,7 +39,8 @@ public sealed record AdminDisputeDetailDto(
     Guid? JobId, string? JobTitle, Guid? CandidateId, string? CandidateName,
     string? CandidateNormalizedEmail, string? CandidateNormalizedPhone,
     IReadOnlyList<DisputeSubmissionDto> Submissions, DisputeAttributionDto? CurrentAttribution,
-    Guid? ResolvedBy, string? Resolution, DateTime? ResolvedAt);
+    Guid? CandidateDuplicateCaseId, Guid? ResolvedBy, string? Resolution, DateTime? ResolvedAt,
+    Guid ConcurrencyToken);
 
 public sealed record DisputePageDto(IReadOnlyList<AdminDisputeListItemDto> Items, int TotalCount, int Page, int PageSize);
 
@@ -51,7 +53,13 @@ public sealed record GetAdminDisputesQuery(string? Status, string? Type, int Pag
 
 public sealed record GetAdminDisputeDetailQuery(Guid DisputeId) : IRequest<AdminDisputeDetailDto>;
 
-public sealed record ResolveDisputeCommand(Guid DisputeId, string Decision, string Resolution, Guid AdminUserId)
+public sealed record ResolveDisputeCommand(
+    Guid DisputeId,
+    string Decision,
+    string Resolution,
+    Guid AdminUserId,
+    Guid ConcurrencyToken,
+    string IdempotencyKey)
     : IRequest<AdminDisputeDetailDto>;
 
 public sealed class DisputeHandlers :
@@ -66,16 +74,19 @@ public sealed class DisputeHandlers :
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private readonly IDisputeRepository _disputes;
+    private readonly ICandidateDuplicateRepository _duplicateCases;
     private readonly IAdminBusinessSettings _settings;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _audit;
     private readonly INotificationRepository _notifications;
 
     public DisputeHandlers(
-        IDisputeRepository disputes, IAdminBusinessSettings settings, IUnitOfWork unitOfWork,
+        IDisputeRepository disputes, ICandidateDuplicateRepository duplicateCases,
+        IAdminBusinessSettings settings, IUnitOfWork unitOfWork,
         IAuditLogService audit, INotificationRepository notifications)
     {
         _disputes = disputes;
+        _duplicateCases = duplicateCases;
         _settings = settings;
         _unitOfWork = unitOfWork;
         _audit = audit;
@@ -96,6 +107,7 @@ public sealed class DisputeHandlers :
         {
             throw new BadRequestException($"Bằng chứng tối đa {MaxTextLength} ký tự.");
         }
+        ValidateEvidence(note);
 
         var submission = await _disputes.GetSubmissionAsync(request.SubmissionId, cancellationToken);
         if (submission == null || submission.SubmittedBy != request.UserId)
@@ -149,6 +161,8 @@ public sealed class DisputeHandlers :
                 .OrderByDescending(c => c.CreatedAt)
                 .Select(c => (Guid?)c.CommissionId)
                 .FirstOrDefault(),
+            CandidateDuplicateCaseId = (await _duplicateCases.GetActiveSameJobCaseForSubmissionAsync(
+                submission.SubmissionId, cancellationToken))?.DuplicateCaseId,
             RaisedBy = request.UserId,
             Description = description,
             Evidence = JsonSerializer.Serialize(
@@ -157,6 +171,7 @@ public sealed class DisputeHandlers :
             Status = DisputeStates.Open,
             CreatedAt = now,
             UpdatedAt = now,
+            ConcurrencyToken = Guid.NewGuid()
         };
         await _disputes.AddAsync(dispute, cancellationToken);
         await _audit.AddAsync(new AuditEntry
@@ -186,12 +201,13 @@ public sealed class DisputeHandlers :
         var names = await _disputes.GetAffiliateNamesByUserIdsAsync(items.Select(d => d.RaisedBy), cancellationToken);
         return new DisputePageDto(items.Select(d => new AdminDisputeListItemDto(
             d.DisputeId, d.DisputeType, d.Status, d.Submission?.Job?.Title, d.Submission?.Candidate?.FullName,
-            d.RaisedBy, names.GetValueOrDefault(d.RaisedBy), d.CreatedAt, d.ResolvedAt)).ToList(), total, page, pageSize);
+            d.RaisedBy, names.GetValueOrDefault(d.RaisedBy), d.CreatedAt, d.ResolvedAt,
+            d.ConcurrencyToken)).ToList(), total, page, pageSize);
     }
 
     public async Task<AdminDisputeDetailDto> Handle(GetAdminDisputeDetailQuery request, CancellationToken cancellationToken)
     {
-        var dispute = await _disputes.GetForUpdateAsync(request.DisputeId, cancellationToken)
+        var dispute = await _disputes.GetByIdAsync(request.DisputeId, cancellationToken)
             ?? throw new NotFoundException("Không tìm thấy khiếu nại.");
         return await ToDetailAsync(dispute, cancellationToken);
     }
@@ -205,43 +221,81 @@ public sealed class DisputeHandlers :
         }
 
         var resolution = RequireText(request.Resolution, "Lý do xử lý");
-        var dispute = await _disputes.GetForUpdateAsync(request.DisputeId, cancellationToken)
-            ?? throw new NotFoundException("Không tìm thấy khiếu nại.");
-        if (!DisputeStates.Active.Contains(dispute.Status))
+        var idempotencyKey = request.IdempotencyKey?.Trim();
+        if (string.IsNullOrWhiteSpace(idempotencyKey) || idempotencyKey.Length > 100)
         {
-            throw new ConflictException($"Khiếu nại đã được xử lý ({dispute.Status}).", DisputeErrorCodes.NotOpen);
+            throw new BadRequestException("idempotencyKey là bắt buộc và tối đa 100 ký tự.");
         }
 
-        var now = DateTime.UtcNow;
-        var oldStatus = dispute.Status;
-        if (decision == DisputeStates.Upheld && dispute.Submission != null)
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
         {
-            await TransferAttributionAsync(dispute, request.AdminUserId, now, cancellationToken);
+            var dispute = await _disputes.GetForUpdateAsync(request.DisputeId, cancellationToken)
+                ?? throw new NotFoundException("Không tìm thấy khiếu nại.");
+            if (string.Equals(dispute.ResolutionIdempotencyKey, idempotencyKey, StringComparison.Ordinal))
+            {
+                var existingResult = await ToDetailAsync(dispute, cancellationToken);
+                await _unitOfWork.CommitTransactionAsync(cancellationToken);
+                return existingResult;
+            }
+            if (!DisputeStates.Active.Contains(dispute.Status))
+            {
+                throw new ConflictException($"Khiếu nại đã được xử lý ({dispute.Status}).", DisputeErrorCodes.NotOpen);
+            }
+            if (dispute.ConcurrencyToken != request.ConcurrencyToken)
+            {
+                throw new ConflictException(
+                    "Khiếu nại vừa được cập nhật. Vui lòng tải lại chi tiết mới nhất.",
+                    DisputeErrorCodes.StaleResolution);
+            }
+
+            var now = DateTime.UtcNow;
+            var oldStatus = dispute.Status;
+            if (decision == DisputeStates.Upheld && dispute.Submission != null)
+            {
+                await TransferAttributionAsync(dispute, request.AdminUserId, now, cancellationToken);
+            }
+
+            dispute.Status = decision;
+            dispute.Resolution = resolution;
+            dispute.ResolvedBy = request.AdminUserId;
+            dispute.ResolvedAt = now;
+            dispute.UpdatedAt = now;
+            dispute.ConcurrencyToken = Guid.NewGuid();
+            dispute.ResolutionIdempotencyKey = idempotencyKey;
+
+            await _audit.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.DisputeResolved,
+                EntityType = "DISPUTE",
+                EntityId = dispute.DisputeId,
+                ActorUserId = request.AdminUserId,
+                OldValues = new { status = oldStatus },
+                NewValues = new
+                {
+                    status = dispute.Status,
+                    resolution,
+                    dispute.AttributionId,
+                    dispute.CandidateDuplicateCaseId,
+                    idempotencyKey
+                }
+            }, cancellationToken);
+            await NotifyAsync(dispute.RaisedBy, "Khiếu nại đã có kết quả",
+                decision == DisputeStates.Upheld
+                    ? $"Khiếu nại của bạn được chấp nhận. Lý do: {resolution}"
+                    : $"Khiếu nại của bạn không được chấp nhận. Lý do: {resolution}",
+                dispute.DisputeId, now, cancellationToken);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            var result = await ToDetailAsync(dispute, cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            return result;
         }
-
-        dispute.Status = decision;
-        dispute.Resolution = resolution;
-        dispute.ResolvedBy = request.AdminUserId;
-        dispute.ResolvedAt = now;
-        dispute.UpdatedAt = now;
-
-        await _audit.AddAsync(new AuditEntry
+        catch
         {
-            Action = AuditActions.DisputeResolved,
-            EntityType = "DISPUTE",
-            EntityId = dispute.DisputeId,
-            ActorUserId = request.AdminUserId,
-            OldValues = new { status = oldStatus },
-            NewValues = new { status = dispute.Status, resolution, dispute.AttributionId }
-        }, cancellationToken);
-        await NotifyAsync(dispute.RaisedBy, "Khiếu nại đã có kết quả",
-            decision == DisputeStates.Upheld
-                ? $"Khiếu nại của bạn được chấp nhận. Lý do: {resolution}"
-                : $"Khiếu nại của bạn không được chấp nhận. Lý do: {resolution}",
-            dispute.DisputeId, now, cancellationToken);
-
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return await ToDetailAsync(dispute, cancellationToken);
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            throw;
+        }
     }
 
     /// <summary>
@@ -253,10 +307,23 @@ public sealed class DisputeHandlers :
         var submission = dispute.Submission!;
         var attribution = await _disputes.GetAttributionForUpdateAsync(submission.CandidateId, submission.JobId, cancellationToken);
         var complainant = await _disputes.GetAffiliateByUserIdAsync(dispute.RaisedBy, cancellationToken);
-        if (attribution == null || complainant == null || attribution.AffiliateId == complainant.AffiliateId)
+        if (attribution == null)
         {
-            // Nothing to move (e.g. the winning submission was never consented): the decision is still recorded.
-            return;
+            throw new ConflictException(
+                "Không tìm thấy attribution đang hoạt động để chuyển quyền giới thiệu.",
+                DisputeErrorCodes.AttributionMissing);
+        }
+        if (complainant == null)
+        {
+            throw new ConflictException(
+                "Tài khoản khiếu nại không còn hồ sơ Affiliate hợp lệ.",
+                DisputeErrorCodes.AffiliateMissing);
+        }
+        if (attribution.AffiliateId == complainant.AffiliateId)
+        {
+            throw new ConflictException(
+                "Quyền giới thiệu hiện đã thuộc Affiliate khiếu nại; không có thay đổi để thực hiện.",
+                DisputeErrorCodes.TransferNotRequired);
         }
 
         if (attribution.Commissions.Any(c => c.Status == CommissionStates.Paid))
@@ -329,7 +396,9 @@ public sealed class DisputeHandlers :
                     attribution.AttributionId, attribution.Affiliate.UserId, names.GetValueOrDefault(attribution.Affiliate.UserId),
                     attribution.WinningSubmissionId, attribution.AttributionRule, attribution.EstablishedAt,
                     attribution.Commissions.Select(c => c.Status).ToList(), attribution.Application?.Placement?.ConfirmedAt),
-            dispute.ResolvedBy, dispute.Resolution, dispute.ResolvedAt);
+            dispute.CandidateDuplicateCaseId,
+            dispute.ResolvedBy, dispute.Resolution, dispute.ResolvedAt,
+            dispute.ConcurrencyToken);
     }
 
     private Task NotifyAsync(Guid userId, string title, string message, Guid disputeId, DateTime now, CancellationToken cancellationToken) =>
@@ -364,6 +433,17 @@ public sealed class DisputeHandlers :
 
     private static bool IsLink(string value) =>
         value.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || value.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+    private static void ValidateEvidence(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || !IsLink(value)) return;
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
+            !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(uri.Host))
+        {
+            throw new BadRequestException("Đường dẫn bằng chứng phải là URL HTTPS hợp lệ.");
+        }
+    }
 
     private static string? Upper(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToUpperInvariant();
 }

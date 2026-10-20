@@ -307,7 +307,9 @@ public class SubmissionRepository : ISubmissionRepository
             .Select(cv => new AffiliateCandidateCvAccessRecord(
                 cv.CandidateId,
                 cv.CvId,
-                cv.FileName))
+                cv.FileName,
+                cv.ContentSha256,
+                cv.FingerprintVersion))
             .SingleOrDefaultAsync(cancellationToken);
     }
 

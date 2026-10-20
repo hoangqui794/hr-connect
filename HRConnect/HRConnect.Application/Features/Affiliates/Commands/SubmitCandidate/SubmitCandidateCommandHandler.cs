@@ -41,6 +41,8 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
     private readonly ILogger<SubmitCandidateCommandHandler> _logger;
     private readonly ISubmissionConsentExpiryService _expiryService;
     private readonly IAdminBusinessSettings _businessSettings;
+    private readonly ICandidateIdentityEvidenceProtector _identityEvidenceProtector;
+    private readonly ICandidateDuplicateRepository _candidateDuplicateRepository;
 
     public SubmitCandidateCommandHandler(
         IAffiliateProfileRepository affiliateProfileRepository,
@@ -64,7 +66,9 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         IOptions<SubmissionConsentSettings> consentSettings,
         ILogger<SubmitCandidateCommandHandler> logger,
         ISubmissionConsentExpiryService expiryService,
-        IAdminBusinessSettings businessSettings)
+        IAdminBusinessSettings businessSettings,
+        ICandidateIdentityEvidenceProtector identityEvidenceProtector,
+        ICandidateDuplicateRepository candidateDuplicateRepository)
     {
         _affiliateProfileRepository = affiliateProfileRepository;
         _candidateRepository = candidateRepository;
@@ -88,6 +92,8 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         _logger = logger;
         _expiryService = expiryService;
         _businessSettings = businessSettings;
+        _identityEvidenceProtector = identityEvidenceProtector;
+        _candidateDuplicateRepository = candidateDuplicateRepository;
     }
 
     public async Task<SubmitCandidateResponse> Handle(SubmitCandidateCommand request, CancellationToken cancellationToken)
@@ -358,6 +364,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
 
         // CV đã lưu chỉ hợp lệ khi danh tính Candidate đã tồn tại và CV do chính Affiliate này tải.
         Guid? selectedCvId = null;
+        CandidateCv? selectedCvRecord = null;
         if (isLibraryReuse)
         {
             selectedCvId = libraryCv!.CvId;
@@ -369,27 +376,27 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 throw new BadRequestException("Không thể dùng cvId cho ứng viên chưa tồn tại; vui lòng tải lên tệp PDF mới.");
             }
 
-            var cv = await _candidateCvRepository.GetByIdAsync(request.CvId.Value, cancellationToken);
-            if (cv == null || cv.CandidateId != candidate.CandidateId)
+            selectedCvRecord = await _candidateCvRepository.GetByIdAsync(request.CvId.Value, cancellationToken);
+            if (selectedCvRecord == null || selectedCvRecord.CandidateId != candidate.CandidateId)
             {
                 throw new BadRequestException("CV được chọn không hợp lệ cho ứng viên này.");
             }
-            if (!string.Equals(cv.CreationMethod, "AFFILIATE_UPLOAD", StringComparison.Ordinal) ||
-                cv.UploadedByUserId != request.UserId)
+            if (!string.Equals(selectedCvRecord.CreationMethod, "AFFILIATE_UPLOAD", StringComparison.Ordinal) ||
+                selectedCvRecord.UploadedByUserId != request.UserId)
             {
                 throw new ForbiddenException("Affiliate không được sử dụng CV riêng của ứng viên hoặc CV do Affiliate khác tải lên.");
             }
-            if (!string.Equals(cv.AffiliateReuseStatus, "ALLOWED", StringComparison.Ordinal))
+            if (!string.Equals(selectedCvRecord.AffiliateReuseStatus, "ALLOWED", StringComparison.Ordinal))
             {
                 throw new ForbiddenException(
                     "Candidate chưa cho phép Affiliate tái sử dụng CV này cho lần nộp mới.",
                     "CV_REUSE_NOT_ALLOWED");
             }
-            if (cv.Status != "ACTIVE" || string.IsNullOrWhiteSpace(cv.SourceFileUrl))
+            if (selectedCvRecord.Status != "ACTIVE" || string.IsNullOrWhiteSpace(selectedCvRecord.SourceFileUrl))
             {
                 throw new BadRequestException("CV được chọn hiện không khả dụng.");
             }
-            selectedCvId = cv.CvId;
+            selectedCvId = selectedCvRecord.CvId;
         }
         else if (!hasUploadedFile)
         {
@@ -404,6 +411,9 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         ReplacementSlot? replacementSlot = null;
         string? uploadedObjectKey = null;
         Guid cvId = Guid.Empty;
+        string? cvContentSha256 = null;
+        string? cvFingerprintVersion = null;
+        Guid? duplicateCaseId = null;
         var rawToken = CreateOpaqueToken();
         var tokenHash = HashToken(rawToken);
         var expirationHours = Math.Clamp(
@@ -443,10 +453,22 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                     cancellationToken: cancellationToken);
                 cvId = uploadResult.CvId;
                 uploadedObjectKey = uploadResult.ObjectKey;
+                cvContentSha256 = uploadResult.ContentSha256;
+                cvFingerprintVersion = uploadResult.FingerprintVersion;
             }
             else
             {
                 cvId = selectedCvId!.Value;
+                if (isLibraryReuse)
+                {
+                    cvContentSha256 = libraryCv!.ContentSha256;
+                    cvFingerprintVersion = libraryCv.FingerprintVersion;
+                }
+                else
+                {
+                    cvContentSha256 = selectedCvRecord?.ContentSha256;
+                    cvFingerprintVersion = selectedCvRecord?.FingerprintVersion;
+                }
             }
 
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
@@ -474,6 +496,57 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 UpdatedAt = now
             };
             await _submissionRepository.AddAsync(submission, cancellationToken);
+
+            var assertedName = string.IsNullOrWhiteSpace(request.FullName)
+                ? candidate.FullName
+                : request.FullName;
+            var identityEvidence = _identityEvidenceProtector.Protect(
+                assertedName,
+                normalizedEmail,
+                normalizedPhone);
+            var identitySnapshot = new SubmissionIdentitySnapshot
+            {
+                SubmissionId = submission.SubmissionId,
+                NormalizedNameHash = identityEvidence.NormalizedNameHash,
+                EmailHmac = identityEvidence.EmailHmac,
+                PhoneHmac = identityEvidence.PhoneHmac,
+                HmacKeyVersion = identityEvidence.KeyVersion,
+                CvContentSha256 = string.IsNullOrWhiteSpace(cvContentSha256) ? null : cvContentSha256,
+                FingerprintVersion = string.IsNullOrWhiteSpace(cvFingerprintVersion) ? null : cvFingerprintVersion,
+                AssertedContactSource = "AFFILIATE",
+                VerificationLevel = candidate.UserId.HasValue ? "EMAIL_VERIFIED" : "ASSERTED",
+                CapturedAt = now
+            };
+            await _candidateDuplicateRepository.AddSnapshotAsync(identitySnapshot, cancellationToken);
+
+            CandidateDuplicateMatch? duplicateMatch = null;
+            if (identityEvidence.IsEnabled &&
+                !string.IsNullOrWhiteSpace(identityEvidence.NormalizedNameHash) &&
+                !string.IsNullOrWhiteSpace(cvContentSha256))
+            {
+                duplicateMatch = await _candidateDuplicateRepository.FindStrongCvNameMatchAsync(
+                    candidate.CandidateId,
+                    job.JobId,
+                    identityEvidence.NormalizedNameHash,
+                    cvContentSha256,
+                    cancellationToken);
+            }
+
+            if (duplicateMatch != null)
+            {
+                // Flush the Candidate/CV/Submission/Snapshot inside the current transaction so the
+                // repository can use PostgreSQL ON CONFLICT for an idempotent case upsert.
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                var duplicateCase = await _candidateDuplicateRepository.GetOrCreateStrongMatchCaseAsync(
+                    candidate.CandidateId,
+                    duplicateMatch.CandidateId,
+                    submission.SubmissionId,
+                    duplicateMatch.HasSameJobHistory ? job.JobId : null,
+                    identityEvidence.KeyVersion!,
+                    now,
+                    cancellationToken);
+                duplicateCaseId = duplicateCase.DuplicateCaseId;
+            }
 
             consent = new SubmissionConsent
             {
@@ -546,6 +619,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                     replacementSlotId = replacementSlot?.ReplacementSlotId,
                     replacementForPlacementId = replacementSlot?.OriginalPlacementId,
                     consentExpiresAt = expiresAt,
+                    duplicateCaseId,
                     aiStatus = "NOT_QUEUED"
                 }
             }, cancellationToken);

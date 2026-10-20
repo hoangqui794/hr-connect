@@ -25,6 +25,8 @@ public interface IDisputeRepository
     Task<(IReadOnlyList<Dispute> Items, int TotalCount)> GetPageAsync(
         string? status, string? type, int page, int pageSize, CancellationToken cancellationToken = default);
 
+    Task<Dispute?> GetByIdAsync(Guid disputeId, CancellationToken cancellationToken = default);
+
     /// <summary>Dispute with its submission (job, candidate), tracked for update.</summary>
     Task<Dispute?> GetForUpdateAsync(Guid disputeId, CancellationToken cancellationToken = default);
 

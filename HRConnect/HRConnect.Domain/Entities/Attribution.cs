@@ -24,6 +24,8 @@ public partial class Attribution
 
     public DateTime UpdatedAt { get; set; }
 
+    public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
+
     public virtual AffiliateProfile Affiliate { get; set; } = null!;
 
     public virtual Application Application { get; set; } = null!;

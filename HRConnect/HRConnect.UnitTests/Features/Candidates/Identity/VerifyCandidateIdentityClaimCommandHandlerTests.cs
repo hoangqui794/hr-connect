@@ -13,6 +13,7 @@ public sealed class VerifyCandidateIdentityClaimCommandHandlerTests
     private readonly Mock<ICandidateIdentityClaimRepository> _claims = new();
     private readonly Mock<ICandidateRepository> _candidates = new();
     private readonly Mock<IUserEmailIdentityRepository> _identities = new();
+    private readonly Mock<ICandidateDuplicateRepository> _duplicateCases = new();
     private readonly Mock<IOtpService> _otp = new();
     private readonly Mock<IAuditLogService> _audit = new();
     private readonly Mock<IUnitOfWork> _unit = new();
@@ -46,6 +47,14 @@ public sealed class VerifyCandidateIdentityClaimCommandHandlerTests
             .ReturnsAsync(new Candidate { CandidateId = claim.TargetCandidateId.Value, Status = "ACTIVE", NormalizedEmail = claim.NormalizedEmail });
         _candidates.Setup(x => x.HasIdentityBusinessDataAsync(claim.RequesterCandidateId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
+        var duplicateCaseId = Guid.NewGuid();
+        _duplicateCases.Setup(x => x.GetOrCreateVerifiedIdentityClaimCaseAsync(
+                claim.RequesterCandidateId,
+                claim.TargetCandidateId.Value,
+                claim.ClaimId,
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CandidateDuplicateCase { DuplicateCaseId = duplicateCaseId });
         string? completedStatus = null;
         _claims.Setup(x => x.TryCompleteAsync(claim.ClaimId, claim.RequesterUserId, It.IsAny<Guid>(),
                 It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
@@ -56,6 +65,7 @@ public sealed class VerifyCandidateIdentityClaimCommandHandlerTests
             claim.RequesterUserId, claim.ClaimId, "123456", claim.ConcurrencyToken), CancellationToken.None);
 
         result.Status.Should().Be("PENDING_ADMIN_REVIEW");
+        result.DuplicateCaseId.Should().Be(duplicateCaseId);
         completedStatus.Should().Be("PENDING_ADMIN_REVIEW");
         _candidates.Verify(x => x.TrySwapIdentityCandidateAsync(
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -90,7 +100,8 @@ public sealed class VerifyCandidateIdentityClaimCommandHandlerTests
     }
 
     private VerifyCandidateIdentityClaimCommandHandler CreateHandler() => new(
-        _claims.Object, _candidates.Object, _identities.Object, _otp.Object, _audit.Object, _unit.Object);
+        _claims.Object, _candidates.Object, _identities.Object, _duplicateCases.Object,
+        _otp.Object, _audit.Object, _unit.Object);
 
     private static CandidateIdentityClaim CreateClaim() => new()
     {

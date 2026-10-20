@@ -40,6 +40,10 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<CandidateIdentityClaim> CandidateIdentityClaims { get; set; }
 
+    public virtual DbSet<CandidateDuplicateCase> CandidateDuplicateCases { get; set; }
+
+    public virtual DbSet<CandidateDuplicateSignal> CandidateDuplicateSignals { get; set; }
+
     public virtual DbSet<CandidateCv> CandidateCvs { get; set; }
 
     public virtual DbSet<CandidateJobMatch> CandidateJobMatches { get; set; }
@@ -131,6 +135,8 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<Submission> Submissions { get; set; }
 
     public virtual DbSet<SubmissionConsent> SubmissionConsents { get; set; }
+
+    public virtual DbSet<SubmissionIdentitySnapshot> SubmissionIdentitySnapshots { get; set; }
 
     public virtual DbSet<UserRole> UserRoles { get; set; }
 
@@ -1565,6 +1571,14 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("'OPEN'::character varying")
                 .HasColumnName("status");
             entity.Property(e => e.SubmissionId).HasColumnName("submission_id");
+            entity.Property(e => e.CandidateDuplicateCaseId).HasColumnName("candidate_duplicate_case_id");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
+            entity.Property(e => e.ResolutionIdempotencyKey)
+                .HasMaxLength(100)
+                .HasColumnName("resolution_idempotency_key");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
@@ -1593,6 +1607,17 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.SubmissionId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("dispute_submission_id_fkey");
+
+            entity.HasOne(d => d.CandidateDuplicateCase).WithMany(p => p.Disputes)
+                .HasForeignKey(d => d.CandidateDuplicateCaseId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_dispute_candidate_duplicate_case");
+
+            entity.HasIndex(e => e.CandidateDuplicateCaseId, "idx_dispute_candidate_duplicate_case")
+                .HasFilter("candidate_duplicate_case_id IS NOT NULL");
+            entity.HasIndex(e => e.ResolutionIdempotencyKey, "uq_dispute_resolution_idempotency")
+                .IsUnique()
+                .HasFilter("resolution_idempotency_key IS NOT NULL");
         });
 
         modelBuilder.Entity<EmailOutbox>(entity =>
@@ -2944,7 +2969,7 @@ public partial class ApplicationDbContext : DbContext
                 table.HasComment("Submission intake/audit record. A Submission referenced by Application/Attribution as the accepted winner cannot be invalidated or have its accepted identity/source snapshot changed.");
                 table.HasCheckConstraint(
                     "submission_status_check",
-                    "status IN ('RECEIVED','PENDING_CONSENT','ACCEPTED','BLOCKED_DUPLICATE','BLOCKED_CLIENT_OWNED','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
+                    "status IN ('RECEIVED','PENDING_CONSENT','PENDING_IDENTITY_REVIEW','ACCEPTED','BLOCKED_DUPLICATE','BLOCKED_CLIENT_OWNED','REJECTED_INVALID','CONSENT_REJECTED','CONSENT_EXPIRED','CANCELLED')");
             });
 
             entity.HasIndex(e => new { e.JobId, e.CandidateId, e.SubmittedAt }, "idx_submission_job_candidate");
@@ -2957,9 +2982,9 @@ public partial class ApplicationDbContext : DbContext
                 .IsUnique()
                 .HasFilter("((status)::text = 'ACCEPTED'::text)");
 
-            entity.HasIndex(e => new { e.JobId, e.CandidateId }, "uq_submission_one_pending_consent")
+            entity.HasIndex(e => new { e.JobId, e.CandidateId, e.SubmittedBy }, "uq_submission_one_pending_consent")
                 .IsUnique()
-                .HasFilter("((status)::text = 'PENDING_CONSENT'::text)");
+                .HasFilter("status IN ('PENDING_CONSENT','PENDING_IDENTITY_REVIEW')");
 
             entity.Property(e => e.SubmissionId)
                 .HasDefaultValueSql("gen_random_uuid()")

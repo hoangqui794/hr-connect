@@ -19,7 +19,11 @@ public static class DisputeEndpoints
     private const string DisputeResolve = "dispute.resolve";
 
     public sealed record CreateDisputeRequest(string DisputeType, Guid SubmissionId, string Description, string? EvidenceNote);
-    public sealed record ResolveDisputeRequest(string Decision, string Resolution);
+    public sealed record ResolveDisputeRequest(
+        string Decision,
+        string Resolution,
+        Guid ConcurrencyToken,
+        string IdempotencyKey);
 
     public static IEndpointRouteBuilder MapDisputeEndpoints(this IEndpointRouteBuilder app)
     {
@@ -58,10 +62,16 @@ public static class DisputeEndpoints
         group.MapPost("/admin/disputes/{disputeId:guid}/resolve", (
                 Guid disputeId, [FromBody] ResolveDisputeRequest body, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>
             Execute(user, [DisputeResolve], userId => sender.Send(
-                new ResolveDisputeCommand(disputeId, body.Decision, body.Resolution, userId), ct)))
+                new ResolveDisputeCommand(
+                    disputeId,
+                    body.Decision,
+                    body.Resolution,
+                    userId,
+                    body.ConcurrencyToken,
+                    body.IdempotencyKey), ct)))
             .WithName("ResolveDispute")
             .WithSummary("Platform Admin xử lý khiếu nại")
-            .WithDescription("decision: UPHELD (chuyển attribution sang Affiliate khiếu nại, hoa hồng chưa chi đi theo) hoặc REJECTED (giữ nguyên). resolution bắt buộc. Có audit và thông báo. Lỗi: 409 DISPUTE_NOT_OPEN; 409 DISPUTE_COMMISSION_ALREADY_PAID khi hoa hồng đã chi. Quyền dispute.resolve.");
+            .WithDescription("decision: UPHELD (chuyển attribution sang Affiliate khiếu nại, hoa hồng chưa chi đi theo) hoặc REJECTED (giữ nguyên). Bắt buộc resolution, concurrencyToken từ API chi tiết và idempotencyKey duy nhất cho thao tác. Có transaction, audit và thông báo. Lỗi: 409 STALE_DISPUTE_RESOLUTION, DISPUTE_NOT_OPEN, DISPUTE_ATTRIBUTION_MISSING hoặc DISPUTE_COMMISSION_ALREADY_PAID. Quyền dispute.resolve.");
 
         return app;
     }
