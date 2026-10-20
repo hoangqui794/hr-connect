@@ -50,6 +50,25 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
         await _context.SubmissionIdentitySnapshots.AddAsync(snapshot, cancellationToken);
     }
 
+    public Task<CandidateDuplicateCase?> GetActiveSameJobCaseForSubmissionAsync(
+        Guid submissionId,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.CandidateDuplicateCases
+            .AsNoTracking()
+            .Where(duplicateCase =>
+                duplicateCase.JobId != null &&
+                ActiveStatuses.Contains(duplicateCase.Status) &&
+                _context.Submissions.Any(submission =>
+                    submission.SubmissionId == submissionId &&
+                    submission.JobId == duplicateCase.JobId &&
+                    (submission.CandidateId == duplicateCase.CandidateAId ||
+                     submission.CandidateId == duplicateCase.CandidateBId)))
+            .OrderBy(duplicateCase => duplicateCase.CreatedAt)
+            .ThenBy(duplicateCase => duplicateCase.DuplicateCaseId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<CandidateDuplicateCase> GetOrCreateStrongMatchCaseAsync(
         Guid candidateId,
         Guid matchedCandidateId,

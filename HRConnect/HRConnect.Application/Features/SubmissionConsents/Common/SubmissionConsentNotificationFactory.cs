@@ -16,6 +16,9 @@ public static class SubmissionConsentNotificationFactory
             "CONFIRMED" => (
                 "Candidate đã đồng ý nộp hồ sơ",
                 $"Candidate {submission.Candidate.FullName} đã đồng ý nộp hồ sơ vào vị trí {submission.Job.Title}."),
+            "IDENTITY_REVIEW" => (
+                "Candidate đã xác nhận, hồ sơ đang được đối chiếu",
+                $"Candidate {submission.Candidate.FullName} đã đồng ý. Hệ thống đang đối chiếu hồ sơ trước khi tiếp nhận vào vị trí {submission.Job.Title}."),
             "DECLINED" => (
                 "Candidate đã từ chối nộp hồ sơ",
                 $"Candidate {submission.Candidate.FullName} đã từ chối cho phép nộp hồ sơ vào vị trí {submission.Job.Title}."),

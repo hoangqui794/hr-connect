@@ -58,6 +58,40 @@ public sealed class CandidateDuplicateRepositoryTests
         result.Should().BeNull();
     }
 
+    [Fact]
+    public async Task GetActiveSameJobCaseForSubmissionAsync_MatchesEitherCandidateOnSameJob()
+    {
+        await using var context = CreateContext();
+        var candidateA = CreateCandidate("Candidate A");
+        var candidateB = CreateCandidate("Candidate B");
+        var jobId = Guid.NewGuid();
+        var cvA = CreateCv(candidateA.CandidateId, "hash-a");
+        var cvB = CreateCv(candidateB.CandidateId, "hash-b");
+        var firstSubmission = CreateSubmission(candidateA.CandidateId, cvA.CvId, jobId);
+        var currentSubmission = CreateSubmission(candidateB.CandidateId, cvB.CvId, jobId);
+        var duplicateCase = new CandidateDuplicateCase
+        {
+            DuplicateCaseId = Guid.NewGuid(),
+            CandidateAId = candidateA.CandidateId,
+            CandidateBId = candidateB.CandidateId,
+            SubmissionId = firstSubmission.SubmissionId,
+            JobId = jobId,
+            RiskLevel = "HIGH",
+            Status = "AWAITING_CANDIDATE",
+            IdempotencyKey = Guid.NewGuid().ToString("N"),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.AddRange(candidateA, candidateB, cvA, cvB, firstSubmission, currentSubmission, duplicateCase);
+        await context.SaveChangesAsync();
+
+        var result = await new CandidateDuplicateRepository(context)
+            .GetActiveSameJobCaseForSubmissionAsync(currentSubmission.SubmissionId);
+
+        result.Should().NotBeNull();
+        result!.DuplicateCaseId.Should().Be(duplicateCase.DuplicateCaseId);
+    }
+
     private static ApplicationDbContext CreateContext() => new(
         new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())

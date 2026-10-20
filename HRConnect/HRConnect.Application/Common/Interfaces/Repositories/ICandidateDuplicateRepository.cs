@@ -16,6 +16,10 @@ public interface ICandidateDuplicateRepository
         SubmissionIdentitySnapshot snapshot,
         CancellationToken cancellationToken = default);
 
+    Task<CandidateDuplicateCase?> GetActiveSameJobCaseForSubmissionAsync(
+        Guid submissionId,
+        CancellationToken cancellationToken = default);
+
     Task<CandidateDuplicateCase> GetOrCreateStrongMatchCaseAsync(
         Guid candidateId,
         Guid matchedCandidateId,

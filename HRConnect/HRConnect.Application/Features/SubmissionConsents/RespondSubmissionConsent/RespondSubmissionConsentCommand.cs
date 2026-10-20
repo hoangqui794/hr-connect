@@ -24,4 +24,6 @@ public sealed class RespondSubmissionConsentResponse
     public string AiStatus { get; set; } = "NOT_QUEUED";
     public string? AffiliateReuseStatus { get; set; }
     public Guid? ReuseConcurrencyToken { get; set; }
+    public bool RequiresIdentityReview { get; set; }
+    public Guid? DuplicateCaseId { get; set; }
 }
