@@ -64,6 +64,7 @@ public static class DatabaseSeeder
         await JobTemplateSeeder.SeedAsync(context, logger, cancellationToken);
         await CvTemplateSeeder.SeedAsync(context, logger, cancellationToken);
         await CompanyTaxonomySeeder.SeedAsync(context, logger, cancellationToken);
+        await MatchTierSeeder.SeedAsync(context, logger, cancellationToken);
 
         // 4. Khởi tạo ma trận quyền xem/nộp theo Service Type và Role.
         await ServiceTypeAllowedRoleSeeder.SeedAsync(context, logger, cancellationToken);

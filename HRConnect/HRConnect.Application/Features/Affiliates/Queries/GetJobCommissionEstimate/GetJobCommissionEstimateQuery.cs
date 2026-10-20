@@ -2,6 +2,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Jobs.Common;
+using System.Globalization;
 using MediatR;
 
 namespace HRConnect.Application.Features.Affiliates.Queries.GetJobCommissionEstimate;
@@ -28,6 +29,9 @@ public sealed record JobCommissionEstimateDto(
 
 public sealed class GetJobCommissionEstimateQueryHandler : IRequestHandler<GetJobCommissionEstimateQuery, JobCommissionEstimateDto>
 {
+    /// <summary>UI-01: số tiền trong câu giải thích theo cách viết tiếng Việt (600.000), không theo culture máy chủ.</summary>
+    private static readonly CultureInfo Vi = CultureInfo.GetCultureInfo("vi-VN");
+
     private readonly IJobRepository _jobs;
     private readonly IFinanceRepository _finance;
     private readonly IAdminBusinessSettings _settings;
@@ -58,7 +62,7 @@ public sealed class GetJobCommissionEstimateQueryHandler : IRequestHandler<GetJo
             var share = await _settings.GetDecimalAsync(BusinessSettingKeys.CvSourcingAffiliateSharePercent, cancellationToken);
             var perCv = decimal.Round(price * share / 100m, 0, MidpointRounding.AwayFromZero);
             return new JobCommissionEstimateDto(job.JobId, code, perCv > 0, "PERCENT", share, null, null, null, null, perCv, currency,
-                $"Mỗi CV được Client chấp nhận: {share:0.##}% × giá {price:N0} {currency}/CV. Hoa hồng ghi nhận khi CV được chấp nhận.");
+                $"Mỗi CV được Client chấp nhận: {share.ToString("0.##", Vi)}% × giá {price.ToString("N0", Vi)} {currency}/CV. Hoa hồng ghi nhận khi CV được chấp nhận.");
         }
 
         if (!string.Equals(code, ServiceTypeCodes.HeadhuntCod, StringComparison.OrdinalIgnoreCase))
@@ -77,8 +81,8 @@ public sealed class GetJobCommissionEstimateQueryHandler : IRequestHandler<GetJo
         var max = isPercent ? Estimate(job.SalaryMax ?? job.SalaryMin) : rate;
         var warranty = job.WarrantyDays.HasValue ? $" sau {job.WarrantyDays} ngày bảo hành" : " sau thời gian bảo hành";
         var explanation = isPercent
-            ? $"Hoa hồng = {rate:0.##}% × phí dịch vụ; phí = {multiplier:0.##} × lương gross tháng trong offer. Khoảng ước tính theo mức lương đăng tin; nhận{warranty}, khi Client đã thanh toán phí."
-            : $"Hoa hồng cố định {rate:N0} {currency} cho mỗi ứng viên đi làm; nhận{warranty}, khi Client đã thanh toán phí.";
+            ? $"Hoa hồng = {rate.ToString("0.##", Vi)}% × phí dịch vụ; phí = {multiplier.ToString("0.##", Vi)} × lương gross tháng trong offer. Khoảng ước tính theo mức lương đăng tin; nhận{warranty}, khi Client đã thanh toán phí."
+            : $"Hoa hồng cố định {rate.ToString("N0", Vi)} {currency} cho mỗi ứng viên đi làm; nhận{warranty}, khi Client đã thanh toán phí.";
         return new JobCommissionEstimateDto(job.JobId, code, true, rule.RateType, rate, multiplier, job.WarrantyDays, min, max, null, currency, explanation);
     }
 

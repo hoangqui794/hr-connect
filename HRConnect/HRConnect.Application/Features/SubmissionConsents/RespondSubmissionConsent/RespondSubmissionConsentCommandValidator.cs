@@ -16,7 +16,8 @@ public sealed class RespondSubmissionConsentCommandValidator : AbstractValidator
                             value.Equals("DECLINE", StringComparison.OrdinalIgnoreCase)))
             .WithMessage("Decision chỉ nhận CONFIRM hoặc DECLINE.");
         RuleFor(x => x)
-            .Must(x => !x.AllowFutureReuse.HasValue ||
+            // Từ chối kèm allowFutureReuse=false là hợp lệ (FE luôn gửi giá trị của ô tick); chỉ chặn bật quyền dùng lại khi từ chối.
+            .Must(x => x.AllowFutureReuse != true ||
                        x.Decision.Equals("CONFIRM", StringComparison.OrdinalIgnoreCase))
             .WithMessage("Chỉ được thiết lập quyền tái sử dụng CV khi xác nhận hồ sơ.");
     }
