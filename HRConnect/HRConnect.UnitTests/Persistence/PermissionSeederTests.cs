@@ -65,6 +65,26 @@ public class PermissionSeederTests
         sql[roleStart..roleEnd].Should().Contain("'candidate.identity.review'");
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void PermissionSeed_AssignsCandidateDuplicatePermissionsOnlyToPlatformAdmin(bool embedded)
+    {
+        var sql = embedded
+            ? GetEmbeddedSeedSql()
+            : File.ReadAllText(FindPermissionFile()!);
+
+        sql.Should().Contain("('candidate_duplicate.view'");
+        sql.Should().Contain("('candidate_duplicate.resolve'");
+        var roleEnd = sql.IndexOf("WHERE r.code = 'PLATFORM_ADMIN'", StringComparison.Ordinal);
+        roleEnd.Should().BeGreaterThan(0);
+        var roleStart = sql.LastIndexOf("JOIN public.permission p", roleEnd, StringComparison.Ordinal);
+        roleStart.Should().BeGreaterThanOrEqualTo(0);
+        var platformAdminGrant = sql[roleStart..roleEnd];
+        platformAdminGrant.Should().Contain("'candidate_duplicate.view'");
+        platformAdminGrant.Should().Contain("'candidate_duplicate.resolve'");
+    }
+
     [Fact]
     public void RbacMigration_InstallsCatalogAndProtectsManagementPermissions()
     {

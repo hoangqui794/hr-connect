@@ -20,6 +20,28 @@ public interface ICandidateDuplicateRepository
         Guid submissionId,
         CancellationToken cancellationToken = default);
 
+    Task<(IReadOnlyList<CandidateDuplicateCase> Items, int TotalCount)> GetReviewPageAsync(
+        string? status,
+        string? riskLevel,
+        Guid? jobId,
+        Guid? companyId,
+        DateTime? createdFrom,
+        DateTime? createdTo,
+        string? search,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default);
+
+    Task<CandidateDuplicateCase?> GetByIdForReviewAsync(
+        Guid duplicateCaseId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Submission>> GetRelatedSubmissionsAsync(
+        Guid candidateAId,
+        Guid candidateBId,
+        Guid? jobId,
+        CancellationToken cancellationToken = default);
+
     Task<CandidateDuplicateCase> GetOrCreateStrongMatchCaseAsync(
         Guid candidateId,
         Guid matchedCandidateId,

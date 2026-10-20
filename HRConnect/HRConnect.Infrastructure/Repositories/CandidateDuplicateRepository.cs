@@ -69,6 +69,88 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<(IReadOnlyList<CandidateDuplicateCase> Items, int TotalCount)> GetReviewPageAsync(
+        string? status,
+        string? riskLevel,
+        Guid? jobId,
+        Guid? companyId,
+        DateTime? createdFrom,
+        DateTime? createdTo,
+        string? search,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.CandidateDuplicateCases.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(item => item.Status == status);
+        if (!string.IsNullOrWhiteSpace(riskLevel))
+            query = query.Where(item => item.RiskLevel == riskLevel);
+        if (jobId.HasValue)
+            query = query.Where(item => item.JobId == jobId.Value);
+        if (companyId.HasValue)
+            query = query.Where(item => item.Job != null && item.Job.CompanyId == companyId.Value);
+        if (createdFrom.HasValue)
+            query = query.Where(item => item.CreatedAt >= createdFrom.Value);
+        if (createdTo.HasValue)
+            query = query.Where(item => item.CreatedAt <= createdTo.Value);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(item =>
+                item.CandidateA.FullName.ToLower().Contains(term) ||
+                item.CandidateB.FullName.ToLower().Contains(term) ||
+                (item.Job != null && item.Job.Title.ToLower().Contains(term)) ||
+                (item.Job != null && item.Job.Company.CompanyName.ToLower().Contains(term)));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Include(item => item.CandidateA)
+            .Include(item => item.CandidateB)
+            .Include(item => item.Job).ThenInclude(job => job!.Company)
+            .OrderByDescending(item => item.CreatedAt)
+            .ThenBy(item => item.DuplicateCaseId)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+        return (items, totalCount);
+    }
+
+    public Task<CandidateDuplicateCase?> GetByIdForReviewAsync(
+        Guid duplicateCaseId,
+        CancellationToken cancellationToken = default) =>
+        _context.CandidateDuplicateCases
+            .AsNoTracking()
+            .Include(item => item.CandidateA)
+            .Include(item => item.CandidateB)
+            .Include(item => item.CanonicalCandidate)
+            .Include(item => item.Signals)
+            .Include(item => item.Job).ThenInclude(job => job!.Company)
+            .FirstOrDefaultAsync(item => item.DuplicateCaseId == duplicateCaseId, cancellationToken);
+
+    public async Task<IReadOnlyList<Submission>> GetRelatedSubmissionsAsync(
+        Guid candidateAId,
+        Guid candidateBId,
+        Guid? jobId,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Submissions
+            .AsNoTracking()
+            .Where(item => item.CandidateId == candidateAId || item.CandidateId == candidateBId);
+        if (jobId.HasValue)
+            query = query.Where(item => item.JobId == jobId.Value);
+
+        return await query
+            .Include(item => item.Consent)
+            .Include(item => item.Applications)
+            .Include(item => item.Attribution).ThenInclude(attribution => attribution!.Commissions)
+            .OrderBy(item => item.SubmittedAt)
+            .ThenBy(item => item.SubmissionId)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<CandidateDuplicateCase> GetOrCreateStrongMatchCaseAsync(
         Guid candidateId,
         Guid matchedCandidateId,
