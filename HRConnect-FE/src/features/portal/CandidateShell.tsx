@@ -104,6 +104,18 @@ export const CandidateShell: React.FC = () => {
     { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
   ];
 
+  const isCvBuilder = location.pathname.startsWith('/candidate/cv-builder');
+
+  if (isCvBuilder) {
+    return (
+      <div className="candidate-console min-h-screen bg-[#f0f2f5] text-slate-900">
+        <Suspense fallback={<AdminPageSkeleton />}>
+          <Outlet />
+        </Suspense>
+      </div>
+    );
+  }
+
   return (
     <div className="candidate-console min-h-screen bg-[#F4F7FC] text-slate-900">
       <header className="sticky top-0 z-30 border-0 border-b border-solid border-slate-200/80 bg-white/95 backdrop-blur">
