@@ -118,6 +118,56 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
         return (items, totalCount);
     }
 
+    public async Task<(IReadOnlyList<CandidateDuplicateCase> Items, int TotalCount)> GetCandidatePageAsync(
+        Guid userId,
+        string? status,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.CandidateDuplicateCases
+            .AsNoTracking()
+            .Where(item =>
+                item.CandidateA.UserId == userId ||
+                item.CandidateB.UserId == userId ||
+                (item.CanonicalCandidate != null && item.CanonicalCandidate.UserId == userId));
+
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(item => item.Status == status);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Include(item => item.CandidateA)
+            .Include(item => item.CandidateB)
+            .Include(item => item.CanonicalCandidate)
+            .Include(item => item.Signals)
+            .Include(item => item.Job).ThenInclude(job => job!.Company)
+            .OrderByDescending(item => item.UpdatedAt)
+            .ThenBy(item => item.DuplicateCaseId)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+        return (items, totalCount);
+    }
+
+    public Task<CandidateDuplicateCase?> GetByIdForCandidateAsync(
+        Guid duplicateCaseId,
+        Guid userId,
+        CancellationToken cancellationToken = default) =>
+        _context.CandidateDuplicateCases
+            .AsNoTracking()
+            .Include(item => item.CandidateA)
+            .Include(item => item.CandidateB)
+            .Include(item => item.CanonicalCandidate)
+            .Include(item => item.Signals)
+            .Include(item => item.Job).ThenInclude(job => job!.Company)
+            .FirstOrDefaultAsync(item =>
+                item.DuplicateCaseId == duplicateCaseId &&
+                (item.CandidateA.UserId == userId ||
+                 item.CandidateB.UserId == userId ||
+                 (item.CanonicalCandidate != null && item.CanonicalCandidate.UserId == userId)),
+                cancellationToken);
+
     public Task<CandidateDuplicateCase?> GetByIdForReviewAsync(
         Guid duplicateCaseId,
         CancellationToken cancellationToken = default) =>
@@ -258,6 +308,53 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
             VALUES
                 ({{signalId}}, {{duplicateCase.DuplicateCaseId}}, 'EXACT_CV_AND_NORMALIZED_NAME',
                  'sync-v1', 1.0, {{keyVersion}}, CAST({{evidence}} AS jsonb), {{now}})
+            ON CONFLICT DO NOTHING
+            """, cancellationToken);
+
+        return duplicateCase;
+    }
+
+    public async Task<CandidateDuplicateCase> GetOrCreateVerifiedIdentityClaimCaseAsync(
+        Guid candidateId,
+        Guid matchedCandidateId,
+        Guid claimId,
+        DateTime now,
+        CancellationToken cancellationToken = default)
+    {
+        var (candidateAId, candidateBId) = Order(candidateId, matchedCandidateId);
+        var idempotencyKey = $"verified-email-claim-v1:{claimId:N}";
+        var caseId = Guid.NewGuid();
+
+        await _context.Database.ExecuteSqlInterpolatedAsync($$"""
+            INSERT INTO public.candidate_duplicate_case
+                (duplicate_case_id, candidate_a_id, candidate_b_id, submission_id, job_id,
+                 risk_level, status, concurrency_token, idempotency_key, created_at, updated_at)
+            VALUES
+                ({{caseId}}, {{candidateAId}}, {{candidateBId}}, NULL, NULL,
+                 'REVIEW', 'UNDER_REVIEW', {{Guid.NewGuid()}}, {{idempotencyKey}}, {{now}}, {{now}})
+            ON CONFLICT DO NOTHING
+            """, cancellationToken);
+
+        var duplicateCase = await _context.CandidateDuplicateCases
+            .SingleAsync(item =>
+                item.CandidateAId == candidateAId &&
+                item.CandidateBId == candidateBId &&
+                item.JobId == null &&
+                ActiveStatuses.Contains(item.Status), cancellationToken);
+
+        var signalId = Guid.NewGuid();
+        var evidence = JsonSerializer.Serialize(new
+        {
+            proof = "email-otp",
+            ownership = "verified"
+        });
+        await _context.Database.ExecuteSqlInterpolatedAsync($$"""
+            INSERT INTO public.candidate_duplicate_signal
+                (duplicate_signal_id, duplicate_case_id, reason_code, detector_version,
+                 score, key_version, evidence, created_at)
+            VALUES
+                ({{signalId}}, {{duplicateCase.DuplicateCaseId}}, 'VERIFIED_EMAIL_OWNERSHIP',
+                 'identity-claim-v1', 1.0, NULL, CAST({{evidence}} AS jsonb), {{now}})
             ON CONFLICT DO NOTHING
             """, cancellationToken);
 

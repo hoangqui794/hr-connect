@@ -12,6 +12,46 @@ namespace HRConnect.UnitTests.Features.CandidateDuplicates;
 public sealed class CandidateDuplicateCaseQueryHandlerTests
 {
     [Fact]
+    public async Task CandidateList_ReturnsSafeStatusWithoutOtherPartyIdentity()
+    {
+        var userId = Guid.NewGuid();
+        var repository = new Mock<ICandidateDuplicateRepository>();
+        var duplicateCase = CreateCase();
+        duplicateCase.CandidateA.UserId = userId;
+        duplicateCase.Status = "UNDER_REVIEW";
+        repository.Setup(x => x.GetCandidatePageAsync(
+                userId, "UNDER_REVIEW", 0, 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new[] { duplicateCase }, 1));
+        var handler = new GetMyCandidateDuplicateCasesQueryHandler(repository.Object);
+
+        var response = await handler.Handle(
+            new GetMyCandidateDuplicateCasesQuery(userId, "under_review"),
+            CancellationToken.None);
+
+        response.Items.Should().ContainSingle();
+        response.Items[0].Title.Should().Be("Hồ sơ đang được đối chiếu");
+        response.Items[0].EvidenceTypes.Should().Contain("MATCHING_CV_AND_NAME");
+        response.Items[0].GetType().GetProperties().Select(property => property.Name)
+            .Should().NotContain(new[] { "CandidateA", "CandidateB", "AffiliateId", "Email", "Phone" });
+    }
+
+    [Fact]
+    public async Task CandidateDetail_WhenCaseDoesNotBelongToUser_ReturnsNotFound()
+    {
+        var repository = new Mock<ICandidateDuplicateRepository>();
+        repository.Setup(x => x.GetByIdForCandidateAsync(
+                It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CandidateDuplicateCase?)null);
+        var handler = new GetMyCandidateDuplicateCaseDetailQueryHandler(repository.Object);
+
+        var action = () => handler.Handle(
+            new GetMyCandidateDuplicateCaseDetailQuery(Guid.NewGuid(), Guid.NewGuid()),
+            CancellationToken.None);
+
+        await action.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
     public async Task List_MasksContactAndReturnsPagination()
     {
         var repository = new Mock<ICandidateDuplicateRepository>();

@@ -21,6 +21,7 @@ using HRConnect.Application.Features.Candidates.Identity.StartCandidateIdentityC
 using HRConnect.Application.Features.Candidates.Identity.ResendCandidateIdentityClaimOtp;
 using HRConnect.Application.Features.Candidates.Identity.VerifyCandidateIdentityClaim;
 using HRConnect.Application.Features.Candidates.Identity.RevokeCandidateEmailIdentity;
+using HRConnect.Application.Features.CandidateDuplicates.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using HRConnect.Presentation.Authorization;
@@ -195,6 +196,71 @@ public static class CandidateEndpoints
         var identityGroup = app.MapGroup("/api/v1/candidates/me/email-identities")
             .WithTags("Candidate Identity")
             .RequireAuthorization();
+
+        var duplicateCaseGroup = app.MapGroup("/api/v1/candidates/me/duplicate-cases")
+            .WithTags("Candidate Identity")
+            .RequireAuthorization();
+
+        duplicateCaseGroup.MapGet("", async (
+            ClaimsPrincipal user,
+            [FromQuery] string? status,
+            [FromQuery] int page,
+            [FromQuery] int pageSize,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<GetMyCandidateDuplicateCasesQuery> validator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "candidate.identity.manage_own"))
+                return PermissionAuthorization.Forbidden("candidate.identity.manage_own");
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            var query = new GetMyCandidateDuplicateCasesQuery(
+                userId.Value,
+                status,
+                page <= 0 ? 1 : page,
+                pageSize <= 0 ? 20 : pageSize);
+            var validation = await validator.ValidateAsync(query, cancellationToken);
+            if (!validation.IsValid) return Results.ValidationProblem(validation.ToDictionary());
+            return Results.Ok(await sender.Send(query, cancellationToken));
+        })
+        .WithName("GetMyCandidateDuplicateCases")
+        .WithSummary("Candidate xem các hồ sơ đang được đối chiếu danh tính")
+        .WithDescription("Chỉ trả case thuộc tài khoản đang đăng nhập. Phản hồi không chứa danh tính Affiliate, ghi chú nội bộ, raw CV, email hoặc số điện thoại của hồ sơ còn lại.")
+        .Produces<MyCandidateDuplicateCaseListResponse>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden);
+
+        duplicateCaseGroup.MapGet("/{caseId:guid}", async (
+            Guid caseId,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "candidate.identity.manage_own"))
+                return PermissionAuthorization.Forbidden("candidate.identity.manage_own");
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            try
+            {
+                return Results.Ok(await sender.Send(
+                    new GetMyCandidateDuplicateCaseDetailQuery(userId.Value, caseId),
+                    cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetMyCandidateDuplicateCaseDetail")
+        .WithSummary("Candidate xem trạng thái đối chiếu một hồ sơ nghi trùng")
+        .WithDescription("Chỉ chủ tài khoản liên quan mới xem được. Bằng chứng được trả dưới dạng nhóm an toàn, không lộ contact, Affiliate hoặc ghi chú xử lý nội bộ.")
+        .Produces<MyCandidateDuplicateCaseDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
 
         identityGroup.MapGet("", async (
             ClaimsPrincipal user,

@@ -16,4 +16,5 @@ public sealed record VerifyCandidateIdentityClaimResponse(
     Guid ClaimId,
     string Status,
     Guid? CandidateId,
-    Guid ConcurrencyToken);
+    Guid ConcurrencyToken,
+    Guid? DuplicateCaseId = null);

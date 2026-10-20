@@ -32,6 +32,18 @@ public interface ICandidateDuplicateRepository
         int take,
         CancellationToken cancellationToken = default);
 
+    Task<(IReadOnlyList<CandidateDuplicateCase> Items, int TotalCount)> GetCandidatePageAsync(
+        Guid userId,
+        string? status,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default);
+
+    Task<CandidateDuplicateCase?> GetByIdForCandidateAsync(
+        Guid duplicateCaseId,
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
     Task<CandidateDuplicateCase?> GetByIdForReviewAsync(
         Guid duplicateCaseId,
         CancellationToken cancellationToken = default);
@@ -72,6 +84,13 @@ public interface ICandidateDuplicateRepository
         Guid submissionId,
         Guid? jobId,
         string keyVersion,
+        DateTime now,
+        CancellationToken cancellationToken = default);
+
+    Task<CandidateDuplicateCase> GetOrCreateVerifiedIdentityClaimCaseAsync(
+        Guid candidateId,
+        Guid matchedCandidateId,
+        Guid claimId,
         DateTime now,
         CancellationToken cancellationToken = default);
 }
