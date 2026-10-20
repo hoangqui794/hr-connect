@@ -36,13 +36,32 @@ public interface ICandidateDuplicateRepository
         Guid duplicateCaseId,
         CancellationToken cancellationToken = default);
 
+    Task<CandidateDuplicateCase?> GetByIdForUpdateAsync(
+        Guid duplicateCaseId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Candidate>> GetCandidatesForUpdateAsync(
+        Guid candidateAId,
+        Guid candidateBId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Submission>> GetRelatedSubmissionsAsync(
         Guid candidateAId,
         Guid candidateBId,
         Guid? jobId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Submission>> GetRelatedSubmissionsForUpdateAsync(
+        Guid candidateAId,
+        Guid candidateBId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Domain.Entities.Application>> GetCandidateApplicationsAsync(
+        Guid candidateAId,
+        Guid candidateBId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Domain.Entities.Application>> GetCandidateApplicationsForUpdateAsync(
         Guid candidateAId,
         Guid candidateBId,
         CancellationToken cancellationToken = default);

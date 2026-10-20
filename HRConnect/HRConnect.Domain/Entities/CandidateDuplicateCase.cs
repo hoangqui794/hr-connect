@@ -20,6 +20,7 @@ public sealed class CandidateDuplicateCase
     public DateTime? ReviewedAt { get; set; }
     public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
     public string IdempotencyKey { get; set; } = null!;
+    public string? ResolutionIdempotencyKey { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 

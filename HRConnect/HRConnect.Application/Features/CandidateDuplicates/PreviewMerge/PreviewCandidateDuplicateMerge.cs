@@ -1,5 +1,6 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.CandidateDuplicates.Common;
 using MediatR;
 
 namespace HRConnect.Application.Features.CandidateDuplicates.PreviewMerge;
@@ -62,7 +63,7 @@ public sealed class PreviewCandidateDuplicateMergeQueryHandler
             duplicateCase.CandidateBId,
             cancellationToken);
 
-        var (canonical, source, recommendationReason) = RecommendCanonical(
+        var (canonical, source, recommendationReason) = CandidateMergePolicy.RecommendCanonical(
             duplicateCase.CandidateA,
             duplicateCase.CandidateB,
             submissions,
@@ -116,38 +117,6 @@ public sealed class PreviewCandidateDuplicateMergeQueryHandler
             collisions,
             financeBlockers,
             duplicateCase.ConcurrencyToken);
-    }
-
-    private static (HRConnect.Domain.Entities.Candidate Canonical,
-        HRConnect.Domain.Entities.Candidate Source,
-        string Reason) RecommendCanonical(
-        HRConnect.Domain.Entities.Candidate left,
-        HRConnect.Domain.Entities.Candidate right,
-        IReadOnlyList<HRConnect.Domain.Entities.Submission> submissions,
-        IReadOnlyList<HRConnect.Domain.Entities.Application> applications)
-    {
-        if (left.UserId.HasValue != right.UserId.HasValue)
-            return left.UserId.HasValue
-                ? (left, right, "VERIFIED_ACCOUNT_OWNER")
-                : (right, left, "VERIFIED_ACCOUNT_OWNER");
-
-        var leftBusinessCount = submissions.Count(item => item.CandidateId == left.CandidateId) +
-                                applications.Count(item => item.CandidateId == left.CandidateId);
-        var rightBusinessCount = submissions.Count(item => item.CandidateId == right.CandidateId) +
-                                 applications.Count(item => item.CandidateId == right.CandidateId);
-        if (leftBusinessCount != rightBusinessCount)
-            return leftBusinessCount > rightBusinessCount
-                ? (left, right, "MORE_VALID_BUSINESS_HISTORY")
-                : (right, left, "MORE_VALID_BUSINESS_HISTORY");
-
-        if (left.CreatedAt != right.CreatedAt)
-            return left.CreatedAt < right.CreatedAt
-                ? (left, right, "EARLIEST_CANDIDATE_RECORD")
-                : (right, left, "EARLIEST_CANDIDATE_RECORD");
-
-        return string.CompareOrdinal(left.CandidateId.ToString("N"), right.CandidateId.ToString("N")) <= 0
-            ? (left, right, "DETERMINISTIC_CANDIDATE_ID_TIE_BREAK")
-            : (right, left, "DETERMINISTIC_CANDIDATE_ID_TIE_BREAK");
     }
 
     private static CandidateMergeCollisionDto CreateCollision(

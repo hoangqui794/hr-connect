@@ -105,10 +105,13 @@ public partial class ApplicationDbContext
             entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
             entity.Property(e => e.ConcurrencyToken).IsConcurrencyToken().HasDefaultValueSql("gen_random_uuid()").HasColumnName("concurrency_token");
             entity.Property(e => e.IdempotencyKey).HasMaxLength(160).HasColumnName("idempotency_key");
+            entity.Property(e => e.ResolutionIdempotencyKey).HasMaxLength(160).HasColumnName("resolution_idempotency_key");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
 
             entity.HasIndex(e => e.IdempotencyKey, "uq_candidate_duplicate_case_idempotency").IsUnique();
+            entity.HasIndex(e => e.ResolutionIdempotencyKey, "uq_candidate_duplicate_case_resolution_idempotency")
+                .IsUnique().HasFilter("resolution_idempotency_key IS NOT NULL");
             entity.HasIndex(e => new { e.CandidateAId, e.CandidateBId, e.JobId }, "uq_candidate_duplicate_case_active_job")
                 .IsUnique().HasFilter("job_id IS NOT NULL AND status IN ('OPEN','AWAITING_CANDIDATE','UNDER_REVIEW','BLOCKED_FINANCE')");
             entity.HasIndex(e => new { e.CandidateAId, e.CandidateBId }, "uq_candidate_duplicate_case_active_global")

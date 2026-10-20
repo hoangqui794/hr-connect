@@ -3,6 +3,7 @@ using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.CandidateDuplicates.Queries;
 using HRConnect.Application.Features.CandidateDuplicates.PreviewMerge;
+using HRConnect.Application.Features.CandidateDuplicates.Resolve;
 using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -120,6 +121,65 @@ public static class AdminCandidateDuplicateEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
+        group.MapPost("/{caseId:guid}/resolve", async (
+            Guid caseId,
+            [FromBody] ResolveCandidateDuplicateCaseRequest body,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<ResolveCandidateDuplicateCaseCommand> validator,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, ResolvePermission))
+                return PermissionAuthorization.Forbidden(ResolvePermission);
+            var adminUserId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(adminUserId, out var parsedAdminUserId))
+                return Results.Unauthorized();
+
+            var command = new ResolveCandidateDuplicateCaseCommand(
+                caseId,
+                parsedAdminUserId,
+                body.Decision,
+                body.Reason,
+                body.ConcurrencyToken,
+                body.IdempotencyKey);
+            var validation = await validator.ValidateAsync(command, cancellationToken);
+            if (!validation.IsValid)
+                return Results.ValidationProblem(validation.ToDictionary());
+
+            try
+            {
+                return Results.Ok(await sender.Send(command, cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new
+                {
+                    success = false,
+                    message = ex.Message,
+                    errorCode = ex.ErrorCode
+                });
+            }
+        })
+        .WithName("ResolveCandidateDuplicateCase")
+        .WithSummary("Admin xử lý hồ sơ Candidate nghi trùng")
+        .WithDescription("Yêu cầu quyền candidate_duplicate.resolve. Hỗ trợ MERGE, DISMISS và NEED_MORE_EVIDENCE; bắt buộc concurrencyToken, idempotencyKey và lý do. MERGE bị chặn khi có payout COMPLETED.")
+        .Produces<ResolveCandidateDuplicateCaseResponse>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         return app;
     }
 }
+
+public sealed record ResolveCandidateDuplicateCaseRequest(
+    string Decision,
+    string Reason,
+    Guid ConcurrencyToken,
+    string IdempotencyKey);

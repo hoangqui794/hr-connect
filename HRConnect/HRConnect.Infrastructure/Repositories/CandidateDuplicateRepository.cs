@@ -130,6 +130,25 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
             .Include(item => item.Job).ThenInclude(job => job!.Company)
             .FirstOrDefaultAsync(item => item.DuplicateCaseId == duplicateCaseId, cancellationToken);
 
+    public Task<CandidateDuplicateCase?> GetByIdForUpdateAsync(
+        Guid duplicateCaseId,
+        CancellationToken cancellationToken = default) =>
+        _context.CandidateDuplicateCases
+            .FromSqlInterpolated($"SELECT * FROM public.candidate_duplicate_case WHERE duplicate_case_id = {duplicateCaseId} FOR UPDATE")
+            .Include(item => item.CandidateA)
+            .Include(item => item.CandidateB)
+            .Include(item => item.Signals)
+            .Include(item => item.Job).ThenInclude(job => job!.Company)
+            .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Candidate>> GetCandidatesForUpdateAsync(
+        Guid candidateAId,
+        Guid candidateBId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Candidates
+            .FromSqlInterpolated($"SELECT * FROM public.candidate WHERE candidate_id IN ({candidateAId}, {candidateBId}) ORDER BY candidate_id FOR UPDATE")
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Submission>> GetRelatedSubmissionsAsync(
         Guid candidateAId,
         Guid candidateBId,
@@ -153,6 +172,19 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Submission>> GetRelatedSubmissionsForUpdateAsync(
+        Guid candidateAId,
+        Guid candidateBId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Submissions
+            .FromSqlInterpolated($"SELECT * FROM public.submission WHERE candidate_id IN ({candidateAId}, {candidateBId}) ORDER BY submission_id FOR UPDATE")
+            .Include(item => item.Consent)
+            .Include(item => item.Job)
+            .Include(item => item.Applications)
+            .Include(item => item.Attribution).ThenInclude(attribution => attribution!.Commissions)
+                .ThenInclude(commission => commission.Payouts)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Domain.Entities.Application>> GetCandidateApplicationsAsync(
         Guid candidateAId,
         Guid candidateBId,
@@ -165,6 +197,17 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
                 .ThenInclude(commission => commission.Payouts)
             .OrderBy(item => item.AppliedAt)
             .ThenBy(item => item.ApplicationId)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Domain.Entities.Application>> GetCandidateApplicationsForUpdateAsync(
+        Guid candidateAId,
+        Guid candidateBId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Applications
+            .FromSqlInterpolated($"SELECT * FROM public.application WHERE candidate_id IN ({candidateAId}, {candidateBId}) ORDER BY application_id FOR UPDATE")
+            .Include(item => item.Job)
+            .Include(item => item.Attribution).ThenInclude(attribution => attribution!.Commissions)
+                .ThenInclude(commission => commission.Payouts)
             .ToListAsync(cancellationToken);
 
     public async Task<CandidateDuplicateCase> GetOrCreateStrongMatchCaseAsync(

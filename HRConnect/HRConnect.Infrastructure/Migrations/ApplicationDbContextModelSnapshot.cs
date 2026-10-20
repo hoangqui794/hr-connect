@@ -1322,6 +1322,11 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(30)")
                         .HasColumnName("resolution");
 
+                    b.Property<string>("ResolutionIdempotencyKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("resolution_idempotency_key");
+
                     b.Property<string>("ResolutionReason")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
@@ -1383,6 +1388,10 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex(new[] { "IdempotencyKey" }, "uq_candidate_duplicate_case_idempotency")
                         .IsUnique();
+
+                    b.HasIndex(new[] { "ResolutionIdempotencyKey" }, "uq_candidate_duplicate_case_resolution_idempotency")
+                        .IsUnique()
+                        .HasFilter("resolution_idempotency_key IS NOT NULL");
 
                     b.ToTable("candidate_duplicate_case", "public", t =>
                         {
