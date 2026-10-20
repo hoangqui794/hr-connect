@@ -39,7 +39,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { UserRole } from '@/types/roles';
 import { authService } from '@/services/authService';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { AuthPageShell, AUTH_INPUT_CLASS, AUTH_LABEL_CLASS } from './AuthPageShell';
+import { AuthPageShell, AUTH_INPUT_CLASS, AUTH_LABEL_CLASS, AUTH_LINK_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from './AuthPageShell';
 import { appendCandidateReturnPath, getSafeCandidateReturnPath } from './authReturnPath';
 
 type RegisterableRole = UserRole.CANDIDATE | UserRole.CLIENT | UserRole.AFFILIATE;
@@ -240,8 +240,8 @@ export const RegisterPage: React.FC = () => {
   };
 
   const COMPACT_INPUT_CLASS =
-    'h-10 text-xs sm:text-sm rounded-xl border border-white/70 bg-white/80 backdrop-blur-md text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-[#53B7E8] focus:border-[#1E9EDB] focus:bg-white transition-all';
-  const COMPACT_LABEL_CLASS = 'text-xs font-bold text-slate-700';
+    'h-11 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 hover:border-[#0EA5E9] focus:border-[#0369A1] transition-colors duration-150';
+  const COMPACT_LABEL_CLASS = 'text-sm font-semibold text-slate-700';
 
   return (
     <AuthPageShell
@@ -254,52 +254,26 @@ export const RegisterPage: React.FC = () => {
       sideDescription="Trải nghiệm chuyên biệt cho từng chủ thể tuyển dụng."
       benefits={[
         {
-          icon: <SolutionOutlined className="text-blue-600" />,
+          icon: <SolutionOutlined />,
           title: 'Ứng viên tìm việc',
           desc: 'Quản lý CV, khớp nối việc làm phù hợp',
         },
         {
-          icon: <BankOutlined className="text-emerald-600" />,
+          icon: <BankOutlined />,
           title: 'Doanh nghiệp tuyển dụng',
           desc: 'Tiếp cận nguồn ứng viên chất lượng cao',
         },
         {
-          icon: <TeamOutlined className="text-amber-600" />,
+          icon: <TeamOutlined />,
           title: 'Cộng tác viên Headhunter',
           desc: 'Gửi nguồn giới thiệu, nhận thưởng minh bạch',
         },
       ]}
-      extraVisual={
-        <div className="mt-4 overflow-hidden rounded-2xl border border-white/70 bg-white/50 p-3.5 text-slate-800 backdrop-blur-md shadow-md shadow-[#1E9EDB]/15">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-white text-sm font-black shadow-sm">
-                AI
-              </span>
-              <div>
-                <strong className="block text-xs font-bold text-slate-900">Smart Match & Verification</strong>
-                <span className="text-[11px] font-medium text-slate-600">Khớp nối ứng viên & doanh nghiệp tự động</span>
-              </div>
-            </div>
-            <span className="rounded-full border border-emerald-400/60 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-600">
-              98% Fit
-            </span>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between border-t border-white/60 pt-2.5 text-[11px] text-slate-600 font-medium">
-            <span className="flex items-center gap-1.5">
-              <SafetyCertificateOutlined className="text-emerald-500 text-xs" />
-              <span>Bảo hành tuyển dụng 60 ngày</span>
-            </span>
-            <span className="font-bold text-slate-800">Hoa hồng minh bạch</span>
-          </div>
-        </div>
-      }
     >
       {/* Role Selection Segmented Control */}
       <div className="mb-3">
         <p className="mb-1.5 text-xs font-bold text-slate-700">Bạn đăng ký với vai trò nào?</p>
-        <div className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100/80 backdrop-blur-sm p-1 border border-white/60">
+        <div className="grid grid-cols-3 gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1">
           {ROLE_OPTIONS.map((option) => {
             const isSelected = selectedRole === option.role;
             return (
@@ -310,15 +284,15 @@ export const RegisterPage: React.FC = () => {
                   setSelectedRole(option.role);
                   setErrorMessage(null);
                 }}
-                className={`flex items-center justify-center gap-1.5 rounded-lg py-2 px-1 text-xs font-bold transition-all cursor-pointer border-0 ${
+                className={`flex min-h-[44px] flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-center text-xs leading-tight font-semibold sm:flex-row sm:gap-1.5 sm:text-sm transition-colors duration-150 cursor-pointer border-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0369A1] ${
                   isSelected
-                    ? 'bg-white text-[#1E9EDB] shadow-sm'
-                    : 'bg-transparent text-slate-600 hover:text-slate-900'
+                    ? 'bg-white text-[#0369A1] shadow-sm ring-1 ring-slate-200'
+                    : 'bg-transparent text-slate-600 hover:text-[#0C4A6E]'
                 }`}
                 aria-pressed={isSelected}
               >
-                <span className="text-sm">{option.icon}</span>
-                <span className="truncate">{option.title}</span>
+                <span className="text-sm" aria-hidden="true">{option.icon}</span>
+                <span>{option.title}</span>
               </button>
             );
           })}
@@ -337,7 +311,7 @@ export const RegisterPage: React.FC = () => {
         />
       )}
 
-      <Form form={form} layout="vertical" onFinish={onFinish} requiredMark={false} scrollToFirstError className="[&_.ant-form-item]:mb-2 sm:[&_.ant-form-item]:mb-2">
+      <Form form={form} layout="vertical" onFinish={onFinish} requiredMark={false} scrollToFirstError className="[&_.ant-form-item]:mb-3">
         {selectedRole === UserRole.CLIENT && (
           <Row gutter={10}>
             <Col xs={24} sm={14}>
@@ -459,19 +433,19 @@ export const RegisterPage: React.FC = () => {
           className="!mb-2.5"
         >
           <Checkbox className="text-xs leading-5 text-slate-600">
-            Tôi đồng ý với <a href="#terms" onClick={(event) => event.preventDefault()} className="font-semibold text-[#1E9EDB]">Điều khoản dịch vụ</a> và <a href="#privacy" onClick={(event) => event.preventDefault()} className="font-semibold text-[#1E9EDB]">Chính sách bảo mật</a>.
+            Tôi đồng ý với <a href="#terms" onClick={(event) => event.preventDefault()} className={AUTH_LINK_CLASS}>Điều khoản dịch vụ</a> và <a href="#privacy" onClick={(event) => event.preventDefault()} className={AUTH_LINK_CLASS}>Chính sách bảo mật</a>.
           </Checkbox>
         </Form.Item>
 
-        <Button type="primary" htmlType="submit" size="large" loading={submitting} disabled={submitting} className="flex h-10 sm:h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-sm font-bold text-white shadow-md shadow-[#1E9EDB]/30 hover:opacity-95 transition-all">
+        <Button type="primary" htmlType="submit" size="large" loading={submitting} disabled={submitting} className={AUTH_PRIMARY_BUTTON_CLASS}>
           <span>{submitting ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}</span>
           {!submitting && <ArrowRightOutlined />}
         </Button>
       </Form>
 
-      <div className="mt-2 rounded-xl border border-white/70 bg-white/60 backdrop-blur-md py-1.5 px-3 text-center text-xs text-slate-600">
+      <div className="mt-5 text-center text-sm text-slate-600">
         Đã có tài khoản?{' '}
-        <Link to="/login" className="font-bold text-[#1E9EDB] hover:text-[#168ec6]">Đăng nhập</Link>
+        <Link to="/login" className={AUTH_LINK_CLASS}>Đăng nhập</Link>
       </div>
     </AuthPageShell>
   );

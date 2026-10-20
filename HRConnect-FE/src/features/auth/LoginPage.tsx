@@ -33,7 +33,7 @@ import { UserRole, ROLE_LABELS, mapApiRoleToUserRole } from '@/types/roles';
 import { getDashboardRouteForRole } from '@/routes/AppRoutes';
 import { authService, type LoginResponse, type CurrentUserResponse } from '@/services/authService';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { AuthPageShell, AUTH_INPUT_CLASS, AUTH_LABEL_CLASS } from './AuthPageShell';
+import { AuthPageShell, AUTH_INPUT_CLASS, AUTH_LABEL_CLASS, AUTH_LINK_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from './AuthPageShell';
 import { getSafeCandidateReturnPath } from './authReturnPath';
 
 interface DemoAccount {
@@ -349,47 +349,21 @@ export const LoginPage: React.FC = () => {
         sideDescription="Hệ sinh thái kết nối Doanh nghiệp, Headhunter và Ứng viên."
         benefits={[
           {
-            icon: <ApartmentOutlined className="text-blue-600" />,
+            icon: <ApartmentOutlined />,
             title: 'Doanh nghiệp tuyển dụng',
             desc: 'Quản trị tin đăng & ứng viên tập trung',
           },
           {
-            icon: <TeamOutlined className="text-emerald-600" />,
+            icon: <TeamOutlined />,
             title: 'Mạng lưới Headhunter',
             desc: 'Giới thiệu nhân tài, hoa hồng minh bạch',
           },
           {
-            icon: <SafetyCertificateOutlined className="text-indigo-600" />,
+            icon: <SafetyCertificateOutlined />,
             title: 'Bảo mật & Phân quyền',
             desc: 'Bảo vệ dữ liệu, kiểm soát theo vai trò',
           },
         ]}
-        extraVisual={
-          <div className="mt-4 overflow-hidden rounded-2xl border border-white/70 bg-white/50 p-3.5 text-slate-800 backdrop-blur-md shadow-md shadow-[#1E9EDB]/15">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-white text-sm font-black shadow-sm">
-                  HR
-                </span>
-                <div>
-                  <strong className="block text-xs font-bold text-slate-900">HR Connect Ecosystem</strong>
-                  <span className="text-[11px] font-medium text-slate-600">Không gian làm việc đồng bộ & chuẩn xác</span>
-                </div>
-              </div>
-              <span className="rounded-full border border-sky-400/60 bg-sky-50 px-2.5 py-0.5 text-[10px] font-extrabold text-[#1E9EDB]">
-                RBAC Hub
-              </span>
-            </div>
-
-            <div className="mt-3 flex items-center justify-between border-t border-white/60 pt-2.5 text-[11px] text-slate-600 font-medium">
-              <span className="flex items-center gap-1.5">
-                <SafetyCertificateOutlined className="text-[#1E9EDB] text-xs" />
-                <span>Xác thực bảo mật đa phân quyền</span>
-              </span>
-              <span className="font-bold text-slate-800">Đồng bộ tức thì</span>
-            </div>
-          </div>
-        }
       >
         {verifiedSuccessNotice && (
           <Alert
@@ -399,7 +373,7 @@ export const LoginPage: React.FC = () => {
             showIcon
             closable
             onClose={() => setVerifiedSuccessNotice(null)}
-            className="mb-3 rounded-xl py-2"
+            className="mb-4 rounded-xl py-2"
           />
         )}
 
@@ -421,7 +395,7 @@ export const LoginPage: React.FC = () => {
             showIcon
             closable
             onClose={() => setErrorMessage(null)}
-            className="mb-3 rounded-xl py-2"
+            className="mb-4 rounded-xl py-2"
           />
         ) : null}
 
@@ -460,7 +434,7 @@ export const LoginPage: React.FC = () => {
               className={AUTH_INPUT_CLASS}
             />
           </Form.Item>
-          <div className="mb-4 flex justify-end">
+          <div className="mb-5 flex justify-end">
             <button
               type="button"
               onClick={() => {
@@ -469,7 +443,7 @@ export const LoginPage: React.FC = () => {
                 const currentEmail = form.getFieldValue('email');
                 if (currentEmail) forgotForm.setFieldsValue({ email: currentEmail });
               }}
-              className="cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold text-[#1E9EDB] hover:text-[#168ec6]"
+              className={`cursor-pointer border-0 bg-transparent px-0 py-2 text-sm ${AUTH_LINK_CLASS}`}
             >
               Quên mật khẩu?
             </button>
@@ -484,21 +458,21 @@ export const LoginPage: React.FC = () => {
             disabled={submitting}
             icon={<ArrowRightOutlined />}
             iconPosition="end"
-            className="h-11 rounded-xl border-0 bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] hover:bg-[linear-gradient(135deg,#168ec6_0%,#43abd8_100%)] text-sm font-bold text-white shadow-md shadow-[#1E9EDB]/30 transition-all"
+            className={AUTH_PRIMARY_BUTTON_CLASS}
           >
             {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </Button>
         </Form>
 
-        <div className="mt-3.5 rounded-xl border border-white/70 bg-white/60 backdrop-blur-md px-3.5 py-2 text-center text-xs text-slate-600">
+        <div className="mt-6 text-center text-sm text-slate-600">
           Chưa có tài khoản?{' '}
-          <Link to="/register" className="font-bold text-[#1E9EDB] hover:text-[#168ec6]">
+          <Link to="/register" className={AUTH_LINK_CLASS}>
             Tạo tài khoản miễn phí
           </Link>
         </div>
 
         {SHOW_DEMO_ACCOUNTS && (
-          <details className="group mt-3 rounded-xl border border-dashed border-slate-300/80 bg-white/70 backdrop-blur-md">
+          <details className="group mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50">
             <summary className="flex cursor-pointer list-none items-center justify-between px-3.5 py-2 text-xs font-bold text-slate-700">
               <span className="flex items-center gap-1.5"><ThunderboltOutlined className="text-amber-500" /> Tài khoản kiểm thử</span>
               <span className="text-[11px] font-medium text-slate-400 group-open:hidden">Mở danh sách</span>
