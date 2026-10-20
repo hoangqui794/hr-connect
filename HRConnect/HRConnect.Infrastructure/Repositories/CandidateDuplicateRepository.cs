@@ -144,12 +144,28 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
 
         return await query
             .Include(item => item.Consent)
+            .Include(item => item.Job)
             .Include(item => item.Applications)
             .Include(item => item.Attribution).ThenInclude(attribution => attribution!.Commissions)
+                .ThenInclude(commission => commission.Payouts)
             .OrderBy(item => item.SubmittedAt)
             .ThenBy(item => item.SubmissionId)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Domain.Entities.Application>> GetCandidateApplicationsAsync(
+        Guid candidateAId,
+        Guid candidateBId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Applications
+            .AsNoTracking()
+            .Where(item => item.CandidateId == candidateAId || item.CandidateId == candidateBId)
+            .Include(item => item.Job)
+            .Include(item => item.Attribution).ThenInclude(attribution => attribution!.Commissions)
+                .ThenInclude(commission => commission.Payouts)
+            .OrderBy(item => item.AppliedAt)
+            .ThenBy(item => item.ApplicationId)
+            .ToListAsync(cancellationToken);
 
     public async Task<CandidateDuplicateCase> GetOrCreateStrongMatchCaseAsync(
         Guid candidateId,

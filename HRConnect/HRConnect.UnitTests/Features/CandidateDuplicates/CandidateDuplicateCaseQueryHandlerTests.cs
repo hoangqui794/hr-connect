@@ -3,6 +3,7 @@ using FluentValidation.TestHelper;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.CandidateDuplicates.Queries;
+using HRConnect.Application.Features.CandidateDuplicates.PreviewMerge;
 using HRConnect.Domain.Entities;
 using Moq;
 
@@ -116,6 +117,125 @@ public sealed class CandidateDuplicateCaseQueryHandlerTests
         result.ShouldHaveValidationErrorFor(query => query.Page);
         result.ShouldHaveValidationErrorFor(query => query.PageSize);
     }
+
+    [Fact]
+    public async Task Preview_RecommendsAccountOwnerAndReportsSameJobCollision()
+    {
+        var repository = new Mock<ICandidateDuplicateRepository>();
+        var duplicateCase = CreateCase();
+        duplicateCase.CandidateB.UserId = Guid.NewGuid();
+        var submissions = new[]
+        {
+            CreateSubmission(duplicateCase.CandidateAId, duplicateCase.Job!),
+            CreateSubmission(duplicateCase.CandidateBId, duplicateCase.Job!)
+        };
+        var applications = new[]
+        {
+            CreateApplication(duplicateCase.CandidateAId, duplicateCase.Job!),
+            CreateApplication(duplicateCase.CandidateBId, duplicateCase.Job!)
+        };
+        SetupPreview(repository, duplicateCase, submissions, applications);
+        var handler = new PreviewCandidateDuplicateMergeQueryHandler(repository.Object);
+
+        var response = await handler.Handle(
+            new PreviewCandidateDuplicateMergeQuery(duplicateCase.DuplicateCaseId),
+            CancellationToken.None);
+
+        response.RecommendedCanonicalCandidateId.Should().Be(duplicateCase.CandidateBId);
+        response.RecommendationReason.Should().Be("VERIFIED_ACCOUNT_OWNER");
+        response.CanMerge.Should().BeTrue();
+        response.Collisions.Should().ContainSingle(item =>
+            item.JobId == duplicateCase.JobId && item.CandidateIds.Count == 2);
+    }
+
+    [Fact]
+    public async Task Preview_WhenCompletedPayoutExists_BlocksMerge()
+    {
+        var repository = new Mock<ICandidateDuplicateRepository>();
+        var duplicateCase = CreateCase();
+        var application = CreateApplication(duplicateCase.CandidateAId, duplicateCase.Job!);
+        var attribution = new Attribution
+        {
+            AttributionId = Guid.NewGuid(),
+            ApplicationId = application.ApplicationId,
+            AffiliateId = Guid.NewGuid(),
+            WinningSubmissionId = Guid.NewGuid(),
+            AttributionRule = "FIRST_ACCEPTED",
+            Status = "ACTIVE"
+        };
+        var commission = new Commission
+        {
+            CommissionId = Guid.NewGuid(),
+            AttributionId = attribution.AttributionId,
+            Status = "PAYABLE",
+            RuleSnapshot = "{}",
+            CalculationSnapshot = "{}"
+        };
+        commission.Payouts.Add(new Payout
+        {
+            PayoutId = Guid.NewGuid(),
+            CommissionId = commission.CommissionId,
+            Status = "COMPLETED"
+        });
+        attribution.Commissions.Add(commission);
+        application.Attribution = attribution;
+        SetupPreview(repository, duplicateCase, Array.Empty<Submission>(), new[] { application });
+        var handler = new PreviewCandidateDuplicateMergeQueryHandler(repository.Object);
+
+        var response = await handler.Handle(
+            new PreviewCandidateDuplicateMergeQuery(duplicateCase.DuplicateCaseId),
+            CancellationToken.None);
+
+        response.CanMerge.Should().BeFalse();
+        response.FinanceBlockers.Should().ContainSingle(item =>
+            item.PayoutStatus == "COMPLETED" &&
+            item.ReasonCode == "PAID_COMMISSION_REQUIRES_FINANCE_ADJUSTMENT");
+    }
+
+    private static void SetupPreview(
+        Mock<ICandidateDuplicateRepository> repository,
+        CandidateDuplicateCase duplicateCase,
+        IReadOnlyList<Submission> submissions,
+        IReadOnlyList<HRConnect.Domain.Entities.Application> applications)
+    {
+        repository.Setup(x => x.GetByIdForReviewAsync(
+                duplicateCase.DuplicateCaseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(duplicateCase);
+        repository.Setup(x => x.GetRelatedSubmissionsAsync(
+                duplicateCase.CandidateAId,
+                duplicateCase.CandidateBId,
+                null,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(submissions);
+        repository.Setup(x => x.GetCandidateApplicationsAsync(
+                duplicateCase.CandidateAId,
+                duplicateCase.CandidateBId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(applications);
+    }
+
+    private static Submission CreateSubmission(Guid candidateId, Job job) => new()
+    {
+        SubmissionId = Guid.NewGuid(),
+        CandidateId = candidateId,
+        JobId = job.JobId,
+        Job = job,
+        CvId = Guid.NewGuid(),
+        SubmittedBy = Guid.NewGuid(),
+        Source = "AFFILIATE",
+        Status = "PENDING_IDENTITY_REVIEW",
+        SubmittedAt = DateTime.UtcNow
+    };
+
+    private static HRConnect.Domain.Entities.Application CreateApplication(Guid candidateId, Job job) => new()
+    {
+        ApplicationId = Guid.NewGuid(),
+        CandidateId = candidateId,
+        JobId = job.JobId,
+        Job = job,
+        Status = "SUBMITTED",
+        AppliedAt = DateTime.UtcNow
+    };
 
     private static CandidateDuplicateCase CreateCase()
     {

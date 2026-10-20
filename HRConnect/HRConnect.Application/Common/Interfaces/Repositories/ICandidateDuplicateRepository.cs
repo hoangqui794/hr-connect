@@ -42,6 +42,11 @@ public interface ICandidateDuplicateRepository
         Guid? jobId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Domain.Entities.Application>> GetCandidateApplicationsAsync(
+        Guid candidateAId,
+        Guid candidateBId,
+        CancellationToken cancellationToken = default);
+
     Task<CandidateDuplicateCase> GetOrCreateStrongMatchCaseAsync(
         Guid candidateId,
         Guid matchedCandidateId,

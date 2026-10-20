@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.CandidateDuplicates.Queries;
+using HRConnect.Application.Features.CandidateDuplicates.PreviewMerge;
 using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,7 @@ namespace HRConnect.Presentation.Endpoints.V1.Admin;
 public static class AdminCandidateDuplicateEndpoints
 {
     private const string ViewPermission = "candidate_duplicate.view";
+    private const string ResolvePermission = "candidate_duplicate.resolve";
 
     public static IEndpointRouteBuilder MapAdminCandidateDuplicateEndpoints(this IEndpointRouteBuilder app)
     {
@@ -79,6 +81,44 @@ public static class AdminCandidateDuplicateEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("/{caseId:guid}/preview-merge", async (
+            Guid caseId,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, ResolvePermission))
+                return PermissionAuthorization.Forbidden(ResolvePermission);
+
+            try
+            {
+                return Results.Ok(await sender.Send(
+                    new PreviewCandidateDuplicateMergeQuery(caseId),
+                    cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new
+                {
+                    success = false,
+                    message = ex.Message,
+                    errorCode = ex.ErrorCode
+                });
+            }
+        })
+        .WithName("PreviewCandidateDuplicateMerge")
+        .WithSummary("Xem trước tác động trước khi hợp nhất Candidate")
+        .WithDescription("Yêu cầu quyền candidate_duplicate.resolve. API chỉ đọc: đề xuất hồ sơ chính, liệt kê collision theo Job và chặn hợp nhất nếu phát hiện payout đã COMPLETED.")
+        .Produces<PreviewCandidateDuplicateMergeResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
 
         return app;
     }
