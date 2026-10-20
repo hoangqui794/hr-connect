@@ -34,6 +34,12 @@ public sealed class AccountLifecycleEmailOutboxWorker : BackgroundService
         RecruitmentCandidateEmailTemplates.OfferExpired
     };
 
+    /// <summary>
+    /// EF Core cannot translate IReadOnlySet&lt;string&gt;.Contains() to SQL.
+    /// Use this List&lt;string&gt; in LINQ-to-Entities queries instead.
+    /// </summary>
+    private static readonly List<string> SupportedTemplatesForQuery = SupportedTemplates.ToList();
+
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AccountLifecycleEmailOutboxWorker> _logger;
 
@@ -62,7 +68,7 @@ public sealed class AccountLifecycleEmailOutboxWorker : BackgroundService
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         var ids = await context.EmailOutboxes.AsNoTracking()
-            .Where(row => SupportedTemplates.Contains(row.TemplateCode) &&
+            .Where(row => SupportedTemplatesForQuery.Contains(row.TemplateCode) &&
                           row.RetryCount < MaxAttempts &&
                           ((row.Status == "PENDING" || row.Status == "FAILED") &&
                            (row.NextRetryAt == null || row.NextRetryAt <= now) ||
@@ -87,7 +93,7 @@ public sealed class AccountLifecycleEmailOutboxWorker : BackgroundService
 
         var claimed = await context.EmailOutboxes
             .Where(row => row.EmailOutboxId == id &&
-                          SupportedTemplates.Contains(row.TemplateCode) &&
+                          SupportedTemplatesForQuery.Contains(row.TemplateCode) &&
                           row.RetryCount < MaxAttempts &&
                           ((row.Status == "PENDING" || row.Status == "FAILED") &&
                            (row.NextRetryAt == null || row.NextRetryAt <= now) ||

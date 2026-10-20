@@ -25,6 +25,7 @@ on:
 permissions:
   contents: read
   packages: write
+  deployments: write
 
 jobs:
   # -----------------------------------------------------------
@@ -69,6 +70,7 @@ jobs:
     needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+
 
     steps:
       - name: Checkout Code
@@ -119,3 +121,4 @@ jobs:
           echo "CI passed! Triggering deployment to Render..."
           curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
           echo "Deploy hook sent successfully!"
+
