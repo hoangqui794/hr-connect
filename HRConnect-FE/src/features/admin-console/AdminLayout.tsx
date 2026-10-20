@@ -36,6 +36,7 @@ import { useCompactLayout } from './useCompactLayout';
 import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from './AdminRouteProgress';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { BrandMark } from '@/components/common/BrandMark';
 
 interface NavItem {
   to: string;
@@ -165,9 +166,7 @@ export const AdminLayout: React.FC = () => {
         aria-label="Điều hướng quản trị"
       >
         <div className="flex h-16 items-center gap-3 px-5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-base font-black text-white shadow-md shadow-[#1E9EDB]/30">
-            H
-          </span>
+          <BrandMark size={36} className="shrink-0" />
           {!collapsed && (
             <div className="min-w-0 leading-tight">
               <div className="truncate text-[15px] font-bold text-white">HR Connect</div>
