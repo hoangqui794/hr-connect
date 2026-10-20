@@ -18,6 +18,7 @@ import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import '@/features/admin-console/admin-console.css';
+import { BrandMark } from '@/components/common/BrandMark';
 
 const NAV = [
   { to: '/client/dashboard', label: 'Tổng quan' },
@@ -84,7 +85,7 @@ export const ClientShell: React.FC = () => {
             )}
 
             <NavLink to="/client/dashboard" className="flex shrink-0 items-center gap-2.5 no-underline" aria-label="HR Connect, về tổng quan">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-base font-black text-white shadow-md shadow-[#1E9EDB]/30">H</span>
+              <BrandMark size={36} />
               <span className="leading-tight">
                 <span className="block text-[15px] font-bold text-slate-900">HR Connect</span>
                 <span className="hidden text-[11px] font-medium tracking-wide text-[color:var(--console-accent-strong)] sm:block">Doanh nghiệp tuyển dụng</span>

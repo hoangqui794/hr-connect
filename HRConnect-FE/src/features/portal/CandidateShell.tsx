@@ -24,6 +24,7 @@ import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import '@/features/admin-console/admin-console.css';
 import './candidate/candidate.css';
+import { BrandMark } from '@/components/common/BrandMark';
 
 const PRIMARY_NAV = [
   { to: '/candidate/dashboard', label: 'Tổng quan', icon: HomeOutlined, matches: ['/candidate/dashboard'] },
@@ -114,7 +115,7 @@ export const CandidateShell: React.FC = () => {
           }
         >
           <NavLink to="/candidate/dashboard" className="flex shrink-0 items-center gap-2.5 no-underline" aria-label="HR Connect, về tổng quan">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] text-base font-black text-white shadow-md shadow-[#1E9EDB]/30">H</span>
+            <BrandMark size={40} />
             <span className="leading-tight">
               <span className="block text-[15px] font-bold text-slate-900">HR Connect</span>
               <span className="hidden text-[11px] font-medium tracking-wide text-[color:var(--console-accent-strong)] sm:block">Không gian Candidate</span>
