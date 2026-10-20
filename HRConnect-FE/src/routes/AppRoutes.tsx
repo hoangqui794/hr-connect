@@ -138,6 +138,9 @@ const CandidateAffiliateCvDetailPage = React.lazy(() =>
 const CandidateIdentityPage = React.lazy(() =>
   import('@/features/portal/CandidateIdentityPage').then((m) => ({ default: m.CandidateIdentityPage }))
 );
+const CandidateCvBuilderPage = React.lazy(() =>
+  import('@/features/portal/candidate/cv-builder/CandidateCvBuilderPage').then((m) => ({ default: m.CandidateCvBuilderPage }))
+);
 const AffiliateHomePage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateHomePage })));
 const AffiliateSubmitPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmitPage })));
 const AffiliateMySubmissionsPage = React.lazy(() =>
@@ -370,6 +373,8 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/candidate/submission-consents/:submissionId': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/saved-jobs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/cv-builder': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/cv-builder/:cvId': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/affiliate-cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/affiliate-cvs/:cvId': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/settings/email-identities': [UserRole.CANDIDATE, UserRole.ADMIN],
@@ -470,6 +475,7 @@ export const AppRoutes = {
   CandidateSubmissionConsentPage,
   PublicSubmissionConsentPage,
   CandidateCvsPage,
+  CandidateCvBuilderPage,
   CandidateAffiliateCvsPage,
   CandidateAffiliateCvDetailPage,
   CandidateIdentityPage,

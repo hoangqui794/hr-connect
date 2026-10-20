@@ -209,6 +209,8 @@ export const router = createBrowserRouter([
       { path: 'submission-consents/:submissionId', element: <AppRoutes.CandidateSubmissionConsentPage /> },
       { path: 'consents', element: <Navigate to="/candidate/applications?tab=consents" replace /> },
       { path: 'cvs', element: <AppRoutes.CandidateCvsPage /> },
+      { path: 'cv-builder', element: <AppRoutes.CandidateCvBuilderPage /> },
+      { path: 'cv-builder/:cvId', element: <AppRoutes.CandidateCvBuilderPage /> },
       { path: 'affiliate-cvs', element: <AppRoutes.CandidateAffiliateCvsPage /> },
       { path: 'affiliate-cvs/:cvId', element: <AppRoutes.CandidateAffiliateCvDetailPage /> },
       { path: 'settings/email-identities', element: <AppRoutes.CandidateIdentityPage /> },
@@ -219,7 +221,7 @@ export const router = createBrowserRouter([
     ],
   },
   { path: '/profile', element: <Navigate to="/candidate/profile" replace /> },
-  { path: '/cv-builder', element: <Navigate to="/candidate/cvs?action=builder" replace /> },
+  { path: '/cv-builder', element: <Navigate to="/candidate/cv-builder" replace /> },
 
   // ── Affiliate workspace (MF-02 branch B): light sidebar, violet accent ──────
   {
