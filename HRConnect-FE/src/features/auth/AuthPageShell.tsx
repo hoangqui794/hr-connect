@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowLeftOutlined, CheckCircleFilled } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { BrandMark } from '@/components/common/BrandMark';
 
 export interface BenefitItem {
   icon?: React.ReactNode;
@@ -68,7 +69,7 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
               className="flex w-fit cursor-pointer items-center gap-3 rounded-lg border-0 bg-transparent p-1 text-left text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               aria-label="Về trang chủ HR Connect"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-xl font-black text-[#0369A1] shadow-lg">H</span>
+              <BrandMark size={44} tone="light" />
               <span>
                 <strong className="block text-lg font-extrabold leading-none">HR Connect</strong>
                 <span className="mt-1 block text-sm text-sky-100">Nền tảng tuyển dụng & headhunt</span>
@@ -118,7 +119,7 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
             <div className="my-auto">
               <div className="mb-7">
                 <div className="mb-5 flex items-center gap-2.5 lg:hidden">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0369A1] text-base font-black text-white">H</span>
+                  <BrandMark size={36} />
                   <strong className="text-base text-slate-900">HR Connect</strong>
                 </div>
                 <p className="mb-1 text-xs font-bold uppercase tracking-[0.12em] text-[#0369A1]">{eyebrow}</p>

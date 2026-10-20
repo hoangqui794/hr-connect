@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
+import { BrandMark } from '@/components/common/BrandMark';
 
 const ROLE_SOLUTIONS = [
   {
@@ -276,7 +277,7 @@ export const HomePage: React.FC = () => {
       <footer className="border-0 border-t border-solid border-blue-900 bg-blue-950 px-4 sm:px-6 lg:px-10 py-6 sm:py-8 text-slate-400">
         <div className="mx-auto flex max-w-[1240px] flex-col gap-3 text-xs sm:text-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#1E9EDB_0%,#53B7E8_100%)] font-black text-white shadow-sm shadow-[#1E9EDB]/30">H</span>
+            <BrandMark size={34} tone="light" />
             <span><strong className="text-white">HR Connect</strong> · Nền tảng tuyển dụng và kết nối nhân tài</span>
           </div>
           <span>© 2026 HR Connect</span>
