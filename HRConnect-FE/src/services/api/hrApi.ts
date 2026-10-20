@@ -20,6 +20,7 @@ import type {
   RecruitmentApplicationSearchParams,
   UpdateScreeningStatusInput,
 } from '@/types/api/hr';
+import type { CandidateDeliveryActionResult } from '@/features/recruitment/candidateDeliveryFeedback';
 
 const cleanParams = <T extends object>(params: T): Partial<T> =>
   Object.fromEntries(
@@ -196,13 +197,13 @@ const put = async <T = { message?: string }>(url: string, body?: unknown) => (aw
 /** Client company actions after screening (MF-03 backup, MF-04 interview, offer, start of work). */
 export const clientActionsApi = {
   scheduleInterview: (applicationId: string, input: ScheduleInterviewInput) =>
-    post(`/recruitment/applications/${applicationId}/interviews`, input),
+    post<CandidateDeliveryActionResult>(`/recruitment/applications/${applicationId}/interviews`, input),
   rescheduleInterview: (interviewId: string, input: { newScheduledAt: string; reason: string; durationMinutes?: number; location?: string; meetingLink?: string; concurrencyToken: string }) =>
-    post(`/interviews/${interviewId}/reschedule`, input),
+    post<CandidateDeliveryActionResult>(`/interviews/${interviewId}/reschedule`, input),
   updateInterview: (interviewId: string, input: UpdateInterviewInput) =>
     put(`/interviews/${interviewId}`, input),
   cancelInterview: (interviewId: string, input: { reason: string; concurrencyToken: string }) =>
-    post(`/interviews/${interviewId}/cancel`, input),
+    post<CandidateDeliveryActionResult>(`/interviews/${interviewId}/cancel`, input),
   recordResult: (interviewId: string, input: { result: 'PASS' | 'FAIL' | 'BACKUP'; feedback?: string; isFinalRound?: boolean; nextAction?: string; concurrencyToken: string }) =>
     post(`/interviews/${interviewId}/result`, input),
   recordNoShow: (interviewId: string, input: { reason: string; concurrencyToken: string }) =>
@@ -211,8 +212,8 @@ export const clientActionsApi = {
     post(`/recruitment/applications/${applicationId}/backup-decision`, input),
   createOffer: (applicationId: string, input: OfferInput) => post(`/recruitment/applications/${applicationId}/offers`, input),
   updateOffer: (offerId: string, input: OfferInput) => put(`/offers/${offerId}`, input),
-  sendOffer: (offerId: string, concurrencyToken: string) => post(`/offers/${offerId}/send`, { concurrencyToken }),
-  withdrawOffer: (offerId: string, input: { reason: string; concurrencyToken: string }) => post(`/offers/${offerId}/withdraw`, input),
+  sendOffer: (offerId: string, concurrencyToken: string) => post<CandidateDeliveryActionResult>(`/offers/${offerId}/send`, { concurrencyToken }),
+  withdrawOffer: (offerId: string, input: { reason: string; concurrencyToken: string }) => post<CandidateDeliveryActionResult>(`/offers/${offerId}/withdraw`, input),
   setPlannedStart: (applicationId: string, input: { plannedStartDate: string; reason?: string; concurrencyToken: string }) =>
     put(`/recruitment/applications/${applicationId}/planned-start-date`, input),
   confirmStartWork: (applicationId: string, input: ConfirmStartWorkInput) =>

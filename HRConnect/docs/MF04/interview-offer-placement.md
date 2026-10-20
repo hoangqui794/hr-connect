@@ -54,7 +54,7 @@ khai.
 | **Candidate** | Xem lịch Interview và Offer của chính mình; chấp nhận/từ chối Offer; rút Application của chính mình khi Application chưa kết thúc. | Xem dữ liệu Candidate khác; quyết định kết quả Interview; xác nhận Placement. |
 | **Internal HR** | Tiền sàng lọc Job `HEADHUNT_COD`/`CV_SOURCING` từ `SUBMITTED` hoặc `SCREENING`; xem Application, AI result, Interview, Offer, Placement, Attribution và timeline cần thiết để hỗ trợ vận hành. | Sàng lọc `CV_APPLICATION`; quyết định Backup; lên lịch hoặc ghi kết quả Interview; tạo/gửi/thu hồi Offer; xác nhận không đi làm hoặc Placement; xem raw audit record nếu không có quyền `audit.view` của Platform Admin. |
 | **Affiliate Recruiter** | Xem projection tiến độ referral của mình ở mức an toàn: `CV_REVIEW`, `SHORTLISTED`, `INTERVIEW`, `OFFER`, `BACKUP`, `PLACED` hoặc `CLOSED`. | Xem lịch phỏng vấn, link/địa điểm, feedback, lương, nội dung Offer, lý do nội bộ hoặc Placement detail. |
-| **HR Connect System** | Lưu entity, trạng thái, history, audit log; kiểm tra quyền và ownership; xử lý Offer hết hạn bằng background worker. | Tự quyết định PASS/FAIL/BACKUP, tạo Offer hoặc xác nhận Candidate đã đi làm. |
+| **HR Connect System** | Lưu entity, trạng thái, history, audit log; kiểm tra quyền và ownership; xử lý Offer hết hạn bằng background worker; gửi notification in-app cho Candidate có tài khoản hoặc email fallback qua outbox cho Candidate chưa liên kết tài khoản. | Tự quyết định PASS/FAIL/BACKUP, tạo Offer hoặc xác nhận Candidate đã đi làm. |
 
 `INTERNAL_HR` là vai trò vận hành của HR Connect, không phải người thuộc hội
 đồng tuyển dụng của Client Company. Internal HR chỉ có mutation tiền sàng lọc
@@ -70,6 +70,7 @@ thu hồi.
   khi tạo vòng tiếp theo;
 - không có một Interview khác đang `SCHEDULED`;
 - có `concurrencyToken` hiện hành của Application.
+- có kênh liên hệ: Candidate đã liên kết tài khoản HR Connect **hoặc** có email hợp lệ để hệ thống đưa email vào outbox. Nếu thiếu cả hai, API tạo lịch trả `400 CANDIDATE_DELIVERY_UNAVAILABLE` và không đổi trạng thái Application.
 
 Ngoài kiểm tra ở application service, database có unique partial index bảo đảm
 mỗi Application chỉ có tối đa một Interview `SCHEDULED`. Vì vậy hai request tạo
@@ -139,6 +140,18 @@ chính mình. Người tham gia Interview phải là Company User đang hoạt �
 feedback nội bộ, actor nội bộ, lý do history nội bộ hoặc concurrency token của
 Interview.
 
+Khi Company tạo lịch, dời lịch hoặc hủy lịch, hệ thống chọn **một** kênh gửi
+thông báo bền vững cho Candidate:
+
+1. Candidate có `UserId`: tạo notification in-app an toàn.
+2. Candidate chưa có tài khoản nhưng có email hợp lệ: tạo `EmailOutbox` để worker gửi email mời đăng ký/đăng nhập.
+3. Candidate không có cả hai: thao tác tạo lịch mới bị chặn; dời/hủy lịch vẫn hoàn tất nhưng không thể phát thông báo.
+
+Email Interview chỉ chứa vị trí, thời gian, hình thức/địa điểm hoặc meeting
+link và nút đăng ký/đăng nhập. Nó không tiết lộ người phỏng vấn, feedback,
+lý do history nội bộ hoặc concurrency token. Việc cập nhật nội dung lịch không
+tự tạo notification riêng.
+
 Khi ghi kết quả, Interview chuyển sang `COMPLETED`. Kết quả có ba giá trị:
 
 | Kết quả | Điều kiện tiếp theo | Application sau thao tác |
@@ -195,10 +208,22 @@ lệ.
 Candidate chỉ phản hồi Offer của chính mình. Candidate không được sửa nội dung,
 lương, hạn phản hồi hay trạng thái Offer của Candidate khác.
 
-> **Lưu ý về notification hiện có:** background worker hiện tạo in-app
-> notification an toàn cho Candidate khi Offer hết hạn. Không mô tả việc gửi
-> notification khi Company tạo lịch Interview hoặc nhấn gửi Offer là chức năng
-> đã có, vì các handler hiện tại chưa thực hiện side effect đó.
+Khi Company gửi Offer, Candidate phải có tài khoản HR Connect hoặc email hợp
+lệ; nếu thiếu cả hai, API trả `400 CANDIDATE_DELIVERY_UNAVAILABLE` và Offer
+vẫn là `DRAFT`. Khi có tài khoản, hệ thống tạo notification in-app; khi chưa
+có tài khoản, hệ thống tạo EmailOutbox. Thu hồi và hết hạn Offer cũng dùng hai
+kênh này theo khả năng liên hệ, nhưng không bị chặn nếu Candidate cũ không còn
+kênh liên hệ.
+
+Email Offer chỉ thông báo có Offer mới/đã thu hồi/đã hết hạn và chứa nút đăng
+ký hoặc đăng nhập. Email **không** chứa lương, tài liệu Offer hay URL tài liệu.
+Khi Candidate chấp nhận hoặc từ chối Offer, hệ thống thông báo lại cho người đã
+tạo Offer. Tạo hay sửa draft không gửi notification vì Candidate chưa nhận Offer.
+
+Email fallback dùng `CandidateRecruitmentDelivery:PortalBaseUrl` (hoặc biến môi
+trường `CANDIDATE_PORTAL_BASE_URL`) để tạo liên kết đăng ký Candidate. Liên kết
+giữ một `returnTo` chỉ hợp lệ cho Candidate; frontend chặn mọi return path ra
+ngoài hoặc thuộc workspace role khác.
 
 ### 5.5. Ngày dự kiến, không đi làm và Placement
 
@@ -334,8 +359,9 @@ ownership.
 6. `PLACED` chỉ xuất hiện sau xác nhận đi làm thực tế của Company.
 7. Affiliate chỉ thấy progress đã được sanitize, không thấy dữ liệu tuyển dụng
    nhạy cảm.
-8. Offer hết hạn được xử lý bởi System worker, có audit và notification in-app
-   an toàn; MF-04 không tự kích hoạt workflow MF-05.
+8. Offer hết hạn được xử lý bởi System worker, có audit và gửi notification
+   in-app hoặc email fallback theo kênh liên hệ của Candidate; MF-04 không tự
+   kích hoạt workflow MF-05.
 9. Không thể tạo hai Interview `SCHEDULED` cho cùng Application, kể cả khi hai
    request chạy đồng thời.
 10. Participant Interview phải là Company User đang hoạt động của Company sở
@@ -345,6 +371,5 @@ ownership.
 
 - probation, warranty, commission, payout và đối soát phí;
 - quy trình Internal HR điều phối Interview, Offer hoặc Placement thay Company;
-- thông báo tự động khi tạo/dời Interview hoặc khi Company gửi Offer;
 - workflow tự động chuyển Placement sang MF-05;
 - hiển thị chi tiết Interview/Offer/Placement cho Affiliate.

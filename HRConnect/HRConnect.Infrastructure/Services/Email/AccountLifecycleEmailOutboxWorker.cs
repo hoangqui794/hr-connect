@@ -11,22 +11,28 @@ using Microsoft.Extensions.Logging;
 namespace HRConnect.Infrastructure.Services.Email;
 
 /// <summary>
-/// Delivers non-secret account lifecycle messages from the durable email outbox.
+/// Delivers non-secret account lifecycle and Candidate recruitment messages from the durable email outbox.
 /// OTP rows are deliberately excluded: they are sent only by the originating request
 /// or an explicit resend request, so an abandoned registration is never replayed.
 /// </summary>
 public sealed class AccountLifecycleEmailOutboxWorker : BackgroundService
 {
     private const int MaxAttempts = 5;
-    private static readonly string[] SupportedTemplates =
-    [
+    internal static readonly IReadOnlySet<string> SupportedTemplates = new HashSet<string>(StringComparer.Ordinal)
+    {
         "AFFILIATE_REGISTRATION_UNDER_REVIEW",
         "CLIENT_REGISTRATION_UNDER_REVIEW",
         "AFFILIATE_REGISTRATION_APPROVED",
         "AFFILIATE_REGISTRATION_REJECTED",
         "CLIENT_REGISTRATION_APPROVED",
-        "CLIENT_REGISTRATION_REJECTED"
-    ];
+        "CLIENT_REGISTRATION_REJECTED",
+        RecruitmentCandidateEmailTemplates.InterviewScheduled,
+        RecruitmentCandidateEmailTemplates.InterviewRescheduled,
+        RecruitmentCandidateEmailTemplates.InterviewCancelled,
+        RecruitmentCandidateEmailTemplates.OfferSent,
+        RecruitmentCandidateEmailTemplates.OfferWithdrawn,
+        RecruitmentCandidateEmailTemplates.OfferExpired
+    };
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AccountLifecycleEmailOutboxWorker> _logger;
@@ -121,8 +127,27 @@ public sealed class AccountLifecycleEmailOutboxWorker : BackgroundService
         }
     }
 
-    private static HrConnectEmail CreateEmail(EmailOutbox row)
+    internal static HrConnectEmail CreateEmail(EmailOutbox row)
     {
+        if (RecruitmentCandidateEmailTemplates.All.Contains(row.TemplateCode))
+        {
+            var recruitmentPayload = JsonSerializer.Deserialize<RecruitmentCandidateEmailPayload>(
+                row.Payload,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("Email recruitment không có payload hợp lệ.");
+
+            return row.TemplateCode switch
+            {
+                RecruitmentCandidateEmailTemplates.InterviewScheduled => HrConnectEmailTemplates.InterviewScheduled(recruitmentPayload),
+                RecruitmentCandidateEmailTemplates.InterviewRescheduled => HrConnectEmailTemplates.InterviewRescheduled(recruitmentPayload),
+                RecruitmentCandidateEmailTemplates.InterviewCancelled => HrConnectEmailTemplates.InterviewCancelled(recruitmentPayload),
+                RecruitmentCandidateEmailTemplates.OfferSent => HrConnectEmailTemplates.OfferSent(recruitmentPayload),
+                RecruitmentCandidateEmailTemplates.OfferWithdrawn => HrConnectEmailTemplates.OfferWithdrawn(recruitmentPayload),
+                RecruitmentCandidateEmailTemplates.OfferExpired => HrConnectEmailTemplates.OfferExpired(recruitmentPayload),
+                _ => throw new InvalidOperationException($"Không hỗ trợ template email {row.TemplateCode}.")
+            };
+        }
+
         using var document = JsonDocument.Parse(row.Payload);
         var root = document.RootElement;
         var accountLabel = root.GetProperty("accountLabel").GetString() ?? "tài khoản";

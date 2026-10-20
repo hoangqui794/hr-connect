@@ -143,6 +143,9 @@ public class InterviewRepository : IInterviewRepository
         return await _context.Interviews
             .Include(i => i.Application)
                 .ThenInclude(a => a.Job)
+                    .ThenInclude(j => j.Company)
+            .Include(i => i.Application)
+                .ThenInclude(a => a.Candidate)
             .Include(i => i.InterviewParticipants)
             .Include(i => i.InterviewStatusHistories)
             .FirstOrDefaultAsync(i => i.InterviewId == interviewId, cancellationToken);

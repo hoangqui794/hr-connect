@@ -21,6 +21,7 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
     private readonly ILogger<RescheduleInterviewCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationRepository? _notificationRepository;
+    private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
 
     public RescheduleInterviewCommandHandler(
         IInterviewRepository interviewRepository,
@@ -28,7 +29,8 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
         IUnitOfWork unitOfWork,
         ILogger<RescheduleInterviewCommandHandler> logger,
         IAuditLogService auditLogService,
-        INotificationRepository? notificationRepository = null)
+        INotificationRepository? notificationRepository = null,
+        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
     {
         _interviewRepository = interviewRepository;
         _companyUserRepository = companyUserRepository;
@@ -36,6 +38,7 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
         _logger = logger;
         _auditLogService = auditLogService;
         _notificationRepository = notificationRepository;
+        _candidateDeliveryService = candidateDeliveryService;
     }
 
     public async Task<RescheduleInterviewResponse> Handle(RescheduleInterviewCommand request, CancellationToken cancellationToken)
@@ -156,7 +159,18 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
             }
         }, cancellationToken);
 
-        if (_notificationRepository != null && interview.Application?.Candidate?.UserId is { } candidateUserId)
+        CandidateRecruitmentDeliveryOutcome? deliveryOutcome = null;
+        if (_candidateDeliveryService != null && interview.Application != null)
+        {
+            deliveryOutcome = await _candidateDeliveryService.DeliverInterviewAsync(
+                interview.Application,
+                interview,
+                InterviewCandidateDeliveryEvent.Rescheduled,
+                request.Reason.Trim(),
+                now,
+                cancellationToken: cancellationToken);
+        }
+        else if (_notificationRepository != null && interview.Application?.Candidate?.UserId is { } candidateUserId)
         {
             await _notificationRepository.AddAsync(new Notification
             {
@@ -195,7 +209,8 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
                 Status = InterviewStates.Scheduled,
                 Reason = request.Reason.Trim(),
                 ConcurrencyToken = newConcurrencyToken,
-                RescheduledAt = now
+                RescheduledAt = now,
+                DeliveryChannel = deliveryOutcome is null ? null : deliveryOutcome.Channel.ToApiValue()
             }
         };
     }

@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 
@@ -17,17 +18,20 @@ public sealed class OfferExpiryService : IOfferExpiryService
     private readonly INotificationRepository _notifications;
     private readonly IAuditLogService _audit;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
 
     public OfferExpiryService(
         IOfferRepository offers,
         INotificationRepository notifications,
         IAuditLogService audit,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
     {
         _offers = offers;
         _notifications = notifications;
         _audit = audit;
         _unitOfWork = unitOfWork;
+        _candidateDeliveryService = candidateDeliveryService;
     }
 
     public async Task<bool> ExpireAsync(Offer offer, DateTime now, CancellationToken cancellationToken = default)
@@ -44,11 +48,19 @@ public sealed class OfferExpiryService : IOfferExpiryService
         offer.ConcurrencyToken = Guid.NewGuid();
         _offers.Update(offer);
 
-        var candidateUserId = offer.Application?.Candidate?.UserId;
-        if (candidateUserId.HasValue)
+        if (_candidateDeliveryService != null)
+        {
+            await _candidateDeliveryService.DeliverOfferAsync(
+                offer,
+                OfferCandidateDeliveryEvent.Expired,
+                reason: null,
+                occurredAt: now,
+                cancellationToken: cancellationToken);
+        }
+        else if (offer.Application?.Candidate?.UserId is { } candidateUserId)
         {
             var notificationExists = await _notifications.ExistsAsync(
-                candidateUserId.Value,
+                candidateUserId,
                 NotificationType,
                 "OFFER",
                 offer.OfferId,
@@ -58,7 +70,7 @@ public sealed class OfferExpiryService : IOfferExpiryService
                 await _notifications.AddAsync(new Notification
                 {
                     NotificationId = Guid.NewGuid(),
-                    UserId = candidateUserId.Value,
+                    UserId = candidateUserId,
                     NotificationType = NotificationType,
                     Title = "Offer đã hết hạn phản hồi",
                     Message = "Lời mời nhận việc của bạn đã hết hạn phản hồi.",

@@ -142,6 +142,8 @@ export interface ApplicationOffer {
   startDate: string | null;
   expiryDate: string | null;
   status: string;
+  /** Optional HTTP(S) link to the offer document supplied by the owning Company. */
+  offerDocumentUrl: string | null;
   sentAt: string | null;
   respondedAt: string | null;
   declineReason: string | null;

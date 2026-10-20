@@ -10,5 +10,6 @@ public record WithdrawOfferResponse(
     string Reason,
     string ApplicationStatus,
     Guid ConcurrencyToken,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string? DeliveryChannel = null
 );
