@@ -401,12 +401,15 @@ public sealed class DisputeHandlers :
             dispute.ConcurrencyToken);
     }
 
+    public const string DisputeNotificationType = "AFFILIATE";
+
     private Task NotifyAsync(Guid userId, string title, string message, Guid disputeId, DateTime now, CancellationToken cancellationToken) =>
         _notifications.AddAsync(new Notification
         {
             NotificationId = Guid.NewGuid(),
             UserId = userId,
-            NotificationType = "DISPUTE",
+            // BUG-07: ck_notification_type has no DISPUTE value; disputes are an Affiliate notice linked to the dispute.
+            NotificationType = DisputeNotificationType,
             Title = title,
             Message = message,
             RelatedEntityType = "DISPUTE",
