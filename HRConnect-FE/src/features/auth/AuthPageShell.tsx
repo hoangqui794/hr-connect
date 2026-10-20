@@ -1,6 +1,11 @@
-import React from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { ArrowLeftOutlined, CheckCircleFilled, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+
+const AuthHeroPlayer = lazy(() => import('./motion/AuthHeroPlayer'));
+
+/** Solid accent tiles for the benefit icons (candidate violet, affiliate amber, client emerald). */
+const BENEFIT_TILES = ['bg-violet-400 text-violet-950', 'bg-amber-400 text-amber-950', 'bg-emerald-400 text-emerald-950'];
 
 export interface BenefitItem {
   icon?: React.ReactNode;
@@ -40,6 +45,15 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
   extraVisual,
 }) => {
   const navigate = useNavigate();
+  // The brand panel is hidden below lg, so phones never download the Remotion chunk.
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 1024px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(min-width: 1024px)');
+    if (!mq) return;
+    const onChange = () => setIsDesktop(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   return (
     <main
@@ -51,7 +65,7 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
         className={`mx-auto grid w-full lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] ${wide ? 'max-w-none' : 'max-w-none'}`}
       >
         {/* Brand panel */}
-        <aside className="relative hidden flex-col justify-between overflow-hidden bg-[#0C4A6E] p-10 text-white lg:flex xl:p-14">
+        <aside className="relative hidden flex-col justify-between gap-6 overflow-y-auto bg-[#0C4A6E] p-8 text-white lg:flex xl:p-12">
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:radial-gradient(#ffffff_1px,transparent_1px)] [background-size:22px_22px]"
             aria-hidden="true"
@@ -71,27 +85,35 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
             </span>
           </button>
 
-          <div className="relative z-10 max-w-md">
-            <h2 className="m-0 text-3xl font-extrabold leading-tight tracking-[-0.02em] text-white xl:text-[34px]">{sideTitle}</h2>
-            {sideDescription && <p className="mb-0 mt-3 text-base leading-relaxed text-sky-100">{sideDescription}</p>}
+          <div className="relative z-10 w-full max-w-lg">
+            <h2 className="m-0 text-[28px] font-extrabold leading-tight tracking-[-0.02em] text-white xl:text-[32px]">{sideTitle}</h2>
+            {sideDescription && <p className="mb-0 mt-2 text-base leading-relaxed text-sky-100">{sideDescription}</p>}
 
-            <ul className="m-0 mt-8 list-none space-y-5 p-0">
+            {isDesktop && (
+            <div className="mt-6">
+              <Suspense fallback={<div className="aspect-[560/400] w-full rounded-2xl bg-white/5" />}>
+                <AuthHeroPlayer />
+              </Suspense>
+            </div>
+            )}
+
+            <ul className="m-0 mt-6 grid list-none grid-cols-1 gap-3 p-0 xl:grid-cols-3">
               {benefits.map((item, idx) => {
                 const isObject = typeof item !== 'string';
                 const itemTitle = isObject ? item.title : item;
                 const desc = isObject ? item.desc : null;
                 const icon = isObject && item.icon ? item.icon : <CheckCircleFilled />;
                 return (
-                  <li key={idx} className="flex items-start gap-3.5">
+                  <li key={idx} className="flex items-start gap-3 rounded-xl bg-white/[0.06] p-3 ring-1 ring-white/10 xl:flex-col xl:gap-2">
                     <span
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-lg text-white [&_.anticon]:!text-white"
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg shadow-lg shadow-black/20 [&_.anticon]:!text-current ${BENEFIT_TILES[idx % BENEFIT_TILES.length]}`}
                       aria-hidden="true"
                     >
                       {icon}
                     </span>
                     <div className="min-w-0">
-                      <strong className="block text-[15px] font-semibold leading-snug text-white">{itemTitle}</strong>
-                      {desc && <span className="mt-0.5 block text-sm leading-snug text-sky-100">{desc}</span>}
+                      <strong className="block text-sm font-semibold leading-snug text-white">{itemTitle}</strong>
+                      {desc && <span className="mt-0.5 block text-xs leading-snug text-sky-100">{desc}</span>}
                     </div>
                   </li>
                 );
