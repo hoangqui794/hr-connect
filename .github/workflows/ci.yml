@@ -25,6 +25,20 @@ defaults:
     shell: bash
 
 jobs:
+  delivery-scripts:
+    name: Delivery / Validate deployment scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Validate Render deployment workflow
+        run: bash .github/scripts/deploy-render.test.sh
+
   backend:
     name: Backend / Build & test
     runs-on: ubuntu-latest
@@ -204,6 +218,7 @@ jobs:
       - frontend
       - ai-service
       - backend-container
+      - delivery-scripts
     runs-on: ubuntu-latest
     steps:
       - name: Verify every quality gate passed
@@ -212,14 +227,16 @@ jobs:
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           AI_RESULT: ${{ needs.ai-service.result }}
           CONTAINER_RESULT: ${{ needs.backend-container.result }}
+          DELIVERY_RESULT: ${{ needs.delivery-scripts.result }}
         run: |
-          printf 'Backend: %s\nFrontend: %s\nAI service: %s\nContainer: %s\n' \
-            "$BACKEND_RESULT" "$FRONTEND_RESULT" "$AI_RESULT" "$CONTAINER_RESULT"
+          printf 'Backend: %s\nFrontend: %s\nAI service: %s\nContainer: %s\nDelivery scripts: %s\n' \
+            "$BACKEND_RESULT" "$FRONTEND_RESULT" "$AI_RESULT" "$CONTAINER_RESULT" "$DELIVERY_RESULT"
 
           if [[ "$BACKEND_RESULT" != success \
             || "$FRONTEND_RESULT" != success \
             || "$AI_RESULT" != success \
-            || "$CONTAINER_RESULT" != success ]]; then
+            || "$CONTAINER_RESULT" != success \
+            || "$DELIVERY_RESULT" != success ]]; then
             echo '::error::At least one required quality gate failed.'
             exit 1
           fi
