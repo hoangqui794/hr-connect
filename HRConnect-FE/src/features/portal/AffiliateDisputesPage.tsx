@@ -239,6 +239,12 @@ export const AffiliateDisputesPage: React.FC = () => {
           <Form.Item
             name="evidenceNote"
             label="Ghi chú bằng chứng (email, tin nhắn xác nhận từ ứng viên)"
+            rules={[{
+              validator: (_, value?: string) =>
+                value?.trim().toLowerCase().startsWith('http://')
+                  ? Promise.reject(new Error('Nếu gửi đường dẫn bằng chứng, hãy dùng liên kết HTTPS an toàn.'))
+                  : Promise.resolve(),
+            }]}
           >
             <Input.TextArea
               rows={2}

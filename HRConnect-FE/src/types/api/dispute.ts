@@ -29,6 +29,7 @@ export interface AdminDisputeListItemDto {
   raisedByAffiliateName: string | null;
   createdAt: string;
   resolvedAt: string | null;
+  concurrencyToken: string;
 }
 
 export interface DisputeSubmissionDto {
@@ -71,9 +72,11 @@ export interface AdminDisputeDetailDto {
   candidateNormalizedPhone: string | null;
   submissions: DisputeSubmissionDto[];
   currentAttribution: DisputeAttributionDto | null;
+  candidateDuplicateCaseId: string | null;
   resolvedBy: string | null;
   resolution: string | null;
   resolvedAt: string | null;
+  concurrencyToken: string;
 }
 
 export interface DisputePageDto {
@@ -93,4 +96,6 @@ export interface CreateDisputeRequest {
 export interface ResolveDisputeRequest {
   decision: 'UPHELD' | 'REJECTED';
   resolution: string;
+  concurrencyToken: string;
+  idempotencyKey: string;
 }

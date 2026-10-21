@@ -14,6 +14,7 @@ import {
   LogoutOutlined,
   MailOutlined,
   SearchOutlined,
+  SafetyCertificateOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
@@ -43,6 +44,7 @@ const ACCOUNT_LINKS = [
   { to: '/candidate/profile', label: 'Hồ sơ cá nhân', icon: UserOutlined },
   { to: '/candidate/affiliate-cvs', label: 'CV do Affiliate gửi', icon: FolderOpenOutlined },
   { to: '/candidate/settings/email-identities', label: 'Email liên kết & khôi phục dữ liệu', icon: MailOutlined },
+  { to: '/candidate/settings/duplicate-cases', label: 'Hồ sơ đang đối chiếu', icon: SafetyCertificateOutlined },
 ] as const;
 
 const desktopLinkClass = (active: boolean) =>

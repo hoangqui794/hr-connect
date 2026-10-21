@@ -8,7 +8,7 @@ export interface TotalCountPage<T> {
   totalPages: number;
 }
 
-export type SubmissionStatus = 'PENDING_CONSENT' | 'ACCEPTED' | 'CONSENT_REJECTED' | 'CONSENT_EXPIRED' | 'BLOCKED_DUPLICATE' | string;
+export type SubmissionStatus = 'PENDING_CONSENT' | 'PENDING_IDENTITY_REVIEW' | 'ACCEPTED' | 'CONSENT_REJECTED' | 'CONSENT_EXPIRED' | 'BLOCKED_DUPLICATE' | string;
 
 export interface AffiliateSubmission {
   submissionId: string;

@@ -53,6 +53,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/admin/jobs', label: 'Duyệt tin tuyển dụng', icon: <FileTextOutlined /> },
       { to: '/admin/approvals', label: 'Phê duyệt tài khoản', icon: <SafetyCertificateOutlined /> },
       { to: '/admin/candidate-identity-claims', label: 'Danh tính Candidate', icon: <LinkOutlined /> },
+      { to: '/admin/candidate-duplicate-cases', label: 'Hồ sơ nghi trùng', icon: <SafetyCertificateOutlined /> },
       { to: '/admin/disputes', label: 'Tranh chấp & Khiếu nại', icon: <SolutionOutlined /> },
       { to: '/admin/users', label: 'Người dùng', icon: <TeamOutlined /> },
       { to: '/admin/contact-requests', label: 'Yêu cầu tư vấn', icon: <CustomerServiceOutlined /> },

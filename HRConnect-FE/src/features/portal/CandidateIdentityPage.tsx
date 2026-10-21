@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Form, Input, Popconfirm, Skeleton, Tag } from 'antd';
 import { CheckCircleOutlined, DeleteOutlined, LinkOutlined, MailOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useNavigate } from 'react-router-dom';
 import { candidateIdentityApi } from '@/services/api/mf02/candidateIdentityApi';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
@@ -34,6 +35,7 @@ const secondsUntil = (value: string | undefined, now: number) => Math.max(0, Mat
 const duration = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 
 export const CandidateIdentityPage: React.FC = () => {
+  const navigate = useNavigate();
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
   const canManage = useAuthStore((state) => state.hasPermission('candidate.identity.manage_own'));
@@ -116,6 +118,9 @@ export const CandidateIdentityPage: React.FC = () => {
         syncCurrentUser(),
       ]);
       message.success(response.message);
+      if (response.status === 'PENDING_ADMIN_REVIEW' && response.duplicateCaseId) {
+        navigate(`/candidate/settings/duplicate-cases/${response.duplicateCaseId}`);
+      }
     },
     onError: (error) => {
       const apiError = getApiError(error, 'Mã xác minh chưa được chấp nhận.');

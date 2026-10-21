@@ -71,6 +71,12 @@ const ConsoleIdentityClaimsPage = React.lazy(() =>
 const ConsoleIdentityClaimDetailPage = React.lazy(() =>
   import('@/features/admin-console/AdminIdentityClaimDetailPage').then((m) => ({ default: m.AdminIdentityClaimDetailPage }))
 );
+const ConsoleCandidateDuplicateCasesPage = React.lazy(() =>
+  import('@/features/admin-console/AdminCandidateDuplicateCasesPage').then((m) => ({ default: m.AdminCandidateDuplicateCasesPage }))
+);
+const ConsoleCandidateDuplicateCaseDetailPage = React.lazy(() =>
+  import('@/features/admin-console/AdminCandidateDuplicateCasesPage').then((m) => ({ default: m.AdminCandidateDuplicateCaseDetailPage }))
+);
 const ConsoleUsersPage = React.lazy(() =>
   import('@/features/admin-console/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage }))
 );
@@ -86,8 +92,8 @@ const ConsoleAuditLogPage = React.lazy(() =>
 const ConsoleProfilePage = React.lazy(() =>
   import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminProfilePage }))
 );
-const ConsoleDisputesPlaceholder = React.lazy(() =>
-  import('@/features/admin-console/AdminProfileAndPlaceholders').then((m) => ({ default: m.AdminDisputesPlaceholder }))
+const ConsoleDisputesPage = React.lazy(() =>
+  import('@/features/admin-console/AdminDisputesPage').then((m) => ({ default: m.AdminDisputesPage }))
 );
 const ConsolePayoutsPlaceholder = React.lazy(() =>
   import('@/features/finance-mf05/AdminFinancePage').then((m) => ({ default: m.AdminFinancePage }))
@@ -137,6 +143,12 @@ const CandidateAffiliateCvDetailPage = React.lazy(() =>
 );
 const CandidateIdentityPage = React.lazy(() =>
   import('@/features/portal/CandidateIdentityPage').then((m) => ({ default: m.CandidateIdentityPage }))
+);
+const CandidateDuplicateCasesPage = React.lazy(() =>
+  import('@/features/portal/CandidateDuplicateCasesPage').then((m) => ({ default: m.CandidateDuplicateCasesPage }))
+);
+const CandidateDuplicateCaseDetailPage = React.lazy(() =>
+  import('@/features/portal/CandidateDuplicateCasesPage').then((m) => ({ default: m.CandidateDuplicateCaseDetailPage }))
 );
 const AffiliateHomePage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateHomePage })));
 const AffiliateSubmitPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmitPage })));
@@ -373,6 +385,8 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/candidate/affiliate-cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/affiliate-cvs/:cvId': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/settings/email-identities': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/settings/duplicate-cases': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/settings/duplicate-cases/:caseId': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/affiliate/attributions': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/profile': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/jobs': [
@@ -413,6 +427,8 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/admin/job-templates': [UserRole.ADMIN],
   '/admin/candidate-identity-claims': [UserRole.ADMIN],
   '/admin/candidate-identity-claims/:claimId': [UserRole.ADMIN],
+  '/admin/candidate-duplicate-cases': [UserRole.ADMIN],
+  '/admin/candidate-duplicate-cases/:caseId': [UserRole.ADMIN],
   '/admin/service-types': [UserRole.ADMIN],
   '/admin/commission-rules': [UserRole.ADMIN],
   '/admin/roles-permissions': [UserRole.ADMIN],
@@ -449,6 +465,8 @@ export const AppRoutes = {
   ConsoleApprovalsPage,
   ConsoleIdentityClaimsPage,
   ConsoleIdentityClaimDetailPage,
+  ConsoleCandidateDuplicateCasesPage,
+  ConsoleCandidateDuplicateCaseDetailPage,
   ConsoleUsersPage,
   ConsoleRolesPermissionsPage,
   ConsoleUserAuthorizationPage,
@@ -456,7 +474,7 @@ export const AppRoutes = {
   ConsoleCommissionRulesPage,
   ConsoleAuditLogPage,
   ConsoleProfilePage,
-  ConsoleDisputesPlaceholder,
+  ConsoleDisputesPage,
   ConsolePayoutsPlaceholder,
   ConsoleSettingsPlaceholder,
   AdminContactRequestsPage,
@@ -473,6 +491,8 @@ export const AppRoutes = {
   CandidateAffiliateCvsPage,
   CandidateAffiliateCvDetailPage,
   CandidateIdentityPage,
+  CandidateDuplicateCasesPage,
+  CandidateDuplicateCaseDetailPage,
   AffiliateHomePage,
   AffiliateSubmitPage,
   AffiliateMySubmissionsPage,

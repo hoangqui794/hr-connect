@@ -475,7 +475,7 @@ export const AffiliateSubmitPage: React.FC = () => {
 
 // ─── Submissions ────────────────────────────────────────────────────────────
 
-const STATUSES = ['all', 'PENDING_CONSENT', 'ACCEPTED', 'CONSENT_REJECTED', 'CONSENT_EXPIRED', 'BLOCKED_DUPLICATE', 'JOB_UNAVAILABLE'] as const;
+const STATUSES = ['all', 'PENDING_CONSENT', 'PENDING_IDENTITY_REVIEW', 'ACCEPTED', 'CONSENT_REJECTED', 'CONSENT_EXPIRED', 'BLOCKED_DUPLICATE', 'JOB_UNAVAILABLE'] as const;
 
 /** N13: GET /affiliates/referrals progressStatus codes in Vietnamese. */
 const REFERRAL_PROGRESS: Record<string, string> = {

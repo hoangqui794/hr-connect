@@ -28,10 +28,12 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { disputeApi } from '@/services/api/disputeApi';
-import { getApiErrorMessage } from '@/services/apiClient';
+import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import type { AdminDisputeListItemDto, AdminDisputeDetailDto } from '@/types/api/dispute';
+import { submissionStatus } from '@/features/portal/mf02Labels';
 
 const fmt = (v?: string | null) => (v ? dayjs(v).format('HH:mm DD/MM/YYYY') : '—');
 
@@ -47,11 +49,13 @@ const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 export const AdminDisputesPage: React.FC = () => {
+  const navigate = useNavigate();
   const { message, modal } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [selectedDisputeId, setSelectedDisputeId] = useState<string | null>(null);
+  const [resolutionIdempotencyKey, setResolutionIdempotencyKey] = useState<string | null>(null);
   const [resolveForm] = Form.useForm();
 
   // Fetch disputes list
@@ -74,15 +78,27 @@ export const AdminDisputesPage: React.FC = () => {
 
   // Resolve mutation
   const resolveMutation = useMutation({
-    mutationFn: (values: { decision: 'UPHELD' | 'REJECTED'; resolution: string }) =>
-      disputeApi.resolveDispute(selectedDisputeId!, values),
+    mutationFn: (payload: { values: { decision: 'UPHELD' | 'REJECTED'; resolution: string }; idempotencyKey: string }) =>
+      disputeApi.resolveDispute(selectedDisputeId!, {
+        ...payload.values,
+        concurrencyToken: detailQuery.data!.concurrencyToken,
+        idempotencyKey: payload.idempotencyKey,
+      }),
     onSuccess: (data) => {
       message.success('Đã giải quyết khiếu nại thành công.');
+      setResolutionIdempotencyKey(null);
       resolveForm.resetFields();
       queryClient.invalidateQueries({ queryKey: ['admin-disputes'] });
       queryClient.invalidateQueries({ queryKey: ['admin-dispute-detail', selectedDisputeId] });
     },
-    onError: (err) => message.error(getApiErrorMessage(err, 'Không thể xử lý khiếu nại.')),
+    onError: async (err) => {
+      const apiError = getApiError(err, 'Không thể xử lý khiếu nại.');
+      message.error(apiError.message);
+      if (['STALE_DISPUTE_RESOLUTION', 'DISPUTE_NOT_OPEN'].includes(apiError.code ?? '')) {
+        setResolutionIdempotencyKey(null);
+        await detailQuery.refetch();
+      }
+    },
   });
 
   const d = detailQuery.data;
@@ -136,7 +152,7 @@ export const AdminDisputesPage: React.FC = () => {
         <Button
           size="small"
           icon={<EyeOutlined />}
-          onClick={() => setSelectedDisputeId(r.disputeId)}
+          onClick={() => { setResolutionIdempotencyKey(null); setSelectedDisputeId(r.disputeId); }}
         >
           Chi tiết
         </Button>
@@ -197,7 +213,7 @@ export const AdminDisputesPage: React.FC = () => {
       {/* Drawer: Dispute Details & Resolution */}
       <Drawer
         open={Boolean(selectedDisputeId)}
-        onClose={() => setSelectedDisputeId(null)}
+        onClose={() => { setResolutionIdempotencyKey(null); setSelectedDisputeId(null); }}
         width="min(720px, 100vw)"
         title="Chi tiết khiếu nại"
         destroyOnClose
@@ -279,9 +295,9 @@ export const AdminDisputesPage: React.FC = () => {
                       <span className="text-slate-500">{fmt(s.submittedAt)}</span>
                     </div>
                     <div className="mt-1 text-slate-600 flex gap-4">
-                      <span>Nguồn: <b>{s.source}</b></span>
-                      <span>Trạng thái: <b>{s.status}</b></span>
-                      {s.consentStatus && <span>Đồng ý: <b>{s.consentStatus}</b></span>}
+                      <span>Nguồn: <b>{s.source === 'AFFILIATE' ? 'Affiliate giới thiệu' : 'Candidate tự ứng tuyển'}</b></span>
+                      <span>Trạng thái: <b>{submissionStatus(s.status).label}</b></span>
+                      {s.consentStatus && <span>Xác nhận: <b>{s.consentStatus === 'ACCEPTED' || s.consentStatus === 'CONFIRMED' ? 'Đã đồng ý' : s.consentStatus === 'DECLINED' ? 'Đã từ chối' : 'Đang chờ'}</b></span>}
                     </div>
                   </div>
                 ))}
@@ -306,6 +322,16 @@ export const AdminDisputesPage: React.FC = () => {
               </div>
             )}
 
+            {d.candidateDuplicateCaseId && (
+              <Alert
+                type="warning"
+                showIcon
+                message="Khiếu nại này liên quan một hồ sơ Candidate đang được đối chiếu"
+                description="Kiểm tra kết quả đối chiếu danh tính trước khi chuyển quyền ghi nhận nguồn hoặc hoa hồng."
+                action={<Button onClick={() => navigate(`/admin/candidate-duplicate-cases/${d.candidateDuplicateCaseId}`)}>Mở hồ sơ đối chiếu</Button>}
+              />
+            )}
+
             {/* Resolution Section */}
             {d.status === 'OPEN' ? (
               <div className="rounded-2xl border border-solid border-blue-200 bg-white p-5 shadow-sm space-y-4">
@@ -314,7 +340,11 @@ export const AdminDisputesPage: React.FC = () => {
                   form={resolveForm}
                   layout="vertical"
                   initialValues={{ decision: 'UPHELD' }}
-                  onFinish={(v) => resolveMutation.mutate(v)}
+                  onFinish={(values) => {
+                    const key = resolutionIdempotencyKey ?? globalThis.crypto?.randomUUID?.() ?? `dispute-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                    setResolutionIdempotencyKey(key);
+                    resolveMutation.mutate({ values, idempotencyKey: key });
+                  }}
                 >
                   <Form.Item
                     name="decision"

@@ -166,6 +166,8 @@ export const router = createBrowserRouter([
       { path: 'approvals', element: <AppRoutes.ConsoleApprovalsPage /> },
       { path: 'candidate-identity-claims', element: <AppRoutes.ConsoleIdentityClaimsPage /> },
       { path: 'candidate-identity-claims/:claimId', element: <AppRoutes.ConsoleIdentityClaimDetailPage /> },
+      { path: 'candidate-duplicate-cases', element: <AppRoutes.ConsoleCandidateDuplicateCasesPage /> },
+      { path: 'candidate-duplicate-cases/:caseId', element: <AppRoutes.ConsoleCandidateDuplicateCaseDetailPage /> },
       // Old entry points open the unified queue pre-filtered by type.
       { path: 'companies', element: <AppRoutes.ConsoleApprovalsPage presetType="CLIENT" /> },
       { path: 'affiliates', element: <AppRoutes.ConsoleApprovalsPage presetType="AFFILIATE" /> },
@@ -181,8 +183,7 @@ export const router = createBrowserRouter([
       { path: 'audit-trail', element: <AppRoutes.ConsoleAuditLogPage /> },
       { path: 'reports', element: <AppRoutes.AdminReportsPage /> },
       { path: 'profile', element: <AppRoutes.ConsoleProfilePage /> },
-      // No backend API yet: explicit empty state, no mock numbers.
-      { path: 'disputes', element: <AppRoutes.ConsoleDisputesPlaceholder /> },
+      { path: 'disputes', element: <AppRoutes.ConsoleDisputesPage /> },
       { path: 'payouts', element: <AppRoutes.ConsolePayoutsPlaceholder /> },
       { path: 'finance', element: <AppRoutes.ConsolePayoutsPlaceholder /> },
       { path: 'settings', element: <AppRoutes.ConsoleSettingsPlaceholder /> },
@@ -212,6 +213,8 @@ export const router = createBrowserRouter([
       { path: 'affiliate-cvs', element: <AppRoutes.CandidateAffiliateCvsPage /> },
       { path: 'affiliate-cvs/:cvId', element: <AppRoutes.CandidateAffiliateCvDetailPage /> },
       { path: 'settings/email-identities', element: <AppRoutes.CandidateIdentityPage /> },
+      { path: 'settings/duplicate-cases', element: <AppRoutes.CandidateDuplicateCasesPage /> },
+      { path: 'settings/duplicate-cases/:caseId', element: <AppRoutes.CandidateDuplicateCaseDetailPage /> },
       { path: 'saved-jobs', element: <AppRoutes.CandidateSavedJobsPage /> },
       { path: 'profile', element: <AppRoutes.CandidateProfilePage /> },
       { path: 'interviews/:interviewId', element: <AppRoutes.CandidateInterviewDetailPage /> },

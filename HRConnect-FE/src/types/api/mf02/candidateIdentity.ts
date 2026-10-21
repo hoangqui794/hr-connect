@@ -30,5 +30,6 @@ export interface CandidateIdentityClaimVerification {
   status: 'COMPLETED' | 'PENDING_ADMIN_REVIEW' | string;
   candidateId: string | null;
   concurrencyToken: string;
+  duplicateCaseId?: string | null;
 }
 

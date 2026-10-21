@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from 'antd';
+import { MemoryRouter } from 'react-router-dom';
 import { AdminDisputesPage } from './AdminDisputesPage';
 import { disputeApi } from '@/services/api/disputeApi';
 
@@ -20,6 +21,7 @@ const mockDisputeList = {
       raisedByAffiliateName: 'Affiliate Pro',
       createdAt: '2026-10-18T10:00:00Z',
       resolvedAt: null,
+      concurrencyToken: 'token-1',
     },
   ],
   totalCount: 1,
@@ -65,9 +67,11 @@ const mockDisputeDetail = {
     commissionStatuses: ['PENDING'],
     placementConfirmedAt: null,
   },
+  candidateDuplicateCaseId: null,
   resolvedBy: null,
   resolution: null,
   resolvedAt: null,
+  concurrencyToken: 'token-1',
 };
 
 const renderComponent = () => {
@@ -76,9 +80,11 @@ const renderComponent = () => {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <App>
-        <AdminDisputesPage />
-      </App>
+      <MemoryRouter>
+        <App>
+          <AdminDisputesPage />
+        </App>
+      </MemoryRouter>
     </QueryClientProvider>
   );
 };
@@ -129,6 +135,8 @@ describe('AdminDisputesPage', () => {
         expect.objectContaining({
           decision: 'UPHELD',
           resolution: 'Chấp thuận khiếu nại của CTV Pro',
+          concurrencyToken: 'token-1',
+          idempotencyKey: expect.any(String),
         })
       );
     });

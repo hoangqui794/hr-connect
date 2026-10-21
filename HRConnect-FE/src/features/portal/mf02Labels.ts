@@ -155,10 +155,11 @@ export const candidateStage = (
 
 export const SUBMISSION_STATUS: Record<string, { label: string; tone: Tone; hint: string }> = {
   PENDING_CONSENT: { label: 'Chờ ứng viên xác nhận', tone: 'warning', hint: 'Đã gửi email, ứng viên có 48 giờ để đồng ý.' },
+  PENDING_IDENTITY_REVIEW: { label: 'Đang đối chiếu danh tính', tone: 'warning', hint: 'Ứng viên đã đồng ý. Admin đang đối chiếu hồ sơ nghi trùng trước khi đưa vào tuyển dụng.' },
   ACCEPTED: { label: 'Ứng viên đã đồng ý', tone: 'success', hint: 'Hồ sơ đã vào quy trình tuyển dụng và được ghi attribution cho bạn.' },
   CONSENT_REJECTED: { label: 'Ứng viên từ chối', tone: 'danger', hint: 'Ứng viên không đồng ý cho bạn giới thiệu.' },
   CONSENT_EXPIRED: { label: 'Hết hạn xác nhận', tone: 'neutral', hint: 'Ứng viên không trả lời trong hạn; hãy tạo lượt giới thiệu mới.' },
-  BLOCKED_DUPLICATE: { label: 'Bị chặn do trùng', tone: 'danger', hint: 'Ứng viên đã có hồ sơ trong tin này; attribution cũ được giữ nguyên.' },
+  BLOCKED_DUPLICATE: { label: 'Hồ sơ trùng đã được xử lý', tone: 'danger', hint: 'Một lượt giới thiệu hợp lệ khác đã được giữ lại cho tin tuyển dụng này. Bạn có thể khiếu nại nếu có bằng chứng.' },
   JOB_UNAVAILABLE: { label: 'Tin không còn nhận hồ sơ', tone: 'neutral', hint: 'Job đã đóng hoặc không còn cho phép nhận hồ sơ.' },
 };
 
