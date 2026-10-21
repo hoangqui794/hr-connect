@@ -57,7 +57,13 @@ public sealed class RetryAiScoringCommandHandler
         if (latestAttempt == null)
             throw new ConflictException("Hồ sơ này chưa có lượt chấm AI để thử lại.");
 
-        var reason = request.Reason.Trim().ToUpperInvariant();
+        // No reason (the HR "Yêu cầu chấm lại" button sends none): retry a failed attempt, otherwise re-score
+        // a finished one. A fixed FAILED_RETRY default rejected re-scoring a COMPLETED result (test 21/10).
+        var reason = string.IsNullOrWhiteSpace(request.Reason)
+            ? (string.Equals(latestAttempt.Status, "FAILED", StringComparison.OrdinalIgnoreCase)
+                ? Mf03ScoringReasons.FailedRetry
+                : Mf03ScoringReasons.ManualReview)
+            : request.Reason.Trim().ToUpperInvariant();
         if (!Mf03ScoringReasons.IsRetryOrRescore(reason))
             throw new ConflictException("Lý do chấm lại phải là FAILED_RETRY, JD_UPDATED hoặc MANUAL_REVIEW.");
 
