@@ -244,8 +244,8 @@ export const router = createBrowserRouter([
       { path: 'performance', element: <AppRoutes.AffiliatePerformancePage /> },
       { path: 'disputes', element: <AppRoutes.AffiliateDisputesPage /> },
       { path: 'profile', element: <AppRoutes.AffiliateProfilePage /> },
-      // MF-05 commissions have no API yet.
-      { path: 'commissions', element: <AppRoutes.AffiliateCommissionsPlaceholder /> },
+      // MF-05: the affiliate's own commissions, payouts and payout account.
+      { path: 'commissions', element: <AppRoutes.AffiliateCommissionsPage /> },
       // Old entry points.
       { path: 'referral', element: <Navigate to="/affiliate/submit-candidate" replace /> },
       { path: 'refer', element: <Navigate to="/affiliate/submit-candidate" replace /> },

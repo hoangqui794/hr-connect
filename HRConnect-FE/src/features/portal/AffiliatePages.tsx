@@ -44,7 +44,6 @@ import { jobsApi } from '@/services/api/jobsApi';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { AffiliateAttribution, AffiliateSubmission, LibraryCandidate } from '@/types/api/mf02';
-import { NoApiYet } from '@/features/admin-console/adminTheme';
 import { FilterPills, PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
 import { ATTRIBUTION_STATUS, MAX_CV_MB, cvFileError, fileSize, submissionStatus } from './mf02Labels';
 import { useOpenSignedUrl } from './CandidatePages';
@@ -934,10 +933,3 @@ export const AffiliateAttributionsPage: React.FC = () => {
     </div>
   );
 };
-
-export const AffiliateCommissionsPlaceholder: React.FC = () => (
-  <div>
-    <PageHero eyebrow="Chưa có API" title="Hoa hồng & chi trả" description="Hoa hồng theo mốc 15, 30, 60 ngày sau khi ứng viên đi làm, và lịch sử chi trả." />
-    <NoApiYet feature="Hoa hồng & chi trả" detail="Thuộc MF-05; backend chưa có endpoint xem hoa hồng của Affiliate." />
-  </div>
-);
