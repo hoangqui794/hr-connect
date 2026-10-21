@@ -1,3 +1,4 @@
+using HRConnect.Presentation.ErrorHandling;
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
@@ -104,7 +105,7 @@ public static class CommissionRuleEndpoints
             }
             catch (ConflictException exception)
             {
-                return Results.Conflict(new { success = false, message = exception.Message });
+                return ConflictResponse.From(exception);
             }
         })
         .WithName("ActivateCommissionRule")
@@ -146,7 +147,7 @@ public static class CommissionRuleEndpoints
             }
             catch (ConflictException exception)
             {
-                return Results.Conflict(new { success = false, message = exception.Message });
+                return ConflictResponse.From(exception);
             }
         })
         .WithName("UpdateCommissionRule")
@@ -230,7 +231,7 @@ public static class CommissionRuleEndpoints
             }
             catch (ConflictException exception)
             {
-                return Results.Conflict(new { success = false, message = exception.Message });
+                return ConflictResponse.From(exception);
             }
         })
         .WithName("CreateCommissionRule")

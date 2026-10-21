@@ -1,3 +1,4 @@
+using HRConnect.Presentation.ErrorHandling;
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
@@ -355,7 +356,7 @@ public static class AdminApprovalEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -419,7 +420,7 @@ public static class AdminApprovalEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -507,7 +508,7 @@ public static class AdminApprovalEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -571,7 +572,7 @@ public static class AdminApprovalEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {

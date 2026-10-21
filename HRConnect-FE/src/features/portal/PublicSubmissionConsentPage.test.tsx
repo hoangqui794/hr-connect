@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PublicSubmissionConsentPage } from './PublicSubmissionConsentPage';
 import { candidateConsentApi } from '@/services/api/mf02Api';
+import { AxiosError, AxiosHeaders } from 'axios';
 
 vi.mock('@/services/api/mf02Api', () => ({
   candidateConsentApi: {
@@ -108,5 +109,40 @@ describe('PublicSubmissionConsentPage', () => {
       reuseConcurrencyToken: null,
     });
     await waitFor(() => expect(screen.getByText('Đã đồng ý nộp hồ sơ')).toBeInTheDocument());
+  });
+
+  // UI-03 (test 20/10): reopening an email link that can no longer be used shows a clear closed state.
+  it('shows a closed state when the decision is rejected with 409', async () => {
+    respondMock.mockRejectedValue(
+      new AxiosError('Conflict', '409', undefined, undefined, {
+        status: 409,
+        statusText: 'Conflict',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+        data: { success: false, message: 'Yêu cầu xác nhận đã được xử lý trước đó.', code: 'CONSENT_ALREADY_RESPONDED' },
+      })
+    );
+    renderPage();
+    const user = userEvent.setup();
+    await screen.findByText('Backend Developer');
+    await user.click(screen.getByRole('button', { name: 'Đồng ý nộp hồ sơ' }));
+
+    expect(await screen.findByText('Yêu cầu này không còn xử lý được')).toBeInTheDocument();
+    expect(screen.getAllByText('Yêu cầu xác nhận đã được xử lý trước đó.').length).toBeGreaterThan(0);
+  });
+
+  it('reopening a link that was already confirmed shows the result, not the decision buttons', async () => {
+    reviewMock.mockResolvedValue({ ...consent, status: 'CONFIRMED' });
+    renderPage();
+
+    expect(await screen.findByText('Đã đồng ý nộp hồ sơ')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Đồng ý nộp hồ sơ' })).not.toBeInTheDocument();
+  });
+
+  it('reopening an expired pending link shows that the request has ended', async () => {
+    reviewMock.mockResolvedValue({ ...consent, expiresAt: '2000-01-01T00:00:00Z' });
+    renderPage();
+
+    expect(await screen.findByText('Yêu cầu xác nhận đã kết thúc')).toBeInTheDocument();
   });
 });
