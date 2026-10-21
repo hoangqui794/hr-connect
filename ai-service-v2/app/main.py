@@ -46,8 +46,8 @@ logging.basicConfig(level=_startup_settings.log_level.upper(),
 for _noisy in ("httpx", "httpcore", "huggingface_hub", "urllib3", "sentence_transformers"):
     logging.getLogger(_noisy).setLevel(logging.WARNING)
 
-# API docs only in local testing: on a public URL they advertise the unauthenticated test endpoint.
-_docs_enabled = _startup_settings.allow_unauthenticated_test_endpoints
+# API docs: on with API_DOCS_ENABLED (endpoints keep their token checks), or in unauthenticated local testing.
+_docs_enabled = _startup_settings.api_docs_enabled or _startup_settings.allow_unauthenticated_test_endpoints
 app = FastAPI(title="HR Connect AI Service v2", version="2.0.0", lifespan=lifespan,
               docs_url="/docs" if _docs_enabled else None,
               redoc_url="/redoc" if _docs_enabled else None,

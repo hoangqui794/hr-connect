@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 from typing import Any
 
 import httpx
 
 from app.config import Settings
 from app.schemas import Job
+
+logger = logging.getLogger(__name__)
 
 
 class HRConnectClient:
@@ -58,6 +62,31 @@ class HRConnectClient:
                 return b"".join(chunks)
 
     async def post_ai_result(self, payload: dict[str, Any]) -> None:
-        async with self._service_client() as client:
-            response = await client.post("/api/v1/internal/ai-results", json=payload)
-            response.raise_for_status()
+        """Delivers the result; retries transient failures so a backend restart does not drop a finished score."""
+        attempts = max(1, self._settings.callback_retry_attempts)
+        for attempt in range(1, attempts + 1):
+            try:
+                async with self._service_client() as client:
+                    response = await client.post("/api/v1/internal/ai-results", json=payload)
+                    response.raise_for_status()
+                return
+            except (httpx.TransportError, httpx.HTTPStatusError) as exc:
+                if not _is_transient(exc) or attempt == attempts:
+                    raise
+                wait = self._settings.callback_retry_base_seconds * 2 ** (attempt - 1)
+                logger.warning("Posting AI result failed (attempt %s/%s, %s); retrying in %.0fs",
+                               attempt, attempts, _describe(exc), wait)
+                await asyncio.sleep(wait)
+
+
+def _is_transient(exc: httpx.HTTPError) -> bool:
+    if isinstance(exc, httpx.TransportError):
+        return True
+    status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else 0
+    return status == 429 or status >= 500
+
+
+def _describe(exc: httpx.HTTPError) -> str:
+    if isinstance(exc, httpx.HTTPStatusError):
+        return f"HTTP {exc.response.status_code}"
+    return type(exc).__name__
