@@ -80,7 +80,7 @@ jobs:
 
       - name: Publish backend test evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-test-results-${{ github.run_id }}
           path: artifacts/backend-tests
@@ -127,7 +127,7 @@ jobs:
 
       - name: Publish frontend test evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-test-results-${{ github.run_id }}
           path: artifacts/frontend-tests
@@ -135,7 +135,7 @@ jobs:
           retention-days: 14
 
       - name: Publish production bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-dist-${{ github.sha }}
           path: HRConnect-FE/dist
@@ -178,7 +178,7 @@ jobs:
 
       - name: Publish AI test evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ai-test-results-${{ github.run_id }}
           path: artifacts/ai-tests
