@@ -241,7 +241,7 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
     { key: '/affiliate/jobs', label: 'Sàn việc làm nhận tuyển', icon: 'AppstoreOutlined' },
     { key: '/affiliate/submissions', label: 'Hồ sơ đã giới thiệu & Tiến độ', icon: 'TeamOutlined' },
     { key: '/affiliate/submit-candidate', label: 'Nộp hồ sơ ứng viên', icon: 'UserAddOutlined' },
-    { key: '/affiliate/commissions', label: 'Sổ cái hoa hồng & Payout', icon: 'DollarOutlined' },
+    { key: '/affiliate/commissions', label: 'Sổ cái hoa hồng & chi trả', icon: 'DollarOutlined' },
   ],
   [UserRole.INTERNAL_HR]: [
     // Mirrors HrLayout (the HR workspace renders its own sidebar).
@@ -282,7 +282,7 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
       label: 'Tài chính',
       type: 'group',
       children: [
-        { key: '/admin/payouts', label: 'Tài chính MF-05', icon: 'BankOutlined' },
+        { key: '/admin/payouts', label: 'Tài chính', icon: 'BankOutlined' },
       ],
     },
     {

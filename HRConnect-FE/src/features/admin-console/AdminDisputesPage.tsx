@@ -148,7 +148,7 @@ export const AdminDisputesPage: React.FC = () => {
     <div>
       <PageHero
         eyebrow="Vận hành"
-        title="Xử lý khiếu nại (SF-04)"
+        title="Xử lý khiếu nại"
         description="Giải quyết khiếu nại về hồ sơ bị chặn trùng lặp hoặc tranh chấp quyền ghi nhận nguồn ứng viên giữa các Cộng tác viên."
       />
 
@@ -291,7 +291,7 @@ export const AdminDisputesPage: React.FC = () => {
             {/* Current Attribution */}
             {d.currentAttribution && (
               <div className="rounded-2xl border border-solid border-slate-200 bg-white p-5 shadow-sm space-y-2">
-                <h4 className="m-0 text-sm font-bold text-slate-900">Quyền ghi nhận nguồn (Attribution) hiện tại</h4>
+                <h4 className="m-0 text-sm font-bold text-slate-900">Người đang được ghi nhận nguồn</h4>
                 <div className="text-sm text-slate-700">
                   Ghi nhận cho CTV: <b>{d.currentAttribution.affiliateName || 'Cộng tác viên'}</b>
                 </div>

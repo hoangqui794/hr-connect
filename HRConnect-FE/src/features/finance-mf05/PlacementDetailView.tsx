@@ -485,7 +485,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
           title={
             <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
               <AuditOutlined className="text-emerald-600" />
-              <span>Liên kết Tài chính & Hoa hồng (MF-05)</span>
+              <span>Phí dịch vụ và hoa hồng</span>
             </div>
           }
         >
