@@ -1,5 +1,8 @@
 # HR Connect
 
+[![CI — Quality Gates](https://github.com/hoangqui794/hr-connect/actions/workflows/ci.yml/badge.svg)](https://github.com/hoangqui794/hr-connect/actions/workflows/ci.yml)
+[![CD — Backend on Render](https://github.com/hoangqui794/hr-connect/actions/workflows/deploy-render.yml/badge.svg?branch=main)](https://github.com/hoangqui794/hr-connect/actions/workflows/deploy-render.yml)
+
 **AI-Powered Recruitment & Affiliate Headhunting Platform**
 
 HR Connect là nền tảng tuyển dụng hiện đại dành cho Agency, kết nối Doanh nghiệp đối tác (Client Company), Ứng viên (Candidate) và Mạng lưới Cộng tác viên tuyển dụng (Affiliate Recruiter / OPR Hub). Hệ thống hỗ trợ đánh giá và khớp nối CV tự động bằng AI, truy vết nguồn giới thiệu (Attribution tracking), và tự động hóa chính sách hoa hồng (Commission & Payout).
@@ -453,9 +456,15 @@ Nhóm tuân thủ quy tắc quản lý mã nguồn nghiêm ngặt:
                 ├──> PR ──> dev (Staging Integration) ──> PR ──> main (Production)
      fix/xxx ───┘                                                   │
                                                                     ▼
-                                                            GitHub Actions CD
-                                                       (Buildx & Push Image GHCR)
+                                                         CI — Quality Gates
+                                                (BE + FE + AI + Docker image)
+                                                                     │
+                                                                     ▼
+                                                      CD — Backend on Render
+                                              (exact commit + live status + health)
 ```
+
+Render chỉ triển khai **Backend .NET**. Frontend và AI service tham gia quality gate để phát hiện lỗi tích hợp nhưng không được workflow này deploy. Xem cấu hình, secret và cách theo dõi tại [`docs/deployment/CI-CD.md`](docs/deployment/CI-CD.md).
 
 ### Quy tắc làm việc trên Git:
 1. **Tuyệt đối không commit trực tiếp vào `main` hoặc `dev`**.
@@ -465,7 +474,7 @@ Nhóm tuân thủ quy tắc quản lý mã nguồn nghiêm ngặt:
    git pull origin dev
    git checkout -b feature/<ten-tinh-nang>
    ```
-3. Sau khi hoàn thành và chạy `dotnet test` thành công:
+3. Sau khi hoàn thành, chạy các kiểm tra phù hợp cho Backend, Frontend và AI service:
    ```bash
    git add .
    git commit -m "feat(module): mo ta ngan gon ve tinh nang"

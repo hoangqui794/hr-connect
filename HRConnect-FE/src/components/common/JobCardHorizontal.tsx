@@ -37,6 +37,7 @@ export const JobCardHorizontal: React.FC<JobCardHorizontalProps> = ({
   className = '',
 }) => {
   const navigate = useNavigate();
+  const uniqueTags = useMemo(() => deduplicateTags(job?.tags || []), [job?.tags]);
 
   if (!job) return null;
 
@@ -46,7 +47,6 @@ export const JobCardHorizontal: React.FC<JobCardHorizontalProps> = ({
     Boolean(job?.estimatedCommission);
 
   const deadlineText = job?.deadline || (job?.isUrgent ? 'Còn 3 ngày' : 'Còn 15 ngày');
-  const uniqueTags = useMemo(() => deduplicateTags(job?.tags || []), [job?.tags]);
 
   const handleClickCard = () => {
     if (onViewDetail) {

@@ -158,7 +158,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
   });
 
   // 4. Filter and search logic
-  const allSlots = slotsQuery.data ?? [];
+  const allSlots = useMemo(() => slotsQuery.data ?? [], [slotsQuery.data]);
   const counts = useMemo(() => {
     return {
       all: allSlots.length,

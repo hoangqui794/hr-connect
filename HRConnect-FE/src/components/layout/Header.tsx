@@ -57,7 +57,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
     logout();
     void message.success('Đã đăng xuất thành công!');
     window.location.replace('/');
-  }, [logout, navigate]);
+  }, [logout]);
 
   const userMenuItems: MenuProps['items'] = [
     {

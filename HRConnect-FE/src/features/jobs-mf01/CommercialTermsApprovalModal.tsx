@@ -65,7 +65,8 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
     }
   }, [open, data, form]);
 
-  const values = Form.useWatch([], form) ?? {};
+  const watchedValues = Form.useWatch([], form);
+  const values = useMemo(() => watchedValues ?? {}, [watchedValues]);
 
   // Rows whose agreed number differs from what the Client proposed (only where the Client proposed one).
   const changed = useMemo(
