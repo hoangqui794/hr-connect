@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Job } from '@/types/api/jobs';
-import { isAwaitingSourcingDeposit, sourcingDepositAmount } from './jobDisplay';
+import { formatMultilineText, formatPostingPackage, isAwaitingSourcingDeposit, sourcingDepositAmount } from './jobDisplay';
+import { EXPERIENCE_YEAR_OPTIONS } from './jobFormOptions';
 
 const terms = (sourcingTarget: number | null, pricePerCv: number | null, depositPercent: number | null) =>
   ({
@@ -33,5 +34,24 @@ describe('CV_SOURCING deposit', () => {
   it('is unknown while a term is missing', () => {
     expect(sourcingDepositAmount(terms(3, null, 50))).toBeNull();
     expect(sourcingDepositAmount({ commercialTerms: null })).toBeNull();
+  });
+});
+
+describe('Nhãn biểu mẫu MF-01', () => {
+  it('không hiển thị mã gói kỹ thuật cho người dùng', () => {
+    expect(formatPostingPackage('FREE', 'Free')).toBe('Gói dùng thử');
+    expect(formatPostingPackage('STANDARD', 'Standard')).toBe('Gói tiêu chuẩn');
+    expect(formatPostingPackage('PREMIUM', 'Premium')).toBe('Gói nổi bật');
+  });
+
+  it('cho phép chọn một mức kinh nghiệm tối thiểu duy nhất', () => {
+    expect(EXPERIENCE_YEAR_OPTIONS[0]).toEqual({ value: 0, label: 'Không yêu cầu kinh nghiệm' });
+    expect(EXPERIENCE_YEAR_OPTIONS.find((option) => option.value === 3)?.label).toBe('Tối thiểu 3 năm');
+    expect(EXPERIENCE_YEAR_OPTIONS[EXPERIENCE_YEAR_OPTIONS.length - 1]?.label).toBe('Từ 15 năm trở lên');
+  });
+
+  it('giữ mỗi dấu đầu dòng trên một dòng riêng', () => {
+    expect(formatMultilineText('• Ý thứ nhất • Ý thứ hai')).toBe('• Ý thứ nhất\n• Ý thứ hai');
+    expect(formatMultilineText('Mở đầu\n• Ý thứ nhất\n• Ý thứ hai')).toBe('Mở đầu\n• Ý thứ nhất\n• Ý thứ hai');
   });
 });

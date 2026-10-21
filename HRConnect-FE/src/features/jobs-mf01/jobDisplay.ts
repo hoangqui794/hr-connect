@@ -22,7 +22,7 @@ export const DEFAULT_STATUS_CONFIG: { label: string; color: string; hint: string
 /** Ant Design Tag colors; each status also carries a text label so color is never the only signal. */
 export const JOB_STATUS: Record<JobStatus, { label: string; color: string; hint: string }> = {
   DRAFT: { label: 'Bản nháp', color: 'default', hint: 'Chưa gửi duyệt. Bạn có thể chỉnh sửa.' },
-  PENDING_REVIEW: { label: 'Chờ duyệt', color: 'processing', hint: 'Internal HR đang xét duyệt.' },
+  PENDING_REVIEW: { label: 'Chờ duyệt', color: 'processing', hint: 'Bộ phận kiểm duyệt của HR Connect đang xử lý.' },
   PENDING_PAYMENT: { label: 'Chờ thanh toán', color: 'warning', hint: 'Nội dung đã được duyệt. Cần thanh toán phí để công bố tin.' },
   PENDING_APPROVAL: { label: 'Chờ duyệt', color: 'warning', hint: 'Tin đang chờ HR duyệt' },
   REJECTED: { label: 'Bị từ chối', color: 'error', hint: 'Sửa theo lý do rồi gửi duyệt lại.' },
@@ -43,16 +43,16 @@ export const EMPLOYMENT_TYPE_LABEL: Record<EmploymentType, string> = {
 
 export const SERVICE_TYPE_LABEL: Record<ServiceTypeCode, { label: string; summary: string }> = {
   CV_APPLICATION: {
-    label: 'Nhận CV ứng tuyển',
-    summary: 'Ứng viên tự ứng tuyển và nộp CV trực tiếp vào tin.',
+    label: 'Nhận hồ sơ ứng tuyển',
+    summary: 'Ứng viên tự tìm việc và gửi hồ sơ trực tiếp vào tin tuyển dụng.',
   },
   CV_SOURCING: {
-    label: 'Tìm nguồn CV',
-    summary: 'Nền tảng và đối tác tìm kiếm & sàng lọc nguồn hồ sơ.',
+    label: 'Tìm kiếm hồ sơ phù hợp',
+    summary: 'HR Connect và đối tác chủ động tìm kiếm, sàng lọc hồ sơ phù hợp.',
   },
   HEADHUNT_COD: {
-    label: 'Headhunt (COD)',
-    summary: 'Chuyên viên tuyển dụng trọn gói, trả phí khi tuyển thành công.',
+    label: 'Tuyển dụng theo kết quả',
+    summary: 'HR Connect phụ trách tuyển dụng và doanh nghiệp trả phí khi tuyển thành công.',
   },
 };
 
@@ -81,10 +81,10 @@ export const JOB_TEMPLATE_CATEGORY_LABEL: Record<string, string> = {
 };
 
 export const REQUIREMENT_CATEGORY_OPTIONS: { value: string; label: string }[] = [
-  { value: 'EXPERIENCE', label: 'Kinh nghiệm (EXPERIENCE)' },
-  { value: 'SKILL', label: 'Kỹ năng (SKILL)' },
-  { value: 'EDUCATION', label: 'Học vấn (EDUCATION)' },
-  { value: 'OTHER', label: 'Khác (OTHER)' },
+  { value: 'EXPERIENCE', label: 'Kinh nghiệm làm việc' },
+  { value: 'SKILL', label: 'Kỹ năng chuyên môn' },
+  { value: 'EDUCATION', label: 'Học vấn và chứng chỉ' },
+  { value: 'OTHER', label: 'Yêu cầu khác' },
 ];
 
 export const formatTemplateIndustry = (industry: string | null | undefined): string => {
@@ -139,7 +139,7 @@ export const REASON_CODE_LABEL: Record<string, string> = {
 /** N18: CV_SOURCING asks for a number of CVs, not hires. */
 export const formatHeadcount = (job: { serviceTypeCode?: string | null; quantity?: number | null; sourcingTarget?: number | null }): string =>
   job.serviceTypeCode === 'CV_SOURCING' && job.sourcingTarget
-    ? `${job.sourcingTarget} CV`
+    ? `${job.sourcingTarget} hồ sơ`
     : `${job.quantity ?? 1} người`;
 
 export const isAwaitingSourcingDeposit = (job: Pick<Job, 'status' | 'serviceTypeCode'>): boolean =>
@@ -179,6 +179,20 @@ export const formatExperience = (min: number | null, max: number | null): string
   if (max != null) return `Tối đa ${max} năm`;
   return 'Không yêu cầu';
 };
+
+export const formatPostingPackage = (code?: string | null, fallback?: string | null): string => {
+  if (code === 'FREE') return 'Gói dùng thử';
+  if (code === 'STANDARD') return 'Gói tiêu chuẩn';
+  if (code === 'PREMIUM') return 'Gói nổi bật';
+  return fallback || 'Gói đăng tin';
+};
+
+/** Preserve authored line breaks and force common bullet markers onto separate lines. */
+export const formatMultilineText = (value: string | null | undefined): string =>
+  (value ?? '')
+    .replace(/\s*([•▪◦])\s*/g, '\n$1 ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 
 export const formatDate = (iso: string | null | undefined): string =>
   iso ? new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';

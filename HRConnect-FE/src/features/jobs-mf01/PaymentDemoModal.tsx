@@ -8,6 +8,7 @@ import React from 'react';
 import { Alert, Button, Divider, Modal, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, CreditCardOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { formatMoney, usePostingFee, usePostingPackages } from './useJobQueries';
+import { formatPostingPackage } from './jobDisplay';
 
 const { Text } = Typography;
 
@@ -65,7 +66,9 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({ open, visibl
               <Text type="secondary" className="text-xs">Vị trí tuyển dụng</Text>
               <div className="font-semibold text-slate-900 text-base break-words">{jobTitle}</div>
             </div>
-            <Tag color="blue" className="m-0 font-medium shrink-0">{fee.data?.packageCode ?? '—'}</Tag>
+            <Tag color="blue" className="m-0 font-medium shrink-0">
+              {formatPostingPackage(fee.data?.packageCode, fee.data?.packageName)}
+            </Tag>
           </div>
 
           <Divider className="my-2" />
@@ -74,7 +77,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({ open, visibl
             <div>
               <Text type="secondary" className="text-xs">Gói dịch vụ</Text>
               <div className="font-medium text-slate-800">
-                {fee.data?.packageName ?? '—'}
+                {formatPostingPackage(fee.data?.packageCode, fee.data?.packageName)}
                 {pkg?.durationDays ? ` (${pkg.durationDays} ngày)` : ''}
               </div>
             </div>
@@ -82,7 +85,9 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({ open, visibl
               <Text type="secondary" className="text-xs">Quyền lợi gói</Text>
               <div className="font-medium text-emerald-700 flex items-center gap-1">
                 <CheckCircleOutlined aria-hidden />
-                {pkg?.maxApplications ? `Tối đa ${pkg.maxApplications} hồ sơ & AI chấm điểm CV` : 'AI chấm điểm CV'}
+                {pkg?.maxApplications
+                  ? `Tối đa ${pkg.maxApplications} hồ sơ và được trí tuệ nhân tạo hỗ trợ chấm điểm`
+                  : 'Trí tuệ nhân tạo hỗ trợ chấm điểm hồ sơ'}
               </div>
             </div>
           </div>

@@ -113,7 +113,7 @@ export const AdminLayout: React.FC = () => {
           const jobIndex = items.findIndex((i) => i.to === '/admin/jobs');
           const templateItem: NavItem = {
             to: '/admin/job-templates',
-            label: 'Mẫu JD',
+            label: 'Mẫu tuyển dụng',
             icon: <BookOutlined />,
           };
           if (jobIndex >= 0) {
