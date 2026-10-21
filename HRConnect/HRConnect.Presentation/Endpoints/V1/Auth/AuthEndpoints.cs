@@ -1,3 +1,4 @@
+using HRConnect.Presentation.ErrorHandling;
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
@@ -226,7 +227,7 @@ public static class AuthEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
         })
         .RequireRateLimiting("auth-sensitive")

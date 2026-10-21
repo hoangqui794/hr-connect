@@ -54,6 +54,7 @@ builder.Configuration.AddEnvironmentVariables();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddExceptionHandler<HRConnect.Presentation.ErrorHandling.BadHttpRequestExceptionHandler>();
+builder.Services.AddExceptionHandler<HRConnect.Presentation.ErrorHandling.ConflictExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks()
     .AddCheck(

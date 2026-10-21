@@ -1,3 +1,4 @@
+using HRConnect.Presentation.ErrorHandling;
 using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Companies.Directory;
@@ -95,7 +96,7 @@ public static class CompanyDirectoryEndpoints
         }
         catch (ConflictException ex)
         {
-            return Results.Conflict(new { success = false, message = ex.Message });
+            return ConflictResponse.From(ex);
         }
     }
 
