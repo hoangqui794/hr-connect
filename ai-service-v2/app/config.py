@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     # /api/v1/match-file and /docs are for local testing only. When false (default, and on Render) match-file
     # needs the X-Service-Token and the API docs are not served, so nobody can spend the LLM quota.
     allow_unauthenticated_test_endpoints: bool = False
+    # Serves /docs, /redoc and /openapi.json without opening any endpoint: /match-file still needs the
+    # X-Service-Token unless allow_unauthenticated_test_endpoints is also true. Off by default.
+    api_docs_enabled: bool = False
 
     log_level: str = "INFO"
 

@@ -234,3 +234,22 @@ async def test_finished_job_is_removed_from_the_file(tmp_path):
 @pytest.fixture
 def anyio_backend():
     return "asyncio"
+
+
+def test_docs_flag_serves_docs_but_match_file_still_needs_token(monkeypatch):
+    import importlib
+
+    import app.main as main_module
+
+    monkeypatch.setenv("API_DOCS_ENABLED", "true")
+    monkeypatch.setenv("HRCONNECT_SERVICE_TOKEN", "secret-token")
+    get_settings.cache_clear()
+    reloaded = importlib.reload(main_module)
+    try:
+        with TestClient(reloaded.app) as client:
+            assert client.get("/docs").status_code == 200
+            assert client.post("/api/v1/match-file").status_code == 401
+    finally:
+        monkeypatch.delenv("API_DOCS_ENABLED")
+        get_settings.cache_clear()
+        importlib.reload(main_module)
