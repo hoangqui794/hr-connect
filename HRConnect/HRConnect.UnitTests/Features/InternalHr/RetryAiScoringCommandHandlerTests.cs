@@ -110,6 +110,29 @@ public sealed class RetryAiScoringCommandHandlerTests
             It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Theory]
+    [InlineData("COMPLETED", Mf03ScoringReasons.ManualReview)]
+    [InlineData("FAILED", Mf03ScoringReasons.FailedRetry)]
+    public async Task Handle_WithoutReason_PicksReasonFromLatestAttempt(string status, string expected)
+    {
+        // The HR "Yêu cầu chấm lại" button sends no reason; a COMPLETED result must be re-scored, not rejected.
+        var application = CreateApplication(status);
+        var applications = new Mock<IApplicationRepository>();
+        applications.Setup(repository => repository.GetByIdWithDetailsAsync(
+                application.ApplicationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(application);
+        var trigger = new Mock<IMf03ScoringTrigger>();
+        var handler = CreateHandler(applications.Object, trigger.Object, Mock.Of<IUnitOfWork>());
+
+        var response = await handler.Handle(new RetryAiScoringCommand(
+            application.ApplicationId, Guid.NewGuid(), ""), CancellationToken.None);
+
+        response.Reason.Should().Be(expected);
+        trigger.Verify(item => item.TriggerScoringAsync(
+            It.Is<Mf03TriggerPayload>(payload => payload.Reason == expected),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     private static RetryAiScoringCommandHandler CreateHandler(
         IApplicationRepository applications,
         IMf03ScoringTrigger trigger,
