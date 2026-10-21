@@ -74,12 +74,12 @@ export const ClientJobsListPage: React.FC = () => {
     else next.set('view', v);
     setSearchParams(next, { replace: true });
   };
-  const setFilter = (v: StatusFilter) => {
+  const setFilter = React.useCallback((v: StatusFilter) => {
     const next = new URLSearchParams(searchParams);
     if (v === 'ALL') next.delete('status');
     else next.set('status', v);
     setSearchParams(next, { replace: true });
-  };
+  }, [searchParams, setSearchParams]);
   const [detailJobId, setDetailJobId] = useState<string>();
   const [pending, setPending] = useState<PendingAction>(null);
   const [paymentModalJob, setPaymentModalJob] = useState<{ jobId: string; title: string } | null>(null);
@@ -145,7 +145,7 @@ export const ClientJobsListPage: React.FC = () => {
 
       return () => clearTimeout(timer);
     }
-  }, [highlightParam, openPaymentParam, openDetailParam, jobs]);
+  }, [highlightParam, openPaymentParam, openDetailParam, jobs, filter, setFilter]);
 
   const expiredJobs = useMemo(
     () =>

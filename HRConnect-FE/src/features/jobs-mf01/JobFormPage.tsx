@@ -525,7 +525,8 @@ export const JobFormPage: React.FC = () => {
   const availableServiceTypes = useMemo(() => serviceTypes.data ?? [], [serviceTypes.data]);
 
   // Watch entire form for live readiness and preview
-  const watched = (Form.useWatch((v) => v, form) ?? {}) as Partial<JobFormValues>;
+  const watchedValues = Form.useWatch((v) => v, form) as Partial<JobFormValues> | undefined;
+  const watched = useMemo(() => watchedValues ?? {}, [watchedValues]);
 
   // Effective Service ID and Code (from React State or form watch)
   const effectiveServiceId = selectedServiceId || watched.serviceTypeId || '';

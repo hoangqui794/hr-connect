@@ -79,7 +79,6 @@ async def match_file(
     file: Annotated[UploadFile, File(...)],
     metadata: Annotated[str, Form(...)],
     settings: Settings = Depends(get_settings),
-    pipeline: MatchingPipeline = Depends(get_pipeline),
 ) -> FileMatchingResponse:
     """Same contract as v1 `/api/v1/match-file`: multipart CV file + matching metadata JSON."""
     try:
@@ -98,6 +97,7 @@ async def match_file(
         raise HTTPException(status_code=415, detail=str(exc)) from exc
 
     try:
+        pipeline = get_pipeline()
         result = await run_in_threadpool(pipeline.run, parsed, document)
     except LlmError as exc:
         # AI failure must route to manual review, never to rejection.
