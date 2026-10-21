@@ -7,6 +7,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Notifications.Commands.MarkAllNotificationsRead;
 using HRConnect.Application.Features.Notifications.Commands.MarkNotificationRead;
+using HRConnect.Application.Features.Notifications.DTOs;
 using HRConnect.Application.Features.Notifications.Queries.GetNotifications;
 using HRConnect.Application.Features.Notifications.Queries.GetUnreadNotificationCount;
 using HRConnect.Domain.Entities;
@@ -18,6 +19,71 @@ namespace HRConnect.UnitTests.Features.Notifications;
 public class NotificationFeatureTests
 {
     private readonly Mock<INotificationRepository> _notificationRepo = new();
+
+    [Fact]
+    public void NotificationDto_ShouldResolveMf04Routes_FromDeliveryMetadata()
+    {
+        var userId = Guid.NewGuid();
+        var applicationId = Guid.NewGuid();
+        var interviewId = Guid.NewGuid();
+        var offerId = Guid.NewGuid();
+
+        var interview = NotificationDto.From(new Notification
+        {
+            NotificationId = Guid.NewGuid(), UserId = userId, NotificationType = "INTERVIEW_SCHEDULED",
+            Title = "Lịch phỏng vấn", Message = "Bạn có lịch phỏng vấn mới",
+            RelatedEntityType = "INTERVIEW", RelatedEntityId = interviewId,
+            Metadata = $"{{\"applicationId\":\"{applicationId}\",\"interviewId\":\"{interviewId}\"}}",
+            CreatedAt = DateTime.UtcNow
+        });
+        var offer = NotificationDto.From(new Notification
+        {
+            NotificationId = Guid.NewGuid(), UserId = userId, NotificationType = "OFFER_SENT",
+            Title = "Thư nhận việc", Message = "Bạn có thư nhận việc mới",
+            RelatedEntityType = "OFFER", RelatedEntityId = offerId,
+            Metadata = $"{{\"applicationId\":\"{applicationId}\",\"offerId\":\"{offerId}\"}}",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        interview.RouteHint.Should().Be($"/candidate/applications/{applicationId}/interviews/{interviewId}");
+        offer.RouteHint.Should().Be($"/candidate/applications/{applicationId}");
+    }
+
+    [Theory]
+    [InlineData("INTERVIEW", null)]
+    [InlineData("INTERVIEW", "not-json")]
+    [InlineData("OFFER", "{}")]
+    public void NotificationDto_ShouldUseSafeCandidateFallback_WhenMf04MetadataIsMissingOrMalformed(
+        string entityType,
+        string? metadata)
+    {
+        var notification = NotificationDto.From(new Notification
+        {
+            NotificationId = Guid.NewGuid(), UserId = Guid.NewGuid(), NotificationType = entityType,
+            Title = "Cập nhật tuyển dụng", Message = "Hồ sơ của bạn vừa được cập nhật",
+            RelatedEntityType = entityType, RelatedEntityId = Guid.NewGuid(), Metadata = metadata ?? string.Empty,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        notification.RouteHint.Should().Be("/candidate/applications");
+    }
+
+    [Fact]
+    public void NotificationDto_ShouldPreferExplicitRoleSpecificRoute()
+    {
+        var applicationId = Guid.NewGuid();
+        var route = $"/client/candidates?open={applicationId}";
+        var notification = NotificationDto.From(new Notification
+        {
+            NotificationId = Guid.NewGuid(), UserId = Guid.NewGuid(), NotificationType = "OFFER",
+            Title = "Ứng viên đã phản hồi", Message = "Ứng viên đã chấp nhận Offer",
+            RelatedEntityType = "OFFER", RelatedEntityId = Guid.NewGuid(),
+            Metadata = $"{{\"applicationId\":\"{applicationId}\",\"routeHint\":\"{route}\"}}",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        notification.RouteHint.Should().Be(route);
+    }
 
     [Fact]
     public async Task GetNotifications_ShouldReturnPaginatedResults_WithResolvedRouteHints()

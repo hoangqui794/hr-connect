@@ -83,6 +83,7 @@ describe('signalRNotificationService', () => {
 
     afterEach(async () => {
       await service.stop();
+      vi.useRealTimers();
     });
 
     it('does not start connection if access token is missing', async () => {
@@ -201,6 +202,49 @@ describe('signalRNotificationService', () => {
       expect(mockConnection.stop).toHaveBeenCalled();
       expect(service.isConnected()).toBe(false);
       expect(service.getConnectionState()).toBe(signalR.HubConnectionState.Disconnected);
+    });
+
+    it('retries an initial connection failure while an access token is still available', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(authTokenStorage, 'getAccessToken').mockReturnValue('mock-jwt-token');
+      mockConnection.start
+        .mockRejectedValueOnce(new Error('Hub unavailable'))
+        .mockImplementationOnce(async () => {
+          mockConnection.state = signalR.HubConnectionState.Connected;
+        });
+
+      await expect(service.start()).rejects.toThrow('Hub unavailable');
+      expect(mockConnection.start).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(5_000);
+
+      expect(mockConnection.start).toHaveBeenCalledTimes(2);
+      expect(service.getConnectionState()).toBe(signalR.HubConnectionState.Connected);
+    });
+
+    it('restarts after automatic reconnect is exhausted and onclose fires', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(authTokenStorage, 'getAccessToken').mockReturnValue('mock-jwt-token');
+      await service.start();
+
+      mockConnection.state = signalR.HubConnectionState.Disconnected;
+      closeHandler?.(new Error('Reconnect exhausted'));
+      await vi.advanceTimersByTimeAsync(5_000);
+
+      expect(mockConnection.start).toHaveBeenCalledTimes(2);
+      expect(service.getConnectionState()).toBe(signalR.HubConnectionState.Connected);
+    });
+
+    it('does not restart after an explicit stop', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(authTokenStorage, 'getAccessToken').mockReturnValue('mock-jwt-token');
+      await service.start();
+      await service.stop();
+
+      closeHandler?.();
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(mockConnection.start).toHaveBeenCalledTimes(1);
     });
   });
 });

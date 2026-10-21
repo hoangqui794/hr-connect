@@ -142,10 +142,44 @@ describe('useNotificationSignalR', () => {
       );
     });
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['interviews'] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['hr-pipeline'] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['client-overview', 'interviews'] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['candidate', 'interviews'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['candidate-applications'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ['candidate', 'interviews', 'interview-123'],
+    });
+  });
+
+  it('refreshes the owning Candidate application and timeline for MF04 notifications', () => {
+    vi.spyOn(signalRNotificationService, 'start').mockResolvedValue();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    renderHook(() => useNotificationSignalR({ showToasts: false }), { wrapper });
+
+    act(() => {
+      (signalRNotificationService as any).notificationCreatedListeners.forEach((fn: any) =>
+        fn({
+          notification: {
+            notificationId: 'notif-offer',
+            notificationType: 'OFFER_SENT',
+            title: 'Thư nhận việc mới',
+            message: 'Bạn có thư nhận việc mới',
+            relatedEntityType: 'OFFER',
+            relatedEntityId: 'offer-123',
+            metadata: JSON.stringify({ applicationId: 'application-123', offerId: 'offer-123' }),
+            isRead: false,
+            createdAt: '2026-10-21T10:00:00Z',
+          },
+          unreadCount: 1,
+        })
+      );
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['candidate-applications'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ['candidate-applications', 'application-123'],
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ['candidate-application-timeline', 'application-123'],
+    });
   });
 
   it('reflects connection state and isConnected property', () => {
