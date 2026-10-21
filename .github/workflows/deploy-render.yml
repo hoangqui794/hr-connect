@@ -47,7 +47,7 @@ jobs:
 
     steps:
       - name: Checkout the approved commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
           persist-credentials: false
