@@ -46,6 +46,8 @@ export interface RecruitmentApplicationItem {
   status: ApplicationStatus | string;
   currentStage: string | null;
   appliedAt: string;
+  /** Last change to the application. */
+  updatedAt?: string;
   aiMatchScore: number | null;
   aiMatchTier: string | null;
   aiStatus: string | null;
@@ -56,7 +58,10 @@ export interface RecruitmentApplicationItem {
 }
 
 export interface RecruitmentApplicationSearchParams {
+  /** One status, or several separated by commas. */
   status?: string;
+  /** CV_APPLICATION, HEADHUNT_COD or CV_SOURCING. */
+  serviceTypeCode?: string;
   candidateName?: string;
   jobId?: string;
   page: number;
