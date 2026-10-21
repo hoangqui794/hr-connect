@@ -10,9 +10,11 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 import secrets
 import time
 from contextlib import suppress
+from pathlib import Path
 from typing import Any, Callable, Literal
 
 from fastapi import APIRouter, Header, HTTPException, status
@@ -245,11 +247,17 @@ class ScoringOrchestrator:
 
 
 class ScoringJobQueue:
-    """Bounded in-process queue; duplicate requestIds already queued are ignored."""
+    """Bounded in-process queue; duplicate requestIds already queued are ignored.
+
+    Accepted but unfinished jobs are mirrored to `scoring_queue_file` and re-queued on start, so a restart of
+    the service (laptop sleep, redeploy) does not silently drop them (test 21/10).
+    """
 
     def __init__(self) -> None:
         self._queue: asyncio.Queue[ScoringJobRequest] | None = None
         self._known: set[str] = set()
+        self._pending: dict[str, ScoringJobRequest] = {}
+        self._file: Path | None = None
         self._tasks: list[asyncio.Task[None]] = []
         self._orchestrator: ScoringOrchestrator | None = None
 
@@ -263,6 +271,19 @@ class ScoringJobQueue:
         self._orchestrator = orchestrator
         self._queue = asyncio.Queue(maxsize=settings.scoring_queue_size)
         self._known.clear()
+        self._pending.clear()
+        self._file = Path(settings.scoring_queue_file) if settings.scoring_queue_file else None
+        restored = 0
+        for job in self._load():
+            if job.request_id in self._known or self._queue.full():
+                continue
+            self._known.add(job.request_id)
+            self._pending[job.request_id] = job
+            self._queue.put_nowait(job)
+            restored += 1
+        if restored:
+            logger.info("v2 scoring re-queued %s unfinished job(s) from %s", restored, self._file)
+        self._save()
         for index in range(settings.scoring_worker_count):
             self._tasks.append(asyncio.create_task(self._worker(index)))
 
@@ -275,6 +296,7 @@ class ScoringJobQueue:
         self._tasks.clear()
         self._queue = None
         self._known.clear()
+        self._pending.clear()
 
     async def enqueue(self, job: ScoringJobRequest) -> bool:
         if self._queue is None:
@@ -287,6 +309,8 @@ class ScoringJobQueue:
         except asyncio.QueueFull:
             self._known.discard(job.request_id)
             raise
+        self._pending[job.request_id] = job
+        self._save()
         return True
 
     async def _worker(self, worker_id: int) -> None:
@@ -296,12 +320,39 @@ class ScoringJobQueue:
             job = await queue.get()
             try:
                 await self._orchestrator.process(job)
+            except asyncio.CancelledError:
+                # Shutdown mid-job: keep it in the file so the next start scores it again.
+                queue.task_done()
+                raise
             except Exception:
                 logger.exception("v2 scoring worker %s failed request=%s", worker_id, job.request_id)
                 await self._orchestrator.callback_failed(job, "AI_SCORING_FAILED", "AI scoring failed")
-            finally:
-                self._known.discard(job.request_id)
-                queue.task_done()
+            self._known.discard(job.request_id)
+            self._pending.pop(job.request_id, None)
+            self._save()
+            queue.task_done()
+
+    def _load(self) -> list[ScoringJobRequest]:
+        if self._file is None or not self._file.exists():
+            return []
+        try:
+            raw = json.loads(self._file.read_text(encoding="utf-8"))
+            return [ScoringJobRequest.model_validate(item) for item in raw]
+        except Exception:
+            logger.exception("v2 scoring queue file %s is unreadable; starting empty", self._file)
+            return []
+
+    def _save(self) -> None:
+        if self._file is None:
+            return
+        try:
+            self._file.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self._file.with_suffix(self._file.suffix + ".tmp")
+            data = [job.model_dump(by_alias=True) for job in self._pending.values()]
+            tmp.write_text(json.dumps(data), encoding="utf-8")
+            os.replace(tmp, self._file)
+        except OSError:
+            logger.exception("v2 scoring queue could not be saved to %s", self._file)
 
 
 scoring_job_queue = ScoringJobQueue()

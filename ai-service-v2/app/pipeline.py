@@ -107,8 +107,9 @@ class MatchingPipeline:
         manual = status == MatchStatus.UNKNOWN
 
         if status in (MatchStatus.MATCHED, MatchStatus.PARTIAL) and not verified:
-            # Claimed evidence that is not in the CV: never let it raise the score.
-            status = MatchStatus.PARTIAL if judgement.evidence_quotes else MatchStatus.NOT_FOUND
+            # Claimed evidence that is not in the CV: never let it raise the score. An invented quote used to
+            # leave PARTIAL (0.5 credit); test 21/10 made it NOT_FOUND, HR still sees it in manual review.
+            status = MatchStatus.NOT_FOUND
             method = "LLM_UNVERIFIED"
             manual = True
         elif unverified:
