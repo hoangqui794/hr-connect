@@ -35,6 +35,7 @@ export const resolveNotificationHubUrl = (baseUrl: string = API_BASE_URL): strin
 };
 
 export class SignalRNotificationService {
+  private static readonly retryDelaysMs = [5_000, 15_000, 30_000, 60_000];
   private connection: signalR.HubConnection | null = null;
   private connectionState: signalR.HubConnectionState = signalR.HubConnectionState.Disconnected;
   private connectingPromise: Promise<void> | null = null;
@@ -42,6 +43,9 @@ export class SignalRNotificationService {
   private notificationCreatedListeners = new Set<NotificationCreatedListener>();
   private interviewUpdatedListeners = new Set<InterviewUpdatedListener>();
   private hubUrlResolver: () => string;
+  private restartTimer: ReturnType<typeof setTimeout> | null = null;
+  private restartAttempt = 0;
+  private stoppedByClient = false;
 
   constructor(hubUrlResolver: () => string = resolveNotificationHubUrl) {
     this.hubUrlResolver = hubUrlResolver;
@@ -66,6 +70,8 @@ export class SignalRNotificationService {
   }
 
   public async start(): Promise<void> {
+    this.stoppedByClient = false;
+    this.clearRestartTimer();
     const token = authTokenStorage.getAccessToken();
     if (!token) {
       return;
@@ -168,6 +174,7 @@ export class SignalRNotificationService {
 
     connection.onreconnected((connectionId) => {
       console.info('[SignalRNotificationService] Reconnected to notifications hub. Connection ID:', connectionId);
+      this.restartAttempt = 0;
       this.notifyStateChange(signalR.HubConnectionState.Connected);
     });
 
@@ -176,7 +183,10 @@ export class SignalRNotificationService {
         console.warn('[SignalRNotificationService] Connection closed with error:', error);
       }
       this.notifyStateChange(signalR.HubConnectionState.Disconnected);
-      this.connection = null;
+      if (this.connection === connection) {
+        this.connection = null;
+      }
+      this.scheduleRestart();
     });
 
     this.connection = connection;
@@ -184,12 +194,16 @@ export class SignalRNotificationService {
     this.connectingPromise = connection
       .start()
       .then(() => {
+        this.restartAttempt = 0;
         this.notifyStateChange(signalR.HubConnectionState.Connected);
       })
       .catch((err) => {
         console.error('[SignalRNotificationService] Failed to connect to notifications hub:', err);
         this.notifyStateChange(signalR.HubConnectionState.Disconnected);
-        this.connection = null;
+        if (this.connection === connection) {
+          this.connection = null;
+        }
+        this.scheduleRestart();
         throw err;
       })
       .finally(() => {
@@ -200,7 +214,12 @@ export class SignalRNotificationService {
   }
 
   public async stop(): Promise<void> {
-    if (!this.connection) return;
+    this.stoppedByClient = true;
+    this.clearRestartTimer();
+    if (!this.connection) {
+      this.notifyStateChange(signalR.HubConnectionState.Disconnected);
+      return;
+    }
     try {
       const state = this.connection.state;
       if (
@@ -215,6 +234,29 @@ export class SignalRNotificationService {
     } finally {
       this.connection = null;
       this.notifyStateChange(signalR.HubConnectionState.Disconnected);
+    }
+  }
+
+  private scheduleRestart(): void {
+    if (this.stoppedByClient || this.restartTimer || !authTokenStorage.getAccessToken()) return;
+
+    const index = Math.min(this.restartAttempt, SignalRNotificationService.retryDelaysMs.length - 1);
+    const delay = SignalRNotificationService.retryDelaysMs[index];
+    this.restartAttempt += 1;
+    this.restartTimer = setTimeout(() => {
+      this.restartTimer = null;
+      if (!this.stoppedByClient) {
+        void this.start().catch(() => {
+          // start() schedules the next bounded retry; polling remains available in the meantime.
+        });
+      }
+    }, delay);
+  }
+
+  private clearRestartTimer(): void {
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
     }
   }
 
