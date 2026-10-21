@@ -69,6 +69,9 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             maxApplications = package?.MaxApplications;
         }
 
+        // The flat fields are the documented fallback for clients that still send them instead of ProposedTerms;
+        // this is the one place allowed to read them.
+#pragma warning disable CS0618
         var proposed = CommercialTermsHelper.ResolveProposedTerms(
             serviceTypeCode,
             request.ProposedTerms,
@@ -76,6 +79,7 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             request.WarrantyDays,
             request.PaymentDueDays,
             request.SourcingPricePerCv);
+#pragma warning restore CS0618
 
         var job = new Job
         {

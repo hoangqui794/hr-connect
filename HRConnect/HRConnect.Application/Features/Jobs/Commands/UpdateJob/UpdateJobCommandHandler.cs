@@ -48,6 +48,9 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
         job.SalaryNegotiable = request.SalaryNegotiable; job.SalaryNote = Normalize(request.SalaryNote);
         job.MinExperienceYears = request.MinExperienceYears; job.MaxExperienceYears = request.MaxExperienceYears;
         job.CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(); job.Quantity = request.Quantity;
+        // The flat fields are the documented fallback for clients that still send them instead of ProposedTerms;
+        // this is the one place allowed to read them.
+#pragma warning disable CS0618
         var proposed = CommercialTermsHelper.ResolveProposedTerms(
             serviceTypeCode,
             request.ProposedTerms,
@@ -55,6 +58,7 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
             request.WarrantyDays,
             request.PaymentDueDays,
             request.SourcingPricePerCv);
+#pragma warning restore CS0618
 
         job.SourcingTarget = request.SourcingTarget;
         job.ProposedFeeMultiplier = proposed.FeeMultiplier;
