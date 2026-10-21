@@ -4,6 +4,8 @@ set -Eeuo pipefail
 readonly RENDER_API_BASE='https://api.render.com/v1'
 readonly POLL_INTERVAL_SECONDS=20
 readonly MAX_WAIT_SECONDS=1200
+readonly QUEUED_DEPLOY_LOOKUP_ATTEMPTS=12
+readonly QUEUED_DEPLOY_LOOKUP_INTERVAL_SECONDS=5
 
 fail() {
   echo "::error::$1" >&2
@@ -31,6 +33,36 @@ render_api() {
     "$@"
 }
 
+find_active_deploy_for_commit() {
+  local max_attempts="${1:-$QUEUED_DEPLOY_LOOKUP_ATTEMPTS}"
+  local response
+  local deploy_id
+
+  for (( attempt = 1; attempt <= max_attempts; attempt++ )); do
+    response="$(render_api "$RENDER_API_BASE/services/$RENDER_SERVICE_ID/deploys?limit=20")"
+    deploy_id="$(jq -er --arg commit_id "$DEPLOY_SHA" '
+      [
+        .[]
+        | .deploy
+        | select(.commit.id == $commit_id)
+        | select(.status | test("^(created|queued|build_in_progress|pre_deploy_in_progress|update_in_progress|live)$"))
+      ][0].id // empty
+    ' <<< "$response" 2>/dev/null)" || true
+
+    if [[ -n "$deploy_id" ]]; then
+      printf '%s\n' "$deploy_id"
+      return 0
+    fi
+
+    if (( attempt < max_attempts )); then
+      echo "Render accepted the request but the queued deploy is not visible yet ($attempt/$max_attempts)." >&2
+      sleep "$QUEUED_DEPLOY_LOOKUP_INTERVAL_SECONDS"
+    fi
+  done
+
+  return 1
+}
+
 [[ -n "${RENDER_API_KEY:-}" ]] || fail 'Missing required GitHub secret RENDER_API_KEY.'
 [[ "${RENDER_SERVICE_ID:-}" == srv-* ]] || fail 'RENDER_SERVICE_ID must be the Render service ID beginning with srv-.'
 [[ "${DEPLOY_SHA:-}" =~ ^[0-9a-fA-F]{40}$ ]] || fail 'DEPLOY_SHA must be a complete 40-character Git commit SHA.'
@@ -45,20 +77,33 @@ write_output dashboard_url "$dashboard_url"
 write_output service_url "$service_url"
 write_output status 'triggering'
 
-echo "Triggering Render deployment for commit $DEPLOY_SHA..."
-payload="$(jq -cn \
-  --arg commitId "$DEPLOY_SHA" \
-  --arg clearCache "${CLEAR_CACHE:-do_not_clear}" \
-  '{commitId: $commitId, clearCache: $clearCache, deployMode: "build_and_deploy"}')"
+deploy_id="$(find_active_deploy_for_commit 1)" || true
+returned_commit=''
 
-response="$(render_api \
-  -X POST \
-  -H 'Content-Type: application/json' \
-  --data "$payload" \
-  "$RENDER_API_BASE/services/$RENDER_SERVICE_ID/deploys")"
+if [[ -n "$deploy_id" ]]; then
+  echo "Render is already deploying commit $DEPLOY_SHA as $deploy_id. Following the existing deployment."
+else
+  echo "Triggering Render deployment for commit $DEPLOY_SHA..."
+  payload="$(jq -cn \
+    --arg commitId "$DEPLOY_SHA" \
+    --arg clearCache "${CLEAR_CACHE:-do_not_clear}" \
+    '{commitId: $commitId, clearCache: $clearCache, deployMode: "build_and_deploy"}')"
 
-deploy_id="$(jq -er '.id' <<< "$response")" || fail "Render did not return a deploy ID: $response"
-returned_commit="$(jq -r '.commit.id // empty' <<< "$response")"
+  response="$(render_api \
+    -X POST \
+    -H 'Content-Type: application/json' \
+    --data "$payload" \
+    "$RENDER_API_BASE/services/$RENDER_SERVICE_ID/deploys")"
+
+  deploy_id="$(jq -er '.id // .deploy.id // empty' <<< "$response" 2>/dev/null)" || true
+  returned_commit="$(jq -r '.commit.id // .deploy.commit.id // empty' <<< "$response" 2>/dev/null)" || true
+
+  if [[ -z "$deploy_id" ]]; then
+    echo 'Render queued the deployment without returning an ID. Resolving the queued deploy...'
+    deploy_id="$(find_active_deploy_for_commit)" \
+      || fail "Render accepted the deployment request, but no active deploy for commit $DEPLOY_SHA became visible."
+  fi
+fi
 
 [[ -z "$returned_commit" || "$returned_commit" == "$DEPLOY_SHA" ]] \
   || fail "Render queued commit $returned_commit instead of requested commit $DEPLOY_SHA."
