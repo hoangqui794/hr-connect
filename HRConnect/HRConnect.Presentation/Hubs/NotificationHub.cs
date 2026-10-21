@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Notifications.DTOs;
 using HRConnect.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -57,18 +58,7 @@ public sealed class SignalRNotificationPublisher : INotificationPublisher
             {
                 await client.SendAsync("notification.created", new
                 {
-                    notification = new
-                    {
-                        notification.NotificationId,
-                        notification.NotificationType,
-                        notification.Title,
-                        notification.Message,
-                        notification.RelatedEntityType,
-                        notification.RelatedEntityId,
-                        notification.Metadata,
-                        notification.IsRead,
-                        notification.CreatedAt
-                    },
+                    notification = NotificationDto.From(notification),
                     unreadCount
                 }, cancellationToken);
 
