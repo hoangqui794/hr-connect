@@ -199,7 +199,8 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
                     applicationId = offer.ApplicationId,
                     offerId = offer.OfferId,
                     status = offer.Status,
-                    declineReason = offer.DeclineReason
+                    declineReason = offer.DeclineReason,
+                    routeHint = $"/client/candidates?open={offer.ApplicationId}"
                 }),
                 IsRead = false,
                 CreatedAt = now
