@@ -178,6 +178,6 @@ export const ClientCompanyPage: React.FC = () => {
 export const ClientWarrantyPlaceholder: React.FC = () => (
   <div>
     <PageHero eyebrow="Sau tuyển dụng" title="Bảo hành 60 ngày" description="Theo dõi các mốc 15, 30, 60 ngày sau khi ứng viên đi làm và báo khi ứng viên nghỉ việc." />
-    <NoApiYet feature="Bảo hành" detail="Thuộc MF-05; backend chưa có endpoint theo dõi bảo hành. Ứng viên đã đi làm xem ở “Phỏng vấn & Offer” → Đi làm." />
+    <NoApiYet feature="Bảo hành" detail="Ứng viên đã đi làm xem ở “Phỏng vấn & Offer” → Đi làm." />
   </div>
 );
