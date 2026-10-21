@@ -331,4 +331,40 @@ public class SourcingDeliveryTests
         total.Should().Be(1);
         undelivered.Status.Should().Be(ApplicationStates.Shortlisted);
     }
+
+    // Client candidates redesign (21/10): the stage strip groups statuses and the toolbar filters by service.
+    [Fact]
+    public async Task List_AcceptsSeveralStatusesSeparatedByCommas()
+    {
+        _context.Add(new Company { CompanyId = _companyId, CompanyName = "Tech Corp", TaxCode = "0123456789", VerificationStatus = "VERIFIED" });
+        var job = SeedJob();
+        SeedApplication(job, ApplicationStates.Shortlisted);
+        SeedApplication(job, ApplicationStates.Rejected);
+        SeedApplication(job, ApplicationStates.Backup);
+        var repository = new ApplicationRepository(_context);
+
+        var (both, bothTotal) = await repository.GetRecruitmentApplicationsAsync(null, job.JobId, "REJECTED, backup", null, null, null, 1, 20);
+        var (one, oneTotal) = await repository.GetRecruitmentApplicationsAsync(null, job.JobId, "REJECTED", null, null, null, 1, 20);
+
+        bothTotal.Should().Be(2);
+        both.Select(a => a.Status).Should().BeEquivalentTo(new[] { ApplicationStates.Rejected, ApplicationStates.Backup });
+        oneTotal.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task List_FiltersByServiceType()
+    {
+        _context.Add(new Company { CompanyId = _companyId, CompanyName = "Tech Corp", TaxCode = "0123456789", VerificationStatus = "VERIFIED" });
+        var sourcing = SeedJob(serviceType: "CV_SOURCING");
+        var headhunt = SeedJob(serviceType: "HEADHUNT_COD");
+        var sourcingApp = SeedApplication(sourcing);
+        SeedApplication(headhunt);
+        var repository = new ApplicationRepository(_context);
+
+        var (items, total) = await repository.GetRecruitmentApplicationsAsync(
+            null, null, null, null, null, null, 1, 20, serviceTypeCode: "cv_sourcing");
+
+        total.Should().Be(1);
+        items.Single().ApplicationId.Should().Be(sourcingApp.ApplicationId);
+    }
 }
