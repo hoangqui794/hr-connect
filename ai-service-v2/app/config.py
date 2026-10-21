@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     hrconnect_service_token: str = ""
     hrconnect_verify_ssl: bool = True
     internal_request_timeout_seconds: float = 30.0
+    # Posting the AI result back is retried on network errors, 429 and 5xx (Render restarts, cold starts),
+    # waiting base, 2x base, 4x base... A 4xx other than 429 is a real rejection and is not retried.
+    callback_retry_attempts: int = 5
+    callback_retry_base_seconds: float = 2.0
+    # Jobs accepted but not finished are kept in this file and re-queued on start, so a restart loses none.
+    # Empty disables it.
+    scoring_queue_file: str = ".data/pending-scoring-jobs.json"
     scoring_queue_size: int = 100
     # One worker keeps LLM calls within provider rate limits.
     scoring_worker_count: int = 1

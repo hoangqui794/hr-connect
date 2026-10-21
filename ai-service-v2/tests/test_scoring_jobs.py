@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -174,3 +175,62 @@ def test_match_file_requires_service_token_by_default(api):
 def test_docs_are_not_served_by_default(api):
     assert api.get("/docs").status_code == 404
     assert api.get("/openapi.json").status_code == 404
+
+
+class _BlockingOrchestrator:
+    """Never finishes a job, like a service killed mid-scoring."""
+
+    def __init__(self) -> None:
+        self.seen: list[str] = []
+
+    async def process(self, job):
+        self.seen.append(job.request_id)
+        await asyncio.Event().wait()
+
+    async def callback_failed(self, job, code, message):
+        pass
+
+
+@pytest.mark.anyio
+async def test_unfinished_jobs_survive_a_restart(tmp_path):
+    from app.scoring_jobs import ScoringJobQueue, ScoringJobRequest
+
+    settings = Settings(scoring_queue_file=str(tmp_path / "q.json"), scoring_worker_count=1)
+    first = ScoringJobQueue()
+    await first.start(settings, _BlockingOrchestrator())
+    for rid in ("r1", "r2"):
+        await first.enqueue(ScoringJobRequest(requestId=rid, applicationId="a", cvId="c", jobId="j", attemptNo=1))
+    await first.stop()
+
+    restarted = _BlockingOrchestrator()
+    second = ScoringJobQueue()
+    await second.start(settings, restarted)
+    await asyncio.sleep(0.05)
+    await second.stop()
+    assert restarted.seen == ["r1"]  # one worker: r1 is picked up again, r2 waits behind it
+    assert {item["requestId"] for item in json.loads((tmp_path / "q.json").read_text())} == {"r1", "r2"}
+
+
+@pytest.mark.anyio
+async def test_finished_job_is_removed_from_the_file(tmp_path):
+    from app.scoring_jobs import ScoringJobQueue, ScoringJobRequest
+
+    class Done:
+        async def process(self, job):
+            return None
+
+        async def callback_failed(self, job, code, message):
+            pass
+
+    settings = Settings(scoring_queue_file=str(tmp_path / "q.json"), scoring_worker_count=1)
+    queue = ScoringJobQueue()
+    await queue.start(settings, Done())
+    await queue.enqueue(ScoringJobRequest(requestId="r1", applicationId="a", cvId="c", jobId="j", attemptNo=1))
+    await asyncio.sleep(0.05)
+    await queue.stop()
+    assert json.loads((tmp_path / "q.json").read_text()) == []
+
+
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"

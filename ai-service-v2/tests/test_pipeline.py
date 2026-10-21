@@ -99,7 +99,7 @@ def test_invented_quote_never_raises_the_score():
         j("mentoring", "NOT_FOUND"),
     ])
     clean = next(r for r in result.must_have_result if r.requirement.id == "clean")
-    assert clean.match_status == MatchStatus.PARTIAL
+    assert clean.match_status == MatchStatus.NOT_FOUND
     assert clean.match_method == "LLM_UNVERIFIED"
     assert clean.evidence == []
     assert clean.unverified_evidence
