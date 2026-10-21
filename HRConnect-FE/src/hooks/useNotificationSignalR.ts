@@ -23,6 +23,19 @@ export interface UseNotificationSignalROptions {
   showToasts?: boolean;
 }
 
+const parseMetadata = (metadata: unknown): Record<string, unknown> | null => {
+  if (!metadata) return null;
+  if (typeof metadata === 'object') return metadata as Record<string, unknown>;
+  if (typeof metadata !== 'string') return null;
+
+  try {
+    const value = JSON.parse(metadata);
+    return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const useNotificationSignalR = (options: UseNotificationSignalROptions = {}) => {
   const { autoConnect = true, showToasts = true } = options;
   const navigate = useNavigate();
@@ -42,6 +55,7 @@ export const useNotificationSignalR = (options: UseNotificationSignalROptions = 
     (payload: NotificationCreatedPayload) => {
       const { notification, unreadCount } = payload;
       if (!notification) return;
+      const metadata = parseMetadata(notification.metadata);
 
       // Immediately update unread count cache
       queryClient.setQueryData<UnreadNotificationCountDto>(
@@ -69,15 +83,34 @@ export const useNotificationSignalR = (options: UseNotificationSignalROptions = 
         }
       );
 
+      // MF-04 notifications carry the owning application so the Candidate portal can refresh
+      // the exact application/timeline caches without relying on unrelated legacy query keys.
+      const entityType = notification.relatedEntityType?.trim().toUpperCase();
+      if (entityType === 'INTERVIEW' || entityType === 'OFFER') {
+        const applicationId = typeof metadata?.applicationId === 'string' ? metadata.applicationId : '';
+        const interviewId =
+          typeof metadata?.interviewId === 'string'
+            ? metadata.interviewId
+            : entityType === 'INTERVIEW'
+              ? notification.relatedEntityId || ''
+              : '';
+
+        void queryClient.invalidateQueries({ queryKey: ['candidate-applications'] });
+        if (applicationId) {
+          void queryClient.invalidateQueries({ queryKey: ['candidate-applications', applicationId] });
+          void queryClient.invalidateQueries({ queryKey: ['candidate-application-timeline', applicationId] });
+        }
+        if (interviewId) {
+          void queryClient.invalidateQueries({ queryKey: ['candidate', 'interviews', interviewId] });
+        }
+      }
+
       // Show toast popup
       if (showToasts) {
         let route = notification.routeHint?.trim();
         if (!route && notification.metadata) {
           try {
-            const meta =
-              typeof notification.metadata === 'string'
-                ? JSON.parse(notification.metadata)
-                : notification.metadata;
+            const meta = metadata;
             if (meta && typeof meta === 'object') {
               if (meta.routeHint && typeof meta.routeHint === 'string') {
                 route = meta.routeHint.trim();
@@ -117,15 +150,11 @@ export const useNotificationSignalR = (options: UseNotificationSignalROptions = 
 
   // 2. Handle interview.updated event
   const handleInterviewUpdated = useCallback(
-    (_payload: InterviewUpdatedPayload) => {
-      // Invalidate relevant query keys across HR console, Client console, and Candidate portal
-      queryClient.invalidateQueries({ queryKey: ['interviews'] });
-      queryClient.invalidateQueries({ queryKey: ['hr-pipeline'] });
-      queryClient.invalidateQueries({ queryKey: ['client-overview', 'interviews'] });
-      queryClient.invalidateQueries({ queryKey: ['candidate', 'interviews'] });
-      queryClient.invalidateQueries({ queryKey: ['candidate-interviews'] });
-      queryClient.invalidateQueries({ queryKey: ['client-interviews'] });
-      queryClient.invalidateQueries({ queryKey: ['candidate-applications'] });
+    (payload: InterviewUpdatedPayload) => {
+      void queryClient.invalidateQueries({ queryKey: ['candidate-applications'] });
+      if (payload.interviewId) {
+        void queryClient.invalidateQueries({ queryKey: ['candidate', 'interviews', payload.interviewId] });
+      }
     },
     [queryClient]
   );
