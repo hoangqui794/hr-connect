@@ -172,6 +172,7 @@ public static class RecruitmentEndpoints
             [FromQuery] int pageSize = 10,
             [FromQuery] string? sortBy = null,
             [FromQuery] string? sortDirection = null,
+            [FromQuery] string? serviceTypeCode = null,
             [FromServices] ISender sender = null!,
             ClaimsPrincipal user = null!,
             CancellationToken cancellationToken = default) =>
@@ -207,7 +208,8 @@ public static class RecruitmentEndpoints
                     Page: page,
                     PageSize: pageSize,
                     SortBy: sortBy,
-                    SortDirection: sortDirection
+                    SortDirection: sortDirection,
+                    ServiceTypeCode: serviceTypeCode
                 );
 
                 var response = await sender.Send(query, cancellationToken);
