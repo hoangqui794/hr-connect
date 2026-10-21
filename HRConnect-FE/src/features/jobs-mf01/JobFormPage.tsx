@@ -70,8 +70,17 @@ import {
   SERVICE_TYPE_LABEL,
   REQUIREMENT_CATEGORY_OPTIONS,
   clientActions,
+  formatMultilineText,
 } from './jobDisplay';
 import { JobTemplatePicker } from './JobTemplatePicker';
+import {
+  EXPERIENCE_YEAR_OPTIONS,
+  HEADHUNT_FEE_OPTIONS,
+  LOCATION_OPTIONS,
+  PAYMENT_DUE_DAY_OPTIONS,
+  WARRANTY_DAY_OPTIONS,
+  WORKING_TIME_OPTIONS,
+} from './jobFormOptions';
 
 // ─── Interfaces & Constants ──────────────────────────────────────────────────
 
@@ -154,7 +163,7 @@ interface ServiceMeta {
   icon: React.ReactNode;
   defaultTitle: string;
   defaultSummary: string;
-  feeRule: string;
+  feeRule: string[];
 }
 
 const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
@@ -163,27 +172,27 @@ const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
     tag: 'Gói đăng tin',
     color: 'blue',
     icon: <RocketOutlined className="text-blue-600 text-lg" />,
-    defaultTitle: 'Nhận CV ứng tuyển',
-    defaultSummary: 'Đăng tin tuyển dụng trên nền tảng, ứng viên chủ động tìm kiếm và nộp hồ sơ trực tiếp.',
-    feeRule: 'Đăng tin, ứng viên tự nộp hồ sơ. Trả theo gói, giá công khai.',
+    defaultTitle: 'Nhận hồ sơ ứng tuyển',
+    defaultSummary: 'Đăng tin trên nền tảng để ứng viên chủ động tìm kiếm và gửi hồ sơ trực tiếp.',
+    feeRule: ['Ứng viên chủ động gửi hồ sơ.', 'Doanh nghiệp thanh toán theo gói đăng tin đã chọn.'],
   },
   CV_SOURCING: {
     code: 'CV_SOURCING',
-    tag: 'Sourcing theo số lượng',
+    tag: 'Tính phí theo số hồ sơ',
     color: 'purple',
     icon: <TeamOutlined className="text-purple-600 text-lg" />,
-    defaultTitle: 'Tìm nguồn CV (CV Sourcing)',
-    defaultSummary: 'HR Connect và mạng lưới Affiliate chủ động tìm kiếm, sàng lọc hồ sơ đạt chuẩn và giao cho bạn.',
-    feeRule: 'HR Connect tìm và giao CV đạt yêu cầu. Trả theo số CV bạn chấp nhận; đặt cọc khi tin được duyệt.',
+    defaultTitle: 'Tìm kiếm hồ sơ phù hợp',
+    defaultSummary: 'HR Connect và mạng lưới cộng tác viên chủ động tìm kiếm, sàng lọc hồ sơ đạt chuẩn và gửi cho bạn.',
+    feeRule: ['HR Connect tìm và gửi hồ sơ đạt yêu cầu.', 'Doanh nghiệp đặt cọc sau khi tin được duyệt và trả phí theo số hồ sơ chấp nhận.'],
   },
   HEADHUNT_COD: {
     code: 'HEADHUNT_COD',
-    tag: 'Phí thành công (COD)',
+    tag: 'Chỉ trả phí khi tuyển được người',
     color: 'gold',
     icon: <SafetyCertificateOutlined className="text-amber-600 text-lg" />,
-    defaultTitle: 'Tuyển dụng trọn gói (Headhunt COD)',
-    defaultSummary: 'Quy trình tuyển dụng chuyên sâu qua Headhunter, bảo hành thay người miễn phí, chỉ trả phí khi tuyển thành công.',
-    feeRule: 'HR Connect tuyển giúp bạn. Chỉ trả khi ứng viên bắt đầu đi làm, theo lương của người được tuyển. Bảo hành thay người miễn phí.',
+    defaultTitle: 'Tuyển dụng theo kết quả',
+    defaultSummary: 'HR Connect phụ trách tìm kiếm và sàng lọc; có chính sách tuyển thay thế và chỉ thu phí khi tuyển thành công.',
+    feeRule: ['HR Connect phụ trách quá trình tìm kiếm và sàng lọc.', 'Doanh nghiệp trả phí khi ứng viên bắt đầu đi làm và được hỗ trợ tuyển thay thế theo thỏa thuận.'],
   },
 };
 
@@ -334,7 +343,8 @@ const toInput = (v: JobFormValues, selectedCode?: ServiceTypeCode, postingPackag
     workingTime: trimOrNull(v.workingTime),
     quantity: v.quantity ?? 1,
     minExperienceYears: v.minExperienceYears ?? null,
-    maxExperienceYears: v.maxExperienceYears ?? null,
+    // MF-01 asks for one clear threshold. Keep the legacy API field empty.
+    maxExperienceYears: null,
     salaryMin: v.salaryMin ?? null,
     salaryMax: v.salaryMax ?? null,
     currencyCode: v.currencyCode || 'VND',
@@ -407,7 +417,7 @@ const submitBlockers = (
   // Step 3
   if (serviceCode === 'CV_SOURCING') {
     if (!v.targetCandidateCount || v.targetCandidateCount < 1) {
-      missing.push({ field: ['targetCandidateCount'], message: 'Nhập số lượng CV muốn nhận (bắt buộc).', step: 2 });
+      missing.push({ field: ['targetCandidateCount'], message: 'Nhập số lượng hồ sơ muốn nhận (bắt buộc).', step: 2 });
     }
   }
 
@@ -511,7 +521,14 @@ export const JobFormPage: React.FC = () => {
         .filter((p) => p.isActive)
         .map((p) => ({
           key: p.code,
-          name: p.name,
+          name:
+            p.code === 'FREE'
+              ? 'Gói dùng thử'
+              : p.code === 'STANDARD'
+                ? 'Gói tiêu chuẩn'
+                : p.code === 'PREMIUM'
+                  ? 'Gói nổi bật'
+                  : p.name,
           price: p.price,
           priceText: p.price > 0 ? `${p.price.toLocaleString('vi-VN')}đ` : 'Miễn phí',
           days: p.durationDays,
@@ -576,7 +593,7 @@ export const JobFormPage: React.FC = () => {
     ];
     if (effectiveCode === 'CV_SOURCING') {
       base.push({
-        label: 'Số lượng CV muốn nhận',
+        label: 'Số lượng hồ sơ muốn nhận',
         done: Boolean(watched.targetCandidateCount && watched.targetCandidateCount > 0),
         step: 2,
         field: 'form-cv-count-item',
@@ -668,7 +685,7 @@ export const JobFormPage: React.FC = () => {
     if (step === 2) {
       if (effectiveCode === 'CV_SOURCING') {
         if (!values.targetCandidateCount || values.targetCandidateCount < 1) {
-          message.warning('Vui lòng nhập số lượng CV muốn nhận (bắt buộc với dịch vụ Sourcing).');
+          message.warning('Vui lòng nhập số lượng hồ sơ muốn nhận.');
           return false;
         }
       }
@@ -828,17 +845,17 @@ export const JobFormPage: React.FC = () => {
     },
     {
       title: 'Mô tả công việc',
-      description: 'JD tiêu chuẩn',
+      description: 'Thông tin vị trí',
       status: stepErrors[1] ? ('error' as const) : undefined,
     },
     {
       title: 'Nhu cầu & chi phí',
-      description: effectiveCode === 'CV_APPLICATION' ? 'Gói tin đăng' : 'Đề xuất & số lượng',
+      description: effectiveCode === 'CV_APPLICATION' ? 'Chọn gói đăng tin' : 'Nhu cầu và đề xuất',
       status: stepErrors[2] ? ('error' as const) : undefined,
     },
     {
       title: 'Xem lại & gửi duyệt',
-      description: 'Tổng quan & xác nhận',
+      description: 'Kiểm tra thông tin',
       status: stepErrors[3] ? ('error' as const) : undefined,
     },
   ];
@@ -994,7 +1011,7 @@ export const JobFormPage: React.FC = () => {
                           icon: <RocketOutlined />,
                           defaultTitle: st.name,
                           defaultSummary: st.description ?? '',
-                          feeRule: 'Theo quy định của HR Connect.',
+                          feeRule: ['Áp dụng theo chính sách dịch vụ của HR Connect.'],
                         };
                         const isSelected =
                           selectedServiceId === st.id ||
@@ -1049,9 +1066,15 @@ export const JobFormPage: React.FC = () => {
                             <div className="mt-4 rounded-xl border border-solid border-slate-200/90 bg-white/90 p-3 text-[12px] text-slate-700">
                               <span className="font-semibold text-slate-900 flex items-center gap-1.5 mb-1">
                                 <WalletOutlined className="text-[color:var(--console-accent)]" />
-                                Cách tính phí (chỉ đọc):
+                                Cách thanh toán
                               </span>
-                              <span className="text-slate-600 leading-normal">{meta.feeRule}</span>
+                              <div className="space-y-1 text-slate-600 leading-relaxed">
+                                {meta.feeRule.map((rule) => (
+                                  <p key={rule} className="m-0 break-words">
+                                    {rule}
+                                  </p>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         );
@@ -1078,10 +1101,10 @@ export const JobFormPage: React.FC = () => {
             </div>
 
             {/* ═════════════════════════════════════════════════════════════════
-                BƯỚC 2: MÔ TẢ CÔNG VIỆC (JD DÙNG CHUNG)
+                BƯỚC 2: THÔNG TIN CÔNG VIỆC
                 ═════════════════════════════════════════════════════════════════ */}
             <div className={currentStep === 1 ? 'space-y-5' : 'hidden'}>
-              {/* F1 & F2: Bắt đầu nhanh từ mẫu JD */}
+              {/* F1 & F2: Bắt đầu nhanh từ mẫu tuyển dụng */}
               <JobTemplatePicker
                 editable={editable}
                 hasStep2Content={() => hasStep2Content(form.getFieldsValue())}
@@ -1103,13 +1126,13 @@ export const JobFormPage: React.FC = () => {
                 <div id="form-title-item">
                   <Form.Item
                     name="title"
-                    label="Tên vị trí tuyển dụng"
+                    label="Bạn đang cần tuyển vị trí nào?"
                     rules={[
                       { required: true, whitespace: true, message: 'Vui lòng nhập tên vị trí.' },
                       { max: 255, message: 'Tối đa 255 ký tự.' },
                     ]}
                   >
-                    <Input size="large" placeholder="Ví dụ: Kỹ sư Backend .NET (Senior) hoặc Chuyên viên Marketing" />
+                    <Input size="large" placeholder="Ví dụ: Kỹ sư Backend .NET hoặc Chuyên viên Marketing" />
                   </Form.Item>
                 </div>
 
@@ -1117,12 +1140,12 @@ export const JobFormPage: React.FC = () => {
                   <div id="form-employment-item">
                     <Form.Item
                       name="employmentType"
-                      label="Hình thức làm việc"
+                      label="Loại hình công việc"
                       rules={[{ required: true, message: 'Chọn hình thức làm việc.' }]}
                     >
                       <Select
                         size="large"
-                        placeholder="Chọn hình thức làm việc"
+                        placeholder="Chọn loại hình công việc"
                         options={(Object.keys(EMPLOYMENT_TYPE_LABEL) as EmploymentType[]).map((k) => ({
                           value: k,
                           label: EMPLOYMENT_TYPE_LABEL[k],
@@ -1142,22 +1165,26 @@ export const JobFormPage: React.FC = () => {
                   <div id="form-location-item">
                     <Form.Item
                       name="location"
-                      label="Địa điểm làm việc"
+                      label="Khu vực làm việc"
                       rules={[
                         { required: true, message: 'Vui lòng nhập địa điểm làm việc.' },
                         { max: 255, message: 'Tối đa 255 ký tự.' },
                       ]}
                     >
-                      <Input
+                      <Select
                         size="large"
-                        prefix={<EnvironmentOutlined className="text-slate-400" />}
-                        placeholder="Ví dụ: Quận 1, TP. Hồ Chí Minh (hoặc Hybrid)"
+                        showSearch
+                        allowClear
+                        optionFilterProp="label"
+                        placeholder="Chọn tỉnh/thành hoặc cách làm việc"
+                        options={LOCATION_OPTIONS}
+                        suffixIcon={<EnvironmentOutlined className="text-slate-400" />}
                       />
                     </Form.Item>
                   </div>
 
-                  <Form.Item name="workingTime" label="Thời gian làm việc" rules={[{ max: 2000, message: 'Tối đa 2000 ký tự.' }]}>
-                    <Input size="large" placeholder="Ví dụ: Thứ 2 – Thứ 6, 8:30 – 17:30" />
+                  <Form.Item name="workingTime" label="Lịch làm việc dự kiến">
+                    <Select size="large" allowClear placeholder="Chọn lịch làm việc" options={WORKING_TIME_OPTIONS} />
                   </Form.Item>
                 </div>
 
@@ -1179,32 +1206,13 @@ export const JobFormPage: React.FC = () => {
                     />
                   </Form.Item>
 
-                  <div>
-                    <label className="mb-2 block text-sm text-slate-900 font-medium">Yêu cầu số năm kinh nghiệm</label>
-                    <div className="grid grid-cols-2 gap-x-3">
-                      <Form.Item name="minExperienceYears" className="mb-0" rules={[{ type: 'number', min: 0, max: 50, message: '0-50.' }]}>
-                        <InputNumber size="large" min={0} max={50} className="w-full" addonBefore="Từ" placeholder="0" />
-                      </Form.Item>
-                      <Form.Item
-                        name="maxExperienceYears"
-                        className="mb-0"
-                        dependencies={['minExperienceYears']}
-                        rules={[
-                          { type: 'number', min: 0, max: 50, message: '0-50.' },
-                          ({ getFieldValue }) => ({
-                            validator: (_, v) => {
-                              const min = getFieldValue('minExperienceYears');
-                              return v == null || min == null || v >= min
-                                ? Promise.resolve()
-                                : Promise.reject(new Error('Phải ≥ mức tối thiểu.'));
-                            },
-                          }),
-                        ]}
-                      >
-                        <InputNumber size="large" min={0} max={50} className="w-full" addonBefore="Đến" placeholder="10" />
-                      </Form.Item>
-                    </div>
-                  </div>
+                  <Form.Item
+                    name="minExperienceYears"
+                    label="Kinh nghiệm tối thiểu"
+                    extra="Chọn 0 nếu vị trí chấp nhận ứng viên chưa có kinh nghiệm."
+                  >
+                    <Select size="large" allowClear placeholder="Chọn số năm kinh nghiệm" options={EXPERIENCE_YEAR_OPTIONS} />
+                  </Form.Item>
                 </div>
               </section>
 
@@ -1255,7 +1263,7 @@ export const JobFormPage: React.FC = () => {
                 </div>
 
                 <Form.Item name="salaryNote" label="Ghi chú về lương" className="mb-0" rules={[{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}>
-                  <Input size="large" placeholder="Ví dụ: Lương Gross, thưởng hiệu suất hàng quý, tháng 13..." />
+                  <Input size="large" placeholder="Ví dụ: Lương trước thuế, thưởng hiệu suất hàng quý, lương tháng 13..." />
                 </Form.Item>
               </section>
 
@@ -1265,13 +1273,13 @@ export const JobFormPage: React.FC = () => {
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
                     2.3
                   </span>
-                  <h2 className="m-0 text-[17px] font-semibold text-slate-900">Mô tả công việc & Quyền lợi</h2>
+                  <h2 className="m-0 text-[17px] font-semibold text-slate-900">Công việc và quyền lợi</h2>
                 </header>
 
                 <div id="form-desc-item">
                   <Form.Item
                     name="description"
-                    label="Mô tả công việc (Job Description)"
+                    label="Ứng viên sẽ làm những công việc gì?"
                     rules={[{ required: true, message: 'Vui lòng nhập mô tả công việc.' }]}
                   >
                     <Input.TextArea
@@ -1285,7 +1293,7 @@ export const JobFormPage: React.FC = () => {
                 <div id="form-benefits-item">
                   <Form.Item
                     name="benefits"
-                    label="Quyền lợi ứng viên"
+                    label="Ứng viên nhận được quyền lợi gì?"
                     className="mb-0"
                     rules={[
                       { required: true, message: 'Vui lòng nhập quyền lợi ứng viên.' },
@@ -1296,7 +1304,7 @@ export const JobFormPage: React.FC = () => {
                       rows={5}
                       showCount
                       maxLength={10000}
-                      placeholder={'• Chế độ bảo hiểm sức khỏe cao cấp\n• 15 ngày phép/năm, review lương định kỳ\n• Môi trường làm việc năng động, lộ trình thăng tiến rõ ràng'}
+                      placeholder={'• Chế độ bảo hiểm sức khỏe cao cấp\n• 15 ngày phép/năm, xét tăng lương định kỳ\n• Môi trường làm việc năng động, lộ trình thăng tiến rõ ràng'}
                     />
                   </Form.Item>
                 </div>
@@ -1309,7 +1317,7 @@ export const JobFormPage: React.FC = () => {
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
                       2.4
                     </span>
-                    <h2 className="m-0 text-[17px] font-semibold text-slate-900">Yêu cầu tuyển dụng & Kỹ năng</h2>
+                    <h2 className="m-0 text-[17px] font-semibold text-slate-900">Tiêu chí dành cho ứng viên</h2>
                   </div>
                   <Tag color={hasMustHave ? 'green' : 'orange'} className="m-0 font-medium">
                     {hasMustHave ? 'Đã có yêu cầu bắt buộc' : 'Cần ít nhất 1 yêu cầu bắt buộc'}
@@ -1318,13 +1326,13 @@ export const JobFormPage: React.FC = () => {
 
                 <Form.Item
                   name="skills"
-                  label="Kỹ năng chính (Skills Tag)"
-                  extra="Nhập kỹ năng và nhấn Enter hoặc chọn từ danh sách gợi ý."
+                  label="Kỹ năng cần có"
+                  extra="Ưu tiên chọn từ danh sách. Nếu chưa có, nhập tên kỹ năng rồi nhấn phím Enter."
                 >
                   <Select
                     mode="tags"
                     size="large"
-                    placeholder="Ví dụ: ReactJS, ASP.NET Core, SQL Server, Docker, English..."
+                    placeholder="Ví dụ: ReactJS, ASP.NET Core, SQL Server, Docker, Tiếng Anh..."
                     options={[
                       { value: 'ASP.NET Core', label: 'ASP.NET Core' },
                       { value: 'C#', label: 'C#' },
@@ -1342,7 +1350,7 @@ export const JobFormPage: React.FC = () => {
 
                 <div className="space-y-3">
                   <div className="text-sm font-semibold text-slate-900">
-                    Danh sách tiêu chí yêu cầu ứng viên <span className="text-red-500 font-bold ml-0.5">*</span>:
+                    Các yêu cầu cụ thể <span className="text-red-500 font-bold ml-0.5">*</span>
                   </div>
                   <Form.List name="requirements">
                     {(fields, { add, remove }) => (
@@ -1352,7 +1360,7 @@ export const JobFormPage: React.FC = () => {
                             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 md:grid-cols-[auto_minmax(0,1fr)_185px_auto]">
                               <Form.Item
                                 name={[field.name, 'requirementType']}
-                                label="Mức độ"
+                                label="Tầm quan trọng"
                                 className="mb-2 md:mb-0"
                                 rules={[{ required: true, message: 'Chọn mức độ.' }]}
                               >
@@ -1365,7 +1373,7 @@ export const JobFormPage: React.FC = () => {
                               <div className="order-3 col-span-2 md:order-none md:col-span-1">
                                 <Form.Item
                                   name={[field.name, 'content']}
-                                  label={`Nội dung yêu cầu ${index + 1}`}
+                                  label={`Yêu cầu ${index + 1}`}
                                   className="mb-2 md:mb-0"
                                   rules={[{ required: true, whitespace: true, message: 'Nhập nội dung yêu cầu hoặc xóa dòng này.' }]}
                                 >
@@ -1374,9 +1382,9 @@ export const JobFormPage: React.FC = () => {
                               </div>
 
                               <div className="order-4 col-span-2 md:order-none md:col-span-1">
-                                <Form.Item name={[field.name, 'category']} label="Phân nhóm" className="mb-0">
+                                <Form.Item name={[field.name, 'category']} label="Nhóm yêu cầu" className="mb-0">
                                   <Select
-                                    placeholder="Chọn phân nhóm"
+                                    placeholder="Chọn nhóm"
                                     allowClear
                                     showSearch
                                     options={REQUIREMENT_CATEGORY_OPTIONS}
@@ -1408,7 +1416,7 @@ export const JobFormPage: React.FC = () => {
                           size="large"
                           className="text-slate-700"
                         >
-                          Thêm tiêu chí yêu cầu
+                          Thêm yêu cầu
                         </Button>
                       </div>
                     )}
@@ -1442,7 +1450,7 @@ export const JobFormPage: React.FC = () => {
                   </div>
                   <h3 className="m-0 text-[18px] font-bold text-slate-900">Vui lòng chọn loại dịch vụ ở Bước 1 trước</h3>
                   <p className="m-0 max-w-md mx-auto text-sm text-slate-600 leading-relaxed">
-                    Nội dung về gói đăng tin, hạn mức tuyển dụng và đề xuất chi phí sẽ được tải tự động dựa trên dịch vụ bạn lựa chọn (Nhận CV ứng tuyển, Tìm nguồn CV, hoặc Headhunt COD).
+                    Gói đăng tin, số lượng hồ sơ và cách tính phí sẽ được hiển thị theo dịch vụ bạn chọn.
                   </p>
                   <Button
                     type="primary"
@@ -1555,7 +1563,7 @@ export const JobFormPage: React.FC = () => {
                     showIcon
                     icon={<InfoCircleOutlined />}
                     message="Quy tắc thanh toán gói đăng tin"
-                    description="Với dịch vụ Nhận CV ứng tuyển, giá dịch vụ là công khai và không có ô đề xuất phí. Khoản phí sẽ được kích hoạt thanh toán khi tin tuyển dụng của bạn được HR Connect xét duyệt."
+                    description="Với dịch vụ Nhận hồ sơ ứng tuyển, giá dịch vụ được công khai và không cần đề xuất thêm. Yêu cầu thanh toán được tạo sau khi HR Connect duyệt tin."
                   />
                 </section>
               )}
@@ -1571,7 +1579,7 @@ export const JobFormPage: React.FC = () => {
                       <h2 className="m-0 text-[18px] font-semibold text-slate-900">Nhu cầu cung cấp hồ sơ ứng viên</h2>
                     </div>
                     <p className="m-0 text-[13.5px] text-slate-600">
-                      Nhập số lượng hồ sơ bạn cần và đề xuất mức phí mong muốn cho mỗi CV tiếp nhận.
+                      Cho biết số hồ sơ cần nhận và mức phí mong muốn cho mỗi hồ sơ đạt yêu cầu.
                     </p>
                   </header>
 
@@ -1579,7 +1587,7 @@ export const JobFormPage: React.FC = () => {
                   <div id="form-cv-count-item" className="rounded-2xl border border-solid border-slate-200 bg-slate-50/60 p-5">
                     <div className="mb-2 flex items-center justify-between">
                       <label className="text-sm font-bold text-slate-900">
-                        Số lượng CV bạn muốn nhận <span className="text-red-500 font-bold">*</span>
+                        Số hồ sơ ứng viên bạn muốn nhận <span className="text-red-500 font-bold">*</span>
                       </label>
                       <span className="rounded-full bg-slate-200/80 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
                         Bắt buộc
@@ -1591,8 +1599,8 @@ export const JobFormPage: React.FC = () => {
                     <Form.Item
                       name="targetCandidateCount"
                       rules={[
-                        { required: true, message: 'Vui lòng nhập số CV muốn nhận.' },
-                        { type: 'number', min: 1, max: 1000, message: 'Số lượng từ 1 đến 1000 CV.' },
+                        { required: true, message: 'Vui lòng nhập số hồ sơ muốn nhận.' },
+                        { type: 'number', min: 1, max: 1000, message: 'Số lượng từ 1 đến 1000 hồ sơ.' },
                       ]}
                       className="mb-0"
                     >
@@ -1602,7 +1610,7 @@ export const JobFormPage: React.FC = () => {
                         max={1000}
                         className="w-full max-w-xs"
                         placeholder="Ví dụ: 10"
-                        addonAfter="hồ sơ CV"
+                        addonAfter="hồ sơ"
                       />
                     </Form.Item>
                   </div>
@@ -1622,14 +1630,14 @@ export const JobFormPage: React.FC = () => {
                     <div className="grid gap-x-4 md:grid-cols-2">
                       <Form.Item
                         name="sourcingPricePerCv"
-                        label="Mức phí bạn đề xuất cho mỗi CV (VNĐ)"
+                        label="Mức phí đề xuất cho mỗi hồ sơ đạt yêu cầu"
                         rules={[{ type: 'number', min: 0, message: 'Không được âm.' }]}
                       >
                         <InputNumber<number>
                           size="large"
                           {...moneyInputProps}
                           placeholder="Ví dụ: 500.000"
-                          addonAfter="₫ / CV"
+                          addonAfter="₫ / hồ sơ"
                         />
                       </Form.Item>
 
@@ -1670,10 +1678,10 @@ export const JobFormPage: React.FC = () => {
                       <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
                         3
                       </span>
-                      <h2 className="m-0 text-[18px] font-semibold text-slate-900">Điều khoản chi phí tuyển dụng Headhunt</h2>
+                      <h2 className="m-0 text-[18px] font-semibold text-slate-900">Điều khoản dịch vụ tuyển dụng theo kết quả</h2>
                     </div>
                     <p className="m-0 text-[13.5px] text-slate-600">
-                      Dịch vụ Headhunt COD tính phí dựa trên mức lương thực tế khi ứng viên nhận việc. Bạn có thể đề xuất mức phí mong muốn bên dưới:
+                      Phí dịch vụ được tính theo mức lương thực tế khi ứng viên nhận việc. Bạn có thể chọn mức đề xuất bên dưới.
                     </p>
                   </header>
 
@@ -1693,18 +1701,15 @@ export const JobFormPage: React.FC = () => {
                     <div className="grid gap-x-4 md:grid-cols-2">
                       <Form.Item
                         name="feeMultiplier"
-                        label="Mức phí đề xuất (Số tháng lương)"
+                        label="Mức phí tuyển thành công đề xuất"
                         rules={[{ type: 'number', min: 0, max: 12, message: 'Từ 0 đến 12 tháng.' }]}
-                        extra="Số tháng lương theo mức offer của ứng viên đi làm."
+                        extra="Số tháng lương theo mức lương chính thức của ứng viên khi nhận việc."
                       >
-                        <InputNumber
+                        <Select
                           size="large"
-                          min={0}
-                          max={12}
-                          step={0.1}
                           className="w-full"
-                          placeholder="Ví dụ: 1.5"
-                          addonAfter="tháng lương"
+                          placeholder="Chọn mức phí đề xuất"
+                          options={HEADHUNT_FEE_OPTIONS}
                           onChange={(val) => {
                             if (val != null) {
                               form.setFieldValue('annualSalaryPercent', Number(((val / 12) * 100).toFixed(1)));
@@ -1717,26 +1722,11 @@ export const JobFormPage: React.FC = () => {
 
                       <Form.Item
                         name="annualSalaryPercent"
-                        label="Quy đổi tương đương (% lương năm)"
+                        label="Tỷ lệ tương đương trên lương năm"
                         rules={[{ type: 'number', min: 0, max: 100, message: 'Từ 0% đến 100%.' }]}
-                        extra="Tự động đồng bộ theo số tháng lương (1.5 tháng = 12.5% năm)."
+                        extra="Hệ thống tự quy đổi theo số tháng lương (1,5 tháng tương đương 12,5% lương năm)."
                       >
-                        <InputNumber
-                          size="large"
-                          min={0}
-                          max={100}
-                          step={0.5}
-                          className="w-full"
-                          placeholder="Ví dụ: 12.5"
-                          addonAfter="% lương năm"
-                          onChange={(val) => {
-                            if (val != null) {
-                              form.setFieldValue('feeMultiplier', Number(((val * 12) / 100).toFixed(2)));
-                            } else {
-                              form.setFieldValue('feeMultiplier', undefined);
-                            }
-                          }}
-                        />
+                        <InputNumber size="large" disabled className="w-full" addonAfter="% lương năm" />
                       </Form.Item>
                     </div>
 
@@ -1748,14 +1738,7 @@ export const JobFormPage: React.FC = () => {
                         rules={[{ type: 'number', min: 0, max: 365, message: 'Từ 0 đến 365 ngày.' }]}
                         extra="Bảo hành tuyển thay thế miễn phí nếu ứng viên nghỉ việc. Để trống để dùng mức mặc định của HR Connect."
                       >
-                        <InputNumber
-                          size="large"
-                          min={0}
-                          max={365}
-                          className="w-full"
-                          placeholder="Theo mặc định"
-                          addonAfter="ngày"
-                        />
+                        <Select size="large" allowClear placeholder="Dùng chính sách mặc định" options={WARRANTY_DAY_OPTIONS} />
                       </Form.Item>
 
                       <Form.Item
@@ -1764,14 +1747,7 @@ export const JobFormPage: React.FC = () => {
                         rules={[{ type: 'number', min: 0, max: 180, message: 'Từ 0 đến 180 ngày.' }]}
                         extra="Số ngày thanh toán kể từ ngày ứng viên bắt đầu đi làm."
                       >
-                        <InputNumber
-                          size="large"
-                          min={0}
-                          max={180}
-                          className="w-full"
-                          placeholder="Ví dụ: 20"
-                          addonAfter="ngày"
-                        />
+                        <Select size="large" allowClear placeholder="Chọn thời hạn thanh toán" options={PAYMENT_DUE_DAY_OPTIONS} />
                       </Form.Item>
                     </div>
 
@@ -1798,7 +1774,7 @@ export const JobFormPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   {draftButton()}
                   <Button type="primary" size="large" className="client-cta px-6" onClick={handleNext}>
-                    Tiếp tục: Xem lại & Gửi duyệt
+                    Tiếp tục: Kiểm tra và gửi duyệt
                   </Button>
                 </div>
               </div>
@@ -1815,7 +1791,7 @@ export const JobFormPage: React.FC = () => {
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
                       4.1
                     </span>
-                    <h2 className="m-0 text-[17px] font-semibold text-slate-900">Tóm tắt tin tuyển dụng (JD)</h2>
+                    <h2 className="m-0 text-[17px] font-semibold text-slate-900">Thông tin tin tuyển dụng</h2>
                   </div>
                   <Button
                     type="link"
@@ -1823,7 +1799,7 @@ export const JobFormPage: React.FC = () => {
                     onClick={() => goToStep(1)}
                     className="text-sm font-medium"
                   >
-                    Sửa JD
+                    Sửa thông tin công việc
                   </Button>
                 </div>
 
@@ -1869,7 +1845,7 @@ export const JobFormPage: React.FC = () => {
                   <div>
                     <div className="font-semibold text-slate-900 text-sm mb-1">Mô tả công việc:</div>
                     <div className="whitespace-pre-line text-sm text-slate-700 bg-slate-50/60 p-3.5 rounded-xl border border-solid border-slate-100">
-                      {watched.description}
+                      {formatMultilineText(watched.description)}
                     </div>
                   </div>
                 )}
@@ -1878,7 +1854,7 @@ export const JobFormPage: React.FC = () => {
                   <div>
                     <div className="font-semibold text-slate-900 text-sm mb-1">Quyền lợi:</div>
                     <div className="whitespace-pre-line text-sm text-slate-700 bg-slate-50/60 p-3.5 rounded-xl border border-solid border-slate-100">
-                      {watched.benefits}
+                      {formatMultilineText(watched.benefits)}
                     </div>
                   </div>
                 )}
@@ -1896,8 +1872,8 @@ export const JobFormPage: React.FC = () => {
                               className={r.requirementType === 'MUST_HAVE' ? 'text-emerald-600 mt-1' : 'text-slate-400 mt-1'}
                             />
                             <div>
-                              <span className={r.requirementType === 'MUST_HAVE' ? 'font-medium text-slate-900' : 'text-slate-700'}>
-                                {r.content}
+                              <span className={`whitespace-pre-line break-words ${r.requirementType === 'MUST_HAVE' ? 'font-medium text-slate-900' : 'text-slate-700'}`}>
+                                {formatMultilineText(r.content)}
                               </span>
                               <span className="ml-2 text-xs text-slate-500">
                                 ({r.requirementType === 'MUST_HAVE' ? 'Bắt buộc' : 'Ưu tiên'}
@@ -1963,9 +1939,10 @@ export const JobFormPage: React.FC = () => {
                         Bạn thanh toán <b>sau khi tin được duyệt</b>.
                       </p>
                     </div>
-                    <p className="text-xs text-slate-600 m-0">
-                      Dịch vụ đăng tin áp dụng theo bảng giá công khai. Sau khi chuyên viên HR Connect duyệt tin tuyển dụng, quý công ty sẽ nhận thông báo hoàn tất thanh toán để tin hiển thị công khai.
-                    </p>
+                    <div className="space-y-1 text-xs text-slate-600 leading-relaxed">
+                      <p className="m-0">Dịch vụ đăng tin áp dụng theo bảng giá công khai.</p>
+                      <p className="m-0">Sau khi HR Connect duyệt tin, doanh nghiệp sẽ nhận thông báo thanh toán để công khai tin tuyển dụng.</p>
+                    </div>
                   </div>
                 )}
 
@@ -1973,13 +1950,14 @@ export const JobFormPage: React.FC = () => {
                 {effectiveCode === 'CV_SOURCING' && (
                   <div className="space-y-3">
                     <div className="rounded-xl bg-white p-4 border border-solid border-slate-200 space-y-2">
-                      <p className="text-sm text-slate-800 leading-relaxed m-0">
-                        Bạn muốn nhận <b>{watched.targetCandidateCount ?? '—'} CV</b>. Giá mỗi CV và tiền đặt cọc sẽ được chuyên viên HR Connect xác nhận với bạn trước khi đăng tin.
-                      </p>
+                      <div className="space-y-1 text-sm text-slate-800 leading-relaxed">
+                        <p className="m-0">Bạn muốn nhận <b>{watched.targetCandidateCount ?? '—'} hồ sơ</b>.</p>
+                        <p className="m-0">Mức phí cho mỗi hồ sơ và khoản đặt cọc sẽ được chuyên viên HR Connect xác nhận trước khi đăng tin.</p>
+                      </div>
                       {watched.sourcingPricePerCv ? (
                         <div className="pt-2 border-0 border-t border-solid border-slate-100">
                           <span className="text-sm text-slate-900">
-                            Bạn đề xuất: <b>{watched.sourcingPricePerCv.toLocaleString('vi-VN')}đ / CV</b>.
+                            Bạn đề xuất: <b>{watched.sourcingPricePerCv.toLocaleString('vi-VN')}đ / hồ sơ</b>.
                           </span>
                           {watched.targetCandidateCount && (
                             <div className="text-xs text-slate-600 mt-0.5">
@@ -2005,9 +1983,10 @@ export const JobFormPage: React.FC = () => {
                 {effectiveCode === 'HEADHUNT_COD' && (
                   <div className="space-y-3">
                     <div className="rounded-xl bg-white p-4 border border-solid border-slate-200 space-y-2">
-                      <p className="text-sm text-slate-800 leading-relaxed m-0">
-                        Phí tính khi ứng viên bắt đầu đi làm, theo lương trong offer. Chuyên viên HR Connect sẽ liên hệ thống nhất mức phí, bảo hành và hạn thanh toán trước khi đăng tin.
-                      </p>
+                      <div className="space-y-1 text-sm text-slate-800 leading-relaxed">
+                        <p className="m-0">Phí dịch vụ được tính khi ứng viên bắt đầu đi làm, dựa trên mức lương chính thức.</p>
+                        <p className="m-0">Chuyên viên HR Connect sẽ liên hệ để thống nhất mức phí, thời gian tuyển thay thế và hạn thanh toán trước khi đăng tin.</p>
+                      </div>
                       {watched.feeMultiplier != null || watched.warrantyDays != null || watched.paymentDueDays != null ? (
                         <div className="pt-2 border-0 border-t border-solid border-slate-100 space-y-1">
                           {watched.feeMultiplier != null && (

@@ -185,7 +185,7 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="m-0 text-base font-semibold text-slate-900">Bắt đầu nhanh từ mẫu JD</h2>
+              <h2 className="m-0 text-base font-semibold text-slate-900">Bắt đầu nhanh từ mẫu tuyển dụng</h2>
               <Tag color="blue" className="rounded-full px-2 text-[11px] font-medium border-0 bg-indigo-100/70 text-indigo-700">
                 Thư viện chuẩn
               </Tag>
@@ -207,7 +207,7 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
           icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
           className="text-slate-600 hover:text-indigo-600 font-medium"
         >
-          {isExpanded ? 'Thu gọn' : 'Mở rộng mẫu JD'}
+          {isExpanded ? 'Thu gọn' : 'Chọn mẫu có sẵn'}
         </Button>
       </div>
 
@@ -263,8 +263,8 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
             <Alert
               type="warning"
               showIcon
-              message="Không thể kết nối đến thư viện mẫu JD"
-              description="Hệ thống gặp sự cố tạm thời khi tải mẫu. Bạn vẫn có thể tiếp tục tự nhập nội dung JD ở bên dưới."
+              message="Không thể tải thư viện mẫu tuyển dụng"
+              description="Hệ thống đang gặp sự cố tạm thời. Bạn vẫn có thể tự nhập thông tin công việc ở bên dưới."
               action={
                 <Button size="small" icon={<ReloadOutlined />} onClick={() => templatesQuery.refetch()}>
                   Thử lại
@@ -280,7 +280,7 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
                   <span className="text-sm text-slate-500">
                     Không tìm thấy mẫu cho &quot;
                     <strong className="text-slate-700">{debouncedKeyword || selectedIndustry || ''}</strong>
-                    &quot;. Bạn vẫn có thể tự nhập JD bên dưới.
+                    &quot;. Bạn vẫn có thể tự nhập thông tin công việc bên dưới.
                   </span>
                 }
               />

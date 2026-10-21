@@ -90,7 +90,7 @@ export const HrLayout: React.FC = () => {
           const jobIndex = items.findIndex((i) => i.to === '/hr/jobs');
           const templateItem: NavItem = {
             to: '/hr/job-templates',
-            label: 'Mẫu JD',
+            label: 'Mẫu tuyển dụng',
             icon: <BookOutlined />,
           };
           if (jobIndex >= 0) {
@@ -142,14 +142,14 @@ export const HrLayout: React.FC = () => {
           transform: compact && !menuOpen ? 'translateX(-100%)' : undefined,
           visibility: compact && !menuOpen ? 'hidden' : undefined,
         }}
-        aria-label="Điều hướng Internal HR"
+        aria-label="Điều hướng nhân sự nội bộ"
       >
         <div className="flex h-16 items-center gap-3 px-5">
           <BrandMark size={36} className="shrink-0" />
           {!collapsed && (
             <div className="min-w-0 leading-tight">
               <div className="truncate text-[15px] font-bold text-slate-900">HR Connect</div>
-              <div className="text-[11px] font-medium tracking-wide text-sky-800">Không gian Internal HR</div>
+              <div className="text-[11px] font-medium tracking-wide text-sky-800">Không gian nhân sự nội bộ</div>
             </div>
           )}
         </div>
@@ -221,7 +221,7 @@ export const HrLayout: React.FC = () => {
               </button>
             )}
           <nav aria-label="Vị trí hiện tại" className="flex min-w-0 items-center gap-2 text-sm">
-            <span className="hidden text-slate-500 sm:inline">{current?.group ?? 'Internal HR'}</span>
+            <span className="hidden text-slate-500 sm:inline">{current?.group ?? 'Nhân sự nội bộ'}</span>
             {current && (
               <>
                 <span className="hidden text-slate-300 sm:inline" aria-hidden>/</span>

@@ -10,6 +10,7 @@ import type { JobTemplate } from '@/types/api/jobs';
 import {
   EMPLOYMENT_TYPE_LABEL,
   formatExperience,
+  formatMultilineText,
   formatTemplateCategory,
   formatTemplateIndustry,
   formatTemplateLevel,
@@ -52,7 +53,7 @@ export const JobTemplatePreviewDrawer: React.FC<JobTemplatePreviewDrawerProps> =
       title={
         <div className="flex items-center gap-2">
           <FileTextOutlined className="text-sky-600" />
-          <span>Chi tiết mẫu JD</span>
+          <span>Xem trước mẫu tuyển dụng</span>
           {template?.code && (
             <Tag color="blue" className="ml-2 font-mono text-xs">
               {template.code}
@@ -110,7 +111,7 @@ export const JobTemplatePreviewDrawer: React.FC<JobTemplatePreviewDrawerProps> =
           <div>
             <h4 className="m-0 text-xs font-semibold uppercase tracking-wider text-slate-400">Mô tả công việc</h4>
             <div className="mt-2 whitespace-pre-line rounded-lg bg-slate-50/50 p-3 leading-relaxed text-slate-800">
-              {template.description || <Text type="secondary">Chưa có mô tả</Text>}
+              {template.description ? formatMultilineText(template.description) : <Text type="secondary">Chưa có mô tả</Text>}
             </div>
           </div>
 
@@ -119,7 +120,7 @@ export const JobTemplatePreviewDrawer: React.FC<JobTemplatePreviewDrawerProps> =
             <div>
               <h4 className="m-0 text-xs font-semibold uppercase tracking-wider text-slate-400">Quyền lợi ứng viên</h4>
               <div className="mt-2 whitespace-pre-line rounded-lg bg-slate-50/50 p-3 leading-relaxed text-slate-800">
-                {template.benefits}
+                {formatMultilineText(template.benefits)}
               </div>
             </div>
           )}
@@ -145,7 +146,7 @@ export const JobTemplatePreviewDrawer: React.FC<JobTemplatePreviewDrawerProps> =
                       {r.requirementType === 'MUST_HAVE' ? 'Bắt buộc' : 'Ưu tiên'}
                     </Tag>
                     <div className="flex-1">
-                      <span className="text-slate-800">{r.content}</span>
+                      <span className="whitespace-pre-line break-words text-slate-800">{formatMultilineText(r.content)}</span>
                       {r.category && (
                         <span className="ml-2 text-[11px] text-slate-400">
                           ({formatTemplateCategory(r.category)})
@@ -181,7 +182,7 @@ export const JobTemplatePreviewDrawer: React.FC<JobTemplatePreviewDrawerProps> =
           )}
         </div>
       ) : (
-        <Alert type="warning" message="Không tìm thấy thông tin mẫu JD hoặc mẫu đã bị xóa." showIcon />
+        <Alert type="warning" message="Không tìm thấy mẫu tuyển dụng hoặc mẫu đã bị xóa." showIcon />
       )}
     </Drawer>
   );

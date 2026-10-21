@@ -32,7 +32,7 @@ export const PublicJobSearchPage: React.FC = () => (
       <Title level={2} className="!mb-1">
         Việc làm đang tuyển
       </Title>
-      <Text type="secondary">Tin đã được Internal HR duyệt, cập nhật trực tiếp từ hệ thống.</Text>
+      <Text type="secondary">Tin đã được bộ phận kiểm duyệt của HR Connect xác nhận.</Text>
     </header>
     <JobDiscoveryPage publicAccess />
   </PublicFrame>
