@@ -49,6 +49,7 @@ import {
   REJECT_REASONS,
   SERVICE_TYPE_LABEL,
   formatDateTime,
+  formatPostingPackage,
   isAwaitingSourcingDeposit,
   sourcingDepositAmount,
 } from './jobDisplay';
@@ -103,7 +104,7 @@ const QueueItem: React.FC<{ job: Job; selected: boolean; onSelect: () => void }>
           )}
           {job.templateId && (
             <Tag color="cyan" className="m-0 text-[11px] font-medium rounded">
-              Có mẫu JD
+              Có mẫu tuyển dụng
             </Tag>
           )}
           {job.status === 'PENDING_PAYMENT' && (
@@ -191,7 +192,7 @@ export const JobReviewPage: React.FC = () => {
   // Fee and package come from the backend (posting fee record, else the chosen package price).
   const feeInfo = useJobFeeInfo(job);
   const feeText = formatMoney(feeInfo.amount, feeInfo.currencyCode);
-  const packageLabel = feeInfo.packageName ?? 'Gói đăng tin';
+  const packageLabel = formatPostingPackage(job?.postingPackageCode, feeInfo.packageName);
   const isStandardUnpaid = Boolean(
     job &&
       job.serviceTypeCode === 'CV_APPLICATION' &&
@@ -211,7 +212,7 @@ export const JobReviewPage: React.FC = () => {
       useAlertStore.getState().addAlert({
         targetRole: 'INTERNAL_HR',
         type: 'success',
-        title: isHeadhunt ? 'Đã duyệt yêu cầu tuyển Headhunt' : 'Đã duyệt job CV Sourcing',
+        title: isHeadhunt ? 'Đã duyệt dịch vụ tuyển dụng theo kết quả' : 'Đã duyệt dịch vụ tìm kiếm hồ sơ',
         message: `Đã chốt điều khoản và duyệt "${job.title}" của ${job.companyName}.`,
         actionLabel: 'Xem chi tiết',
         actionRoute: `/internal/jobs/review?status=ALL&highlight=${encodeURIComponent(job.jobId)}`,
@@ -300,7 +301,7 @@ export const JobReviewPage: React.FC = () => {
     } else {
       modal.confirm({
         title: 'Duyệt và công bố tin này?',
-        content: `"${job.title}" sẽ chuyển sang trạng thái Đang tuyển (ACTIVE) và hiển thị công khai trên hệ thống.`,
+        content: `"${job.title}" sẽ chuyển sang trạng thái Đang tuyển và hiển thị công khai trên hệ thống.`,
         okText: 'Duyệt và công bố',
         cancelText: 'Hủy',
         onOk: () =>
@@ -314,7 +315,7 @@ export const JobReviewPage: React.FC = () => {
                 targetRole: 'INTERNAL_HR',
                 type: 'success',
                 title: 'Tin tuyển dụng đã được duyệt',
-                message: `Tin tuyển dụng "${job.title}" đã được Internal HR phê duyệt và công bố công khai.`,
+                message: `Tin tuyển dụng "${job.title}" đã được bộ phận kiểm duyệt phê duyệt và công bố.`,
                 actionLabel: 'Xem tin tuyển dụng',
                 actionRoute: `/internal/jobs/review?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}`,
                 relatedEntityId: job.jobId,
@@ -349,8 +350,8 @@ export const JobReviewPage: React.FC = () => {
     <div>
       <PageHero
         eyebrow="Vận hành"
-        title="Duyệt & Quản lý tin tuyển dụng"
-        description="Kiểm tra, phê duyệt và theo dõi trạng thái các tin tuyển dụng của doanh nghiệp trên toàn hệ thống."
+        title="Duyệt và quản lý tin tuyển dụng"
+        description="Kiểm tra nội dung, điều khoản và quyết định tin nào đủ điều kiện mở tuyển."
         actions={
           <Button size="large" icon={<ReloadOutlined />} loading={queue.isFetching && !queue.isLoading} onClick={() => queue.refetch()}>
             Tải lại
@@ -512,11 +513,11 @@ export const JobReviewPage: React.FC = () => {
                           <p className="text-xs text-slate-500 m-0 leading-relaxed max-w-2xl">
                             {isAwaitingSourcingDeposit(job) ? (
                               <>
-                                Đã tạo khoản cọc CV Sourcing <strong>{formatMoney(sourcingDepositAmount(job) ?? 0, 'VND')}</strong>. Platform Admin ghi nhận cọc ở trang <strong>Tài chính</strong>; tin tự chuyển sang <strong>Đang tuyển</strong> ngay sau đó.
+                                Đã tạo khoản cọc dịch vụ tìm kiếm hồ sơ <strong>{formatMoney(sourcingDepositAmount(job) ?? 0, 'VND')}</strong>. Bộ phận tài chính ghi nhận tiền cọc tại mục <strong>Tài chính</strong>; tin sẽ tự chuyển sang <strong>Đang tuyển</strong>.
                               </>
                             ) : (
                               <>
-                                Đã tạo yêu cầu thanh toán <strong>{feeText}</strong> gửi tới Doanh nghiệp. Platform Admin ghi nhận tiền ở trang <strong>Tài chính › Phí đăng tin</strong>; tin tự chuyển sang <strong>Đang tuyển</strong> ngay sau đó.
+                                Đã tạo yêu cầu thanh toán <strong>{feeText}</strong> gửi tới doanh nghiệp. Bộ phận tài chính ghi nhận tiền tại mục <strong>Tài chính › Phí đăng tin</strong>; tin sẽ tự chuyển sang <strong>Đang tuyển</strong>.
                               </>
                             )}
                           </p>

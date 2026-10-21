@@ -29,10 +29,10 @@ const HEADHUNT_FIELDS: TermField[] = [
 ];
 
 const SOURCING_FIELDS: TermField[] = [
-  { key: 'sourcingTarget', label: 'Số CV giao', unit: 'CV', step: 1 },
-  { key: 'pricePerCv', label: 'Giá mỗi CV', unit: 'đ', step: 10000 },
+  { key: 'sourcingTarget', label: 'Số hồ sơ cần giao', unit: 'hồ sơ', step: 1 },
+  { key: 'pricePerCv', label: 'Phí mỗi hồ sơ đạt yêu cầu', unit: 'đ', step: 10000 },
   { key: 'depositPercent', label: 'Tiền cọc', unit: '%', step: 5 },
-  { key: 'reviewDays', label: 'Thời gian Client duyệt CV', unit: 'ngày', step: 1 },
+  { key: 'reviewDays', label: 'Thời gian doanh nghiệp duyệt hồ sơ', unit: 'ngày', step: 1 },
   { key: 'paymentDueDays', label: 'Hạn thanh toán', unit: 'ngày', step: 1 },
 ];
 
@@ -117,8 +117,8 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
     <Modal
       open={open}
       width={760}
-      title={isSourcing ? 'Duyệt job CV Sourcing & chốt điều khoản' : 'Duyệt job Headhunt & chốt điều khoản'}
-      okText="Chốt điều khoản & Duyệt"
+      title={isSourcing ? 'Duyệt dịch vụ tìm kiếm hồ sơ' : 'Duyệt dịch vụ tuyển dụng theo kết quả'}
+      okText="Chốt điều khoản và duyệt tin"
       cancelText="Hủy"
       confirmLoading={loading}
       okButtonProps={{ disabled: !data || defaults.isError }}
@@ -141,8 +141,8 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
             <div role="table" aria-label="So sánh điều khoản" className="overflow-hidden rounded-xl border border-solid border-slate-200">
               <div role="row" className="grid grid-cols-[1.1fr_1fr_1.2fr] gap-3 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700">
                 <span role="columnheader">Khoản mục</span>
-                <span role="columnheader">Client đề xuất</span>
-                <span role="columnheader">Chốt</span>
+                <span role="columnheader">Doanh nghiệp đề xuất</span>
+                <span role="columnheader">Điều khoản được duyệt</span>
               </div>
               {fields.map((f) => {
                 const proposed = data.proposed?.[f.key];
@@ -208,7 +208,7 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
 
             {data.proposed?.note && (
               <div className="mt-3 rounded-lg border border-solid border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-                <span className="font-medium text-slate-900">Ghi chú của Client: </span>
+                <span className="font-medium text-slate-900">Ghi chú của doanh nghiệp: </span>
                 {data.proposed.note}
               </div>
             )}
@@ -220,7 +220,7 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
                   <div className="text-base font-semibold text-slate-900">{estimatedTotal.toLocaleString('vi-VN')} đ</div>
                 </div>
                 <div className="rounded-lg bg-slate-50 px-3 py-2">
-                  <div className="text-xs text-slate-600">Tiền cọc Client trả trước</div>
+                  <div className="text-xs text-slate-600">Tiền cọc doanh nghiệp trả trước</div>
                   <div className="text-base font-semibold text-slate-900">
                     {estimatedDeposit != null ? `${estimatedDeposit.toLocaleString('vi-VN')} đ` : '—'}
                   </div>
@@ -231,11 +231,11 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
             <Form.Item
               className="mt-4"
               name="agreementReference"
-              label="Căn cứ thỏa thuận với Client"
+              label="Căn cứ thỏa thuận với doanh nghiệp"
               extra={
                 needsReference
                   ? `Bắt buộc vì đang chốt khác đề xuất ở: ${changed.map((c) => c.label.toLowerCase()).join(', ')}.`
-                  : 'Ví dụ: số hợp đồng, email xác nhận ngày 15/10. Bắt buộc khi chốt khác đề xuất của Client.'
+                  : 'Ví dụ: số hợp đồng hoặc email xác nhận ngày 15/10. Bắt buộc khi chốt khác đề xuất của doanh nghiệp.'
               }
               rules={[{ required: needsReference, whitespace: true, message: 'Nhập căn cứ thỏa thuận (số hợp đồng, email...)' }]}
             >
@@ -245,15 +245,15 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
             <Form.Item
               name="note"
               label="Ghi chú nội bộ"
-              rules={[{ required: targetLowered, whitespace: true, message: 'Nhập lý do giảm số CV so với yêu cầu của Client' }]}
-              extra={targetLowered ? 'Bắt buộc vì số CV chốt thấp hơn số Client yêu cầu.' : undefined}
+              rules={[{ required: targetLowered, whitespace: true, message: 'Nhập lý do giảm số hồ sơ so với yêu cầu của doanh nghiệp.' }]}
+              extra={targetLowered ? 'Bắt buộc vì số hồ sơ được duyệt thấp hơn số doanh nghiệp yêu cầu.' : undefined}
             >
               <Input.TextArea rows={2} maxLength={1000} />
             </Form.Item>
 
             <div className="flex items-start gap-2 text-xs text-slate-600">
               <InfoCircleOutlined className="mt-0.5 text-sky-600" aria-hidden />
-              <span>Sau khi duyệt, các con số đã chốt được lưu vào job và dùng để tính phí, Client xem được ở chi tiết job.</span>
+              <span>Sau khi duyệt, các điều khoản được dùng để tính phí và hiển thị trong chi tiết tin tuyển dụng của doanh nghiệp.</span>
             </div>
           </Form>
         )}

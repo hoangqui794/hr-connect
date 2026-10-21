@@ -185,7 +185,7 @@ export const ClientJobsListPage: React.FC = () => {
     modal.confirm({
       title: 'Gửi tin tuyển dụng đi duyệt?',
       content:
-        'Internal HR sẽ xét duyệt trước khi tin được hiển thị. Trong lúc chờ duyệt bạn không sửa được tin. Tin cần ít nhất một yêu cầu bắt buộc.',
+        'Bộ phận kiểm duyệt của HR Connect sẽ kiểm tra trước khi tin được hiển thị. Trong lúc chờ duyệt, bạn chưa thể sửa tin.',
       okText: 'Gửi duyệt',
       cancelText: 'Để sau',
       onOk: () =>
@@ -211,7 +211,7 @@ export const ClientJobsListPage: React.FC = () => {
           (mutations.resume.isPending && mutations.resume.variables?.jobId === job.jobId);
         const more = [
           { key: 'view', icon: <EyeOutlined />, label: 'Xem chi tiết' },
-          ...(job.serviceTypeCode === 'CV_SOURCING' ? [{ key: 'sourcing', icon: <TeamOutlined />, label: 'Hồ sơ CV Sourcing' }] : []),
+          ...(job.serviceTypeCode === 'CV_SOURCING' ? [{ key: 'sourcing', icon: <TeamOutlined />, label: 'Hồ sơ được tìm kiếm' }] : []),
           ...(can.canPause ? [{ key: 'pause', label: 'Tạm dừng tuyển' }] : []),
           ...(can.canResume ? [{ key: 'resume', label: 'Mở lại tuyển' }] : []),
           ...(can.canClose ? [{ key: 'close', label: 'Đóng tin', danger: true }] : []),
@@ -225,7 +225,7 @@ export const ClientJobsListPage: React.FC = () => {
                 icon={<TeamOutlined />}
                 onClick={() => navigate(`/client/jobs/${job.jobId}/sourcing`)}
               >
-                CV Sourcing
+                Hồ sơ được tìm kiếm
               </Button>
             )}
             {needsPayment && (
@@ -384,7 +384,7 @@ export const ClientJobsListPage: React.FC = () => {
           closable
           className="mb-4"
           message={`Bạn có ${expiredJobs.length} tin tuyển dụng đã hết hạn hiển thị`}
-          description="Các tin tuyển dụng theo gói đã kết thúc thời hạn hiển thị và tự động đóng. Bạn có thể đăng tin mới với Gói Tiêu Chuẩn (STANDARD) để tiếp tục tuyển dụng không giới hạn."
+          description="Các tin đã hết thời hạn hiển thị sẽ tự động đóng. Bạn có thể tạo tin mới và chọn gói tiêu chuẩn để tiếp tục tuyển dụng."
           action={
             <Button size="small" type="primary" onClick={() => navigate('/client/jobs/create')}>
               Đăng tin mới (Standard)
@@ -507,7 +507,7 @@ export const ClientJobsListPage: React.FC = () => {
                     {isAwaitingSourcingDeposit(job) && (
                       <div className="rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2 text-xs text-amber-900">
                         <span className="font-medium">
-                          Chờ đặt cọc CV Sourcing ({formatMoney(sourcingDepositAmount(job) ?? 0, 'VND')}) · tin công bố khi HR Connect nhận cọc
+                          Chờ đặt cọc dịch vụ tìm kiếm hồ sơ ({formatMoney(sourcingDepositAmount(job) ?? 0, 'VND')}) · tin được mở khi HR Connect nhận cọc
                         </span>
                       </div>
                     )}

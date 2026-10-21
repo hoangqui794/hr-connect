@@ -17,7 +17,6 @@ import {
   Empty,
   Form,
   Input,
-  InputNumber,
   Modal,
   Popconfirm,
   Row,
@@ -77,40 +76,41 @@ import {
   useJobTemplateMutations,
 } from './useJobQueries';
 import { JobTemplatePreviewDrawer } from './JobTemplatePreviewDrawer';
+import { EXPERIENCE_YEAR_OPTIONS } from './jobFormOptions';
 
 const { Text, Paragraph, Title } = Typography;
 const { Option } = Select;
 
 const INDUSTRY_OPTIONS: { value: JobTemplateIndustry; label: string }[] = [
-  { value: 'IT', label: 'Công nghệ thông tin (IT)' },
+  { value: 'IT', label: 'Công nghệ thông tin' },
   { value: 'MARKETING', label: 'Marketing' },
-  { value: 'SALES', label: 'Kinh doanh (Sales)' },
-  { value: 'ACCOUNTING', label: 'Kế toán (Accounting)' },
-  { value: 'HR', label: 'Nhân sự (HR)' },
-  { value: 'ADMIN', label: 'Hành chính (Admin)' },
+  { value: 'SALES', label: 'Kinh doanh' },
+  { value: 'ACCOUNTING', label: 'Kế toán' },
+  { value: 'HR', label: 'Nhân sự' },
+  { value: 'ADMIN', label: 'Hành chính' },
 ];
 
 const LEVEL_OPTIONS: { value: JobTemplateLevel; label: string }[] = [
-  { value: 'INTERN', label: 'Thực tập sinh (Intern)' },
-  { value: 'JUNIOR', label: 'Nhân viên mới (Junior)' },
-  { value: 'MIDDLE', label: 'Chuyên viên (Middle)' },
-  { value: 'SENIOR', label: 'Chuyên viên cao cấp (Senior)' },
-  { value: 'LEAD', label: 'Trưởng nhóm (Lead)' },
+  { value: 'INTERN', label: 'Thực tập sinh' },
+  { value: 'JUNIOR', label: 'Nhân viên mới' },
+  { value: 'MIDDLE', label: 'Chuyên viên' },
+  { value: 'SENIOR', label: 'Chuyên viên cao cấp' },
+  { value: 'LEAD', label: 'Trưởng nhóm' },
 ];
 
 const EMPLOYMENT_OPTIONS: { value: EmploymentType; label: string }[] = [
-  { value: 'FULL_TIME', label: 'Toàn thời gian (Full-time)' },
-  { value: 'PART_TIME', label: 'Bán thời gian (Part-time)' },
-  { value: 'CONTRACT', label: 'Hợp đồng (Contract)' },
-  { value: 'INTERNSHIP', label: 'Thực tập (Internship)' },
-  { value: 'FREELANCE', label: 'Freelance' },
+  { value: 'FULL_TIME', label: 'Toàn thời gian' },
+  { value: 'PART_TIME', label: 'Bán thời gian' },
+  { value: 'CONTRACT', label: 'Theo hợp đồng' },
+  { value: 'INTERNSHIP', label: 'Thực tập' },
+  { value: 'FREELANCE', label: 'Làm việc tự do' },
 ];
 
 const CATEGORY_OPTIONS: { value: string; label: string }[] = [
-  { value: 'EXPERIENCE', label: 'Kinh nghiệm (EXPERIENCE)' },
-  { value: 'SKILL', label: 'Kỹ năng (SKILL - điền vào Kỹ năng chính)' },
-  { value: 'EDUCATION', label: 'Học vấn (EDUCATION)' },
-  { value: 'OTHER', label: 'Khác (OTHER)' },
+  { value: 'EXPERIENCE', label: 'Kinh nghiệm làm việc' },
+  { value: 'SKILL', label: 'Kỹ năng chuyên môn' },
+  { value: 'EDUCATION', label: 'Học vấn và chứng chỉ' },
+  { value: 'OTHER', label: 'Yêu cầu khác' },
 ];
 
 interface RequirementFormItem {
@@ -173,12 +173,12 @@ export const JobTemplatesAdminPage: React.FC = () => {
       level: 'MIDDLE',
       employmentType: 'FULL_TIME',
       minExperienceYears: 1,
-      maxExperienceYears: 3,
+      maxExperienceYears: null,
       title: '',
       summary: '',
       description: '',
       benefits: '',
-      keywords: '',
+      keywords: [],
     });
     setRequirements([
       { key: 'req_1', requirementType: 'MUST_HAVE', category: 'EXPERIENCE', content: '' },
@@ -205,12 +205,12 @@ export const JobTemplatesAdminPage: React.FC = () => {
         level: detail.level,
         employmentType: detail.employmentType,
         minExperienceYears: detail.minExperienceYears,
-        maxExperienceYears: detail.maxExperienceYears,
+        maxExperienceYears: null,
         title: detail.title,
         summary: detail.summary,
         description: detail.description,
         benefits: detail.benefits,
-        keywords: detail.keywords,
+        keywords: detail.keywords?.split(/[,;]+/).map((item) => item.trim()).filter(Boolean) ?? [],
       });
 
       const initialReqs: RequirementFormItem[] = (detail.requirements ?? []).map((r, idx) => ({
@@ -226,7 +226,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
           : [{ key: 'req_1', requirementType: 'MUST_HAVE', category: 'EXPERIENCE', content: '' }]
       );
     } catch (err) {
-      message.error(getApiErrorMessage(err, 'Không thể tải chi tiết mẫu JD để chỉnh sửa.'));
+      message.error(getApiErrorMessage(err, 'Không thể tải mẫu tuyển dụng để chỉnh sửa.'));
       setIsFormOpen(false);
     } finally {
       setFormLoading(false);
@@ -282,7 +282,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
       level: values.level || null,
       employmentType: values.employmentType || null,
       minExperienceYears: values.minExperienceYears ?? null,
-      maxExperienceYears: values.maxExperienceYears ?? null,
+      maxExperienceYears: null,
       title: values.title ? values.title.trim() : values.name,
       summary: values.summary ? values.summary.trim() : null,
       description: values.description ? values.description.trim() : '',
@@ -305,7 +305,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
       const hasMustHave = validReqs.some((r) => r.requirementType === 'MUST_HAVE');
       if (!hasMustHave) {
         setMustHaveError(true);
-        message.error('Bắt buộc phải có ít nhất 1 yêu cầu loại "Bắt buộc" (MUST_HAVE).');
+        message.error('Cần ít nhất một yêu cầu bắt buộc.');
         return;
       }
       setMustHaveError(false);
@@ -318,12 +318,14 @@ export const JobTemplatesAdminPage: React.FC = () => {
         level: values.level || null,
         employmentType: values.employmentType || null,
         minExperienceYears: values.minExperienceYears ?? null,
-        maxExperienceYears: values.maxExperienceYears ?? null,
+        maxExperienceYears: null,
         title: values.title.trim(),
         summary: values.summary?.trim() || null,
         description: values.description.trim(),
         benefits: values.benefits?.trim() || null,
-        keywords: values.keywords?.trim() || null,
+        keywords: Array.isArray(values.keywords)
+          ? values.keywords.map((item: string) => item.trim()).filter(Boolean).join(', ') || null
+          : values.keywords?.trim() || null,
         requirements: validReqs.map((r) => ({
           requirementType: r.requirementType,
           category: r.category,
@@ -333,7 +335,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
 
       if (editingTemplateId) {
         if (!concurrencyToken) {
-          message.error('Không tìm thấy concurrencyToken của mẫu. Vui lòng tải lại trang.');
+          message.error('Mẫu đã thay đổi hoặc hết phiên chỉnh sửa. Vui lòng tải lại trang.');
           return;
         }
         await mutations.update.mutateAsync({
@@ -341,10 +343,10 @@ export const JobTemplatesAdminPage: React.FC = () => {
           concurrencyToken,
           template: payload,
         });
-        message.success('Cập nhật mẫu JD thành công!');
+        message.success('Đã cập nhật mẫu tuyển dụng.');
       } else {
         await mutations.create.mutateAsync(payload);
-        message.success('Tạo mẫu JD mới thành công!');
+        message.success('Đã tạo mẫu tuyển dụng mới.');
       }
 
       setIsFormOpen(false);
@@ -370,7 +372,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
           },
         });
       } else {
-        message.error(getApiErrorMessage(err, 'Không thể lưu mẫu JD.'));
+        message.error(getApiErrorMessage(err, 'Không thể lưu mẫu tuyển dụng.'));
       }
     }
   };
@@ -379,7 +381,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
   const handleToggleActiveConfirm = (record: JobTemplateSummary) => {
     const willActivate = !record.isActive;
     modal.confirm({
-      title: willActivate ? 'Kích hoạt lại mẫu JD?' : 'Ẩn mẫu JD?',
+      title: willActivate ? 'Cho phép dùng lại mẫu này?' : 'Ẩn mẫu tuyển dụng này?',
       icon: willActivate ? (
         <CheckCircleOutlined className="text-emerald-500" />
       ) : (
@@ -422,7 +424,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
   // Table columns
   const columns: ColumnsType<JobTemplateSummary> = [
     {
-      title: 'Mẫu JD & Mã',
+      title: 'Tên mẫu và mã quản lý',
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record) => (
@@ -559,8 +561,8 @@ export const JobTemplatesAdminPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <PageHero
-        title="Thư viện mẫu JD"
-        description="Quản lý và chuẩn hóa các mẫu bản mô tả công việc (JD) cho khách hàng doanh nghiệp"
+          title="Thư viện mẫu tin tuyển dụng"
+          description="Tạo nội dung mẫu rõ ràng để doanh nghiệp có thể dùng nhanh khi đăng tuyển."
         actions={
           <Button
             type="primary"
@@ -635,7 +637,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
             pageSize,
             total: pageData?.totalCount ?? 0,
             onChange: (p) => setPage(p),
-            showTotal: (total) => `Tổng cộng ${total} mẫu JD`,
+            showTotal: (total) => `Tổng cộng ${total} mẫu tuyển dụng`,
             size: 'small',
           }}
           className="admin-table"
@@ -647,7 +649,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
         title={
           <div className="flex items-center gap-2">
             <BookOutlined className="text-sky-600" />
-            <span>{editingTemplateId ? 'Chỉnh sửa mẫu JD' : 'Tạo mẫu JD mới'}</span>
+            <span>{editingTemplateId ? 'Chỉnh sửa mẫu tuyển dụng' : 'Tạo mẫu tuyển dụng mới'}</span>
           </div>
         }
         open={isFormOpen}
@@ -689,13 +691,14 @@ export const JobTemplatesAdminPage: React.FC = () => {
             <Col span={12}>
               <Form.Item
                 name="code"
-                label="Mã mẫu (Code)"
-                rules={[{ required: true, message: 'Vui lòng nhập mã mẫu (vd: IT_BACKEND_DOTNET)' }]}
+                label="Mã quản lý nội bộ"
+                extra="Mã viết hoa, không dấu và không có khoảng trắng. Ví dụ: IT_BACKEND_DOTNET."
+                rules={[{ required: true, message: 'Nhập mã quản lý của mẫu.' }]}
                 help={codeDuplicateError}
                 validateStatus={codeDuplicateError ? 'error' : undefined}
               >
                 <Input
-                  placeholder="VD: IT_BACKEND_DOTNET"
+                  placeholder="Ví dụ: IT_BACKEND_DOTNET"
                   className="font-mono uppercase"
                   onChange={() => setCodeDuplicateError(null)}
                 />
@@ -704,10 +707,10 @@ export const JobTemplatesAdminPage: React.FC = () => {
             <Col span={12}>
               <Form.Item
                 name="name"
-                label="Tên mẫu JD"
-                rules={[{ required: true, message: 'Vui lòng nhập tên mẫu' }]}
+                label="Tên mẫu tuyển dụng"
+                rules={[{ required: true, message: 'Nhập tên dễ nhận biết cho mẫu.' }]}
               >
-                <Input placeholder="VD: Lập trình viên Backend .NET" />
+                <Input placeholder="Ví dụ: Lập trình viên Backend .NET" />
               </Form.Item>
             </Col>
           </Row>
@@ -716,10 +719,10 @@ export const JobTemplatesAdminPage: React.FC = () => {
             <Col span={8}>
               <Form.Item
                 name="industry"
-                label="Ngành nghề"
-                rules={[{ required: true, message: 'Vui lòng chọn ngành nghề' }]}
+                label="Lĩnh vực nghề nghiệp"
+                rules={[{ required: true, message: 'Chọn lĩnh vực nghề nghiệp.' }]}
               >
-                <Select placeholder="Chọn ngành">
+                <Select placeholder="Chọn lĩnh vực">
                   {INDUSTRY_OPTIONS.map((opt) => (
                     <Option key={opt.value} value={opt.value}>
                       {opt.label}
@@ -740,8 +743,8 @@ export const JobTemplatesAdminPage: React.FC = () => {
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="employmentType" label="Hình thức làm việc">
-                <Select placeholder="Hình thức" allowClear>
+              <Form.Item name="employmentType" label="Loại hình công việc">
+                <Select placeholder="Chọn loại hình" allowClear>
                   {EMPLOYMENT_OPTIONS.map((opt) => (
                     <Option key={opt.value} value={opt.value}>
                       {opt.label}
@@ -756,25 +759,21 @@ export const JobTemplatesAdminPage: React.FC = () => {
             <Col span={12}>
               <Form.Item
                 name="title"
-                label="Tên vị trí công việc (Job Title mặc định)"
-                rules={[{ required: true, message: 'Vui lòng nhập tên vị trí công việc' }]}
+                label="Tên vị trí sẽ điền sẵn"
+                extra="Doanh nghiệp vẫn có thể sửa tên này trước khi gửi tin."
+                rules={[{ required: true, message: 'Nhập tên vị trí tuyển dụng.' }]}
               >
                 <Input placeholder="VD: Senior .NET Core Developer" />
               </Form.Item>
             </Col>
-            <Col span={6}>
-              <Form.Item name="minExperienceYears" label="Số năm KN tối thiểu">
-                <InputNumber min={0} max={30} className="w-full" placeholder="Năm" />
-              </Form.Item>
-            </Col>
-            <Col span={6}>
-              <Form.Item name="maxExperienceYears" label="Số năm KN tối đa">
-                <InputNumber min={0} max={30} className="w-full" placeholder="Năm" />
+            <Col span={12}>
+              <Form.Item name="minExperienceYears" label="Kinh nghiệm tối thiểu">
+                <Select allowClear placeholder="Chọn số năm kinh nghiệm" options={EXPERIENCE_YEAR_OPTIONS} />
               </Form.Item>
             </Col>
           </Row>
 
-          <Form.Item name="summary" label="Tóm tắt ngắn (Summary)">
+          <Form.Item name="summary" label="Giới thiệu ngắn về vị trí">
             <Input.TextArea
               rows={2}
               placeholder="Tóm tắt ngắn gọn mục tiêu công việc để hiển thị nhanh trên thẻ mẫu..."
@@ -783,7 +782,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
 
           <Form.Item
             name="description"
-            label="Mô tả công việc (Job Description)"
+            label="Ứng viên sẽ làm những công việc gì?"
             rules={[{ required: true, message: 'Vui lòng nhập mô tả công việc' }]}
           >
             <Input.TextArea
@@ -792,15 +791,15 @@ export const JobTemplatesAdminPage: React.FC = () => {
             />
           </Form.Item>
 
-          <Form.Item name="benefits" label="Quyền lợi ứng viên (Benefits)">
+          <Form.Item name="benefits" label="Ứng viên nhận được quyền lợi gì?">
             <Input.TextArea
               rows={4}
               placeholder="Chế độ đãi ngộ, bảo hiểm, thưởng, cơ hội đào tạo..."
             />
           </Form.Item>
 
-          <Form.Item name="keywords" label="Từ khóa tìm kiếm (Keywords)">
-            <Input placeholder="Phân tách bằng dấu cách hoặc phẩy, vd: c# .net aspnet sql microservices" />
+          <Form.Item name="keywords" label="Từ khóa giúp tìm mẫu" extra="Nhập một từ khóa rồi nhấn phím Enter để thêm.">
+            <Select mode="tags" tokenSeparators={[',', ';']} placeholder="Ví dụ: .NET, SQL, dịch vụ tài chính" />
           </Form.Item>
 
           <Divider />
@@ -810,11 +809,10 @@ export const JobTemplatesAdminPage: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="m-0 font-semibold text-sm text-slate-800">
-                  Danh sách yêu cầu ứng viên <span className="text-red-500 font-bold ml-1">*</span>
+                  Các yêu cầu dành cho ứng viên <span className="text-red-500 font-bold ml-1">*</span>
                 </h4>
                 <p className="m-0 text-xs text-slate-500">
-                  Bắt buộc có ít nhất 1 yêu cầu loại &quot;Bắt buộc&quot; (MUST_HAVE). Các yêu cầu có nhóm
-                  &quot;Kỹ năng (SKILL)&quot; sẽ được điền vào ô Kỹ năng chính của form tuyển dụng.
+                  Cần ít nhất một yêu cầu bắt buộc. Yêu cầu thuộc nhóm Kỹ năng sẽ được điền sẵn vào phần kỹ năng của tin tuyển dụng.
                 </p>
               </div>
               <Button type="dashed" icon={<PlusOutlined />} onClick={handleAddRequirement} size="small">
@@ -827,7 +825,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
                 type="error"
                 showIcon
                 message="Chưa có yêu cầu bắt buộc"
-                description="Mẫu JD cần có ít nhất 1 yêu cầu có loại là Bắt buộc (MUST_HAVE)."
+                description="Mẫu tuyển dụng cần có ít nhất một yêu cầu bắt buộc."
                 className="py-1.5"
               />
             )}
