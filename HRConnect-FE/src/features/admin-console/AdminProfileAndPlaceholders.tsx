@@ -156,7 +156,7 @@ export const AdminDisputesPlaceholder: React.FC = () => <AdminDisputesPage />;
 export const AdminPayoutsPlaceholder: React.FC = () => (
   <div>
     <PageHero eyebrow="Chưa có API" title="Chi trả hoa hồng" description="Duyệt và theo dõi các khoản hoa hồng trả cho Cộng tác viên." />
-    <NoApiYet feature="Chi trả hoa hồng" detail="Thuộc MF-05; quyền payout.manage đã có, nhưng chưa có endpoint." />
+    <NoApiYet feature="Chi trả hoa hồng" detail="Tính năng đang được hoàn thiện." />
   </div>
 );
 

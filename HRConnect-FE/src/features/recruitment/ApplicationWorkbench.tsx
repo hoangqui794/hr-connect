@@ -738,7 +738,7 @@ export const ApplicationWorkbench: React.FC<{
 
           {/* Sourcing Delivery Info (MF-03) */}
           {isCvSourcing && (
-            <Panel title="Dịch vụ CV Sourcing (MF-03)">
+            <Panel title="Dịch vụ CV Sourcing">
               {sourcingDelivery ? (
                 <div className="space-y-2 text-sm">
                   <Row label="Trạng thái bàn giao">
@@ -1220,7 +1220,7 @@ export const ApplicationWorkbench: React.FC<{
                       validator: (_, value: 'GROSS' | 'NET' | undefined) =>
                         !isHeadhuntCod || value === 'GROSS'
                           ? Promise.resolve()
-                          : Promise.reject(new Error('Job HEADHUNT_COD chỉ nhận offer lương Gross.')),
+                          : Promise.reject(new Error('Tin Headhunt chỉ nhận offer lương Gross.')),
                     },
                   ]}
                 >
@@ -1235,7 +1235,7 @@ export const ApplicationWorkbench: React.FC<{
                   className="mb-4"
                   type="info"
                   showIcon
-                  message="Job HEADHUNT_COD tính phí theo lương Gross tháng"
+                  message="Tin Headhunt tính phí theo lương Gross tháng"
                   description="Chọn Gross. Nếu offer ghi theo năm, hệ thống tự quy đổi về mức Gross theo tháng để tính phí."
                 />
               )}

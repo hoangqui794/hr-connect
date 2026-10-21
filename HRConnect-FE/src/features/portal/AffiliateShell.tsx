@@ -59,8 +59,8 @@ const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: 'Ghi nhận',
     items: [
-      { to: '/affiliate/attributions', label: 'Attribution', icon: <SafetyCertificateOutlined /> },
-      { to: '/affiliate/disputes', label: 'Khiếu nại nguồn (SF-04)', icon: <SolutionOutlined /> },
+      { to: '/affiliate/attributions', label: 'Ghi nhận nguồn', icon: <SafetyCertificateOutlined /> },
+      { to: '/affiliate/disputes', label: 'Khiếu nại nguồn', icon: <SolutionOutlined /> },
     ],
   },
   { group: 'Thu nhập', items: [{ to: '/affiliate/commissions', label: 'Hoa hồng & chi trả', icon: <DollarOutlined /> }] },

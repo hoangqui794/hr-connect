@@ -44,7 +44,7 @@ export const en: Translations = {
     popularBadge: 'Most Popular',
     cod: {
       code: 'HEADHUNT_COD',
-      badgeTitle: 'Package 1: HEADHUNT_COD',
+      badgeTitle: 'Package 1: Headhunt',
       title: 'Full-Cycle Headhunt (Cash On Delivery)',
       subtitle: 'Success-based model with zero upfront financial risk',
       description:
@@ -59,7 +59,7 @@ export const en: Translations = {
     },
     sourcing: {
       code: 'CV_SOURCING',
-      badgeTitle: 'Package 2: CV_SOURCING',
+      badgeTitle: 'Package 2: CV Sourcing',
       title: 'Pre-screened Talent Delivery',
       subtitle: 'Fast-track access to AI pre-qualified candidate funnels',
       description:
@@ -74,7 +74,7 @@ export const en: Translations = {
     },
     application: {
       code: 'CV_APPLICATION',
-      badgeTitle: 'Package 3: CV_APPLICATION',
+      badgeTitle: 'Package 3: Job posting',
       title: 'Open Job Board',
       subtitle: 'Reach thousands of qualified job seekers publicly',
       description:
@@ -105,7 +105,7 @@ export const en: Translations = {
     },
     f3: {
       title: '60-Day Probation Warranty',
-      desc: 'Automated 60-day probation countdown timer for HEADHUNT_COD package with 1-to-1 replacement or transparent refund guarantees.',
+      desc: 'Automated warranty countdown for the Headhunt package with 1-to-1 replacement or transparent refund guarantees.',
       tag: '60-Day Probation Warranty',
     },
     f4: {

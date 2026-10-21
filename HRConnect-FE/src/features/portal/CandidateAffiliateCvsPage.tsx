@@ -245,7 +245,7 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
           type="info"
           showIcon
           message="Quyền dùng lại chỉ áp dụng cho lần giới thiệu mới"
-          description="Thu hồi quyền không xóa Submission, Application, Attribution hoặc kết quả chấm điểm đã phát sinh."
+          description="Thu hồi quyền không xóa các lượt giới thiệu, hồ sơ ứng tuyển hoặc kết quả chấm điểm đã có."
         />
       </CandidateSurface>
 

@@ -97,7 +97,7 @@ export const AffiliateHomePage: React.FC = () => {
                 ? 'Đang tải...'
                 : pending.data
                   ? `${pending.data} lượt giới thiệu đang chờ ứng viên xác nhận qua email.`
-                  : 'Giới thiệu ứng viên phù hợp; attribution được ghi cho bạn khi ứng viên đồng ý.'}
+                  : 'Giới thiệu ứng viên phù hợp; bạn được ghi nhận là người giới thiệu khi ứng viên đồng ý.'}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -251,7 +251,7 @@ export const AffiliateSubmitPage: React.FC = () => {
           status="success"
           icon={<MailOutlined className="!text-[color:var(--console-accent)]" />}
           title={d.emailDeliveryStatus === 'FAILED' ? 'Đã lưu hồ sơ, đang chờ gửi lại email' : 'Đã gửi hồ sơ và đang chờ Candidate xác nhận'}
-          subTitle={`Submission đang ở trạng thái chờ xác nhận${d.consentExpiresAt ? ` đến ${fmt(d.consentExpiresAt)}` : ''}. Application, Attribution và AI chưa được tạo cho đến khi Candidate đồng ý.`}
+          subTitle={`Submission đang ở trạng thái chờ xác nhận${d.consentExpiresAt ? ` đến ${fmt(d.consentExpiresAt)}` : ''}. Hồ sơ ứng tuyển, ghi nhận nguồn và chấm điểm AI chỉ bắt đầu khi ứng viên đồng ý.`}
           extra={[
             <Button key="list" type="primary" onClick={() => navigate('/affiliate/submissions')}>
               Xem lượt giới thiệu
@@ -286,7 +286,7 @@ export const AffiliateSubmitPage: React.FC = () => {
       <PageHero
         eyebrow="Giới thiệu"
         title="Giới thiệu ứng viên"
-        description="Candidate sẽ nhận yêu cầu xác nhận. Application, Attribution và chấm điểm AI chỉ bắt đầu sau khi Candidate đồng ý."
+        description="Ứng viên sẽ nhận yêu cầu xác nhận. Hồ sơ ứng tuyển, ghi nhận nguồn và chấm điểm AI chỉ bắt đầu sau khi ứng viên đồng ý."
       />
       <Form<SubmitForm>
         form={form}
@@ -458,7 +458,7 @@ export const AffiliateSubmitPage: React.FC = () => {
               )}
               <ul className="m-0 mt-4 space-y-1.5 pl-4 text-[13px] text-slate-600">
                 <li>Candidate nhận yêu cầu xác nhận theo thời hạn backend trả về.</li>
-                <li>Attribution ghi cho bạn khi ứng viên đồng ý.</li>
+                <li>Bạn được ghi nhận nguồn khi ứng viên đồng ý.</li>
                 <li>Ứng viên đã có hồ sơ trong tin này sẽ bị chặn trùng.</li>
               </ul>
             </Surface>
@@ -745,7 +745,7 @@ export const AffiliateSubmissionDetailPage: React.FC = () => {
             ['Hạn xác nhận', fmt(submission.consentExpiresAt)],
             ['Candidate phản hồi lúc', fmt(submission.consentRespondedAt)],
             ['Application', submission.applicationId || 'Chưa tạo'],
-            ['Attribution', submission.attributionId || 'Chưa tạo'],
+            ['Ghi nhận nguồn', submission.attributionId ? 'Đã ghi nhận' : 'Chưa có'],
           ].map(([label, value]) => (
             <div key={label}>
               <dt className="text-slate-500">{label}</dt>
@@ -760,7 +760,7 @@ export const AffiliateSubmissionDetailPage: React.FC = () => {
             type="warning"
             showIcon
             message="Đang chờ Candidate xác nhận"
-            description="Application, Attribution và MF03 chỉ được tạo sau khi Candidate đồng ý."
+            description="Hồ sơ ứng tuyển, ghi nhận nguồn và chấm điểm AI chỉ được tạo sau khi ứng viên đồng ý."
           />
         )}
         {resend.data && (
@@ -915,8 +915,8 @@ export const AffiliateAttributionsPage: React.FC = () => {
     <div>
       <PageHero
         eyebrow="Ghi nhận"
-        title="Attribution"
-        description="Mỗi dòng là một ứng viên được ghi nhận là do bạn giới thiệu (lúc ứng viên đồng ý). Đây là căn cứ tính hoa hồng ở MF-05."
+        title="Ghi nhận nguồn"
+        description="Mỗi dòng là một ứng viên được ghi nhận là do bạn giới thiệu (lúc ứng viên đồng ý). Đây là căn cứ tính hoa hồng."
       />
       <Surface>
         <Table<AffiliateAttribution>
@@ -927,7 +927,7 @@ export const AffiliateAttributionsPage: React.FC = () => {
           dataSource={list.data?.items ?? []}
           loading={list.isFetching}
           pagination={{ current: page, pageSize: 10, total: list.data?.totalCount ?? 0, showSizeChanger: false, onChange: setPage }}
-          locale={{ emptyText: <div className="py-10 text-slate-600">Chưa có attribution. Attribution được ghi khi ứng viên đồng ý lượt giới thiệu.</div> }}
+          locale={{ emptyText: <div className="py-10 text-slate-600">Chưa có ứng viên nào được ghi nhận. Bạn được ghi nhận khi ứng viên đồng ý lượt giới thiệu.</div> }}
         />
       </Surface>
     </div>

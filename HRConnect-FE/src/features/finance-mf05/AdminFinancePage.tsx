@@ -212,7 +212,7 @@ export const AdminFinancePage: React.FC = () => {
   return (
     <div>
       <PageHero
-        eyebrow="MF-05 · 3 dịch vụ"
+        eyebrow="Phí dịch vụ và hoa hồng"
         title="Tài chính"
         description="Ghi nhận tiền Client đã trả (phí dịch vụ, cọc CV Sourcing, phí đăng tin) và chi hoa hồng cho Affiliate. Hoa hồng chỉ được duyệt chi sau khi Client đã thanh toán phí."
         actions={<Button icon={<ReloadOutlined />} onClick={refresh}>Làm mới</Button>}
