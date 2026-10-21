@@ -407,7 +407,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
               <p className="m-0 text-xs text-slate-500">
                 {role === 'client'
                   ? 'Quý doanh nghiệp có 7 ngày để chấp nhận hoặc từ chối mỗi CV kể từ ngày bàn giao.'
-                  : 'Theo dõi tiến độ bàn giao và phản hồi từ Doanh nghiệp (MF-03).'}
+                  : 'Theo dõi tiến độ bàn giao và phản hồi từ Doanh nghiệp.'}
               </p>
             </div>
 

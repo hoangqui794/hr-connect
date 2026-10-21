@@ -44,7 +44,7 @@ export const vi: Translations = {
     popularBadge: 'Phổ biến nhất',
     cod: {
       code: 'HEADHUNT_COD',
-      badgeTitle: 'Gói 1: HEADHUNT_COD',
+      badgeTitle: 'Gói 1: Headhunt',
       title: 'Tuyển dụng Trọn gói Trả sau',
       subtitle: 'Mô hình thành công - Không rủi ro tài chính',
       description:
@@ -59,7 +59,7 @@ export const vi: Translations = {
     },
     sourcing: {
       code: 'CV_SOURCING',
-      badgeTitle: 'Gói 2: CV_SOURCING',
+      badgeTitle: 'Gói 2: CV Sourcing',
       title: 'Cung cấp Hồ sơ Đạt chuẩn',
       subtitle: 'Tiếp cận nhanh phễu ứng viên được sơ tuyển bởi AI',
       description:
@@ -74,7 +74,7 @@ export const vi: Translations = {
     },
     application: {
       code: 'CV_APPLICATION',
-      badgeTitle: 'Gói 3: CV_APPLICATION',
+      badgeTitle: 'Gói 3: Đăng tin nhận CV',
       title: 'Đăng tin Tuyển dụng Mở',
       subtitle: 'Tiếp cận hàng triệu ứng viên công khai trên sàn việc làm',
       description:
@@ -105,13 +105,13 @@ export const vi: Translations = {
     },
     f3: {
       title: 'Bảo hành Thử việc 60 Ngày Minh bạch',
-      desc: 'Hệ thống tự động kích hoạt đồng hồ đếm ngược bảo hành 60 ngày cho gói HEADHUNT_COD, hỗ trợ bảo hành 1-đổi-1 hoặc hoàn tiền minh bạch.',
+      desc: 'Hệ thống tự động kích hoạt đồng hồ đếm ngược thời gian bảo hành cho gói Headhunt, hỗ trợ bảo hành 1-đổi-1 hoặc hoàn tiền minh bạch.',
       tag: '60-Day Probation Warranty',
     },
     f4: {
       title: 'Sổ cái Hoa hồng & Lưu vết UNC Ngân hàng',
       desc: 'Quản lý dòng tiền hoa hồng đối soát minh bạch, cập nhật trạng thái PENDING/PAYABLE/PAID kèm lưu vết chứng từ ủy nhiệm chi ngân hàng.',
-      tag: 'Commission Ledger & Audit Trail',
+      tag: 'Sổ cái hoa hồng và nhật ký',
     },
   },
   stats: {

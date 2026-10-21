@@ -142,6 +142,6 @@ export const HrProfilePage: React.FC = () => {
 export const HrWarrantyPlaceholder: React.FC = () => (
   <div>
     <PageHero eyebrow="Chưa có API" title="Bảo hành & thử việc" description="Theo dõi các mốc 15, 30, 60 ngày và xác minh khi ứng viên nghỉ việc trong thời hạn bảo hành." />
-    <NoApiYet feature="Bảo hành & thử việc" detail="Thuộc MF-05; quyền probation.manage / warranty.manage đã có, nhưng chưa có endpoint." />
+    <NoApiYet feature="Bảo hành & thử việc" detail="Tính năng đang được hoàn thiện." />
   </div>
 );

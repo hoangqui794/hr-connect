@@ -821,7 +821,7 @@ export const CandidateProfilePage: React.FC = () => {
                               <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                                 <span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>
                                   Địa chỉ Email (Đăng nhập)
-                                  <Tooltip title="Email tài khoản được bảo mật và cố định. Để dùng email khác khi nộp đơn, hãy thêm ở Quản lý danh tính MF-02.">
+                                  <Tooltip title="Email tài khoản được bảo mật và cố định. Để dùng email khác khi nộp đơn, hãy thêm ở mục Quản lý danh tính.">
                                     <MailOutlined style={{ marginLeft: 6, color: '#94a3b8' }} />
                                   </Tooltip>
                                 </span>

@@ -146,7 +146,7 @@ export const AffiliateDisputesPage: React.FC = () => {
             {
               title: (
                 <span className="font-semibold text-slate-800 flex items-center gap-1">
-                  <SolutionOutlined className="text-blue-600" /> Khiếu nại nguồn ứng viên (SF-04)
+                  <SolutionOutlined className="text-blue-600" /> Khiếu nại nguồn ứng viên
                 </span>
               ),
             },
@@ -169,8 +169,8 @@ export const AffiliateDisputesPage: React.FC = () => {
       <Alert
         type="info"
         showIcon
-        message="Chính sách khiếu nại nguồn và trùng ứng viên (SF-04)"
-        description="Khi lượt giới thiệu của bạn bị hệ thống chặn vì trùng ứng viên (BLOCKED_DUPLICATE) hoặc ứng viên của bạn bị ghi nhận attribution cho bên khác không đúng quy định, bạn có thể tạo khiếu nại trong vòng 30 ngày để Admin đối soát chứng từ và chuyển lại quyền ghi nhận nguồn."
+        message="Khi nào bạn có thể khiếu nại"
+        description="Khi lượt giới thiệu của bạn bị hệ thống chặn vì trùng ứng viên hoặc ứng viên của bạn bị ghi nhận nguồn cho người khác không đúng quy định, bạn có thể tạo khiếu nại trong thời hạn khiếu nại để Admin đối soát chứng từ và chuyển lại quyền ghi nhận nguồn."
       />
 
       {/* Disputes Table */}
@@ -210,7 +210,7 @@ export const AffiliateDisputesPage: React.FC = () => {
           >
             <Select
               options={[
-                { value: 'DUPLICATE_SUBMISSION', label: 'Hồ sơ bị chặn trùng lặp (BLOCKED_DUPLICATE)' },
+                { value: 'DUPLICATE_SUBMISSION', label: 'Hồ sơ bị chặn vì trùng' },
                 { value: 'ATTRIBUTION', label: 'Tranh chấp quyền ghi nhận nguồn (ATTRIBUTION)' },
               ]}
             />

@@ -127,7 +127,7 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
   return (
     <div>
       <PageHero
-        eyebrow="MF-04 · Internal HR"
+        eyebrow="Internal HR"
         title="Sửa ngày đi làm thực tế"
         description="Dùng khi Client nhập nhầm ngày bắt đầu làm việc. Hệ thống tự kiểm tra thời hạn sửa, ngày hợp lệ và tình trạng thu phí trước khi cập nhật."
       />
@@ -135,8 +135,8 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
         className="mb-5"
         type="info"
         showIcon
-        message="Chỉ sửa dữ liệu MF-04"
-        description="Trang này không đối soát commission, payout, bảo hành hoặc phí dịch vụ. Các phần đó thuộc MF-05; backend tự từ chối nếu placement đã bị khóa do đã thu phí."
+        message="Chỉ sửa ngày đi làm"
+        description="Trang này không đối soát hoa hồng, chi trả, bảo hành hoặc phí dịch vụ; backend tự từ chối nếu placement đã bị khóa do đã thu phí."
       />
       <Surface>
         {placements.isError ? (
