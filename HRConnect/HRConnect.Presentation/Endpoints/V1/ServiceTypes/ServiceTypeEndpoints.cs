@@ -1,3 +1,4 @@
+using HRConnect.Presentation.ErrorHandling;
 using System;
 using System.Security.Claims;
 using FluentValidation;
@@ -236,7 +237,7 @@ public static class ServiceTypeEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -291,7 +292,7 @@ public static class ServiceTypeEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -349,7 +350,7 @@ public static class ServiceTypeEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -412,7 +413,7 @@ public static class ServiceTypeEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {

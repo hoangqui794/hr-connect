@@ -169,6 +169,32 @@ public sealed class ResendSubmissionConsentCommandHandlerTests
             Times.Never);
     }
 
+    [Fact]
+    public async Task Handle_WithinCooldown_TellsVietnamTimeToRetry()
+    {
+        // UI-02 (test 20/10): the wait message shows Vietnam time (UTC+7), not a raw UTC timestamp.
+        var ownerId = Guid.NewGuid();
+        var consent = CreateConsent(ownerId);
+        consent.EmailSentAt = DateTime.UtcNow.AddSeconds(-10);
+        var expected = consent.EmailSentAt.Value.AddMinutes(2).AddHours(7).ToString("HH:mm:ss dd/MM/yyyy");
+        var repository = new Mock<ISubmissionConsentRepository>();
+        repository.Setup(x => x.GetBySubmissionIdAsync(consent.SubmissionId, It.IsAny<CancellationToken>())).ReturnsAsync(consent);
+        var email = new Mock<IEmailService>();
+
+        var handler = new ResendSubmissionConsentCommandHandler(
+            repository.Object, Mock.Of<IEmailOutboxRepository>(), email.Object,
+            Mock.Of<IAuditLogService>(), Mock.Of<IUnitOfWork>(),
+            Options.Create(new SubmissionConsentSettings { ResendCooldownMinutes = 2, MaxEmailSends = 5 }),
+            Mock.Of<ILogger<ResendSubmissionConsentCommandHandler>>(),
+            Mock.Of<ISubmissionConsentExpiryService>());
+
+        var action = () => handler.Handle(new ResendSubmissionConsentCommand(consent.SubmissionId, ownerId), CancellationToken.None);
+
+        (await action.Should().ThrowAsync<ConflictException>())
+            .Which.Message.Should().Contain(expected).And.Contain("(giờ Việt Nam)");
+        email.Verify(x => x.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static SubmissionConsent CreateConsent(Guid ownerId, bool candidateHasAccount = false)
     {
         var candidate = new Candidate

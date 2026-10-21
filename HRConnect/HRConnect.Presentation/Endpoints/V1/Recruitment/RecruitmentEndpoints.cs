@@ -1,3 +1,4 @@
+using HRConnect.Presentation.ErrorHandling;
 using System;
 using System.Security.Claims;
 using FluentValidation;
@@ -101,7 +102,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -148,7 +149,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
         })
         .WithName("StartApplicationScreening")
@@ -498,7 +499,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -549,7 +550,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (ForbiddenException ex)
             {
@@ -620,7 +621,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -683,7 +684,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -822,7 +823,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {

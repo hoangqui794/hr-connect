@@ -1,3 +1,4 @@
+using HRConnect.Presentation.ErrorHandling;
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
@@ -215,7 +216,7 @@ public static class CandidateSkillEndpoints
     private static IResult ToErrorResult(Exception exception) => exception switch
     {
         NotFoundException => Results.NotFound(new { success = false, message = exception.Message }),
-        ConflictException => Results.Conflict(new { success = false, message = exception.Message }),
+        ConflictException conflict => ConflictResponse.From(conflict),
         BadRequestException => Results.BadRequest(new { success = false, message = exception.Message }),
         _ => Results.Problem(detail: exception.Message, statusCode: StatusCodes.Status500InternalServerError)
     };
