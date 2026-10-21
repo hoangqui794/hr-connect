@@ -159,7 +159,7 @@ const AffiliatePerformancePage = React.lazy(() =>
 const AffiliateDisputesPage = React.lazy(() =>
   import('@/features/portal/AffiliateDisputesPage').then((m) => ({ default: m.AffiliateDisputesPage }))
 );
-const AffiliateCommissionsPlaceholder = React.lazy(() =>
+const AffiliateCommissionsPage = React.lazy(() =>
   import('@/features/finance-mf05/AffiliateCommissionsPage').then((m) => ({ default: m.AffiliateCommissionsPage }))
 );
 
@@ -482,7 +482,7 @@ export const AppRoutes = {
   AffiliateProfilePage,
   AffiliatePerformancePage,
   AffiliateDisputesPage,
-  AffiliateCommissionsPlaceholder,
+  AffiliateCommissionsPage,
   ClientOverviewPage,
   ClientCandidatesPage,
   ClientWorkspaceInterviewsOffersPage,
