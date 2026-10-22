@@ -332,38 +332,51 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           />
         )}
 
-        {/* Thông báo chờ thanh toán phí đăng tin - CHỈ hiển thị khi đã được duyệt và cho Client/HR */}
-        {!isApplicant && job.status === 'PENDING_PAYMENT' && (
+        {/* Thông báo chờ thanh toán phí đăng tin - hiển thị cho Client (Internal Review đã có banner phía trên) */}
+        {!isApplicant && !isInternalReview && job.status === 'PENDING_PAYMENT' && (
           <Alert
-            type={isInternalReview ? 'info' : 'warning'}
+            type="warning"
             showIcon
             message={
               awaitingDeposit
-                ? isInternalReview
-                  ? `Đang chờ doanh nghiệp đặt cọc dịch vụ tìm kiếm hồ sơ (${feeText})`
-                  : `Tin đã được duyệt · Chờ đặt cọc dịch vụ tìm kiếm hồ sơ (${feeText})`
-                : isInternalReview
-                  ? `Đang chờ Doanh nghiệp thanh toán (${feeText})`
-                  : `Tin đã được duyệt · Chờ thanh toán phí đăng tin (${feeText})`
+                ? `Tin đã duyệt · Chờ đặt cọc dịch vụ (${feeText})`
+                : `Tin đã duyệt · Chờ thanh toán phí gói (${feeText})`
             }
             description={
               awaitingDeposit
-                ? 'Tin chỉ được gửi tới cộng tác viên sau khi HR Connect nhận tiền cọc. Bộ phận tài chính ghi nhận khoản cọc và hệ thống sẽ tự mở tuyển.'
-                : isInternalReview
-                  ? 'Nội dung tin tuyển dụng đã đạt yêu cầu. Đã gửi thông báo yêu cầu thanh toán tới Doanh nghiệp. Tin sẽ tự động công khai ngay sau khi nhận được thanh toán.'
-                  : `Quý khách vui lòng hoàn tất thanh toán ${feeText} để công khai tin tuyển dụng và bắt đầu nhận hồ sơ ứng viên có hỗ trợ chấm điểm tự động.`
+                ? 'Vui lòng hoàn tất nộp tiền cọc để kích hoạt dịch vụ tìm kiếm hồ sơ ứng viên.'
+                : `Vui lòng hoàn tất thanh toán ${feeText} để công bố tin tuyển dụng.`
             }
             action={
-              !isInternalReview && !awaitingDeposit ? (
+              awaitingDeposit ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<CreditCardOutlined />}
+                    className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600"
+                    onClick={() => setShowPaymentModal(true)}
+                  >
+                    Nộp cọc
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                  >
+                    Hợp đồng cọc
+                  </Button>
+                </div>
+              ) : (
                 <Button
                   type="primary"
                   size="small"
                   icon={<CreditCardOutlined />}
+                  className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600"
                   onClick={() => setShowPaymentModal(true)}
                 >
-                  Hướng dẫn thanh toán
+                  Thanh toán ngay
                 </Button>
-              ) : undefined
+              )
             }
           />
         )}
@@ -711,6 +724,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         visible={showPaymentModal}
         jobId={job.jobId}
         jobTitle={job.title}
+        isDeposit={awaitingDeposit}
+        depositAmount={sourcingDepositAmount(job) ?? 200000}
         onClose={() => setShowPaymentModal(false)}
         onPaymentSuccess={() => {
           setShowPaymentModal(false);

@@ -172,27 +172,27 @@ const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
     tag: 'Gói đăng tin',
     color: 'blue',
     icon: <RocketOutlined className="text-blue-600 text-lg" />,
-    defaultTitle: 'Nhận hồ sơ ứng tuyển',
-    defaultSummary: 'Đăng tin trên nền tảng để ứng viên chủ động tìm kiếm và gửi hồ sơ trực tiếp.',
-    feeRule: ['Ứng viên chủ động gửi hồ sơ.', 'Doanh nghiệp thanh toán theo gói đăng tin đã chọn.'],
+    defaultTitle: 'CV Application',
+    defaultSummary: 'Đăng tin để ứng viên chủ động tìm kiếm và nộp hồ sơ.',
+    feeRule: ['Thanh toán theo gói đăng tin (Miễn phí / Trả phí).'],
   },
   CV_SOURCING: {
     code: 'CV_SOURCING',
-    tag: 'Tính phí theo số hồ sơ',
+    tag: 'Tìm kiếm hồ sơ',
     color: 'purple',
     icon: <TeamOutlined className="text-purple-600 text-lg" />,
-    defaultTitle: 'Tìm kiếm hồ sơ phù hợp',
-    defaultSummary: 'HR Connect và mạng lưới cộng tác viên chủ động tìm kiếm, sàng lọc hồ sơ đạt chuẩn và gửi cho bạn.',
-    feeRule: ['HR Connect tìm và gửi hồ sơ đạt yêu cầu.', 'Doanh nghiệp đặt cọc sau khi tin được duyệt và trả phí theo số hồ sơ chấp nhận.'],
+    defaultTitle: 'CV Sourcing',
+    defaultSummary: 'HR Connect & CTV chủ động tìm kiếm, sàng lọc hồ sơ đạt chuẩn.',
+    feeRule: ['Đặt cọc khi duyệt tin, thanh toán theo số hồ sơ nhận.'],
   },
   HEADHUNT_COD: {
     code: 'HEADHUNT_COD',
-    tag: 'Chỉ trả phí khi tuyển được người',
+    tag: 'Tuyển dụng trọn gói',
     color: 'gold',
     icon: <SafetyCertificateOutlined className="text-amber-600 text-lg" />,
-    defaultTitle: 'Tuyển dụng theo kết quả',
-    defaultSummary: 'HR Connect phụ trách tìm kiếm và sàng lọc; có chính sách tuyển thay thế và chỉ thu phí khi tuyển thành công.',
-    feeRule: ['HR Connect phụ trách quá trình tìm kiếm và sàng lọc.', 'Doanh nghiệp trả phí khi ứng viên bắt đầu đi làm và được hỗ trợ tuyển thay thế theo thỏa thuận.'],
+    defaultTitle: 'Headhunt COD',
+    defaultSummary: 'Tìm kiếm nhân sự theo yêu cầu, bảo hành tuyển thay thế.',
+    feeRule: ['Chỉ trả phí khi ứng viên nhận việc thành công.'],
   },
 };
 
@@ -219,7 +219,10 @@ const moneyInputProps = {
   step: 1000000,
   className: 'w-full',
   formatter: (v?: number | string) => (v ? Number(v).toLocaleString('vi-VN') : ''),
-  parser: (v?: string) => Number((v ?? '').replace(/\D/g, '')),
+  parser: (v?: string) => {
+    const cleaned = (v ?? '').replace(/\D/g, '');
+    return cleaned ? Number(cleaned) : (undefined as unknown as number);
+  },
 };
 
 const hasStep3Data = (values: Partial<JobFormValues>, code?: ServiceTypeCode): boolean => {
@@ -237,7 +240,6 @@ const hasStep3Data = (values: Partial<JobFormValues>, code?: ServiceTypeCode): b
   if (code === 'HEADHUNT_COD') {
     return Boolean(
       (values.feeMultiplier != null && values.feeMultiplier > 0) ||
-        (values.annualSalaryPercent != null && values.annualSalaryPercent > 0) ||
         (values.warrantyDays != null && values.warrantyDays > 0) ||
         (values.paymentDueDays != null && values.paymentDueDays > 0) ||
         Boolean(values.termsNote && values.termsNote.trim())
@@ -306,28 +308,32 @@ const toInput = (v: JobFormValues, selectedCode?: ServiceTypeCode, postingPackag
   let proposedTerms: ProposedTerms | null = null;
 
   if (selectedCode === 'HEADHUNT_COD') {
+    const validMultiplier = v.feeMultiplier != null && Number(v.feeMultiplier) > 0 ? Number(v.feeMultiplier) : null;
+    const validWarranty = v.warrantyDays != null && Number(v.warrantyDays) > 0 ? Number(v.warrantyDays) : null;
+    const validPaymentDue = v.paymentDueDays != null && Number(v.paymentDueDays) > 0 ? Number(v.paymentDueDays) : null;
     const hasAnyFee =
-      v.feeMultiplier != null ||
-      v.warrantyDays != null ||
-      v.paymentDueDays != null ||
+      validMultiplier != null ||
+      validWarranty != null ||
+      validPaymentDue != null ||
       Boolean(v.termsNote && v.termsNote.trim());
 
     if (hasAnyFee) {
       proposedTerms = {
-        feeMultiplier: v.feeMultiplier != null ? Number(v.feeMultiplier) : null,
-        warrantyDays: v.warrantyDays != null ? Number(v.warrantyDays) : null,
-        paymentDueDays: v.paymentDueDays != null ? Number(v.paymentDueDays) : null,
+        feeMultiplier: validMultiplier,
+        warrantyDays: validWarranty,
+        paymentDueDays: validPaymentDue,
         note: trimOrNull(v.termsNote),
       };
     }
   } else if (selectedCode === 'CV_SOURCING') {
+    const validPrice = v.sourcingPricePerCv != null && Number(v.sourcingPricePerCv) > 0 ? Number(v.sourcingPricePerCv) : null;
     const hasAnyFee =
-      v.sourcingPricePerCv != null ||
+      validPrice != null ||
       Boolean(v.termsNote && v.termsNote.trim());
 
     if (hasAnyFee) {
       proposedTerms = {
-        pricePerCv: v.sourcingPricePerCv != null ? Number(v.sourcingPricePerCv) : null,
+        pricePerCv: validPrice,
         note: trimOrNull(v.termsNote),
       };
     }
@@ -412,6 +418,9 @@ const submitBlockers = (
   }
   if (!(v.requirements ?? []).some((r) => r?.requirementType === 'MUST_HAVE' && r.content?.trim())) {
     missing.push({ field: ['requirements'], message: 'Thêm ít nhất một yêu cầu bắt buộc (Must-have).', step: 1 });
+  }
+  if (!trimOrNull(v.deadline)) {
+    missing.push({ field: ['deadline'], message: 'Chọn hạn nhận hồ sơ.', step: 1 });
   }
 
   // Step 3
@@ -590,6 +599,7 @@ export const JobFormPage: React.FC = () => {
       { label: 'Mô tả công việc', done: Boolean(watched.description?.trim()), step: 1, field: 'form-desc-item' },
       { label: 'Quyền lợi', done: Boolean(watched.benefits?.trim()), step: 1, field: 'form-benefits-item' },
       { label: 'Ít nhất 1 yêu cầu bắt buộc', done: hasMustHave, step: 1, field: 'form-requirements-item' },
+      { label: 'Hạn nhận hồ sơ', done: Boolean(watched.deadline), step: 1, field: 'form-deadline-item' },
     ];
     if (effectiveCode === 'CV_SOURCING') {
       base.push({
@@ -678,6 +688,10 @@ export const JobFormPage: React.FC = () => {
       }
       if (!values.quantity || values.quantity < 1) {
         message.warning('Số lượng cần tuyển phải từ 1 người trở lên.');
+        return false;
+      }
+      if (!values.deadline) {
+        message.warning('Vui lòng chọn hạn nhận hồ sơ.');
         return false;
       }
       return true;
@@ -819,7 +833,7 @@ export const JobFormPage: React.FC = () => {
       loading={saving === 'submit'}
       disabled={saving === 'draft'}
     >
-      Lưu và gửi duyệt
+      Gửi duyệt
     </Button>
   );
 
@@ -974,7 +988,7 @@ export const JobFormPage: React.FC = () => {
                     </h2>
                   </div>
                   <p className="m-0 text-[13.5px] text-slate-600">
-                    Mỗi dịch vụ được thiết kế cho mục tiêu tuyển dụng riêng biệt. Vui lòng chọn dịch vụ phù hợp nhất:
+                    Chọn 1 trong 3 mô hình tuyển dụng phù hợp:
                   </p>
                 </header>
 
@@ -1094,7 +1108,7 @@ export const JobFormPage: React.FC = () => {
                     onClick={handleNext}
                     disabled={!effectiveServiceId}
                   >
-                    Tiếp tục sang Mô tả công việc
+                    Tiếp tục
                   </Button>
                 </div>
               </section>
@@ -1110,6 +1124,7 @@ export const JobFormPage: React.FC = () => {
                 hasStep2Content={() => hasStep2Content(form.getFieldsValue())}
                 currentSkills={watched.skills ?? []}
                 currentTemplateId={watched.templateId}
+                currentJobId={jobId}
                 onApplyTemplate={handleApplyTemplate}
                 defaultOpen={!isEdit && !hasStep2Content(existing.data ? toFormValues(existing.data) : {})}
               />
@@ -1120,13 +1135,13 @@ export const JobFormPage: React.FC = () => {
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
                     2.1
                   </span>
-                  <h2 className="m-0 text-[17px] font-semibold text-slate-900">Thông tin vị trí tuyển dụng</h2>
+                  <h2 className="m-0 text-[17px] font-semibold text-slate-900">Thông tin vị trí</h2>
                 </header>
 
                 <div id="form-title-item">
                   <Form.Item
                     name="title"
-                    label="Bạn đang cần tuyển vị trí nào?"
+                    label="Vị trí"
                     rules={[
                       { required: true, whitespace: true, message: 'Vui lòng nhập tên vị trí.' },
                       { max: 255, message: 'Tối đa 255 ký tự.' },
@@ -1140,12 +1155,12 @@ export const JobFormPage: React.FC = () => {
                   <div id="form-employment-item">
                     <Form.Item
                       name="employmentType"
-                      label="Loại hình công việc"
+                      label="Hình thức"
                       rules={[{ required: true, message: 'Chọn hình thức làm việc.' }]}
                     >
                       <Select
                         size="large"
-                        placeholder="Chọn loại hình công việc"
+                        placeholder="Chọn hình thức làm việc"
                         options={(Object.keys(EMPLOYMENT_TYPE_LABEL) as EmploymentType[]).map((k) => ({
                           value: k,
                           label: EMPLOYMENT_TYPE_LABEL[k],
@@ -1156,7 +1171,7 @@ export const JobFormPage: React.FC = () => {
 
                   <Form.Item
                     name="quantity"
-                    label="Số lượng cần tuyển"
+                    label="Số lượng"
                     rules={[{ required: true, type: 'number', min: 1, max: 1000, message: 'Từ 1 đến 1000 người.' }]}
                   >
                     <InputNumber size="large" min={1} max={1000} className="w-full" addonAfter="người" />
@@ -1165,7 +1180,7 @@ export const JobFormPage: React.FC = () => {
                   <div id="form-location-item">
                     <Form.Item
                       name="location"
-                      label="Khu vực làm việc"
+                      label="Địa điểm"
                       rules={[
                         { required: true, message: 'Vui lòng nhập địa điểm làm việc.' },
                         { max: 255, message: 'Tối đa 255 ký tự.' },
@@ -1183,33 +1198,13 @@ export const JobFormPage: React.FC = () => {
                     </Form.Item>
                   </div>
 
-                  <Form.Item name="workingTime" label="Lịch làm việc dự kiến">
-                    <Select size="large" allowClear placeholder="Chọn lịch làm việc" options={WORKING_TIME_OPTIONS} />
-                  </Form.Item>
-                </div>
-
-                <div className="grid gap-x-4 md:grid-cols-2">
-                  <Form.Item
-                    name="deadline"
-                    label="Hạn nhận hồ sơ"
-                    getValueProps={(val) => ({
-                      value: val ? (dayjs.isDayjs(val) ? val : dayjs(val)) : null,
-                    })}
-                    normalize={(val) => (val ? val.format('YYYY-MM-DD') : null)}
-                  >
-                    <DatePicker
-                      size="large"
-                      className="w-full"
-                      format="DD/MM/YYYY"
-                      placeholder="Chọn ngày hết hạn nhận hồ sơ"
-                      disabledDate={(cur) => cur && cur.isBefore(dayjs().startOf('day'))}
-                    />
+                  <Form.Item name="workingTime" label="Thời gian làm việc">
+                    <Select size="large" allowClear placeholder="Chọn thời gian làm việc" options={WORKING_TIME_OPTIONS} />
                   </Form.Item>
 
                   <Form.Item
                     name="minExperienceYears"
-                    label="Kinh nghiệm tối thiểu"
-                    extra="Chọn 0 nếu vị trí chấp nhận ứng viên chưa có kinh nghiệm."
+                    label="Kinh nghiệm"
                   >
                     <Select size="large" allowClear placeholder="Chọn số năm kinh nghiệm" options={EXPERIENCE_YEAR_OPTIONS} />
                   </Form.Item>
@@ -1222,16 +1217,16 @@ export const JobFormPage: React.FC = () => {
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
                     2.2
                   </span>
-                  <h2 className="m-0 text-[17px] font-semibold text-slate-900">Mức lương và chế độ đãi ngộ</h2>
+                  <h2 className="m-0 text-[17px] font-semibold text-slate-900">Mức lương và đãi ngộ</h2>
                 </header>
 
                 <div className="grid gap-x-4 md:grid-cols-[1fr_1fr_120px]">
-                  <Form.Item name="salaryMin" label="Mức lương từ" rules={[{ type: 'number', min: 0, message: 'Không âm.' }]}>
+                  <Form.Item name="salaryMin" label="Từ" rules={[{ type: 'number', min: 0, message: 'Không âm.' }]}>
                     <InputNumber<number> size="large" {...moneyInputProps} placeholder="15.000.000" />
                   </Form.Item>
                   <Form.Item
                     name="salaryMax"
-                    label="Đến mức"
+                    label="Đến"
                     dependencies={['salaryMin']}
                     rules={[
                       { type: 'number', min: 0, message: 'Không âm.' },
@@ -1253,16 +1248,13 @@ export const JobFormPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3 border border-solid border-slate-100">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">Mức lương có thể thỏa thuận</div>
-                    <div className="text-[13px] text-slate-600">Hiển thị nhãn “Thỏa thuận” bên cạnh mức lương đối với ứng viên.</div>
-                  </div>
+                  <div className="text-sm font-semibold text-slate-900">Có thể thỏa thuận</div>
                   <Form.Item name="salaryNegotiable" valuePropName="checked" noStyle>
-                    <Switch aria-label="Mức lương có thể thỏa thuận" />
+                    <Switch aria-label="Có thể thỏa thuận" />
                   </Form.Item>
                 </div>
 
-                <Form.Item name="salaryNote" label="Ghi chú về lương" className="mb-0" rules={[{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}>
+                <Form.Item name="salaryNote" label="Ghi chú lương" className="mb-0" rules={[{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}>
                   <Input size="large" placeholder="Ví dụ: Lương trước thuế, thưởng hiệu suất hàng quý, lương tháng 13..." />
                 </Form.Item>
               </section>
@@ -1273,13 +1265,13 @@ export const JobFormPage: React.FC = () => {
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
                     2.3
                   </span>
-                  <h2 className="m-0 text-[17px] font-semibold text-slate-900">Công việc và quyền lợi</h2>
+                  <h2 className="m-0 text-[17px] font-semibold text-slate-900">Mô tả và quyền lợi</h2>
                 </header>
 
                 <div id="form-desc-item">
                   <Form.Item
                     name="description"
-                    label="Ứng viên sẽ làm những công việc gì?"
+                    label="Mô tả công việc"
                     rules={[{ required: true, message: 'Vui lòng nhập mô tả công việc.' }]}
                   >
                     <Input.TextArea
@@ -1293,7 +1285,7 @@ export const JobFormPage: React.FC = () => {
                 <div id="form-benefits-item">
                   <Form.Item
                     name="benefits"
-                    label="Ứng viên nhận được quyền lợi gì?"
+                    label="Quyền lợi"
                     className="mb-0"
                     rules={[
                       { required: true, message: 'Vui lòng nhập quyền lợi ứng viên.' },
@@ -1317,7 +1309,7 @@ export const JobFormPage: React.FC = () => {
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
                       2.4
                     </span>
-                    <h2 className="m-0 text-[17px] font-semibold text-slate-900">Tiêu chí dành cho ứng viên</h2>
+                    <h2 className="m-0 text-[17px] font-semibold text-slate-900">Yêu cầu ứng viên</h2>
                   </div>
                   <Tag color={hasMustHave ? 'green' : 'orange'} className="m-0 font-medium">
                     {hasMustHave ? 'Đã có yêu cầu bắt buộc' : 'Cần ít nhất 1 yêu cầu bắt buộc'}
@@ -1326,8 +1318,7 @@ export const JobFormPage: React.FC = () => {
 
                 <Form.Item
                   name="skills"
-                  label="Kỹ năng cần có"
-                  extra="Ưu tiên chọn từ danh sách. Nếu chưa có, nhập tên kỹ năng rồi nhấn phím Enter."
+                  label="Kỹ năng"
                 >
                   <Select
                     mode="tags"
@@ -1350,7 +1341,7 @@ export const JobFormPage: React.FC = () => {
 
                 <div className="space-y-3">
                   <div className="text-sm font-semibold text-slate-900">
-                    Các yêu cầu cụ thể <span className="text-red-500 font-bold ml-0.5">*</span>
+                    Yêu cầu cụ thể <span className="text-red-500 font-bold ml-0.5">*</span>
                   </div>
                   <Form.List name="requirements">
                     {(fields, { add, remove }) => (
@@ -1360,7 +1351,7 @@ export const JobFormPage: React.FC = () => {
                             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 md:grid-cols-[auto_minmax(0,1fr)_185px_auto]">
                               <Form.Item
                                 name={[field.name, 'requirementType']}
-                                label="Tầm quan trọng"
+                                label="Mức độ"
                                 className="mb-2 md:mb-0"
                                 rules={[{ required: true, message: 'Chọn mức độ.' }]}
                               >
@@ -1382,7 +1373,7 @@ export const JobFormPage: React.FC = () => {
                               </div>
 
                               <div className="order-4 col-span-2 md:order-none md:col-span-1">
-                                <Form.Item name={[field.name, 'category']} label="Nhóm yêu cầu" className="mb-0">
+                                <Form.Item name={[field.name, 'category']} label="Nhóm" className="mb-0">
                                   <Select
                                     placeholder="Chọn nhóm"
                                     allowClear
@@ -1424,15 +1415,47 @@ export const JobFormPage: React.FC = () => {
                 </div>
               </section>
 
+              {/* 5. Deadline (Đặt ở cuối trang theo yêu cầu) */}
+              <section id="form-deadline-item" className="admin-surface p-5 sm:p-7 space-y-4">
+                <header className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
+                    2.5
+                  </span>
+                  <h2 className="m-0 text-[17px] font-semibold text-slate-900">
+                    Hạn nhận hồ sơ <span className="text-red-500 font-bold ml-1">*</span>
+                  </h2>
+                </header>
+
+                <div className="max-w-md">
+                  <Form.Item
+                    name="deadline"
+                    label="Hạn nhận hồ sơ"
+                    rules={[{ required: true, message: 'Vui lòng chọn hạn nhận hồ sơ.' }]}
+                    getValueProps={(val) => ({
+                      value: val ? (dayjs.isDayjs(val) ? val : dayjs(val)) : null,
+                    })}
+                    normalize={(val) => (val ? val.format('YYYY-MM-DD') : null)}
+                  >
+                    <DatePicker
+                      size="large"
+                      className="w-full"
+                      format="DD/MM/YYYY"
+                      placeholder="Chọn ngày hết hạn nhận hồ sơ"
+                      disabledDate={(cur) => cur && cur.isBefore(dayjs().startOf('day'))}
+                    />
+                  </Form.Item>
+                </div>
+              </section>
+
               {/* Bottom Step Actions */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
                 <Button size="large" onClick={() => setCurrentStep(0)}>
-                  Quay lại: Chọn dịch vụ
+                  Quay lại
                 </Button>
                 <div className="flex items-center gap-2">
                   {draftButton()}
                   <Button type="primary" size="large" className="client-cta px-6" onClick={handleNext}>
-                    Tiếp tục: Nhu cầu & Chi phí
+                    Tiếp tục
                   </Button>
                 </div>
               </div>
@@ -1576,26 +1599,20 @@ export const JobFormPage: React.FC = () => {
                       <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
                         3
                       </span>
-                      <h2 className="m-0 text-[18px] font-semibold text-slate-900">Nhu cầu cung cấp hồ sơ ứng viên</h2>
+                      <h2 className="m-0 text-[18px] font-semibold text-slate-900">Nhu cầu cung cấp hồ sơ</h2>
                     </div>
                     <p className="m-0 text-[13.5px] text-slate-600">
-                      Cho biết số hồ sơ cần nhận và mức phí mong muốn cho mỗi hồ sơ đạt yêu cầu.
+                      Cho biết số lượng hồ sơ cần nhận và mức phí đề xuất (nếu có).
                     </p>
                   </header>
 
                   {/* Target CV Count (Required) */}
                   <div id="form-cv-count-item" className="rounded-2xl border border-solid border-slate-200 bg-slate-50/60 p-5">
-                    <div className="mb-2 flex items-center justify-between">
+                    <div className="mb-2">
                       <label className="text-sm font-bold text-slate-900">
-                        Số hồ sơ ứng viên bạn muốn nhận <span className="text-red-500 font-bold">*</span>
+                        Số lượng hồ sơ <span className="text-red-500 font-bold">*</span>
                       </label>
-                      <span className="rounded-full bg-slate-200/80 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
-                        Bắt buộc
-                      </span>
                     </div>
-                    <p className="text-xs text-slate-600 mb-3">
-                      HR Connect sẽ cam kết tìm kiếm và giao đủ số lượng hồ sơ đạt yêu cầu theo tiêu chuẩn đã thỏa thuận.
-                    </p>
                     <Form.Item
                       name="targetCandidateCount"
                       rules={[
@@ -1615,22 +1632,16 @@ export const JobFormPage: React.FC = () => {
                     </Form.Item>
                   </div>
 
-                  {/* Proposed Fee Block (Optional) */}
+                  {/* Proposed Fee Block */}
                   <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-5 sm:p-6 space-y-4">
                     <div>
-                      <div className="flex items-center justify-between gap-2">
-                        <h3 className="m-0 text-[16px] font-bold text-slate-900">Mức phí bạn đề xuất (không bắt buộc)</h3>
-                        <Badge count="Tùy chọn" style={{ backgroundColor: '#64748b' }} />
-                      </div>
-                      <p className="m-0 mt-1.5 text-[13px] text-slate-600 leading-relaxed italic">
-                        Chuyên viên HR Connect sẽ liên hệ để thống nhất mức phí trước khi đăng tin. Mức phí chính thức là mức được xác nhận khi tin được duyệt.
-                      </p>
+                      <h3 className="m-0 text-[16px] font-bold text-slate-900">Mức phí đề xuất</h3>
                     </div>
 
                     <div className="grid gap-x-4 md:grid-cols-2">
                       <Form.Item
                         name="sourcingPricePerCv"
-                        label="Mức phí đề xuất cho mỗi hồ sơ đạt yêu cầu"
+                        label="Phí đề xuất / hồ sơ"
                         rules={[{ type: 'number', min: 0, message: 'Không được âm.' }]}
                       >
                         <InputNumber<number>
@@ -1650,14 +1661,14 @@ export const JobFormPage: React.FC = () => {
                             : 'Chưa có đề xuất'}
                         </span>
                         <span className="text-[11px] text-slate-500 mt-1">
-                          Tiền đặt cọc và mức phí chính thức sẽ được xác nhận khi duyệt tin.
+                          Tiền đặt cọc và mức phí chính thức sẽ được xác nhận trong thỏa thuận dịch vụ.
                         </span>
                       </div>
                     </div>
 
                     <Form.Item
                       name="termsNote"
-                      label="Ghi chú đề xuất phí hoặc yêu cầu bổ sung"
+                      label="Ghi chú đề xuất"
                       className="mb-0"
                       rules={[{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}
                     >
@@ -1678,55 +1689,32 @@ export const JobFormPage: React.FC = () => {
                       <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
                         3
                       </span>
-                      <h2 className="m-0 text-[18px] font-semibold text-slate-900">Điều khoản dịch vụ tuyển dụng theo kết quả</h2>
+                      <h2 className="m-0 text-[18px] font-semibold text-slate-900">Điều khoản dịch vụ tuyển dụng</h2>
                     </div>
                     <p className="m-0 text-[13.5px] text-slate-600">
-                      Phí dịch vụ được tính theo mức lương thực tế khi ứng viên nhận việc. Bạn có thể chọn mức đề xuất bên dưới.
+                      Phí dịch vụ tính theo mức lương thực tế khi ứng viên nhận việc. Bạn có thể đề xuất các điều khoản bên dưới.
                     </p>
                   </header>
 
-                  {/* Proposed Fee Block (Optional) */}
+                  {/* Proposed Fee Block */}
                   <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-5 sm:p-6 space-y-5">
                     <div>
-                      <div className="flex items-center justify-between gap-2">
-                        <h3 className="m-0 text-[16px] font-bold text-slate-900">Mức phí bạn đề xuất (không bắt buộc)</h3>
-                        <Badge count="Tùy chọn" style={{ backgroundColor: '#64748b' }} />
-                      </div>
-                      <p className="m-0 mt-1.5 text-[13px] text-slate-600 leading-relaxed italic">
-                        Chuyên viên HR Connect sẽ liên hệ để thống nhất mức phí trước khi đăng tin. Mức phí chính thức là mức được xác nhận khi tin được duyệt.
-                      </p>
+                      <h3 className="m-0 text-[16px] font-bold text-slate-900">Mức phí đề xuất</h3>
                     </div>
 
-                    {/* Fee Multiplier & Annual Salary Percent (Synchronized) */}
-                    <div className="grid gap-x-4 md:grid-cols-2">
+                    {/* Fee Multiplier */}
+                    <div className="max-w-md">
                       <Form.Item
                         name="feeMultiplier"
-                        label="Mức phí tuyển thành công đề xuất"
+                        label="Phí tuyển thành công"
                         rules={[{ type: 'number', min: 0, max: 12, message: 'Từ 0 đến 12 tháng.' }]}
-                        extra="Số tháng lương theo mức lương chính thức của ứng viên khi nhận việc."
                       >
                         <Select
                           size="large"
                           className="w-full"
                           placeholder="Chọn mức phí đề xuất"
                           options={HEADHUNT_FEE_OPTIONS}
-                          onChange={(val) => {
-                            if (val != null) {
-                              form.setFieldValue('annualSalaryPercent', Number(((val / 12) * 100).toFixed(1)));
-                            } else {
-                              form.setFieldValue('annualSalaryPercent', undefined);
-                            }
-                          }}
                         />
-                      </Form.Item>
-
-                      <Form.Item
-                        name="annualSalaryPercent"
-                        label="Tỷ lệ tương đương trên lương năm"
-                        rules={[{ type: 'number', min: 0, max: 100, message: 'Từ 0% đến 100%.' }]}
-                        extra="Hệ thống tự quy đổi theo số tháng lương (1,5 tháng tương đương 12,5% lương năm)."
-                      >
-                        <InputNumber size="large" disabled className="w-full" addonAfter="% lương năm" />
                       </Form.Item>
                     </div>
 
@@ -1734,26 +1722,24 @@ export const JobFormPage: React.FC = () => {
                     <div className="grid gap-x-4 md:grid-cols-2">
                       <Form.Item
                         name="warrantyDays"
-                        label="Thời hạn bảo hành đề xuất (ngày)"
+                        label="Thời hạn bảo hành"
                         rules={[{ type: 'number', min: 0, max: 365, message: 'Từ 0 đến 365 ngày.' }]}
-                        extra="Bảo hành tuyển thay thế miễn phí nếu ứng viên nghỉ việc. Để trống để dùng mức mặc định của HR Connect."
                       >
-                        <Select size="large" allowClear placeholder="Dùng chính sách mặc định" options={WARRANTY_DAY_OPTIONS} />
+                        <Select size="large" allowClear placeholder="Chính sách chuẩn" options={WARRANTY_DAY_OPTIONS} />
                       </Form.Item>
 
                       <Form.Item
                         name="paymentDueDays"
-                        label="Hạn thanh toán đề xuất (ngày)"
+                        label="Hạn thanh toán"
                         rules={[{ type: 'number', min: 0, max: 180, message: 'Từ 0 đến 180 ngày.' }]}
-                        extra="Số ngày thanh toán kể từ ngày ứng viên bắt đầu đi làm."
                       >
-                        <Select size="large" allowClear placeholder="Chọn thời hạn thanh toán" options={PAYMENT_DUE_DAY_OPTIONS} />
+                        <Select size="large" allowClear placeholder="Chính sách chuẩn" options={PAYMENT_DUE_DAY_OPTIONS} />
                       </Form.Item>
                     </div>
 
                     <Form.Item
                       name="termsNote"
-                      label="Ghi chú đề xuất phí hoặc điều khoản thỏa thuận"
+                      label="Ghi chú đề xuất"
                       className="mb-0"
                       rules={[{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}
                     >
@@ -1769,12 +1755,12 @@ export const JobFormPage: React.FC = () => {
               {/* Bottom Step Actions */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
                 <Button size="large" onClick={() => setCurrentStep(1)}>
-                  Quay lại: Mô tả công việc
+                  Quay lại
                 </Button>
                 <div className="flex items-center gap-2">
                   {draftButton()}
                   <Button type="primary" size="large" className="client-cta px-6" onClick={handleNext}>
-                    Tiếp tục: Kiểm tra và gửi duyệt
+                    Tiếp tục
                   </Button>
                 </div>
               </div>
@@ -1988,21 +1974,20 @@ export const JobFormPage: React.FC = () => {
                         <p className="m-0">Chuyên viên HR Connect sẽ liên hệ để thống nhất mức phí, thời gian tuyển thay thế và hạn thanh toán trước khi đăng tin.</p>
                       </div>
                       {watched.feeMultiplier != null || watched.warrantyDays != null || watched.paymentDueDays != null ? (
-                        <div className="pt-2 border-0 border-t border-solid border-slate-100 space-y-1">
+                        <div className="pt-2 border-0 border-t border-solid border-slate-100 space-y-1.5 text-sm text-slate-800">
                           {watched.feeMultiplier != null && (
-                            <div className="text-sm text-slate-900">
-                              Bạn đề xuất: <b>{watched.feeMultiplier} tháng lương</b>
-                              {watched.annualSalaryPercent ? ` (tương đương ${watched.annualSalaryPercent}% lương năm)` : ''}.
+                            <div>
+                              Bạn đề xuất: <b className="text-slate-900">{watched.feeMultiplier} tháng lương</b>.
                             </div>
                           )}
                           {watched.warrantyDays != null && (
-                            <div className="text-xs text-slate-700">
-                              Thời gian bảo hành đề xuất: <b>{watched.warrantyDays} ngày</b>.
+                            <div>
+                              Thời gian bảo hành đề xuất: <b className="text-slate-900">{watched.warrantyDays} ngày</b>.
                             </div>
                           )}
                           {watched.paymentDueDays != null && (
-                            <div className="text-xs text-slate-700">
-                              Hạn thanh toán đề xuất: <b>{watched.paymentDueDays} ngày</b> sau khi nhận việc.
+                            <div>
+                              Hạn thanh toán đề xuất: <b className="text-slate-900">{watched.paymentDueDays} ngày</b> sau khi nhận việc.
                             </div>
                           )}
                         </div>
@@ -2024,7 +2009,7 @@ export const JobFormPage: React.FC = () => {
               {/* Bottom Step Actions */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
                 <Button size="large" onClick={() => setCurrentStep(2)}>
-                  Quay lại: Nhu cầu & Chi phí
+                  Quay lại
                 </Button>
                 <div className="flex items-center gap-2">
                   {draftButton()}

@@ -269,6 +269,8 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                 }
             }
 
+            job.AgreedAt = now;
+            job.AgreedBy = request.UserId;
             job.MaxApplications = package?.MaxApplications;
             var fee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct);
 

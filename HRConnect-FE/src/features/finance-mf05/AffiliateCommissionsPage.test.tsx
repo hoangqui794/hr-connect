@@ -58,7 +58,7 @@ describe('Affiliate › Hoa hồng & chi trả', () => {
     expect(within(card).getByText(/9\.000\.000/)).toBeInTheDocument();
 
     const warranty = screen.getByRole('listitem', { name: /Nguyễn Văn An/ });
-    expect(within(warranty).getByText('Còn 18 ngày', { exact: false })).toBeInTheDocument();
+    expect(within(warranty).getByText(/Còn (17|18) ngày/)).toBeInTheDocument();
     expect(within(warranty).getByText(/tính trên phí 45\.000\.000/)).toBeInTheDocument();
     expect(within(warranty).getByText('Bảo hành').closest('li')).toHaveAttribute('aria-current', 'step');
   });

@@ -62,6 +62,11 @@ public class ResendEmailService : IEmailService
         if (string.IsNullOrWhiteSpace(_apiKey))
         {
             _logger.LogError("Resend: Chưa cấu hình Resend API Key trong file .env.");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"[EMAIL FALLBACK - CHƯA CẤU HÌNH API KEY]");
+            Console.WriteLine($"Người nhận: {string.Join(", ", recipients)} | Tiêu đề: {subject}");
+            Console.WriteLine($"Nội dung: {System.Text.RegularExpressions.Regex.Replace(bodyHtml, "<.*?>", " ").Trim()}");
+            Console.ResetColor();
             return EmailResult.Failure("Chưa cấu hình Resend API Key.");
         }
 
@@ -107,12 +112,23 @@ public class ResendEmailService : IEmailService
                 _logger.LogError("Lỗi khi gửi email qua Resend: Mã HTTP {StatusCode}, Chi tiết: {Error}",
                     (int)response.StatusCode, errorMessage);
 
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"================================================================================");
+                Console.WriteLine($"[EMAIL RESEND THẤT BẠI - Mã HTTP {(int)response.StatusCode}] {errorMessage}");
+                Console.WriteLine($"Người nhận: {string.Join(", ", recipients)} | Tiêu đề: {subject}");
+                Console.WriteLine($"Nội dung: {System.Text.RegularExpressions.Regex.Replace(bodyHtml, "<.*?>", " ").Trim()}");
+                Console.WriteLine($"================================================================================");
+                Console.ResetColor();
+
                 return EmailResult.Failure($"Resend API Error ({(int)response.StatusCode}): {errorMessage}");
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Ngoại lệ xảy ra khi gửi email qua Resend đến {Recipients}", string.Join(", ", recipients));
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"[EMAIL EXCEPTION] {ex.Message} -> Người nhận: {string.Join(", ", recipients)}");
+            Console.ResetColor();
             return EmailResult.Failure($"Ngoại lệ khi gửi email: {ex.Message}");
         }
     }

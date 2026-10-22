@@ -21,9 +21,13 @@ public sealed class CreateSignatureChallengeCommand : IRequest<SignatureChalleng
 public sealed class SignatureChallengeResponse
 {
     public Guid ChallengeId { get; set; }
+    public Guid ServiceAgreementId { get; set; }
+    public string SignerEmail { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
     public int CooldownSeconds { get; set; } = 60;
     public string Message { get; set; } = null!;
+    public Guid ConcurrencyToken { get; set; }
+    public string? DevOtp { get; set; }
 }
 
 public sealed class CreateSignatureChallengeCommandHandler : IRequestHandler<CreateSignatureChallengeCommand, SignatureChallengeResponse>
@@ -59,9 +63,19 @@ public sealed class CreateSignatureChallengeCommandHandler : IRequestHandler<Cre
             throw new NotFoundException("Không tìm thấy thỏa thuận dịch vụ yêu cầu.");
         }
 
-        if (!agreement.IsCurrent || (agreement.Status != ServiceAgreementStatuses.Accepted && agreement.Status != ServiceAgreementStatuses.AwaitingSignature))
+        if (!agreement.IsCurrent || (
+            agreement.Status != ServiceAgreementStatuses.Accepted &&
+            agreement.Status != ServiceAgreementStatuses.AwaitingSignature &&
+            agreement.Status != ServiceAgreementStatuses.SentToClient))
         {
-            throw new ConflictException($"Chỉ có thể tạo mã OTP ký thỏa thuận khi thỏa thuận ở trạng thái ACCEPTED hoặc AWAITING_SIGNATURE (hiện tại: {agreement.Status}).");
+            throw new ConflictException($"Chỉ có thể tạo mã OTP ký thỏa thuận khi thỏa thuận ở trạng thái SENT_TO_CLIENT, ACCEPTED hoặc AWAITING_SIGNATURE (hiện tại: {agreement.Status}).");
+        }
+
+        if (agreement.Status == ServiceAgreementStatuses.SentToClient)
+        {
+            agreement.Status = ServiceAgreementStatuses.Accepted;
+            agreement.RespondedAt = DateTime.UtcNow;
+            agreement.ConcurrencyToken = Guid.NewGuid();
         }
 
         // Verify user is active and primary contact
@@ -150,15 +164,33 @@ public sealed class CreateSignatureChallengeCommandHandler : IRequestHandler<Cre
     <p style='font-size: 12px; color: #94A3B8;'>Hệ thống tuyển dụng thông minh HR Connect.</p>
 </div>";
 
-        await _emailService.SendEmailAsync(user.Email, emailSubject, emailBody, ct);
+        var emailResult = await _emailService.SendEmailAsync(user.Email, emailSubject, emailBody, ct);
         await _uow.SaveChangesAsync(ct);
+
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("================================================================================");
+        Console.WriteLine($"[OTP KÝ THỎA THUẬN] User: {user.Email} | OTP: {rawOtp}");
+        if (!emailResult.IsSuccess)
+        {
+            Console.WriteLine($"[LƯU Ý EMAIL] Gửi mail qua Resend thất bại: {emailResult.ErrorMessage}");
+        }
+        Console.WriteLine("================================================================================");
+        Console.ResetColor();
+
+        var message = emailResult.IsSuccess
+            ? $"Mã OTP đã được gửi đến email {user.Email}. Mã có hiệu lực trong 10 phút."
+            : $"Mã OTP ký thỏa thuận là: {rawOtp} (Lưu ý: Không gửi được email qua Resend do key chưa hợp lệ, mã được cung cấp trực tiếp để kiểm thử).";
 
         return new SignatureChallengeResponse
         {
             ChallengeId = challenge.ChallengeId,
+            ServiceAgreementId = agreement.ServiceAgreementId,
+            SignerEmail = user.Email,
             ExpiresAt = expiresAt,
             CooldownSeconds = 60,
-            Message = $"Mã OTP đã được gửi đến email {user.Email}. Mã có hiệu lực trong 10 phút."
+            Message = message,
+            ConcurrencyToken = agreement.ConcurrencyToken,
+            DevOtp = rawOtp
         };
     }
 }

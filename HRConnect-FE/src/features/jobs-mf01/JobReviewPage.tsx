@@ -258,9 +258,9 @@ export const JobReviewPage: React.FC = () => {
       setTermsOpen(true);
     } else if (isStandardUnpaid) {
       modal.confirm({
-        title: 'Duyệt nội dung & Tạo yêu cầu thanh toán?',
+        title: 'Xác nhận duyệt tin tuyển dụng?',
         icon: <FileDoneOutlined className="text-indigo-600 text-xl" />,
-        width: 500,
+        width: 480,
         content: (
           <div className="py-2 space-y-3 text-xs leading-relaxed text-slate-700">
             <div className="rounded-xl bg-slate-50 p-3 border border-solid border-slate-200 space-y-1">
@@ -274,19 +274,12 @@ export const JobReviewPage: React.FC = () => {
                 ) : null}
               </div>
             </div>
-            <div className="rounded-lg bg-slate-50 p-3 border border-solid border-slate-200 text-slate-700 space-y-1">
-              <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                <InfoCircleOutlined className="text-blue-500" /> Lưu ý quy trình kích hoạt:
-              </div>
-              <ul className="m-0 pl-4 space-y-1 text-[12px] text-slate-600">
-                <li>Nội dung tin đã đạt tiêu chuẩn kiểm duyệt.</li>
-                <li>Hệ thống tạo yêu cầu thanh toán <strong>{feeText}</strong> và gửi thông báo tới Doanh nghiệp.</li>
-                <li>Tin sẽ tự động kích hoạt công khai ngay khi Doanh nghiệp thanh toán.</li>
-              </ul>
+            <div className="rounded-lg bg-indigo-50/70 p-2.5 border border-solid border-indigo-100 text-xs text-indigo-900">
+              Hệ thống sẽ gửi yêu cầu thanh toán <strong>{feeText}</strong> tới Doanh nghiệp để kích hoạt tin.
             </div>
           </div>
         ),
-        okText: 'Duyệt & Gửi yêu cầu thanh toán',
+        okText: 'Duyệt tin',
         okButtonProps: { className: '!bg-indigo-600 hover:!bg-indigo-500 font-semibold' },
         cancelText: 'Hủy bỏ',
         onOk: () =>
@@ -489,8 +482,8 @@ export const JobReviewPage: React.FC = () => {
                           </div>
                           <p className="text-xs text-slate-500 m-0 leading-relaxed max-w-2xl">
                             {isStandardUnpaid
-                              ? 'Kiểm tra thông tin mô tả và yêu cầu ứng tuyển. Sau khi duyệt, hệ thống sẽ gửi thông báo yêu cầu thanh toán để doanh nghiệp kích hoạt tin công khai.'
-                              : 'Kiểm tra thông tin mô tả và yêu cầu tuyển dụng trước khi công bố tin công khai trên hệ thống.'}
+                              ? 'Kiểm tra nội dung tin. Sau khi duyệt, doanh nghiệp sẽ nhận yêu cầu thanh toán để kích hoạt tin.'
+                              : 'Kiểm tra thông tin mô tả và yêu cầu trước khi công bố tin tuyển dụng.'}
                           </p>
                         </div>
                       </div>
@@ -510,7 +503,7 @@ export const JobReviewPage: React.FC = () => {
                           disabled={reject.isPending}
                           onClick={confirmApprove}
                         >
-                          {needsTerms ? 'Chốt điều khoản & Duyệt' : isStandardUnpaid ? 'Duyệt & Gửi yêu cầu thanh toán' : 'Duyệt và công bố tin'}
+                          {needsTerms ? 'Chốt điều khoản' : isStandardUnpaid ? 'Duyệt & Yêu cầu thanh toán' : 'Duyệt và công bố'}
                         </Button>
                       </div>
                     </div>
@@ -534,11 +527,11 @@ export const JobReviewPage: React.FC = () => {
                           <p className="text-xs text-slate-500 m-0 leading-relaxed max-w-2xl">
                             {isAwaitingSourcingDeposit(job) ? (
                               <>
-                                Đã tạo khoản cọc dịch vụ tìm kiếm hồ sơ <strong>{formatMoney(sourcingDepositAmount(job) ?? 0, 'VND')}</strong>. Bộ phận tài chính ghi nhận tiền cọc tại mục <strong>Tài chính</strong>; tin sẽ tự chuyển sang <strong>Đang tuyển</strong>.
+                                Đã gửi yêu cầu đặt cọc <strong>{formatMoney(sourcingDepositAmount(job) ?? 0, 'VND')}</strong> tới doanh nghiệp. Tin sẽ tự chuyển sang <strong>Đang tuyển</strong> sau khi nhận cọc.
                               </>
                             ) : (
                               <>
-                                Đã tạo yêu cầu thanh toán <strong>{feeText}</strong> gửi tới doanh nghiệp. Bộ phận tài chính ghi nhận tiền tại mục <strong>Tài chính › Phí đăng tin</strong>; tin sẽ tự chuyển sang <strong>Đang tuyển</strong>.
+                                Đã gửi yêu cầu thanh toán <strong>{feeText}</strong> tới doanh nghiệp. Tin sẽ tự động chuyển sang <strong>Đang tuyển</strong> ngay khi doanh nghiệp thanh toán.
                               </>
                             )}
                           </p>

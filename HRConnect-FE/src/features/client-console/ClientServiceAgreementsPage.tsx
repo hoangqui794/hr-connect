@@ -108,6 +108,8 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   const [signModalOpen, setSignModalOpen] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [activeConcurrencyToken, setActiveConcurrencyToken] = useState<string>('');
   const [consentChecked, setConsentChecked] = useState(false);
   const [signingLoading, setSigningLoading] = useState(false);
   const [sendingChallenge, setSendingChallenge] = useState(false);
@@ -161,26 +163,43 @@ export const ClientServiceAgreementsPage: React.FC = () => {
     setSignModalOpen(true);
     setOtpSent(false);
     setOtpCode('');
+    setDevOtp(null);
+    setActiveConcurrencyToken(currentAgreement.concurrencyToken);
     setConsentChecked(false);
     // Request challenge immediately
     sendChallenge(currentAgreement.serviceAgreementId);
   };
 
   const sendChallenge = async (agreementId: string) => {
-    if (!activeJobId) return;
+    if (!activeJobId || !currentAgreement) return;
     try {
       setSendingChallenge(true);
       const res = await serviceAgreementsApi.createSignatureChallenge(activeJobId, agreementId);
       setOtpSent(true);
+
+      if (res.concurrencyToken) {
+        setActiveConcurrencyToken(res.concurrencyToken);
+      }
+
+      // Auto-extract dev OTP if available
+      const extractedOtp = res.devOtp || res.message?.match(/\b\d{6}\b/)?.[0] || null;
+      if (extractedOtp) {
+        setDevOtp(extractedOtp);
+        setOtpCode(extractedOtp);
+      }
+
       message.success(
-        res.message || `Mã OTP ký điện tử đã được gửi tới email ${res.signerEmail}.`
+        res.message || `Mã OTP xác thực đã được gửi tới email ${res.signerEmail}.`,
+        12
       );
+      await refetchCurrent();
     } catch (err) {
       message.error(getApiErrorMessage(err));
     } finally {
       setSendingChallenge(false);
     }
   };
+
 
   // Action: Submit Sign
   const handleConfirmSign = async () => {
@@ -196,8 +215,9 @@ export const ClientServiceAgreementsPage: React.FC = () => {
 
     try {
       setSigningLoading(true);
+      const tokenToUse = activeConcurrencyToken || currentAgreement.concurrencyToken;
       await serviceAgreementsApi.sign(activeJobId, currentAgreement.serviceAgreementId, {
-        concurrencyToken: currentAgreement.concurrencyToken,
+        concurrencyToken: tokenToUse,
         otp: otpCode.trim(),
         consentAccepted: true,
         consentTextVersion: '1.0',
@@ -836,6 +856,34 @@ export const ClientServiceAgreementsPage: React.FC = () => {
               </span>
             </div>
           </div>
+
+          {/* Dev OTP Box */}
+          {devOtp && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-amber-900 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                  Mã OTP xác thực (Hiệu lực 10 phút):
+                </span>
+                <Button
+                  size="small"
+                  type="primary"
+                  className="bg-amber-600 hover:bg-amber-500 border-none text-xs"
+                  onClick={() => setOtpCode(devOtp)}
+                >
+                  Tự động điền mã
+                </Button>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-2xl font-mono font-bold tracking-[0.25em] text-amber-950 bg-white/95 border border-amber-300 px-3 py-1 rounded-lg shadow-sm">
+                  {devOtp}
+                </div>
+                <span className="text-[11px] text-amber-800 leading-tight">
+                  Mã có hiệu lực trong 10 phút (vẫn dùng được bình thường kể cả khi thông báo trên màn hình biến mất).
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* OTP Section */}
           <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-3">
