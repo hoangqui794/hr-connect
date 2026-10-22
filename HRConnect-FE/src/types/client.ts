@@ -41,7 +41,7 @@ export interface JobDTO {
 
 export interface InterviewScheduleRequest {
   scheduledAt: string;
-  interviewType: 'ONLINE' | 'OFFLINE';
+  interviewType: 'ONLINE' | 'OFFLINE' | 'PHONE';
   meetingUrl?: string;
   location?: string;
   interviewer: string;
@@ -80,7 +80,7 @@ export interface CandidateApplicationDTO {
   submittedAt?: string;
   interviewDetails?: {
     scheduledAt: string;
-    interviewType: 'ONLINE' | 'OFFLINE';
+    interviewType: 'ONLINE' | 'OFFLINE' | 'PHONE';
     meetingUrl?: string;
     location?: string;
     interviewer: string;
