@@ -9,6 +9,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Interviews.Commands.ScheduleInterview;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -97,9 +98,11 @@ public class ScheduleInterviewCommandHandlerTests
             ScheduledAt: DateTime.UtcNow.AddDays(1),
             DurationMinutes: 60,
             InterviewRound: 1,
-            InterviewType: new string('T', interviewTypeLength),
+            InterviewType: interviewTypeLength > Mf04InputPolicy.InterviewTypeMaxLength
+                ? new string('T', interviewTypeLength)
+                : "ONLINE",
             Location: locationLength == 0 ? null : new string('L', locationLength),
-            MeetingLink: null,
+            MeetingLink: "https://meet.example.com/interview",
             Participants: null,
             CurrentUserId: Guid.NewGuid(),
             IsClientCompanyUser: true);
@@ -322,9 +325,9 @@ public class ScheduleInterviewCommandHandlerTests
             ScheduledAt: DateTime.UtcNow.AddDays(2),
             DurationMinutes: 45,
             InterviewRound: null,
-            InterviewType: "ONLINE",
+            InterviewType: "Trực tuyến",
             Location: null,
-            MeetingLink: "https://meet.google.com/abc-xyz",
+            MeetingLink: "  https://meet.google.com/abc-xyz  ",
             Participants: new List<ScheduleInterviewParticipantDto>
             {
                 new(participantUserId, "TECHNICAL_LEAD")
@@ -343,6 +346,8 @@ public class ScheduleInterviewCommandHandlerTests
         result.Data.Status.Should().Be("SCHEDULED");
         result.Data.InterviewRound.Should().Be(1);
         result.Data.DurationMinutes.Should().Be(45);
+        result.Data.InterviewType.Should().Be("ONLINE");
+        result.Data.MeetingLink.Should().Be("https://meet.google.com/abc-xyz");
         result.Data.Participants.Should().HaveCount(1);
 
         application.Status.Should().Be("INTERVIEW");
@@ -355,7 +360,9 @@ public class ScheduleInterviewCommandHandlerTests
             .Should().NotContain("meet.google.com");
 
         addedInterview.Should().NotBeNull();
-        addedInterview!.InterviewStatusHistories.Should().HaveCount(1);
+        addedInterview!.InterviewType.Should().Be("ONLINE");
+        addedInterview.MeetingLink.Should().Be("https://meet.google.com/abc-xyz");
+        addedInterview.InterviewStatusHistories.Should().HaveCount(1);
         addedInterview.InterviewParticipants.Should().HaveCount(1);
     }
 
@@ -394,7 +401,7 @@ public class ScheduleInterviewCommandHandlerTests
             InterviewRound: 1,
             InterviewType: "ONLINE",
             Location: null,
-            MeetingLink: null,
+            MeetingLink: "https://meet.example.com/interview",
             Participants: new List<ScheduleInterviewParticipantDto>
             {
                 new(participantUserId, "INTERVIEWER")

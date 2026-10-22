@@ -47,6 +47,9 @@ const mockSummary: SourcingDeliveriesResponse['summary'] = {
   counted: 3,
 };
 
+const relativeDate = (daysFromNow: number) =>
+  new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000).toISOString();
+
 const mockDeliveries: SourcingDeliveriesResponse['items'] = [
   {
     deliveryId: 'del-1',
@@ -54,7 +57,7 @@ const mockDeliveries: SourcingDeliveriesResponse['items'] = [
     candidateName: 'Nguyễn Văn A',
     status: 'DELIVERED',
     deliveredAt: '2026-10-15T00:00:00Z',
-    reviewDueAt: '2026-10-22T00:00:00Z', // active, ~6 days left
+    reviewDueAt: relativeDate(6),
     daysLeft: 6,
     decidedAt: null,
     rejectReasonCode: null,
@@ -249,7 +252,7 @@ describe('SourcingDeliveriesView', () => {
   it('displays overdue label and disables decision buttons when 7-day review window has closed', async () => {
     const expiredDelivery = {
       ...mockDeliveries[0],
-      reviewDueAt: '2026-10-01T00:00:00Z', // in the past
+      reviewDueAt: relativeDate(-1),
       daysLeft: 0,
     };
 
