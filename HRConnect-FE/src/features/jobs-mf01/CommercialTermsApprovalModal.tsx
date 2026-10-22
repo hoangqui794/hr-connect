@@ -117,8 +117,8 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
     <Modal
       open={open}
       width={760}
-      title={isSourcing ? 'Duyệt dịch vụ tìm kiếm hồ sơ' : 'Duyệt dịch vụ tuyển dụng theo kết quả'}
-      okText="Chốt điều khoản và duyệt tin"
+      title={isSourcing ? 'Đề xuất thỏa thuận tìm kiếm hồ sơ (CV Sourcing)' : 'Đề xuất thỏa thuận tuyển dụng (Headhunt)'}
+      okText="Gửi dự thảo thỏa thuận cho Doanh nghiệp"
       cancelText="Hủy"
       confirmLoading={loading}
       okButtonProps={{ disabled: !data || defaults.isError }}
@@ -253,7 +253,7 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
 
             <div className="flex items-start gap-2 text-xs text-slate-600">
               <InfoCircleOutlined className="mt-0.5 text-sky-600" aria-hidden />
-              <span>Sau khi duyệt, các điều khoản được dùng để tính phí và hiển thị trong chi tiết tin tuyển dụng của doanh nghiệp.</span>
+              <span>Hệ thống sẽ tạo dự thảo thỏa thuận dịch vụ (Service Agreement), chuyển tin sang trạng thái Chờ thỏa thuận và gửi thông báo cho Doanh nghiệp xem xét & ký kết điện tử.</span>
             </div>
           </Form>
         )}

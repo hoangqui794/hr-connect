@@ -54,6 +54,7 @@ const STATUS_TAG_CLASS: Record<Job['status'], string> = {
   DRAFT: 'border-slate-200 bg-slate-50 text-slate-700',
   PENDING_REVIEW: 'border-sky-200 bg-sky-50 text-sky-800',
   PENDING_APPROVAL: 'border-sky-200 bg-sky-50 text-sky-800',
+  PENDING_AGREEMENT: 'border-purple-200 bg-purple-50 text-purple-800',
   PENDING_PAYMENT: 'border-blue-200 bg-blue-50 text-blue-800',
   REJECTED: 'border-red-200 bg-red-50 text-red-800',
   ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-800',
@@ -298,6 +299,37 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             </Text>
             {job.statusReason}
           </div>
+        )}
+
+        {/* Thông báo chờ ký thỏa thuận dịch vụ - Headhunt & CV Sourcing */}
+        {!isApplicant && job.status === 'PENDING_AGREEMENT' && (
+          <Alert
+            type="info"
+            showIcon
+            className="border-purple-200 bg-purple-50/70"
+            message={
+              isInternalReview
+                ? 'Đang chờ Doanh nghiệp phản hồi hoặc ký thỏa thuận'
+                : 'Dự thảo thỏa thuận dịch vụ đang chờ Quý khách xem xét & ký kết'
+            }
+            description={
+              isInternalReview
+                ? 'HR Connect đã lập dự thảo thỏa thuận thương mại gửi tới Doanh nghiệp. Tin sẽ chuyển sang bước tiếp theo ngay khi Doanh nghiệp ký kết qua mã OTP.'
+                : 'Bộ phận HR Connect đã thẩm định yêu cầu và gửi dự thảo thỏa thuận thương mại. Quý khách vui lòng kiểm tra nội dung và ký số qua mã OTP để kích hoạt dịch vụ.'
+            }
+            action={
+              !isInternalReview ? (
+                <Button
+                  type="primary"
+                  size="small"
+                  className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600"
+                  onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                >
+                  Xem & Ký thỏa thuận
+                </Button>
+              ) : undefined
+            }
+          />
         )}
 
         {/* Thông báo chờ thanh toán phí đăng tin - CHỈ hiển thị khi đã được duyệt và cho Client/HR */}

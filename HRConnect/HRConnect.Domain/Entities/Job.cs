@@ -188,5 +188,14 @@ public partial class Job
     public virtual ICollection<JobPostingFee> JobPostingFees { get; set; } = new List<JobPostingFee>();
 
     public virtual ICollection<CandidateSavedJob> CandidateSavedJobs { get; set; } = new List<CandidateSavedJob>();
+
+    /// <summary>
+    /// Thỏa thuận dịch vụ hiện hành (MF-01).
+    /// </summary>
+    public Guid? CurrentServiceAgreementId { get; set; }
+
+    public virtual ServiceAgreement? CurrentServiceAgreement { get; set; }
+
+    public virtual ICollection<ServiceAgreement> ServiceAgreements { get; set; } = new List<ServiceAgreement>();
 }
 
