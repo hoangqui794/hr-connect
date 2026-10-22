@@ -357,6 +357,33 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                           </div>
                         </div>
 
+                        <div
+                          className={`rounded-xl border border-solid p-4 ${
+                            interview.candidateAttendanceStatus === 'CONFIRMED'
+                              ? 'border-emerald-200 bg-emerald-50'
+                              : 'border-amber-200 bg-amber-50'
+                          }`}
+                        >
+                          <div className="text-xs font-medium text-slate-600">Phản hồi tham gia của ứng viên</div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <Tag color={interview.candidateAttendanceStatus === 'CONFIRMED' ? 'success' : 'warning'}>
+                              {interview.candidateAttendanceStatus === 'CONFIRMED'
+                                ? 'Đã xác nhận tham gia'
+                                : 'Chưa xác nhận'}
+                            </Tag>
+                            {interview.candidateRespondedAt && (
+                              <span className="text-xs text-slate-500">
+                                Phản hồi lúc: {fmt(interview.candidateRespondedAt)}
+                              </span>
+                            )}
+                          </div>
+                          {interview.candidateAttendanceStatus !== 'CONFIRMED' && (
+                            <div className="mt-1 text-xs text-slate-600">
+                              Lịch vẫn có hiệu lực; chưa xác nhận không đồng nghĩa ứng viên từ chối.
+                            </div>
+                          )}
+                        </div>
+
                         {/* Location / Meeting link details */}
                         {interview.meetingLink && (
                           <div className="rounded-xl border border-solid border-blue-100 bg-blue-50/60 p-4">

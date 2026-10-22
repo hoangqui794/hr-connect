@@ -117,6 +117,10 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
 
         interview.ScheduledAt = request.NewScheduledAt;
         interview.Status = InterviewStates.Scheduled;
+        // A confirmation applies to one concrete timeslot. Once the company moves
+        // the interview, the Candidate must explicitly confirm the new time.
+        interview.CandidateAttendanceStatus = null;
+        interview.CandidateRespondedAt = null;
 
         if (request.DurationMinutes.HasValue)
         {

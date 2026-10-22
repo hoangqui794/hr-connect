@@ -105,6 +105,8 @@ public class GetInterviewsQueryHandler : IRequestHandler<GetInterviewsQuery, Get
                 Status = i.Status,
                 Result = request.IsCandidate ? null : i.Result,
                 Feedback = request.IsCandidate ? null : i.Feedback,
+                CandidateAttendanceStatus = i.CandidateAttendanceStatus,
+                CandidateRespondedAt = i.CandidateRespondedAt,
                 Participants = participants,
                 CreatedAt = i.CreatedAt,
                 ConcurrencyToken = request.IsCandidate ? null : i.ConcurrencyToken

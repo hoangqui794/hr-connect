@@ -10,8 +10,12 @@ import { candidateInterviewApi } from '@/services/api/candidateInterviewApi';
 vi.mock('@/services/api/candidateInterviewApi', () => ({
   candidateInterviewApi: {
     getInterviewDetail: vi.fn(),
+    confirmAttendance: vi.fn(),
   },
 }));
+
+const relativeIso = (daysFromNow: number) =>
+  new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000).toISOString();
 
 const renderWithProviders = (ui: React.ReactElement, initialRoute = '/candidate/interviews/iv-1') => {
   const queryClient = new QueryClient({
@@ -46,7 +50,7 @@ const mockOnlineInterview = {
   candidateFullName: 'Nguyễn Văn A',
   interviewRound: 1,
   interviewType: 'ONLINE',
-  scheduledAt: '2026-10-25T14:00:00Z',
+  scheduledAt: relativeIso(3),
   durationMinutes: 45,
   meetingLink: 'https://meet.google.com/abc-defg-hij',
   status: 'SCHEDULED',
@@ -55,12 +59,12 @@ const mockOnlineInterview = {
       interviewStatusHistoryId: 'hist-1',
       oldStatus: null,
       newStatus: 'SCHEDULED',
-      newScheduledAt: '2026-10-25T14:00:00Z',
-      changedAt: '2026-10-20T08:00:00Z',
+      newScheduledAt: relativeIso(3),
+      changedAt: relativeIso(-2),
     },
   ],
-  createdAt: '2026-10-20T08:00:00Z',
-  updatedAt: '2026-10-20T08:00:00Z',
+  createdAt: relativeIso(-2),
+  updatedAt: relativeIso(-2),
 };
 
 const mockOfflineInterview = {
@@ -144,8 +148,47 @@ describe('CandidateInterviewDetailPage & CandidateInterviewDetailView', () => {
     // Calendar button
     expect(screen.getByRole('link', { name: /Google Calendar/i })).toBeInTheDocument();
 
-    expect(screen.queryByText(/Xác nhận tham gia/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Xác nhận tham gia/i })).toBeInTheDocument();
     expect(screen.queryByText(/Yêu cầu dời lịch/i)).not.toBeInTheDocument();
+  });
+
+  it('lets the Candidate confirm an upcoming interview and updates the confirmation state', async () => {
+    vi.mocked(candidateInterviewApi.getInterviewDetail).mockResolvedValueOnce(mockOnlineInterview as any);
+    vi.mocked(candidateInterviewApi.confirmAttendance).mockResolvedValueOnce({
+      interviewId: mockOnlineInterview.interviewId,
+      applicationId: mockOnlineInterview.applicationId,
+      attendanceStatus: 'CONFIRMED',
+      respondedAt: relativeIso(0),
+      alreadyConfirmed: false,
+    });
+
+    renderWithProviders(<CandidateInterviewDetailPage />, '/candidate/interviews/iv-online-1');
+
+    const action = await screen.findByRole('button', { name: /Xác nhận tham gia/i });
+    fireEvent.click(action);
+    expect(await screen.findByText('Xác nhận tham gia phỏng vấn?')).toBeInTheDocument();
+
+    const confirmationButtons = screen.getAllByRole('button', { name: 'Xác nhận tham gia' });
+    fireEvent.click(confirmationButtons[confirmationButtons.length - 1]);
+
+    await waitFor(() => {
+      expect(candidateInterviewApi.confirmAttendance).toHaveBeenCalledWith('iv-online-1');
+      expect(screen.getByText('Đã xác nhận tham gia')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /Xác nhận tham gia/i })).not.toBeInTheDocument();
+  });
+
+  it('shows an existing confirmation without offering the action again', async () => {
+    vi.mocked(candidateInterviewApi.getInterviewDetail).mockResolvedValueOnce({
+      ...mockOnlineInterview,
+      candidateAttendanceStatus: 'CONFIRMED',
+      candidateRespondedAt: relativeIso(-1),
+    } as any);
+
+    renderWithProviders(<CandidateInterviewDetailPage />, '/candidate/interviews/iv-online-1');
+
+    expect(await screen.findByText('Đã xác nhận tham gia')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Xác nhận tham gia/i })).not.toBeInTheDocument();
   });
 
   it('renders offline interview with address and google maps link', async () => {
