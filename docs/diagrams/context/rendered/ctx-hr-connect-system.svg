@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1180" viewBox="0 0 1700 1180" font-family="Arial, Helvetica, sans-serif">
+<rect width="1700" height="1180" fill="#FFFFFF"/>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#5B6B82"/></marker></defs>
+<text x="30" y="36" font-size="22" font-weight="bold" fill="#1B365D">HR Connect – Context Diagram (Level 0)</text>
+<line x1="1132" y1="140" x2="947" y2="456" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="920" y1="440" x2="1105" y2="124" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="1352" y1="225" x2="991" y2="502" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="971" y1="477" x2="1332" y2="199" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="1420" y1="606" x2="1015" y2="606" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="1015" y1="574" x2="1420" y2="574" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="1333" y1="986" x2="970" y2="704" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="990" y1="679" x2="1352" y2="960" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="834" y1="1053" x2="834" y2="755" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="866" y1="755" x2="866" y2="1053" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="348" y1="960" x2="710" y2="679" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="730" y1="704" x2="367" y2="986" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="280" y1="574" x2="685" y2="574" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="685" y1="606" x2="280" y2="606" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="368" y1="199" x2="729" y2="477" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="709" y1="502" x2="348" y2="225" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="595" y1="124" x2="780" y2="440" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="753" y1="456" x2="568" y2="140" stroke="#5B6B82" stroke-width="1.5" marker-end="url(#arr)"/>
+<rect x="988" y="226" width="248" height="35" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="1111" y="239" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Job search criteria, registration data,</text>
+<text x="1111" y="254" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">consent decision via email link</text>
+<rect x="876" y="268" width="181" height="35" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="966" y="282" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Public jobs and job details,</text>
+<text x="966" y="296" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">registration result</text>
+<rect x="1190" y="255" width="309" height="35" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="1345" y="268" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Profile, CVs, job applications, consent decision,</text>
+<text x="1345" y="283" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">offer response, CV Builder data</text>
+<rect x="959" y="311" width="284" height="35" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="1101" y="325" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Job list and suggestions, application status,</text>
+<text x="1101" y="339" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">interview schedule, offers, notifications</text>
+<rect x="1164" y="621" width="284" height="35" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="1307" y="635" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Candidate referrals with CVs, consent resend,</text>
+<text x="1307" y="649" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">disputes, bank account</text>
+<rect x="1025" y="517" width="321" height="35" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="1185" y="531" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Partner jobs, commission estimate, referral status,</text>
+<text x="1185" y="545" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">attribution, commissions, payouts, performance</text>
+<rect x="1049" y="914" width="309" height="49" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="1204" y="928" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Job review decisions, screening decisions,</text>
+<text x="1204" y="942" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">CV Sourcing deliveries, resignation verification,</text>
+<text x="1204" y="957" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Service Agreement proposals [Planned]</text>
+<rect x="1043" y="748" width="242" height="35" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="1164" y="761" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Job review queue, AI matching results,</text>
+<text x="1164" y="776" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">screening workspace, warranty tracking</text>
+<rect x="524" y="942" width="290" height="49" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="669" y="955" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Company and Affiliate approvals, users, roles,</text>
+<text x="669" y="970" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">service types, commission rules, settings,</text>
+<text x="669" y="984" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">fee and payout records, dispute decisions</text>
+<rect x="882" y="859" width="211" height="35" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="988" y="873" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Approval queues, finance records,</text>
+<text x="988" y="887" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">disputes, reports, audit trail</text>
+<rect x="201" y="860" width="284" height="64" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="344" y="874" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Company profile, jobs and proposed terms,</text>
+<text x="344" y="888" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">CV decisions, interviews, offers, start work,</text>
+<text x="344" y="902" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">resignation reports, agreement response</text>
+<text x="344" y="917" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">and OTP signature [Planned]</text>
+<rect x="472" y="830" width="266" height="49" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="605" y="843" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Candidates, AI scores, Sourcing CVs,</text>
+<text x="605" y="858" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">service fees, warranty, notifications,</text>
+<text x="605" y="872" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Service Agreement and signed PDF [Planned]</text>
+<rect x="343" y="534" width="101" height="20" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="393" y="547" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Delivery status</text>
+<rect x="394" y="621" width="242" height="35" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="515" y="635" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">OTP, password reset, consent requests,</text>
+<text x="515" y="649" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">notifications, signing OTP [Planned]</text>
+<rect x="404" y="242" width="162" height="20" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="485" y="256" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">Stored files, signed URLs</text>
+<rect x="458" y="393" width="156" height="35" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="536" y="407" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">CV files and images,</text>
+<text x="536" y="421" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">agreement PDFs [Planned]</text>
+<rect x="585" y="173" width="187" height="35" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="678" y="187" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">CV assessment per requirement</text>
+<text x="678" y="201" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">with evidence quotes</text>
+<rect x="552" y="323" width="199" height="20" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+<text x="652" y="337" font-size="11.5" font-weight="normal" fill="#33415C" text-anchor="middle">CV content and job requirements</text>
+<circle cx="850" cy="590" r="165" fill="#8B3A34" stroke="#5E2420" stroke-width="2"/>
+<text x="850" y="552" font-size="18" font-weight="bold" fill="#FFFFFF" text-anchor="middle">0</text>
+<text x="850" y="575" font-size="18" font-weight="bold" fill="#FFFFFF" text-anchor="middle">HR Connect System</text>
+<text x="850" y="597" font-size="18" font-weight="bold" fill="#FFFFFF" text-anchor="middle">Web App + Backend API</text>
+<text x="850" y="620" font-size="18" font-weight="bold" fill="#FFFFFF" text-anchor="middle">+ AI Matching Service</text>
+<rect x="1040.0" y="58.0" width="200" height="74" rx="12" fill="#DAE8FC" stroke="#1B365D" stroke-width="1.5"/>
+<text x="1140" y="100" font-size="15" font-weight="bold" fill="#1B365D" text-anchor="middle">Guest</text>
+<rect x="1290.0" y="138.0" width="200" height="74" rx="12" fill="#DAE8FC" stroke="#1B365D" stroke-width="1.5"/>
+<text x="1390" y="180" font-size="15" font-weight="bold" fill="#1B365D" text-anchor="middle">Candidate</text>
+<rect x="1420.0" y="553.0" width="200" height="74" rx="12" fill="#DAE8FC" stroke="#1B365D" stroke-width="1.5"/>
+<text x="1520" y="595" font-size="15" font-weight="bold" fill="#1B365D" text-anchor="middle">Affiliate</text>
+<rect x="1290.0" y="973.0" width="200" height="74" rx="12" fill="#DAE8FC" stroke="#1B365D" stroke-width="1.5"/>
+<text x="1390" y="1015" font-size="15" font-weight="bold" fill="#1B365D" text-anchor="middle">Internal HR</text>
+<rect x="750.0" y="1053.0" width="200" height="74" rx="12" fill="#DAE8FC" stroke="#1B365D" stroke-width="1.5"/>
+<text x="850" y="1095" font-size="15" font-weight="bold" fill="#1B365D" text-anchor="middle">Platform Admin</text>
+<rect x="210.0" y="973.0" width="200" height="74" rx="12" fill="#DAE8FC" stroke="#1B365D" stroke-width="1.5"/>
+<text x="310" y="1015" font-size="15" font-weight="bold" fill="#1B365D" text-anchor="middle">Client Company User</text>
+<rect x="80.0" y="553.0" width="200" height="74" rx="0" fill="#F5F5F5" stroke="#5F5E5A" stroke-width="1.5"/>
+<text x="180" y="586" font-size="15" font-weight="bold" fill="#1B365D" text-anchor="middle">Email Service</text>
+<text x="180" y="604" font-size="15" font-weight="bold" fill="#1B365D" text-anchor="middle">(Resend)</text>
+<rect x="210.0" y="138.0" width="200" height="74" rx="0" fill="#F5F5F5" stroke="#5F5E5A" stroke-width="1.5"/>
+<text x="310" y="171" font-size="15" font-weight="bold" fill="#1B365D" text-anchor="middle">Object Storage</text>
+<text x="310" y="189" font-size="15" font-weight="bold" fill="#1B365D" text-anchor="middle">(Cloudflare R2)</text>
+<rect x="460.0" y="58.0" width="200" height="74" rx="0" fill="#F5F5F5" stroke="#5F5E5A" stroke-width="1.5"/>
+<text x="560" y="91" font-size="15" font-weight="bold" fill="#1B365D" text-anchor="middle">LLM Provider</text>
+<text x="560" y="109" font-size="15" font-weight="bold" fill="#1B365D" text-anchor="middle">(Google Gemini)</text>
+<text x="30" y="1156" font-size="13" fill="#444">Legend: blue = human actor · grey = external system · arrow = data flow · [Planned] = MF-01 Service Agreement flow, designed but not yet coded</text>
+</svg>
