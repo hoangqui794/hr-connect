@@ -1,7 +1,7 @@
 /**
  * @file CandidateInterviewDetailView.tsx
  * @description Core component for viewing Candidate Interview Detail with complete state handling,
- * quick actions (Copy link, Join room, Confirm attendance, Request reschedule, Add to Calendar),
+ * quick actions (Copy link, Join room, Confirm attendance, Add to Calendar),
  * and status timeline.
  */
 
@@ -17,6 +17,7 @@ import {
   Timeline,
   Typography,
   message,
+  Popconfirm,
 } from 'antd';
 import {
   CalendarOutlined,
@@ -35,11 +36,13 @@ import {
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
 
-import { useCandidateInterviewDetail } from '@/hooks/useCandidateInterviewDetail';
+import { candidateInterviewApi } from '@/services/api/candidateInterviewApi';
+import { candidateInterviewKeys, useCandidateInterviewDetail } from '@/hooks/useCandidateInterviewDetail';
 import type { CandidateInterviewDetailDto } from '@/types/api/candidateInterview';
 import { candidateInterviewStatus, candidateInterviewType } from '@/features/portal/mf02Labels';
 
@@ -59,8 +62,28 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
   showBackAction = false,
 }) => {
   const { interview: fetchedInterview, isLoading, isError, error, refetch, isRefetching } = useCandidateInterviewDetail(interviewId);
+  const queryClient = useQueryClient();
 
   const interview = fetchedInterview || initialData;
+
+  const confirmAttendance = useMutation({
+    mutationFn: () => candidateInterviewApi.confirmAttendance(interviewId),
+    onSuccess: (result) => {
+      queryClient.setQueryData<CandidateInterviewDetailDto>(candidateInterviewKeys.detail(interviewId), (current) =>
+        current
+          ? {
+              ...current,
+              candidateAttendanceStatus: result.attendanceStatus,
+              candidateRespondedAt: result.respondedAt,
+            }
+          : current
+      );
+      message.success(result.alreadyConfirmed ? 'Bạn đã xác nhận lịch phỏng vấn này.' : 'Đã xác nhận tham gia phỏng vấn.');
+    },
+    onError: (mutationError: Error) => {
+      message.error(mutationError.message || 'Không thể xác nhận tham gia phỏng vấn.');
+    },
+  });
 
   // Helper copy to clipboard
   const handleCopy = (text: string, label: string) => {
@@ -164,7 +187,6 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
   const getStatusBadge = (status: string) => {
     const map: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
       SCHEDULED: { color: 'processing', label: 'Đã lên lịch', icon: <ClockCircleOutlined /> },
-      CONFIRMED: { color: 'success', label: 'Đã xác nhận tham gia', icon: <CheckCircleOutlined /> },
       COMPLETED: { color: 'green', label: 'Đã hoàn thành', icon: <CheckCircleOutlined /> },
       RESCHEDULED: { color: 'warning', label: 'Đã dời lịch', icon: <HistoryOutlined /> },
       CANCELLED: { color: 'error', label: 'Đã hủy', icon: <ExclamationCircleOutlined /> },
@@ -182,6 +204,8 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
   const isOnline = (interview.interviewType || '').toUpperCase() === 'ONLINE' || Boolean(interview.meetingLink);
   const scheduledTime = interview.scheduledAt ? dayjs(interview.scheduledAt) : null;
   const isUpcoming = scheduledTime && scheduledTime.isAfter(dayjs());
+  const isAttendanceConfirmed = interview.candidateAttendanceStatus === 'CONFIRMED';
+  const canConfirmAttendance = interview.status === 'SCHEDULED' && Boolean(isUpcoming) && !isAttendanceConfirmed;
   const duration = interview.durationMinutes || 45;
   const endTime = scheduledTime ? scheduledTime.add(duration, 'minute') : null;
 
@@ -225,6 +249,29 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
             >
               Thêm vào Google Calendar
             </Button>
+          )}
+          {isAttendanceConfirmed && (
+            <Tag color="success" icon={<CheckCircleOutlined />} className="m-0 px-3 py-1.5 text-sm font-semibold">
+              Đã xác nhận tham gia
+            </Tag>
+          )}
+          {canConfirmAttendance && (
+            <Popconfirm
+              title="Xác nhận tham gia phỏng vấn?"
+              description="Lịch vẫn còn hiệu lực nếu bạn chưa xác nhận. Hãy bấm xác nhận khi bạn đã sắp xếp được thời gian."
+              okText="Xác nhận tham gia"
+              cancelText="Để sau"
+              onConfirm={() => confirmAttendance.mutate()}
+            >
+              <Button
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                loading={confirmAttendance.isPending}
+                className="bg-emerald-600 hover:!bg-emerald-700"
+              >
+                Xác nhận tham gia
+              </Button>
+            </Popconfirm>
           )}
         </div>
       </div>

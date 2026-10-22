@@ -6,6 +6,7 @@
 import { apiClient, getApiError } from '@/services/apiClient';
 import type {
   CandidateInterviewDetailDto,
+  ConfirmInterviewAttendanceResponse,
 } from '@/types/api/candidateInterview';
 
 export const candidateInterviewApi = {
@@ -38,6 +39,8 @@ export const candidateInterviewApi = {
         location: rawData.location ?? null,
         meetingLink: rawData.meetingLink ?? null,
         status: rawData.status ?? 'SCHEDULED',
+        candidateAttendanceStatus: rawData.candidateAttendanceStatus ?? null,
+        candidateRespondedAt: rawData.candidateRespondedAt ?? null,
         candidateFullName: rawData.candidateFullName ?? rawData.candidateName ?? '',
         candidateName: rawData.candidateFullName ?? rawData.candidateName ?? '',
         createdAt: rawData.createdAt ?? '',
@@ -58,6 +61,18 @@ export const candidateInterviewApi = {
       return detail;
     } catch (err: any) {
       throw getApiError(err, 'Không thể tải chi tiết lịch phỏng vấn');
+    }
+  },
+
+  /** Candidate confirms an upcoming interview. Repeated calls are idempotent. */
+  async confirmAttendance(interviewId: string): Promise<ConfirmInterviewAttendanceResponse> {
+    try {
+      const response = await apiClient.post<ConfirmInterviewAttendanceResponse>(
+        `/interviews/${interviewId}/candidate-confirm`
+      );
+      return response.data;
+    } catch (err: any) {
+      throw getApiError(err, 'Không thể xác nhận tham gia phỏng vấn');
     }
   },
 
@@ -87,6 +102,8 @@ export const candidateInterviewApi = {
         location: rawData.location ?? null,
         meetingLink: rawData.meetingLink ?? null,
         status: rawData.status ?? 'SCHEDULED',
+        candidateAttendanceStatus: rawData.candidateAttendanceStatus ?? null,
+        candidateRespondedAt: rawData.candidateRespondedAt ?? null,
         candidateName: rawData.candidateFullName ?? rawData.candidateName ?? '',
         candidateFullName: rawData.candidateFullName ?? rawData.candidateName ?? '',
         candidateEmail: rawData.candidateEmail ?? null,

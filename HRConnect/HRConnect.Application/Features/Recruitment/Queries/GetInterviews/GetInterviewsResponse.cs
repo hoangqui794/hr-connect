@@ -65,6 +65,10 @@ public class InterviewItemDto
 
     public string? Feedback { get; set; }
 
+    public string? CandidateAttendanceStatus { get; set; }
+
+    public DateTime? CandidateRespondedAt { get; set; }
+
     public List<InterviewParticipantDto> Participants { get; set; } = new();
 
     public DateTime CreatedAt { get; set; }

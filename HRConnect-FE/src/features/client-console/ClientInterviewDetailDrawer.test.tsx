@@ -24,6 +24,9 @@ vi.mock('@/services/api/hrApi', async () => {
   };
 });
 
+const relativeIso = (daysFromNow: number) =>
+  new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000).toISOString();
+
 const mockInterviewDetail = {
   interviewId: 'iv-test-100',
   applicationId: 'app-test-200',
@@ -37,15 +40,15 @@ const mockInterviewDetail = {
   candidatePhone: '0901234567',
   interviewRound: 1,
   interviewType: 'ONLINE',
-  scheduledAt: '2026-11-01T09:00:00Z',
+  scheduledAt: relativeIso(10),
   durationMinutes: 60,
   location: null,
   meetingLink: 'https://meet.google.com/abc-xyz-123',
   status: 'SCHEDULED',
   concurrencyToken: 'token-abc',
   createdByName: 'HR Lead',
-  createdAt: '2026-10-15T08:00:00Z',
-  updatedAt: '2026-10-15T08:00:00Z',
+  createdAt: relativeIso(-7),
+  updatedAt: relativeIso(-7),
   statusHistories: [],
 };
 
@@ -96,6 +99,21 @@ describe('ClientInterviewDetailDrawer', () => {
     expect(screen.getByRole('button', { name: /sửa thông tin/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /dời lịch/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /ghi kết quả/i })).toBeInTheDocument();
+    expect(screen.getByText('Chưa xác nhận')).toBeInTheDocument();
+    expect(screen.getByText(/chưa xác nhận không đồng nghĩa ứng viên từ chối/i)).toBeInTheDocument();
+  });
+
+  it('shows when the Candidate confirmed attendance', async () => {
+    vi.mocked(candidateInterviewApi.getClientInterviewDetail).mockResolvedValueOnce({
+      ...mockInterviewDetail,
+      candidateAttendanceStatus: 'CONFIRMED',
+      candidateRespondedAt: relativeIso(-1),
+    } as any);
+
+    renderComponent({ interviewId: 'iv-test-100', onClose: vi.fn() });
+
+    expect(await screen.findByText('Đã xác nhận tham gia')).toBeInTheDocument();
+    expect(screen.getByText(/Phản hồi lúc:/i)).toBeInTheDocument();
   });
 
   it('switches to history tab and fetches interview history', async () => {

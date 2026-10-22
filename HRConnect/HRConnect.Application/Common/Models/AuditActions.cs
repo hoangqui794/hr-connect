@@ -62,6 +62,7 @@ public static class AuditActions
     public const string InterviewRescheduled = "INTERVIEW_RESCHEDULED";
     public const string InterviewCancelled = "INTERVIEW_CANCELLED";
     public const string InterviewNoShowRecorded = "INTERVIEW_NO_SHOW_RECORDED";
+    public const string InterviewAttendanceConfirmed = "INTERVIEW_ATTENDANCE_CONFIRMED";
     public const string InterviewResultRecorded = "INTERVIEW_RESULT_RECORDED";
     public const string OfferDraftCreated = "OFFER_DRAFT_CREATED";
     public const string OfferUpdated = "OFFER_UPDATED";

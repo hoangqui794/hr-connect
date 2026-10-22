@@ -2820,6 +2820,15 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("application_id");
 
+                    b.Property<string>("CandidateAttendanceStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("candidate_attendance_status");
+
+                    b.Property<DateTime?>("CandidateRespondedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("candidate_responded_at");
+
                     b.Property<Guid>("ConcurrencyToken")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()

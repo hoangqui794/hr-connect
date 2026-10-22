@@ -147,6 +147,8 @@ public class GetInterviewDetailQueryHandlerTests
         interview.CreatedBy = Guid.NewGuid();
         interview.RecordedBy = Guid.NewGuid();
         interview.RecordedAt = DateTime.UtcNow;
+        interview.CandidateAttendanceStatus = "CONFIRMED";
+        interview.CandidateRespondedAt = DateTime.UtcNow.AddHours(-1);
         interview.InterviewParticipants.Add(new InterviewParticipant
         {
             InterviewId = interviewId,
@@ -187,6 +189,8 @@ public class GetInterviewDetailQueryHandlerTests
         result.Data.CreatedBy.Should().BeNull();
         result.Data.RecordedBy.Should().BeNull();
         result.Data.RecordedAt.Should().BeNull();
+        result.Data.CandidateAttendanceStatus.Should().Be("CONFIRMED");
+        result.Data.CandidateRespondedAt.Should().Be(interview.CandidateRespondedAt);
         result.Data.ConcurrencyToken.Should().BeNull();
         result.Data.Participants.Should().BeEmpty();
         result.Data.StatusHistories.Should().ContainSingle();

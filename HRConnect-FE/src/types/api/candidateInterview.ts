@@ -7,7 +7,6 @@ export type InterviewType = 'ONLINE' | 'OFFLINE' | string;
 
 export type InterviewStatus =
   | 'SCHEDULED'
-  | 'CONFIRMED'
   | 'COMPLETED'
   | 'CANCELLED'
   | 'RESCHEDULED'
@@ -51,10 +50,20 @@ export interface CandidateInterviewDetailDto {
   createdByName?: string | null;
   recordedByName?: string | null;
   recordedAt?: string | null;
+  candidateAttendanceStatus?: 'CONFIRMED' | null;
+  candidateRespondedAt?: string | null;
   participants?: Array<{ userId: string; name?: string; role: string }>;
   createdAt: string;
   updatedAt: string;
   statusHistories: CandidateInterviewStatusHistoryDto[];
+}
+
+export interface ConfirmInterviewAttendanceResponse {
+  interviewId: string;
+  applicationId: string;
+  attendanceStatus: 'CONFIRMED';
+  respondedAt: string;
+  alreadyConfirmed: boolean;
 }
 
 export interface CandidateInterviewDetailResponse {
