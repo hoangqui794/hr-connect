@@ -63,14 +63,16 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
             throw new BadRequestException("Thời lượng phỏng vấn phải từ 1 đến 480 phút.");
         }
 
-        var interviewType = Mf04InputPolicy.NormalizeOptionalText(
-            request.InterviewType,
-            Mf04InputPolicy.InterviewTypeMaxLength,
-            "Hình thức phỏng vấn");
+        var interviewType = request.InterviewType == null
+            ? null
+            : Mf04InputPolicy.NormalizeInterviewType(request.InterviewType);
         var location = Mf04InputPolicy.NormalizeOptionalText(
             request.Location,
             Mf04InputPolicy.InterviewLocationMaxLength,
             "Địa điểm phỏng vấn");
+        var meetingLink = request.MeetingLink == null
+            ? null
+            : Mf04InputPolicy.NormalizeMeetingLink(request.MeetingLink);
 
         if (request.IsClientCompanyUser)
         {
@@ -94,6 +96,13 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
             throw new ForbiddenException("Bạn không có quyền cập nhật lịch phỏng vấn.");
         }
 
+        var effectiveInterviewType = interviewType
+            ?? Mf04InputPolicy.NormalizeInterviewType(interview.InterviewType);
+        var effectiveLocation = request.Location == null ? interview.Location : location;
+        var effectiveMeetingLink = request.MeetingLink == null ? interview.MeetingLink : meetingLink;
+        effectiveMeetingLink = Mf04InputPolicy.NormalizeMeetingLink(effectiveMeetingLink);
+        Mf04InputPolicy.EnsureInterviewVenue(effectiveInterviewType, effectiveLocation, effectiveMeetingLink);
+
         var oldValues = new
         {
             durationMinutes = interview.DurationMinutes,
@@ -109,7 +118,11 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
 
         if (interviewType != null)
         {
-            interview.InterviewType = interviewType.ToUpperInvariant();
+            interview.InterviewType = interviewType;
+        }
+        else
+        {
+            interview.InterviewType = effectiveInterviewType;
         }
 
         if (request.Location != null)
@@ -119,7 +132,7 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
 
         if (request.MeetingLink != null)
         {
-            interview.MeetingLink = request.MeetingLink;
+            interview.MeetingLink = meetingLink;
         }
 
         var participantsDto = new List<ScheduleInterviewParticipantDto>();

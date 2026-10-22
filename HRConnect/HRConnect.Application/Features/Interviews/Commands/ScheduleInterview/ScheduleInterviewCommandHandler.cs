@@ -66,15 +66,12 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             throw new BadRequestException("Thời lượng phỏng vấn không được vượt quá 480 phút.");
         }
 
-        var interviewType = Mf04InputPolicy.NormalizeOptionalText(
-                request.InterviewType,
-                Mf04InputPolicy.InterviewTypeMaxLength,
-                "Hình thức phỏng vấn")
-            ?.ToUpperInvariant() ?? "ONLINE";
+        var interviewType = Mf04InputPolicy.NormalizeInterviewType(request.InterviewType);
         var location = Mf04InputPolicy.NormalizeOptionalText(
             request.Location,
             Mf04InputPolicy.InterviewLocationMaxLength,
             "Địa điểm phỏng vấn");
+        var meetingLink = Mf04InputPolicy.NormalizeMeetingLink(request.MeetingLink);
 
         var application = await _applicationRepository.GetByIdAsync(request.ApplicationId, cancellationToken);
         if (application == null)
@@ -136,6 +133,8 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             throw new ConflictException($"Vòng phỏng vấn {interviewRound} đã tồn tại.");
         }
 
+        Mf04InputPolicy.EnsureInterviewVenue(interviewType, location, meetingLink);
+
         var interviewId = Guid.NewGuid();
         var concurrencyToken = Guid.NewGuid();
 
@@ -148,7 +147,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
             ScheduledAt = request.ScheduledAt,
             DurationMinutes = durationMinutes,
             Location = location,
-            MeetingLink = request.MeetingLink,
+            MeetingLink = meetingLink,
             Status = InterviewStates.Scheduled,
             CreatedBy = request.CurrentUserId,
             ConcurrencyToken = concurrencyToken,
@@ -292,7 +291,7 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
                 ScheduledAt = request.ScheduledAt,
                 DurationMinutes = durationMinutes,
                 Location = location,
-                MeetingLink = request.MeetingLink,
+                MeetingLink = meetingLink,
                 Status = InterviewStates.Scheduled,
                 ConcurrencyToken = concurrencyToken,
                 CreatedAt = now,
