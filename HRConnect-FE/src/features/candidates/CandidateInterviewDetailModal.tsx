@@ -29,7 +29,7 @@ export const CandidateInterviewDetailModal: React.FC<CandidateInterviewDetailMod
       onCancel={onClose}
       footer={null}
       width={760}
-      destroyOnClose
+      destroyOnHidden
       centered
       className="candidate-interview-detail-modal"
       title="Chi tiết buổi phỏng vấn"

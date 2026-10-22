@@ -22,7 +22,7 @@ export const CandidateInterviewDetailPage: React.FC = () => {
   };
 
   return (
-    <div className="candidate-page candidate-interview-detail-page max-w-5xl mx-auto px-4 py-6 space-y-5">
+    <div className="candidate-page candidate-interview-detail-page space-y-5">
       {/* Breadcrumb Navigation */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <Breadcrumb

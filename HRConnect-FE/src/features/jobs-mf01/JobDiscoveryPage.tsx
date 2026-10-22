@@ -7,7 +7,7 @@
 import React, { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Alert, Button, Card, Empty, Input, Pagination, Select, Skeleton, Tag, Typography } from 'antd';
-import { CheckCircleFilled, EnvironmentOutlined, SearchOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, BankOutlined, CheckCircleFilled, EnvironmentOutlined, SearchOutlined } from '@ant-design/icons';
 import type { EmploymentType, Job, JobSearchParams } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
@@ -21,16 +21,13 @@ const PAGE_SIZE = 12;
 const JobCard: React.FC<{ job: Job; detailBasePath: string; isApplied?: boolean }> = ({ job, detailBasePath, isApplied }) => (
   <Card
     hoverable
-    className={`h-full bg-white transition-shadow duration-200 ${isApplied ? 'border-blue-200' : ''}`}
+    className={`candidate-job-card h-full bg-white transition-shadow duration-200 ${isApplied ? 'candidate-job-card--applied border-blue-200' : ''}`}
     styles={{ body: { padding: 16, display: 'flex', flexDirection: 'column', gap: 8, height: '100%' } }}
   >
-    <div className="flex items-start justify-between gap-2">
-      <Link
-        to={`${detailBasePath}/${job.jobId}`}
-        className="font-semibold text-slate-900 hover:text-blue-700 line-clamp-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700 rounded flex-1"
-      >
-        {job.title}
-      </Link>
+    <div className="candidate-job-card__topline">
+      <div className="candidate-job-card__company-mark" aria-hidden>
+        {(job.companyName || 'HR').trim().charAt(0).toUpperCase() || <BankOutlined />}
+      </div>
       <div className="flex items-center gap-1.5 shrink-0">
         <BookmarkButton jobId={job.jobId} jobTitle={job.title} size="sm" />
         {isApplied && (
@@ -40,11 +37,19 @@ const JobCard: React.FC<{ job: Job; detailBasePath: string; isApplied?: boolean 
         )}
       </div>
     </div>
-    <Text type="secondary" className="text-sm">
-      {job.companyName ?? '—'}
-    </Text>
-    <div className="text-sm font-medium text-blue-800">{formatSalary(job)}</div>
-    <div className="flex flex-wrap gap-1.5">
+    <div className="candidate-job-card__heading">
+      <Link
+        to={`${detailBasePath}/${job.jobId}`}
+        className="candidate-job-card__title font-semibold text-slate-900 hover:text-blue-700 line-clamp-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700 rounded"
+      >
+        {job.title}
+      </Link>
+      <Text type="secondary" className="candidate-job-card__company text-sm">
+        {job.companyName ?? 'Doanh nghiệp tuyển dụng'}
+      </Text>
+    </div>
+    <div className="candidate-job-card__salary">{formatSalary(job)}</div>
+    <div className="candidate-job-card__tags flex flex-wrap gap-1.5">
       {job.location && (
         <Tag className="m-0" icon={<EnvironmentOutlined aria-hidden />}>
           {job.location}
@@ -53,9 +58,14 @@ const JobCard: React.FC<{ job: Job; detailBasePath: string; isApplied?: boolean 
       {job.employmentType && <Tag className="m-0">{EMPLOYMENT_TYPE_LABEL[job.employmentType]}</Tag>}
       <Tag className="m-0">{formatExperience(job.minExperienceYears, job.maxExperienceYears)}</Tag>
     </div>
-    <div className="mt-auto flex items-center justify-between pt-2 text-xs text-slate-500">
-      <span>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : ''}</span>
-      <span>Đăng {formatDate(job.postedAt)}</span>
+    <div className="candidate-job-card__footer mt-auto flex items-center justify-between pt-2 text-xs text-slate-500">
+      <div>
+        <span>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : ''}</span>
+        <span> · Đăng {formatDate(job.postedAt)}</span>
+      </div>
+      <Link to={`${detailBasePath}/${job.jobId}`} aria-label={`Xem chi tiết ${job.title}`}>
+        Xem việc <ArrowRightOutlined />
+      </Link>
     </div>
   </Card>
 );

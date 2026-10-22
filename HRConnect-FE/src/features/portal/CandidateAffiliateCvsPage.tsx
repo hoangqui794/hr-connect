@@ -8,7 +8,7 @@ import { candidateAffiliateCvApi } from '@/services/api/mf02Api';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import { StatusDot } from '@/features/admin-console/ui';
-import { fileSize, submissionStatus } from './mf02Labels';
+import { candidateAiStatus, candidateDocumentStatus, candidateStage, fileSize, submissionStatus } from './mf02Labels';
 import { candidateKeys, useOpenSignedUrl } from './CandidatePages';
 import { CandidatePageHeader, CandidateSurface } from './candidate/CandidateUi';
 
@@ -37,12 +37,12 @@ export const CandidateAffiliateCvsPage: React.FC = () => {
     <div className="candidate-page candidate-affiliate-cvs-page">
       <CandidatePageHeader
         eyebrow="Quyền riêng tư CV"
-        title="CV do Affiliate đã nộp"
-        description="Kiểm tra những CV Affiliate đã tải thay bạn. Bạn có thể xem nguồn gửi, lịch sử sử dụng và quản lý quyền dùng lại ở trang chi tiết."
+        title="CV do đối tác tuyển dụng gửi"
+        description="Kiểm tra những CV đối tác tuyển dụng đã tải thay bạn. Bạn có thể xem nguồn gửi, lịch sử sử dụng và quản lý quyền dùng lại ở trang chi tiết."
       />
 
       {!canView ? (
-        <Alert type="error" showIcon message="Bạn không có quyền xem CV Affiliate đã nộp." />
+        <Alert type="error" showIcon message="Bạn không có quyền xem CV do đối tác tuyển dụng gửi." />
       ) : query.isLoading ? (
         <Skeleton active paragraph={{ rows: 7 }} />
       ) : query.isError ? (
@@ -50,8 +50,8 @@ export const CandidateAffiliateCvsPage: React.FC = () => {
       ) : items.length === 0 ? (
         <CandidateSurface className="candidate-empty-surface p-10 text-center">
           <SafetyCertificateOutlined className="text-3xl text-blue-700" aria-hidden />
-          <p className="m-0 mt-3 font-semibold text-slate-900">Chưa có CV nào do Affiliate tải lên</p>
-          <p className="m-0 mt-1 text-sm text-slate-600">Khi một Affiliate giới thiệu bạn, CV và quyền sử dụng sẽ xuất hiện tại đây.</p>
+          <p className="m-0 mt-3 font-semibold text-slate-900">Chưa có CV nào do đối tác tuyển dụng tải lên</p>
+          <p className="m-0 mt-1 text-sm text-slate-600">Khi một đối tác tuyển dụng giới thiệu bạn, CV và quyền sử dụng sẽ xuất hiện tại đây.</p>
         </CandidateSurface>
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
@@ -64,14 +64,14 @@ export const CandidateAffiliateCvsPage: React.FC = () => {
                     <FilePdfOutlined />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <h2 className="m-0 truncate text-base font-bold text-slate-900">{cv.title || cv.fileName || 'CV Affiliate'}</h2>
+                    <h2 className="m-0 truncate text-base font-bold text-slate-900">{cv.title || cv.fileName || 'CV được giới thiệu'}</h2>
                     <p className="m-0 mt-1 truncate text-xs text-slate-500">{cv.fileName || 'Tệp PDF'} · {fileSize(cv.fileSizeBytes)}</p>
                   </div>
                   <StatusDot tone={reuseAllowed ? 'success' : 'neutral'}>{reuseAllowed ? 'Cho phép dùng lại' : 'Không cho dùng lại'}</StatusDot>
                 </div>
 
                 <dl className="grid grid-cols-2 gap-3 text-sm">
-                  <div><dt className="text-slate-500">Affiliate nguồn</dt><dd className="m-0 mt-1 font-medium text-slate-900">{cv.affiliateDisplayName}</dd></div>
+                  <div><dt className="text-slate-500">Đối tác giới thiệu</dt><dd className="m-0 mt-1 font-medium text-slate-900">{cv.affiliateDisplayName}</dd></div>
                   <div><dt className="text-slate-500">Ngày tải</dt><dd className="m-0 mt-1 font-medium text-slate-900">{dayjs(cv.createdAt).format('DD/MM/YYYY')}</dd></div>
                   <div><dt className="text-slate-500">Lượt nộp</dt><dd className="m-0 mt-1 font-medium text-slate-900">{cv.submissionCount}</dd></div>
                   <div><dt className="text-slate-500">Đã đồng ý</dt><dd className="m-0 mt-1 font-medium text-slate-900">{cv.acceptedSubmissionCount}</dd></div>
@@ -166,7 +166,7 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
     onError: (error) => message.error(getApiErrorMessage(error, 'Chưa thể nhận CV vào kho cá nhân.')),
   });
 
-  if (!canView) return <Alert type="error" showIcon message="Bạn không có quyền xem CV Affiliate đã nộp." />;
+  if (!canView) return <Alert type="error" showIcon message="Bạn không có quyền xem CV do đối tác tuyển dụng gửi." />;
   if (detail.isLoading) return <Skeleton active paragraph={{ rows: 10 }} />;
   if (detail.isError || !detail.data) {
     return (
@@ -187,11 +187,11 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
   return (
     <div className="candidate-page candidate-affiliate-cv-detail-page">
       <Button className="candidate-detail-back" icon={<ArrowLeftOutlined />} onClick={() => navigate('/candidate/affiliate-cvs')}>
-        Danh sách CV Affiliate
+        Danh sách CV được giới thiệu
       </Button>
       <CandidatePageHeader
         eyebrow="Quyền riêng tư CV"
-        title={cv.title || cv.fileName || 'CV Affiliate'}
+        title={cv.title || cv.fileName || 'CV được giới thiệu'}
         description={`Được tải lên bởi ${cv.affiliateDisplayName} · ${dayjs(cv.createdAt).format('DD/MM/YYYY')}`}
         actions={<StatusDot tone={reuseAllowed ? 'success' : 'neutral'}>{reuseAllowed ? 'Cho phép dùng lại' : 'Đã thu hồi dùng lại'}</StatusDot>}
       />
@@ -202,7 +202,7 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
             {[
               ['Tên tệp', cv.fileName || '—'],
               ['Dung lượng', fileSize(cv.fileSizeBytes) || '—'],
-              ['Trạng thái tài liệu', cv.documentStatus],
+              ['Trạng thái tài liệu', candidateDocumentStatus(cv.documentStatus)],
               ['Tổng lượt nộp', String(cv.submissionCount)],
               ['Đã đồng ý', String(cv.acceptedSubmissionCount)],
               ['Đang chờ xác nhận', String(cv.pendingConsentCount)],
@@ -222,8 +222,8 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
             </Button>
             {canManageReuse && (
               <Popconfirm
-                title={reuseAllowed ? 'Thu hồi quyền dùng lại CV?' : 'Cho phép Affiliate dùng lại CV?'}
-                description={reuseAllowed ? 'Các hồ sơ đã nộp vẫn được giữ nguyên.' : 'Affiliate nguồn có thể dùng CV cho yêu cầu xác nhận mới.'}
+                title={reuseAllowed ? 'Thu hồi quyền dùng lại CV?' : 'Cho phép đối tác tuyển dụng dùng lại CV?'}
+                description={reuseAllowed ? 'Các hồ sơ đã nộp vẫn được giữ nguyên.' : 'Đối tác đã giới thiệu bạn có thể dùng CV cho yêu cầu xác nhận mới.'}
                 okText={reuseAllowed ? 'Thu hồi' : 'Cho phép'}
                 cancelText="Hủy"
                 onConfirm={() => updateReuse.mutate(!reuseAllowed)}
@@ -252,7 +252,7 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
       <CandidateSurface className="overflow-hidden">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="m-0 text-base font-bold text-slate-900">CV này đã được dùng ở đâu</h2>
-          <p className="m-0 mt-1 text-sm text-slate-500">Lịch sử Job và tiến độ phát sinh từ CV, mới nhất trước.</p>
+          <p className="m-0 mt-1 text-sm text-slate-500">Lịch sử công việc và tiến độ phát sinh từ CV, mới nhất trước.</p>
         </div>
         {usages.isLoading ? (
           <div className="p-5"><Skeleton active paragraph={{ rows: 5 }} /></div>
@@ -274,13 +274,13 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
                   </div>
                   {(usage.applicationStatus || usage.aiStatus) && (
                     <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
-                      {usage.applicationStatus && <span className="rounded-full bg-slate-100 px-2.5 py-1">Application: {usage.applicationStatus}</span>}
-                      {usage.aiStatus && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-blue-800">AI: {usage.aiStatus}{usage.aiMatchScore != null ? ` · ${usage.aiMatchScore}` : ''}</span>}
+                      {usage.applicationStatus && <span className="rounded-full bg-slate-100 px-2.5 py-1">Đơn ứng tuyển: {candidateStage(usage.applicationStatus).label}</span>}
+                      {usage.aiStatus && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-blue-800">Đánh giá hồ sơ: {candidateAiStatus(usage.aiStatus)}{usage.aiMatchScore != null ? ` · ${usage.aiMatchScore}%` : ''}</span>}
                     </div>
                   )}
                   {usage.applicationId && (
                     <Button type="link" className="mt-2 !h-auto !p-0" onClick={() => navigate(`/candidate/applications/${usage.applicationId}`)}>
-                      Xem Application
+                      Xem đơn ứng tuyển
                     </Button>
                   )}
                 </li>

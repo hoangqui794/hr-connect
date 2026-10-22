@@ -262,8 +262,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     (job.status === 'CLOSED' && Boolean(job.statusReason?.toLowerCase().includes('hết hạn')));
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
+    <div className={`space-y-6 ${isApplicant ? 'candidate-job-detail-panel' : ''}`}>
+      <header className="candidate-job-detail-panel__hero space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <JobStatusTag status={job.status} />
           {/* F4: Hiện nguồn mẫu ở trang duyệt job — chỉ hiển thị với Internal HR / Admin ở trang duyệt, Client và ứng viên không thấy */}
