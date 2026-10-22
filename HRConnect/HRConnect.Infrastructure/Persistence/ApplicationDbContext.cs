@@ -1751,6 +1751,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("status");
             entity.Property(e => e.RecordedBy).HasColumnName("recorded_by");
             entity.Property(e => e.RecordedAt).HasColumnName("recorded_at");
+            entity.Property(e => e.CandidateAttendanceStatus)
+                .HasMaxLength(20)
+                .HasColumnName("candidate_attendance_status");
+            entity.Property(e => e.CandidateRespondedAt).HasColumnName("candidate_responded_at");
             entity.Property(e => e.ConcurrencyToken)
                 .IsConcurrencyToken()
                 .HasDefaultValueSql("gen_random_uuid()")
