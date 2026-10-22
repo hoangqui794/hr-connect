@@ -391,6 +391,7 @@ app.MapServiceTypeEndpoints();
 app.MapCommissionMilestoneEndpoints();
 app.MapCommissionRuleEndpoints();
 app.MapJobEndpoints();
+app.MapServiceAgreementEndpoints();
 app.MapCompanyEndpoints();
 app.MapInternalHrEndpoints();
 app.MapInternalCvEndpoints();

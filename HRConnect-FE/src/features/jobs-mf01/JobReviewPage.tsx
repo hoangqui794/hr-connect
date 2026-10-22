@@ -37,7 +37,7 @@ import {
   SendOutlined,
 } from '@ant-design/icons';
 import type { ApproveJobInput, Job, JobRejectReasonCode, JobStatus } from '@/types/api/jobs';
-import { jobsApi } from '@/services/api/jobsApi';
+import { jobsApi, serviceAgreementsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAlertStore } from '@/stores/alertStore';
 import { formatMoney, useJobDetail, useJobFeeInfo, useJobMutations, useJobReviewQueue } from './useJobQueries';
@@ -202,32 +202,53 @@ export const JobReviewPage: React.FC = () => {
 
   const needsTerms = job?.serviceTypeCode === 'HEADHUNT_COD' || job?.serviceTypeCode === 'CV_SOURCING';
 
-  /** F2: approve with the commercial terms Internal HR agreed (HEADHUNT_COD, CV_SOURCING). */
-  const approveWithTerms = (input: ApproveJobInput) => {
-    if (!job) return Promise.resolve();
-    return approve.mutateAsync({ jobId: job.jobId, token: job.concurrencyToken, input }).then((res) => {
-      message.success(res.message);
-      setTermsOpen(false);
-      const isHeadhunt = job.serviceTypeCode === 'HEADHUNT_COD';
-      useAlertStore.getState().addAlert({
-        targetRole: 'INTERNAL_HR',
-        type: 'success',
-        title: isHeadhunt ? 'Đã duyệt dịch vụ tuyển dụng theo kết quả' : 'Đã duyệt dịch vụ tìm kiếm hồ sơ',
-        message: `Đã chốt điều khoản và duyệt "${job.title}" của ${job.companyName}.`,
-        actionLabel: 'Xem chi tiết',
-        actionRoute: `/internal/jobs/review?status=ALL&highlight=${encodeURIComponent(job.jobId)}`,
-        relatedEntityId: job.jobId,
-      });
-      useAlertStore.getState().addAlert({
-        targetRole: 'CLIENT',
-        type: 'success',
-        title: 'Yêu cầu tuyển dụng đã được duyệt',
-        message: `Yêu cầu "${job.title}" đã được duyệt với điều khoản đã chốt. Xem chi tiết điều khoản trong tin tuyển dụng.`,
-        actionLabel: 'Xem điều khoản',
-        actionRoute: `/client/jobs?highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
-        relatedEntityId: job.jobId,
-      });
-    });
+  /** F2: approve with the commercial terms Internal HR agreed (HEADHUNT_COD, CV_SOURCING) -> Send proposal to Client. */
+  const approveWithTerms = async (input: ApproveJobInput) => {
+    if (!job) return;
+    try {
+      if (needsTerms) {
+        const terms = input.commercialTerms;
+        await serviceAgreementsApi.createProposal(job.jobId, {
+          concurrencyToken: job.concurrencyToken,
+          feeMultiplier: terms?.feeMultiplier != null ? Number(terms.feeMultiplier) : undefined,
+          warrantyDays: terms?.warrantyDays != null ? Number(terms.warrantyDays) : undefined,
+          paymentDueDays: terms?.paymentDueDays != null ? Number(terms.paymentDueDays) : undefined,
+          sourcingTarget: terms?.sourcingTarget != null ? Number(terms.sourcingTarget) : undefined,
+          pricePerQualifiedCv: terms?.pricePerCv != null ? Number(terms.pricePerCv) : undefined,
+          reviewDays: terms?.reviewDays != null ? Number(terms.reviewDays) : undefined,
+          agreementNote: input.note || input.agreementReference || undefined,
+        });
+        message.success('Đã gửi dự thảo thỏa thuận dịch vụ cho Doanh nghiệp');
+        setTermsOpen(false);
+        const isHeadhunt = job.serviceTypeCode === 'HEADHUNT_COD';
+        useAlertStore.getState().addAlert({
+          targetRole: 'INTERNAL_HR',
+          type: 'success',
+          title: isHeadhunt ? 'Đã gửi dự thảo thỏa thuận tuyển dụng' : 'Đã gửi dự thảo thỏa thuận tìm kiếm hồ sơ',
+          message: `Đã gửi dự thảo thỏa thuận cho "${job.title}" của ${job.companyName}. Đang chờ Doanh nghiệp phản hồi hoặc ký kết.`,
+          actionLabel: 'Xem chi tiết',
+          actionRoute: `/internal/jobs/review?status=ALL&highlight=${encodeURIComponent(job.jobId)}`,
+          relatedEntityId: job.jobId,
+        });
+        useAlertStore.getState().addAlert({
+          targetRole: 'CLIENT',
+          type: 'info',
+          title: 'Dự thảo thỏa thuận dịch vụ đang chờ ký kết',
+          message: `Yêu cầu tuyển dụng "${job.title}" đã được HR Connect lập dự thảo thỏa thuận thương mại. Vui lòng kiểm tra và ký thỏa thuận qua OTP.`,
+          actionLabel: 'Xem & Ký thỏa thuận',
+          actionRoute: `/client/agreements?jobId=${encodeURIComponent(job.jobId)}`,
+          relatedEntityId: job.jobId,
+        });
+        await Promise.all([detail.refetch(), queue.refetch()]);
+      } else {
+        const res = await approve.mutateAsync({ jobId: job.jobId, token: job.concurrencyToken, input });
+        message.success(res.message);
+        setTermsOpen(false);
+      }
+    } catch (err) {
+      message.error(getApiErrorMessage(err));
+      throw err;
+    }
   };
 
   const confirmApprove = () => {

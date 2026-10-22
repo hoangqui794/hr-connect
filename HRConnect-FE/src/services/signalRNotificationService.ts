@@ -167,18 +167,18 @@ export class SignalRNotificationService {
     connection.on('InterviewUpdated', handleInterviewUpdated);
 
     // Lifecycle events
-    connection.onreconnecting((error) => {
+    connection.onreconnecting((error?: Error) => {
       console.warn('[SignalRNotificationService] Reconnecting to notifications hub...', error);
       this.notifyStateChange(signalR.HubConnectionState.Reconnecting);
     });
 
-    connection.onreconnected((connectionId) => {
+    connection.onreconnected((connectionId?: string) => {
       console.info('[SignalRNotificationService] Reconnected to notifications hub. Connection ID:', connectionId);
       this.restartAttempt = 0;
       this.notifyStateChange(signalR.HubConnectionState.Connected);
     });
 
-    connection.onclose((error) => {
+    connection.onclose((error?: Error) => {
       if (error) {
         console.warn('[SignalRNotificationService] Connection closed with error:', error);
       }
@@ -197,7 +197,7 @@ export class SignalRNotificationService {
         this.restartAttempt = 0;
         this.notifyStateChange(signalR.HubConnectionState.Connected);
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error('[SignalRNotificationService] Failed to connect to notifications hub:', err);
         this.notifyStateChange(signalR.HubConnectionState.Disconnected);
         if (this.connection === connection) {
@@ -210,7 +210,7 @@ export class SignalRNotificationService {
         this.connectingPromise = null;
       });
 
-    return this.connectingPromise;
+    await this.connectingPromise;
   }
 
   public async stop(): Promise<void> {

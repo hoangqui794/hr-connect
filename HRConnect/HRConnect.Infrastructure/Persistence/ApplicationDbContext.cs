@@ -108,6 +108,10 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<ServiceFee> ServiceFees { get; set; }
 
+    public virtual DbSet<ServiceAgreement> ServiceAgreements { get; set; }
+
+    public virtual DbSet<ServiceAgreementSignatureChallenge> ServiceAgreementSignatureChallenges { get; set; }
+
     public virtual DbSet<SystemSetting> SystemSettings { get; set; }
 
     public virtual DbSet<SourcingDelivery> SourcingDeliveries { get; set; }
@@ -1945,6 +1949,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.AgreedAt).HasColumnName("agreed_at");
             entity.Property(e => e.AgreedBy).HasColumnName("agreed_by");
             entity.Property(e => e.PostingPackageId).HasColumnName("posting_package_id");
+            entity.Property(e => e.CurrentServiceAgreementId).HasColumnName("current_service_agreement_id");
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
             entity.Property(e => e.MaxApplications).HasColumnName("max_applications");
 
@@ -1972,6 +1977,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.PostingPackageId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("job_posting_package_id_fkey");
+
+            entity.HasOne(d => d.CurrentServiceAgreement).WithMany()
+                .HasForeignKey(d => d.CurrentServiceAgreementId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("job_current_service_agreement_id_fkey");
         });
 
         modelBuilder.Entity<JobPostingPackage>(entity =>
@@ -3247,6 +3257,136 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.UpdatedBy)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("warranty_updated_by_fkey");
+        });
+
+        modelBuilder.Entity<ServiceAgreement>(entity =>
+        {
+            entity.HasKey(e => e.ServiceAgreementId).HasName("service_agreement_pkey");
+
+            entity.ToTable("service_agreement", "public", tb =>
+            {
+                tb.HasComment("MF-01 Service agreement versions and signing evidence between Client and HR Connect.");
+                tb.HasCheckConstraint("ck_service_agreement_status",
+                    "status IN ('DRAFT','SENT_TO_CLIENT','CHANGE_REQUESTED','ACCEPTED','AWAITING_SIGNATURE','SIGNED','VOID','LEGACY_CONFIRMED')");
+            });
+
+            entity.HasIndex(e => new { e.JobId, e.Version }, "uq_service_agreement_job_version").IsUnique();
+            entity.HasIndex(e => e.VerificationCode, "uq_service_agreement_verification_code").IsUnique();
+            entity.HasIndex(e => new { e.JobId, e.IsCurrent }, "uq_service_agreement_current_job")
+                .IsUnique()
+                .HasFilter("is_current = true AND status <> 'VOID'");
+            entity.HasIndex(e => new { e.CompanyId, e.Status }, "idx_service_agreement_company_status");
+
+            entity.Property(e => e.ServiceAgreementId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("service_agreement_id");
+            entity.Property(e => e.JobId).HasColumnName("job_id");
+            entity.Property(e => e.CompanyId).HasColumnName("company_id");
+            entity.Property(e => e.Version).HasColumnName("version");
+            entity.Property(e => e.ServiceTypeCode).HasMaxLength(50).HasColumnName("service_type_code");
+            entity.Property(e => e.Status).HasMaxLength(30).HasColumnName("status");
+            entity.Property(e => e.ConcurrencyToken)
+                .IsConcurrencyToken()
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("concurrency_token");
+            entity.Property(e => e.IsCurrent).HasDefaultValue(false).HasColumnName("is_current");
+
+            entity.Property(e => e.FeeMultiplier).HasPrecision(6, 3).HasColumnName("fee_multiplier");
+            entity.Property(e => e.WarrantyDays).HasColumnName("warranty_days");
+            entity.Property(e => e.PaymentDueDays).HasColumnName("payment_due_days");
+            entity.Property(e => e.PricePerQualifiedCv).HasPrecision(18, 2).HasColumnName("price_per_qualified_cv");
+            entity.Property(e => e.SourcingTarget).HasColumnName("sourcing_target");
+            entity.Property(e => e.ReviewDays).HasColumnName("review_days");
+            entity.Property(e => e.AgreementNote).HasColumnName("agreement_note");
+            entity.Property(e => e.ChangeRequestReason).HasColumnName("change_request_reason");
+
+            entity.Property(e => e.CompanyNameSnapshot).HasMaxLength(255).HasColumnName("company_name_snapshot");
+            entity.Property(e => e.CompanyTaxCodeSnapshot).HasMaxLength(50).HasColumnName("company_tax_code_snapshot");
+            entity.Property(e => e.CompanyAddressSnapshot).HasColumnName("company_address_snapshot");
+            entity.Property(e => e.HrConnectLegalEntitySnapshot).HasColumnName("hrconnect_legal_entity_snapshot");
+
+            entity.Property(e => e.SignerUserId).HasColumnName("signer_user_id");
+            entity.Property(e => e.SignerNameSnapshot).HasMaxLength(255).HasColumnName("signer_name_snapshot");
+            entity.Property(e => e.SignerEmailSnapshot).HasMaxLength(255).HasColumnName("signer_email_snapshot");
+            entity.Property(e => e.SignerRoleSnapshot).HasMaxLength(100).HasColumnName("signer_role_snapshot");
+            entity.Property(e => e.ConsentTextVersion).HasMaxLength(50).HasColumnName("consent_text_version");
+            entity.Property(e => e.ConsentAcceptedAt).HasColumnName("consent_accepted_at");
+
+            entity.Property(e => e.UnsignedDocumentStorageKey).HasColumnName("unsigned_document_storage_key");
+            entity.Property(e => e.SignedDocumentStorageKey).HasColumnName("signed_document_storage_key");
+            entity.Property(e => e.DocumentSha256Hash).HasMaxLength(128).HasColumnName("document_sha256_hash");
+            entity.Property(e => e.VerificationCode).HasMaxLength(64).HasColumnName("verification_code");
+            entity.Property(e => e.SignerIpHash).HasMaxLength(128).HasColumnName("signer_ip_hash");
+            entity.Property(e => e.SignerUserAgentSummary).HasColumnName("signer_user_agent_summary");
+
+            entity.Property(e => e.CreatedByUserId).HasColumnName("created_by_user_id");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.SentToClientAt).HasColumnName("sent_to_client_at");
+            entity.Property(e => e.RespondedAt).HasColumnName("responded_at");
+            entity.Property(e => e.SignedAt).HasColumnName("signed_at");
+            entity.Property(e => e.VoidedAt).HasColumnName("voided_at");
+            entity.Property(e => e.VoidedByUserId).HasColumnName("voided_by_user_id");
+            entity.Property(e => e.VoidReason).HasColumnName("void_reason");
+
+            entity.HasOne(d => d.Job).WithMany(p => p.ServiceAgreements)
+                .HasForeignKey(d => d.JobId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("service_agreement_job_id_fkey");
+
+            entity.HasOne(d => d.Company).WithMany()
+                .HasForeignKey(d => d.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("service_agreement_company_id_fkey");
+
+            entity.HasOne(d => d.CreatedByUser).WithMany()
+                .HasForeignKey(d => d.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("service_agreement_created_by_user_id_fkey");
+
+            entity.HasOne(d => d.SignerUser).WithMany()
+                .HasForeignKey(d => d.SignerUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("service_agreement_signer_user_id_fkey");
+
+            entity.HasOne(d => d.VoidedByUser).WithMany()
+                .HasForeignKey(d => d.VoidedByUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("service_agreement_voided_by_user_id_fkey");
+        });
+
+        modelBuilder.Entity<ServiceAgreementSignatureChallenge>(entity =>
+        {
+            entity.HasKey(e => e.ChallengeId).HasName("service_agreement_signature_challenge_pkey");
+
+            entity.ToTable("service_agreement_signature_challenge", "public");
+
+            entity.HasIndex(e => new { e.ServiceAgreementId, e.SignerUserId }, "idx_challenge_agreement_signer");
+
+            entity.Property(e => e.ChallengeId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("challenge_id");
+            entity.Property(e => e.ServiceAgreementId).HasColumnName("service_agreement_id");
+            entity.Property(e => e.SignerUserId).HasColumnName("signer_user_id");
+            entity.Property(e => e.SignerEmailNormalized).HasMaxLength(255).HasColumnName("signer_email_normalized");
+            entity.Property(e => e.OtpHash).HasMaxLength(255).HasColumnName("otp_hash");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.AttemptCount).HasDefaultValue(0).HasColumnName("attempt_count");
+            entity.Property(e => e.MaxAttempts).HasDefaultValue(5).HasColumnName("max_attempts");
+            entity.Property(e => e.IsConsumed).HasDefaultValue(false).HasColumnName("is_consumed");
+            entity.Property(e => e.ConsumedAt).HasColumnName("consumed_at");
+            entity.Property(e => e.IsRevoked).HasDefaultValue(false).HasColumnName("is_revoked");
+            entity.Property(e => e.RevokedAt).HasColumnName("revoked_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+
+            entity.HasOne(d => d.ServiceAgreement).WithMany(p => p.SignatureChallenges)
+                .HasForeignKey(d => d.ServiceAgreementId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("challenge_service_agreement_id_fkey");
+
+            entity.HasOne(d => d.SignerUser).WithMany()
+                .HasForeignKey(d => d.SignerUserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("challenge_signer_user_id_fkey");
         });
 
         OnModelCreatingPartial(modelBuilder);

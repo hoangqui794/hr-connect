@@ -9,6 +9,7 @@ export type JobStatus =
   | 'DRAFT'
   | 'PENDING_REVIEW'
   | 'PENDING_APPROVAL'
+  | 'PENDING_AGREEMENT'
   | 'PENDING_PAYMENT'
   | 'REJECTED'
   | 'ACTIVE'
@@ -371,4 +372,96 @@ export interface JobTemplateUpsertInput {
   maxExperienceYears?: number | null;
   requirements: JobTemplateRequirement[];
 }
+
+export type ServiceAgreementStatus =
+  | 'DRAFT'
+  | 'SENT_TO_CLIENT'
+  | 'CHANGE_REQUESTED'
+  | 'ACCEPTED'
+  | 'AWAITING_SIGNATURE'
+  | 'SIGNED'
+  | 'VOID'
+  | 'LEGACY_CONFIRMED';
+
+export interface ServiceAgreementDto {
+  serviceAgreementId: string;
+  jobId: string;
+  companyId: string;
+  version: number;
+  serviceTypeCode: string;
+  status: ServiceAgreementStatus;
+  concurrencyToken: string;
+  isCurrent: boolean;
+
+  feeMultiplier?: number | null;
+  warrantyDays?: number | null;
+  paymentDueDays?: number | null;
+  pricePerQualifiedCv?: number | null;
+  sourcingTarget?: number | null;
+  reviewDays?: number | null;
+  agreementNote?: string | null;
+  changeRequestReason?: string | null;
+
+  companyName: string;
+  companyTaxCode?: string | null;
+  companyAddress?: string | null;
+
+  signerUserId?: string | null;
+  signerName?: string | null;
+  signerEmail?: string | null;
+  signerRole?: string | null;
+  consentTextVersion?: string | null;
+  consentAcceptedAt?: string | null;
+
+  verificationCode: string;
+  hasUnsignedDocument: boolean;
+  hasSignedDocument: boolean;
+  documentSha256Hash?: string | null;
+
+  createdByUserId: string;
+  createdAt: string;
+  sentToClientAt?: string | null;
+  respondedAt?: string | null;
+  signedAt?: string | null;
+  voidedAt?: string | null;
+  voidReason?: string | null;
+}
+
+export interface CreateServiceAgreementProposalInput {
+  concurrencyToken?: string;
+  feeMultiplier?: number;
+  warrantyDays?: number;
+  paymentDueDays?: number;
+  pricePerQualifiedCv?: number;
+  sourcingTarget?: number;
+  reviewDays?: number;
+  agreementNote?: string;
+}
+
+export interface RespondServiceAgreementInput {
+  concurrencyToken: string;
+  action: 'ACCEPT' | 'REQUEST_CHANGES';
+  changeRequestReason?: string;
+}
+
+export interface CreateSignatureChallengeResponse {
+  challengeId: string;
+  serviceAgreementId: string;
+  signerEmail: string;
+  expiresAt: string;
+  message: string;
+}
+
+export interface SignServiceAgreementInput {
+  concurrencyToken: string;
+  otp: string;
+  consentAccepted: boolean;
+  consentTextVersion?: string;
+}
+
+export interface AgreementDocumentDownloadResponse {
+  downloadUrl: string;
+  expiresAt: string;
+}
+
 

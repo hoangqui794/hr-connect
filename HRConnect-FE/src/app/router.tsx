@@ -267,6 +267,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/client/dashboard" replace /> },
       { path: 'dashboard', element: <AppRoutes.ClientOverviewPage /> },
       { path: 'jobs', element: <AppRoutes.Mf01ClientJobsListPage /> },
+      { path: 'agreements', element: <AppRoutes.ClientServiceAgreementsPage /> },
       { path: 'jobs/create', element: <AppRoutes.Mf01JobFormPage /> },
       {
         path: 'jobs/:id/edit',

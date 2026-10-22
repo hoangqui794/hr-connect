@@ -79,20 +79,10 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
                 package = await _jobs.GetPostingPackageByIdAsync(job.PostingPackageId.Value, ct);
             }
 
-            // Nếu chưa chọn gói, mặc định chọn gói FREE
+            // Yêu cầu chọn gói rõ ràng cho CV_APPLICATION (bỏ fallback FREE tự động)
             if (package == null)
             {
-                package = await _jobs.GetPostingPackageByCodeAsync(JobPostingPackageCodes.Free, ct);
-                if (package != null)
-                {
-                    job.PostingPackageId = package.PackageId;
-                    job.PostingPackage = package;
-                }
-            }
-
-            if (package == null)
-            {
-                throw new BadRequestException("Không tìm thấy gói đăng tin tuyển dụng hợp lệ.");
+                throw new BadRequestException("JOB_POSTING_PACKAGE_REQUIRED: Vui lòng chọn gói đăng tin tuyển dụng hợp lệ (FREE hoặc STANDARD) trước khi gửi duyệt.");
             }
 
             var now = DateTime.UtcNow;

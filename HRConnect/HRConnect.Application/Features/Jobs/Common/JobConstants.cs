@@ -4,6 +4,7 @@ public static class JobStatuses
 {
     public const string Draft = "DRAFT";
     public const string PendingReview = "PENDING_REVIEW";
+    public const string PendingAgreement = "PENDING_AGREEMENT";
     public const string PendingPayment = "PENDING_PAYMENT";
     public const string Rejected = "REJECTED";
     public const string Active = "ACTIVE";
@@ -50,6 +51,9 @@ public static class JobReasonCodes
     public const string DraftCreated = "DRAFT_CREATED";
     public const string SubmittedForReview = "SUBMITTED_FOR_REVIEW";
     public const string Approved = "APPROVED";
+    public const string AgreementProposed = "AGREEMENT_PROPOSED";
+    public const string AgreementChangesRequested = "AGREEMENT_CHANGES_REQUESTED";
+    public const string AgreementSigned = "AGREEMENT_SIGNED";
     public const string RejectedIncompleteDescription = "REJECTED_INCOMPLETE_DESCRIPTION";
     public const string RejectedIncompleteRequirements = "REJECTED_INCOMPLETE_REQUIREMENTS";
     public const string RejectedTermsNotAgreed = "REJECTED_TERMS_NOT_AGREED";
