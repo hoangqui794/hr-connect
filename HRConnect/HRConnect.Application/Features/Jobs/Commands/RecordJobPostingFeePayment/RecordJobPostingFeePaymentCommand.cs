@@ -153,6 +153,34 @@ public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<R
             CreatedAt = now
         }, cancellationToken);
 
+        // Gửi thông báo cho Internal HR đã duyệt tin
+        var hrReviewerId = job.AgreedBy ?? job.JobStatusHistories?
+            .OrderByDescending(h => h.ChangedAt)
+            .FirstOrDefault(h => (h.NewStatus == JobStatuses.PendingPayment || h.NewStatus == JobStatuses.PendingReview) && h.ChangedBy != job.CreatedBy)?
+            .ChangedBy;
+
+        if (hrReviewerId.HasValue && hrReviewerId.Value != job.CreatedBy)
+        {
+            await _notifications.AddAsync(new Domain.Entities.Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = hrReviewerId.Value,
+                NotificationType = "JOB",
+                Title = "Tin tuyển dụng đã thanh toán phí đăng tin",
+                Message = $"Doanh nghiệp đã hoàn tất thanh toán phí gói đăng tin cho vị trí \"{job.Title}\". Tin đã được kích hoạt Đang tuyển.",
+                RelatedEntityType = "JOB",
+                RelatedEntityId = job.JobId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    jobId = job.JobId,
+                    status = job.Status,
+                    actionRoute = $"/hr/jobs?status=ACTIVE&highlight={job.JobId}"
+                }),
+                IsRead = false,
+                CreatedAt = now
+            }, cancellationToken);
+        }
+
         await _uow.SaveChangesAsync(cancellationToken);
 
         return new JobPostingFeeDto(

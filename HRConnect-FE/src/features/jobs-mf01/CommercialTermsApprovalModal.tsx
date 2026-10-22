@@ -23,16 +23,16 @@ interface TermField {
 }
 
 const HEADHUNT_FIELDS: TermField[] = [
-  { key: 'feeMultiplier', label: 'Hệ số phí', unit: '× lương tháng', step: 0.1, help: 'Phí = hệ số × lương tháng của ứng viên' },
-  { key: 'warrantyDays', label: 'Thời hạn bảo hành', unit: 'ngày', step: 1 },
-  { key: 'paymentDueDays', label: 'Hạn thanh toán', unit: 'ngày', step: 1, help: 'Tính từ ngày đến hạn thu phí' },
+  { key: 'feeMultiplier', label: 'Hệ số phí', unit: '× lương tháng', step: 0.1, help: 'Hệ số tính trên lương tháng' },
+  { key: 'warrantyDays', label: 'Bảo hành', unit: 'ngày', step: 1 },
+  { key: 'paymentDueDays', label: 'Hạn thanh toán', unit: 'ngày', step: 1 },
 ];
 
 const SOURCING_FIELDS: TermField[] = [
-  { key: 'sourcingTarget', label: 'Số hồ sơ cần giao', unit: 'hồ sơ', step: 1 },
-  { key: 'pricePerCv', label: 'Phí mỗi hồ sơ đạt yêu cầu', unit: 'đ', step: 10000 },
-  { key: 'depositPercent', label: 'Tiền cọc', unit: '%', step: 5 },
-  { key: 'reviewDays', label: 'Thời gian doanh nghiệp duyệt hồ sơ', unit: 'ngày', step: 1 },
+  { key: 'sourcingTarget', label: 'Số hồ sơ', unit: 'hồ sơ', step: 1 },
+  { key: 'pricePerCv', label: 'Phí / hồ sơ', unit: 'đ', step: 10000 },
+  { key: 'depositPercent', label: 'Tỷ lệ cọc', unit: '%', step: 5 },
+  { key: 'reviewDays', label: 'Thời gian duyệt', unit: 'ngày', step: 1 },
   { key: 'paymentDueDays', label: 'Hạn thanh toán', unit: 'ngày', step: 1 },
 ];
 
@@ -117,8 +117,8 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
     <Modal
       open={open}
       width={760}
-      title={isSourcing ? 'Đề xuất thỏa thuận tìm kiếm hồ sơ (CV Sourcing)' : 'Đề xuất thỏa thuận tuyển dụng (Headhunt)'}
-      okText="Gửi dự thảo thỏa thuận cho Doanh nghiệp"
+      title={isSourcing ? 'Duyệt điều khoản (CV Sourcing)' : 'Duyệt điều khoản (Headhunt)'}
+      okText="Gửi thỏa thuận"
       cancelText="Hủy"
       confirmLoading={loading}
       okButtonProps={{ disabled: !data || defaults.isError }}
@@ -231,29 +231,39 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
             <Form.Item
               className="mt-4"
               name="agreementReference"
-              label="Căn cứ thỏa thuận với doanh nghiệp"
+              label={
+                <span className="font-semibold text-slate-900">
+                  Căn cứ thỏa thuận (Hợp đồng / Email trao đổi)
+                  {needsReference && <span className="text-red-500 font-bold ml-1">*</span>}
+                </span>
+              }
               extra={
                 needsReference
-                  ? `Bắt buộc vì đang chốt khác đề xuất ở: ${changed.map((c) => c.label.toLowerCase()).join(', ')}.`
-                  : 'Ví dụ: số hợp đồng hoặc email xác nhận ngày 15/10. Bắt buộc khi chốt khác đề xuất của doanh nghiệp.'
+                  ? `Bắt buộc nhập số HĐ hoặc email vì đang chốt khác đề xuất ở: ${changed.map((c) => c.label.toLowerCase()).join(', ')}.`
+                  : 'Số hợp đồng hoặc email đã thống nhất với doanh nghiệp trước đó (nếu có).'
               }
-              rules={[{ required: needsReference, whitespace: true, message: 'Nhập căn cứ thỏa thuận (số hợp đồng, email...)' }]}
+              rules={[{ required: needsReference, whitespace: true, message: 'Vui lòng nhập căn cứ thỏa thuận (số hợp đồng hoặc email trao đổi).' }]}
             >
-              <Input maxLength={200} placeholder="Số hợp đồng / email / biên bản thỏa thuận" />
+              <Input maxLength={200} placeholder="Ví dụ: Email thống nhất ngày 15/10 hoặc HĐ số 01/2026" />
             </Form.Item>
 
             <Form.Item
               name="note"
-              label="Ghi chú nội bộ"
+              label={
+                <span className="font-semibold text-slate-900">
+                  Ghi chú nội bộ
+                  {targetLowered && <span className="text-red-500 font-bold ml-1">*</span>}
+                </span>
+              }
               rules={[{ required: targetLowered, whitespace: true, message: 'Nhập lý do giảm số hồ sơ so với yêu cầu của doanh nghiệp.' }]}
-              extra={targetLowered ? 'Bắt buộc vì số hồ sơ được duyệt thấp hơn số doanh nghiệp yêu cầu.' : undefined}
+              extra={targetLowered ? 'Bắt buộc nhập lý do duyệt số lượng hồ sơ ít hơn yêu cầu của doanh nghiệp.' : undefined}
             >
-              <Input.TextArea rows={2} maxLength={1000} />
+              <Input.TextArea rows={2} maxLength={1000} placeholder="Ghi chú nội bộ dành riêng cho HR (doanh nghiệp không nhìn thấy)..." />
             </Form.Item>
 
             <div className="flex items-start gap-2 text-xs text-slate-600">
               <InfoCircleOutlined className="mt-0.5 text-sky-600" aria-hidden />
-              <span>Hệ thống sẽ tạo dự thảo thỏa thuận dịch vụ (Service Agreement), chuyển tin sang trạng thái Chờ thỏa thuận và gửi thông báo cho Doanh nghiệp xem xét & ký kết điện tử.</span>
+              <span>Hệ thống sẽ gửi thỏa thuận để doanh nghiệp xác nhận và ký điện tử.</span>
             </div>
           </Form>
         )}
