@@ -143,7 +143,7 @@ describe('CandidateAffiliateCvDetailPage', () => {
 
     expect(await screen.findByText('CV Backend')).toBeInTheDocument();
     expect(screen.getByText('Senior Backend Developer')).toBeInTheDocument();
-    expect(screen.getByText('AI: COMPLETED · 87')).toBeInTheDocument();
+    expect(screen.getByText('Đánh giá hồ sơ: Đã đánh giá · 87%')).toBeInTheDocument();
     expect(detailMock).toHaveBeenCalledWith('cv-1');
     expect(usagesMock).toHaveBeenCalledWith('cv-1', 1, 10);
   });

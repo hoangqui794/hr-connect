@@ -115,7 +115,7 @@ describe('CandidateProfilePage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Nguyễn Văn A' }, { timeout: 10000 })).toBeInTheDocument();
 
-    const saveButton = screen.getByRole('button', { name: /Lưu thông tin hồ sơ vào Database/i });
+    const saveButton = screen.getByRole('button', { name: /Lưu thay đổi/i });
     fireEvent.submit(saveButton.closest('form')!);
 
     await waitFor(() => {
@@ -144,7 +144,7 @@ describe('CandidateProfilePage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Nguyễn Văn A' })).toBeInTheDocument();
 
-    const saveButton = screen.getByRole('button', { name: /Lưu thông tin hồ sơ vào Database/i });
+    const saveButton = screen.getByRole('button', { name: /Lưu thay đổi/i });
     fireEvent.submit(saveButton.closest('form')!);
 
     await waitFor(() => {

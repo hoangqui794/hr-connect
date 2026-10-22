@@ -50,7 +50,7 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
     {
       key: 'dashboard',
       icon: <DashboardOutlined />,
-      label: 'Tổng quan Candidate',
+      label: 'Tổng quan ứng viên',
       onClick: () => navigate('/candidate/dashboard'),
     },
     {
@@ -102,14 +102,14 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
           onClick={() => navigate('/candidate/dashboard')}
           style={{ borderRadius: 10, height: 38, fontWeight: 650 }}
         >
-          Vào không gian Candidate
+          Vào trang ứng viên
         </Button>
       )}
 
       <Dropdown menu={{ items }} placement="bottomRight" trigger={['click']}>
         <button
           type="button"
-          aria-label="Mở menu tài khoản Candidate"
+          aria-label="Mở menu tài khoản ứng viên"
           className="flex h-[38px] cursor-pointer items-center gap-2 rounded-full border border-solid border-slate-200 bg-white py-1 pl-1 pr-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           <AccountAvatar name={name} avatar={user?.avatar} size={30} />

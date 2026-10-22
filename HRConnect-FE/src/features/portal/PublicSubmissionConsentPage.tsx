@@ -127,7 +127,7 @@ export const PublicSubmissionConsentPage: React.FC = () => {
             <span>HR Connect</span>
           </a>
           <h1 className="m-0 mt-5 text-3xl font-extrabold text-slate-900">Xác nhận hồ sơ ứng tuyển</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Kiểm tra thông tin trước khi cho phép Affiliate gửi CV của bạn đến doanh nghiệp.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Kiểm tra thông tin trước khi cho phép đối tác tuyển dụng gửi CV của bạn đến doanh nghiệp.</p>
         </header>
 
         <Alert
@@ -144,7 +144,7 @@ export const PublicSubmissionConsentPage: React.FC = () => {
             <StatusDot tone="warning">Hạn {dayjs(consent.expiresAt).format('HH:mm DD/MM/YYYY')}</StatusDot>
           </div>
           <dl className="grid grid-cols-1 gap-5 text-sm sm:grid-cols-2">
-            <div><dt className="text-slate-500">Candidate</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{consent.candidateName}</dd></div>
+            <div><dt className="text-slate-500">Ứng viên</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{consent.candidateName}</dd></div>
             <div><dt className="text-slate-500">Công việc</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{consent.jobTitle}</dd></div>
             <div><dt className="text-slate-500">Doanh nghiệp</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{consent.companyName}</dd></div>
             <div><dt className="text-slate-500">Tệp CV</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{consent.cvFileName}</dd></div>
@@ -157,7 +157,7 @@ export const PublicSubmissionConsentPage: React.FC = () => {
           )}
 
           <Checkbox checked={allowFutureReuse} disabled={respond.isPending} onChange={(event) => setAllowFutureReuse(event.target.checked)}>
-            Cho phép Affiliate này dùng lại CV để gửi yêu cầu xác nhận cho công việc khác. Mỗi công việc mới vẫn cần tôi đồng ý riêng.
+            Cho phép đối tác tuyển dụng này dùng lại CV để gửi yêu cầu xác nhận cho công việc khác. Mỗi công việc mới vẫn cần tôi đồng ý riêng.
           </Checkbox>
 
           <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-5">

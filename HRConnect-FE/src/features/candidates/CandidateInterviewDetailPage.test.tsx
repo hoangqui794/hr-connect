@@ -132,7 +132,7 @@ describe('CandidateInterviewDetailPage & CandidateInterviewDetailView', () => {
     expect(screen.getByText('Senior React Developer')).toBeInTheDocument();
     expect(screen.getByText('VNG Corporation')).toBeInTheDocument();
     expect(screen.getByText(/Vòng 1/i)).toBeInTheDocument();
-    expect(screen.getByText('Trực tuyến (Online)')).toBeInTheDocument();
+    expect(screen.getByText('Trực tuyến')).toBeInTheDocument();
     expect(screen.getByText('Đã lên lịch')).toBeInTheDocument();
 
     // Meeting link & action
@@ -158,7 +158,7 @@ describe('CandidateInterviewDetailPage & CandidateInterviewDetailView', () => {
     });
 
     expect(screen.getByText(/Vòng 2/i)).toBeInTheDocument();
-    expect(screen.getByText('Trực tiếp (Tại văn phòng)')).toBeInTheDocument();
+    expect(screen.getByText('Trực tiếp tại văn phòng')).toBeInTheDocument();
     expect(screen.getByText('Tầng 12, Tòa nhà Bitexco, Q.1, TP. Hồ Chí Minh')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Google Maps/i })).toBeInTheDocument();
   });
