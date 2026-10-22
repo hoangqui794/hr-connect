@@ -91,7 +91,13 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
 
         if (agreement.ConcurrencyToken != request.ConcurrencyToken)
         {
-            throw new ConflictException("Thỏa thuận dịch vụ đã được cập nhật bởi một thao tác khác. Vui lòng tải lại trang.");
+            // Nếu người ký đang có một challenge OTP còn hiệu lực cho thỏa thuận này, cho phép tiếp tục
+            // để tránh xung đột khi ConcurrencyToken bị nhảy lúc tạo OTP challenge.
+            var activeChallenge = await _agreements.GetActiveChallengeAsync(agreement.ServiceAgreementId, request.UserId, DateTime.UtcNow, ct);
+            if (activeChallenge == null)
+            {
+                throw new ConflictException("Thỏa thuận dịch vụ đã được cập nhật bởi một thao tác khác. Vui lòng tải lại trang.");
+            }
         }
 
         if (agreement.Status == ServiceAgreementStatuses.Signed)

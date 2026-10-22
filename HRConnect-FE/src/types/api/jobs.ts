@@ -450,6 +450,8 @@ export interface CreateSignatureChallengeResponse {
   signerEmail: string;
   expiresAt: string;
   message: string;
+  concurrencyToken?: string;
+  devOtp?: string;
 }
 
 export interface SignServiceAgreementInput {

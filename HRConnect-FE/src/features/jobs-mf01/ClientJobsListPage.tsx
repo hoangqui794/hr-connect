@@ -83,7 +83,12 @@ export const ClientJobsListPage: React.FC = () => {
   }, [searchParams, setSearchParams]);
   const [detailJobId, setDetailJobId] = useState<string>();
   const [pending, setPending] = useState<PendingAction>(null);
-  const [paymentModalJob, setPaymentModalJob] = useState<{ jobId: string; title: string } | null>(null);
+  const [paymentModalJob, setPaymentModalJob] = useState<{
+    jobId: string;
+    title: string;
+    isDeposit?: boolean;
+    depositAmount?: number | null;
+  } | null>(null);
 
   const highlightParam = searchParams.get('highlight') || searchParams.get('jobId');
   const openDetailParam = searchParams.get('openDetail') === 'true';
@@ -534,23 +539,42 @@ export const ClientJobsListPage: React.FC = () => {
                       </div>
                     )}
                     {isAwaitingSourcingDeposit(job) && (
-                      <div className="rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2 text-xs text-amber-900">
-                        <span className="font-medium">
-                          Chờ đặt cọc dịch vụ tìm kiếm hồ sơ ({formatMoney(sourcingDepositAmount(job) ?? 0, 'VND')}) · tin được mở khi HR Connect nhận cọc
-                        </span>
+                      <div className="flex flex-col gap-2 rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2.5 text-xs text-amber-900">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-amber-950">
+                            Chờ đặt cọc dịch vụ ({formatMoney(sourcingDepositAmount(job) ?? 200000, 'VND')})
+                          </span>
+                          <span className="text-[11px] text-amber-700">Mở tin khi nhận cọc</span>
+                        </div>
+                        <div className="flex items-center gap-2 pt-1 border-0 border-t border-solid border-amber-200/60">
+                          <Button
+                            type="primary"
+                            size="small"
+                            className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600 !text-xs !h-6 font-medium"
+                            onClick={() =>
+                              setPaymentModalJob({
+                                jobId: job.jobId,
+                                title: job.title,
+                                isDeposit: true,
+                                depositAmount: sourcingDepositAmount(job) ?? 200000,
+                              })
+                            }
+                          >
+                            Đặt cọc
+                          </Button>
+                          <Button
+                            size="small"
+                            className="!text-xs !h-6 border-amber-300 text-amber-900 hover:text-amber-700"
+                            onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                          >
+                            Hợp đồng cọc
+                          </Button>
+                        </div>
                       </div>
                     )}
                     {job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
-                      <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2 text-xs text-amber-900">
-                        <span className="font-medium">Chờ thanh toán phí kích hoạt</span>
-                        <Button
-                          type="primary"
-                          size="small"
-                          className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600 !text-xs !h-6"
-                          onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
-                        >
-                          Hướng dẫn thanh toán
-                        </Button>
+                      <div className="flex items-center justify-between rounded-xl bg-amber-50/80 border border-solid border-amber-200 px-3 py-1.5 text-xs text-amber-900">
+                        <span className="font-medium">Chờ thanh toán phí kích hoạt để công bố</span>
                       </div>
                     )}
                     {job.status === 'REJECTED' && job.statusReason && (
@@ -675,6 +699,8 @@ export const ClientJobsListPage: React.FC = () => {
         visible={Boolean(paymentModalJob)}
         jobId={paymentModalJob?.jobId ?? ''}
         jobTitle={paymentModalJob?.title ?? ''}
+        isDeposit={paymentModalJob?.isDeposit}
+        depositAmount={paymentModalJob?.depositAmount}
         onClose={() => {
           setPaymentModalJob(null);
           if (searchParams.has('openPayment')) {

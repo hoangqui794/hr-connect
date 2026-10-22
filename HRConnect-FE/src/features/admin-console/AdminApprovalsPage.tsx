@@ -182,7 +182,15 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
         : adminService.rejectAffiliate(item.approvalId, text ?? '');
     },
     onSuccess: (res, vars) => {
-      message.success(res.message || (vars.kind === 'approve' ? 'Đã duyệt hồ sơ.' : 'Đã từ chối hồ sơ.'));
+      const defaultMsg =
+        vars.item.type === 'CLIENT'
+          ? vars.kind === 'approve'
+            ? 'Đã duyệt yêu cầu xác minh doanh nghiệp thành công.'
+            : 'Đã từ chối yêu cầu xác minh doanh nghiệp.'
+          : vars.kind === 'approve'
+            ? 'Đã duyệt hồ sơ cộng tác viên thành công.'
+            : 'Đã từ chối hồ sơ cộng tác viên.';
+      message.success(res?.message || defaultMsg);
       setDecision(null);
       setSelected(null);
       queryClient.invalidateQueries({ queryKey: ['admin-approvals'] });
