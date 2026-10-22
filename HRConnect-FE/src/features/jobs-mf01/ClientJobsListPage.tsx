@@ -32,6 +32,7 @@ import {
   PlusOutlined,
   ReloadOutlined,
   SendOutlined,
+  FileDoneOutlined,
 } from '@ant-design/icons';
 import type { Job, JobCloseReasonCode, JobStatus } from '@/types/api/jobs';
 import { FilterPills, PageHero, Surface } from '@/features/admin-console/ui';
@@ -56,7 +57,7 @@ import {
 
 
 type StatusFilter = 'ALL' | JobStatus;
-const FILTER_ORDER: JobStatus[] = ['DRAFT', 'PENDING_REVIEW', 'PENDING_PAYMENT', 'ACTIVE', 'PAUSED', 'CLOSED', 'REJECTED'];
+const FILTER_ORDER: JobStatus[] = ['DRAFT', 'PENDING_REVIEW', 'PENDING_AGREEMENT', 'PENDING_PAYMENT', 'ACTIVE', 'PAUSED', 'CLOSED', 'REJECTED'];
 
 type PendingAction = { kind: 'pause' | 'close'; job: Job } | null;
 
@@ -211,6 +212,9 @@ export const ClientJobsListPage: React.FC = () => {
           (mutations.resume.isPending && mutations.resume.variables?.jobId === job.jobId);
         const more = [
           { key: 'view', icon: <EyeOutlined />, label: 'Xem chi tiết' },
+          ...(job.serviceTypeCode === 'HEADHUNT_COD' || job.serviceTypeCode === 'CV_SOURCING'
+            ? [{ key: 'agreement', icon: <FileDoneOutlined />, label: 'Thỏa thuận dịch vụ' }]
+            : []),
           ...(job.serviceTypeCode === 'CV_SOURCING' ? [{ key: 'sourcing', icon: <TeamOutlined />, label: 'Hồ sơ được tìm kiếm' }] : []),
           ...(can.canPause ? [{ key: 'pause', label: 'Tạm dừng tuyển' }] : []),
           ...(can.canResume ? [{ key: 'resume', label: 'Mở lại tuyển' }] : []),
@@ -218,6 +222,17 @@ export const ClientJobsListPage: React.FC = () => {
         ];
         return (
           <div className="flex items-center justify-end gap-1">
+            {job.status === 'PENDING_AGREEMENT' && (
+              <Button
+                size="small"
+                type="primary"
+                className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600 font-medium"
+                icon={<FileDoneOutlined />}
+                onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+              >
+                Ký thỏa thuận
+              </Button>
+            )}
             {job.serviceTypeCode === 'CV_SOURCING' && (
               <Button
                 size="small"
@@ -260,6 +275,7 @@ export const ClientJobsListPage: React.FC = () => {
                 items: more,
                 onClick: ({ key }) => {
                   if (key === 'view') setDetailJobId(job.jobId);
+                  if (key === 'agreement') navigate(`/client/agreements?jobId=${job.jobId}`);
                   if (key === 'sourcing') navigate(`/client/jobs/${job.jobId}/sourcing`);
                   if (key === 'resume') resume(job);
                   if (key === 'pause' || key === 'close') setPending({ kind: key, job });
@@ -504,6 +520,19 @@ export const ClientJobsListPage: React.FC = () => {
                       </div>
                       <div>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'}</div>
                     </div>
+                    {job.status === 'PENDING_AGREEMENT' && (
+                      <div className="flex items-center justify-between rounded-xl bg-purple-50 border border-solid border-purple-200 px-3 py-2 text-xs text-purple-900">
+                        <span className="font-medium">Dự thảo thỏa thuận đang chờ ký kết</span>
+                        <Button
+                          type="primary"
+                          size="small"
+                          className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600 !text-xs !h-6 font-medium"
+                          onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                        >
+                          Xem & Ký
+                        </Button>
+                      </div>
+                    )}
                     {isAwaitingSourcingDeposit(job) && (
                       <div className="rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2 text-xs text-amber-900">
                         <span className="font-medium">

@@ -24,6 +24,12 @@ import type {
   JobTemplateUpsertInput,
   JobUpsertInput,
   ServiceType,
+  ServiceAgreementDto,
+  CreateServiceAgreementProposalInput,
+  RespondServiceAgreementInput,
+  CreateSignatureChallengeResponse,
+  SignServiceAgreementInput,
+  AgreementDocumentDownloadResponse,
 } from '@/types/api/jobs';
 
 /** Drops empty values so optional query params are not sent as "". */
@@ -258,3 +264,75 @@ export const serviceTypesApi = {
     return res.data.data.items;
   },
 };
+
+export const serviceAgreementsApi = {
+  /** GET /jobs/{jobId}/service-agreement */
+  async getCurrent(jobId: string): Promise<ServiceAgreementDto | null> {
+    try {
+      const res = await apiClient.get<ServiceAgreementDto>(`/jobs/${jobId}/service-agreement`);
+      return res.data;
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) return null;
+      throw err;
+    }
+  },
+
+  /** GET /jobs/{jobId}/service-agreements */
+  async getHistory(jobId: string): Promise<ServiceAgreementDto[]> {
+    const res = await apiClient.get<ServiceAgreementDto[]>(`/jobs/${jobId}/service-agreements`);
+    return res.data;
+  },
+
+  /** POST /internal/jobs/{jobId}/service-agreements */
+  async createProposal(jobId: string, input: CreateServiceAgreementProposalInput): Promise<ServiceAgreementDto> {
+    const res = await apiClient.post<ServiceAgreementDto>(`/internal/jobs/${jobId}/service-agreements`, input);
+    return res.data;
+  },
+
+  /** POST /client/jobs/{jobId}/service-agreements/{agreementId}/response */
+  async respond(jobId: string, agreementId: string, input: RespondServiceAgreementInput): Promise<ServiceAgreementDto> {
+    const res = await apiClient.post<ServiceAgreementDto>(
+      `/client/jobs/${jobId}/service-agreements/${agreementId}/response`,
+      input
+    );
+    return res.data;
+  },
+
+  /** POST /client/jobs/{jobId}/service-agreements/{agreementId}/signature-challenges */
+  async createSignatureChallenge(jobId: string, agreementId: string): Promise<CreateSignatureChallengeResponse> {
+    const res = await apiClient.post<CreateSignatureChallengeResponse>(
+      `/client/jobs/${jobId}/service-agreements/${agreementId}/signature-challenges`,
+      {}
+    );
+    return res.data;
+  },
+
+  /** POST /client/jobs/{jobId}/service-agreements/{agreementId}/sign */
+  async sign(jobId: string, agreementId: string, input: SignServiceAgreementInput): Promise<ServiceAgreementDto> {
+    const res = await apiClient.post<ServiceAgreementDto>(
+      `/client/jobs/${jobId}/service-agreements/${agreementId}/sign`,
+      input
+    );
+    return res.data;
+  },
+
+  /** GET /jobs/{jobId}/service-agreements/{agreementId}/download-url */
+  async getDownloadUrl(jobId: string, agreementId: string, signed: boolean = true): Promise<AgreementDocumentDownloadResponse> {
+    const res = await apiClient.get<AgreementDocumentDownloadResponse>(
+      `/jobs/${jobId}/service-agreements/${agreementId}/download-url`,
+      { params: { signed } }
+    );
+    return res.data;
+  },
+
+  /** POST /internal/jobs/{jobId}/service-agreements/{agreementId}/void */
+  async void(jobId: string, agreementId: string, voidReason: string): Promise<ServiceAgreementDto> {
+    const res = await apiClient.post<ServiceAgreementDto>(
+      `/internal/jobs/${jobId}/service-agreements/${agreementId}/void`,
+      { voidReason }
+    );
+    return res.data;
+  },
+};
+

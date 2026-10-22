@@ -324,6 +324,14 @@ public static class JobTransitions
             {
                 JobStatuses.Active,
                 JobStatuses.PendingPayment,
+                JobStatuses.PendingAgreement,
+                JobStatuses.Rejected
+            },
+            [JobStatuses.PendingAgreement] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                JobStatuses.PendingAgreement,
+                JobStatuses.Active,
+                JobStatuses.PendingPayment,
                 JobStatuses.Rejected
             },
             [JobStatuses.PendingPayment] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)

@@ -161,8 +161,11 @@ public class JobManagementCommandHandlerTests
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
         job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
         job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid(), IsMandatory = true });
+        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, Price = 1_000_000m, IsActive = true };
+        job.PostingPackageId = stdPkg.PackageId;
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
+        _jobs.Setup(x => x.GetPostingPackageByIdAsync(stdPkg.PackageId, It.IsAny<CancellationToken>())).ReturnsAsync(stdPkg);
         var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _adminSettings.Object, _uow.Object)
             .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
         result.Data.Status.Should().Be(JobStatuses.PendingReview);
@@ -176,7 +179,10 @@ public class JobManagementCommandHandlerTests
         job.Title = "Backend Developer"; job.Description = "Build APIs"; job.Benefits = "Insurance and training";
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
         job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
+        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, Price = 1_000_000m, IsActive = true };
+        job.PostingPackageId = stdPkg.PackageId;
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
+        _jobs.Setup(x => x.GetPostingPackageByIdAsync(stdPkg.PackageId, It.IsAny<CancellationToken>())).ReturnsAsync(stdPkg);
 
         var result = await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _adminSettings.Object, _uow.Object)
             .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
@@ -229,8 +235,12 @@ public class JobManagementCommandHandlerTests
         job.Title = "Backend Developer"; job.Description = "Build APIs"; job.Benefits = "Insurance and training"; job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
         job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = Guid.NewGuid() });
+        var freePkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Free, Price = 0, IsActive = true };
+        job.PostingPackageId = freePkg.PackageId;
         _jobs.Setup(x => x.AreSkillsActiveAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
+        _jobs.Setup(x => x.GetPostingPackageByIdAsync(freePkg.PackageId, It.IsAny<CancellationToken>())).ReturnsAsync(freePkg);
+        _jobs.Setup(x => x.GetPostingPackageByCodeAsync(JobPostingPackageCodes.Free, It.IsAny<CancellationToken>())).ReturnsAsync(freePkg);
         var submit = new SubmitJobCommandHandler(_jobs.Object, _members.Object, _adminSettings.Object, _uow.Object);
 
         await submit.Handle(new SubmitJobCommand { JobId = job.JobId, UserId = owner, ConcurrencyToken = job.ConcurrencyToken }, default);
@@ -242,6 +252,7 @@ public class JobManagementCommandHandlerTests
             UserId = owner,
             ConcurrencyToken = job.ConcurrencyToken,
             ServiceTypeId = job.ServiceTypeId,
+            PostingPackageId = freePkg.PackageId,
             Title = "Backend Developer Updated",
             Description = "Build APIs",
             Benefits = "Insurance, annual bonus and training",
@@ -417,6 +428,25 @@ public class JobManagementCommandHandlerTests
     }
 
     [Fact]
+    public async Task Submit_CvApplication_WithoutPackage_ShouldFail_JobPostingPackageRequired()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "Frontend Dev"; job.Description = "React JD"; job.Benefits = "Lunch";
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+        job.PostingPackageId = null;
+
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvApplication);
+
+        var action = () => new SubmitJobCommandHandler(_jobs.Object, _members.Object, _adminSettings.Object, _uow.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        await action.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("JOB_POSTING_PACKAGE_REQUIRED*");
+    }
+
+    [Fact]
     public async Task Submit_CvApplication_FreePackage_ShouldSucceed_WhenWithinLimits()
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);
@@ -425,8 +455,11 @@ public class JobManagementCommandHandlerTests
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
 
         var freePkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Free, Name = "Gói Miễn Phí", Price = 0, DurationDays = 30, IsActive = true };
+        job.PostingPackageId = freePkg.PackageId;
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ServiceTypeCodes.CvApplication);
+        _jobs.Setup(x => x.GetPostingPackageByIdAsync(freePkg.PackageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(freePkg);
         _jobs.Setup(x => x.GetPostingPackageByCodeAsync(JobPostingPackageCodes.Free, It.IsAny<CancellationToken>()))
             .ReturnsAsync(freePkg);
         _jobs.Setup(x => x.CountActiveJobsByCompanyIdAsync(job.CompanyId, It.IsAny<CancellationToken>()))
@@ -451,8 +484,11 @@ public class JobManagementCommandHandlerTests
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
 
         var freePkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Free, Name = "Gói Miễn Phí", Price = 0, DurationDays = 30, IsActive = true };
+        job.PostingPackageId = freePkg.PackageId;
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ServiceTypeCodes.CvApplication);
+        _jobs.Setup(x => x.GetPostingPackageByIdAsync(freePkg.PackageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(freePkg);
         _jobs.Setup(x => x.GetPostingPackageByCodeAsync(JobPostingPackageCodes.Free, It.IsAny<CancellationToken>()))
             .ReturnsAsync(freePkg);
         _jobs.Setup(x => x.CountActiveJobsByCompanyIdAsync(job.CompanyId, It.IsAny<CancellationToken>()))
@@ -474,8 +510,11 @@ public class JobManagementCommandHandlerTests
         job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
 
         var freePkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Free, Name = "Gói Miễn Phí", Price = 0, DurationDays = 30, IsActive = true };
+        job.PostingPackageId = freePkg.PackageId;
         _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ServiceTypeCodes.CvApplication);
+        _jobs.Setup(x => x.GetPostingPackageByIdAsync(freePkg.PackageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(freePkg);
         _jobs.Setup(x => x.GetPostingPackageByCodeAsync(JobPostingPackageCodes.Free, It.IsAny<CancellationToken>()))
             .ReturnsAsync(freePkg);
         _jobs.Setup(x => x.CountActiveJobsByCompanyIdAsync(job.CompanyId, It.IsAny<CancellationToken>()))

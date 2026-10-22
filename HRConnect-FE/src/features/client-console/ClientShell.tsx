@@ -23,6 +23,7 @@ import { BrandMark } from '@/components/common/BrandMark';
 const NAV = [
   { to: '/client/dashboard', label: 'Tổng quan' },
   { to: '/client/jobs', label: 'Tin tuyển dụng' },
+  { to: '/client/agreements', label: 'Thỏa thuận dịch vụ' },
   { to: '/client/candidates', label: 'Hồ sơ ứng viên' },
   { to: '/client/interviews-offers', label: 'Phỏng vấn & Offer' },
   { to: '/client/warranty', label: 'Bảo hành', muted: true },

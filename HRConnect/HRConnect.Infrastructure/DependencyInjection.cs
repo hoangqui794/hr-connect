@@ -124,6 +124,7 @@ public static class DependencyInjection
         services.AddScoped<ICommissionMilestoneRepository, CommissionMilestoneRepository>();
         services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
         services.AddScoped<IJobRepository, JobRepository>();
+        services.AddScoped<IServiceAgreementRepository, ServiceAgreementRepository>();
         services.AddScoped<ISubmissionRepository, SubmissionRepository>();
         services.AddScoped<ISubmissionConsentRepository, SubmissionConsentRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
@@ -255,6 +256,7 @@ public static class DependencyInjection
         services.AddScoped<HRConnect.Application.Features.Candidates.CvBuilder.IStructuredCvService, HRConnect.Infrastructure.Services.CvBuilder.StructuredCvService>();
         services.AddScoped<HRConnect.Application.Features.Candidates.CvBuilder.ICvTemplateRepository, HRConnect.Infrastructure.Services.CvBuilder.CvTemplateRepository>();
         services.AddScoped<ICvStorageService, HRConnect.Infrastructure.Services.Storage.CvStorageService>();
+        services.AddScoped<IAgreementPdfRenderer, HRConnect.Infrastructure.Services.Agreements.AgreementPdfRenderer>();
 
         // 6. Dịch vụ AI & HRConnect Client (MF-03 Integration)
         var clientOptions = new HRConnectClientOptions();

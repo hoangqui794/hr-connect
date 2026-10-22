@@ -10,6 +10,7 @@ import type {
   JobCloseReasonCode,
   JobRejectReasonCode,
   JobStatus,
+  ServiceAgreementStatus,
   ServiceTypeCode,
 } from '@/types/api/jobs';
 
@@ -23,12 +24,24 @@ export const DEFAULT_STATUS_CONFIG: { label: string; color: string; hint: string
 export const JOB_STATUS: Record<JobStatus, { label: string; color: string; hint: string }> = {
   DRAFT: { label: 'Bản nháp', color: 'default', hint: 'Chưa gửi duyệt. Bạn có thể chỉnh sửa.' },
   PENDING_REVIEW: { label: 'Chờ duyệt', color: 'processing', hint: 'Bộ phận kiểm duyệt của HR Connect đang xử lý.' },
+  PENDING_AGREEMENT: { label: 'Chờ ký thỏa thuận', color: 'purple', hint: 'HR Connect đã gửi dự thảo thỏa thuận thương mại. Doanh nghiệp cần xác nhận & ký kết.' },
   PENDING_PAYMENT: { label: 'Chờ thanh toán', color: 'warning', hint: 'Nội dung đã được duyệt. Cần thanh toán phí để công bố tin.' },
   PENDING_APPROVAL: { label: 'Chờ duyệt', color: 'warning', hint: 'Tin đang chờ HR duyệt' },
   REJECTED: { label: 'Bị từ chối', color: 'error', hint: 'Sửa theo lý do rồi gửi duyệt lại.' },
   ACTIVE: { label: 'Đang tuyển', color: 'success', hint: 'Đang hiển thị và nhận hồ sơ.' },
   PAUSED: { label: 'Tạm dừng', color: 'warning', hint: 'Tạm ngừng nhận hồ sơ.' },
   CLOSED: { label: 'Đã đóng', color: 'default', hint: 'Không còn nhận hồ sơ.' },
+};
+
+export const SERVICE_AGREEMENT_STATUS: Record<ServiceAgreementStatus, { label: string; color: string; hint: string }> = {
+  DRAFT: { label: 'Dự thảo', color: 'default', hint: 'Bản thảo thỏa thuận nội bộ.' },
+  SENT_TO_CLIENT: { label: 'Chờ doanh nghiệp phản hồi', color: 'processing', hint: 'Chờ Doanh nghiệp xem xét hoặc yêu cầu điều chỉnh.' },
+  CHANGE_REQUESTED: { label: 'Yêu cầu điều chỉnh', color: 'warning', hint: 'Doanh nghiệp đã yêu cầu điều chỉnh các điều khoản.' },
+  ACCEPTED: { label: 'Đã chấp thuận', color: 'cyan', hint: 'Doanh nghiệp đã đồng ý các điều khoản, sẵn sàng ký số.' },
+  AWAITING_SIGNATURE: { label: 'Chờ ký OTP', color: 'cyan', hint: 'Đang trong quá trình xác thực OTP ký số điện tử.' },
+  SIGNED: { label: 'Đã ký kết', color: 'success', hint: 'Thỏa thuận đã được ký kết thành công bởi đại diện doanh nghiệp.' },
+  VOID: { label: 'Đã hủy', color: 'error', hint: 'Thỏa thuận đã bị hủy bỏ.' },
+  LEGACY_CONFIRMED: { label: 'Đã xác nhận', color: 'default', hint: 'Thỏa thuận xác nhận theo luồng cũ.' },
 };
 
 export const STATUS_CONFIG = JOB_STATUS;
