@@ -105,7 +105,7 @@ const ATS_TEMPLATES: AtsTemplateItem[] = [
     id: 'tpl-creative',
     name: 'Sáng tạo (Creative Product & Design)',
     category: 'UI/UX & Product',
-    description: 'Trình bày nổi bật Portfolio, liên kết Figma/Behance và các dự án thiết kế trải nghiệm người dùng đoạt giải thưởng.',
+    description: 'Trình bày nổi bật hồ sơ năng lực, liên kết Figma/Behance và các dự án thiết kế trải nghiệm người dùng tiêu biểu.',
     score: 91,
     previewBg: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
   },
@@ -424,7 +424,7 @@ export const CandidateProfilePage: React.FC = () => {
       const values = await builderForm.validateFields();
       const newCv: CandidateCV = {
         id: `cv-builder-${Date.now()}`,
-        name: `CV ${values.roleTarget || profile?.targetRole || 'Chuyên viên'} (Online ATS)`,
+        name: `CV ${values.roleTarget || profile?.targetRole || 'Chuyên viên'} (tạo trên HR Connect)`,
         updatedAt: 'Hôm nay',
         size: '1.9 MB',
         isDefault: myCvs.length === 0,
@@ -500,6 +500,30 @@ export const CandidateProfilePage: React.FC = () => {
     return 'Thương lượng';
   };
 
+  const levelLabel: Record<string, string> = {
+    Intern: 'Thực tập sinh',
+    Fresher: 'Mới tốt nghiệp',
+    Junior: 'Nhân viên sơ cấp',
+    'Mid-Level': 'Nhân viên có kinh nghiệm',
+    Senior: 'Chuyên viên cao cấp',
+    Lead: 'Trưởng nhóm chuyên môn',
+    Manager: 'Quản lý',
+    Director: 'Giám đốc',
+  };
+
+  const profileCompletion = Math.round(
+    ([
+      profile?.fullName,
+      profile?.phone,
+      profile?.currentAddress,
+      profile?.currentJobTitle,
+      profile?.targetRole,
+      profile?.yearsOfExperience,
+      profile?.summary,
+      profile?.preferredLocations?.length,
+    ].filter(Boolean).length / 8) * 100
+  );
+
   if (isLoading) {
     return (
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 16px' }}>
@@ -527,213 +551,61 @@ export const CandidateProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="candidate-page candidate-profile-page" style={{ maxWidth: 1180, margin: '0 auto', paddingBottom: 60 }}>
-      {/* Header Profile Summary — Modern Dark Hero */}
-      <div
-        className="candidate-profile-hero"
-        style={{
-          borderRadius: 20,
-          background: 'linear-gradient(135deg, #0B0F17 0%, #111827 50%, #1e293b 100%)',
-          border: '1px solid rgba(51, 65, 85, 0.7)',
-          boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset',
-          padding: '28px 32px',
-          marginBottom: 24,
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Glow decoration */}
-        <div
-          style={{
-            position: 'absolute',
-            top: -60,
-            right: -60,
-            width: 220,
-            height: 220,
-            background: 'radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, rgba(0, 0, 0, 0) 70%)',
-            pointerEvents: 'none',
-          }}
-        />
-
-        <Row align="middle" justify="space-between" gutter={[24, 20]}>
-          <Col xs={24} md={16} style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+    <div className="candidate-page candidate-profile-page" style={{ width: '100%', paddingBottom: 60 }}>
+      <div className="candidate-profile-hero">
+        <div className="candidate-profile-identity">
+          <div className="candidate-profile-avatar-wrap">
             <AvatarUpload
-              size={84}
+              size={96}
               statusColor={isPublic ? '#10b981' : '#f59e0b'}
               statusLabel={isPublic ? 'Hồ sơ công khai' : 'Hồ sơ riêng tư'}
             />
-
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
-                <h1
-                  style={{
-                    fontSize: 24,
-                    fontWeight: 800,
-                    color: '#ffffff',
-                    margin: 0,
-                    letterSpacing: '-0.02em',
-                  }}
-                >
-                  {profile?.fullName || user?.name || 'Ứng viên'}
-                </h1>
-                <Tag
-                  color="blue"
-                  style={{
-                    borderRadius: 9999,
-                    padding: '2px 10px',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                    background: 'rgba(59, 130, 246, 0.15)',
-                    color: '#93c5fd',
-                  }}
-                >
-                  {profile?.currentLevel || 'Chuyên viên'}
-                </Tag>
-              </div>
-
-              <div
-                style={{
-                  color: '#38bdf8',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  marginBottom: 10,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <span>{profile?.currentJobTitle || profile?.targetRole || 'Chưa cập nhật chức danh'}</span>
-                {profile?.yearsOfExperience ? (
-                  <>
-                    <span style={{ color: '#475569' }}>•</span>
-                    <span style={{ color: '#94a3b8' }}>{profile.yearsOfExperience} năm kinh nghiệm</span>
-                  </>
-                ) : null}
-              </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                <div
-                  style={{
-                    background: 'rgba(15, 23, 42, 0.7)',
-                    border: '1px solid rgba(51, 65, 85, 0.8)',
-                    borderRadius: 9999,
-                    padding: '4px 12px',
-                    fontSize: 12,
-                    color: '#94a3b8',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
-                >
-                  <MailOutlined style={{ color: '#60a5fa' }} />
-                  <span style={{ color: '#e2e8f0' }}>{profile?.email || user?.email || 'Chưa có email'}</span>
-                </div>
-                <div
-                  style={{
-                    background: 'rgba(15, 23, 42, 0.7)',
-                    border: '1px solid rgba(51, 65, 85, 0.8)',
-                    borderRadius: 9999,
-                    padding: '4px 12px',
-                    fontSize: 12,
-                    color: '#94a3b8',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
-                >
-                  <PhoneOutlined style={{ color: '#34d399' }} />
-                  <span style={{ color: '#e2e8f0' }}>{profile?.phone || user?.phone || 'Chưa có số điện thoại'}</span>
-                </div>
-              </div>
-            </div>
-          </Col>
-
-          {/* Metric & Visibility Box */}
-          <Col xs={24} md={8} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
-            <div
-              style={{
-                background: 'rgba(15, 23, 42, 0.75)',
-                border: '1px solid rgba(51, 65, 85, 0.8)',
-                backdropFilter: 'blur(12px)',
-                borderRadius: 16,
-                padding: '16px 22px',
-                minWidth: 220,
-                textAlign: 'right',
-                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
-                <span
-                  style={{
-                    background: 'rgba(16, 185, 129, 0.1)',
-                    color: '#34d399',
-                    border: '1px solid rgba(16, 185, 129, 0.25)',
-                    borderRadius: 9999,
-                    padding: '2px 8px',
-                    fontSize: 11,
-                    fontWeight: 600,
-                  }}
-                >
-                  Mức lương
-                </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    fontWeight: 600,
-                    color: '#94a3b8',
-                  }}
-                >
-                  Kỳ vọng / Tháng
-                </span>
-              </div>
-              <div
-                style={{
-                  fontSize: 20,
-                  fontWeight: 800,
-                  letterSpacing: '-0.02em',
-                  color: '#34d399',
-                  lineHeight: 1.2,
-                }}
-              >
-                {formatSalaryDisplay()}
-              </div>
-            </div>
-
-            {/* Visibility Toggle */}
-            <div
-              style={{
-                background: 'rgba(15, 23, 42, 0.75)',
-                border: '1px solid rgba(51, 65, 85, 0.8)',
-                borderRadius: 12,
-                padding: '8px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
-              <GlobalOutlined style={{ color: isPublic ? '#10b981' : '#94a3b8' }} />
-              <span style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 600 }}>
-                {isPublic ? 'Công khai hồ sơ' : 'Ẩn hồ sơ (Riêng tư)'}
+          </div>
+          <div className="candidate-profile-identity__content">
+            <div className="candidate-profile-kicker">Hồ sơ nghề nghiệp của bạn</div>
+            <div className="candidate-profile-name-row">
+              <h1>{profile?.fullName || user?.name || 'Ứng viên'}</h1>
+              <span className="candidate-profile-level">
+                {levelLabel[profile?.currentLevel || ''] || profile?.currentLevel || 'Chuyên viên'}
               </span>
-              <Switch
-                checked={isPublic}
-                loading={visibilityMutation.isPending}
-                onChange={(checked) => visibilityMutation.mutate(checked ? 'PUBLIC' : 'PRIVATE')}
-                size="small"
-              />
             </div>
-          </Col>
-        </Row>
+            <p className="candidate-profile-role">
+              {profile?.currentJobTitle || profile?.targetRole || 'Bổ sung chức danh để hồ sơ nổi bật hơn'}
+              {profile?.yearsOfExperience ? <><span aria-hidden> · </span><span>{profile.yearsOfExperience} năm kinh nghiệm</span></> : null}
+            </p>
+            <div className="candidate-profile-contact-list">
+              <span><MailOutlined /> {profile?.email || user?.email || 'Chưa có email'}</span>
+              <span><PhoneOutlined /> {profile?.phone || user?.phone || 'Chưa có số điện thoại'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="candidate-profile-overview">
+          <div className="candidate-profile-completion">
+            <div className="candidate-profile-overview__label"><CompassOutlined /> Mức hoàn thiện hồ sơ</div>
+            <strong>{profileCompletion}%</strong>
+            <div className="candidate-profile-completion__track"><span style={{ width: `${profileCompletion}%` }} /></div>
+            <small>{profileCompletion < 100 ? 'Bổ sung thông tin để tăng cơ hội được chú ý.' : 'Hồ sơ của bạn đã sẵn sàng.'}</small>
+          </div>
+          <div className="candidate-profile-facts">
+            <div><span><DollarOutlined /> Lương kỳ vọng</span><strong>{formatSalaryDisplay()}</strong></div>
+            <div><span><CalendarOutlined /> Có thể nhận việc</span><strong>{profile?.availableFrom || 'Linh hoạt'}</strong></div>
+          </div>
+          <div className="candidate-profile-visibility">
+            <span><GlobalOutlined /> {isPublic ? 'Nhà tuyển dụng có thể tìm thấy bạn' : 'Hồ sơ đang ở chế độ riêng tư'}</span>
+            <Switch
+              checked={isPublic}
+              loading={visibilityMutation.isPending}
+              onChange={(checked) => visibilityMutation.mutate(checked ? 'PUBLIC' : 'PRIVATE')}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Main Tabs Container */}
       <Card
         className="candidate-profile-tabs"
-        bordered={false}
+        variant="borderless"
         style={{
           borderRadius: 20,
           border: '1px solid #e2e8f0',
@@ -751,7 +623,7 @@ export const CandidateProfilePage: React.FC = () => {
               label: (
                 <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
                   <UserOutlined />
-                  Thông tin cá nhân &amp; Nghề nghiệp (MF-04 DB)
+                  Thông tin cá nhân &amp; nghề nghiệp
                 </span>
               ),
               children: (
@@ -768,7 +640,7 @@ export const CandidateProfilePage: React.FC = () => {
                     requiredMark="optional"
                   >
                     {/* Nhóm 1: Thông tin định danh & Liên hệ */}
-                    <div style={{ marginBottom: 28 }}>
+                    <section className="candidate-profile-section">
                       <div
                         style={{
                           fontSize: 15,
@@ -800,7 +672,7 @@ export const CandidateProfilePage: React.FC = () => {
                         Thông tin liên hệ &amp; Định danh cá nhân
                       </div>
                       <Text style={{ fontSize: 13, color: '#64748b', display: 'block', marginBottom: 16 }}>
-                        Email đăng nhập là cố định. Để liên kết các email ứng tuyển phụ, vui lòng truy cập trang Quản lý danh tính MF-02.
+                        Email đăng nhập được bảo vệ và không thể thay đổi tại đây. Bạn có thể liên kết email từng dùng để ứng tuyển trong mục Email liên kết.
                       </Text>
 
                       <Row gutter={[20, 16]}>
@@ -829,7 +701,7 @@ export const CandidateProfilePage: React.FC = () => {
                                   to="/candidate/settings/email-identities"
                                   style={{ fontSize: 12, color: '#2563eb', fontWeight: 500 }}
                                 >
-                                  Quản lý danh tính MF-02 →
+                                  Quản lý email liên kết →
                                 </Link>
                               </div>
                             }
@@ -894,12 +766,12 @@ export const CandidateProfilePage: React.FC = () => {
                           </Form.Item>
                         </Col>
                       </Row>
-                    </div>
+                    </section>
 
                     <Divider style={{ margin: '8px 0 28px' }} />
 
                     {/* Nhóm 2: 9 Trường nghề nghiệp MF-04 */}
-                    <div style={{ marginBottom: 28 }}>
+                    <section className="candidate-profile-section">
                       <div
                         style={{
                           fontSize: 15,
@@ -928,10 +800,10 @@ export const CandidateProfilePage: React.FC = () => {
                         >
                           2
                         </span>
-                        Định hướng nghề nghiệp &amp; Dải đãi ngộ (9 Trường MF-04)
+                        Định hướng nghề nghiệp &amp; mong muốn
                       </div>
                       <Text style={{ fontSize: 13, color: '#64748b', display: 'block', marginBottom: 16 }}>
-                        Dữ liệu lưu trực tiếp vào Database, hỗ trợ AI và Nhà tuyển dụng lọc đúng ứng viên tiềm năng.
+                        Thông tin này giúp hệ thống gợi ý công việc phù hợp và giúp nhà tuyển dụng hiểu rõ mong muốn của bạn.
                       </Text>
 
                       <Row gutter={[20, 16]}>
@@ -950,14 +822,14 @@ export const CandidateProfilePage: React.FC = () => {
                             label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Cấp bậc chuyên môn</span>}
                           >
                             <Select size="large" style={{ borderRadius: 12 }}>
-                              <Option value="Intern">Intern / Thực tập sinh</Option>
-                              <Option value="Fresher">Fresher (Dưới 1 năm)</Option>
-                              <Option value="Junior">Junior (1 - 2 năm)</Option>
-                              <Option value="Mid-Level">Mid-Level (2 - 4 năm)</Option>
-                              <Option value="Senior">Senior (5+ năm)</Option>
-                              <Option value="Lead">Team Lead / Tech Lead</Option>
-                              <Option value="Manager">Engineering Manager / Quản lý</Option>
-                              <Option value="Director">Director / Giám đốc</Option>
+                              <Option value="Intern">Thực tập sinh</Option>
+                              <Option value="Fresher">Mới tốt nghiệp (dưới 1 năm)</Option>
+                              <Option value="Junior">Nhân viên sơ cấp (1 - 2 năm)</Option>
+                              <Option value="Mid-Level">Nhân viên có kinh nghiệm (2 - 4 năm)</Option>
+                              <Option value="Senior">Chuyên viên cao cấp (từ 5 năm)</Option>
+                              <Option value="Lead">Trưởng nhóm chuyên môn</Option>
+                              <Option value="Manager">Quản lý</Option>
+                              <Option value="Director">Giám đốc</Option>
                             </Select>
                           </Form.Item>
                         </Col>
@@ -1051,14 +923,14 @@ export const CandidateProfilePage: React.FC = () => {
                             <Select
                               mode="tags"
                               size="large"
-                              placeholder="Chọn hoặc nhập địa điểm (VD: Hà Nội, TP.HCM, Remote)"
+                              placeholder="Chọn hoặc nhập địa điểm (ví dụ: Hà Nội, TP.HCM, làm việc từ xa)"
                               style={{ borderRadius: 12 }}
                             >
                               <Option value="Hà Nội">Hà Nội</Option>
                               <Option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</Option>
                               <Option value="Đà Nẵng">Đà Nẵng</Option>
                               <Option value="Cần Thơ">Cần Thơ</Option>
-                              <Option value="Remote">Làm việc từ xa (Remote)</Option>
+                              <Option value="Remote">Làm việc từ xa</Option>
                               <Option value="Toàn quốc">Toàn quốc</Option>
                             </Select>
                           </Form.Item>
@@ -1076,19 +948,19 @@ export const CandidateProfilePage: React.FC = () => {
                               placeholder="Chọn hình thức làm việc"
                               style={{ borderRadius: 12 }}
                             >
-                              <Option value="ONSITE">Tại văn phòng (Onsite)</Option>
-                              <Option value="HYBRID">Linh hoạt kết hợp (Hybrid)</Option>
-                              <Option value="REMOTE">Làm việc từ xa (Remote)</Option>
+                              <Option value="ONSITE">Tại văn phòng</Option>
+                              <Option value="HYBRID">Kết hợp văn phòng và từ xa</Option>
+                              <Option value="REMOTE">Làm việc từ xa</Option>
                             </Select>
                           </Form.Item>
                         </Col>
                       </Row>
-                    </div>
+                    </section>
 
                     <Divider style={{ margin: '8px 0 28px' }} />
 
                     {/* Nhóm 3: Kỹ năng chuyên môn & Giới thiệu */}
-                    <div style={{ marginBottom: 28 }}>
+                    <section className="candidate-profile-section">
                       <div
                         style={{
                           fontSize: 15,
@@ -1128,7 +1000,7 @@ export const CandidateProfilePage: React.FC = () => {
                           <div style={{ marginBottom: 20 }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
                               <span style={{ fontWeight: 700, fontSize: 14, color: '#1e293b' }}>
-                                Danh sách Kỹ năng chuyên môn (Đồng bộ Backend API)
+                                Kỹ năng chuyên môn
                               </span>
                               <Button
                                 type="primary"
@@ -1226,7 +1098,7 @@ export const CandidateProfilePage: React.FC = () => {
                             {/* Quick custom skill tags */}
                             <div style={{ marginTop: 10 }}>
                               <span style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>
-                                Từ khóa bổ sung nhanh (Keyword Tags):
+                                Từ khóa bổ sung nhanh:
                               </span>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                                 {skillsList.map((skill) => (
@@ -1294,7 +1166,7 @@ export const CandidateProfilePage: React.FC = () => {
                           </Form.Item>
                         </Col>
                       </Row>
-                    </div>
+                    </section>
 
                     <div style={{ paddingTop: 8 }}>
                       <Button
@@ -1315,7 +1187,7 @@ export const CandidateProfilePage: React.FC = () => {
                           cursor: 'pointer',
                         }}
                       >
-                        Lưu thông tin hồ sơ vào Database
+                        Lưu thay đổi
                       </Button>
                     </div>
                   </Form>
@@ -1364,7 +1236,7 @@ export const CandidateProfilePage: React.FC = () => {
                           onClick={() => navigate('/candidate/cvs')}
                           style={{ borderRadius: 8, fontWeight: 600 }}
                         >
-                          Quản lý kho CV MF-02 →
+                          Quản lý kho CV →
                         </Button>
                       </Col>
                     </Row>

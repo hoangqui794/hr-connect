@@ -134,7 +134,7 @@ export const CandidateIdentityPage: React.FC = () => {
     mutationFn: (identity: { emailIdentityId: string; concurrencyToken: string }) =>
       candidateIdentityApi.revoke(identity.emailIdentityId, identity.concurrencyToken),
     onSuccess: async () => {
-      message.success('Đã thu hồi email phụ khỏi hồ sơ Candidate.');
+      message.success('Đã thu hồi email phụ khỏi hồ sơ của bạn.');
       await queryClient.invalidateQueries({ queryKey: candidateIdentityKeys.all });
     },
     onError: async (error) => {
@@ -149,16 +149,16 @@ export const CandidateIdentityPage: React.FC = () => {
   return (
     <div className="candidate-page candidate-identity-page">
       <CandidatePageHeader
-        eyebrow="Danh tính Candidate"
+        eyebrow="Email và hồ sơ liên kết"
         title="Email và hồ sơ liên kết"
-        description="Xác minh email cũ để nhận lại CV và lịch sử ứng tuyển đã được Affiliate tạo trước khi bạn đăng ký. Email phụ không dùng để đăng nhập hoặc quên mật khẩu."
+        description="Xác minh email cũ để nhận lại CV và lịch sử ứng tuyển do đối tác tuyển dụng tạo trước khi bạn đăng ký. Email phụ không dùng để đăng nhập hoặc khôi phục mật khẩu."
       />
 
       {result && (
         <Alert
           type={result.status === 'COMPLETED' ? 'success' : 'warning'}
           showIcon
-          message={result.status === 'COMPLETED' ? 'Đã liên kết hồ sơ' : 'Đang chờ Admin đối chiếu'}
+          message={result.status === 'COMPLETED' ? 'Đã liên kết hồ sơ' : 'Đang chờ bộ phận hỗ trợ đối chiếu'}
           description={result.message}
           closable
           onClose={() => setResult(null)}
@@ -168,7 +168,7 @@ export const CandidateIdentityPage: React.FC = () => {
       <CandidateSurface className="overflow-hidden">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="m-0 text-base font-bold text-slate-900">Email của tài khoản</h2>
-          <p className="m-0 mt-1 text-sm text-slate-500">Email chính dùng đăng nhập; email phụ chỉ giúp nhận diện đúng hồ sơ Candidate.</p>
+          <p className="m-0 mt-1 text-sm text-slate-500">Email chính dùng để đăng nhập; email phụ giúp nhận diện đúng hồ sơ của bạn.</p>
         </div>
         {identities.isLoading ? (
           <div className="p-5"><Skeleton active paragraph={{ rows: 3 }} /></div>
@@ -189,11 +189,13 @@ export const CandidateIdentityPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Tag color={identity.kind === 'PRIMARY' ? 'blue' : 'cyan'}>{identity.kind === 'PRIMARY' ? 'Email chính' : 'Email phụ'}</Tag>
-                  <StatusDot tone={identity.status === 'VERIFIED' ? 'success' : 'neutral'}>{identity.status}</StatusDot>
+                  <StatusDot tone={identity.status === 'VERIFIED' ? 'success' : 'neutral'}>
+                    {identity.status === 'VERIFIED' ? 'Đã xác minh' : identity.status === 'REVOKED' ? 'Đã thu hồi' : 'Chờ xác minh'}
+                  </StatusDot>
                   {identity.canRevoke && identity.status === 'VERIFIED' && (
                     <Popconfirm
                       title="Thu hồi email phụ?"
-                      description="Email này sẽ không còn được dùng để nhận diện và khôi phục dữ liệu Candidate. CV và đơn ứng tuyển đã liên kết vẫn được giữ."
+                      description="Email này sẽ không còn được dùng để nhận diện và khôi phục dữ liệu hồ sơ. CV và đơn ứng tuyển đã liên kết vẫn được giữ."
                       okText="Thu hồi"
                       okButtonProps={{ danger: true }}
                       cancelText="Giữ lại"
@@ -224,7 +226,7 @@ export const CandidateIdentityPage: React.FC = () => {
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700"><LinkOutlined /></span>
           <div>
             <h2 className="m-0 text-base font-bold text-slate-900">Nhận lại hồ sơ theo email cũ</h2>
-            <p className="m-0 mt-1 text-sm text-slate-600">Chỉ nhập email mà Affiliate từng dùng để nộp hồ sơ của chính bạn.</p>
+            <p className="m-0 mt-1 text-sm text-slate-600">Chỉ nhập email mà đối tác tuyển dụng từng dùng để nộp hồ sơ của chính bạn.</p>
           </div>
         </div>
 
@@ -250,7 +252,7 @@ export const CandidateIdentityPage: React.FC = () => {
               type="info"
               showIcon
               message={`Nhập mã đã gửi tới ${pending.maskedDestination}`}
-              description={`Mã còn hiệu lực ${duration(expiresIn)}. Không chia sẻ mã này với Affiliate hoặc bất kỳ ai.`}
+              description={`Mã còn hiệu lực ${duration(expiresIn)}. Không chia sẻ mã này với đối tác tuyển dụng hoặc bất kỳ ai.`}
             />
             <div>
               <label htmlFor="candidate-identity-otp" className="mb-2 block text-sm font-medium text-slate-700">Mã OTP</label>
@@ -282,7 +284,7 @@ export const CandidateIdentityPage: React.FC = () => {
         showIcon
         icon={<SafetyCertificateOutlined />}
         message="HR Connect chỉ liên kết sau khi xác minh email"
-        description="Nếu hai hồ sơ đều đã có dữ liệu, hệ thống chuyển yêu cầu cho Admin đối chiếu để tránh gộp nhầm Candidate."
+        description="Nếu hai hồ sơ đều đã có dữ liệu, hệ thống sẽ chuyển yêu cầu cho bộ phận hỗ trợ đối chiếu để tránh gộp nhầm."
       />
     </div>
   );

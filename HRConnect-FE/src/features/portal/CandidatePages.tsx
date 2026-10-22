@@ -52,6 +52,9 @@ import {
   PlusOutlined,
   LayoutOutlined,
   FormOutlined,
+  ArrowRightOutlined,
+  BellOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
@@ -65,7 +68,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { CandidateApplication, CandidateApplicationDisplayGroup } from '@/types/api/mf02';
 import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
-import { CANDIDATE_STEPS, MAX_CV_MB, candidateDisplayStage, candidateStage, candidateTimelineEventCopy, cvFileError, fileSize } from './mf02Labels';
+import { CANDIDATE_STEPS, MAX_CV_MB, candidateAiStatus, candidateAiTier, candidateDisplayStage, candidateInterviewType, candidateOfferStatus, candidateStage, candidateTimelineEventCopy, cvFileError, fileSize } from './mf02Labels';
 import { CandidatePageHeader, CandidateSurface } from './candidate/CandidateUi';
 import { CandidateJobMatchesSection } from './candidate/CandidateJobMatchesSection';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
@@ -174,7 +177,7 @@ const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
   const isPositiveOutcome = a.displayGroup === 'SELECTED' || a.displayGroup === 'HIRED';
   const isClosedOutcome = a.displayGroup === 'NOT_SELECTED' || a.displayGroup === 'WITHDRAWN';
   return (
-    <article className={`candidate-surface candidate-application-card candidate-application-card--${statusClass} flex flex-col gap-3 p-5 ${isClosedOutcome ? 'candidate-application-card--closed' : ''}`}>
+    <article className={`candidate-surface candidate-application-card candidate-application-card--${statusClass} flex flex-col gap-4 p-5 ${isClosedOutcome ? 'candidate-application-card--closed' : ''}`}>
       <div className="candidate-application-card__heading min-w-0">
         <div className="min-w-0">
           <div className="text-[16px] font-semibold leading-snug text-slate-900">{a.jobTitle}</div>
@@ -196,9 +199,9 @@ const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
           </span>
         )}
       </div>
-      <div>
-        <Button type="link" className="!h-auto !p-0" onClick={() => navigate(`/candidate/applications/${a.applicationId}`)}>
-          Xem chi tiết
+      <div className="candidate-application-card__footer">
+        <Button type="link" className="!h-auto !p-0 !font-semibold" onClick={() => navigate(`/candidate/applications/${a.applicationId}`)}>
+          Xem chi tiết <ArrowRightOutlined aria-hidden />
         </Button>
       </div>
     </article>
@@ -213,17 +216,28 @@ export const CandidateHomePage: React.FC = () => {
   const apps = useMyApplications();
   const cvs = useCandidateCvs();
   const { savedJobsCount } = useSavedJobs();
+  const pendingConsents = useQuery({
+    queryKey: candidateKeys.submissionConsents('PENDING'),
+    queryFn: () => candidateConsentApi.list({ status: 'PENDING', page: 1, pageSize: 5 }),
+  });
   const items = apps.data?.items ?? [];
   const active = items.filter((a) => !candidateDisplayStage(a.displayGroup, a.displayLabel).closed);
   const interviewing = items.filter((a) => a.displayGroup === 'INTERVIEW').length;
-  const firstName = (user?.name || 'bạn').trim().split(/\s+/).slice(-1)[0];
+  const nameParts = (user?.name || 'bạn').trim().split(/\s+/);
+  const lastNamePart = nameParts[nameParts.length - 1] || 'bạn';
+  const firstName = lastNamePart.toLowerCase() === 'candidate' && nameParts.length > 1
+    ? nameParts[0]
+    : lastNamePart;
+  const cvCount = cvs.data?.length ?? 0;
+  const pendingConsentCount = pendingConsents.data?.total ?? 0;
+  const nextInterview = items.find((application) => application.displayGroup === 'INTERVIEW');
 
   return (
     <div className="candidate-page candidate-dashboard-page">
       <section className="candidate-dashboard-hero">
-        <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-blue-200/50 blur-3xl" />
-        <div className="relative">
-          <h1 className="m-0 text-[30px] font-extrabold leading-tight tracking-[-0.02em] text-slate-900">Chào {firstName},</h1>
+        <div className="candidate-dashboard-hero__content">
+          <p className="candidate-dashboard-hero__date">Không gian nghề nghiệp của bạn</p>
+          <h1 className="m-0 text-[clamp(1.75rem,4vw,2.5rem)] font-extrabold leading-tight tracking-[-0.035em] text-slate-950">Chào {firstName},</h1>
           <p className="m-0 mt-2 max-w-xl text-[15px] leading-relaxed text-slate-600">
             {apps.isLoading
               ? 'Đang tải đơn ứng tuyển của bạn...'
@@ -231,15 +245,26 @@ export const CandidateHomePage: React.FC = () => {
                 ? 'Bạn chưa ứng tuyển công việc nào. Tìm việc phù hợp và ứng tuyển chỉ với một CV.'
                 : `Bạn có ${active.length} đơn đang được xử lý${interviewing ? `, trong đó ${interviewing} đơn đã được chọn hoặc đang phỏng vấn` : ''}.`}
           </p>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <Button type="primary" size="large" icon={<SearchOutlined />} className="!rounded-full !px-6" onClick={() => navigate('/candidate/jobs')}>
-              Tìm việc làm
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button type="primary" size="large" icon={<SearchOutlined />} onClick={() => navigate('/candidate/jobs')}>
+              Tìm việc phù hợp
             </Button>
-            <Button size="large" className="!rounded-full !px-6" onClick={() => navigate('/candidate/cvs')}>
+            <Button size="large" onClick={() => navigate('/candidate/cvs')}>
               Quản lý CV
             </Button>
           </div>
         </div>
+        <button type="button" className="candidate-readiness-card" onClick={() => navigate('/candidate/profile')}>
+          <span className="candidate-readiness-card__icon"><SafetyCertificateOutlined aria-hidden /></span>
+          <span className="min-w-0 text-left">
+            <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">Mức độ sẵn sàng</span>
+            <span className="mt-1 block text-lg font-bold text-slate-950">{cvCount > 0 ? 'Hồ sơ đã sẵn sàng' : 'Hoàn thiện hồ sơ'}</span>
+            <span className="mt-1 block text-sm leading-5 text-slate-600">
+              {cvCount > 0 ? `Bạn đang có ${cvCount} CV để ứng tuyển nhanh.` : 'Thêm CV để ứng tuyển thuận tiện hơn.'}
+            </span>
+          </span>
+          <ArrowRightOutlined aria-hidden className="text-sky-700" />
+        </button>
       </section>
 
       {!cvs.isLoading && (cvs.data ?? []).length === 0 && (
@@ -252,25 +277,67 @@ export const CandidateHomePage: React.FC = () => {
         />
       )}
 
-      <div className="candidate-stat-grid">
-        {[
-          { label: 'Đơn đã nộp', value: items.length, to: '/candidate/applications' },
-          { label: 'Đang xử lý', value: active.length, to: '/candidate/applications' },
-          { label: 'Việc đã lưu', value: savedJobsCount, to: '/candidate/saved-jobs' },
-          { label: 'CV trong kho', value: cvs.data?.length ?? 0, to: '/candidate/cvs' },
-        ].map((k) => (
-          <button
-            key={k.label}
-            type="button"
-            onClick={() => navigate(k.to)}
-            className="candidate-surface candidate-stat-card cursor-pointer p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-2 focus-visible:outline-[color:var(--candidate-accent)]"
-          >
-            <span className="block text-[13px] font-medium text-slate-600">{k.label}</span>
-            <span className="mt-1 block text-[28px] font-bold tabular-nums text-slate-900">
-              {apps.isLoading || cvs.isLoading ? <Skeleton.Input active size="small" /> : k.value}
-            </span>
-          </button>
-        ))}
+      <div className="candidate-dashboard-overview-grid">
+        <CandidateSurface className="candidate-action-center overflow-hidden">
+          <div className="candidate-section-heading border-b border-slate-100 px-5 py-4 !mb-0">
+            <div>
+              <h2 className="m-0 text-base font-bold text-slate-950">Việc cần bạn xử lý</h2>
+              <p className="m-0 mt-1 text-sm text-slate-500">Hoàn thành sớm để không bỏ lỡ cơ hội.</p>
+            </div>
+            {(pendingConsentCount > 0 || nextInterview) && <span className="candidate-attention-count">{pendingConsentCount + (nextInterview ? 1 : 0)}</span>}
+          </div>
+          <div className="candidate-action-list">
+            {pendingConsentCount > 0 && (
+              <button type="button" className="candidate-action-row" onClick={() => navigate('/candidate/applications?tab=consents')}>
+                <span className="candidate-action-row__icon candidate-action-row__icon--warning"><BellOutlined aria-hidden /></span>
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block font-semibold text-slate-900">Xác nhận hồ sơ được giới thiệu</span>
+                  <span className="mt-1 block text-sm text-slate-500">Bạn có {pendingConsentCount} yêu cầu đang chờ quyết định.</span>
+                </span>
+                <span className="candidate-action-row__cta">Xem ngay <ArrowRightOutlined /></span>
+              </button>
+            )}
+            {nextInterview && (
+              <button type="button" className="candidate-action-row" onClick={() => navigate(`/candidate/applications/${nextInterview.applicationId}`)}>
+                <span className="candidate-action-row__icon candidate-action-row__icon--info"><CalendarOutlined aria-hidden /></span>
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block truncate font-semibold text-slate-900">Theo dõi lịch phỏng vấn</span>
+                  <span className="mt-1 block truncate text-sm text-slate-500">{nextInterview.jobTitle} · {nextInterview.companyName}</span>
+                </span>
+                <span className="candidate-action-row__cta">Chi tiết <ArrowRightOutlined /></span>
+              </button>
+            )}
+            {!pendingConsents.isLoading && pendingConsentCount === 0 && !nextInterview && (
+              <div className="candidate-action-empty">
+                <CheckCircleFilled aria-hidden />
+                <div><strong>Bạn đã xử lý xong mọi việc</strong><span>Thông báo quan trọng sẽ xuất hiện tại đây.</span></div>
+              </div>
+            )}
+          </div>
+        </CandidateSurface>
+
+        <CandidateSurface className="candidate-application-summary p-5">
+          <div className="candidate-section-heading !mb-4">
+            <div>
+              <h2 className="m-0 text-base font-bold text-slate-950">Tổng quan ứng tuyển</h2>
+              <p className="m-0 mt-1 text-sm text-slate-500">Tiến độ hiện tại của bạn</p>
+            </div>
+            <Button type="link" className="!px-0" onClick={() => navigate('/candidate/applications')}>Xem tất cả</Button>
+          </div>
+          <div className="candidate-stat-grid">
+            {[
+              { label: 'Đã nộp', value: items.length, to: '/candidate/applications' },
+              { label: 'Đang xử lý', value: active.length, to: '/candidate/applications' },
+              { label: 'Phỏng vấn', value: interviewing, to: '/candidate/applications?status=INTERVIEW' },
+              { label: 'Việc đã lưu', value: savedJobsCount, to: '/candidate/saved-jobs' },
+            ].map((k) => (
+              <button key={k.label} type="button" onClick={() => navigate(k.to)} className="candidate-stat-card">
+                <span>{k.label}</span>
+                <strong>{apps.isLoading ? '—' : k.value}</strong>
+              </button>
+            ))}
+          </div>
+        </CandidateSurface>
       </div>
 
       <section className="candidate-dashboard-section">
@@ -373,7 +440,7 @@ export const CandidateApplicationsPage: React.FC = () => {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
             <div>
               <h2 className="m-0 text-base font-bold text-slate-900">Đang chờ bạn xác nhận</h2>
-              <p className="m-0 mt-1 text-sm text-slate-500">Affiliate chỉ có thể gửi hồ sơ đến doanh nghiệp sau khi bạn đồng ý.</p>
+              <p className="m-0 mt-1 text-sm text-slate-500">Đối tác tuyển dụng chỉ có thể gửi hồ sơ đến doanh nghiệp sau khi bạn đồng ý.</p>
             </div>
             <StatusDot tone="warning">{pendingConsents.data?.total ?? 0} yêu cầu</StatusDot>
           </div>
@@ -434,7 +501,7 @@ export const CandidateApplicationsPage: React.FC = () => {
           className="min-w-48"
           options={[
             { value: 'CANDIDATE', label: 'Tôi tự ứng tuyển' },
-            { value: 'AFFILIATE', label: 'Affiliate giới thiệu' },
+            { value: 'AFFILIATE', label: 'Đối tác tuyển dụng giới thiệu' },
           ]}
         />
         <DatePicker.RangePicker
@@ -665,9 +732,9 @@ export const CandidateApplicationDetailPage: React.FC = () => {
       />
 
       {/* Main Info Surface */}
-      <CandidateSurface className="space-y-5 p-6">
+      <CandidateSurface className="candidate-application-overview space-y-5 p-6">
         <StageTracker status={application.status} offerStatuses={offerStatuses} />
-        <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+        <dl className="candidate-application-facts grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-slate-500">CV đã nộp</dt>
             <dd className="m-0 mt-1 font-medium text-slate-900 flex items-center gap-2">
@@ -687,7 +754,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
           <div>
             <dt className="text-slate-500">Nguồn hồ sơ</dt>
             <dd className="m-0 mt-1 font-medium text-slate-900">
-              {application.submissionSource === 'AFFILIATE' ? 'Affiliate giới thiệu' : 'Candidate tự ứng tuyển'}
+              {application.submissionSource === 'AFFILIATE' ? 'Đối tác tuyển dụng giới thiệu' : 'Bạn tự ứng tuyển'}
             </dd>
           </div>
           <div>
@@ -709,7 +776,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
       </CandidateSurface>
 
       {/* Interviews Section */}
-      <CandidateSurface className="p-6">
+      <CandidateSurface className="candidate-detail-section candidate-detail-section--interviews p-6">
         <div className="flex items-center gap-2 mb-4">
           <VideoCameraOutlined className="text-blue-600 text-lg" />
           <h2 className="m-0 text-base font-bold text-slate-900">
@@ -737,13 +804,13 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                 <Card
                   key={iv.interviewId}
                   size="small"
-                  className="rounded-xl border border-slate-200 bg-white shadow-none"
+                  className="candidate-interview-card rounded-xl border border-slate-200 bg-white shadow-none"
                 >
                   <div className="flex items-start justify-between flex-wrap gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-slate-900">
-                          Vòng {iv.interviewRound}: {iv.interviewType || 'Phỏng vấn'}
+                          Vòng {iv.interviewRound}: {candidateInterviewType(iv.interviewType)}
                         </span>
                         <span
                           role="status"
@@ -814,11 +881,11 @@ export const CandidateApplicationDetailPage: React.FC = () => {
       </CandidateSurface>
 
       {/* Offers Section */}
-      <CandidateSurface className="p-6">
+      <CandidateSurface className="candidate-detail-section candidate-detail-section--offers p-6">
         <div className="flex items-center gap-2 mb-4">
           <GiftOutlined className="text-emerald-600 text-lg" />
           <h2 className="m-0 text-base font-bold text-slate-900">
-            Thư mời nhận việc (Offers) {offers.length > 0 ? `(${offers.length})` : ''}
+            Thư mời nhận việc {offers.length > 0 ? `(${offers.length})` : ''}
           </h2>
         </div>
         {offers.length === 0 ? (
@@ -834,14 +901,14 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                 <Card
                   key={offer.offerId}
                   size="small"
-                  className="border border-emerald-200 rounded-xl bg-emerald-50/30"
+                  className="candidate-offer-card border border-emerald-200 rounded-xl bg-emerald-50/30"
                 >
                   <div className="flex items-start justify-between flex-wrap gap-3">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-slate-900">Phiên bản #{offer.offerVersion}</span>
                         <Tag color={offer.status === 'ACCEPTED' ? 'green' : offer.status === 'DECLINED' ? 'red' : 'blue'}>
-                          {offer.status}
+                          {candidateOfferStatus(offer.status)}
                         </Tag>
                       </div>
                       <div className="mt-2 text-sm text-slate-800">
@@ -874,7 +941,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                           rel="noopener noreferrer"
                           icon={<DownloadOutlined />}
                         >
-                          Tài liệu Offer
+                          Xem thư mời
                         </Button>
                       )}
                       {canRespond && (
@@ -916,7 +983,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
       {/* Placement Section */}
       {placement && (
         <CandidateSurface className="p-6">
-          <h2 className="m-0 text-base font-bold text-slate-900">Thông tin Tiếp nhận việc làm (Placement)</h2>
+          <h2 className="m-0 text-base font-bold text-slate-900">Thông tin nhận việc</h2>
           <div className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
             <div>
               <span className="text-slate-500">Vị trí</span>
@@ -981,11 +1048,11 @@ export const CandidateApplicationDetailPage: React.FC = () => {
       {/* AI Result Section (if available from legacy or model) */}
       {(application.aiStatus || application.aiMatchScore != null) && (
         <CandidateSurface className="p-6">
-          <h2 className="m-0 text-base font-bold text-slate-900">Kết quả AI</h2>
+          <h2 className="m-0 text-base font-bold text-slate-900">Đánh giá mức độ phù hợp</h2>
           <div className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-            <div><span className="text-slate-500">Trạng thái</span><strong className="mt-1 block text-slate-900">{application.aiStatus || 'Chưa có kết quả'}</strong></div>
+            <div><span className="text-slate-500">Trạng thái</span><strong className="mt-1 block text-slate-900">{candidateAiStatus(application.aiStatus)}</strong></div>
             <div><span className="text-slate-500">Điểm phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchScore == null ? '—' : `${application.aiMatchScore}%`}</strong></div>
-            <div><span className="text-slate-500">Mức phù hợp</span><strong className="mt-1 block text-slate-900">{application.aiMatchTier || '—'}</strong></div>
+            <div><span className="text-slate-500">Mức phù hợp</span><strong className="mt-1 block text-slate-900">{candidateAiTier(application.aiMatchTier)}</strong></div>
           </div>
         </CandidateSurface>
       )}
@@ -1211,11 +1278,11 @@ export const CandidateCvsPage: React.FC = () => {
                 cv.creationMethod === 'PLATFORM_BUILDER';
 
               return (
-                <article key={cv.cvId} className="candidate-surface candidate-cv-card flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl text-red-700" aria-hidden>
+                <article key={cv.cvId} className={`candidate-surface candidate-cv-card ${cv.isPrimary ? 'candidate-cv-card--primary' : ''} flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap`}>
+                  <span className="candidate-cv-card__icon flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl text-red-700" aria-hidden>
                     <FilePdfOutlined />
                   </span>
-                  <div className="min-w-0 flex-1">
+                  <div className="candidate-cv-card__content min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="truncate font-semibold text-slate-900">{cv.title || cv.fileName || 'CV'}</span>
                       {cv.isPrimary && (
@@ -1234,10 +1301,10 @@ export const CandidateCvsPage: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <div className="truncate text-xs text-slate-500">
+                    <div className="candidate-cv-card__meta truncate text-xs text-slate-500">
                       {cv.fileName} · {fileSize(cv.fileSizeBytes)} · cập nhật {dayjs(cv.updatedAt).format('DD/MM/YYYY')}
                     </div>
-                    <div className="mt-1 text-xs text-slate-500">
+                    <div className="candidate-cv-card__usage mt-1 text-xs text-slate-500">
                       {cv.applicationUsageCount > 0
                         ? `Đang được lưu trong ${cv.applicationUsageCount} đơn ứng tuyển${cv.submissionUsageCount > cv.applicationUsageCount ? ` và ${cv.submissionUsageCount - cv.applicationUsageCount} lượt nộp khác` : ''}.`
                         : cv.submissionUsageCount > 0
@@ -1245,7 +1312,7 @@ export const CandidateCvsPage: React.FC = () => {
                           : 'Chưa được dùng trong lượt nộp nào.'}
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="candidate-cv-card__actions flex shrink-0 items-center gap-1">
                     {canView && (
                       <Tooltip title="Xem CV">
                         <Button icon={<EyeOutlined />} aria-label={`Xem ${cv.title ?? 'CV'}`} onClick={() => openSigned(() => candidateCvApi.downloadUrl(cv.cvId))} />
@@ -1300,7 +1367,13 @@ export const CandidateCvsPage: React.FC = () => {
         {canCreate && (
           <aside className="lg:sticky lg:top-24 lg:self-start space-y-4">
             <CandidateSurface className="candidate-cv-upload p-5">
-              <h2 className="m-0 mb-3 text-base font-semibold text-slate-900">Tạo CV mới</h2>
+              <div className="candidate-cv-upload__heading">
+                <span><PlusOutlined /></span>
+                <div>
+                  <h2 className="m-0 text-base font-semibold text-slate-900">Thêm CV vào hồ sơ</h2>
+                  <p>Chọn cách phù hợp nhất với bạn</p>
+                </div>
+              </div>
 
               {/* 3 clear choices */}
               <div className="space-y-2 mb-4">
@@ -1308,10 +1381,10 @@ export const CandidateCvsPage: React.FC = () => {
                   type="primary"
                   icon={<LayoutOutlined />}
                   block
-                  className="!rounded-xl !h-10 !bg-purple-600 hover:!bg-purple-700 text-xs font-semibold flex items-center justify-center gap-2"
+                  className="candidate-cv-upload__primary !rounded-xl !h-11 text-xs font-semibold flex items-center justify-center gap-2"
                   onClick={() => setCreateBuilderOpen(true)}
                 >
-                  Dựng CV theo mẫu đẹp
+                  Tạo CV theo mẫu chuyên nghiệp
                 </Button>
                 <Button
                   icon={<FormOutlined />}
@@ -1319,7 +1392,7 @@ export const CandidateCvsPage: React.FC = () => {
                   className="!rounded-xl !h-10 text-xs font-semibold flex items-center justify-center gap-2 text-slate-700 hover:text-blue-600 hover:border-blue-500"
                   onClick={() => setCreateBuilderOpen(true)}
                 >
-                  Tự dựng CV nhanh (Chuẩn ATS)
+                  Soạn CV thân thiện với hệ thống tuyển dụng
                 </Button>
               </div>
 

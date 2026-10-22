@@ -368,7 +368,7 @@ export const CandidateCvBuilderModal: React.FC<CandidateCvBuilderModalProps> = (
       onCancel={onClose}
       width={920}
       style={{ top: 20 }}
-      destroyOnClose
+      destroyOnHidden
       footer={null}
       title={
         <div className="flex items-center gap-2">

@@ -138,7 +138,7 @@ describe('CandidateIdentityPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Xác minh và liên kết/ }));
 
     await waitFor(() => expect(verifyMock).toHaveBeenCalledWith('claim-1', '123456', 'token-2'));
-    expect(await screen.findByText('Đang chờ Admin đối chiếu')).toBeInTheDocument();
+    expect(await screen.findByText('Đang chờ bộ phận hỗ trợ đối chiếu')).toBeInTheDocument();
     expect(sessionStorage.getItem('hrconnect:candidate-identity-claim')).toBeNull();
   });
 

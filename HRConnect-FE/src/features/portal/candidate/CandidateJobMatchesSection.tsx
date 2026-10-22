@@ -167,7 +167,7 @@ export const CandidateJobMatchesSection: React.FC<CandidateJobMatchesSectionProp
 
         <div className="mx-auto mt-8 flex max-w-md items-center justify-center gap-2 rounded-xl border border-solid border-slate-100 bg-slate-50/80 px-4 py-2.5 text-xs text-slate-500">
           <InfoCircleOutlined className="text-slate-400" />
-          <span>Dữ liệu gợi ý được hệ thống tính toán định kỳ (~1 giờ/lần) từ Backend.</span>
+          <span>Gợi ý được hệ thống cập nhật tự động khoảng mỗi giờ.</span>
         </div>
       </CandidateSurface>
     );

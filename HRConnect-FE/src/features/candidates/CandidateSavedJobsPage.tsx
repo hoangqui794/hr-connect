@@ -127,7 +127,7 @@ export const CandidateSavedJobsPage: React.FC = () => {
   };
 
   return (
-    <div className="candidate-page candidate-saved-jobs-page space-y-6 max-w-6xl mx-auto pb-16">
+    <div className="candidate-page candidate-saved-jobs-page space-y-6 pb-16">
       {/* ─── Page Header ─── */}
       <CandidatePageHeader
         eyebrow="Cơ hội bạn quan tâm"
