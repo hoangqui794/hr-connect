@@ -22,6 +22,14 @@ export type ConnectionStateListener = (state: signalR.HubConnectionState) => voi
 export type NotificationCreatedListener = (payload: NotificationCreatedPayload) => void;
 export type InterviewUpdatedListener = (payload: InterviewUpdatedPayload) => void;
 
+/** MF-03: an AI scoring attempt finished (COMPLETED or FAILED). */
+export interface ApplicationScoredPayload {
+  applicationId: string;
+  jobId: string;
+  status: string;
+}
+export type ApplicationScoredListener = (payload: ApplicationScoredPayload) => void;
+
 /**
  * Resolves the SignalR notifications Hub URL from the configured API_BASE_URL.
  * Strips any trailing /api/v1 or /api prefix so dev/production paths map cleanly to /hubs/notifications.
@@ -42,6 +50,7 @@ export class SignalRNotificationService {
   private statusListeners = new Set<ConnectionStateListener>();
   private notificationCreatedListeners = new Set<NotificationCreatedListener>();
   private interviewUpdatedListeners = new Set<InterviewUpdatedListener>();
+  private applicationScoredListeners = new Set<ApplicationScoredListener>();
   private hubUrlResolver: () => string;
   private restartTimer: ReturnType<typeof setTimeout> | null = null;
   private restartAttempt = 0;
@@ -164,6 +173,22 @@ export class SignalRNotificationService {
     };
 
     connection.on('interview.updated', handleInterviewUpdated);
+    connection.on('application.scored', (data: unknown) => {
+      if (!data || typeof data !== 'object') return;
+      const raw = data as Record<string, unknown>;
+      const payload: ApplicationScoredPayload = {
+        applicationId: String(raw.applicationId ?? raw.ApplicationId ?? ''),
+        jobId: String(raw.jobId ?? raw.JobId ?? ''),
+        status: String(raw.status ?? raw.Status ?? ''),
+      };
+      this.applicationScoredListeners.forEach((listener) => {
+        try {
+          listener(payload);
+        } catch (err) {
+          console.error('[SignalRNotificationService] Error in applicationScored listener:', err);
+        }
+      });
+    });
     connection.on('InterviewUpdated', handleInterviewUpdated);
 
     // Lifecycle events
@@ -291,6 +316,13 @@ export class SignalRNotificationService {
     this.interviewUpdatedListeners.add(listener);
     return () => {
       this.interviewUpdatedListeners.delete(listener);
+    };
+  }
+
+  public onApplicationScored(listener: ApplicationScoredListener): () => void {
+    this.applicationScoredListeners.add(listener);
+    return () => {
+      this.applicationScoredListeners.delete(listener);
     };
   }
 }

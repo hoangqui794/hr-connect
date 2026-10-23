@@ -5,6 +5,9 @@ using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Authentication;
 using HRConnect.Infrastructure.Persistence;
 using HRConnect.Presentation.Swagger;
+using HRConnect.Presentation.Hubs;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -101,13 +104,17 @@ public static class AiIntegrationEndpoints
             ApplicationDbContext db,
             IAuditLogService audit,
             ILoggerFactory loggerFactory,
+            IHubContext<NotificationHub> hub,
             CancellationToken ct) =>
-            await AiResultCallbackProcessor.ProcessAsync(
-                payload,
-                db,
-                audit,
-                loggerFactory.CreateLogger("MF03.AiResultCallback"),
-                ct));
+        {
+            var logger = loggerFactory.CreateLogger("MF03.AiResultCallback");
+            var response = await AiResultCallbackProcessor.ProcessAsync(payload, db, audit, logger, ct);
+            if (response is IStatusCodeHttpResult { StatusCode: StatusCodes.Status200OK })
+            {
+                await AiResultCallbackProcessor.PushScoredAsync(payload, db, hub, logger, ct);
+            }
+            return response;
+        });
 
         }
 
@@ -287,6 +294,37 @@ public static class AiResultCallbackProcessor
             "Persisted MF-03 callback {RequestId}: ApplicationId={ApplicationId}, AttemptNo={AttemptNo}, Status={Status}, ModelVersion={ModelVersion}, FailureCode={FailureCode}.",
             payload.RequestId, payload.ApplicationId, payload.AttemptNo, result.Status, result.ModelVersion, result.FailureCode);
         return Results.Ok(new { success = true });
+    }
+
+    /// <summary>
+    /// After the result is saved, tell the people who look at the score (Internal HR, Platform Admin and the
+    /// job's company users) so their screening lists refresh without a reload. A failed push never fails the callback.
+    /// </summary>
+    public static async Task PushScoredAsync(
+        AiResultCallback payload, ApplicationDbContext db, IHubContext<NotificationHub> hub, ILogger logger, CancellationToken ct)
+    {
+        try
+        {
+            var companyId = await db.Jobs.AsNoTracking().Where(j => j.JobId == payload.JobId).Select(j => (Guid?)j.CompanyId).FirstOrDefaultAsync(ct);
+            var staff = await db.UserRoles.AsNoTracking()
+                .Where(ur => ur.Status == "ACTIVE" && ur.Role.IsActive && (ur.Role.Code == "INTERNAL_HR" || ur.Role.Code == "PLATFORM_ADMIN"))
+                .Select(ur => ur.UserId).ToListAsync(ct);
+            var members = companyId == null
+                ? new List<Guid>()
+                : await db.CompanyUsers.AsNoTracking().Where(cu => cu.CompanyId == companyId && cu.Status == "ACTIVE").Select(cu => cu.UserId).ToListAsync(ct);
+            var groups = staff.Concat(members).Distinct().Select(NotificationHub.UserGroup).ToList();
+            if (groups.Count == 0) return;
+            await hub.Clients.Groups(groups).SendAsync("application.scored", new
+            {
+                applicationId = payload.ApplicationId,
+                jobId = payload.JobId,
+                status = payload.Status,
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not push application.scored for ApplicationId={ApplicationId}.", payload.ApplicationId);
+        }
     }
 
     private static string SerializeSafeCallback(AiResultCallback payload) => JsonSerializer.Serialize(new

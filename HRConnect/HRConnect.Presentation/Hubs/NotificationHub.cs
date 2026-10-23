@@ -11,7 +11,8 @@ namespace HRConnect.Presentation.Hubs;
 /// <summary>
 /// BE-04 D: realtime bell. Connect to /hubs/notifications with the JWT as the access_token query
 /// parameter; each user joins its own group. Events: "notification.created" { notification, unreadCount }
-/// and, for interview notifications, "interview.updated" { interviewId }.
+/// and, for interview notifications, "interview.updated" { interviewId }; "application.scored"
+/// { applicationId, jobId, status } when an AI scoring attempt finishes (MF-03).
 /// The FE keeps polling as a fallback when the connection drops.
 /// </summary>
 [Authorize]

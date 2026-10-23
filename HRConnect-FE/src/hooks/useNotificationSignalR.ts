@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { portalRoute } from '@/components/notifications/notificationRoutes';
 import {
   signalRNotificationService,
+  type ApplicationScoredPayload,
   type NotificationCreatedPayload,
   type InterviewUpdatedPayload,
 } from '@/services/signalRNotificationService';
@@ -160,6 +161,20 @@ export const useNotificationSignalR = (options: UseNotificationSignalROptions = 
     [queryClient]
   );
 
+  // 3. AI scoring finished: refresh every list and detail that shows the score, no page reload needed.
+  const handleApplicationScored = useCallback(
+    (payload: ApplicationScoredPayload) => {
+      for (const key of ['hr-screening', 'hr-overview', 'client-candidates', 'client-overview', 'candidate-applications']) {
+        void queryClient.invalidateQueries({ queryKey: [key] });
+      }
+      if (payload.applicationId) {
+        void queryClient.invalidateQueries({ queryKey: ['hr-application', payload.applicationId] });
+        void queryClient.invalidateQueries({ queryKey: ['hr-application-timeline', payload.applicationId] });
+      }
+    },
+    [queryClient]
+  );
+
   useEffect(() => {
     const unsubState = signalRNotificationService.onStateChange((state) => {
       setConnectionState(state);
@@ -167,13 +182,15 @@ export const useNotificationSignalR = (options: UseNotificationSignalROptions = 
 
     const unsubNotif = signalRNotificationService.onNotificationCreated(handleNotificationCreated);
     const unsubInterview = signalRNotificationService.onInterviewUpdated(handleInterviewUpdated);
+    const unsubScored = signalRNotificationService.onApplicationScored(handleApplicationScored);
 
     return () => {
       unsubState();
       unsubNotif();
       unsubInterview();
+      unsubScored();
     };
-  }, [handleNotificationCreated, handleInterviewUpdated]);
+  }, [handleNotificationCreated, handleInterviewUpdated, handleApplicationScored]);
 
   useEffect(() => {
     if (autoConnect && isAuthenticated) {
