@@ -1,0 +1,243 @@
+---
+title: ERD – Identity, access and platform
+config:
+  layout: elk
+---
+erDiagram
+  AppUser {
+    uuid UserId PK
+    uuid AuthorizationConcurrencyToken
+    varchar AvatarObjectKey
+    timestamptz AvatarUpdatedAt
+    text AvatarUrl
+    timestamptz CreatedAt
+    varchar DisplayName
+    varchar Email
+    timestamptz EmailVerifiedAt
+    int FailedLoginAttempts
+    timestamptz LastLoginAt
+    timestamptz LockoutEndAt
+    varchar NormalizedPhone
+    varchar PasswordHash
+    varchar Phone
+    varchar Status
+    timestamptz UpdatedAt
+  }
+  Role {
+    uuid RoleId PK
+    varchar Code
+    uuid ConcurrencyToken
+    timestamptz CreatedAt
+    text Description
+    bool IsActive
+    bool IsSystem
+    varchar Name
+    timestamptz UpdatedAt
+  }
+  Permission {
+    uuid PermissionId PK
+    varchar Action
+    varchar Code
+    uuid ConcurrencyToken
+    timestamptz CreatedAt
+    text Description
+    bool IsActive
+    bool IsDelegable
+    varchar Resource
+    timestamptz UpdatedAt
+  }
+  UserRole {
+    uuid UserId PK,FK
+    uuid RoleId PK,FK
+    timestamptz AssignedAt
+    uuid AssignedBy FK
+    varchar AssignmentSource
+    text RevokeReason
+    timestamptz RevokedAt
+    uuid RevokedBy FK
+    varchar Status
+  }
+  RolePermission {
+    uuid RoleId PK,FK
+    uuid PermissionId PK,FK
+    varchar GrantSource
+    timestamptz GrantedAt
+    uuid GrantedBy FK
+  }
+  RefreshToken {
+    uuid RefreshTokenId PK
+    timestamptz CreatedAt
+    inet CreatedByIp
+    timestamptz ExpiresAt
+    uuid ReplacedByTokenId FK
+    varchar RevokeReason
+    timestamptz RevokedAt
+    inet RevokedByIp
+    varchar TokenHash
+    uuid UserId FK
+  }
+  UserToken {
+    uuid TokenId PK
+    int AttemptCount
+    timestamptz CreatedAt
+    inet CreatedByIp
+    timestamptz ExpiresAt
+    varchar TokenHash
+    varchar TokenType
+    timestamptz UsedAt
+    uuid UserId FK
+  }
+  UserEmailIdentity {
+    uuid EmailIdentityId PK
+    uuid ConcurrencyToken
+    timestamptz CreatedAt
+    varchar Email
+    varchar Kind
+    varchar NormalizedEmail
+    timestamptz RevokedAt
+    varchar Status
+    timestamptz UpdatedAt
+    uuid UserId FK
+    varchar VerificationSource
+    timestamptz VerifiedAt
+  }
+  AdminProfile {
+    uuid AdminProfileId PK
+    timestamptz CreatedAt
+    varchar EmployeeCode
+    varchar JobTitle
+    varchar Status
+    timestamptz UpdatedAt
+    uuid UserId FK
+  }
+  InternalHrProfile {
+    uuid HrProfileId PK
+    timestamptz CreatedAt
+    varchar Department
+    varchar EmployeeCode
+    varchar JobTitle
+    varchar Status
+    timestamptz UpdatedAt
+    uuid UserId FK
+  }
+  AuditLog {
+    bigint AuditLogId PK
+    varchar Action
+    varchar ActorType
+    uuid ActorUserId FK
+    uuid CorrelationId
+    timestamptz CreatedAt
+    uuid EntityId
+    varchar EntityType
+    int EventVersion
+    inet IpAddress
+    jsonb NewValues
+    jsonb OldValues
+    varchar ServiceName
+    varchar Source
+    text UserAgent
+  }
+  Notification {
+    uuid NotificationId PK
+    timestamptz CreatedAt
+    bool IsRead
+    text Message
+    jsonb Metadata
+    varchar NotificationType
+    timestamptz ReadAt
+    uuid RelatedEntityId
+    varchar RelatedEntityType
+    varchar Title
+    uuid UserId FK
+  }
+  EmailOutbox {
+    uuid EmailOutboxId PK
+    timestamptz CreatedAt
+    text LastError
+    timestamptz NextRetryAt
+    jsonb Payload
+    varchar RecipientEmail
+    int RetryCount
+    timestamptz SentAt
+    varchar Status
+    varchar Subject
+    varchar TemplateCode
+    uuid UserId FK
+  }
+  SystemSetting {
+    varchar SettingKey PK
+    timestamptz UpdatedAt
+    uuid UpdatedBy FK
+    varchar Value
+  }
+  StorageCleanupJob {
+    uuid StorageCleanupJobId PK
+    int AttemptCount
+    timestamptz CompletedAt
+    timestamptz CreatedAt
+    varchar LastError
+    timestamptz NextAttemptAt
+    varchar ObjectKey
+    timestamptz ProcessingStartedAt
+    varchar Reason
+    varchar Status
+    timestamptz UpdatedAt
+    uuid UserId FK
+  }
+  ContactRequest {
+    uuid ContactRequestId PK
+    varchar CompanyName
+    bool ConsentAccepted
+    timestamptz CreatedAt
+    varchar Email
+    varchar FullName
+    uuid HandledBy
+    varchar Message
+    varchar Note
+    varchar Phone
+    varchar ServiceInterest
+    varchar SourceIpHash
+    varchar Status
+    timestamptz UpdatedAt
+  }
+  AffiliateApplication {
+    uuid AffiliateApplicationId PK
+  }
+  AffiliateProfile {
+    uuid AffiliateId PK
+  }
+  Candidate {
+    uuid CandidateId PK
+  }
+  CompanyUser {
+    uuid CompanyUserId PK
+  }
+  InterviewParticipant {
+    uuid InterviewParticipantId PK
+  }
+  OfferApproval {
+    uuid ApprovalId PK
+  }
+  ServiceTypeAllowedRole {
+    uuid ServiceTypeId PK
+  }
+  AppUser ||--|o AdminProfile : "UserId"
+  AppUser ||--|o AffiliateApplication : "UserId"
+  AppUser ||--|o AffiliateProfile : "UserId"
+  AppUser |o--|o Candidate : "UserId"
+  AppUser ||--o{ CompanyUser : "UserId"
+  AppUser |o--o{ EmailOutbox : "UserId"
+  AppUser ||--|o InternalHrProfile : "UserId"
+  AppUser ||--o{ InterviewParticipant : "UserId"
+  AppUser ||--o{ Notification : "UserId"
+  AppUser ||--o{ OfferApproval : "UserId"
+  RefreshToken |o--o{ RefreshToken : "ReplacedByTokenId"
+  AppUser ||--o{ RefreshToken : "UserId"
+  Permission ||--o{ RolePermission : "PermissionId"
+  Role ||--o{ RolePermission : "RoleId"
+  Role ||--o{ ServiceTypeAllowedRole : "RoleId"
+  AppUser |o--o{ StorageCleanupJob : "UserId"
+  AppUser ||--o{ UserEmailIdentity : "UserId"
+  Role ||--o{ UserRole : "RoleId"
+  AppUser ||--o{ UserRole : "UserId"
+  AppUser ||--o{ UserToken : "UserId"
