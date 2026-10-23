@@ -21,6 +21,7 @@ import dayjs from 'dayjs';
 import {
   Alert,
   App as AntApp,
+  AutoComplete,
   Badge,
   Button,
   DatePicker,
@@ -1186,27 +1187,74 @@ export const JobFormPage: React.FC = () => {
                         { max: 255, message: 'Tối đa 255 ký tự.' },
                       ]}
                     >
-                      <Select
+                      <AutoComplete
                         size="large"
-                        showSearch
                         allowClear
-                        optionFilterProp="label"
-                        placeholder="Chọn tỉnh/thành hoặc cách làm việc"
+                        placeholder="Chọn tỉnh/thành hoặc nhập địa chỉ cụ thể"
                         options={LOCATION_OPTIONS}
-                        suffixIcon={<EnvironmentOutlined className="text-slate-400" />}
-                      />
+                        filterOption={(inputValue, option) =>
+                          String(option?.label ?? option?.value ?? '')
+                            .toLowerCase()
+                            .includes(inputValue.toLowerCase())
+                        }
+                      >
+                        <Input size="large" suffix={<EnvironmentOutlined className="text-slate-400" />} />
+                      </AutoComplete>
                     </Form.Item>
                   </div>
 
-                  <Form.Item name="workingTime" label="Thời gian làm việc">
-                    <Select size="large" allowClear placeholder="Chọn thời gian làm việc" options={WORKING_TIME_OPTIONS} />
+                  <Form.Item
+                    name="workingTime"
+                    label="Thời gian làm việc"
+                    rules={[{ max: 255, message: 'Tối đa 255 ký tự.' }]}
+                  >
+                    <AutoComplete
+                      size="large"
+                      allowClear
+                      placeholder="Chọn hoặc nhập thời gian làm việc cụ thể"
+                      options={WORKING_TIME_OPTIONS}
+                      filterOption={(inputValue, option) =>
+                        String(option?.label ?? option?.value ?? '')
+                          .toLowerCase()
+                          .includes(inputValue.toLowerCase())
+                      }
+                    />
                   </Form.Item>
 
                   <Form.Item
                     name="minExperienceYears"
                     label="Kinh nghiệm"
+                    rules={[{ type: 'number', min: 0, max: 50, message: 'Từ 0 đến 50 năm.' }]}
+                    extra={
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                        <span>Gợi ý:</span>
+                        {[
+                          { value: 0, label: 'Không yêu cầu' },
+                          { value: 1, label: '1 năm' },
+                          { value: 2, label: '2 năm' },
+                          { value: 3, label: '3 năm' },
+                          { value: 5, label: '5 năm' },
+                        ].map((preset) => (
+                          <button
+                            key={preset.value}
+                            type="button"
+                            onClick={() => form.setFieldValue('minExperienceYears', preset.value)}
+                            className="cursor-pointer rounded border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    }
                   >
-                    <Select size="large" allowClear placeholder="Chọn số năm kinh nghiệm" options={EXPERIENCE_YEAR_OPTIONS} />
+                    <InputNumber
+                      size="large"
+                      min={0}
+                      max={50}
+                      className="w-full"
+                      placeholder="Nhập số năm kinh nghiệm (0 = Không yêu cầu)"
+                      addonAfter="năm"
+                    />
                   </Form.Item>
                 </div>
               </section>
