@@ -1,0 +1,85 @@
+@startuml cls-mf02-submission
+title MF-02 · Application, referral, consent and attribution
+left to right direction
+hide empty members
+class JobEndpoints <<endpoint>> {
+  +POST /jobs/{id}/apply
+  +POST /jobs/{id}/candidate-submissions
+}
+class SubmissionConsentEndpoints <<endpoint>> {
+  +POST /submission-consents/respond
+  +POST /submissions/{id}/consent/resend
+}
+class ApplyJobCommandHandler <<handler>> {
+  +Handle(ApplyJobCommand)
+}
+class SubmitCandidateCommandHandler <<handler>> {
+  +Handle(SubmitCandidateCommand)
+}
+class RespondSubmissionConsentCommandHandler <<handler>> {
+  +Handle(token, decision)
+}
+class SubmissionAcceptancePolicy <<policy>> {
+  accept submission → Application + Attribution
+}
+class SubmissionConsentExpiryService <<service>> {
+  +ExpireAsync()
+}
+interface ICvStorageService <<interface>> {
+  +UploadCvPdfAsync()
+  +UploadAffiliateCvPdfAsync()
+  +CompensateUploadAsync()
+  +DeleteCvAsync()
+}
+interface IMf03ScoringTrigger <<interface>> {
+  +TriggerScoringAsync()
+}
+class Candidate <<entity>> {
+  +FullName · Email · Phone
+  +NormalizedEmail · NormalizedPhone
+  +ProfileVisibility
+}
+class CandidateCv <<entity>> {
+  +SourceFileUrl · ContentSha256
+  +TextFingerprint · IsPrimary
+}
+class Submission <<entity>> {
+  +Source (CANDIDATE/AFFILIATE)
+  +Status
+  +DuplicateOfSubmissionId
+}
+class SubmissionConsent <<entity>> {
+  +TokenHash · Status
+  +ExpiresAt · EmailSendCount
+}
+class Application <<entity>> {
+  +Status · CurrentStage
+  +AcceptedSubmissionId
+  +ConcurrencyToken
+}
+class Attribution <<entity>> {
+  +AffiliateId
+  +WinningSubmissionId · AttributionRule
+}
+class Dispute <<entity>> {
+  +DisputeType · Status
+  +Resolution
+}
+JobEndpoints ..> ApplyJobCommandHandler : sends
+JobEndpoints ..> SubmitCandidateCommandHandler : sends
+SubmissionConsentEndpoints ..> RespondSubmissionConsentCommandHandler : sends
+ApplyJobCommandHandler ..> ICvStorageService
+SubmitCandidateCommandHandler ..> ICvStorageService
+ApplyJobCommandHandler ..> IMf03ScoringTrigger
+RespondSubmissionConsentCommandHandler ..> SubmissionAcceptancePolicy
+RespondSubmissionConsentCommandHandler ..> IMf03ScoringTrigger
+SubmissionConsentExpiryService --> SubmissionConsent : expires
+SubmitCandidateCommandHandler --> Submission : creates
+SubmitCandidateCommandHandler --> SubmissionConsent : creates
+Candidate *-- CandidateCv : 0..*
+Candidate --> Submission : 0..*
+Submission --> SubmissionConsent : 0..1
+SubmissionAcceptancePolicy --> Application : creates
+Application --> Attribution : 0..1
+Attribution --> Dispute : 0..*
+@enduml
