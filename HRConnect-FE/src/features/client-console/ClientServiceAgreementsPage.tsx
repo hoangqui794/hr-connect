@@ -8,6 +8,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   App as AntApp,
+  Badge,
   Button,
   Card,
   Checkbox,
@@ -16,9 +17,12 @@ import {
   Input,
   Modal,
   Row,
+  Select,
   Skeleton,
   Table,
+  Tabs,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import {
@@ -28,10 +32,12 @@ import {
   EditOutlined,
   FilePdfOutlined,
   FileTextOutlined,
+  FilterOutlined,
   HistoryOutlined,
   InfoCircleOutlined,
   SafetyCertificateFilled,
   SafetyCertificateOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Surface } from '@/features/admin-console/ui';
@@ -53,6 +59,8 @@ import type { ServiceAgreementDto } from '@/types/api/jobs';
 
 const { Text, Title, Paragraph } = Typography;
 
+type AgreementTabKey = 'ALL' | 'PENDING_AGREEMENT' | 'PENDING_PAYMENT' | 'ACTIVE' | 'CLOSED';
+
 export const ClientServiceAgreementsPage: React.FC = () => {
   const { message, modal } = AntApp.useApp();
   const navigate = useNavigate();
@@ -70,17 +78,93 @@ export const ClientServiceAgreementsPage: React.FC = () => {
     );
   }, [allJobs]);
 
+  // Filter state: Search + Status Select
+  const [statusFilter, setStatusFilter] = useState<AgreementTabKey>('ALL');
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
+
+  // Breakdown counts for select options
+  const counts = useMemo(() => {
+    let pendingAgreement = 0;
+    let pendingPayment = 0;
+    let active = 0;
+    let closed = 0;
+
+    for (const j of eligibleJobs) {
+      if (j.status === 'PENDING_AGREEMENT') pendingAgreement++;
+      else if (j.status === 'PENDING_PAYMENT') pendingPayment++;
+      else if (j.status === 'ACTIVE') active++;
+      else if (j.status === 'CLOSED' || j.status === 'PAUSED') closed++;
+    }
+
+    return {
+      all: eligibleJobs.length,
+      pendingAgreement,
+      pendingPayment,
+      active,
+      closed,
+    };
+  }, [eligibleJobs]);
+
+  // Filtered jobs based on status and search keyword
+  const filteredJobs = useMemo(() => {
+    return eligibleJobs.filter((job) => {
+      // 1. Status filter
+      if (statusFilter === 'PENDING_AGREEMENT' && job.status !== 'PENDING_AGREEMENT') return false;
+      if (statusFilter === 'PENDING_PAYMENT' && job.status !== 'PENDING_PAYMENT') return false;
+      if (statusFilter === 'ACTIVE' && job.status !== 'ACTIVE') return false;
+      if (statusFilter === 'CLOSED' && job.status !== 'CLOSED' && job.status !== 'PAUSED') return false;
+
+      // 2. Search keyword
+      if (searchKeyword.trim()) {
+        const q = searchKeyword.trim().toLowerCase();
+        const matchTitle = job.title?.toLowerCase().includes(q);
+        const matchId = job.jobId?.toLowerCase().includes(q);
+        if (!matchTitle && !matchId) return false;
+      }
+
+      return true;
+    });
+  }, [eligibleJobs, statusFilter, searchKeyword]);
+
   const [activeJobId, setActiveJobId] = useState<string>('');
 
   useEffect(() => {
     if (eligibleJobs.length > 0) {
       if (selectedJobIdParam && eligibleJobs.some((j) => j.jobId === selectedJobIdParam)) {
         setActiveJobId(selectedJobIdParam);
+        const target = eligibleJobs.find((j) => j.jobId === selectedJobIdParam);
+        if (target) {
+          if (target.status === 'PENDING_AGREEMENT') setStatusFilter('PENDING_AGREEMENT');
+          else if (target.status === 'PENDING_PAYMENT') setStatusFilter('PENDING_PAYMENT');
+          else if (target.status === 'ACTIVE') setStatusFilter('ACTIVE');
+          else if (target.status === 'CLOSED' || target.status === 'PAUSED') setStatusFilter('CLOSED');
+        }
       } else if (!activeJobId || !eligibleJobs.some((j) => j.jobId === activeJobId)) {
         setActiveJobId(eligibleJobs[0].jobId);
       }
     }
   }, [eligibleJobs, selectedJobIdParam, activeJobId]);
+
+  const handleStatusFilterChange = (key: AgreementTabKey) => {
+    setStatusFilter(key);
+
+    const nextList = eligibleJobs.filter((job) => {
+      if (key === 'PENDING_AGREEMENT' && job.status !== 'PENDING_AGREEMENT') return false;
+      if (key === 'PENDING_PAYMENT' && job.status !== 'PENDING_PAYMENT') return false;
+      if (key === 'ACTIVE' && job.status !== 'ACTIVE') return false;
+      if (key === 'CLOSED' && job.status !== 'CLOSED' && job.status !== 'PAUSED') return false;
+      if (searchKeyword.trim()) {
+        const q = searchKeyword.trim().toLowerCase();
+        if (!job.title?.toLowerCase().includes(q) && !job.jobId?.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (nextList.length > 0 && !nextList.some((j) => j.jobId === activeJobId)) {
+      setActiveJobId(nextList[0].jobId);
+      setSearchParams({ jobId: nextList[0].jobId }, { replace: true });
+    }
+  };
 
   const activeJob = useMemo(
     () => eligibleJobs.find((j) => j.jobId === activeJobId),
@@ -363,64 +447,127 @@ export const ClientServiceAgreementsPage: React.FC = () => {
         <Row gutter={[24, 24]}>
           {/* Left Column: Job Selector */}
           <Col xs={24} lg={8} xl={7}>
-            <Surface className="p-4 rounded-2xl space-y-3">
-              <div className="flex items-center justify-between border-b pb-3 border-slate-100">
-                <Text strong className="text-sm text-slate-800">
-                  Vị trí tuyển dụng ({eligibleJobs.length})
-                </Text>
-                <Tag color="cyan">
-                  {activeJob?.serviceTypeCode && SERVICE_TYPE_LABEL[activeJob.serviceTypeCode]
-                    ? SERVICE_TYPE_LABEL[activeJob.serviceTypeCode].label
-                    : ''}
-                </Tag>
+            <Surface className="p-4 rounded-2xl space-y-3 bg-white shadow-xs">
+              {/* Header Title & Counter */}
+              <div className="flex items-center justify-between pb-1">
+                <div>
+                  <Text strong className="text-base text-slate-900 block">
+                    Vị trí tuyển dụng
+                  </Text>
+                  <span className="text-xs text-slate-500">
+                    {filteredJobs.length} / {eligibleJobs.length} vị trí
+                  </span>
+                </div>
+                {activeJob?.serviceTypeCode && SERVICE_TYPE_LABEL[activeJob.serviceTypeCode] && (
+                  <Tag color="cyan" className="m-0 text-xs font-medium rounded-full px-2.5">
+                    {SERVICE_TYPE_LABEL[activeJob.serviceTypeCode].label}
+                  </Tag>
+                )}
               </div>
 
-              <div className="space-y-2 max-h-[680px] overflow-y-auto pr-1">
-                {eligibleJobs.map((job) => {
-                  const isSelected = job.jobId === activeJobId;
-                  const statusMeta = JOB_STATUS[job.status] ?? { label: job.status, color: 'default' };
-                  return (
-                    <button
-                      key={job.jobId}
-                      type="button"
-                      onClick={() => {
-                        setActiveJobId(job.jobId);
-                        setSearchParams({ jobId: job.jobId }, { replace: true });
-                      }}
-                      className={`w-full cursor-pointer text-left rounded-xl p-3.5 transition-all border ${
-                        isSelected
-                          ? 'border-indigo-500 bg-indigo-50/70 shadow-xs ring-1 ring-indigo-500/20'
-                          : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/70'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <Text
-                          strong
-                          className={`text-sm line-clamp-1 ${
-                            isSelected ? 'text-indigo-950 font-bold' : 'text-slate-800'
-                          }`}
-                        >
-                          {job.title}
-                        </Text>
-                        <Tag
-                          color={statusMeta.color}
-                          className="m-0 text-[10px] font-semibold shrink-0 rounded"
-                        >
-                          {statusMeta.label}
-                        </Tag>
-                      </div>
+              {/* Search + Status Select Controls */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1 pb-1">
+                <Input
+                  placeholder="Tìm theo tên vị trí..."
+                  prefix={<SearchOutlined className="text-slate-400 text-xs" />}
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  allowClear
+                  size="middle"
+                  className="rounded-lg flex-1 min-w-0"
+                />
+                <Select
+                  value={statusFilter}
+                  onChange={handleStatusFilterChange}
+                  size="middle"
+                  className="w-full sm:w-44 shrink-0 font-medium"
+                  options={[
+                    { value: 'ALL', label: `Tất cả (${counts.all})` },
+                    { value: 'PENDING_AGREEMENT', label: `Chờ ký (${counts.pendingAgreement})` },
+                    { value: 'PENDING_PAYMENT', label: `Chờ thanh toán (${counts.pendingPayment})` },
+                    { value: 'ACTIVE', label: `Đang tuyển (${counts.active})` },
+                    { value: 'CLOSED', label: `Đã đóng (${counts.closed})` },
+                  ]}
+                />
+              </div>
 
-                      <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-                        <span>
-                          {job.serviceTypeCode && SERVICE_TYPE_LABEL[job.serviceTypeCode]
-                            ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label
-                            : job.serviceTypeCode ?? ''}
-                        </span>
-                        <span>{dayjs(job.updatedAt).format('DD/MM/YYYY')}</span>
-                      </div>
-                    </button>
-                  );
-                })}
+              {/* Jobs List */}
+              <div className="space-y-2 max-h-[620px] overflow-y-auto pr-1 pt-1">
+                {filteredJobs.length === 0 ? (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="Không có vị trí phù hợp"
+                    className="py-10"
+                  />
+                ) : (
+                  filteredJobs.map((job) => {
+                    const isSelected = job.jobId === activeJobId;
+                    const statusMeta = JOB_STATUS[job.status] ?? { label: job.status, color: 'default' };
+                    const isAwaitingAction =
+                      job.status === 'PENDING_AGREEMENT' || job.status === 'PENDING_PAYMENT';
+
+                    return (
+                      <button
+                        key={job.jobId}
+                        type="button"
+                        onClick={() => {
+                          setActiveJobId(job.jobId);
+                          setSearchParams({ jobId: job.jobId }, { replace: true });
+                        }}
+                        className={`w-full cursor-pointer text-left rounded-xl p-3.5 transition-all border relative ${
+                          isSelected
+                            ? 'border-indigo-600 bg-indigo-50/70 shadow-xs ring-1 ring-indigo-500/20 border-l-4 border-l-indigo-600'
+                            : isAwaitingAction
+                            ? 'border-purple-200/90 bg-purple-50/20 hover:border-purple-300 hover:bg-purple-50/40'
+                            : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/70'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <Text
+                            strong
+                            className={`text-sm line-clamp-1 ${
+                              isSelected ? 'text-indigo-950 font-bold' : 'text-slate-800'
+                            }`}
+                          >
+                            {job.title}
+                          </Text>
+                          <Tag
+                            color={statusMeta.color}
+                            className="m-0 text-[10px] font-semibold shrink-0 rounded"
+                          >
+                            {statusMeta.label}
+                          </Tag>
+                        </div>
+
+                        <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+                          <span className="font-medium text-slate-600">
+                            {job.serviceTypeCode === 'HEADHUNT_COD'
+                              ? 'Tuyển dụng kết quả'
+                              : job.serviceTypeCode === 'CV_SOURCING'
+                              ? 'Tìm kiếm hồ sơ'
+                              : job.serviceTypeCode ?? ''}
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            {dayjs(job.updatedAt).format('DD/MM/YYYY')}
+                          </span>
+                        </div>
+
+                        {job.status === 'PENDING_AGREEMENT' && (
+                          <div className="mt-2 pt-1.5 border-t border-purple-100 flex items-center gap-1.5 text-[11px] text-purple-700 font-medium">
+                            <SafetyCertificateOutlined />
+                            <span>Cần xem xét & ký số thỏa thuận</span>
+                          </div>
+                        )}
+                        {job.status === 'PENDING_PAYMENT' && (
+                          <div className="mt-2 pt-1.5 border-t border-amber-100 flex items-center gap-1.5 text-[11px] text-amber-700 font-medium">
+                            <ClockCircleOutlined />
+                            <span>Đã ký thỏa thuận · Chờ đặt cọc</span>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
               </div>
             </Surface>
           </Col>
