@@ -1,0 +1,22 @@
+---
+title: Use Cases – AI Matching & Screening (MF-03)
+---
+flowchart LR
+  CL(["👤 Client Company User"]):::actor
+  subgraph SYS["HR Connect"]
+    direction TB
+    UC15(["UC-15: View AI Matching Result"]):::uc
+    UC16(["UC-16: Screen Candidate"]):::uc
+    UC17(["UC-17: Review Candidate"]):::uc
+    UC45(["UC-45: Review Delivered CVs (CV Sourcing)"]):::uc
+  end
+  HR(["👤 Internal HR"]):::actor
+  CL --- UC15
+  CL --- UC16
+  CL --- UC17
+  CL --- UC45
+  UC15 --- HR
+  UC16 --- HR
+  classDef actor fill:#FFF4E5,stroke:#B7791F,color:#7B4B0A,font-weight:bold
+  classDef uc fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
+  classDef planned fill:#FFFFFF,stroke:#1B365D,stroke-dasharray:5 4,color:#555

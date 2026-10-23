@@ -1,0 +1,20 @@
+---
+title: Submission (MF-02)
+---
+stateDiagram-v2
+  direction LR
+  [*] --> SUBMITTED : Candidate applies (self-service)
+  [*] --> PENDING_CONSENT : Affiliate refers candidate
+  [*] --> BLOCKED_DUPLICATE : same candidate already in this job
+  PENDING_CONSENT --> ACCEPTED : candidate confirms consent
+  PENDING_CONSENT --> CONSENT_REJECTED : candidate declines
+  PENDING_CONSENT --> CONSENT_EXPIRED : no answer before expiry
+  PENDING_CONSENT --> BLOCKED_CLIENT_OWNED : candidate already owned by Client
+  PENDING_CONSENT --> PENDING_IDENTITY_REVIEW : identity conflict detected
+  PENDING_IDENTITY_REVIEW --> ACCEPTED : HR resolves identity
+  SUBMITTED --> ACCEPTED : application created
+  ACCEPTED --> [*]
+  BLOCKED_DUPLICATE --> [*]
+  CONSENT_REJECTED --> [*]
+  CONSENT_EXPIRED --> [*]
+  BLOCKED_CLIENT_OWNED --> [*]

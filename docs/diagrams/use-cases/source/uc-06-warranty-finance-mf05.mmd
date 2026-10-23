@@ -1,0 +1,23 @@
+---
+title: Use Cases – Warranty, Fee, Commission & Payout (MF-05)
+---
+flowchart LR
+  A(["👤 Affiliate"]):::actor
+  subgraph SYS["HR Connect"]
+    direction TB
+    UC27(["UC-27: Track Warranty"]):::uc
+    UC43(["UC-43: Record Service Fee Payment"]):::uc
+    UC32(["UC-32: Manage Commission / Payout"]):::uc
+    UC31(["UC-31: View Commission & Payout"]):::uc
+  end
+  CL(["👤 Client Company User"]):::actor
+  HR(["👤 Internal HR"]):::actor
+  AD(["👤 Platform Admin"]):::actor
+  A --- UC31
+  UC27 --- CL
+  UC27 --- HR
+  UC43 --- AD
+  UC32 --- AD
+  classDef actor fill:#FFF4E5,stroke:#B7791F,color:#7B4B0A,font-weight:bold
+  classDef uc fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
+  classDef planned fill:#FFFFFF,stroke:#1B365D,stroke-dasharray:5 4,color:#555

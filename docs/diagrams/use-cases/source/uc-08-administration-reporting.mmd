@@ -1,0 +1,25 @@
+---
+title: Use Cases – Administration & Reporting
+---
+flowchart LR
+  CL(["👤 Client Company User"]):::actor
+  subgraph SYS["HR Connect"]
+    direction TB
+    UC33(["UC-33: Manage Users"]):::uc
+    UC34(["UC-34: Manage Roles & Permissions"]):::uc
+    UC35(["UC-35: Manage System Configuration"]):::uc
+    UC42(["UC-42: View Audit Log"]):::uc
+    UC36(["UC-36: View Reports / Dashboard"]):::uc
+  end
+  HR(["👤 Internal HR"]):::actor
+  AD(["👤 Platform Admin"]):::actor
+  CL --- UC36
+  UC36 --- HR
+  UC33 --- AD
+  UC34 --- AD
+  UC35 --- AD
+  UC42 --- AD
+  UC36 --- AD
+  classDef actor fill:#FFF4E5,stroke:#B7791F,color:#7B4B0A,font-weight:bold
+  classDef uc fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
+  classDef planned fill:#FFFFFF,stroke:#1B365D,stroke-dasharray:5 4,color:#555

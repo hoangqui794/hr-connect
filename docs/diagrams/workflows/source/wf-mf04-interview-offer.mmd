@@ -1,0 +1,32 @@
+---
+title: WF-04 Interview, offer and start work
+---
+flowchart TB
+  subgraph L0["Client"]
+    direction TB
+    C1([Shortlisted application]) --> C2[Schedule interview]
+    C3[Record result]
+    C4{Result}
+    C4 -- PASS --> C5[Create and send offer]
+    C4 -- FAIL / NO_SHOW --> C6([INTERVIEW_FAILED])
+    C7[Confirm start work with actual date]
+  end
+  subgraph L1["Candidate"]
+    direction TB
+    K1[Receive realtime notification, confirm attendance]
+    K2{Accept offer?}
+    K2 -- Decline --> K3([OFFER_DECLINED])
+  end
+  subgraph L2["System"]
+    direction TB
+    S1[Create placement, service fee, warranty, commission]
+    S2([Application PLACED])
+  end
+  C2 --> K1
+  K1 --> C3
+  C3 --> C4
+  C5 --> K2
+  K2 -- Accept --> C7
+  C7 --> S1
+  S1 --> S2
+classDef default fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C

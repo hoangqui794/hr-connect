@@ -1,0 +1,12 @@
+---
+title: Payout (MF-05)
+---
+stateDiagram-v2
+  direction LR
+  [*] --> PENDING : Admin starts payout
+  PENDING --> COMPLETED : transfer reference recorded
+  PENDING --> FAILED : transfer failed
+  FAILED --> PENDING : Admin retries (new attempt)
+  PENDING --> CANCELLED : Admin cancels
+  COMPLETED --> [*]
+  CANCELLED --> [*]

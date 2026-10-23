@@ -1,0 +1,24 @@
+@startuml uc-06-warranty-finance-mf05
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase { BackgroundColor #EAF2FB
+  BorderColor #1B365D }
+title Use Cases – Warranty, Fee, Commission & Payout (MF-05)
+
+actor "Affiliate" as A
+actor "Client Company User" as CL
+actor "Internal HR" as HR
+actor "Platform Admin" as AD
+rectangle "HR Connect" {
+  usecase "UC-27\nTrack Warranty" as UC27
+  usecase "UC-43\nRecord Service Fee Payment" as UC43
+  usecase "UC-32\nManage Commission / Payout" as UC32
+  usecase "UC-31\nView Commission & Payout" as UC31
+}
+A -- UC31
+UC27 -- CL
+UC27 -- HR
+UC43 -- AD
+UC32 -- AD
+@enduml

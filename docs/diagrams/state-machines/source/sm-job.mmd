@@ -1,0 +1,22 @@
+---
+title: Job (MF-01)
+---
+stateDiagram-v2
+  direction TB
+  [*] --> DRAFT : Client creates job
+  DRAFT --> PENDING_REVIEW : Client submits for review
+  PENDING_REVIEW --> REJECTED : HR rejects (reason code)
+  REJECTED --> PENDING_REVIEW : Client edits and resubmits
+  PENDING_REVIEW --> PENDING_PAYMENT : HR approves CV_APPLICATION (paid package)
+  PENDING_REVIEW --> ACTIVE : HR approves CV_APPLICATION (FREE package)
+  PENDING_REVIEW --> PENDING_AGREEMENT : HR approves HEADHUNT_COD / CV_SOURCING
+  PENDING_AGREEMENT --> ACTIVE : Client signs agreement (HEADHUNT_COD)
+  PENDING_AGREEMENT --> PENDING_PAYMENT : Client signs agreement (CV_SOURCING deposit)
+  PENDING_AGREEMENT --> REJECTED : HR rejects (terms not agreed)
+  PENDING_PAYMENT --> ACTIVE : Admin records posting fee / deposit
+  ACTIVE --> PAUSED : Client pauses
+  PAUSED --> ACTIVE : Client resumes
+  ACTIVE --> CLOSED : filled / closed by Client / expired / quota reached
+  PAUSED --> CLOSED : Client closes (reason)
+  CLOSED --> ACTIVE : reopened for replacement slot
+  CLOSED --> [*]

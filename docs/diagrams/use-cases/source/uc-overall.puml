@@ -1,0 +1,118 @@
+@startuml uc-overall
+left to right direction
+skinparam actorStyle awesome
+skinparam usecase { BackgroundColor #EAF2FB
+  BorderColor #1B365D }
+title HR Connect – Overall Use Case Diagram
+
+actor "Guest" as G
+actor "Registered User" as U
+actor "Candidate" as C
+actor "Affiliate" as A
+actor "Client Company User" as CL
+actor "Internal HR" as HR
+actor "Platform Admin" as AD
+C --|> U
+A --|> U
+CL --|> U
+HR --|> U
+AD --|> U
+rectangle "HR Connect" {
+  usecase "UC-01\nRegister Account" as UC01
+  usecase "UC-02\nLogin" as UC02
+  usecase "UC-03\nSearch & View Jobs" as UC03
+  usecase "UC-37\nVerify Email / Recover Password" as UC37
+  usecase "UC-08\nManage Candidate Profile" as UC08
+  usecase "UC-09\nManage CV" as UC09
+  usecase "UC-10\nApply to Job" as UC10
+  usecase "UC-11\nSubmit Candidate/CV" as UC11
+  usecase "UC-13\nRaise Duplicate / Attribution Dispute" as UC13
+  usecase "UC-38\nRespond to Submission Consent" as UC38
+  usecase "UC-40\nWithdraw Application" as UC40
+  usecase "UC-46\nBuild CV and View Job Suggestions" as UC46
+  usecase "UC-21\nView Interview Schedule" as UC21
+  usecase "UC-24\nRespond to Offer" as UC24
+  usecase "UC-31\nView Commission & Payout" as UC31
+  usecase "UC-28\nManage Affiliate Profile" as UC28
+  usecase "UC-29\nTrack Own Submission" as UC29
+  usecase "UC-30\nView Affiliate Performance" as UC30
+  usecase "UC-20\nParticipate in Interview" as UC20
+  usecase "UC-04\nManage Company Profile" as UC04
+  usecase "UC-05\nReview Company Verification" as UC05
+  usecase "UC-06\nManage Job" as UC06
+  usecase "UC-07\nReview Job" as UC07
+  usecase "UC-44\nAgree and Sign Service Agreement" as UC44
+  usecase "UC-14\nResolve Duplicate / Attribution Dispute" as UC14
+  usecase "UC-15\nView AI Matching Result" as UC15
+  usecase "UC-16\nScreen Candidate" as UC16
+  usecase "UC-17\nReview Candidate" as UC17
+  usecase "UC-45\nReview Delivered CVs (CV Sourcing)" as UC45
+  usecase "UC-19\nManage Interview" as UC19
+  usecase "UC-22\nRecord Interview Result" as UC22
+  usecase "UC-23\nManage Offer" as UC23
+  usecase "UC-25\nConfirm Start Work / Placement" as UC25
+  usecase "UC-41\nReconcile Placement [Planned]" as UC41
+  usecase "UC-27\nTrack Warranty" as UC27
+  usecase "UC-32\nManage Commission / Payout" as UC32
+  usecase "UC-43\nRecord Service Fee Payment" as UC43
+  usecase "UC-39\nReview Affiliate Application" as UC39
+  usecase "UC-33\nManage Users" as UC33
+  usecase "UC-34\nManage Roles & Permissions" as UC34
+  usecase "UC-35\nManage System Configuration" as UC35
+  usecase "UC-36\nView Reports / Dashboard" as UC36
+  usecase "UC-42\nView Audit Log" as UC42
+}
+G -- UC01
+G -- UC37
+G -- UC03
+U -- UC02
+U -- UC37
+C -- UC03
+C -- UC08
+C -- UC09
+C -- UC46
+C -- UC10
+C -- UC38
+C -- UC40
+C -- UC20
+C -- UC21
+C -- UC24
+A -- UC03
+A -- UC11
+A -- UC13
+A -- UC28
+A -- UC29
+A -- UC30
+A -- UC31
+UC04 -- CL
+UC06 -- CL
+UC44 -- CL
+UC15 -- CL
+UC16 -- CL
+UC17 -- CL
+UC45 -- CL
+UC19 -- CL
+UC20 -- CL
+UC22 -- CL
+UC23 -- CL
+UC25 -- CL
+UC27 -- CL
+UC36 -- CL
+UC07 -- HR
+UC44 -- HR
+UC15 -- HR
+UC16 -- HR
+UC41 -- HR
+UC27 -- HR
+UC36 -- HR
+UC05 -- AD
+UC14 -- AD
+UC39 -- AD
+UC43 -- AD
+UC32 -- AD
+UC33 -- AD
+UC34 -- AD
+UC35 -- AD
+UC42 -- AD
+UC36 -- AD
+@enduml

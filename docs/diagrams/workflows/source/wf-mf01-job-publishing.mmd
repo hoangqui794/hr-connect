@@ -1,0 +1,42 @@
+---
+title: WF-01 Create, approve and publish a job
+---
+flowchart TB
+  subgraph L0["Client"]
+    direction TB
+    C1([Start]) --> C2[Create job: service type, requirements, proposed terms]
+    C2 --> C3[Submit for review]
+  end
+  subgraph L1["Internal HR"]
+    direction TB
+    H1{Job complete and terms acceptable?}
+    H1 -- No --> H2[Reject with reason code]
+    H1 -- Yes --> H3{Service type}
+    H3 -- HEADHUNT_COD / CV_SOURCING --> H4[Send service agreement version]
+    H3 -- CV_APPLICATION --> H5[Approve]
+  end
+  subgraph L2["Client"]
+    direction TB
+    C4{Agree with terms?}
+    C4 -- Request changes --> C5[Request changes]
+    C4 -- Accept --> C6[Sign with e-mail OTP]
+  end
+  subgraph L3["Platform Admin"]
+    direction TB
+    A1[Record posting fee / deposit reference]
+  end
+  subgraph L4["System"]
+    direction TB
+    S1[Store signed PDF in R2, job ACTIVE or PENDING_PAYMENT]
+    S2([Job ACTIVE and visible to allowed roles])
+  end
+  C3 --> H1
+  H2 --> C2
+  H4 --> C4
+  C5 --> H4
+  C6 --> S1
+  S1 --> A1
+  H5 --> A1
+  A1 --> S2
+  S1 -. HEADHUNT_COD .-> S2
+classDef default fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C

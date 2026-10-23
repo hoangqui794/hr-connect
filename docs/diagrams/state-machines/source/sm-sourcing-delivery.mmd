@@ -1,0 +1,14 @@
+---
+title: SourcingDelivery (MF-03)
+---
+stateDiagram-v2
+  direction LR
+  [*] --> DELIVERED : HR delivers CV to Client
+  DELIVERED --> ACCEPTED : Client accepts
+  DELIVERED --> AUTO_ACCEPTED : review period passed
+  DELIVERED --> REJECTED : Client rejects (reason code)
+  REJECTED --> REPLACED : HR replaces with backup CV
+  REJECTED --> ACCEPTED : HR overrules OTHER reason
+  ACCEPTED --> [*]
+  AUTO_ACCEPTED --> [*]
+  REPLACED --> [*]

@@ -1,0 +1,41 @@
+---
+title: WF-05 Warranty, service fee, commission and payout
+---
+flowchart TB
+  subgraph L0["System"]
+    direction TB
+    S1([Placement STARTED]) --> S2[Warranty ACTIVE 30 days, commission IN_WARRANTY, fee PENDING]
+    S3{Resignation during warranty?}
+    S3 -- No --> S4[Warranty PASSED, commission EARNED]
+  end
+  subgraph L1["Client"]
+    direction TB
+    C1[Report resignation]
+    C2[Pay service fee outside system]
+  end
+  subgraph L2["Internal HR"]
+    direction TB
+    H1{Confirm resignation?}
+    H1 -- Yes --> H2[Warranty VOIDED, commission CANCELLED, open replacement slot]
+    H1 -- No --> H3[Back to ACTIVE]
+  end
+  subgraph L3["Platform Admin"]
+    direction TB
+    A1[Record fee payment reference]
+    A2[Approve commission: PAYABLE]
+    A3[Record payout with transaction reference]
+  end
+  subgraph L4["Affiliate"]
+    direction TB
+    F1([Sees payout in commission history])
+  end
+  S2 --> S3
+  S3 -- Yes --> C1
+  C1 --> H1
+  H3 --> S3
+  S4 --> C2
+  C2 --> A1
+  A1 --> A2
+  A2 --> A3
+  A3 --> F1
+classDef default fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C

@@ -1,0 +1,10 @@
+---
+title: Placement (MF-04, MF-05)
+---
+stateDiagram-v2
+  direction LR
+  [*] --> STARTED : Client confirms start work
+  STARTED --> STARTED : HR corrects start date (within 7 days)
+  STARTED --> LEFT_DURING_WARRANTY : resignation confirmed by HR
+  STARTED --> [*] : warranty passed
+  LEFT_DURING_WARRANTY --> [*]

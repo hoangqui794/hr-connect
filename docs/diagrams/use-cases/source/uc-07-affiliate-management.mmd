@@ -1,0 +1,20 @@
+---
+title: Use Cases – Affiliate Management
+---
+flowchart LR
+  A(["👤 Affiliate"]):::actor
+  subgraph SYS["HR Connect"]
+    direction TB
+    UC28(["UC-28: Manage Affiliate Profile"]):::uc
+    UC39(["UC-39: Review Affiliate Application"]):::uc
+    UC29(["UC-29: Track Own Submission"]):::uc
+    UC30(["UC-30: View Affiliate Performance"]):::uc
+  end
+  AD(["👤 Platform Admin"]):::actor
+  A --- UC28
+  A --- UC29
+  A --- UC30
+  UC39 --- AD
+  classDef actor fill:#FFF4E5,stroke:#B7791F,color:#7B4B0A,font-weight:bold
+  classDef uc fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
+  classDef planned fill:#FFFFFF,stroke:#1B365D,stroke-dasharray:5 4,color:#555

@@ -1,0 +1,48 @@
+---
+title: HR Connect – Use Case Overview (actors and use case packages)
+---
+flowchart LR
+  G(["👤 Guest"]):::actor
+  C(["👤 Candidate"]):::actor
+  A(["👤 Affiliate"]):::actor
+  subgraph SYS["HR Connect"]
+    direction TB
+    P1["<b>Public & Authentication</b><br/>UC-01, UC-02, UC-37, UC-03"]:::uc
+    P2["<b>Company & Job Management (MF-01)</b><br/>UC-04, UC-05, UC-06, UC-07, UC-44"]:::uc
+    P3["<b>Candidate, CV & Submission (MF-02)</b><br/>UC-08, UC-09, UC-46, UC-10, UC-11, UC-38, UC-40, UC-13, UC-14"]:::uc
+    P4["<b>AI Matching & Screening (MF-03)</b><br/>UC-15, UC-16, UC-17, UC-45"]:::uc
+    P5["<b>Interview, Offer & Placement (MF-04)</b><br/>UC-19, UC-20, UC-21, UC-22, UC-23, UC-24, UC-25, UC-41"]:::uc
+    P6["<b>Warranty, Fee, Commission & Payout (MF-05)</b><br/>UC-27, UC-43, UC-32, UC-31"]:::uc
+    P7["<b>Affiliate Management</b><br/>UC-28, UC-39, UC-29, UC-30"]:::uc
+    P8["<b>Administration & Reporting</b><br/>UC-33, UC-34, UC-35, UC-42, UC-36"]:::uc
+  end
+  CL(["👤 Client Company User"]):::actor
+  HR(["👤 Internal HR"]):::actor
+  AD(["👤 Platform Admin"]):::actor
+  G --- P1
+  C --- P1
+  C --- P3
+  C --- P5
+  A --- P1
+  A --- P3
+  A --- P7
+  A --- P6
+  P2 --- CL
+  P4 --- CL
+  P5 --- CL
+  P6 --- CL
+  P8 --- CL
+  P2 --- HR
+  P4 --- HR
+  P5 --- HR
+  P6 --- HR
+  P8 --- HR
+  P2 --- AD
+  P3 --- AD
+  P7 --- AD
+  P6 --- AD
+  P8 --- AD
+  classDef actor fill:#FFF4E5,stroke:#B7791F,color:#7B4B0A,font-weight:bold
+  classDef uc fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
+  classDef planned fill:#FFFFFF,stroke:#1B365D,stroke-dasharray:5 4,color:#555
+  style SYS fill:#FAFBFD,stroke:#1B365D

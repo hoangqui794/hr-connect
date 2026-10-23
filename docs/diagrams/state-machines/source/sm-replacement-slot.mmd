@@ -1,0 +1,15 @@
+---
+title: ReplacementSlot (MF-05)
+---
+stateDiagram-v2
+  direction LR
+  [*] --> WAITING_PAYMENT : resignation confirmed, fee not yet paid
+  [*] --> OPEN : resignation confirmed, fee paid
+  WAITING_PAYMENT --> OPEN : Client pays service fee
+  OPEN --> FILLED : replacement candidate placed (no new fee)
+  OPEN --> EXPIRED : fill window ended
+  OPEN --> CANCELLED : Client / Admin cancels
+  WAITING_PAYMENT --> CANCELLED : cancelled
+  FILLED --> [*]
+  EXPIRED --> [*]
+  CANCELLED --> [*]

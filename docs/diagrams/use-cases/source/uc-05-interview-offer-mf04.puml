@@ -1,0 +1,31 @@
+@startuml uc-05-interview-offer-mf04
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase { BackgroundColor #EAF2FB
+  BorderColor #1B365D }
+title Use Cases – Interview, Offer & Placement (MF-04)
+
+actor "Candidate" as C
+actor "Client Company User" as CL
+actor "Internal HR" as HR
+rectangle "HR Connect" {
+  usecase "UC-19\nManage Interview" as UC19
+  usecase "UC-20\nParticipate in Interview" as UC20
+  usecase "UC-21\nView Interview Schedule" as UC21
+  usecase "UC-22\nRecord Interview Result" as UC22
+  usecase "UC-23\nManage Offer" as UC23
+  usecase "UC-24\nRespond to Offer" as UC24
+  usecase "UC-25\nConfirm Start Work / Placement" as UC25
+  usecase "UC-41\nReconcile Placement [Planned]" as UC41
+}
+C -- UC20
+C -- UC21
+C -- UC24
+UC19 -- CL
+UC20 -- CL
+UC22 -- CL
+UC23 -- CL
+UC25 -- CL
+UC41 -- HR
+@enduml

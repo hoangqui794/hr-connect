@@ -1,4 +1,4 @@
-%% HR Connect - Context Diagram (Level 0). [Planned] = MF-01 Service Agreement (docs/plans/2026-10-21), not yet coded.
+%% HR Connect - Context Diagram (Level 0). Includes the MF-01 Service Agreement flow (implemented 22/10/2026).
 flowchart LR
   SYS(("0<br/>HR Connect System<br/>Web App + Backend API<br/>+ AI Matching Service"))
   G[Guest]; C[Candidate]; A[Affiliate]; HR[Internal HR]; AD[Platform Admin]; CL[Client Company User]
@@ -9,15 +9,15 @@ flowchart LR
   SYS -->|Job list and suggestions, application status, interviews, offers, notifications| C
   A -->|Candidate referrals with CVs, consent resend, disputes, bank account| SYS
   SYS -->|Partner jobs, commission estimate, referral status, attribution, commissions, payouts| A
-  HR -->|Job review and screening decisions, Sourcing deliveries, resignation verification, Service Agreement proposals Planned| SYS
+  HR -->|Job review and screening decisions, Sourcing deliveries, resignation verification, Service Agreement proposals| SYS
   SYS -->|Job review queue, AI matching results, screening workspace, warranty tracking| HR
   AD -->|Approvals, users, roles, service types, commission rules, settings, fee and payout records, dispute decisions| SYS
   SYS -->|Approval queues, finance records, disputes, reports, audit trail| AD
-  CL -->|Company profile, jobs and proposed terms, CV decisions, interviews, offers, start work, resignations, agreement response and OTP signature Planned| SYS
-  SYS -->|Candidates, AI scores, Sourcing CVs, service fees, warranty, notifications, Service Agreement and signed PDF Planned| CL
-  SYS -->|OTP, password reset, consent requests, notifications, signing OTP Planned| EM
+  CL -->|Company profile, jobs and proposed terms, CV decisions, interviews, offers, start work, resignations, agreement response and OTP signature| SYS
+  SYS -->|Candidates, AI scores, Sourcing CVs, service fees, warranty, notifications, Service Agreement and signed PDF| CL
+  SYS -->|OTP, password reset, consent requests, notifications, signing OTP| EM
   EM -->|Delivery status| SYS
-  SYS -->|CV files and images, agreement PDFs Planned| R2
+  SYS -->|CV files and images, agreement PDFs| R2
   R2 -->|Stored files, signed URLs| SYS
   SYS -->|CV content and job requirements| LLM
   LLM -->|CV assessment per requirement with evidence quotes| SYS

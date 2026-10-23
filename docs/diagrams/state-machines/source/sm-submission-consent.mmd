@@ -1,0 +1,13 @@
+---
+title: SubmissionConsent (MF-02)
+---
+stateDiagram-v2
+  direction LR
+  [*] --> PENDING : consent e-mail sent
+  PENDING --> PENDING : Affiliate resends (cool-down, max count)
+  PENDING --> CONFIRMED : candidate accepts
+  PENDING --> DECLINED : candidate declines
+  PENDING --> EXPIRED : expiry worker (consent window)
+  CONFIRMED --> [*]
+  DECLINED --> [*]
+  EXPIRED --> [*]

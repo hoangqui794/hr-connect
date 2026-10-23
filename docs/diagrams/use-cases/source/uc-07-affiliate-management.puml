@@ -1,0 +1,21 @@
+@startuml uc-07-affiliate-management
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase { BackgroundColor #EAF2FB
+  BorderColor #1B365D }
+title Use Cases – Affiliate Management
+
+actor "Affiliate" as A
+actor "Platform Admin" as AD
+rectangle "HR Connect" {
+  usecase "UC-28\nManage Affiliate Profile" as UC28
+  usecase "UC-39\nReview Affiliate Application" as UC39
+  usecase "UC-29\nTrack Own Submission" as UC29
+  usecase "UC-30\nView Affiliate Performance" as UC30
+}
+A -- UC28
+A -- UC29
+A -- UC30
+UC39 -- AD
+@enduml

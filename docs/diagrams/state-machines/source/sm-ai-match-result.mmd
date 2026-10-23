@@ -1,0 +1,12 @@
+---
+title: AiMatchResult (MF-03)
+---
+stateDiagram-v2
+  direction LR
+  [*] --> PENDING : application created / HR retries
+  PENDING --> PROCESSING : dispatcher sends to AI service
+  PROCESSING --> COMPLETED : AI callback with score and tier
+  PROCESSING --> PENDING : transient error, retry with back-off
+  PROCESSING --> FAILED : retries exhausted / invalid CV text
+  FAILED --> [*] : HR retry creates a new attempt
+  COMPLETED --> [*]

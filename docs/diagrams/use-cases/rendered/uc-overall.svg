@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1760" height="1000" viewBox="0 0 1760 1000" font-family="Arial, Helvetica, sans-serif">
+<rect width="1760" height="1000" fill="#fff"/>
+<text x="880.0" y="44" font-size="26" font-weight="bold" text-anchor="middle" fill="#1B365D">HR Connect – Overall Use Case Diagram</text>
+<rect x="250" y="80" width="1240" height="830" fill="#FAFBFD" stroke="#1B365D" stroke-width="2" rx="8"/>
+<text x="266" y="100" font-size="16" font-weight="bold" fill="#1B365D">HR Connect</text>
+<line x1="160" y1="150.0" x2="294.0" y2="268.0" stroke="#B7791F" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="150.0" x2="294.0" y2="448.0" stroke="#B7791F" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="150.0" x2="294.0" y2="388.0" stroke="#B7791F" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="386.66666666666663" x2="294.0" y2="328.0" stroke="#7A8BA6" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="386.66666666666663" x2="294.0" y2="448.0" stroke="#7A8BA6" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="623.3333333333333" x2="294.0" y2="388.0" stroke="#2F6B3A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="623.3333333333333" x2="294.0" y2="508.0" stroke="#2F6B3A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="623.3333333333333" x2="294.0" y2="568.0" stroke="#2F6B3A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="623.3333333333333" x2="594.0" y2="388.0" stroke="#2F6B3A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="623.3333333333333" x2="294.0" y2="628.0" stroke="#2F6B3A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="623.3333333333333" x2="594.0" y2="268.0" stroke="#2F6B3A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="623.3333333333333" x2="594.0" y2="328.0" stroke="#2F6B3A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="623.3333333333333" x2="894.0" y2="178.0" stroke="#2F6B3A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="623.3333333333333" x2="594.0" y2="448.0" stroke="#2F6B3A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="623.3333333333333" x2="594.0" y2="508.0" stroke="#2F6B3A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="860.0" x2="294.0" y2="388.0" stroke="#6B46C1" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="860.0" x2="294.0" y2="688.0" stroke="#6B46C1" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="860.0" x2="294.0" y2="748.0" stroke="#6B46C1" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="860.0" x2="594.0" y2="628.0" stroke="#6B46C1" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="860.0" x2="594.0" y2="688.0" stroke="#6B46C1" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="860.0" x2="594.0" y2="748.0" stroke="#6B46C1" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="160" y1="860.0" x2="594.0" y2="568.0" stroke="#6B46C1" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1146.0" y2="238.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1146.0" y2="358.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1146.0" y2="478.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1146.0" y2="598.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1146.0" y2="658.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1146.0" y2="718.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1146.0" y2="778.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1146.0" y2="838.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1146.0" y2="178.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1446.0" y2="148.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1446.0" y2="208.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1446.0" y2="268.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1446.0" y2="388.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="190.0" x2="1446.0" y2="808.0" stroke="#1B6FA8" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="505.0" x2="1146.0" y2="418.0" stroke="#B42318" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="505.0" x2="1146.0" y2="478.0" stroke="#B42318" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="505.0" x2="1146.0" y2="598.0" stroke="#B42318" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="505.0" x2="1146.0" y2="658.0" stroke="#B42318" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="505.0" x2="1446.0" y2="328.0" stroke="#B42318" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="505.0" x2="1446.0" y2="388.0" stroke="#B42318" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="505.0" x2="1446.0" y2="808.0" stroke="#B42318" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="820.0" x2="1146.0" y2="298.0" stroke="#5F5E5A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="820.0" x2="1146.0" y2="538.0" stroke="#5F5E5A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="820.0" x2="1446.0" y2="568.0" stroke="#5F5E5A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="820.0" x2="1446.0" y2="508.0" stroke="#5F5E5A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="820.0" x2="1446.0" y2="448.0" stroke="#5F5E5A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="820.0" x2="1446.0" y2="628.0" stroke="#5F5E5A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="820.0" x2="1446.0" y2="688.0" stroke="#5F5E5A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="820.0" x2="1446.0" y2="748.0" stroke="#5F5E5A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="820.0" x2="1446.0" y2="868.0" stroke="#5F5E5A" stroke-opacity="0.55" stroke-width="1.3"/>
+<line x1="1600" y1="820.0" x2="1446.0" y2="808.0" stroke="#5F5E5A" stroke-opacity="0.55" stroke-width="1.3"/>
+<ellipse cx="420.0" cy="268.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="420.0" y="272.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-01</tspan> Register Account</text>
+<ellipse cx="420.0" cy="328.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="420.0" y="332.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-02</tspan> Login</text>
+<ellipse cx="420.0" cy="388.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="420.0" y="392.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-03</tspan> Search &amp; View Jobs</text>
+<ellipse cx="420.0" cy="448.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="420.0" y="442.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-37</tspan> Verify Email / Recover</text>
+<text x="420.0" y="458.0" font-size="12" text-anchor="middle" fill="#1F2A3C">Password</text>
+<ellipse cx="420.0" cy="508.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="420.0" y="512.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-08</tspan> Manage Candidate Profile</text>
+<ellipse cx="420.0" cy="568.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="420.0" y="572.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-09</tspan> Manage CV</text>
+<ellipse cx="420.0" cy="628.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="420.0" y="632.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-10</tspan> Apply to Job</text>
+<ellipse cx="420.0" cy="688.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="420.0" y="692.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-11</tspan> Submit Candidate/CV</text>
+<ellipse cx="420.0" cy="748.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="420.0" y="742.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-13</tspan> Raise Duplicate /</text>
+<text x="420.0" y="758.0" font-size="12" text-anchor="middle" fill="#1F2A3C">Attribution Dispute</text>
+<ellipse cx="720.0" cy="268.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="720.0" y="262.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-38</tspan> Respond to Submission</text>
+<text x="720.0" y="278.0" font-size="12" text-anchor="middle" fill="#1F2A3C">Consent</text>
+<ellipse cx="720.0" cy="328.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="720.0" y="332.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-40</tspan> Withdraw Application</text>
+<ellipse cx="720.0" cy="388.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="720.0" y="382.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-46</tspan> Build CV and View Job</text>
+<text x="720.0" y="398.0" font-size="12" text-anchor="middle" fill="#1F2A3C">Suggestions</text>
+<ellipse cx="720.0" cy="448.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="720.0" y="452.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-21</tspan> View Interview Schedule</text>
+<ellipse cx="720.0" cy="508.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="720.0" y="512.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-24</tspan> Respond to Offer</text>
+<ellipse cx="720.0" cy="568.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="720.0" y="572.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-31</tspan> View Commission &amp; Payout</text>
+<ellipse cx="720.0" cy="628.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="720.0" y="632.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-28</tspan> Manage Affiliate Profile</text>
+<ellipse cx="720.0" cy="688.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="720.0" y="692.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-29</tspan> Track Own Submission</text>
+<ellipse cx="720.0" cy="748.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="720.0" y="752.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-30</tspan> View Affiliate Performance</text>
+<ellipse cx="1020.0" cy="178.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1020.0" y="182.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-20</tspan> Participate in Interview</text>
+<ellipse cx="1020.0" cy="238.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1020.0" y="242.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-04</tspan> Manage Company Profile</text>
+<ellipse cx="1020.0" cy="298.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1020.0" y="302.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-05</tspan> Review Company Verification</text>
+<ellipse cx="1020.0" cy="358.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1020.0" y="362.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-06</tspan> Manage Job</text>
+<ellipse cx="1020.0" cy="418.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1020.0" y="422.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-07</tspan> Review Job</text>
+<ellipse cx="1020.0" cy="478.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1020.0" y="472.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-44</tspan> Agree and Sign Service</text>
+<text x="1020.0" y="488.0" font-size="12" text-anchor="middle" fill="#1F2A3C">Agreement</text>
+<ellipse cx="1020.0" cy="538.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1020.0" y="532.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-14</tspan> Resolve Duplicate /</text>
+<text x="1020.0" y="548.0" font-size="12" text-anchor="middle" fill="#1F2A3C">Attribution Dispute</text>
+<ellipse cx="1020.0" cy="598.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1020.0" y="602.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-15</tspan> View AI Matching Result</text>
+<ellipse cx="1020.0" cy="658.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1020.0" y="662.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-16</tspan> Screen Candidate</text>
+<ellipse cx="1020.0" cy="718.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1020.0" y="722.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-17</tspan> Review Candidate</text>
+<ellipse cx="1020.0" cy="778.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1020.0" y="772.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-45</tspan> Review Delivered CVs (CV</text>
+<text x="1020.0" y="788.0" font-size="12" text-anchor="middle" fill="#1F2A3C">Sourcing)</text>
+<ellipse cx="1020.0" cy="838.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1020.0" y="842.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-19</tspan> Manage Interview</text>
+<ellipse cx="1320.0" cy="148.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1320.0" y="152.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-22</tspan> Record Interview Result</text>
+<ellipse cx="1320.0" cy="208.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1320.0" y="212.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-23</tspan> Manage Offer</text>
+<ellipse cx="1320.0" cy="268.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1320.0" y="262.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-25</tspan> Confirm Start Work /</text>
+<text x="1320.0" y="278.0" font-size="12" text-anchor="middle" fill="#1F2A3C">Placement</text>
+<ellipse cx="1320.0" cy="328.0" rx="126.0" ry="23.0" fill="#fff" stroke="#1B365D" stroke-width="1.3" stroke-dasharray="5 4"/>
+<text x="1320.0" y="322.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-41</tspan> Reconcile Placement</text>
+<text x="1320.0" y="338.0" font-size="12" text-anchor="middle" fill="#1F2A3C">[Planned]</text>
+<ellipse cx="1320.0" cy="388.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1320.0" y="392.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-27</tspan> Track Warranty</text>
+<ellipse cx="1320.0" cy="448.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1320.0" y="452.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-32</tspan> Manage Commission / Payout</text>
+<ellipse cx="1320.0" cy="508.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1320.0" y="512.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-43</tspan> Record Service Fee Payment</text>
+<ellipse cx="1320.0" cy="568.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1320.0" y="562.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-39</tspan> Review Affiliate</text>
+<text x="1320.0" y="578.0" font-size="12" text-anchor="middle" fill="#1F2A3C">Application</text>
+<ellipse cx="1320.0" cy="628.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1320.0" y="632.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-33</tspan> Manage Users</text>
+<ellipse cx="1320.0" cy="688.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1320.0" y="692.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-34</tspan> Manage Roles &amp; Permissions</text>
+<ellipse cx="1320.0" cy="748.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1320.0" y="752.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-35</tspan> Manage System Configuration</text>
+<ellipse cx="1320.0" cy="808.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1320.0" y="812.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-36</tspan> View Reports / Dashboard</text>
+<ellipse cx="1320.0" cy="868.0" rx="126.0" ry="23.0" fill="#EAF2FB" stroke="#1B365D" stroke-width="1.3"/>
+<text x="1320.0" y="872.0" font-size="12" text-anchor="middle" fill="#1F2A3C"><tspan font-weight="bold">UC-42</tspan> View Audit Log</text>
+<circle cx="130" cy="120.0" r="11" fill="#fff" stroke="#B7791F" stroke-width="2.2"/><line x1="130" y1="131.0" x2="130" y2="156.0" stroke="#B7791F" stroke-width="2.2"/><line x1="114" y1="140.0" x2="146" y2="140.0" stroke="#B7791F" stroke-width="2.2"/><line x1="130" y1="156.0" x2="117" y2="176.0" stroke="#B7791F" stroke-width="2.2"/><line x1="130" y1="156.0" x2="143" y2="176.0" stroke="#B7791F" stroke-width="2.2"/><text x="130" y="196.0" font-size="14" font-weight="bold" text-anchor="middle" fill="#B7791F">Guest</text>
+<circle cx="130" cy="356.66666666666663" r="11" fill="#fff" stroke="#7A8BA6" stroke-width="2.2"/><line x1="130" y1="367.66666666666663" x2="130" y2="392.66666666666663" stroke="#7A8BA6" stroke-width="2.2"/><line x1="114" y1="376.66666666666663" x2="146" y2="376.66666666666663" stroke="#7A8BA6" stroke-width="2.2"/><line x1="130" y1="392.66666666666663" x2="117" y2="412.66666666666663" stroke="#7A8BA6" stroke-width="2.2"/><line x1="130" y1="392.66666666666663" x2="143" y2="412.66666666666663" stroke="#7A8BA6" stroke-width="2.2"/><text x="130" y="432.66666666666663" font-size="14" font-weight="bold" text-anchor="middle" fill="#7A8BA6">Registered User</text>
+<circle cx="130" cy="593.3333333333333" r="11" fill="#fff" stroke="#2F6B3A" stroke-width="2.2"/><line x1="130" y1="604.3333333333333" x2="130" y2="629.3333333333333" stroke="#2F6B3A" stroke-width="2.2"/><line x1="114" y1="613.3333333333333" x2="146" y2="613.3333333333333" stroke="#2F6B3A" stroke-width="2.2"/><line x1="130" y1="629.3333333333333" x2="117" y2="649.3333333333333" stroke="#2F6B3A" stroke-width="2.2"/><line x1="130" y1="629.3333333333333" x2="143" y2="649.3333333333333" stroke="#2F6B3A" stroke-width="2.2"/><text x="130" y="669.3333333333333" font-size="14" font-weight="bold" text-anchor="middle" fill="#2F6B3A">Candidate</text>
+<circle cx="130" cy="830.0" r="11" fill="#fff" stroke="#6B46C1" stroke-width="2.2"/><line x1="130" y1="841.0" x2="130" y2="866.0" stroke="#6B46C1" stroke-width="2.2"/><line x1="114" y1="850.0" x2="146" y2="850.0" stroke="#6B46C1" stroke-width="2.2"/><line x1="130" y1="866.0" x2="117" y2="886.0" stroke="#6B46C1" stroke-width="2.2"/><line x1="130" y1="866.0" x2="143" y2="886.0" stroke="#6B46C1" stroke-width="2.2"/><text x="130" y="906.0" font-size="14" font-weight="bold" text-anchor="middle" fill="#6B46C1">Affiliate</text>
+<circle cx="1630" cy="160.0" r="11" fill="#fff" stroke="#1B6FA8" stroke-width="2.2"/><line x1="1630" y1="171.0" x2="1630" y2="196.0" stroke="#1B6FA8" stroke-width="2.2"/><line x1="1614" y1="180.0" x2="1646" y2="180.0" stroke="#1B6FA8" stroke-width="2.2"/><line x1="1630" y1="196.0" x2="1617" y2="216.0" stroke="#1B6FA8" stroke-width="2.2"/><line x1="1630" y1="196.0" x2="1643" y2="216.0" stroke="#1B6FA8" stroke-width="2.2"/><text x="1630" y="236.0" font-size="14" font-weight="bold" text-anchor="middle" fill="#1B6FA8">Client Company User</text>
+<circle cx="1630" cy="475.0" r="11" fill="#fff" stroke="#B42318" stroke-width="2.2"/><line x1="1630" y1="486.0" x2="1630" y2="511.0" stroke="#B42318" stroke-width="2.2"/><line x1="1614" y1="495.0" x2="1646" y2="495.0" stroke="#B42318" stroke-width="2.2"/><line x1="1630" y1="511.0" x2="1617" y2="531.0" stroke="#B42318" stroke-width="2.2"/><line x1="1630" y1="511.0" x2="1643" y2="531.0" stroke="#B42318" stroke-width="2.2"/><text x="1630" y="551.0" font-size="14" font-weight="bold" text-anchor="middle" fill="#B42318">Internal HR</text>
+<circle cx="1630" cy="790.0" r="11" fill="#fff" stroke="#5F5E5A" stroke-width="2.2"/><line x1="1630" y1="801.0" x2="1630" y2="826.0" stroke="#5F5E5A" stroke-width="2.2"/><line x1="1614" y1="810.0" x2="1646" y2="810.0" stroke="#5F5E5A" stroke-width="2.2"/><line x1="1630" y1="826.0" x2="1617" y2="846.0" stroke="#5F5E5A" stroke-width="2.2"/><line x1="1630" y1="826.0" x2="1643" y2="846.0" stroke="#5F5E5A" stroke-width="2.2"/><text x="1630" y="866.0" font-size="14" font-weight="bold" text-anchor="middle" fill="#5F5E5A">Platform Admin</text>
+<text x="30" y="978" font-size="12" fill="#555">Registered User = any logged-in role. Line colour follows the actor. Dashed ellipse = planned use case.</text>
+</svg>

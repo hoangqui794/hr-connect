@@ -1,0 +1,19 @@
+---
+title: Commission (MF-05)
+---
+stateDiagram-v2
+  direction TB
+  [*] --> IN_WARRANTY : HEADHUNT placement with affiliate
+  [*] --> PENDING : Sourcing CV accepted
+  IN_WARRANTY --> EARNED : warranty passed
+  PENDING --> EARNED : milestone reached
+  EARNED --> PAYABLE : Client fee paid, Admin approves
+  PAYABLE --> PAID : payout completed
+  IN_WARRANTY --> ON_HOLD : resignation claim / affiliate locked / dispute
+  PENDING --> ON_HOLD : affiliate locked
+  ON_HOLD --> IN_WARRANTY : claim rejected / affiliate unlocked
+  ON_HOLD --> CANCELLED : resignation confirmed
+  IN_WARRANTY --> CANCELLED : Admin cancels (reason)
+  EARNED --> CANCELLED : Admin cancels (reason)
+  PAID --> [*]
+  CANCELLED --> [*]
