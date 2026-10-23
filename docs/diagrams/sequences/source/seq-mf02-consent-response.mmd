@@ -11,7 +11,7 @@ sequenceDiagram
   participant DB as PostgreSQL
   participant AI as Mf03ScoringTrigger
   CA->>FE: Open consent link, choose Accept or Decline
-  FE->>API: POST /submission-consents/{token}/respond
+  FE->>API: POST /api/v1/submission-consents/respond (token)
   API->>H: Send(RespondSubmissionConsentCommand)
   H->>DB: Check token hash, expiry, job still open
   alt Decline or expired

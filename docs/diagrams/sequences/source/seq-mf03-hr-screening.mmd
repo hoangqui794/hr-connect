@@ -13,7 +13,7 @@ sequenceDiagram
   FE->>API: POST /jobs/{jid}/applications/{aid}/start-screening
   API->>DB: Application SUBMITTED → SCREENING
   HR->>FE: Shortlist / Backup / Reject (+ reason code)
-  FE->>API: PUT screening status (ConcurrencyToken)
+  FE->>API: PATCH /api/v1/jobs/{jid}/applications/{aid}/status (ConcurrencyToken)
   API->>H: Send command
   alt reject without reason or stale token
   API-->>FE: 400 / 409

@@ -10,7 +10,7 @@ sequenceDiagram
   participant DB as PostgreSQL
   participant MAIL as Resend
   participant R2 as Cloudflare R2
-  HR->>API: POST /jobs/{id}/approve
+  HR->>API: POST /api/v1/internal/jobs/{id}/approve
   API->>H: ApproveJob: HEADHUNT_COD / CV_SOURCING → PENDING_AGREEMENT
   HR->>API: POST /internal/jobs/{id}/service-agreements (terms, version)
   API->>H: CreateServiceAgreementProposal → SENT_TO_CLIENT

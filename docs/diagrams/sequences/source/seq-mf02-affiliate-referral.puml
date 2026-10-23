@@ -4,13 +4,13 @@ skinparam sequenceMessageAlign center
 title MF-02 · Affiliate refers a candidate (duplicate check and consent request)
 actor "Affiliate" as AF
 boundary "Web App" as FE
-boundary "Affiliate endpoints" as API
+boundary "JobEndpoints" as API
 control "SubmitCandidateCommandHandler" as H
 database "PostgreSQL" as DB
 cloud "Cloudflare R2" as R2
 cloud "Resend" as MAIL
 AF -> FE : Referral form + CV file
-FE -> API : POST /api/v1/affiliates/me/submissions
+FE -> API : POST /api/v1/jobs/{id}/candidate-submissions
 API -> H : Send(SubmitCandidateCommand)
 H -> R2 : Upload CV (validated PDF)
 H -> DB : Find candidate by normalised e-mail / phone

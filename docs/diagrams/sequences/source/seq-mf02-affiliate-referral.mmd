@@ -5,13 +5,13 @@ sequenceDiagram
   autonumber
   actor AF as Affiliate
   participant FE as Web App
-  participant API as Affiliate endpoints
+  participant API as JobEndpoints
   participant H as SubmitCandidateCommandHandler
   participant DB as PostgreSQL
   participant R2 as Cloudflare R2
   participant MAIL as Resend
   AF->>FE: Referral form + CV file
-  FE->>API: POST /api/v1/affiliates/me/submissions
+  FE->>API: POST /api/v1/jobs/{id}/candidate-submissions
   API->>H: Send(SubmitCandidateCommand)
   H->>R2: Upload CV (validated PDF)
   H->>DB: Find candidate by normalised e-mail / phone

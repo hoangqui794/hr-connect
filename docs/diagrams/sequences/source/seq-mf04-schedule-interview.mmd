@@ -11,7 +11,7 @@ sequenceDiagram
   participant HUB as SignalR hub
   actor CA as Candidate
   CL->>FE: Pick time, type, location / link
-  FE->>API: POST /applications/{id}/interviews
+  FE->>API: POST /api/v1/recruitment/applications/{id}/interviews
   API->>H: Send(ScheduleInterviewCommand)
   alt caller is Internal HR or not a company member
   API-->>FE: 403
