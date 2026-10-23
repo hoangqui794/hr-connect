@@ -1,0 +1,23 @@
+@startuml seq-mf02-consent-response
+autonumber
+skinparam sequenceMessageAlign center
+title MF-02 · Candidate answers consent; application and attribution are created
+actor "Candidate" as CA
+boundary "Web App" as FE
+boundary "SubmissionConsent endpoints" as API
+control "RespondSubmissionConsent handler" as H
+control "SubmissionAcceptancePolicy" as P
+database "PostgreSQL" as DB
+control "Mf03ScoringTrigger" as AI
+CA -> FE : Open consent link, choose Accept or Decline
+FE -> API : POST /submission-consents/{token}/respond
+API -> H : Send(RespondSubmissionConsentCommand)
+H -> DB : Check token hash, expiry, job still open
+alt Decline or expired
+H -> DB : Consent DECLINED / EXPIRED, Submission CONSENT_REJECTED / CONSENT_EXPIRED
+else Accept
+H -> P : Accept(submission)
+P -> DB : Application SUBMITTED + Attribution to first valid source
+H -> AI : Enqueue scoring (AiMatchResult PENDING)
+end
+@enduml

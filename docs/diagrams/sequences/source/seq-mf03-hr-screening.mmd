@@ -1,0 +1,23 @@
+---
+title: MF-03 · Internal HR screens a Headhunt application
+---
+sequenceDiagram
+  autonumber
+  actor HR as Internal HR
+  participant FE as Web App
+  participant API as Recruitment endpoints
+  participant H as UpdateApplicationScreeningStatus handler
+  participant DB as PostgreSQL
+  actor CL as Client Company User
+  HR->>FE: Open application
+  FE->>API: POST /jobs/{jid}/applications/{aid}/start-screening
+  API->>DB: Application SUBMITTED → SCREENING
+  HR->>FE: Shortlist / Backup / Reject (+ reason code)
+  FE->>API: PUT screening status (ConcurrencyToken)
+  API->>H: Send command
+  alt reject without reason or stale token
+  API-->>FE: 400 / 409
+  else valid
+  H->>DB: Status + ApplicationStatusHistory + AuditLog
+  H->>CL: New shortlisted candidate (contact masked)
+  end

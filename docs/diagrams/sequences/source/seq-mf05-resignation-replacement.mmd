@@ -1,0 +1,24 @@
+---
+title: MF-05 · Resignation during warranty and replacement slot
+---
+sequenceDiagram
+  autonumber
+  actor CL as Client Company User
+  participant API as Finance endpoints
+  participant H as Report / Resolve resignation
+  participant DB as PostgreSQL
+  actor HR as Internal HR
+  actor AF as Affiliate
+  CL->>API: POST /placements/{id}/resignation
+  API->>H: ReportResignation
+  H->>DB: Warranty CLAIMED, Commission ON_HOLD
+  HR->>API: POST /placements/{id}/resignation/resolve
+  alt HR confirms
+  H->>DB: Warranty VOIDED, Placement LEFT_DURING_WARRANTY, Commission CANCELLED
+  H->>DB: ReplacementSlot OPEN (WAITING_PAYMENT if fee unpaid)
+  else HR rejects
+  H->>DB: Warranty ACTIVE, Commission back to IN_WARRANTY
+  end
+  H->>AF: Notify result
+  CL->>API: Fill slot with a new placement
+  H->>DB: Slot FILLED, no new service fee

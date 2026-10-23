@@ -1,0 +1,24 @@
+@startuml seq-mf05-resignation-replacement
+autonumber
+skinparam sequenceMessageAlign center
+title MF-05 · Resignation during warranty and replacement slot
+actor "Client Company User" as CL
+boundary "Finance endpoints" as API
+control "Report / Resolve resignation" as H
+database "PostgreSQL" as DB
+actor "Internal HR" as HR
+actor "Affiliate" as AF
+CL -> API : POST /placements/{id}/resignation
+API -> H : ReportResignation
+H -> DB : Warranty CLAIMED, Commission ON_HOLD
+HR -> API : POST /placements/{id}/resignation/resolve
+alt HR confirms
+H -> DB : Warranty VOIDED, Placement LEFT_DURING_WARRANTY, Commission CANCELLED
+H -> DB : ReplacementSlot OPEN (WAITING_PAYMENT if fee unpaid)
+else HR rejects
+H -> DB : Warranty ACTIVE, Commission back to IN_WARRANTY
+end
+H -> AF : Notify result
+CL -> API : Fill slot with a new placement
+H -> DB : Slot FILLED, no new service fee
+@enduml

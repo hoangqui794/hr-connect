@@ -1,0 +1,24 @@
+@startuml seq-mf04-offer-start-work
+autonumber
+skinparam sequenceMessageAlign center
+title MF-04 · Offer, acceptance and start work
+actor "Client Company User" as CL
+control "Offer / StartWork handlers" as H
+database "PostgreSQL" as DB
+actor "Candidate" as CA
+control "PlacementFinanceService" as F
+CL -> H : Create draft and send offer
+alt HEADHUNT_COD and salary not gross monthly
+H --> CL : 400 HEADHUNT_REQUIRES_GROSS
+else valid
+H -> DB : Offer SENT, Application OFFER_PENDING
+H -> CA : Notify candidate
+end
+CA -> H : Accept offer
+H -> DB : Offer ACCEPTED, Application OFFER_ACCEPTED
+CL -> H : Confirm start work (actual date)
+H -> H : Date not in future and not before acceptance
+H -> DB : Placement STARTED, Application PLACED
+H -> F : InitializeAsync(placement)
+F -> DB : HEADHUNT_COD: ServiceFee PENDING, Warranty ACTIVE, Commission IN_WARRANTY
+@enduml
