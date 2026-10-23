@@ -1,0 +1,68 @@
+---
+title: HR Connect – System Overview (components, external services, main data flows)
+---
+flowchart TB
+  subgraph USERS["Users (browser)"]
+    direction LR
+    U1(["Guest / Candidate"]):::actor
+    U2(["Affiliate"]):::actor
+    U3(["Client Company User"]):::actor
+    U4(["Internal HR / Platform Admin"]):::actor
+  end
+
+  subgraph FE["Web Application – React + TypeScript (Vercel)"]
+    direction LR
+    FE1["Public site & role portals<br/>(Candidate, Affiliate, Client, HR, Admin)"]
+    FE2["API client (Axios, JWT)<br/>+ SignalR client"]
+  end
+
+  subgraph BE["Backend API – ASP.NET Core 8, Clean Architecture (Render)"]
+    direction TB
+    B1["Presentation<br/>REST /api/v1 · auth & permissions<br/>rate limit · SignalR NotificationHub"]
+    B2["Application<br/>MediatR commands/queries MF-01..MF-05<br/>validation · business policies"]
+    B3["Domain<br/>entities · statuses · rules"]
+    B4["Infrastructure<br/>EF Core · repositories · adapters"]
+    B5["Background workers<br/>AI dispatch · consent/offer expiry<br/>warranty & fee progress · e-mail outbox"]
+  end
+
+  subgraph AI["AI Matching Service v2 – Python FastAPI (Cloudflare Tunnel)"]
+    direction LR
+    A1["Scoring queue & pipeline"]
+    A2["CV/JD text extraction<br/>Sentence-BERT similarity"]
+    A3["LLM assessment per requirement<br/>evidence verification · score & tier"]
+  end
+
+  DB[("PostgreSQL<br/>transactional data, audit log")]
+  R2[("Cloudflare R2<br/>CVs, PDFs, agreements, avatars")]
+  MAIL["Resend e-mail API"]:::ext
+  LLM["Google Gemini API<br/>(OpenAI / Anthropic fallback)"]:::ext
+  CI["GitHub + GitHub Actions<br/>build, test, deploy"]:::ext
+
+  U1 & U2 & U3 & U4 -->|"HTTPS"| FE1
+  FE1 --> FE2
+  FE2 -->|"(1) REST JSON + JWT"| B1
+  B1 -.->|"(8) realtime notifications (WebSocket)"| FE2
+  B1 --> B2
+  B2 --> B3
+  B2 --> B4
+  B5 --> B2
+  B4 -->|"(2) SQL (EF Core)"| DB
+  B4 -->|"(3) upload / signed URL (S3 API)"| R2
+  B4 -->|"(4) OTP, consent, notification e-mails"| MAIL
+  B5 -->|"(5) score request (CV + JD)"| A1
+  A1 --> A2
+  A2 --> A3
+  A3 -->|"(6) prompt with CV text + requirements"| LLM
+  A3 -->|"(7) callback /internal/ai-results"| B1
+  CI -.->|"deploy"| BE
+  CI -.->|"deploy"| FE
+
+  classDef default fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
+  classDef actor fill:#FFF4E5,stroke:#B7791F,color:#7B4B0A,font-weight:bold
+  classDef ext fill:#F5F5F5,stroke:#5F5E5A,color:#1F2A3C
+  style USERS fill:#FFFDF8,stroke:#B7791F
+  style FE fill:#F2F7FD,stroke:#1B365D
+  style BE fill:#F1F8F2,stroke:#2F6B3A
+  style AI fill:#F7F2FD,stroke:#6B46C1
+  style DB fill:#FFFFFF,stroke:#1B365D
+  style R2 fill:#F5F5F5,stroke:#5F5E5A
