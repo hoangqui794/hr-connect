@@ -516,14 +516,14 @@ export const ClientJobsListPage: React.FC = () => {
                     </div>
                     {job.status === 'PENDING_AGREEMENT' && (
                       <div className="flex items-center justify-between rounded-xl bg-purple-50 border border-solid border-purple-200 px-3 py-2 text-xs text-purple-900">
-                        <span className="font-medium">Dự thảo thỏa thuận đang chờ ký kết</span>
+                        <span className="font-medium">Hợp đồng dịch vụ đã soạn xong</span>
                         <Button
                           type="primary"
                           size="small"
                           className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600 !text-xs !h-6 font-medium whitespace-nowrap"
                           onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                         >
-                          Ký thỏa thuận
+                          Xem hợp đồng
                         </Button>
                       </div>
                     )}

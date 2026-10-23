@@ -324,17 +324,17 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             }
             message={
               agreementStatus === 'CHANGE_REQUESTED'
-                ? 'DN yêu cầu điều chỉnh'
+                ? 'DN gửi ghi chú điều chỉnh hợp đồng'
                 : isInternalReview
-                  ? 'Chờ DN ký thỏa thuận'
-                  : 'Thỏa thuận chờ ký'
+                  ? 'Đã gửi hợp đồng cho DN'
+                  : 'Hợp đồng dịch vụ đã soạn xong'
             }
             description={
               agreementStatus === 'CHANGE_REQUESTED'
-                ? 'Chờ HR xem xét và gửi lại bản thỏa thuận mới.'
+                ? 'Doanh nghiệp đã gửi ghi chú điều chỉnh. Chờ Internal HR xem xét và phản hồi.'
                 : isInternalReview
-                  ? 'Đã gửi dự thảo, chờ DN ký số OTP.'
-                  : 'Đã gửi dự thảo, vui lòng ký số OTP để kích hoạt tin.'
+                  ? 'Đã gửi bản hợp đồng có sẵn chữ ký cho Doanh nghiệp tải về ký ngoài hệ thống.'
+                  : 'Internal HR đã soạn xong hợp đồng. Doanh nghiệp vui lòng tải hợp đồng về xem và ký kết.'
             }
             action={
               !isInternalReview ? (
@@ -344,7 +344,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600"
                   onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                 >
-                  Ký thỏa thuận
+                  Xem hợp đồng
                 </Button>
               ) : undefined
             }
@@ -560,108 +560,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         </section>
       )}
 
-      {/* ── Thông tin dịch vụ HEADHUNT (CHỈ hiển thị cho Doanh nghiệp & Quản trị/HR, KHÔNG hiển thị cho Ứng viên) ── */}
-      {!isApplicant && job.serviceTypeCode === 'HEADHUNT_COD' && (
-        <section aria-label="Điều khoản dịch vụ tuyển dụng theo kết quả" className="rounded-xl border border-solid border-indigo-200/90 bg-indigo-50/40 p-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-0 border-b border-solid border-indigo-200/70 pb-2.5">
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
-                <SafetyCertificateOutlined className="text-sm" />
-              </span>
-              <div>
-                <span className="font-bold text-indigo-950 text-sm">Điều khoản tuyển dụng theo kết quả</span>
-                <span className="text-xs text-indigo-700/80 ml-2">Phí tuyển dụng thành công</span>
-              </div>
-            </div>
-            <Tag color={termTagColor} className="m-0 whitespace-nowrap font-medium rounded-full px-2.5">
-              {termLabel}
-            </Tag>
-          </div>
+      {/* ── Thông tin dịch vụ CV SOURCING & HEADHUNT: Khung điều khoản đã được chuyển trực tiếp vào văn bản hợp đồng dịch vụ ── */}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <div className="rounded-lg bg-white p-3 border border-solid border-slate-200/80 shadow-2xs">
-              <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                <DollarCircleOutlined className="text-indigo-500" /> Phí thành công (Success Fee)
-              </div>
-              <div className="font-bold text-indigo-700 text-[13px] mt-1">
-                {feeMultiplier != null ? `${feeMultiplier} tháng lương` : NOT_SET}
-              </div>
-              <div className="text-[10px] text-slate-400 mt-0.5">Chỉ trả khi ứng viên đi làm</div>
-            </div>
-
-            <div className="rounded-lg bg-white p-3 border border-solid border-slate-200/80 shadow-2xs">
-              <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                <SafetyCertificateOutlined className="text-emerald-500" /> Bảo hành thay thế
-              </div>
-              <div className="font-bold text-emerald-700 text-[13px] mt-1">
-                {warrantyDays != null ? `${warrantyDays} ngày` : NOT_SET}
-              </div>
-              <div className="text-[10px] text-slate-400 mt-0.5">Tìm ứng viên thay thế miễn phí</div>
-            </div>
-
-            <div className="rounded-lg bg-white p-3 border border-solid border-slate-200/80 shadow-2xs">
-              <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                <CalendarOutlined className="text-blue-500" /> Hạn thanh toán
-              </div>
-              <div className="font-bold text-slate-800 text-[13px] mt-1">
-                {paymentDueDays != null ? `${paymentDueDays} ngày` : NOT_SET}
-              </div>
-              <div className="text-[10px] text-slate-400 mt-0.5">Kể từ ngày bắt đầu đi làm</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-lg bg-white/90 px-3 py-2 text-xs text-slate-600 border border-solid border-indigo-100">
-            <InfoCircleOutlined className="text-indigo-500 shrink-0 text-sm" />
-            <span>
-              Phí phát sinh khi ứng viên chính thức đi làm. Áp dụng chính sách bảo hành thay thế ứng viên trong thời hạn đã thỏa thuận theo hợp đồng.
-            </span>
-          </div>
-        </section>
-      )}
-
-      {!isApplicant && job.serviceTypeCode === 'CV_SOURCING' && (
-        <section aria-label="Điều khoản dịch vụ tìm kiếm hồ sơ" className="rounded-xl border border-solid border-teal-200/90 bg-teal-50/40 p-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-0 border-b border-solid border-teal-200/70 pb-2.5">
-            <span className="font-bold text-teal-950 text-sm">Dịch vụ tìm kiếm hồ sơ — trả phí theo số hồ sơ đạt yêu cầu</span>
-            <div className="flex items-center gap-2">
-              <Tag color={termTagColor} className="m-0 whitespace-nowrap font-medium rounded-full px-2.5">
-                {termLabel}
-              </Tag>
-              <Button
-                size="small"
-                type="primary"
-                className="!bg-teal-700 hover:!bg-teal-600 !border-teal-700 text-xs font-semibold"
-                onClick={() => {
-                  if (isInternalReview) {
-                    setShowSourcingDrawer(true);
-                  } else {
-                    navigate(`/client/jobs/${job.jobId}/sourcing`);
-                  }
-                }}
-              >
-                {isInternalReview ? 'Quản lý hồ sơ đã giao' : 'Xem hồ sơ nhận được'}
-              </Button>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            {[
-              { label: 'Số hồ sơ cần giao', value: agreed?.sourcingTarget ?? draft?.sourcingTarget ?? job.sourcingTarget, unit: 'hồ sơ' },
-              { label: 'Giá mỗi hồ sơ', value: agreed?.pricePerCv ?? draft?.pricePerQualifiedCv ?? proposed?.pricePerCv, unit: 'đ' },
-              { label: 'Tiền cọc', value: agreed?.depositPercent, unit: '%' },
-              { label: 'Thời gian duyệt hồ sơ', value: agreed?.reviewDays ?? draft?.reviewDays, unit: 'ngày' },
-            ].map((item) => (
-              <div key={item.label} className="rounded-lg bg-white p-3 border border-solid border-slate-200/80">
-                <div className="text-[11px] text-slate-600">{item.label}</div>
-                <div className="font-bold text-slate-900 text-[13px] mt-1">
-                  {item.value != null
-                    ? `${item.unit === 'đ' ? Number(item.value).toLocaleString('vi-VN') : item.value} ${item.unit}`
-                    : NOT_SET}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {!isApplicant && agreed && (agreed.agreedAt || agreed.agreementReference) && (
         <div className="rounded-lg border border-solid border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
