@@ -173,6 +173,32 @@ public class JobManagementCommandHandlerTests
     }
 
     [Fact]
+    public async Task Submit_ShouldNotifyEveryActiveInternalHr()
+    {
+        var (job, user) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "Backend Developer"; job.Description = "Build APIs"; job.Benefits = "Insurance and training";
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+        job.Location = "HCM"; job.EmploymentType = "FULL_TIME";
+        var stdPkg = new JobPostingPackage { PackageId = Guid.NewGuid(), Code = JobPostingPackageCodes.Standard, Price = 1_000_000m, IsActive = true };
+        job.PostingPackageId = stdPkg.PackageId;
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync(ServiceTypeCodes.CvApplication);
+        _jobs.Setup(x => x.GetPostingPackageByIdAsync(stdPkg.PackageId, It.IsAny<CancellationToken>())).ReturnsAsync(stdPkg);
+        var hrIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() };
+        var users = new Mock<IUserRepository>();
+        users.Setup(x => x.GetActiveUserIdsByRoleAsync("INTERNAL_HR", It.IsAny<CancellationToken>())).ReturnsAsync(hrIds);
+        var sent = new List<Notification>();
+        _notifications.Setup(x => x.AddAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()))
+            .Callback<Notification, CancellationToken>((n, _) => sent.Add(n)).Returns(Task.CompletedTask);
+
+        await new SubmitJobCommandHandler(_jobs.Object, _members.Object, _adminSettings.Object, _uow.Object, users.Object, _notifications.Object)
+            .Handle(new SubmitJobCommand { JobId = job.JobId, UserId = user }, default);
+
+        sent.Select(n => n.UserId).Should().BeEquivalentTo(hrIds);
+        sent.Should().OnlyContain(n => n.RelatedEntityId == job.JobId && n.RelatedEntityType == "JOB" && n.Metadata!.Contains("/hr/jobs"));
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Submit_ShouldAllowCompleteJobWithoutSkills()
     {
         var (job, user) = SetupOwnedJob(JobStatuses.Draft);

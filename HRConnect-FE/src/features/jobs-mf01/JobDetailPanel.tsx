@@ -30,7 +30,7 @@ import { useAuthStore, UserRole } from '@/stores/authStore';
 import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
 import { SourcingDeliveriesView } from '@/features/sourcing/SourcingDeliveriesView';
 import { PaymentDemoModal } from './PaymentDemoModal';
-import { formatMoney, useJobFeeInfo, useJobTemplate } from './useJobQueries';
+import { formatMoney, useCurrentServiceAgreement, useJobFeeInfo, useJobTemplate } from './useJobQueries';
 import {
   EMPLOYMENT_TYPE_LABEL,
   JOB_STATUS,
@@ -256,10 +256,18 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   // Agreed terms (after approval) win; before approval show what the Client proposed.
   const agreed = job.commercialTerms ?? null;
   const proposed = job.proposedTerms ?? null;
-  const termLabel = agreed ? 'Đã thống nhất' : 'Doanh nghiệp đề xuất';
-  const feeMultiplier = agreed?.feeMultiplier ?? proposed?.feeMultiplier ?? null;
-  const warrantyDays = agreed?.warrantyDays ?? proposed?.warrantyDays ?? null;
-  const paymentDueDays = agreed?.paymentDueDays ?? proposed?.paymentDueDays ?? null;
+  // While waiting for the signature, the numbers HR sent live in the current agreement draft.
+  const hasTermsCard = !isApplicant && (job.serviceTypeCode === 'HEADHUNT_COD' || job.serviceTypeCode === 'CV_SOURCING');
+  const draftQuery = useCurrentServiceAgreement(job.jobId, hasTermsCard && !agreed && job.status === 'PENDING_AGREEMENT');
+  const draft = !agreed ? draftQuery.data ?? null : null;
+  const termSource: 'AGREED' | 'DRAFT' | 'PROPOSED' = agreed ? 'AGREED' : draft ? 'DRAFT' : 'PROPOSED';
+  const termLabel =
+    termSource === 'AGREED' ? 'Đã thống nhất' : termSource === 'DRAFT' ? `Dự thảo chờ ký · v${draft?.version}` : 'Doanh nghiệp đề xuất';
+  const termTagColor = termSource === 'AGREED' ? 'success' : termSource === 'DRAFT' ? 'purple' : 'default';
+  const feeMultiplier = agreed?.feeMultiplier ?? draft?.feeMultiplier ?? proposed?.feeMultiplier ?? null;
+  const warrantyDays = agreed?.warrantyDays ?? draft?.warrantyDays ?? proposed?.warrantyDays ?? null;
+  const paymentDueDays = agreed?.paymentDueDays ?? draft?.paymentDueDays ?? proposed?.paymentDueDays ?? null;
+  const NOT_SET = 'Chưa chốt';
 
   const isExpired =
     (job.expiresAt && new Date(job.expiresAt) <= new Date()) ||
@@ -454,47 +462,40 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         )}
       </header>
 
-      {/* N3: two columns only on wide screens; labels never wrap, amounts stay on one line. */}
-      <Descriptions
-        size="small"
-        column={{ xs: 1, sm: 1, md: 2, lg: 1, xl: 2 }}
-        colon={false}
-        labelStyle={{ color: '#475569', whiteSpace: 'nowrap' }}
-      >
-        <Descriptions.Item label="Mức lương">
-          <span className="whitespace-nowrap tabular-nums">{formatSalary(job)}</span>
-        </Descriptions.Item>
-        <Descriptions.Item label="Kinh nghiệm">
-          {formatExperience(job.minExperienceYears, job.maxExperienceYears)}
-        </Descriptions.Item>
-        <Descriptions.Item label="Hình thức">
-          {job.employmentType ? EMPLOYMENT_TYPE_LABEL[job.employmentType] : '—'}
-        </Descriptions.Item>
-        <Descriptions.Item label={job.serviceTypeCode === 'CV_SOURCING' ? 'Số hồ sơ cần nhận' : 'Số lượng cần tuyển'}>
-          <TeamOutlined aria-hidden className="mr-1" />
-          {formatHeadcount(job)}
-        </Descriptions.Item>
-        <Descriptions.Item label="Địa điểm">
-          <EnvironmentOutlined aria-hidden className="mr-1" />
-          {job.location ?? '—'}
-        </Descriptions.Item>
-        <Descriptions.Item label="Thời gian làm việc">{job.workingTime ?? '—'}</Descriptions.Item>
-        {job.salaryNote && <Descriptions.Item label="Ghi chú lương">{job.salaryNote}</Descriptions.Item>}
-        <Descriptions.Item label="Ngày đăng">{formatDate(job.postedAt)}</Descriptions.Item>
-        {!isApplicant && job.postingPackageName && (
-          <Descriptions.Item label="Gói đăng tin">{formatPostingPackage(job.postingPackageCode, job.postingPackageName)}</Descriptions.Item>
-        )}
-        {!isApplicant && job.maxApplications && (
-          <Descriptions.Item label="Hạn mức hồ sơ">Tối đa {job.maxApplications} hồ sơ hợp lệ</Descriptions.Item>
-        )}
-        {job.expiresAt && (
-          <Descriptions.Item label={isApplicant ? 'Hạn nộp hồ sơ' : 'Hạn hiển thị'}>
-            <span className={isExpired ? 'text-red-600 font-semibold' : ''}>
-              {formatDateTime(job.expiresAt)} {isExpired ? '(Đã hết hạn)' : ''}
-            </span>
-          </Descriptions.Item>
-        )}
-      </Descriptions>
+      {/* Key facts: label above value so long values never squeeze the label; values stay whole. */}
+      <dl className="m-0 grid grid-cols-1 gap-x-4 gap-y-3 rounded-xl border border-solid border-slate-200 bg-white p-4 sm:grid-cols-2 xl:grid-cols-3">
+        {[
+          { label: 'Mức lương', value: <span className="tabular-nums">{formatSalary(job)}</span> },
+          { label: 'Kinh nghiệm', value: formatExperience(job.minExperienceYears, job.maxExperienceYears) },
+          { label: 'Hình thức', value: job.employmentType ? EMPLOYMENT_TYPE_LABEL[job.employmentType] : '—' },
+          {
+            label: job.serviceTypeCode === 'CV_SOURCING' ? 'Số hồ sơ cần nhận' : 'Số lượng cần tuyển',
+            value: (<span className="inline-flex items-center gap-1.5 whitespace-nowrap"><TeamOutlined aria-hidden className="text-slate-400" />{formatHeadcount(job)}</span>),
+          },
+          {
+            label: 'Địa điểm',
+            value: (<span className="inline-flex items-start gap-1.5"><EnvironmentOutlined aria-hidden className="mt-1 text-slate-400" />{job.location ?? '—'}</span>),
+          },
+          { label: 'Thời gian làm việc', value: job.workingTime ?? '—' },
+          ...(job.salaryNote ? [{ label: 'Ghi chú lương', value: job.salaryNote }] : []),
+          { label: 'Ngày đăng', value: job.postedAt ? formatDate(job.postedAt) : 'Chưa công bố' },
+          ...(!isApplicant && job.postingPackageName
+            ? [{ label: 'Gói đăng tin', value: formatPostingPackage(job.postingPackageCode, job.postingPackageName) }]
+            : []),
+          ...(!isApplicant && job.maxApplications ? [{ label: 'Hạn mức hồ sơ', value: `Tối đa ${job.maxApplications} hồ sơ hợp lệ` }] : []),
+          ...(job.expiresAt
+            ? [{
+                label: isApplicant ? 'Hạn nộp hồ sơ' : 'Hạn hiển thị',
+                value: (<span className={isExpired ? 'font-semibold text-red-600' : ''}>{formatDateTime(job.expiresAt)}{isExpired ? ' (Đã hết hạn)' : ''}</span>),
+              }]
+            : []),
+        ].map((fact) => (
+          <div key={fact.label} className="min-w-0">
+            <dt className="text-xs font-medium text-slate-500">{fact.label}</dt>
+            <dd className="m-0 mt-0.5 text-sm font-medium text-slate-900">{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
 
       {isApplicant && job.company && <JobCompanyCard company={job.company} />}
 
@@ -568,11 +569,11 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <SafetyCertificateOutlined className="text-sm" />
               </span>
               <div>
-                <span className="font-bold text-indigo-950 text-sm">Tuyển dụng theo kết quả — điều khoản đã thống nhất</span>
+                <span className="font-bold text-indigo-950 text-sm">Điều khoản tuyển dụng theo kết quả</span>
                 <span className="text-xs text-indigo-700/80 ml-2">Phí tuyển dụng thành công</span>
               </div>
             </div>
-            <Tag color="purple" className="m-0 font-medium rounded-full px-2.5">
+            <Tag color={termTagColor} className="m-0 whitespace-nowrap font-medium rounded-full px-2.5">
               {termLabel}
             </Tag>
           </div>
@@ -583,7 +584,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <DollarCircleOutlined className="text-indigo-500" /> Phí thành công (Success Fee)
               </div>
               <div className="font-bold text-indigo-700 text-[13px] mt-1">
-                {feeMultiplier != null ? `${feeMultiplier} tháng lương` : 'Chờ bộ phận kiểm duyệt xác nhận'}
+                {feeMultiplier != null ? `${feeMultiplier} tháng lương` : NOT_SET}
               </div>
               <div className="text-[10px] text-slate-400 mt-0.5">Chỉ trả khi ứng viên đi làm</div>
             </div>
@@ -593,7 +594,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <SafetyCertificateOutlined className="text-emerald-500" /> Bảo hành thay thế
               </div>
               <div className="font-bold text-emerald-700 text-[13px] mt-1">
-                {warrantyDays != null ? `${warrantyDays} ngày` : 'Chờ bộ phận kiểm duyệt xác nhận'}
+                {warrantyDays != null ? `${warrantyDays} ngày` : NOT_SET}
               </div>
               <div className="text-[10px] text-slate-400 mt-0.5">Tìm ứng viên thay thế miễn phí</div>
             </div>
@@ -603,7 +604,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <CalendarOutlined className="text-blue-500" /> Hạn thanh toán
               </div>
               <div className="font-bold text-slate-800 text-[13px] mt-1">
-                {paymentDueDays != null ? `${paymentDueDays} ngày` : 'Chờ bộ phận kiểm duyệt xác nhận'}
+                {paymentDueDays != null ? `${paymentDueDays} ngày` : NOT_SET}
               </div>
               <div className="text-[10px] text-slate-400 mt-0.5">Kể từ ngày bắt đầu đi làm</div>
             </div>
@@ -623,7 +624,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2 border-0 border-b border-solid border-teal-200/70 pb-2.5">
             <span className="font-bold text-teal-950 text-sm">Dịch vụ tìm kiếm hồ sơ — trả phí theo số hồ sơ đạt yêu cầu</span>
             <div className="flex items-center gap-2">
-              <Tag color={agreed ? 'success' : 'default'} className="m-0 font-medium rounded-full px-2.5">
+              <Tag color={termTagColor} className="m-0 whitespace-nowrap font-medium rounded-full px-2.5">
                 {termLabel}
               </Tag>
               <Button
@@ -644,17 +645,17 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {[
-              { label: 'Số hồ sơ cần giao', value: agreed?.sourcingTarget ?? job.sourcingTarget, unit: 'hồ sơ' },
-              { label: 'Giá mỗi hồ sơ', value: agreed?.pricePerCv ?? proposed?.pricePerCv, unit: 'đ' },
+              { label: 'Số hồ sơ cần giao', value: agreed?.sourcingTarget ?? draft?.sourcingTarget ?? job.sourcingTarget, unit: 'hồ sơ' },
+              { label: 'Giá mỗi hồ sơ', value: agreed?.pricePerCv ?? draft?.pricePerQualifiedCv ?? proposed?.pricePerCv, unit: 'đ' },
               { label: 'Tiền cọc', value: agreed?.depositPercent, unit: '%' },
-              { label: 'Thời gian duyệt hồ sơ', value: agreed?.reviewDays, unit: 'ngày' },
+              { label: 'Thời gian duyệt hồ sơ', value: agreed?.reviewDays ?? draft?.reviewDays, unit: 'ngày' },
             ].map((item) => (
               <div key={item.label} className="rounded-lg bg-white p-3 border border-solid border-slate-200/80">
                 <div className="text-[11px] text-slate-600">{item.label}</div>
                 <div className="font-bold text-slate-900 text-[13px] mt-1">
                   {item.value != null
                     ? `${item.unit === 'đ' ? Number(item.value).toLocaleString('vi-VN') : item.value} ${item.unit}`
-                    : 'Chờ bộ phận kiểm duyệt xác nhận'}
+                    : NOT_SET}
                 </div>
               </div>
             ))}

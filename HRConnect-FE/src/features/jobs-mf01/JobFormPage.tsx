@@ -481,7 +481,7 @@ export const JobFormPage: React.FC = () => {
   const [saving, setSaving] = useState<'draft' | 'submit' | null>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
 
-  const handleApplyTemplate = (template: JobTemplate, mergedSkills: string[]) => {
+  const handleApplyTemplate = (template: JobTemplate, mergedSkills: string[], sourceJob?: Partial<Job>) => {
     const nonSkillRequirements = (template.requirements ?? [])
       .filter((r) => (r.category || '').toUpperCase() !== 'SKILL')
       .map((r) => ({
@@ -502,8 +502,22 @@ export const JobFormPage: React.FC = () => {
           ? nonSkillRequirements
           : [{ requirementType: 'MUST_HAVE', content: '' }],
       skills: mergedSkills,
-      templateId: template.templateId,
+      // An Excel JD has no template id; never send an empty one to the API.
+      templateId: template.templateId || undefined,
     });
+    // Reusing the Client's own job also copies the job-specific terms that system templates never carry.
+    if (sourceJob) {
+      form.setFieldsValue({
+        salaryMin: sourceJob.salaryMin ?? undefined,
+        salaryMax: sourceJob.salaryMax ?? undefined,
+        salaryNegotiable: sourceJob.salaryNegotiable ?? false,
+        salaryNote: sourceJob.salaryNote ?? undefined,
+        currencyCode: sourceJob.currencyCode || undefined,
+        location: sourceJob.location ?? undefined,
+        workingTime: sourceJob.workingTime ?? undefined,
+        quantity: sourceJob.quantity,
+      });
+    }
   };
 
   // Dedicated Component State for selected service to ensure robustness across steps
@@ -824,7 +838,9 @@ export const JobFormPage: React.FC = () => {
 
   const selectedPkg = packageCards.find((p) => p.key === (watched.postingPackage || 'STANDARD')) ?? packageCards[0];
 
-  const submitButton = (block?: boolean) => (
+  // "Gửi duyệt" only appears on the last step, after the service, details and needs/fees steps are done.
+  const REVIEW_STEP = 3;
+  const submitButton = (block?: boolean) => currentStep < REVIEW_STEP ? null : (
     <Button
       type="primary"
       size="large"
@@ -1403,10 +1419,14 @@ export const JobFormPage: React.FC = () => {
                                 className="mb-2 md:mb-0"
                                 rules={[{ required: true, message: 'Chọn mức độ.' }]}
                               >
-                                <Radio.Group optionType="button" buttonStyle="solid" size="middle" className="inline-flex whitespace-nowrap">
-                                  <Radio.Button value="MUST_HAVE" className="px-3 text-center">Bắt buộc</Radio.Button>
-                                  <Radio.Button value="SHOULD_HAVE" className="px-3 text-center">Ưu tiên</Radio.Button>
-                                </Radio.Group>
+                                <Select
+                                  aria-label={`Mức độ yêu cầu ${index + 1}`}
+                                  style={{ width: 140 }}
+                                  options={[
+                                    { value: 'MUST_HAVE', label: 'Bắt buộc' },
+                                    { value: 'SHOULD_HAVE', label: 'Ưu tiên' },
+                                  ]}
+                                />
                               </Form.Item>
 
                               <div className="order-3 col-span-2 md:order-none md:col-span-1">

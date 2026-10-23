@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { notification as antNotification } from 'antd';
 import { HubConnectionState } from '@microsoft/signalr';
 import { useAuthStore } from '@/stores/authStore';
+import { portalRoute } from '@/components/notifications/notificationRoutes';
 import {
   signalRNotificationService,
   type NotificationCreatedPayload,
@@ -138,7 +139,7 @@ export const useNotificationSignalR = (options: UseNotificationSignalROptions = 
           duration: 5,
           onClick: () => {
             if (route) {
-              navigateRef.current(route);
+              navigateRef.current(portalRoute(route, useAuthStore.getState().role));
             }
           },
           style: { cursor: route ? 'pointer' : 'default' },

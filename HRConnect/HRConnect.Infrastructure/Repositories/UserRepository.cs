@@ -57,6 +57,16 @@ public class UserRepository : IUserRepository
             .FirstOrDefaultAsync(user => user.UserId == userId, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetActiveUserIdsByRoleAsync(string roleCode, CancellationToken cancellationToken = default)
+    {
+        return await _context.UserRoles
+            .AsNoTracking()
+            .Where(ur => ur.Status == "ACTIVE" && ur.Role.IsActive && ur.Role.Code == roleCode && ur.User.Status == "ACTIVE")
+            .Select(ur => ur.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<AppUser?> GetByIdWithRolesAndPermissionsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _context.AppUsers

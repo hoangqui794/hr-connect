@@ -16,13 +16,17 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
     private readonly ICompanyUserRepository _members;
     private readonly IAdminBusinessSettings _settings;
     private readonly IUnitOfWork _uow;
+    private readonly IUserRepository? _users;
+    private readonly INotificationRepository? _notifications;
 
     public SubmitJobCommandHandler(
         IJobRepository jobs,
         ICompanyUserRepository members,
         IAdminBusinessSettings settings,
-        IUnitOfWork uow)
-        => (_jobs, _members, _settings, _uow) = (jobs, members, settings, uow);
+        IUnitOfWork uow,
+        IUserRepository? users = null,
+        INotificationRepository? notifications = null)
+        => (_jobs, _members, _settings, _uow, _users, _notifications) = (jobs, members, settings, uow, users, notifications);
 
     public async Task<JobActionResponse> Handle(SubmitJobCommand request, CancellationToken ct)
     {
@@ -166,7 +170,33 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
 
         JobTransitions.ChangeStatus(job, JobStatuses.PendingReview, request.UserId, JobReasonCodes.SubmittedForReview);
         await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
+        await NotifyInternalHrAsync(job, ct);
         await _uow.SaveChangesAsync(ct);
         return new(true, "Gửi công việc xét duyệt thành công.", JobDto.From(job, includeStatusHistories: true));
+    }
+
+    /// <summary>Every active Internal HR gets a bell notification; it is pushed over SignalR after the commit.</summary>
+    private async Task NotifyInternalHrAsync(Job job, CancellationToken ct)
+    {
+        if (_users == null || _notifications == null) return;
+        var hrIds = await _users.GetActiveUserIdsByRoleAsync("INTERNAL_HR", ct);
+        var now = DateTime.UtcNow;
+        var metadata = System.Text.Json.JsonSerializer.Serialize(new { jobId = job.JobId, status = JobStatuses.PendingReview, routeHint = "/hr/jobs" });
+        foreach (var hrId in hrIds)
+        {
+            await _notifications.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = hrId,
+                NotificationType = "JOB",
+                Title = "Có tin tuyển dụng mới chờ duyệt",
+                Message = $"Tin \"{job.Title}\" vừa được gửi duyệt. Vui lòng kiểm tra nội dung và điều khoản.",
+                RelatedEntityType = "JOB",
+                RelatedEntityId = job.JobId,
+                Metadata = metadata,
+                IsRead = false,
+                CreatedAt = now,
+            }, ct);
+        }
     }
 }

@@ -6,7 +6,7 @@
  * Every number, default and allowed range comes from the backend; nothing is hard-coded here.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Form, Input, InputNumber, Modal, Skeleton, Tag } from 'antd';
+import { Alert, Form, Input, InputNumber, Modal, Skeleton, Tag, Tooltip } from 'antd';
 import { EditOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import type { CommercialTermsInput, ApproveJobInput, Job, ServiceAgreementDto } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -20,20 +20,30 @@ interface TermField {
   unit: string;
   step: number;
   help?: string;
+  /** Plain-language explanation shown when hovering the (i) icon next to the label. */
+  tip: string;
 }
 
 const HEADHUNT_FIELDS: TermField[] = [
-  { key: 'feeMultiplier', label: 'Hệ số phí', unit: '× lương tháng', step: 0.1, help: 'Hệ số tính trên lương tháng' },
-  { key: 'warrantyDays', label: 'Bảo hành', unit: 'ngày', step: 1 },
-  { key: 'paymentDueDays', label: 'Hạn thanh toán', unit: 'ngày', step: 1 },
+  { key: 'feeMultiplier', label: 'Hệ số phí', unit: '× lương tháng', step: 0.1, help: 'Hệ số tính trên lương tháng',
+    tip: 'Phí dịch vụ = hệ số × lương gross 1 tháng của ứng viên. Chỉ phát sinh khi ứng viên thực sự đi làm.' },
+  { key: 'warrantyDays', label: 'Bảo hành', unit: 'ngày', step: 1,
+    tip: 'Số ngày tính từ ngày ứng viên đi làm. Nếu ứng viên nghỉ trong thời gian này, doanh nghiệp được tuyển người thay thế miễn phí. Hết bảo hành thì hoa hồng của Affiliate mới được tính.' },
+  { key: 'paymentDueDays', label: 'Hạn thanh toán', unit: 'ngày', step: 1,
+    tip: 'Số ngày doanh nghiệp có để thanh toán phí dịch vụ, tính từ ngày ứng viên đi làm. Quá hạn, khoản phí chuyển sang "Quá hạn".' },
 ];
 
 const SOURCING_FIELDS: TermField[] = [
-  { key: 'sourcingTarget', label: 'Số hồ sơ', unit: 'hồ sơ', step: 1 },
-  { key: 'pricePerCv', label: 'Phí / hồ sơ', unit: 'đ', step: 10000 },
-  { key: 'depositPercent', label: 'Tỷ lệ cọc', unit: '%', step: 5 },
-  { key: 'reviewDays', label: 'Thời gian duyệt', unit: 'ngày', step: 1 },
-  { key: 'paymentDueDays', label: 'Hạn thanh toán', unit: 'ngày', step: 1 },
+  { key: 'sourcingTarget', label: 'Số hồ sơ', unit: 'hồ sơ', step: 1,
+    tip: 'Số CV đã sàng lọc doanh nghiệp mua. HR giao đủ số này thì gói hoàn thành; hệ thống không cho giao vượt.' },
+  { key: 'pricePerCv', label: 'Phí / hồ sơ', unit: 'đ', step: 10000,
+    tip: 'Giá cho mỗi CV doanh nghiệp chấp nhận. Doanh nghiệp chỉ trả cho CV được chấp nhận; hoa hồng của Affiliate cũng tính từ giá này.' },
+  { key: 'depositPercent', label: 'Tỷ lệ cọc', unit: '%', step: 5,
+    tip: 'Phần trăm trên tổng giá trị doanh nghiệp trả trước. Tin chỉ bắt đầu chạy khi đã ghi nhận tiền cọc; khi kết thúc sẽ quyết toán và trừ phần đã cọc.' },
+  { key: 'reviewDays', label: 'Thời gian duyệt', unit: 'ngày', step: 1,
+    tip: 'Số ngày doanh nghiệp có để xem và chấp nhận hoặc từ chối mỗi CV được giao. Hết hạn mà chưa trả lời, CV được tự động chấp nhận.' },
+  { key: 'paymentDueDays', label: 'Hạn thanh toán', unit: 'ngày', step: 1,
+    tip: 'Số ngày doanh nghiệp có để thanh toán mỗi khoản phí (tiền cọc, quyết toán). Quá hạn, khoản phí chuyển sang "Quá hạn".' },
 ];
 
 const fmt = (value: number | null | undefined, unit: string) => {
@@ -205,6 +215,13 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
                       <label htmlFor={`term-${f.key}`} className="text-sm font-medium text-slate-900">
                         {f.label}
                       </label>
+                      <Tooltip title={f.tip} placement="right">
+                        <InfoCircleOutlined
+                          tabIndex={0}
+                          aria-label={`Giải thích: ${f.label}`}
+                          className="ml-1.5 cursor-help text-slate-400 hover:text-slate-600"
+                        />
+                      </Tooltip>
                       {f.help && <div className="text-xs text-slate-500">{f.help}</div>}
                     </div>
                     <div role="cell" className="text-sm">
