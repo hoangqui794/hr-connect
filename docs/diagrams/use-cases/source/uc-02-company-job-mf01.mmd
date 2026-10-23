@@ -1,0 +1,24 @@
+---
+title: Use Cases – Company & Job Management (MF-01)
+---
+flowchart LR
+  CL(["👤 Client Company User"]):::actor
+  subgraph SYS["HR Connect"]
+    direction TB
+    UC04(["UC-04: Manage Company Profile"]):::uc
+    UC05(["UC-05: Review Company Verification"]):::uc
+    UC06(["UC-06: Manage Job"]):::uc
+    UC07(["UC-07: Review Job"]):::uc
+    UC44(["UC-44: Agree and Sign Service Agreement"]):::uc
+  end
+  HR(["👤 Internal HR"]):::actor
+  AD(["👤 Platform Admin"]):::actor
+  CL --- UC04
+  CL --- UC06
+  CL --- UC44
+  UC07 --- HR
+  UC44 --- HR
+  UC05 --- AD
+  classDef actor fill:#FFF4E5,stroke:#B7791F,color:#7B4B0A,font-weight:bold
+  classDef uc fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
+  classDef planned fill:#FFFFFF,stroke:#1B365D,stroke-dasharray:5 4,color:#555

@@ -10,8 +10,8 @@ type CandidatePageHeaderProps = {
 
 export const CandidatePageHeader: React.FC<CandidatePageHeaderProps> = ({ eyebrow, title, description, actions }) => (
   <header className="candidate-page-header">
-    <div className="min-w-0">
-      {eyebrow && <p className="candidate-eyebrow">{eyebrow}</p>}
+    <div className="candidate-page-heading min-w-0">
+      {eyebrow && <p className="candidate-context-label">{eyebrow}</p>}
       <h1 className="candidate-page-title">{title}</h1>
       {description && <p className="candidate-page-description">{description}</p>}
     </div>

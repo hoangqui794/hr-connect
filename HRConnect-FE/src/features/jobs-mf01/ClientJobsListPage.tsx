@@ -32,6 +32,7 @@ import {
   PlusOutlined,
   ReloadOutlined,
   SendOutlined,
+  FileDoneOutlined,
 } from '@ant-design/icons';
 import type { Job, JobCloseReasonCode, JobStatus } from '@/types/api/jobs';
 import { FilterPills, PageHero, Surface } from '@/features/admin-console/ui';
@@ -56,7 +57,7 @@ import {
 
 
 type StatusFilter = 'ALL' | JobStatus;
-const FILTER_ORDER: JobStatus[] = ['DRAFT', 'PENDING_REVIEW', 'PENDING_PAYMENT', 'ACTIVE', 'PAUSED', 'CLOSED', 'REJECTED'];
+const FILTER_ORDER: JobStatus[] = ['DRAFT', 'PENDING_REVIEW', 'PENDING_AGREEMENT', 'PENDING_PAYMENT', 'ACTIVE', 'PAUSED', 'CLOSED', 'REJECTED'];
 
 type PendingAction = { kind: 'pause' | 'close'; job: Job } | null;
 
@@ -74,15 +75,20 @@ export const ClientJobsListPage: React.FC = () => {
     else next.set('view', v);
     setSearchParams(next, { replace: true });
   };
-  const setFilter = (v: StatusFilter) => {
+  const setFilter = React.useCallback((v: StatusFilter) => {
     const next = new URLSearchParams(searchParams);
     if (v === 'ALL') next.delete('status');
     else next.set('status', v);
     setSearchParams(next, { replace: true });
-  };
+  }, [searchParams, setSearchParams]);
   const [detailJobId, setDetailJobId] = useState<string>();
   const [pending, setPending] = useState<PendingAction>(null);
-  const [paymentModalJob, setPaymentModalJob] = useState<{ jobId: string; title: string } | null>(null);
+  const [paymentModalJob, setPaymentModalJob] = useState<{
+    jobId: string;
+    title: string;
+    isDeposit?: boolean;
+    depositAmount?: number | null;
+  } | null>(null);
 
   const highlightParam = searchParams.get('highlight') || searchParams.get('jobId');
   const openDetailParam = searchParams.get('openDetail') === 'true';
@@ -145,7 +151,7 @@ export const ClientJobsListPage: React.FC = () => {
 
       return () => clearTimeout(timer);
     }
-  }, [highlightParam, openPaymentParam, openDetailParam, jobs]);
+  }, [highlightParam, openPaymentParam, openDetailParam, jobs, filter, setFilter]);
 
   const expiredJobs = useMemo(
     () =>
@@ -185,7 +191,7 @@ export const ClientJobsListPage: React.FC = () => {
     modal.confirm({
       title: 'Gửi tin tuyển dụng đi duyệt?',
       content:
-        'Internal HR sẽ xét duyệt trước khi tin được hiển thị. Trong lúc chờ duyệt bạn không sửa được tin. Tin cần ít nhất một yêu cầu bắt buộc.',
+        'Bộ phận kiểm duyệt của HR Connect sẽ kiểm tra trước khi tin được hiển thị. Trong lúc chờ duyệt, bạn chưa thể sửa tin.',
       okText: 'Gửi duyệt',
       cancelText: 'Để sau',
       onOk: () =>
@@ -211,21 +217,24 @@ export const ClientJobsListPage: React.FC = () => {
           (mutations.resume.isPending && mutations.resume.variables?.jobId === job.jobId);
         const more = [
           { key: 'view', icon: <EyeOutlined />, label: 'Xem chi tiết' },
-          ...(job.serviceTypeCode === 'CV_SOURCING' ? [{ key: 'sourcing', icon: <TeamOutlined />, label: 'Hồ sơ CV Sourcing' }] : []),
+          ...(job.serviceTypeCode === 'HEADHUNT_COD' || job.serviceTypeCode === 'CV_SOURCING'
+            ? [{ key: 'agreement', icon: <FileDoneOutlined />, label: 'Thỏa thuận dịch vụ' }]
+            : []),
+          ...(job.serviceTypeCode === 'CV_SOURCING' ? [{ key: 'sourcing', icon: <TeamOutlined />, label: 'Kho CV tìm kiếm' }] : []),
           ...(can.canPause ? [{ key: 'pause', label: 'Tạm dừng tuyển' }] : []),
           ...(can.canResume ? [{ key: 'resume', label: 'Mở lại tuyển' }] : []),
           ...(can.canClose ? [{ key: 'close', label: 'Đóng tin', danger: true }] : []),
         ];
         return (
           <div className="flex items-center justify-end gap-1">
-            {job.serviceTypeCode === 'CV_SOURCING' && (
+            {job.serviceTypeCode === 'CV_SOURCING' && job.status !== 'PENDING_AGREEMENT' && (
               <Button
                 size="small"
-                className="!text-teal-700 !border-teal-300 hover:!border-teal-500 bg-teal-50/50 font-medium"
+                className="!text-teal-700 !border-teal-300 hover:!border-teal-500 bg-teal-50/50 font-medium whitespace-nowrap"
                 icon={<TeamOutlined />}
                 onClick={() => navigate(`/client/jobs/${job.jobId}/sourcing`)}
               >
-                CV Sourcing
+                Kho CV
               </Button>
             )}
             {needsPayment && (
@@ -260,6 +269,7 @@ export const ClientJobsListPage: React.FC = () => {
                 items: more,
                 onClick: ({ key }) => {
                   if (key === 'view') setDetailJobId(job.jobId);
+                  if (key === 'agreement') navigate(`/client/agreements?jobId=${job.jobId}`);
                   if (key === 'sourcing') navigate(`/client/jobs/${job.jobId}/sourcing`);
                   if (key === 'resume') resume(job);
                   if (key === 'pause' || key === 'close') setPending({ kind: key, job });
@@ -384,7 +394,7 @@ export const ClientJobsListPage: React.FC = () => {
           closable
           className="mb-4"
           message={`Bạn có ${expiredJobs.length} tin tuyển dụng đã hết hạn hiển thị`}
-          description="Các tin tuyển dụng theo gói đã kết thúc thời hạn hiển thị và tự động đóng. Bạn có thể đăng tin mới với Gói Tiêu Chuẩn (STANDARD) để tiếp tục tuyển dụng không giới hạn."
+          description="Các tin đã hết thời hạn hiển thị sẽ tự động đóng. Bạn có thể tạo tin mới và chọn gói tiêu chuẩn để tiếp tục tuyển dụng."
           action={
             <Button size="small" type="primary" onClick={() => navigate('/client/jobs/create')}>
               Đăng tin mới (Standard)
@@ -504,24 +514,56 @@ export const ClientJobsListPage: React.FC = () => {
                       </div>
                       <div>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'}</div>
                     </div>
-                    {isAwaitingSourcingDeposit(job) && (
-                      <div className="rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2 text-xs text-amber-900">
-                        <span className="font-medium">
-                          Chờ đặt cọc CV Sourcing ({formatMoney(sourcingDepositAmount(job) ?? 0, 'VND')}) · tin công bố khi HR Connect nhận cọc
-                        </span>
-                      </div>
-                    )}
-                    {job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
-                      <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2 text-xs text-amber-900">
-                        <span className="font-medium">Chờ thanh toán phí kích hoạt</span>
+                    {job.status === 'PENDING_AGREEMENT' && (
+                      <div className="flex items-center justify-between rounded-xl bg-purple-50 border border-solid border-purple-200 px-3 py-2 text-xs text-purple-900">
+                        <span className="font-medium">Dự thảo thỏa thuận đang chờ ký kết</span>
                         <Button
                           type="primary"
                           size="small"
-                          className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600 !text-xs !h-6"
-                          onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
+                          className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600 !text-xs !h-6 font-medium whitespace-nowrap"
+                          onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                         >
-                          Hướng dẫn thanh toán
+                          Ký thỏa thuận
                         </Button>
+                      </div>
+                    )}
+                    {isAwaitingSourcingDeposit(job) && (
+                      <div className="flex flex-col gap-2 rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2.5 text-xs text-amber-900">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-amber-950">
+                            Chờ đặt cọc dịch vụ ({formatMoney(sourcingDepositAmount(job) ?? 200000, 'VND')})
+                          </span>
+                          <span className="text-[11px] text-amber-700">Mở tin khi nhận cọc</span>
+                        </div>
+                        <div className="flex items-center gap-2 pt-1 border-0 border-t border-solid border-amber-200/60">
+                          <Button
+                            type="primary"
+                            size="small"
+                            className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600 !text-xs !h-6 font-medium"
+                            onClick={() =>
+                              setPaymentModalJob({
+                                jobId: job.jobId,
+                                title: job.title,
+                                isDeposit: true,
+                                depositAmount: sourcingDepositAmount(job) ?? 200000,
+                              })
+                            }
+                          >
+                            Đặt cọc
+                          </Button>
+                          <Button
+                            size="small"
+                            className="!text-xs !h-6 border-amber-300 text-amber-900 hover:text-amber-700"
+                            onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                          >
+                            Hợp đồng cọc
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
+                      <div className="flex items-center justify-between rounded-xl bg-amber-50/80 border border-solid border-amber-200 px-3 py-1.5 text-xs text-amber-900">
+                        <span className="font-medium">Chờ thanh toán phí kích hoạt để công bố</span>
                       </div>
                     )}
                     {job.status === 'REJECTED' && job.statusReason && (
@@ -532,7 +574,7 @@ export const ClientJobsListPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => navigate(`/client/candidates?job=${job.jobId}`)}
-                          className="flex cursor-pointer items-center gap-1.5 rounded-full border-0 bg-[color:var(--console-accent-soft)] px-3 py-1 text-[13px] font-medium text-[color:var(--console-accent-strong)] hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+                          className="flex cursor-pointer items-center gap-1.5 rounded-full border-0 bg-[color:var(--console-accent-soft)] px-3 py-1 text-[13px] font-medium text-[color:var(--console-accent-strong)] hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] shrink-0 whitespace-nowrap"
                         >
                           <TeamOutlined aria-hidden />
                           <span className="tabular-nums">
@@ -541,8 +583,8 @@ export const ClientJobsListPage: React.FC = () => {
                           </span> hồ sơ
                         </button>
                       ) : (
-                        <span className="text-xs text-slate-500">
-                          {job.maxApplications ? `Tối đa ${job.maxApplications} hồ sơ • ` : ''}Cần {formatHeadcount(job)}
+                        <span className="text-xs text-slate-500 font-medium shrink-0 whitespace-nowrap">
+                          {formatHeadcount(job)}
                         </span>
                       )}
                       {renderActions(job)}
@@ -646,6 +688,8 @@ export const ClientJobsListPage: React.FC = () => {
         visible={Boolean(paymentModalJob)}
         jobId={paymentModalJob?.jobId ?? ''}
         jobTitle={paymentModalJob?.title ?? ''}
+        isDeposit={paymentModalJob?.isDeposit}
+        depositAmount={paymentModalJob?.depositAmount}
         onClose={() => {
           setPaymentModalJob(null);
           if (searchParams.has('openPayment')) {

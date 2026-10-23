@@ -1,3 +1,4 @@
+using HRConnect.Presentation.ErrorHandling;
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
@@ -134,7 +135,7 @@ public static class InternalHrEndpoints
                 var result = await sender.Send(new RetryAiScoringCommand(
                     applicationId,
                     userId.Value,
-                    string.IsNullOrWhiteSpace(reason) ? Mf03ScoringReasons.FailedRetry : reason), cancellationToken);
+                    reason ?? string.Empty), cancellationToken);
                 return Results.Json(result, statusCode: StatusCodes.Status202Accepted);
             }
             catch (NotFoundException ex)
@@ -143,12 +144,12 @@ public static class InternalHrEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
         })
         .WithName("RetryAiScoring")
         .WithSummary("Yêu cầu AI thử lại hoặc chấm lại một hồ sơ")
-        .WithDescription("Reason: FAILED_RETRY (attempt gần nhất FAILED), JD_UPDATED hoặc MANUAL_REVIEW (attempt gần nhất COMPLETED/FAILED). Luôn từ chối khi attempt đang PENDING/PROCESSING; không tạo Submission hoặc CV mới.")
+        .WithDescription("Reason bỏ trống: FAILED_RETRY nếu attempt gần nhất FAILED, ngược lại MANUAL_REVIEW. Reason: FAILED_RETRY (attempt gần nhất FAILED), JD_UPDATED hoặc MANUAL_REVIEW (attempt gần nhất COMPLETED/FAILED). Luôn từ chối khi attempt đang PENDING/PROCESSING; không tạo Submission hoặc CV mới.")
         .Produces<RetryAiScoringResponse>(StatusCodes.Status202Accepted)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)

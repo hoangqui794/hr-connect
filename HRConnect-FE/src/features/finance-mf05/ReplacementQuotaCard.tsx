@@ -158,7 +158,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
   });
 
   // 4. Filter and search logic
-  const allSlots = slotsQuery.data ?? [];
+  const allSlots = useMemo(() => slotsQuery.data ?? [], [slotsQuery.data]);
   const counts = useMemo(() => {
     return {
       all: allSlots.length,
@@ -448,7 +448,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
                 <div className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
                   {allSlots.length > 0
                     ? 'Không tìm thấy suất nào phù hợp với bộ lọc hiện tại.'
-                    : 'Khi ứng viên nghỉ việc trong thời gian bảo hành HEADHUNT_COD, suất thay thế sẽ tự động được cấp phát tại đây.'}
+                    : 'Khi ứng viên nghỉ việc trong thời gian bảo hành của tin Headhunt, suất thay thế sẽ tự động được cấp phát tại đây.'}
                 </div>
               </div>
             }

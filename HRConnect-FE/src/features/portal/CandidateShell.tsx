@@ -41,7 +41,7 @@ const PRIMARY_NAV = [
 const ACCOUNT_LINKS = [
   { to: '/candidate/saved-jobs', label: 'Việc làm đã lưu', icon: HeartOutlined },
   { to: '/candidate/profile', label: 'Hồ sơ cá nhân', icon: UserOutlined },
-  { to: '/candidate/affiliate-cvs', label: 'CV do Affiliate gửi', icon: FolderOpenOutlined },
+  { to: '/candidate/affiliate-cvs', label: 'CV do đối tác gửi', icon: FolderOpenOutlined },
   { to: '/candidate/settings/email-identities', label: 'Email liên kết & khôi phục dữ liệu', icon: MailOutlined },
 ] as const;
 
@@ -117,25 +117,25 @@ export const CandidateShell: React.FC = () => {
   }
 
   return (
-    <div className="candidate-console min-h-screen bg-[#F4F7FC] text-slate-900">
-      <header className="sticky top-0 z-30 border-0 border-b border-solid border-slate-200/80 bg-white/95 backdrop-blur">
+    <div className="candidate-console min-h-screen text-slate-900">
+      <header className="candidate-topbar sticky top-0 z-30">
         <div
           className={
             compact
-              ? 'flex h-16 w-full items-center gap-4 px-4'
-              : 'grid h-16 w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-6 px-6 lg:px-10'
+              ? 'mx-auto flex h-[68px] w-full items-center gap-4 px-4'
+              : 'mx-auto grid h-[72px] w-full max-w-[1536px] grid-cols-[minmax(230px,1fr)_auto_minmax(230px,1fr)] items-center gap-6 px-6 lg:px-10'
           }
         >
           <NavLink to="/candidate/dashboard" className="flex shrink-0 items-center gap-2.5 no-underline" aria-label="HR Connect, về tổng quan">
-            <BrandMark size={40} />
+            <BrandMark size={42} />
             <span className="leading-tight">
-              <span className="block text-[15px] font-bold text-slate-900">HR Connect</span>
-              <span className="hidden text-[11px] font-medium tracking-wide text-[color:var(--console-accent-strong)] sm:block">Không gian Candidate</span>
+              <span className="block text-[16px] font-extrabold tracking-[-0.02em] text-slate-950">HR Connect</span>
+              <span className="hidden text-[11px] font-semibold text-[color:var(--candidate-accent)] sm:block">Dành cho ứng viên</span>
             </span>
           </NavLink>
 
           {!compact && (
-            <nav aria-label="Điều hướng Candidate" className="flex items-center justify-self-center gap-1 rounded-full bg-slate-50 p-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
+            <nav aria-label="Điều hướng ứng viên" className="candidate-desktop-nav flex items-center justify-self-center gap-1 p-1">
               {PRIMARY_NAV.map((item) => {
                 const active = isPathActive(item.matches);
                 const Icon = item.icon;
@@ -253,7 +253,7 @@ export const CandidateShell: React.FC = () => {
       )}
 
       <AdminTopProgress offsetLeft={0} />
-      <main className="mx-auto max-w-[1280px] px-4 py-6 pb-28 lg:px-8 lg:py-8">
+      <main className="candidate-main mx-auto w-full max-w-[1440px] px-4 py-6 pb-28 sm:px-6 lg:px-8 lg:py-8">
         <AdminPageEnter pathKey={location.pathname}>
           <Suspense fallback={<AdminPageSkeleton />}>
             <Outlet />
@@ -262,7 +262,7 @@ export const CandidateShell: React.FC = () => {
       </main>
 
       {compact && (
-        <nav aria-label="Điều hướng Candidate trên thiết bị di động" className="candidate-bottom-nav fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-0 border-t border-solid border-slate-200 bg-white/95 px-1 pt-1 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+        <nav aria-label="Điều hướng ứng viên trên thiết bị di động" className="candidate-bottom-nav fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-0 border-t border-solid border-slate-200 bg-white/95 px-1 pt-1 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur">
           {PRIMARY_NAV.map((item) => {
             const active = isPathActive(item.matches);
             const Icon = item.icon;

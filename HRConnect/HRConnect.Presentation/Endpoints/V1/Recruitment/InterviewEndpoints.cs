@@ -1,3 +1,4 @@
+using HRConnect.Presentation.ErrorHandling;
 using System;
 using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
@@ -9,6 +10,7 @@ using HRConnect.Application.Features.Interviews.Commands.RescheduleInterview;
 using HRConnect.Application.Features.Interviews.Commands.CancelInterview;
 using HRConnect.Application.Features.Interviews.Commands.RecordInterviewResult;
 using HRConnect.Application.Features.Interviews.Commands.RecordInterviewNoShow;
+using HRConnect.Application.Features.Interviews.Commands.ConfirmInterviewAttendance;
 using HRConnect.Application.Features.Interviews.Queries.GetInterviewHistory;
 using HRConnect.Presentation.Authorization;
 using MediatR;
@@ -163,6 +165,53 @@ public static class InterviewEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
 
+        // I02A: POST /api/v1/interviews/{interviewId:guid}/candidate-confirm
+        group.MapPost("/{interviewId:guid}/candidate-confirm", async (
+            Guid interviewId,
+            [FromServices] ISender sender = null!,
+            ClaimsPrincipal user = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (!PermissionAuthorization.HasPermission(user, ViewOwnPermission))
+            {
+                return PermissionAuthorization.Forbidden(ViewOwnPermission);
+            }
+
+            try
+            {
+                var response = await sender.Send(
+                    new ConfirmInterviewAttendanceCommand(interviewId, userId.Value),
+                    cancellationToken);
+                return Results.Ok(response);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("ConfirmInterviewAttendance")
+        .WithSummary("Ứng viên xác nhận tham gia phỏng vấn")
+        .WithDescription("Candidate sở hữu lịch có thể xác nhận sẽ tham gia khi lịch còn ở trạng thái SCHEDULED và chưa bắt đầu. Không xác nhận không tự hủy lịch hoặc loại hồ sơ; thao tác lặp lại là idempotent.")
+        .Produces<ConfirmInterviewAttendanceResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
         // I03: POST /api/v1/recruitment/applications/{applicationId}/interviews
         schedulingGroup.MapPost("/{applicationId:guid}/interviews", async (
             Guid applicationId,
@@ -210,7 +259,7 @@ public static class InterviewEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (ForbiddenException ex)
             {
@@ -276,7 +325,7 @@ public static class InterviewEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (ForbiddenException ex)
             {
@@ -342,7 +391,7 @@ public static class InterviewEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (ForbiddenException ex)
             {
@@ -404,7 +453,7 @@ public static class InterviewEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (ForbiddenException ex)
             {
@@ -462,7 +511,7 @@ public static class InterviewEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (ForbiddenException ex)
             {
@@ -527,7 +576,7 @@ public static class InterviewEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (ForbiddenException ex)
             {

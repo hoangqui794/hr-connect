@@ -1,0 +1,42 @@
+---
+title: WF-03 AI matching and screening
+---
+flowchart TB
+  subgraph L0["System"]
+    direction TB
+    S1([Application SUBMITTED]) --> S2[Dispatch scoring job]
+  end
+  subgraph L1["AI Matching Service"]
+    direction TB
+    A1[Extract CV and JD text, Sentence-BERT similarity]
+    A2[LLM assesses each requirement with evidence]
+    A3{Evidence verified?}
+    A3 -- Yes --> A4[Score + tier, callback COMPLETED]
+    A3 -- No / error --> A5[Callback FAILED with code]
+  end
+  subgraph L2["Internal HR"]
+    direction TB
+    H1[Review ranked list: score, tier, evidence]
+    H2{Decision}
+    H2 -- Shortlist --> H3[SHORTLISTED, masked CV to Client]
+    H2 -- Backup --> H4[BACKUP]
+    H2 -- Reject --> H5[REJECTED with reason]
+    H6[Retry scoring]
+  end
+  subgraph L3["Client"]
+    direction TB
+    C1[Review shortlisted / delivered CVs]
+    C2{Accept CV?}
+    C2 -- Yes --> C3([Ready for interview / CV accepted])
+    C2 -- Reject --> C4[Reject with reason, HR may replace]
+  end
+  S2 --> A1
+  A1 --> A2
+  A2 --> A3
+  A4 --> H1
+  A5 --> H6
+  H6 --> S2
+  H1 --> H2
+  H3 --> C1
+  C1 --> C2
+classDef default fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C

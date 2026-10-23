@@ -55,6 +55,9 @@ public class RecruitmentApplicationItemDto
 
     public DateTime AppliedAt { get; set; }
 
+    /// <summary>Last change to the application; the Client list shows how long it has waited.</summary>
+    public DateTime UpdatedAt { get; set; }
+
     public decimal? AiMatchScore { get; set; }
 
     public string? AiMatchTier { get; set; }

@@ -1,7 +1,7 @@
 /**
  * @file CandidateInterviewDetailView.tsx
  * @description Core component for viewing Candidate Interview Detail with complete state handling,
- * quick actions (Copy link, Join room, Confirm attendance, Request reschedule, Add to Calendar),
+ * quick actions (Copy link, Join room, Confirm attendance, Add to Calendar),
  * and status timeline.
  */
 
@@ -17,6 +17,7 @@ import {
   Timeline,
   Typography,
   message,
+  Popconfirm,
 } from 'antd';
 import {
   CalendarOutlined,
@@ -35,12 +36,15 @@ import {
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
 
-import { useCandidateInterviewDetail } from '@/hooks/useCandidateInterviewDetail';
+import { candidateInterviewApi } from '@/services/api/candidateInterviewApi';
+import { candidateInterviewKeys, useCandidateInterviewDetail } from '@/hooks/useCandidateInterviewDetail';
 import type { CandidateInterviewDetailDto } from '@/types/api/candidateInterview';
+import { candidateInterviewStatus, candidateInterviewType } from '@/features/portal/mf02Labels';
 
 const { Text, Paragraph, Title } = Typography;
 
@@ -58,8 +62,28 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
   showBackAction = false,
 }) => {
   const { interview: fetchedInterview, isLoading, isError, error, refetch, isRefetching } = useCandidateInterviewDetail(interviewId);
+  const queryClient = useQueryClient();
 
   const interview = fetchedInterview || initialData;
+
+  const confirmAttendance = useMutation({
+    mutationFn: () => candidateInterviewApi.confirmAttendance(interviewId),
+    onSuccess: (result) => {
+      queryClient.setQueryData<CandidateInterviewDetailDto>(candidateInterviewKeys.detail(interviewId), (current) =>
+        current
+          ? {
+              ...current,
+              candidateAttendanceStatus: result.attendanceStatus,
+              candidateRespondedAt: result.respondedAt,
+            }
+          : current
+      );
+      message.success(result.alreadyConfirmed ? 'Bạn đã xác nhận lịch phỏng vấn này.' : 'Đã xác nhận tham gia phỏng vấn.');
+    },
+    onError: (mutationError: Error) => {
+      message.error(mutationError.message || 'Không thể xác nhận tham gia phỏng vấn.');
+    },
+  });
 
   // Helper copy to clipboard
   const handleCopy = (text: string, label: string) => {
@@ -80,7 +104,7 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
     const endStr = end.utc?.() ? end.utc().format('YYYYMMDDTHHmmss[Z]') : end.format('YYYYMMDDTHHmmss');
 
     const title = `Phỏng vấn Vòng ${item.interviewRound} - ${item.jobTitle} tại ${item.companyName}`;
-    const details = `Buổi phỏng vấn vị trí ${item.jobTitle}.\nHình thức: ${item.interviewType || 'Phỏng vấn'}.\n${
+    const details = `Buổi phỏng vấn vị trí ${item.jobTitle}.\nHình thức: ${candidateInterviewType(item.interviewType)}.\n${
       item.meetingLink ? `Link họp: ${item.meetingLink}\n` : ''
     }${item.location ? `Địa điểm: ${item.location}\n` : ''}`;
     const location = item.meetingLink || item.location || '';
@@ -163,13 +187,12 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
   const getStatusBadge = (status: string) => {
     const map: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
       SCHEDULED: { color: 'processing', label: 'Đã lên lịch', icon: <ClockCircleOutlined /> },
-      CONFIRMED: { color: 'success', label: 'Đã xác nhận tham gia', icon: <CheckCircleOutlined /> },
       COMPLETED: { color: 'green', label: 'Đã hoàn thành', icon: <CheckCircleOutlined /> },
       RESCHEDULED: { color: 'warning', label: 'Đã dời lịch', icon: <HistoryOutlined /> },
       CANCELLED: { color: 'error', label: 'Đã hủy', icon: <ExclamationCircleOutlined /> },
       NO_SHOW: { color: 'default', label: 'Vắng mặt', icon: <ExclamationCircleOutlined /> },
     };
-    const s = map[status.toUpperCase()] || { color: 'default', label: status, icon: null };
+    const s = map[status.toUpperCase()] || { color: 'default', label: candidateInterviewStatus(status), icon: null };
     return (
       <Tag color={s.color} className="px-2.5 py-1 text-sm font-semibold rounded-md flex items-center gap-1.5 inline-flex">
         {s.icon}
@@ -181,20 +204,22 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
   const isOnline = (interview.interviewType || '').toUpperCase() === 'ONLINE' || Boolean(interview.meetingLink);
   const scheduledTime = interview.scheduledAt ? dayjs(interview.scheduledAt) : null;
   const isUpcoming = scheduledTime && scheduledTime.isAfter(dayjs());
+  const isAttendanceConfirmed = interview.candidateAttendanceStatus === 'CONFIRMED';
+  const canConfirmAttendance = interview.status === 'SCHEDULED' && Boolean(isUpcoming) && !isAttendanceConfirmed;
   const duration = interview.durationMinutes || 45;
   const endTime = scheduledTime ? scheduledTime.add(duration, 'minute') : null;
 
   return (
-    <div className="space-y-6" data-testid="interview-detail-content">
+    <div className="candidate-interview-detail-content space-y-6" data-testid="interview-detail-content">
       {/* Header Info */}
-      <div className="bg-gradient-to-r from-blue-50 via-indigo-50/50 to-white p-5 rounded-2xl border border-blue-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="candidate-interview-detail-hero bg-gradient-to-r from-blue-50 via-indigo-50/50 to-white p-5 rounded-2xl border border-blue-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
             <Tag color="blue" className="font-bold uppercase tracking-wide">
               Vòng {interview.interviewRound}
             </Tag>
             <Tag color={isOnline ? 'cyan' : 'gold'} className="font-medium">
-              {isOnline ? 'Trực tuyến (Online)' : 'Trực tiếp (Tại văn phòng)'}
+              {isOnline ? 'Trực tuyến' : 'Trực tiếp tại văn phòng'}
             </Tag>
             {getStatusBadge(interview.status)}
           </div>
@@ -224,6 +249,29 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
             >
               Thêm vào Google Calendar
             </Button>
+          )}
+          {isAttendanceConfirmed && (
+            <Tag color="success" icon={<CheckCircleOutlined />} className="m-0 px-3 py-1.5 text-sm font-semibold">
+              Đã xác nhận tham gia
+            </Tag>
+          )}
+          {canConfirmAttendance && (
+            <Popconfirm
+              title="Xác nhận tham gia phỏng vấn?"
+              description="Lịch vẫn còn hiệu lực nếu bạn chưa xác nhận. Hãy bấm xác nhận khi bạn đã sắp xếp được thời gian."
+              okText="Xác nhận tham gia"
+              cancelText="Để sau"
+              onConfirm={() => confirmAttendance.mutate()}
+            >
+              <Button
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                loading={confirmAttendance.isPending}
+                className="bg-emerald-600 hover:!bg-emerald-700"
+              >
+                Xác nhận tham gia
+              </Button>
+            </Popconfirm>
           )}
         </div>
       </div>
@@ -297,7 +345,7 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
           {isOnline ? (
             <div className="space-y-3 py-1">
               <div>
-                <span className="text-xs text-slate-500">Đường dẫn tham gia (Link họp):</span>
+                <span className="text-xs text-slate-500">Đường dẫn tham gia:</span>
                 {interview.meetingLink ? (
                   <div className="mt-1 flex items-center gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs font-mono break-all">
                     <span className="flex-1 text-blue-700 font-medium">{interview.meetingLink}</span>
@@ -330,9 +378,9 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
               )}
 
               <div className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200/60 space-y-1">
-                <div className="font-semibold text-slate-700">Lưu ý cho phỏng vấn online:</div>
+                <div className="font-semibold text-slate-700">Lưu ý khi phỏng vấn trực tuyến:</div>
                 <ul className="list-disc list-inside m-0 space-y-0.5 text-[11px]">
-                  <li>Kiểm tra camera, microphone và đường truyền mạng internet ổn định.</li>
+                  <li>Kiểm tra camera, micro và đường truyền mạng ổn định.</li>
                   <li>Chọn không gian yên tĩnh, đủ ánh sáng và trang phục lịch sự.</li>
                 </ul>
               </div>
@@ -372,7 +420,7 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
                 <div className="font-semibold text-slate-700">Lưu ý cho phỏng vấn trực tiếp:</div>
                 <ul className="list-disc list-inside m-0 space-y-0.5 text-[11px]">
                   <li>Đến sớm trước 10-15 phút để làm thủ tục đón tiếp tại lễ tân.</li>
-                  <li>Mang theo giấy tờ tùy thân và bản in CV/Portfolio (nếu có).</li>
+                  <li>Mang theo giấy tờ tùy thân, bản in CV và hồ sơ năng lực (nếu có).</li>
                 </ul>
               </div>
             </div>
@@ -403,7 +451,7 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
                 children: (
                   <div className="text-xs text-slate-700">
                     <div className="font-semibold text-slate-900 flex items-center gap-2">
-                      <span>Trạng thái: {h.newStatus}</span>
+                      <span>Trạng thái: {candidateInterviewStatus(h.newStatus)}</span>
                       <span className="text-slate-400 font-normal">({changedTime})</span>
                     </div>
                     {isReschedule && h.newScheduledAt && (

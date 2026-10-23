@@ -34,6 +34,8 @@ describe('candidateInterviewApi', () => {
         location: 'Tòa nhà Landmark 81, TP. HCM',
         meetingLink: 'https://meet.google.com/xyz-abc-def',
         status: 'SCHEDULED',
+        candidateAttendanceStatus: 'CONFIRMED',
+        candidateRespondedAt: '2026-10-20T09:00:00Z',
         feedback: 'Nội dung đánh giá nội bộ',
         concurrencyToken: 'private-token',
         participants: [{ userId: 'u-1', name: 'Trần Thị B', role: 'Interviewer' }],
@@ -66,6 +68,8 @@ describe('candidateInterviewApi', () => {
       expect(result.companyName).toBe('Tech Innovations JSC');
       expect(result.meetingLink).toBe('https://meet.google.com/xyz-abc-def');
       expect(result.status).toBe('SCHEDULED');
+      expect(result.candidateAttendanceStatus).toBe('CONFIRMED');
+      expect(result.candidateRespondedAt).toBe('2026-10-20T09:00:00Z');
       expect(result.interviewRound).toBe(1);
       expect(result.statusHistories).toHaveLength(1);
       expect(result).not.toHaveProperty('participants');
@@ -101,6 +105,22 @@ describe('candidateInterviewApi', () => {
       await expect(candidateInterviewApi.getInterviewDetail('iv-err')).rejects.toThrow(
         'Network Error'
       );
+    });
+  });
+
+  describe('confirmAttendance', () => {
+    it('posts to the Candidate confirmation endpoint and returns its idempotency state', async () => {
+      const response = {
+        interviewId: 'iv-123',
+        applicationId: 'app-456',
+        attendanceStatus: 'CONFIRMED' as const,
+        respondedAt: '2026-10-22T07:00:00Z',
+        alreadyConfirmed: false,
+      };
+      vi.mocked(apiClient.post).mockResolvedValueOnce({ data: response } as any);
+
+      await expect(candidateInterviewApi.confirmAttendance('iv-123')).resolves.toEqual(response);
+      expect(apiClient.post).toHaveBeenCalledWith('/interviews/iv-123/candidate-confirm');
     });
   });
 

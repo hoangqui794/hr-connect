@@ -1,0 +1,24 @@
+@startuml seq-mf03-sourcing-delivery
+autonumber
+skinparam sequenceMessageAlign center
+title MF-03 · CV Sourcing delivery and Client decision
+actor "Internal HR" as HR
+boundary "SourcingDelivery endpoints" as API
+control "Sourcing handlers" as H
+database "PostgreSQL" as DB
+actor "Client Company User" as CL
+control "SourcingAutoAcceptWorker" as W
+HR -> API : Deliver shortlisted CVs
+API -> H : DeliverSourcingCvs
+alt target reached
+API --> HR : 409 SOURCING_TARGET_REACHED
+else within target
+H -> DB : SourcingDelivery DELIVERED, ReviewDueAt
+H -> CL : Notify: CVs to review
+end
+CL -> API : Accept / Reject (reason)
+H -> DB : ACCEPTED (commission per CV) or REJECTED
+W -> DB : After review period: DELIVERED → AUTO_ACCEPTED
+HR -> API : Replace rejected CV with a backup
+H -> DB : Old REPLACED, new DELIVERED
+@enduml

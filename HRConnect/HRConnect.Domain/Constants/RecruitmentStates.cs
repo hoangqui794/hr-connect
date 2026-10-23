@@ -38,6 +38,11 @@ public static class InterviewResults
     public const string Backup = "BACKUP";
 }
 
+public static class CandidateAttendanceStates
+{
+    public const string Confirmed = "CONFIRMED";
+}
+
 public static class OfferStates
 {
     public const string Draft = "DRAFT";

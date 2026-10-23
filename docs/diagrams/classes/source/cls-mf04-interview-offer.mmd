@@ -1,0 +1,112 @@
+---
+title: MF-04 · Interview, offer and start work
+config:
+  layout: elk
+---
+classDiagram
+  direction LR
+  class InterviewEndpoints {
+    <<endpoint>>
+    +POST /recruitment/applications/‹id›/interviews
+    +PUT /interviews/‹id› · result · no-show · cancel
+  }
+  class RecruitmentEndpoints {
+    <<endpoint>>
+    +POST /applications/‹id›/offers
+    +POST /applications/‹id›/start-work
+  }
+  class ScheduleInterviewCommandHandler {
+    <<handler>>
+    +Handle()
+  }
+  class RecordInterviewResultCommandHandler {
+    <<handler>>
+    +Handle(PASS | FAIL | BACKUP)
+  }
+  class OfferHandlers {
+    <<handler>>
+    +CreateOfferDraft · UpdateOfferDraft · SendOffer
+    +RespondToOffer · WithdrawOffer
+  }
+  class ConfirmStartWorkCommandHandler {
+    <<handler>>
+    +Handle(actualStartDate)
+  }
+  class MarkNotStartedCommandHandler {
+    <<handler>>
+    +Handle(reason)
+  }
+  class CorrectPlacementStartDateCommandHandler {
+    <<handler>>
+    +Handle() HR/Admin, 7 days
+  }
+  class OfferSalaryPolicy {
+    <<policy>>
+    +EnsureReadyForSending()
+    +CalculateMonthlyGrossSalary()
+  }
+  class InterviewParticipantPolicy {
+    <<policy>>
+    +company members only
+  }
+  class OfferExpiryService {
+    <<service>>
+    +ExpireAsync()
+  }
+  class IPlacementFinanceService {
+    <<interface>>
+    +InitializeAsync(placement, context)
+  }
+  class Interview {
+    <<entity>>
+    +InterviewRound · ScheduledAt
+    +Status · Result
+  }
+  class Offer {
+    <<entity>>
+    +OfferVersion · Salary
+    +SalaryBasis · SalaryPeriod
+    +ExpiryDate · Status
+  }
+  class Placement {
+    <<entity>>
+    +ActualStartDate · Status
+    +ReplacementSlotId
+  }
+  class Application {
+    <<entity>>
+    +Status · PlannedStartDate
+  }
+  InterviewEndpoints ..> ScheduleInterviewCommandHandler : sends
+  InterviewEndpoints ..> RecordInterviewResultCommandHandler : sends
+  RecruitmentEndpoints ..> OfferHandlers : sends
+  RecruitmentEndpoints ..> ConfirmStartWorkCommandHandler : sends
+  ScheduleInterviewCommandHandler ..> InterviewParticipantPolicy
+  ScheduleInterviewCommandHandler --> Interview : creates
+  RecordInterviewResultCommandHandler --> Interview : updates
+  OfferHandlers ..> OfferSalaryPolicy
+  OfferHandlers --> Offer
+  OfferExpiryService --> Offer : EXPIRED
+  ConfirmStartWorkCommandHandler --> Placement : creates
+  ConfirmStartWorkCommandHandler ..> IPlacementFinanceService
+  MarkNotStartedCommandHandler --> Application : NOT_STARTED
+  CorrectPlacementStartDateCommandHandler --> Placement : updates
+  Application *-- Interview : 0..*
+  Application *-- Offer : 0..*
+  Application --> Placement : 0..1
+  style InterviewEndpoints fill:#FFF4E5,stroke:#1B365D
+  style RecruitmentEndpoints fill:#FFF4E5,stroke:#1B365D
+  style ScheduleInterviewCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style RecordInterviewResultCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style OfferHandlers fill:#EAF2FB,stroke:#1B365D
+  style ConfirmStartWorkCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style MarkNotStartedCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style CorrectPlacementStartDateCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style OfferSalaryPolicy fill:#F5F5F5,stroke:#1B365D
+  style InterviewParticipantPolicy fill:#F5F5F5,stroke:#1B365D
+  style OfferExpiryService fill:#EEF5EC,stroke:#1B365D
+  style IPlacementFinanceService fill:#F3E8FF,stroke:#1B365D
+  style Interview fill:#FFFFFF,stroke:#1B365D
+  style Offer fill:#FFFFFF,stroke:#1B365D
+  style Placement fill:#FFFFFF,stroke:#1B365D
+  style Application fill:#FFFFFF,stroke:#1B365D

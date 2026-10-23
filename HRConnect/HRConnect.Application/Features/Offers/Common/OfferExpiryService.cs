@@ -78,6 +78,7 @@ public sealed class OfferExpiryService : IOfferExpiryService
                     RelatedEntityId = offer.OfferId,
                     Metadata = JsonSerializer.Serialize(new
                     {
+                        applicationId = offer.ApplicationId,
                         offerId = offer.OfferId,
                         offerVersion = offer.OfferVersion,
                         expiryDate = offer.ExpiryDate

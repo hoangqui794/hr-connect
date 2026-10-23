@@ -112,7 +112,11 @@ const MODAL_TITLE: Record<ModalKind, string> = {
 };
 
 const DANGER_MODALS: ModalKind[] = ['reject', 'cancel', 'noshow', 'rejectBackup', 'withdraw', 'notStarted', 'clientRejectSourcing'];
-const INTERVIEW_TYPES = ['Trực tiếp', 'Online', 'Điện thoại'].map((v) => ({ value: v, label: v }));
+const INTERVIEW_TYPES = [
+  { value: 'OFFLINE', label: 'Trực tiếp' },
+  { value: 'ONLINE', label: 'Trực tuyến' },
+  { value: 'PHONE', label: 'Điện thoại' },
+];
 const notPast = (d: Dayjs) => d.isBefore(dayjs().startOf('day'));
 const SALARY_BASIS_OPTIONS = [
   { value: 'GROSS', label: 'Gross' },
@@ -157,6 +161,7 @@ export const ApplicationWorkbench: React.FC<{
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [historyInterviewId, setHistoryInterviewId] = useState<string | null>(null);
   const [form] = Form.useForm();
+  const selectedInterviewType = Form.useWatch('interviewType', form);
   const startedFor = useRef<string>();
   const pendingStartWork = useRef<StartWorkAttempt>();
 
@@ -181,6 +186,7 @@ export const ApplicationWorkbench: React.FC<{
   const actions = d?.allowedActions ?? [];
   const has = (a: string) => actions.includes(a);
   const interview = d?.interviews.filter((i) => i.status === 'SCHEDULED').sort((a, b) => (b.scheduledAt ?? '').localeCompare(a.scheduledAt ?? ''))[0];
+  const effectiveInterviewType = open === 'reschedule' ? interview?.interviewType : selectedInterviewType;
   const offer = d ? [...d.offers].sort((a, b) => b.offerVersion - a.offerVersion)[0] : undefined;
   const acceptedOffer = d?.offers.find((o) => o.status === 'ACCEPTED') ?? offer;
 
@@ -373,7 +379,7 @@ export const ApplicationWorkbench: React.FC<{
         offerDocumentUrl: offer.offerDocumentUrl ?? undefined,
       });
     } else if (kind === 'offer') form.setFieldsValue({ currencyCode: 'VND', salaryBasis: 'GROSS', salaryPeriod: 'MONTHLY' });
-    if (kind === 'schedule') form.setFieldsValue({ durationMinutes: 60, interviewType: 'Trực tiếp' });
+    if (kind === 'schedule') form.setFieldsValue({ durationMinutes: 60, interviewType: 'OFFLINE' });
     if (kind === 'editInterview' && interview)
       form.setFieldsValue({
         durationMinutes: interview.durationMinutes ?? 60,
@@ -738,7 +744,7 @@ export const ApplicationWorkbench: React.FC<{
 
           {/* Sourcing Delivery Info (MF-03) */}
           {isCvSourcing && (
-            <Panel title="Dịch vụ CV Sourcing (MF-03)">
+            <Panel title="Dịch vụ CV Sourcing">
               {sourcingDelivery ? (
                 <div className="space-y-2 text-sm">
                   <Row label="Trạng thái bàn giao">
@@ -1142,10 +1148,28 @@ export const ApplicationWorkbench: React.FC<{
                   </Form.Item>
                 )}
               </div>
-              <Form.Item name="location" label="Địa điểm" rules={[{ max: 255, message: 'Tối đa 255 ký tự.' }]}>
+              <Form.Item
+                name="location"
+                label="Địa điểm"
+                rules={[
+                  { max: 255, message: 'Tối đa 255 ký tự.' },
+                  ...(effectiveInterviewType === 'OFFLINE'
+                    ? [{ required: true, whitespace: true, message: 'Phỏng vấn trực tiếp cần có địa điểm.' }]
+                    : []),
+                ]}
+              >
                 <Input placeholder="Văn phòng, phòng họp…" />
               </Form.Item>
-              <Form.Item name="meetingLink" label="Link họp online" rules={[{ type: 'url', message: 'Link không hợp lệ.' }]}>
+              <Form.Item
+                name="meetingLink"
+                label="Link họp online"
+                rules={[
+                  { type: 'url', message: 'Link không hợp lệ.' },
+                  ...(effectiveInterviewType === 'ONLINE'
+                    ? [{ required: true, whitespace: true, message: 'Phỏng vấn trực tuyến cần có link phòng họp.' }]
+                    : []),
+                ]}
+              >
                 <Input placeholder="https://meet.google.com/…" />
               </Form.Item>
               {open === 'reschedule' && (
@@ -1220,7 +1244,7 @@ export const ApplicationWorkbench: React.FC<{
                       validator: (_, value: 'GROSS' | 'NET' | undefined) =>
                         !isHeadhuntCod || value === 'GROSS'
                           ? Promise.resolve()
-                          : Promise.reject(new Error('Job HEADHUNT_COD chỉ nhận offer lương Gross.')),
+                          : Promise.reject(new Error('Tin Headhunt chỉ nhận offer lương Gross.')),
                     },
                   ]}
                 >
@@ -1235,7 +1259,7 @@ export const ApplicationWorkbench: React.FC<{
                   className="mb-4"
                   type="info"
                   showIcon
-                  message="Job HEADHUNT_COD tính phí theo lương Gross tháng"
+                  message="Tin Headhunt tính phí theo lương Gross tháng"
                   description="Chọn Gross. Nếu offer ghi theo năm, hệ thống tự quy đổi về mức Gross theo tháng để tính phí."
                 />
               )}

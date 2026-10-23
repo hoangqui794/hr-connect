@@ -1,0 +1,30 @@
+---
+title: WF-02 Refer a candidate, consent and attribution
+---
+flowchart TB
+  subgraph L0["Affiliate"]
+    direction TB
+    F1([Start]) --> F2[Open partner job, submit candidate + CV]
+  end
+  subgraph L1["System"]
+    direction TB
+    S1{Duplicate or pending consent for this job?}
+    S1 -- Yes --> S2[Block: BLOCKED_DUPLICATE]
+    S1 -- No --> S3[Create submission PENDING_CONSENT, send consent e-mail]
+    S4[Create application + attribution to first valid source]
+    S5[Queue AI scoring]
+    S6([Application SUBMITTED])
+    S7[Mark CONSENT_REJECTED / EXPIRED, notify affiliate]
+  end
+  subgraph L2["Candidate"]
+    direction TB
+    K1{Confirm consent?}
+  end
+  F2 --> S1
+  S3 --> K1
+  K1 -- Accept --> S4
+  K1 -- Decline / no answer --> S7
+  S4 --> S5
+  S5 --> S6
+  S2 -.-> F2
+classDef default fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C

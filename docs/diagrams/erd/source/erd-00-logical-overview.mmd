@@ -1,0 +1,472 @@
+---
+title: HR Connect – Logical ERD (overview, keys only)
+config:
+  layout: elk
+---
+erDiagram
+  AdminProfile {
+    uuid AdminProfileId PK
+    uuid UserId FK
+  }
+  AffiliateApplication {
+    uuid AffiliateApplicationId PK
+    uuid ReviewedBy FK
+    uuid UserId FK
+  }
+  AffiliatePerformance {
+    uuid AffiliatePerformanceId PK
+    uuid AffiliateId FK
+  }
+  AffiliateProfile {
+    uuid AffiliateId PK
+    uuid UserId FK
+  }
+  AiMatchResult {
+    uuid MatchResultId PK
+    uuid ApplicationId FK
+    varchar MatchTier FK
+  }
+  AppUser {
+    uuid UserId PK
+  }
+  Application {
+    uuid ApplicationId PK
+    uuid AcceptedSubmissionId FK
+    uuid CandidateId FK
+    uuid JobId FK
+    uuid ReplacementSlotId FK
+  }
+  ApplicationStatusHistory {
+    uuid ApplicationStatusHistoryId PK
+    uuid ApplicationId FK
+    uuid ChangedBy FK
+  }
+  Attribution {
+    uuid AttributionId PK
+    uuid AffiliateId FK
+    uuid ApplicationId FK
+    uuid WinningSubmissionId FK
+  }
+  AuditLog {
+    bigint AuditLogId PK
+    uuid ActorUserId FK
+  }
+  Candidate {
+    uuid CandidateId PK
+    uuid MergedIntoCandidateId FK
+    uuid UserId FK
+  }
+  CandidateCv {
+    uuid CvId PK
+    uuid AdoptedFromCvId FK
+    uuid AffiliateReuseChangedByUserId FK
+    uuid CandidateId FK
+    uuid CvTemplateId FK
+    uuid UploadedByUserId FK
+  }
+  CandidateDuplicateCase {
+    uuid DuplicateCaseId PK
+    uuid CandidateAId FK
+    uuid CandidateBId FK
+    uuid CanonicalCandidateId FK
+    uuid JobId FK
+    uuid ReviewedBy FK
+    uuid SubmissionId FK
+  }
+  CandidateDuplicateSignal {
+    uuid DuplicateSignalId PK
+    uuid DuplicateCaseId FK
+  }
+  CandidateIdentityClaim {
+    uuid ClaimId PK
+    uuid RequesterCandidateId FK
+    uuid RequesterUserId FK
+    uuid ReviewedBy FK
+    uuid TargetCandidateId FK
+  }
+  CandidateJobMatch {
+    uuid CandidateJobMatchId PK
+    uuid CandidateId FK
+    uuid CvId FK
+    uuid JobId FK
+    varchar MatchTier FK
+  }
+  CandidateSavedJob {
+    uuid CandidateSavedJobId PK
+    uuid CandidateId FK
+    uuid JobId FK
+  }
+  CandidateSkill {
+    uuid CandidateId PK,FK
+    uuid SkillId PK,FK
+  }
+  Commission {
+    uuid CommissionId PK
+    uuid ApprovedBy FK
+    uuid AttributionId FK
+    uuid CommissionRuleId FK
+    varchar MilestoneType FK
+    uuid PlacementId FK
+    uuid SourcingDeliveryId FK
+  }
+  CommissionAdjustment {
+    uuid CommissionAdjustmentId PK
+    uuid AdjustedBy FK
+    uuid CommissionId FK
+  }
+  CommissionMilestone {
+    varchar MilestoneCode PK
+  }
+  CommissionRule {
+    uuid CommissionRuleId PK
+    varchar MilestoneType FK
+    uuid ServiceTypeId FK
+  }
+  Company {
+    uuid CompanyId PK
+    uuid CompanySizeId FK
+    uuid IndustryId FK
+  }
+  CompanySizeOption {
+    uuid CompanySizeId PK
+  }
+  CompanyUser {
+    uuid CompanyUserId PK
+    uuid CompanyId FK
+    uuid UserId FK
+  }
+  CompanyVerificationRequest {
+    uuid CompanyVerificationRequestId PK
+    uuid CompanyId FK
+    uuid ReviewedBy FK
+    uuid SubmittedBy FK
+  }
+  ContactRequest {
+    uuid ContactRequestId PK
+  }
+  CvTemplate {
+    uuid CvTemplateId PK
+  }
+  Dispute {
+    uuid DisputeId PK
+    uuid AttributionId FK
+    uuid CandidateDuplicateCaseId FK
+    uuid CommissionId FK
+    uuid RaisedBy FK
+    uuid ResolvedBy FK
+    uuid SubmissionId FK
+  }
+  EmailOutbox {
+    uuid EmailOutboxId PK
+    uuid UserId FK
+  }
+  Industry {
+    uuid IndustryId PK
+    uuid ParentId FK
+  }
+  InternalHrProfile {
+    uuid HrProfileId PK
+    uuid UserId FK
+  }
+  Interview {
+    uuid InterviewId PK
+    uuid ApplicationId FK
+    uuid CreatedBy FK
+    uuid RecordedBy FK
+  }
+  InterviewParticipant {
+    uuid InterviewParticipantId PK
+    uuid InterviewId FK
+    uuid UserId FK
+  }
+  InterviewStatusHistory {
+    uuid InterviewStatusHistoryId PK
+    uuid ChangedBy FK
+    uuid InterviewId FK
+  }
+  Job {
+    uuid JobId PK
+    uuid AgreedBy FK
+    uuid CompanyId FK
+    uuid CreatedBy FK
+    uuid CurrentServiceAgreementId FK
+    uuid PostingPackageId FK
+    uuid ServiceTypeId FK
+    uuid TemplateId FK
+  }
+  JobPostingFee {
+    uuid PostingFeeId PK
+    uuid CompanyId FK
+    uuid JobId FK
+    uuid PackageId FK
+    uuid RecordedBy FK
+  }
+  JobPostingPackage {
+    uuid PackageId PK
+  }
+  JobRequirement {
+    uuid RequirementId PK
+    uuid JobId FK
+  }
+  JobSkill {
+    uuid JobId PK,FK
+    uuid SkillId PK,FK
+  }
+  JobStatusHistory {
+    uuid JobStatusHistoryId PK
+    uuid ChangedBy FK
+    uuid JobId FK
+  }
+  JobTemplate {
+    uuid TemplateId PK
+  }
+  JobTemplateRequirement {
+    uuid TemplateRequirementId PK
+    uuid TemplateId FK
+  }
+  MatchTierConfig {
+    varchar TierCode PK
+  }
+  Notification {
+    uuid NotificationId PK
+    uuid UserId FK
+  }
+  Offer {
+    uuid OfferId PK
+    uuid ApplicationId FK
+    uuid CreatedBy FK
+  }
+  OfferApproval {
+    uuid ApprovalId PK
+    uuid OfferId FK
+    uuid UserId FK
+  }
+  Payout {
+    uuid PayoutId PK
+    uuid CommissionId FK
+    uuid RecordedBy FK
+  }
+  Permission {
+    uuid PermissionId PK
+  }
+  Placement {
+    uuid PlacementId PK
+    uuid ApplicationId FK
+    uuid ConfirmedBy FK
+    uuid OfferId FK
+    uuid ReplacementSlotId FK
+  }
+  Probation {
+    uuid ProbationId PK
+    uuid PlacementId FK
+    uuid UpdatedBy FK
+  }
+  RefreshToken {
+    uuid RefreshTokenId PK
+    uuid ReplacedByTokenId FK
+    uuid UserId FK
+  }
+  ReplacementSlot {
+    uuid ReplacementSlotId PK
+    uuid FilledByPlacementId FK
+    uuid JobId FK
+    uuid OriginalPlacementId FK
+    uuid ServiceFeeId FK
+  }
+  Role {
+    uuid RoleId PK
+  }
+  RolePermission {
+    uuid RoleId PK,FK
+    uuid PermissionId PK,FK
+    uuid GrantedBy FK
+  }
+  ServiceAgreement {
+    uuid ServiceAgreementId PK
+    uuid CompanyId FK
+    uuid CreatedByUserId FK
+    uuid JobId FK
+    uuid SignerUserId FK
+    uuid VoidedByUserId FK
+  }
+  ServiceAgreementSignatureChallenge {
+    uuid ChallengeId PK
+    uuid ServiceAgreementId FK
+    uuid SignerUserId FK
+  }
+  ServiceFee {
+    uuid ServiceFeeId PK
+    uuid CompanyId FK
+    uuid JobId FK
+    uuid PlacementId FK
+  }
+  ServiceType {
+    uuid ServiceTypeId PK
+  }
+  ServiceTypeAllowedRole {
+    uuid ServiceTypeId PK,FK
+    uuid RoleId PK,FK
+  }
+  Skill {
+    uuid SkillId PK
+  }
+  SourcingDelivery {
+    uuid DeliveryId PK
+    uuid ApplicationId FK
+    uuid JobId FK
+  }
+  StorageCleanupJob {
+    uuid StorageCleanupJobId PK
+    uuid UserId FK
+  }
+  Submission {
+    uuid SubmissionId PK
+    uuid CandidateId FK
+    uuid CvId FK
+    uuid DuplicateOfSubmissionId FK
+    uuid JobId FK
+    uuid ReplacementSlotId FK
+    uuid SubmittedBy FK
+  }
+  SubmissionConsent {
+    uuid ConsentId PK
+    uuid SubmissionId FK
+  }
+  SubmissionIdentitySnapshot {
+    uuid SubmissionId PK,FK
+  }
+  SystemSetting {
+    varchar SettingKey PK
+    uuid UpdatedBy FK
+  }
+  UserEmailIdentity {
+    uuid EmailIdentityId PK
+    uuid UserId FK
+  }
+  UserRole {
+    uuid UserId PK,FK
+    uuid RoleId PK,FK
+    uuid AssignedBy FK
+    uuid RevokedBy FK
+  }
+  UserToken {
+    uuid TokenId PK
+    uuid UserId FK
+  }
+  Warranty {
+    uuid WarrantyId PK
+    uuid PlacementId FK
+    uuid UpdatedBy FK
+  }
+  AppUser ||--|o AdminProfile : "UserId"
+  AppUser ||--|o AffiliateApplication : "UserId"
+  AffiliateProfile ||--o{ AffiliatePerformance : "AffiliateId"
+  AppUser ||--|o AffiliateProfile : "UserId"
+  Application ||--o{ AiMatchResult : "ApplicationId"
+  MatchTierConfig |o--o{ AiMatchResult : "MatchTier"
+  Candidate ||--o{ Application : "CandidateId"
+  Job ||--o{ Application : "JobId"
+  ReplacementSlot |o--o{ Application : "ReplacementSlotId"
+  Submission |o--o{ Application : "AcceptedSubmissionId,CandidateId,JobId"
+  Application ||--o{ ApplicationStatusHistory : "ApplicationId"
+  AffiliateProfile ||--o{ Attribution : "AffiliateId"
+  Application ||--|o Attribution : "ApplicationId"
+  Submission ||--|o Attribution : "WinningSubmissionId"
+  Candidate |o--o{ Candidate : "MergedIntoCandidateId"
+  AppUser |o--|o Candidate : "UserId"
+  CandidateCv |o--o{ CandidateCv : "AdoptedFromCvId"
+  Candidate ||--o{ CandidateCv : "CandidateId"
+  CvTemplate |o--o{ CandidateCv : "CvTemplateId"
+  Candidate ||--o{ CandidateDuplicateCase : "CandidateAId"
+  Candidate ||--o{ CandidateDuplicateCase : "CandidateBId"
+  Candidate |o--o{ CandidateDuplicateCase : "CanonicalCandidateId"
+  Job |o--o{ CandidateDuplicateCase : "JobId"
+  Submission |o--o{ CandidateDuplicateCase : "SubmissionId"
+  CandidateDuplicateCase ||--o{ CandidateDuplicateSignal : "DuplicateCaseId"
+  Candidate ||--o{ CandidateIdentityClaim : "RequesterCandidateId"
+  Candidate |o--o{ CandidateIdentityClaim : "TargetCandidateId"
+  Candidate ||--o{ CandidateJobMatch : "CandidateId"
+  Job ||--o{ CandidateJobMatch : "JobId"
+  MatchTierConfig |o--o{ CandidateJobMatch : "MatchTier"
+  CandidateCv |o--o{ CandidateJobMatch : "CandidateId,CvId"
+  Candidate ||--o{ CandidateSavedJob : "CandidateId"
+  Job ||--o{ CandidateSavedJob : "JobId"
+  Candidate ||--o{ CandidateSkill : "CandidateId"
+  Skill ||--o{ CandidateSkill : "SkillId"
+  Attribution ||--o{ Commission : "AttributionId"
+  CommissionRule |o--o{ Commission : "CommissionRuleId"
+  CommissionMilestone |o--o{ Commission : "MilestoneType"
+  Placement |o--o{ Commission : "PlacementId"
+  SourcingDelivery |o--o{ Commission : "SourcingDeliveryId"
+  Commission ||--o{ CommissionAdjustment : "CommissionId"
+  CommissionMilestone |o--o{ CommissionRule : "MilestoneType"
+  ServiceType ||--o{ CommissionRule : "ServiceTypeId"
+  CompanySizeOption |o--o{ Company : "CompanySizeId"
+  Industry |o--o{ Company : "IndustryId"
+  Company ||--|o CompanyUser : "CompanyId"
+  AppUser ||--o{ CompanyUser : "UserId"
+  Company ||--|o CompanyVerificationRequest : "CompanyId"
+  Attribution |o--o{ Dispute : "AttributionId"
+  CandidateDuplicateCase |o--o{ Dispute : "CandidateDuplicateCaseId"
+  Commission |o--o{ Dispute : "CommissionId"
+  Submission |o--o{ Dispute : "SubmissionId"
+  AppUser |o--o{ EmailOutbox : "UserId"
+  Industry |o--o{ Industry : "ParentId"
+  AppUser ||--|o InternalHrProfile : "UserId"
+  Application ||--o{ Interview : "ApplicationId"
+  Interview ||--o{ InterviewParticipant : "InterviewId"
+  AppUser ||--o{ InterviewParticipant : "UserId"
+  Interview ||--o{ InterviewStatusHistory : "InterviewId"
+  Company ||--o{ Job : "CompanyId"
+  ServiceAgreement |o--o{ Job : "CurrentServiceAgreementId"
+  JobPostingPackage |o--o{ Job : "PostingPackageId"
+  ServiceType ||--o{ Job : "ServiceTypeId"
+  JobTemplate |o--o{ Job : "TemplateId"
+  Company ||--o{ JobPostingFee : "CompanyId"
+  Job ||--o{ JobPostingFee : "JobId"
+  JobPostingPackage ||--o{ JobPostingFee : "PackageId"
+  Job ||--o{ JobRequirement : "JobId"
+  Job ||--o{ JobSkill : "JobId"
+  Skill ||--o{ JobSkill : "SkillId"
+  Job ||--o{ JobStatusHistory : "JobId"
+  JobTemplate ||--o{ JobTemplateRequirement : "TemplateId"
+  AppUser ||--o{ Notification : "UserId"
+  Application ||--o{ Offer : "ApplicationId"
+  Offer ||--o{ OfferApproval : "OfferId"
+  AppUser ||--o{ OfferApproval : "UserId"
+  Commission ||--o{ Payout : "CommissionId"
+  Application ||--|o Placement : "ApplicationId"
+  ReplacementSlot |o--o{ Placement : "ReplacementSlotId"
+  Offer ||--o{ Placement : "OfferId,ApplicationId"
+  Placement ||--|o Probation : "PlacementId"
+  RefreshToken |o--o{ RefreshToken : "ReplacedByTokenId"
+  AppUser ||--o{ RefreshToken : "UserId"
+  Placement |o--o{ ReplacementSlot : "FilledByPlacementId"
+  Job ||--o{ ReplacementSlot : "JobId"
+  Placement ||--o{ ReplacementSlot : "OriginalPlacementId"
+  ServiceFee ||--o{ ReplacementSlot : "ServiceFeeId"
+  Permission ||--o{ RolePermission : "PermissionId"
+  Role ||--o{ RolePermission : "RoleId"
+  Company ||--o{ ServiceAgreement : "CompanyId"
+  Job ||--o{ ServiceAgreement : "JobId"
+  ServiceAgreement ||--o{ ServiceAgreementSignatureChallenge : "ServiceAgreementId"
+  Company ||--o{ ServiceFee : "CompanyId"
+  Job |o--o{ ServiceFee : "JobId"
+  Placement |o--|o ServiceFee : "PlacementId"
+  Role ||--o{ ServiceTypeAllowedRole : "RoleId"
+  ServiceType ||--o{ ServiceTypeAllowedRole : "ServiceTypeId"
+  Application ||--o{ SourcingDelivery : "ApplicationId"
+  Job ||--o{ SourcingDelivery : "JobId"
+  AppUser |o--o{ StorageCleanupJob : "UserId"
+  Candidate ||--o{ Submission : "CandidateId"
+  Submission |o--o{ Submission : "DuplicateOfSubmissionId"
+  Job ||--o{ Submission : "JobId"
+  ReplacementSlot |o--o{ Submission : "ReplacementSlotId"
+  CandidateCv ||--o{ Submission : "CandidateId,CvId"
+  Submission ||--|o SubmissionConsent : "SubmissionId"
+  Submission ||--|o SubmissionIdentitySnapshot : "SubmissionId"
+  AppUser ||--o{ UserEmailIdentity : "UserId"
+  Role ||--o{ UserRole : "RoleId"
+  AppUser ||--o{ UserRole : "UserId"
+  AppUser ||--o{ UserToken : "UserId"
+  Placement ||--|o Warranty : "PlacementId"

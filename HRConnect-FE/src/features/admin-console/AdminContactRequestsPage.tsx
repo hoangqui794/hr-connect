@@ -296,7 +296,7 @@ export const AdminContactRequestsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <PageHero
-        eyebrow="SF-05 · Quản lý liên hệ"
+        eyebrow="Quản lý liên hệ"
         title="Yêu cầu tư vấn dịch vụ"
         description="Danh sách các yêu cầu liên hệ tư vấn từ khách hàng vãng lai và doanh nghiệp tiềm năng."
         actions={

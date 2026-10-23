@@ -44,6 +44,7 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({
 }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('jd');
+  const uniqueTags = useMemo(() => deduplicateTags(job?.tags ?? []), [job?.tags]);
 
   if (!job) return null;
 
@@ -54,9 +55,6 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({
 
   // Deterministic AI Match Score
   const aiScore = job.aiMatchScore || 88;
-
-  // Deduplicated unique tags
-  const uniqueTags = useMemo(() => deduplicateTags(job.tags), [job.tags]);
 
   // Derive Must-have and Should-have skills
   const mustHave = uniqueTags.slice(0, 3);

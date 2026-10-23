@@ -1,0 +1,25 @@
+---
+title: Use Cases – Public & Authentication
+---
+flowchart LR
+  G(["👤 Guest"]):::actor
+  U(["👤 Registered User"]):::actor
+  C(["👤 Candidate"]):::actor
+  A(["👤 Affiliate"]):::actor
+  subgraph SYS["HR Connect"]
+    direction TB
+    UC01(["UC-01: Register Account"]):::uc
+    UC02(["UC-02: Login"]):::uc
+    UC37(["UC-37: Verify Email / Recover Password"]):::uc
+    UC03(["UC-03: Search & View Jobs"]):::uc
+  end
+  G --- UC01
+  G --- UC37
+  G --- UC03
+  U --- UC02
+  U --- UC37
+  C --- UC03
+  A --- UC03
+  classDef actor fill:#FFF4E5,stroke:#B7791F,color:#7B4B0A,font-weight:bold
+  classDef uc fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
+  classDef planned fill:#FFFFFF,stroke:#1B365D,stroke-dasharray:5 4,color:#555

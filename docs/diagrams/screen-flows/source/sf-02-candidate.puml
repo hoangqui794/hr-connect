@@ -1,0 +1,32 @@
+@startuml sf-candidate
+left to right direction
+skinparam rectangle { RoundCorner 8 }
+title Screen flow – Candidate portal (/candidate)
+package "Candidate portal (/candidate)" #E6F4EA {
+  rectangle "Candidate home\n<size:10>dashboard</size>" as candidate_dash
+  rectangle "Jobs (suggestions, search)\n<size:10>jobs</size>" as candidate_cjobs
+  rectangle "Job detail + Apply\n<size:10>jobs/:jobId</size>" as candidate_cjobd
+  rectangle "Saved jobs\n<size:10>saved-jobs</size>" as candidate_saved
+  rectangle "My applications + consents tab\n<size:10>applications</size>" as candidate_apps
+  rectangle "Application detail / timeline\n<size:10>applications/:applicationId</size>" as candidate_appd
+  rectangle "Interview detail (confirm attendance)\n<size:10>interviews/:interviewId</size>" as candidate_intv
+  rectangle "Submission consent detail\n<size:10>submission-consents/:submissionId</size>" as candidate_cons
+  rectangle "CV library + CV builder\n<size:10>cvs</size>" as candidate_cvs
+  rectangle "CVs uploaded by affiliates\n<size:10>affiliate-cvs</size>" as candidate_acvs
+  rectangle "Profile & visibility\n<size:10>profile</size>" as candidate_prof
+  rectangle "E-mail identities\n<size:10>settings/email-identities</size>" as candidate_ident
+}
+candidate_dash --> candidate_cjobs
+candidate_cjobs --> candidate_cjobd : open
+candidate_cjobd --> candidate_saved : save
+candidate_cjobd --> candidate_apps : apply (CV)
+candidate_dash --> candidate_apps
+candidate_apps --> candidate_appd : open
+candidate_appd --> candidate_intv : interview
+candidate_apps --> candidate_cons : consent request
+candidate_dash --> candidate_cvs
+candidate_cvs --> candidate_cjobd : use CV
+candidate_dash --> candidate_acvs
+candidate_dash --> candidate_prof
+candidate_prof --> candidate_ident
+@enduml

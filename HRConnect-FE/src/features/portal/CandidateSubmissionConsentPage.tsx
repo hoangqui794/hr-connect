@@ -83,7 +83,7 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
         status={error.status === 403 ? '403' : error.status === 404 ? '404' : 'error'}
         title="Không thể mở yêu cầu xác nhận"
         subTitle={error.message}
-        extra={<Button onClick={() => navigate('/candidate/dashboard')}>Về trang Candidate</Button>}
+        extra={<Button onClick={() => navigate('/candidate/dashboard')}>Về trang ứng viên</Button>}
       />
     );
   }
@@ -107,7 +107,7 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
     <div className="candidate-page candidate-consent-page">
       <CandidatePageHeader
         eyebrow="Xác nhận hồ sơ"
-        title="Affiliate muốn giới thiệu bạn vào một công việc"
+        title="Đối tác tuyển dụng muốn giới thiệu bạn vào một công việc"
         description="Hãy kiểm tra kỹ thông tin và CV trước khi cho phép gửi hồ sơ đến doanh nghiệp."
         actions={<StatusDot tone="warning">Còn {countdown}</StatusDot>}
       />
@@ -117,12 +117,12 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
         showIcon
         icon={<SafetyCertificateOutlined />}
         message="Bạn luôn là người quyết định"
-        description="Chỉ khi bạn đồng ý, hệ thống mới tạo đơn ứng tuyển, ghi nhận nguồn giới thiệu và chuyển CV sang MF03 để đánh giá."
+        description="Chỉ khi bạn đồng ý, hồ sơ mới được gửi đến doanh nghiệp và đưa vào quy trình đánh giá."
       />
 
       <CandidateSurface className="candidate-consent-surface space-y-5 p-6">
         <dl className="grid grid-cols-1 gap-5 text-sm sm:grid-cols-2">
-          <div><dt className="text-slate-500">Candidate</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{consent.candidateName}</dd></div>
+          <div><dt className="text-slate-500">Ứng viên</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{consent.candidateName}</dd></div>
           <div><dt className="text-slate-500">Công việc</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{consent.jobTitle}</dd></div>
           <div><dt className="text-slate-500">Doanh nghiệp</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{consent.companyName}</dd></div>
           <div><dt className="text-slate-500">Tệp CV</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{consent.cvFileName}</dd></div>
@@ -138,7 +138,7 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
         )}
 
         <Checkbox checked={allowFutureReuse} disabled={respond.isPending} onChange={(event) => setAllowFutureReuse(event.target.checked)}>
-          Cho phép Affiliate này dùng lại CV để gửi yêu cầu xác nhận cho công việc khác. Mỗi công việc mới vẫn cần tôi đồng ý riêng.
+          Cho phép đối tác tuyển dụng này dùng lại CV để gửi yêu cầu xác nhận cho công việc khác. Mỗi công việc mới vẫn cần tôi đồng ý riêng.
         </Checkbox>
 
         <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-5">
@@ -147,7 +147,7 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
           </Button>
           <Popconfirm
             title="Từ chối yêu cầu này?"
-            description="Hồ sơ sẽ không được gửi đến doanh nghiệp và MF03 sẽ không chấm điểm."
+            description="Hồ sơ sẽ không được gửi đến doanh nghiệp."
             okText="Từ chối"
             okButtonProps={{ danger: true }}
             cancelText="Quay lại"

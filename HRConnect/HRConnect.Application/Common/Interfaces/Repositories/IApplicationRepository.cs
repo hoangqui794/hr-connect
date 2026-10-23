@@ -36,7 +36,8 @@ public interface IApplicationRepository
         int pageSize,
         CancellationToken cancellationToken = default,
         string? sortBy = null,
-        string? sortDirection = null);
+        string? sortDirection = null,
+        string? serviceTypeCode = null);
 
     Task<JobApplication?> GetRecruitmentApplicationDetailAsync(Guid applicationId, CancellationToken cancellationToken = default);
 

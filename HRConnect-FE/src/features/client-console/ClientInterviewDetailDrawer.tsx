@@ -68,6 +68,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
   const [rescheduleForm] = Form.useForm();
   const [resultForm] = Form.useForm();
   const [cancelForm] = Form.useForm();
+  const selectedInterviewType = Form.useWatch('interviewType', editForm);
 
   // Fetch interview detail
   const {
@@ -342,12 +343,45 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                           <div className="rounded-xl bg-slate-50 p-4">
                             <span className="text-xs font-medium text-slate-500">Hình thức phỏng vấn</span>
                             <div className="mt-1 text-base font-semibold text-slate-900">
-                              {interview.interviewType === 'ONLINE' ? 'Trực tuyến (Online)' : interview.interviewType === 'OFFLINE' ? 'Trực tiếp (Tại văn phòng)' : interview.interviewType || 'Trực tuyến'}
+                              {interview.interviewType === 'ONLINE'
+                                ? 'Trực tuyến (Online)'
+                                : interview.interviewType === 'OFFLINE'
+                                  ? 'Trực tiếp (Tại văn phòng)'
+                                  : interview.interviewType === 'PHONE'
+                                    ? 'Điện thoại'
+                                    : interview.interviewType || 'Trực tuyến'}
                             </div>
                             <div className="mt-1 text-xs text-slate-500">
                               Trạng thái: {st?.label ?? interview.status}
                             </div>
                           </div>
+                        </div>
+
+                        <div
+                          className={`rounded-xl border border-solid p-4 ${
+                            interview.candidateAttendanceStatus === 'CONFIRMED'
+                              ? 'border-emerald-200 bg-emerald-50'
+                              : 'border-amber-200 bg-amber-50'
+                          }`}
+                        >
+                          <div className="text-xs font-medium text-slate-600">Phản hồi tham gia của ứng viên</div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <Tag color={interview.candidateAttendanceStatus === 'CONFIRMED' ? 'success' : 'warning'}>
+                              {interview.candidateAttendanceStatus === 'CONFIRMED'
+                                ? 'Đã xác nhận tham gia'
+                                : 'Chưa xác nhận'}
+                            </Tag>
+                            {interview.candidateRespondedAt && (
+                              <span className="text-xs text-slate-500">
+                                Phản hồi lúc: {fmt(interview.candidateRespondedAt)}
+                              </span>
+                            )}
+                          </div>
+                          {interview.candidateAttendanceStatus !== 'CONFIRMED' && (
+                            <div className="mt-1 text-xs text-slate-600">
+                              Lịch vẫn có hiệu lực; chưa xác nhận không đồng nghĩa ứng viên từ chối.
+                            </div>
+                          )}
                         </div>
 
                         {/* Location / Meeting link details */}
@@ -508,14 +542,30 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                 options={[
                   { value: 'ONLINE', label: 'Trực tuyến (Online)' },
                   { value: 'OFFLINE', label: 'Trực tiếp (Tại văn phòng)' },
+                  { value: 'PHONE', label: 'Điện thoại' },
                 ]}
               />
             </Form.Item>
           </div>
-          <Form.Item name="meetingLink" label="Link phòng họp trực tuyến" rules={[{ type: 'url', message: 'Vui lòng nhập URL hợp lệ.' }]}>
+          <Form.Item
+            name="meetingLink"
+            label="Link phòng họp trực tuyến"
+            rules={[
+              { type: 'url', message: 'Vui lòng nhập URL hợp lệ.' },
+              ...(selectedInterviewType === 'ONLINE'
+                ? [{ required: true, whitespace: true, message: 'Phỏng vấn trực tuyến cần có link phòng họp.' }]
+                : []),
+            ]}
+          >
             <Input placeholder="https://meet.google.com/... hoặc Zoom" />
           </Form.Item>
-          <Form.Item name="location" label="Địa điểm (nếu trực tiếp)">
+          <Form.Item
+            name="location"
+            label="Địa điểm (nếu trực tiếp)"
+            rules={selectedInterviewType === 'OFFLINE'
+              ? [{ required: true, whitespace: true, message: 'Phỏng vấn trực tiếp cần có địa điểm.' }]
+              : []}
+          >
             <Input placeholder="Phòng họp A, tầng 5, tòa nhà..." />
           </Form.Item>
         </Form>
@@ -551,11 +601,26 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
             <Form.Item name="durationMinutes" label="Thời lượng (phút)">
               <InputNumber min={15} max={480} step={15} className="w-full" />
             </Form.Item>
-            <Form.Item name="meetingLink" label="Link phòng họp mới">
+            <Form.Item
+              name="meetingLink"
+              label="Link phòng họp mới"
+              rules={[
+                { type: 'url', message: 'Vui lòng nhập URL hợp lệ.' },
+                ...(interview?.interviewType === 'ONLINE'
+                  ? [{ required: true, whitespace: true, message: 'Phỏng vấn trực tuyến cần có link phòng họp.' }]
+                  : []),
+              ]}
+            >
               <Input placeholder="https://..." />
             </Form.Item>
           </div>
-          <Form.Item name="location" label="Địa điểm mới (nếu có)">
+          <Form.Item
+            name="location"
+            label="Địa điểm mới (nếu có)"
+            rules={interview?.interviewType === 'OFFLINE'
+              ? [{ required: true, whitespace: true, message: 'Phỏng vấn trực tiếp cần có địa điểm.' }]
+              : []}
+          >
             <Input />
           </Form.Item>
         </Form>

@@ -347,7 +347,7 @@ export const ClientWarrantyPage: React.FC = () => (
 export const HrWarrantyPage: React.FC = () => (
   <div>
     <PageHero
-      eyebrow="MF-05 · HEADHUNT_COD"
+      eyebrow="Headhunt"
       title="Theo dõi bảo hành"
       description="Bảo hành tự qua khi đủ thời hạn (hoa hồng Affiliate được ghi nhận 100%). Khi Client báo nghỉ, xác minh với ứng viên và Client rồi xác nhận hoặc bác bỏ."
     />

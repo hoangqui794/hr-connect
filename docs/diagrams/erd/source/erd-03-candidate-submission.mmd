@@ -1,0 +1,340 @@
+---
+title: ERD – Candidate, affiliate, submission and attribution (MF-02)
+config:
+  layout: elk
+---
+erDiagram
+  Candidate {
+    uuid CandidateId PK
+    date AvailableFrom
+    timestamptz CreatedAt
+    text CurrentAddress
+    varchar CurrentJobTitle
+    varchar CurrentLevel
+    date DateOfBirth
+    varchar Email
+    varchar ExpectedSalaryCurrency
+    decimal ExpectedSalaryMax
+    decimal ExpectedSalaryMin
+    varchar FullName
+    varchar Gender
+    varchar HighestEducation
+    uuid MergeConcurrencyToken
+    uuid MergedIntoCandidateId FK
+    varchar NormalizedEmail
+    varchar NormalizedPhone
+    varchar Phone
+    varchar PreferredLocations
+    varchar PreferredWorkModes
+    varchar ProfileVisibility
+    varchar Status
+    text Summary
+    varchar TargetRole
+    timestamptz UpdatedAt
+    uuid UserId FK
+    decimal YearsOfExperience
+  }
+  CandidateCv {
+    uuid CvId PK
+    uuid AdoptedFromCvId FK
+    timestamptz AffiliateReuseChangedAt
+    uuid AffiliateReuseChangedByUserId FK
+    uuid AffiliateReuseConcurrencyToken
+    varchar AffiliateReuseStatus
+    uuid CandidateId FK
+    varchar ContentSha256
+    timestamptz CreatedAt
+    varchar CreationMethod
+    uuid CvTemplateId FK
+    varchar FileName
+    bigint FileSizeBytes
+    varchar FingerprintVersion
+    bool IsPrimary
+    varchar MimeType
+    jsonb ParsedData
+    text RenderedFileUrl
+    text SourceFileUrl
+    varchar Status
+    jsonb StructuredContent
+    varchar TextFingerprint
+    varchar Title
+    timestamptz UpdatedAt
+    uuid UploadedByUserId FK
+  }
+  CandidateSkill {
+    uuid CandidateId PK,FK
+    uuid SkillId PK,FK
+    varchar ProficiencyLevel
+    decimal YearsOfExperience
+  }
+  CandidateSavedJob {
+    uuid CandidateSavedJobId PK
+    uuid CandidateId FK
+    timestamptz CreatedAt
+    uuid JobId FK
+  }
+  CandidateJobMatch {
+    uuid CandidateJobMatchId PK
+    int AttemptNo
+    uuid CandidateId FK
+    timestamptz CreatedAt
+    uuid CvId FK
+    timestamptz ExpiresAt
+    timestamptz GeneratedAt
+    uuid JobId FK
+    decimal MatchScore
+    jsonb MatchSummary
+    varchar MatchTier FK
+    jsonb MatchingReasons
+    jsonb MissingRequirements
+    varchar Status
+  }
+  CvTemplate {
+    uuid CvTemplateId PK
+    varchar Code
+    timestamptz CreatedAt
+    text Description
+    bool IsActive
+    varchar Name
+    text PreviewUrl
+    jsonb TemplateConfig
+    timestamptz UpdatedAt
+  }
+  CandidateIdentityClaim {
+    uuid ClaimId PK
+    varchar AssertedEmail
+    int AttemptCount
+    timestamptz CompletedAt
+    uuid ConcurrencyToken
+    timestamptz CreatedAt
+    timestamptz ExpiresAt
+    timestamptz LastSentAt
+    varchar NormalizedEmail
+    uuid RequesterCandidateId FK
+    uuid RequesterUserId FK
+    int ResendCount
+    varchar ReviewReason
+    timestamptz ReviewedAt
+    uuid ReviewedBy FK
+    varchar Status
+    uuid TargetCandidateId FK
+    varchar TokenHash
+    timestamptz UpdatedAt
+    timestamptz VerifiedAt
+  }
+  CandidateDuplicateCase {
+    uuid DuplicateCaseId PK
+    uuid CandidateAId FK
+    uuid CandidateBId FK
+    uuid CanonicalCandidateId FK
+    uuid ConcurrencyToken
+    timestamptz CreatedAt
+    varchar IdempotencyKey
+    uuid JobId FK
+    varchar Resolution
+    varchar ResolutionIdempotencyKey
+    varchar ResolutionReason
+    timestamptz ReviewedAt
+    uuid ReviewedBy FK
+    varchar RiskLevel
+    varchar Status
+    uuid SubmissionId FK
+    timestamptz UpdatedAt
+  }
+  CandidateDuplicateSignal {
+    uuid DuplicateSignalId PK
+    timestamptz CreatedAt
+    varchar DetectorVersion
+    uuid DuplicateCaseId FK
+    jsonb Evidence
+    varchar KeyVersion
+    varchar ReasonCode
+    decimal Score
+  }
+  Submission {
+    uuid SubmissionId PK
+    uuid CandidateId FK
+    uuid CvId FK
+    uuid DuplicateOfSubmissionId FK
+    uuid JobId FK
+    text Note
+    uuid ReplacementSlotId FK
+    varchar Source
+    varchar Status
+    timestamptz SubmittedAt
+    uuid SubmittedBy FK
+    timestamptz UpdatedAt
+  }
+  SubmissionConsent {
+    uuid ConsentId PK
+    uuid ConcurrencyToken
+    timestamptz CreatedAt
+    int EmailSendCount
+    timestamptz EmailSentAt
+    timestamptz ExpiresAt
+    varchar LastEmailError
+    varchar RecipientEmail
+    timestamptz RequestedAt
+    timestamptz RespondedAt
+    varchar ResponseIp
+    varchar ResponseUserAgent
+    varchar Status
+    uuid SubmissionId FK
+    varchar TokenHash
+    timestamptz UpdatedAt
+  }
+  SubmissionIdentitySnapshot {
+    uuid SubmissionId PK,FK
+    varchar AssertedContactSource
+    timestamptz CapturedAt
+    varchar CvContentSha256
+    varchar CvTextFingerprint
+    varchar EmailHmac
+    varchar FingerprintVersion
+    varchar HmacKeyVersion
+    varchar NormalizedNameHash
+    varchar PhoneHmac
+    varchar VerificationLevel
+  }
+  AffiliateProfile {
+    uuid AffiliateId PK
+    text Address
+    varchar AffiliateType
+    varchar BankAccountHolder
+    varchar BankAccountNumber
+    varchar BankBranch
+    varchar BankName
+    varchar ContactPerson
+    timestamptz CreatedAt
+    varchar DisplayName
+    varchar Phone
+    varchar Status
+    varchar TaxInformation
+    timestamptz UpdatedAt
+    uuid UserId FK
+    timestamptz VerifiedAt
+  }
+  AffiliateApplication {
+    uuid AffiliateApplicationId PK
+    text Address
+    varchar AffiliateType
+    varchar ContactPerson
+    varchar DisplayName
+    varchar Phone
+    text ReviewNote
+    timestamptz ReviewedAt
+    uuid ReviewedBy FK
+    varchar Status
+    timestamptz SubmittedAt
+    jsonb SubmittedData
+    varchar TaxInformation
+    uuid UserId FK
+  }
+  AffiliatePerformance {
+    uuid AffiliatePerformanceId PK
+    uuid AffiliateId FK
+    timestamptz CalculatedAt
+    varchar CalculationVersion
+    timestamptz CreatedAt
+    date PeriodEnd
+    date PeriodStart
+    decimal QualityRating
+    varchar RatingLabel
+    decimal SubmissionToHireRate
+    int TotalInterviews
+    int TotalPlacements
+    int TotalShortlisted
+    int TotalSubmissions
+  }
+  Attribution {
+    uuid AttributionId PK
+    uuid AffiliateId FK
+    uuid ApplicationId FK
+    varchar AttributionRule
+    uuid ConcurrencyToken
+    timestamptz EstablishedAt
+    varchar Status
+    timestamptz UpdatedAt
+    uuid WinningSubmissionId FK
+  }
+  Dispute {
+    uuid DisputeId PK
+    uuid AttributionId FK
+    uuid CandidateDuplicateCaseId FK
+    uuid CommissionId FK
+    uuid ConcurrencyToken
+    timestamptz CreatedAt
+    text Description
+    varchar DisputeType
+    jsonb Evidence
+    uuid RaisedBy FK
+    text Resolution
+    varchar ResolutionIdempotencyKey
+    timestamptz ResolvedAt
+    uuid ResolvedBy FK
+    varchar Status
+    uuid SubmissionId FK
+    timestamptz UpdatedAt
+  }
+  AppUser {
+    uuid UserId PK
+  }
+  Application {
+    uuid ApplicationId PK
+  }
+  Commission {
+    uuid CommissionId PK
+  }
+  Job {
+    uuid JobId PK
+  }
+  MatchTierConfig {
+    uuid TierCode PK
+  }
+  ReplacementSlot {
+    uuid ReplacementSlotId PK
+  }
+  Skill {
+    uuid SkillId PK
+  }
+  AppUser ||--|o AffiliateApplication : "UserId"
+  AffiliateProfile ||--o{ AffiliatePerformance : "AffiliateId"
+  AppUser ||--|o AffiliateProfile : "UserId"
+  Candidate ||--o{ Application : "CandidateId"
+  Submission |o--o{ Application : "AcceptedSubmissionId,CandidateId,JobId"
+  AffiliateProfile ||--o{ Attribution : "AffiliateId"
+  Application ||--|o Attribution : "ApplicationId"
+  Submission ||--|o Attribution : "WinningSubmissionId"
+  Candidate |o--o{ Candidate : "MergedIntoCandidateId"
+  AppUser |o--|o Candidate : "UserId"
+  CandidateCv |o--o{ CandidateCv : "AdoptedFromCvId"
+  Candidate ||--o{ CandidateCv : "CandidateId"
+  CvTemplate |o--o{ CandidateCv : "CvTemplateId"
+  Candidate ||--o{ CandidateDuplicateCase : "CandidateAId"
+  Candidate ||--o{ CandidateDuplicateCase : "CandidateBId"
+  Candidate |o--o{ CandidateDuplicateCase : "CanonicalCandidateId"
+  Job |o--o{ CandidateDuplicateCase : "JobId"
+  Submission |o--o{ CandidateDuplicateCase : "SubmissionId"
+  CandidateDuplicateCase ||--o{ CandidateDuplicateSignal : "DuplicateCaseId"
+  Candidate ||--o{ CandidateIdentityClaim : "RequesterCandidateId"
+  Candidate |o--o{ CandidateIdentityClaim : "TargetCandidateId"
+  Candidate ||--o{ CandidateJobMatch : "CandidateId"
+  Job ||--o{ CandidateJobMatch : "JobId"
+  MatchTierConfig |o--o{ CandidateJobMatch : "MatchTier"
+  CandidateCv |o--o{ CandidateJobMatch : "CandidateId,CvId"
+  Candidate ||--o{ CandidateSavedJob : "CandidateId"
+  Job ||--o{ CandidateSavedJob : "JobId"
+  Candidate ||--o{ CandidateSkill : "CandidateId"
+  Skill ||--o{ CandidateSkill : "SkillId"
+  Attribution ||--o{ Commission : "AttributionId"
+  Attribution |o--o{ Dispute : "AttributionId"
+  CandidateDuplicateCase |o--o{ Dispute : "CandidateDuplicateCaseId"
+  Commission |o--o{ Dispute : "CommissionId"
+  Submission |o--o{ Dispute : "SubmissionId"
+  Candidate ||--o{ Submission : "CandidateId"
+  Submission |o--o{ Submission : "DuplicateOfSubmissionId"
+  Job ||--o{ Submission : "JobId"
+  ReplacementSlot |o--o{ Submission : "ReplacementSlotId"
+  CandidateCv ||--o{ Submission : "CandidateId,CvId"
+  Submission ||--|o SubmissionConsent : "SubmissionId"
+  Submission ||--|o SubmissionIdentitySnapshot : "SubmissionId"

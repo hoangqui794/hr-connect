@@ -115,18 +115,28 @@ public static class JobEndpoints
         jobs.MapPost("/{jobId:guid}/posting-fee/pay", async (Guid jobId, ClaimsPrincipal user, [FromBody] PayPostingFeeRequest? request, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized();
-            // N4 (chốt 19/10): chỉ Platform Admin ghi nhận tiền đã thu; Client chuyển khoản ngoài hệ thống.
-            if (!user.IsInRole("PLATFORM_ADMIN")) return Forbidden();
-            if (string.IsNullOrWhiteSpace(request?.PaymentReference))
-                return Results.BadRequest(new { success = false, code = "PAYMENT_REFERENCE_REQUIRED", message = "Nhập mã tham chiếu / số biên lai chuyển khoản." });
+            var roles = RoleCodes(user);
+            var isAllowed = roles.Any(r => string.Equals(r, "CLIENT_COMPANY_USER", StringComparison.OrdinalIgnoreCase)
+                                        || string.Equals(r, "CLIENT", StringComparison.OrdinalIgnoreCase)
+                                        || string.Equals(r, "INTERNAL_HR", StringComparison.OrdinalIgnoreCase)
+                                        || string.Equals(r, "PLATFORM_ADMIN", StringComparison.OrdinalIgnoreCase))
+                            || user.IsInRole("CLIENT_COMPANY_USER")
+                            || user.IsInRole("INTERNAL_HR")
+                            || user.IsInRole("PLATFORM_ADMIN");
+            if (!isAllowed) return Forbidden();
+
+            var reference = string.IsNullOrWhiteSpace(request?.PaymentReference)
+                ? $"PAY-{jobId.ToString("N")[..8].ToUpper()}"
+                : request.PaymentReference.Trim();
+
             return await Run(async Task<IResult> () => Results.Ok(await sender.Send(new RecordJobPostingFeePaymentCommand
             {
                 JobId = jobId,
-                PaymentReference = request?.PaymentReference ?? string.Empty,
+                PaymentReference = reference,
                 UserId = id.Value
             }, ct)));
         }).WithName("RecordJobPostingFeePayment").WithSummary("Ghi nhận thanh toán phí đăng tin CV_APPLICATION")
-        .WithDescription("Chỉ Platform Admin (403 với vai trò khác). Bắt buộc paymentReference (400 PAYMENT_REFERENCE_REQUIRED). Job đang chờ thanh toán sẽ được mở.");
+        .WithDescription("Platform Admin, Internal HR hoặc Client ghi nhận thanh toán phí đăng tin. Job đang chờ thanh toán sẽ được mở công khai.");
 
         jobs.MapGet("/mine", async (ClaimsPrincipal user, string? status, ISender sender, CancellationToken ct) =>
         {

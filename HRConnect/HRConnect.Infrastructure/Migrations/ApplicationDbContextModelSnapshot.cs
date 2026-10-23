@@ -2820,6 +2820,15 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("application_id");
 
+                    b.Property<string>("CandidateAttendanceStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("candidate_attendance_status");
+
+                    b.Property<DateTime?>("CandidateRespondedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("candidate_responded_at");
+
                     b.Property<Guid>("ConcurrencyToken")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
@@ -3082,6 +3091,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasDefaultValueSql("'VND'::bpchar")
                         .IsFixedLength();
 
+                    b.Property<Guid?>("CurrentServiceAgreementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("current_service_agreement_id");
+
                     b.Property<decimal?>("DepositPercent")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)")
@@ -3245,6 +3258,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex("AgreedBy");
 
                     b.HasIndex("CreatedBy");
+
+                    b.HasIndex("CurrentServiceAgreementId");
 
                     b.HasIndex("PostingPackageId");
 
@@ -4612,6 +4627,303 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex("PermissionId");
 
                     b.ToTable("role_permission", "public");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.ServiceAgreement", b =>
+                {
+                    b.Property<Guid>("ServiceAgreementId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_agreement_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("AgreementNote")
+                        .HasColumnType("text")
+                        .HasColumnName("agreement_note");
+
+                    b.Property<string>("ChangeRequestReason")
+                        .HasColumnType("text")
+                        .HasColumnName("change_request_reason");
+
+                    b.Property<string>("CompanyAddressSnapshot")
+                        .HasColumnType("text")
+                        .HasColumnName("company_address_snapshot");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<string>("CompanyNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("company_name_snapshot");
+
+                    b.Property<string>("CompanyTaxCodeSnapshot")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("company_tax_code_snapshot");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime?>("ConsentAcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consent_accepted_at");
+
+                    b.Property<string>("ConsentTextVersion")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("consent_text_version");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("DocumentSha256Hash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("document_sha256_hash");
+
+                    b.Property<decimal?>("FeeMultiplier")
+                        .HasPrecision(6, 3)
+                        .HasColumnType("numeric(6,3)")
+                        .HasColumnName("fee_multiplier");
+
+                    b.Property<string>("HrConnectLegalEntitySnapshot")
+                        .HasColumnType("text")
+                        .HasColumnName("hrconnect_legal_entity_snapshot");
+
+                    b.Property<bool>("IsCurrent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_current");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<int?>("PaymentDueDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("payment_due_days");
+
+                    b.Property<decimal?>("PricePerQualifiedCv")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("price_per_qualified_cv");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("responded_at");
+
+                    b.Property<int?>("ReviewDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("review_days");
+
+                    b.Property<DateTime?>("SentToClientAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_to_client_at");
+
+                    b.Property<string>("ServiceTypeCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("service_type_code");
+
+                    b.Property<DateTime?>("SignedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("signed_at");
+
+                    b.Property<string>("SignedDocumentStorageKey")
+                        .HasColumnType("text")
+                        .HasColumnName("signed_document_storage_key");
+
+                    b.Property<string>("SignerEmailSnapshot")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("signer_email_snapshot");
+
+                    b.Property<string>("SignerIpHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("signer_ip_hash");
+
+                    b.Property<string>("SignerNameSnapshot")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("signer_name_snapshot");
+
+                    b.Property<string>("SignerRoleSnapshot")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("signer_role_snapshot");
+
+                    b.Property<string>("SignerUserAgentSummary")
+                        .HasColumnType("text")
+                        .HasColumnName("signer_user_agent_summary");
+
+                    b.Property<Guid?>("SignerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("signer_user_id");
+
+                    b.Property<int?>("SourcingTarget")
+                        .HasColumnType("integer")
+                        .HasColumnName("sourcing_target");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("UnsignedDocumentStorageKey")
+                        .HasColumnType("text")
+                        .HasColumnName("unsigned_document_storage_key");
+
+                    b.Property<string>("VerificationCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("verification_code");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.Property<string>("VoidReason")
+                        .HasColumnType("text")
+                        .HasColumnName("void_reason");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("voided_at");
+
+                    b.Property<Guid?>("VoidedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voided_by_user_id");
+
+                    b.Property<int?>("WarrantyDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("warranty_days");
+
+                    b.HasKey("ServiceAgreementId")
+                        .HasName("service_agreement_pkey");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("SignerUserId");
+
+                    b.HasIndex("VoidedByUserId");
+
+                    b.HasIndex(new[] { "CompanyId", "Status" }, "idx_service_agreement_company_status");
+
+                    b.HasIndex(new[] { "JobId", "IsCurrent" }, "uq_service_agreement_current_job")
+                        .IsUnique()
+                        .HasFilter("is_current = true AND status <> 'VOID'");
+
+                    b.HasIndex(new[] { "JobId", "Version" }, "uq_service_agreement_job_version")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "VerificationCode" }, "uq_service_agreement_verification_code")
+                        .IsUnique();
+
+                    b.ToTable("service_agreement", "public", t =>
+                        {
+                            t.HasComment("MF-01 Service agreement versions and signing evidence between Client and HR Connect.");
+
+                            t.HasCheckConstraint("ck_service_agreement_status", "status IN ('DRAFT','SENT_TO_CLIENT','CHANGE_REQUESTED','ACCEPTED','AWAITING_SIGNATURE','SIGNED','VOID','LEGACY_CONFIRMED')");
+                        });
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.ServiceAgreementSignatureChallenge", b =>
+                {
+                    b.Property<Guid>("ChallengeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("challenge_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<int>("AttemptCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsConsumed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_consumed");
+
+                    b.Property<bool>("IsRevoked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_revoked");
+
+                    b.Property<int>("MaxAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(5)
+                        .HasColumnName("max_attempts");
+
+                    b.Property<string>("OtpHash")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("otp_hash");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid>("ServiceAgreementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_agreement_id");
+
+                    b.Property<string>("SignerEmailNormalized")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("signer_email_normalized");
+
+                    b.Property<Guid>("SignerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("signer_user_id");
+
+                    b.HasKey("ChallengeId")
+                        .HasName("service_agreement_signature_challenge_pkey");
+
+                    b.HasIndex("SignerUserId");
+
+                    b.HasIndex(new[] { "ServiceAgreementId", "SignerUserId" }, "idx_challenge_agreement_signer");
+
+                    b.ToTable("service_agreement_signature_challenge", "public");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.ServiceFee", b =>
@@ -6407,6 +6719,12 @@ namespace HRConnect.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("job_created_by_fkey");
 
+                    b.HasOne("HRConnect.Domain.Entities.ServiceAgreement", "CurrentServiceAgreement")
+                        .WithMany()
+                        .HasForeignKey("CurrentServiceAgreementId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("job_current_service_agreement_id_fkey");
+
                     b.HasOne("HRConnect.Domain.Entities.JobPostingPackage", "PostingPackage")
                         .WithMany("Jobs")
                         .HasForeignKey("PostingPackageId")
@@ -6431,6 +6749,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Company");
 
                     b.Navigation("CreatedByNavigation");
+
+                    b.Navigation("CurrentServiceAgreement");
 
                     b.Navigation("PostingPackage");
 
@@ -6759,6 +7079,73 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Permission");
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.ServiceAgreement", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("service_agreement_company_id_fkey");
+
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("service_agreement_created_by_user_id_fkey");
+
+                    b.HasOne("HRConnect.Domain.Entities.Job", "Job")
+                        .WithMany("ServiceAgreements")
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("service_agreement_job_id_fkey");
+
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "SignerUser")
+                        .WithMany()
+                        .HasForeignKey("SignerUserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("service_agreement_signer_user_id_fkey");
+
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "VoidedByUser")
+                        .WithMany()
+                        .HasForeignKey("VoidedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("service_agreement_voided_by_user_id_fkey");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Job");
+
+                    b.Navigation("SignerUser");
+
+                    b.Navigation("VoidedByUser");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.ServiceAgreementSignatureChallenge", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.ServiceAgreement", "ServiceAgreement")
+                        .WithMany("SignatureChallenges")
+                        .HasForeignKey("ServiceAgreementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("challenge_service_agreement_id_fkey");
+
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "SignerUser")
+                        .WithMany()
+                        .HasForeignKey("SignerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("challenge_signer_user_id_fkey");
+
+                    b.Navigation("ServiceAgreement");
+
+                    b.Navigation("SignerUser");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.ServiceFee", b =>
@@ -7231,6 +7618,8 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.Navigation("JobStatusHistories");
 
+                    b.Navigation("ServiceAgreements");
+
                     b.Navigation("Submissions");
                 });
 
@@ -7288,6 +7677,11 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("ServiceTypeAllowedRoles");
 
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("HRConnect.Domain.Entities.ServiceAgreement", b =>
+                {
+                    b.Navigation("SignatureChallenges");
                 });
 
             modelBuilder.Entity("HRConnect.Domain.Entities.ServiceType", b =>

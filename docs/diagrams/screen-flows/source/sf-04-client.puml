@@ -1,0 +1,28 @@
+@startuml sf-client
+left to right direction
+skinparam rectangle { RoundCorner 8 }
+title Screen flow – Client Company portal (/client)
+package "Client Company portal (/client)" #E6F0FA {
+  rectangle "Client overview\n<size:10>dashboard</size>" as client_dash
+  rectangle "Company profile & verification\n<size:10>company</size>" as client_comp
+  rectangle "My jobs\n<size:10>jobs</size>" as client_cjobs
+  rectangle "Create / edit job (wizard)\n<size:10>jobs/create · jobs/:id/edit</size>" as client_create
+  rectangle "Service agreements (accept, OTP sign)\n<size:10>agreements</size>" as client_agr
+  rectangle "Sourcing CV deliveries\n<size:10>jobs/:jobId/sourcing</size>" as client_src
+  rectangle "Candidates (Kanban, filter by service)\n<size:10>candidates</size>" as client_cands
+  rectangle "Interviews & offers\n<size:10>interviews-offers</size>" as client_io
+  rectangle "Placement detail\n<size:10>placements/:placementId</size>" as client_plc
+  rectangle "Warranty & resignations\n<size:10>warranty</size>" as client_war
+}
+client_dash --> client_comp : verify company
+client_dash --> client_cjobs
+client_cjobs --> client_create : new / edit
+client_create --> client_cjobs : submit for review
+client_cjobs --> client_agr : agreement sent by HR
+client_cjobs --> client_src : Sourcing job
+client_dash --> client_cands
+client_cands --> client_io : schedule / offer
+client_io --> client_plc : confirm start work
+client_plc --> client_war : report resignation
+client_dash --> client_war
+@enduml

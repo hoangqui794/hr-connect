@@ -4,9 +4,10 @@
  * so lists and details re-read the backend (new status + new concurrencyToken).
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { jobsApi, serviceTypesApi } from '@/services/api/jobsApi';
+import { jobsApi, serviceAgreementsApi, serviceTypesApi } from '@/services/api/jobsApi';
 import type {
   ApproveJobInput,
+  CreateServiceAgreementProposalInput,
   Job,
   JobCloseReasonCode,
   JobRejectReasonCode,
@@ -14,6 +15,8 @@ import type {
   JobStatus,
   JobTemplateUpsertInput,
   JobUpsertInput,
+  RespondServiceAgreementInput,
+  SignServiceAgreementInput,
 } from '@/types/api/jobs';
 
 export const jobQueryKeys = {
@@ -23,6 +26,8 @@ export const jobQueryKeys = {
   publicSearch: (params: JobSearchParams) => [...jobQueryKeys.all, 'public-search', params] as const,
   detail: (jobId: string) => [...jobQueryKeys.all, 'detail', jobId] as const,
   review: (status?: string) => [...jobQueryKeys.all, 'review', status ?? 'ALL'] as const,
+  serviceAgreementCurrent: (jobId: string) => [...jobQueryKeys.all, 'service-agreement-current', jobId] as const,
+  serviceAgreementHistory: (jobId: string) => [...jobQueryKeys.all, 'service-agreement-history', jobId] as const,
   serviceTypes: ['mf01-service-types'] as const,
   postingPackages: ['mf01-posting-packages'] as const,
   postingEligibility: ['mf01-posting-eligibility'] as const,
@@ -239,6 +244,62 @@ export const useJobMutations = () => {
         reasonText: string;
         reason?: string;
       }) => jobsApi.reject(v.jobId, v.token, v.reasonCode, v.reasonText, v.reason),
+      onSuccess: refresh,
+    }),
+  };
+};
+
+export const useCurrentServiceAgreement = (jobId: string | undefined, enabled = true) =>
+  useQuery({
+    queryKey: jobQueryKeys.serviceAgreementCurrent(jobId ?? ''),
+    queryFn: () => serviceAgreementsApi.getCurrent(jobId as string),
+    enabled: Boolean(jobId) && enabled,
+  });
+
+export const useServiceAgreementHistory = (jobId: string | undefined, enabled = true) =>
+  useQuery({
+    queryKey: jobQueryKeys.serviceAgreementHistory(jobId ?? ''),
+    queryFn: () => serviceAgreementsApi.getHistory(jobId as string),
+    enabled: Boolean(jobId) && enabled,
+  });
+
+export const useServiceAgreementMutations = (jobId?: string) => {
+  const queryClient = useQueryClient();
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: jobQueryKeys.all }),
+      jobId
+        ? Promise.all([
+            queryClient.invalidateQueries({ queryKey: jobQueryKeys.serviceAgreementCurrent(jobId) }),
+            queryClient.invalidateQueries({ queryKey: jobQueryKeys.serviceAgreementHistory(jobId) }),
+            queryClient.invalidateQueries({ queryKey: jobQueryKeys.detail(jobId) }),
+          ])
+        : Promise.resolve(),
+    ]);
+
+  return {
+    createProposal: useMutation({
+      mutationFn: (v: { jobId: string; input: CreateServiceAgreementProposalInput }) =>
+        serviceAgreementsApi.createProposal(v.jobId, v.input),
+      onSuccess: refresh,
+    }),
+    respond: useMutation({
+      mutationFn: (v: { jobId: string; agreementId: string; input: RespondServiceAgreementInput }) =>
+        serviceAgreementsApi.respond(v.jobId, v.agreementId, v.input),
+      onSuccess: refresh,
+    }),
+    createSignatureChallenge: useMutation({
+      mutationFn: (v: { jobId: string; agreementId: string }) =>
+        serviceAgreementsApi.createSignatureChallenge(v.jobId, v.agreementId),
+    }),
+    sign: useMutation({
+      mutationFn: (v: { jobId: string; agreementId: string; input: SignServiceAgreementInput }) =>
+        serviceAgreementsApi.sign(v.jobId, v.agreementId, v.input),
+      onSuccess: refresh,
+    }),
+    voidAgreement: useMutation({
+      mutationFn: (v: { jobId: string; agreementId: string; reason: string }) =>
+        serviceAgreementsApi.void(v.jobId, v.agreementId, v.reason),
       onSuccess: refresh,
     }),
   };

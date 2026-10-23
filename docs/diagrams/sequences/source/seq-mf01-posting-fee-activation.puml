@@ -1,0 +1,21 @@
+@startuml seq-mf01-posting-fee-activation
+autonumber
+skinparam sequenceMessageAlign center
+title MF-01 · Platform Admin records a posting fee or deposit
+actor "Platform Admin" as AD
+boundary "Web App" as FE
+boundary "Job / Finance endpoints" as API
+control "RecordJobPostingFeePayment / RecordServiceFeePayment" as H
+database "PostgreSQL" as DB
+actor "Client Company User" as CL
+AD -> FE : Finance › posting fees / deposits, enter bank reference
+FE -> API : POST /jobs/{id}/posting-fee/pay or /admin/service-fees/{id}/record-payment
+alt no reference or caller is not Platform Admin
+API --> FE : 400 / 403
+else valid
+API -> H : Send command
+H -> DB : Fee PAID, Job PENDING_PAYMENT → ACTIVE, PostedAt, AuditLog
+H -> CL : Notification: job is live (after commit)
+API --> FE : 200 OK
+end
+@enduml

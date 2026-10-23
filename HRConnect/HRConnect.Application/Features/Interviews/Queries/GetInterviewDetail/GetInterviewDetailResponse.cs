@@ -62,6 +62,10 @@ public class InterviewDetailData
 
     public DateTime? RecordedAt { get; set; }
 
+    public string? CandidateAttendanceStatus { get; set; }
+
+    public DateTime? CandidateRespondedAt { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

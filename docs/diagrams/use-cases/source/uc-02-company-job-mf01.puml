@@ -1,0 +1,25 @@
+@startuml uc-02-company-job-mf01
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase { BackgroundColor #EAF2FB
+  BorderColor #1B365D }
+title Use Cases – Company & Job Management (MF-01)
+
+actor "Client Company User" as CL
+actor "Internal HR" as HR
+actor "Platform Admin" as AD
+rectangle "HR Connect" {
+  usecase "UC-04\nManage Company Profile" as UC04
+  usecase "UC-05\nReview Company Verification" as UC05
+  usecase "UC-06\nManage Job" as UC06
+  usecase "UC-07\nReview Job" as UC07
+  usecase "UC-44\nAgree and Sign Service Agreement" as UC44
+}
+CL -- UC04
+CL -- UC06
+CL -- UC44
+UC07 -- HR
+UC44 -- HR
+UC05 -- AD
+@enduml

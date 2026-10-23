@@ -1,0 +1,23 @@
+@startuml seq-mf04-schedule-interview
+autonumber
+skinparam sequenceMessageAlign center
+title MF-04 · Client schedules an interview
+actor "Client Company User" as CL
+boundary "Web App" as FE
+boundary "Recruitment endpoints" as API
+control "ScheduleInterview handler" as H
+database "PostgreSQL" as DB
+control "SignalR hub" as HUB
+actor "Candidate" as CA
+CL -> FE : Pick time, type, location / link
+FE -> API : POST /api/v1/recruitment/applications/{id}/interviews
+API -> H : Send(ScheduleInterviewCommand)
+alt caller is Internal HR or not a company member
+API --> FE : 403
+else allowed
+H -> DB : Interview SCHEDULED, Application INTERVIEW, AuditLog
+H -> HUB : Publish after commit
+HUB -> CA : Bell updates in real time; candidate confirms attendance
+API --> FE : 201 Created
+end
+@enduml

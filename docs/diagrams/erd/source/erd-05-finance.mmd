@@ -1,0 +1,164 @@
+---
+title: ERD – Warranty, fees, commission and payout (MF-05)
+config:
+  layout: elk
+---
+erDiagram
+  Warranty {
+    uuid WarrantyId PK
+    timestamptz CreatedAt
+    date EndDate
+    uuid PlacementId FK
+    text ResultNote
+    date StartDate
+    varchar Status
+    timestamptz UpdatedAt
+    uuid UpdatedBy FK
+  }
+  ServiceFee {
+    uuid ServiceFeeId PK
+    decimal Amount
+    decimal BaseSalary
+    uuid CompanyId FK
+    timestamptz CreatedAt
+    char CurrencyCode
+    date DueDate
+    decimal FeeMultiplier
+    uuid JobId FK
+    varchar Kind
+    timestamptz PaidAt
+    varchar PaymentReference
+    uuid PlacementId FK
+    uuid RecordedBy
+    varchar Status
+    timestamptz UpdatedAt
+  }
+  ReplacementSlot {
+    uuid ReplacementSlotId PK
+    varchar CancelReason
+    timestamptz ClosedAt
+    uuid ClosedBy
+    uuid ConcurrencyToken
+    timestamptz CreatedAt
+    uuid CreatedBy
+    timestamptz ExpiresAt
+    int FillWindowDays
+    uuid FilledByPlacementId FK
+    uuid JobId FK
+    timestamptz OpenedAt
+    uuid OriginalPlacementId FK
+    uuid ServiceFeeId FK
+    varchar Status
+    timestamptz UpdatedAt
+  }
+  CommissionRule {
+    uuid CommissionRuleId PK
+    timestamptz CreatedAt
+    timestamptz EffectiveFrom
+    timestamptz EffectiveTo
+    bool IsActive
+    varchar MilestoneType FK
+    varchar Name
+    varchar RateType
+    decimal RateValue
+    uuid ServiceTypeId FK
+    timestamptz UpdatedAt
+    bool WarrantyRequired
+  }
+  CommissionMilestone {
+    varchar MilestoneCode PK
+    timestamptz CreatedAt
+    text Description
+    bool IsActive
+    varchar Name
+    timestamptz UpdatedAt
+  }
+  Commission {
+    uuid CommissionId PK
+    decimal Amount
+    timestamptz ApprovedAt
+    uuid ApprovedBy FK
+    uuid AttributionId FK
+    decimal BaseAmount
+    timestamptz CalculatedAt
+    jsonb CalculationSnapshot
+    uuid CommissionRuleId FK
+    timestamptz CreatedAt
+    varchar MilestoneType FK
+    uuid PlacementId FK
+    jsonb RuleSnapshot
+    uuid SourcingDeliveryId FK
+    varchar Status
+    timestamptz UpdatedAt
+  }
+  CommissionAdjustment {
+    uuid CommissionAdjustmentId PK
+    timestamptz AdjustedAt
+    uuid AdjustedBy FK
+    uuid CommissionId FK
+    decimal NewAmount
+    decimal OldAmount
+    text Reason
+  }
+  Payout {
+    uuid PayoutId PK
+    decimal Amount
+    int AttemptNo
+    uuid CommissionId FK
+    timestamptz CreatedAt
+    text EvidenceUrl
+    varchar Method
+    timestamptz PayoutDate
+    uuid RecordedBy FK
+    varchar Status
+    varchar TransactionReference
+    timestamptz UpdatedAt
+  }
+  Application {
+    uuid ApplicationId PK
+  }
+  Attribution {
+    uuid AttributionId PK
+  }
+  Company {
+    uuid CompanyId PK
+  }
+  Dispute {
+    uuid DisputeId PK
+  }
+  Job {
+    uuid JobId PK
+  }
+  Placement {
+    uuid PlacementId PK
+  }
+  ServiceType {
+    uuid ServiceTypeId PK
+  }
+  SourcingDelivery {
+    uuid DeliveryId PK
+  }
+  Submission {
+    uuid SubmissionId PK
+  }
+  ReplacementSlot |o--o{ Application : "ReplacementSlotId"
+  Attribution ||--o{ Commission : "AttributionId"
+  CommissionRule |o--o{ Commission : "CommissionRuleId"
+  CommissionMilestone |o--o{ Commission : "MilestoneType"
+  Placement |o--o{ Commission : "PlacementId"
+  SourcingDelivery |o--o{ Commission : "SourcingDeliveryId"
+  Commission ||--o{ CommissionAdjustment : "CommissionId"
+  CommissionMilestone |o--o{ CommissionRule : "MilestoneType"
+  ServiceType ||--o{ CommissionRule : "ServiceTypeId"
+  Commission |o--o{ Dispute : "CommissionId"
+  Commission ||--o{ Payout : "CommissionId"
+  ReplacementSlot |o--o{ Placement : "ReplacementSlotId"
+  Placement |o--o{ ReplacementSlot : "FilledByPlacementId"
+  Job ||--o{ ReplacementSlot : "JobId"
+  Placement ||--o{ ReplacementSlot : "OriginalPlacementId"
+  ServiceFee ||--o{ ReplacementSlot : "ServiceFeeId"
+  Company ||--o{ ServiceFee : "CompanyId"
+  Job |o--o{ ServiceFee : "JobId"
+  Placement |o--|o ServiceFee : "PlacementId"
+  ReplacementSlot |o--o{ Submission : "ReplacementSlotId"
+  Placement ||--|o Warranty : "PlacementId"

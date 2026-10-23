@@ -1,0 +1,26 @@
+@startuml uc-08-administration-reporting
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase { BackgroundColor #EAF2FB
+  BorderColor #1B365D }
+title Use Cases – Administration & Reporting
+
+actor "Client Company User" as CL
+actor "Internal HR" as HR
+actor "Platform Admin" as AD
+rectangle "HR Connect" {
+  usecase "UC-33\nManage Users" as UC33
+  usecase "UC-34\nManage Roles & Permissions" as UC34
+  usecase "UC-35\nManage System Configuration" as UC35
+  usecase "UC-42\nView Audit Log" as UC42
+  usecase "UC-36\nView Reports / Dashboard" as UC36
+}
+CL -- UC36
+UC36 -- HR
+UC33 -- AD
+UC34 -- AD
+UC35 -- AD
+UC42 -- AD
+UC36 -- AD
+@enduml

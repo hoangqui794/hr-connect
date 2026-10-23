@@ -1,0 +1,13 @@
+---
+title: Interview (MF-04)
+---
+stateDiagram-v2
+  direction LR
+  [*] --> SCHEDULED : Client schedules
+  SCHEDULED --> SCHEDULED : Client updates / reschedules
+  SCHEDULED --> CANCELLED : Client cancels (reason)
+  SCHEDULED --> COMPLETED : Client records result PASS / FAIL / BACKUP
+  SCHEDULED --> NO_SHOW : candidate absent
+  CANCELLED --> [*]
+  COMPLETED --> [*]
+  NO_SHOW --> [*]

@@ -1,0 +1,137 @@
+---
+title: MF-01 · Job, review and service agreement
+config:
+  layout: elk
+---
+classDiagram
+  direction LR
+  class JobEndpoints {
+    <<endpoint>>
+    +POST /api/v1/jobs
+    +POST /jobs/‹id›/submit · pause · resume · close
+    +POST /internal/jobs/‹id›/approve · reject
+    +POST /jobs/‹id›/posting-fee/pay
+  }
+  class ServiceAgreementEndpoints {
+    <<endpoint>>
+    +POST /internal/jobs/‹id›/service-agreements
+    +POST /client/jobs/‹id›/service-agreements/‹aid›/…
+    +GET /public/service-agreements/verify/‹code›
+  }
+  class CreateJobCommandHandler {
+    <<handler>>
+    +Handle(CreateJobCommand) JobDetailDto
+  }
+  class ApproveJobCommand {
+    <<handler>>
+    +Handle() moves to PENDING_AGREEMENT / PENDING_PAYMENT / ACTIVE
+  }
+  class CreateServiceAgreementProposalCommandHandler {
+    <<handler>>
+    +Handle() SENT_TO_CLIENT
+  }
+  class RespondToServiceAgreementCommandHandler {
+    <<handler>>
+    +Handle(ACCEPT | REQUEST_CHANGES)
+  }
+  class CreateSignatureChallengeCommandHandler {
+    <<handler>>
+    +Handle() sends signing OTP
+  }
+  class SignServiceAgreementCommandHandler {
+    <<handler>>
+    +Handle(otp) SIGNED, PDF to R2, job status
+  }
+  class JobAccessPolicy {
+    <<policy>>
+    +CanViewDetail()
+    +CanCandidateApply()
+    +CanAffiliateSubmit()
+    +CanManageJob()
+  }
+  class IOtpService {
+    <<interface>>
+    +GenerateNumericOtp()
+    +HashOtp()
+    +VerifyOtp()
+  }
+  class IAgreementPdfRenderer {
+    <<interface>>
+    +RenderAgreementPdf(agreement, job, company, isSigned)
+  }
+  class IFileStorageService {
+    <<interface>>
+    +UploadAsync()
+    +signed download URL
+  }
+  class SourcingFinanceService {
+    <<service>>
+    +EnsureDepositAsync(job)
+  }
+  class Job {
+    <<entity>>
+    +JobId
+    +CompanyId · ServiceTypeId
+    +Status · Quantity
+    +FeeMultiplier · WarrantyDays
+    +SourcingTarget · SourcingPricePerCv
+    +CurrentServiceAgreementId
+    +ConcurrencyToken
+  }
+  class JobRequirement {
+    <<entity>>
+    +RequirementType (MUST_HAVE/SHOULD_HAVE)
+    +Content · Weight
+  }
+  class ServiceAgreement {
+    <<entity>>
+    +Version · Status
+    +FeeMultiplier · WarrantyDays
+    +SignedDocumentStorageKey
+    +DocumentSha256Hash
+  }
+  class ServiceAgreementSignatureChallenge {
+    <<entity>>
+    +OtpHash · ExpiresAt
+    +AttemptCount · MaxAttempts
+  }
+  class JobPostingFee {
+    <<entity>>
+    +Amount · Status
+    +PaymentReference
+  }
+  JobEndpoints ..> CreateJobCommandHandler : sends
+  JobEndpoints ..> ApproveJobCommand : sends
+  ServiceAgreementEndpoints ..> CreateServiceAgreementProposalCommandHandler
+  ServiceAgreementEndpoints ..> RespondToServiceAgreementCommandHandler
+  ServiceAgreementEndpoints ..> CreateSignatureChallengeCommandHandler
+  ServiceAgreementEndpoints ..> SignServiceAgreementCommandHandler
+  CreateJobCommandHandler ..> JobAccessPolicy : checks
+  CreateJobCommandHandler --> Job : creates
+  Job *-- JobRequirement : 1..*
+  Job --> ServiceAgreement : current
+  Job --> JobPostingFee : 0..*
+  ServiceAgreement *-- ServiceAgreementSignatureChallenge : 0..*
+  CreateSignatureChallengeCommandHandler ..> IOtpService
+  SignServiceAgreementCommandHandler ..> IOtpService
+  SignServiceAgreementCommandHandler ..> IAgreementPdfRenderer
+  SignServiceAgreementCommandHandler ..> IFileStorageService
+  SignServiceAgreementCommandHandler ..> SourcingFinanceService : Sourcing deposit
+  style JobEndpoints fill:#FFF4E5,stroke:#1B365D
+  style ServiceAgreementEndpoints fill:#FFF4E5,stroke:#1B365D
+  style CreateJobCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style ApproveJobCommand fill:#EAF2FB,stroke:#1B365D
+  style CreateServiceAgreementProposalCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style RespondToServiceAgreementCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style CreateSignatureChallengeCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style SignServiceAgreementCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style JobAccessPolicy fill:#F5F5F5,stroke:#1B365D
+  style IOtpService fill:#F3E8FF,stroke:#1B365D
+  style IAgreementPdfRenderer fill:#F3E8FF,stroke:#1B365D
+  style IFileStorageService fill:#F3E8FF,stroke:#1B365D
+  style SourcingFinanceService fill:#EEF5EC,stroke:#1B365D
+  style Job fill:#FFFFFF,stroke:#1B365D
+  style JobRequirement fill:#FFFFFF,stroke:#1B365D
+  style ServiceAgreement fill:#FFFFFF,stroke:#1B365D
+  style ServiceAgreementSignatureChallenge fill:#FFFFFF,stroke:#1B365D
+  style JobPostingFee fill:#FFFFFF,stroke:#1B365D

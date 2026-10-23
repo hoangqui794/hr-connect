@@ -1,0 +1,28 @@
+@startuml uc-01-public-authentication
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase { BackgroundColor #EAF2FB
+  BorderColor #1B365D }
+title Use Cases – Public & Authentication
+
+actor "Guest" as G
+actor "Registered User" as U
+actor "Candidate" as C
+actor "Affiliate" as A
+C --|> U
+A --|> U
+rectangle "HR Connect" {
+  usecase "UC-01\nRegister Account" as UC01
+  usecase "UC-02\nLogin" as UC02
+  usecase "UC-37\nVerify Email / Recover Password" as UC37
+  usecase "UC-03\nSearch & View Jobs" as UC03
+}
+G -- UC01
+G -- UC37
+G -- UC03
+U -- UC02
+U -- UC37
+C -- UC03
+A -- UC03
+@enduml

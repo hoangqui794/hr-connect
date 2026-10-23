@@ -1,0 +1,76 @@
+name: CD — Backend on Render
+
+on:
+  workflow_run:
+    workflows:
+      - CI — Quality Gates
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      clear_cache:
+        description: Clear Render build cache before deploying
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy & verify exact commit
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      deployments: write
+    environment:
+      name: production
+      url: ${{ vars.RENDER_SERVICE_URL || 'https://hr-connect-0ykm.onrender.com' }}
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      CLEAR_CACHE: ${{ inputs.clear_cache && 'clear' || 'do_not_clear' }}
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+      RENDER_SERVICE_URL: ${{ vars.RENDER_SERVICE_URL || 'https://hr-connect-0ykm.onrender.com' }}
+      RENDER_HEALTHCHECK_URL: ${{ vars.RENDER_HEALTHCHECK_URL }}
+
+    steps:
+      - name: Checkout the approved commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          persist-credentials: false
+
+      - name: Trigger Render and follow deployment
+        id: render
+        run: .github/scripts/deploy-render.sh
+
+      - name: Publish deployment result
+        if: always()
+        env:
+          DEPLOY_STATUS: ${{ steps.render.outputs.status || 'failed' }}
+          DEPLOY_ID: ${{ steps.render.outputs.deploy_id || 'unavailable' }}
+          DASHBOARD_URL: ${{ steps.render.outputs.dashboard_url || format('https://dashboard.render.com/web/{0}', secrets.RENDER_SERVICE_ID) }}
+        run: |
+          {
+            echo '## Render production deployment'
+            echo
+            echo '| Field | Value |'
+            echo '| --- | --- |'
+            echo "| Commit | \`$DEPLOY_SHA\` |"
+            echo "| Deploy ID | \`$DEPLOY_ID\` |"
+            echo "| Status | **$DEPLOY_STATUS** |"
+            echo "| Service | [$RENDER_SERVICE_URL]($RENDER_SERVICE_URL) |"
+            echo "| Render dashboard | [Open deployment]($DASHBOARD_URL) |"
+          } >> "$GITHUB_STEP_SUMMARY"

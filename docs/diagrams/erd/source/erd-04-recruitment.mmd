@@ -1,0 +1,232 @@
+---
+title: ERD – Screening, interview, offer and placement (MF-03, MF-04)
+config:
+  layout: elk
+---
+erDiagram
+  Application {
+    uuid ApplicationId PK
+    uuid AcceptedSubmissionId FK
+    timestamptz AppliedAt
+    uuid CandidateId FK
+    uuid ConcurrencyToken
+    varchar CurrentStage
+    uuid JobId FK
+    date PlannedStartDate
+    uuid ReplacementSlotId FK
+    varchar Status
+    text StatusReason
+    varchar StatusReasonCode
+    timestamptz UpdatedAt
+  }
+  ApplicationStatusHistory {
+    uuid ApplicationStatusHistoryId PK
+    uuid ApplicationId FK
+    timestamptz ChangedAt
+    uuid ChangedBy FK
+    varchar NewStatus
+    varchar OldStatus
+    text Reason
+    varchar ReasonCode
+  }
+  AiMatchResult {
+    uuid MatchResultId PK
+    uuid ApplicationId FK
+    int AttemptNo
+    jsonb CandidateHighlight
+    timestamptz CompletedAt
+    int DispatchCount
+    text ErrorMessage
+    varchar ExternalReference
+    varchar FailureCode
+    timestamptz LastDispatchedAt
+    decimal MatchScore
+    varchar MatchTier FK
+    varchar ModelVersion
+    jsonb MustHaveResult
+    timestamptz NextAttemptAt
+    timestamptz ProcessingStartedAt
+    jsonb RawResponse
+    timestamptz RequestedAt
+    jsonb ShouldHaveResult
+    varchar Status
+  }
+  MatchTierConfig {
+    varchar TierCode PK
+    varchar ColorCode
+    timestamptz CreatedAt
+    varchar DisplayName
+    int DisplayOrder
+    bool IsActive
+    decimal MaxScore
+    decimal MinScore
+    timestamptz UpdatedAt
+  }
+  SourcingDelivery {
+    uuid DeliveryId PK
+    uuid ApplicationId FK
+    timestamptz CreatedAt
+    timestamptz DecidedAt
+    uuid DecidedBy
+    timestamptz DeliveredAt
+    uuid DeliveredBy
+    uuid JobId FK
+    varchar RejectNote
+    varchar RejectReasonCode
+    uuid ReplacedByDeliveryId
+    timestamptz ReviewDueAt
+    varchar Status
+    timestamptz UpdatedAt
+  }
+  Interview {
+    uuid InterviewId PK
+    uuid ApplicationId FK
+    varchar CandidateAttendanceStatus
+    timestamptz CandidateRespondedAt
+    uuid ConcurrencyToken
+    timestamptz CreatedAt
+    uuid CreatedBy FK
+    int DurationMinutes
+    text Feedback
+    int InterviewRound
+    varchar InterviewType
+    varchar Location
+    text MeetingLink
+    timestamptz RecordedAt
+    uuid RecordedBy FK
+    varchar Result
+    timestamptz ScheduledAt
+    varchar Status
+    timestamptz UpdatedAt
+  }
+  InterviewParticipant {
+    uuid InterviewParticipantId PK
+    timestamptz CreatedAt
+    uuid InterviewId FK
+    varchar Role
+    uuid UserId FK
+  }
+  InterviewStatusHistory {
+    uuid InterviewStatusHistoryId PK
+    timestamptz ChangedAt
+    uuid ChangedBy FK
+    uuid InterviewId FK
+    timestamptz NewScheduledAt
+    varchar NewStatus
+    timestamptz OldScheduledAt
+    varchar OldStatus
+    text Reason
+  }
+  Offer {
+    uuid OfferId PK
+    uuid ApplicationId FK
+    uuid ConcurrencyToken
+    timestamptz CreatedAt
+    uuid CreatedBy FK
+    char CurrencyCode
+    text DeclineReason
+    date ExpiryDate
+    text OfferDocumentUrl
+    int OfferVersion
+    timestamptz RespondedAt
+    decimal Salary
+    varchar SalaryBasis
+    varchar SalaryPeriod
+    timestamptz SentAt
+    date StartDate
+    varchar Status
+    timestamptz UpdatedAt
+  }
+  OfferApproval {
+    uuid ApprovalId PK
+    varchar ApprovalType
+    text Comment
+    timestamptz CreatedAt
+    uuid OfferId FK
+    varchar Status
+    uuid UserId FK
+  }
+  Placement {
+    uuid PlacementId PK
+    date ActualStartDate
+    uuid ApplicationId FK
+    text ConfirmationNote
+    timestamptz ConfirmedAt
+    uuid ConfirmedBy FK
+    timestamptz CreatedAt
+    varchar Department
+    uuid OfferId FK
+    varchar Position
+    uuid ReplacementSlotId FK
+    varchar Status
+    timestamptz UpdatedAt
+  }
+  Probation {
+    uuid ProbationId PK
+    timestamptz CreatedAt
+    date EndDate
+    text Notes
+    uuid PlacementId FK
+    varchar Result
+    date StartDate
+    timestamptz UpdatedAt
+    uuid UpdatedBy FK
+  }
+  AppUser {
+    uuid UserId PK
+  }
+  Attribution {
+    uuid AttributionId PK
+  }
+  Candidate {
+    uuid CandidateId PK
+  }
+  CandidateJobMatch {
+    uuid CandidateJobMatchId PK
+  }
+  Commission {
+    uuid CommissionId PK
+  }
+  Job {
+    uuid JobId PK
+  }
+  ReplacementSlot {
+    uuid ReplacementSlotId PK
+  }
+  ServiceFee {
+    uuid ServiceFeeId PK
+  }
+  Submission {
+    uuid SubmissionId PK
+  }
+  Warranty {
+    uuid WarrantyId PK
+  }
+  Application ||--o{ AiMatchResult : "ApplicationId"
+  MatchTierConfig |o--o{ AiMatchResult : "MatchTier"
+  Candidate ||--o{ Application : "CandidateId"
+  Job ||--o{ Application : "JobId"
+  ReplacementSlot |o--o{ Application : "ReplacementSlotId"
+  Submission |o--o{ Application : "AcceptedSubmissionId,CandidateId,JobId"
+  Application ||--o{ ApplicationStatusHistory : "ApplicationId"
+  Application ||--|o Attribution : "ApplicationId"
+  MatchTierConfig |o--o{ CandidateJobMatch : "MatchTier"
+  Placement |o--o{ Commission : "PlacementId"
+  SourcingDelivery |o--o{ Commission : "SourcingDeliveryId"
+  Application ||--o{ Interview : "ApplicationId"
+  Interview ||--o{ InterviewParticipant : "InterviewId"
+  AppUser ||--o{ InterviewParticipant : "UserId"
+  Interview ||--o{ InterviewStatusHistory : "InterviewId"
+  Application ||--o{ Offer : "ApplicationId"
+  Offer ||--o{ OfferApproval : "OfferId"
+  AppUser ||--o{ OfferApproval : "UserId"
+  Application ||--|o Placement : "ApplicationId"
+  ReplacementSlot |o--o{ Placement : "ReplacementSlotId"
+  Offer ||--o{ Placement : "OfferId,ApplicationId"
+  Placement ||--|o Probation : "PlacementId"
+  Placement |o--o{ ReplacementSlot : "FilledByPlacementId"
+  Placement ||--o{ ReplacementSlot : "OriginalPlacementId"
+  Placement |o--|o ServiceFee : "PlacementId"
+  Application ||--o{ SourcingDelivery : "ApplicationId"
+  Job ||--o{ SourcingDelivery : "JobId"
+  Placement ||--|o Warranty : "PlacementId"

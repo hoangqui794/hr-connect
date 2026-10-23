@@ -1,0 +1,36 @@
+---
+title: Screen flow – Platform Admin console (/admin)
+config:
+  layout: elk
+---
+flowchart LR
+  admin_dash["<b>Admin overview</b><br/><small>dashboard</small>"]
+  admin_appr["<b>Approvals (companies, affiliates)</b><br/><small>approvals</small>"]
+  admin_idc["<b>Candidate identity claims</b><br/><small>candidate-identity-claims</small>"]
+  admin_jobs["<b>Job review</b><br/><small>jobs</small>"]
+  admin_tpl["<b>JD templates</b><br/><small>job-templates</small>"]
+  admin_users["<b>Users</b><br/><small>users</small>"]
+  admin_rbac["<b>Roles & permissions / user authorization</b><br/><small>roles-permissions · user-authorization</small>"]
+  admin_st["<b>Service types</b><br/><small>service-types</small>"]
+  admin_cr["<b>Commission rules</b><br/><small>commission-rules</small>"]
+  admin_set["<b>Business settings</b><br/><small>settings</small>"]
+  admin_fin["<b>Finance: posting fees, service fees, deposits, commissions, payouts</b><br/><small>finance · payouts</small>"]
+  admin_disp["<b>Disputes (empty state, FE pending)</b><br/><small>disputes</small>"]
+  admin_rep["<b>Reports</b><br/><small>reports</small>"]
+  admin_audit["<b>Audit trail</b><br/><small>audit-trail</small>"]
+  admin_contact["<b>Contact requests</b><br/><small>contact-requests</small>"]
+  admin_dash --> admin_appr
+  admin_dash --> admin_idc
+  admin_dash --> admin_jobs
+  admin_jobs --> admin_tpl
+  admin_dash --> admin_users
+  admin_users --> admin_rbac
+  admin_dash --> admin_st
+  admin_st --> admin_cr
+  admin_dash --> admin_set
+  admin_dash --> admin_fin
+  admin_dash --> admin_disp
+  admin_dash --> admin_rep
+  admin_dash --> admin_audit
+  admin_dash --> admin_contact
+  classDef default fill:#EEF5EC,stroke:#1B365D,color:#1F2A3C

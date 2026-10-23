@@ -67,7 +67,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/admin/commission-rules', label: 'Quy tắc hoa hồng', icon: <DollarOutlined /> },
     ],
   },
-  { group: 'Tài chính', items: [{ to: '/admin/payouts', label: 'Tài chính MF-05', icon: <BankOutlined /> }] },
+  { group: 'Tài chính', items: [{ to: '/admin/payouts', label: 'Tài chính', icon: <BankOutlined /> }] },
   {
     group: 'Giám sát',
     items: [
@@ -113,7 +113,7 @@ export const AdminLayout: React.FC = () => {
           const jobIndex = items.findIndex((i) => i.to === '/admin/jobs');
           const templateItem: NavItem = {
             to: '/admin/job-templates',
-            label: 'Mẫu JD',
+            label: 'Mẫu tuyển dụng',
             icon: <BookOutlined />,
           };
           if (jobIndex >= 0) {

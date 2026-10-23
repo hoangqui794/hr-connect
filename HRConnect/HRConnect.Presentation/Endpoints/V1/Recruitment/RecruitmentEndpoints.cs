@@ -1,3 +1,4 @@
+using HRConnect.Presentation.ErrorHandling;
 using System;
 using System.Security.Claims;
 using FluentValidation;
@@ -101,7 +102,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -148,7 +149,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
         })
         .WithName("StartApplicationScreening")
@@ -171,6 +172,7 @@ public static class RecruitmentEndpoints
             [FromQuery] int pageSize = 10,
             [FromQuery] string? sortBy = null,
             [FromQuery] string? sortDirection = null,
+            [FromQuery] string? serviceTypeCode = null,
             [FromServices] ISender sender = null!,
             ClaimsPrincipal user = null!,
             CancellationToken cancellationToken = default) =>
@@ -206,7 +208,8 @@ public static class RecruitmentEndpoints
                     Page: page,
                     PageSize: pageSize,
                     SortBy: sortBy,
-                    SortDirection: sortDirection
+                    SortDirection: sortDirection,
+                    ServiceTypeCode: serviceTypeCode
                 );
 
                 var response = await sender.Send(query, cancellationToken);
@@ -498,7 +501,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -549,7 +552,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (ForbiddenException ex)
             {
@@ -620,7 +623,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -683,7 +686,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -822,7 +825,7 @@ public static class RecruitmentEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {

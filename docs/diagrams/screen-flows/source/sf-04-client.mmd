@@ -1,0 +1,28 @@
+---
+title: Screen flow – Client Company portal (/client)
+config:
+  layout: elk
+---
+flowchart LR
+  client_dash["<b>Client overview</b><br/><small>dashboard</small>"]
+  client_comp["<b>Company profile & verification</b><br/><small>company</small>"]
+  client_cjobs["<b>My jobs</b><br/><small>jobs</small>"]
+  client_create["<b>Create / edit job (wizard)</b><br/><small>jobs/create · jobs/:id/edit</small>"]
+  client_agr["<b>Service agreements (accept, OTP sign)</b><br/><small>agreements</small>"]
+  client_src["<b>Sourcing CV deliveries</b><br/><small>jobs/:jobId/sourcing</small>"]
+  client_cands["<b>Candidates (Kanban, filter by service)</b><br/><small>candidates</small>"]
+  client_io["<b>Interviews & offers</b><br/><small>interviews-offers</small>"]
+  client_plc["<b>Placement detail</b><br/><small>placements/:placementId</small>"]
+  client_war["<b>Warranty & resignations</b><br/><small>warranty</small>"]
+  client_dash -->|"verify company"| client_comp
+  client_dash --> client_cjobs
+  client_cjobs -->|"new / edit"| client_create
+  client_create -->|"submit for review"| client_cjobs
+  client_cjobs -->|"agreement sent by HR"| client_agr
+  client_cjobs -->|"Sourcing job"| client_src
+  client_dash --> client_cands
+  client_cands -->|"schedule / offer"| client_io
+  client_io -->|"confirm start work"| client_plc
+  client_plc -->|"report resignation"| client_war
+  client_dash --> client_war
+  classDef default fill:#E6F0FA,stroke:#1B365D,color:#1F2A3C

@@ -1,0 +1,70 @@
+---
+title: HR Connect – Package Diagram
+config:
+  layout: elk
+---
+flowchart LR
+  subgraph FE["HRConnect-FE (React + TypeScript)"]
+    direction TB
+    FE0["app · routes"]
+    FE1["pages · features (portals per role)"]
+    FE2["components"]
+    FE3["services (Axios API clients)"]
+    FE4["stores (Zustand) · hooks"]
+    FE5["i18n · types · constants"]
+  end
+  subgraph PRES["HRConnect.Presentation"]
+    direction TB
+    PRES0["Endpoints/V1 (Jobs, Recruitment, Finance, Admin, …)"]
+    PRES1["Endpoints/Internal (AI callback)"]
+    PRES2["Hubs (SignalR NotificationHub)"]
+    PRES3["Authorization · Middleware · RateLimiting"]
+    PRES4["ErrorHandling · HealthChecks · Swagger"]
+  end
+  subgraph APP["HRConnect.Application"]
+    direction TB
+    APP0["Features/Auth · Users · Admin"]
+    APP1["Features/Companies · Jobs (MF-01)"]
+    APP2["Features/Candidates · Affiliates · SubmissionConsents · CandidateDuplicates (MF-02)"]
+    APP3["Features/InternalHr · Recruitment (MF-03)"]
+    APP4["Features/Interviews · Offers · Placements (MF-04)"]
+    APP5["Features/Finance · CommissionRules · Disputes (MF-05)"]
+    APP6["Features/Notifications · Reports · Contact · Settings"]
+    APP7["Common/Interfaces · Models · Exceptions"]
+  end
+  subgraph DOM["HRConnect.Domain"]
+    direction TB
+    DOM0["Entities (71)"]
+    DOM1["Constants (states, reason and error codes)"]
+  end
+  subgraph INF["HRConnect.Infrastructure"]
+    direction TB
+    INF0["Persistence (DbContext, Migrations, Seed)"]
+    INF1["Repositories"]
+    INF2["Authentication (JWT)"]
+    INF3["Services/Storage (R2) · Email (Resend)"]
+    INF4["Services/Integration (AI client, dispatcher)"]
+    INF5["Services/Agreements · CvBuilder · Finance workers"]
+  end
+  subgraph AI["ai-service-v2 (Python FastAPI)"]
+    direction TB
+    AI0["main · pipeline · scoring_jobs"]
+    AI1["documents · semantic (Sentence-BERT)"]
+    AI2["llm · verification"]
+    AI3["hrconnect_client (callback)"]
+  end
+  FE -.->|"HTTP REST + SignalR"| PRES
+  PRES -.->|"uses (MediatR)"| APP
+  PRES -.->|"registers (DI)"| INF
+  APP -.->|"uses"| DOM
+  INF -.->|"implements interfaces"| APP
+  INF -.->|"maps entities"| DOM
+  INF -.->|"HTTP score request"| AI
+  AI -.->|"HTTP callback /internal"| PRES
+  classDef default fill:#FFFFFF,stroke:#1B365D,color:#1F2A3C
+  style FE fill:#F2F7FD,stroke:#1B365D
+  style PRES fill:#F1F8F2,stroke:#2F6B3A
+  style APP fill:#F1F8F2,stroke:#2F6B3A
+  style DOM fill:#F1F8F2,stroke:#2F6B3A
+  style INF fill:#F1F8F2,stroke:#2F6B3A
+  style AI fill:#F7F2FD,stroke:#6B46C1

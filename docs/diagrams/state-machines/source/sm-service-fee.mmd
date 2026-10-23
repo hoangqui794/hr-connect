@@ -1,0 +1,14 @@
+---
+title: ServiceFee (MF-05)
+---
+stateDiagram-v2
+  direction LR
+  [*] --> PENDING : placement / deposit / settlement created
+  PENDING --> DUE : due date reached (worker)
+  DUE --> OVERDUE : payment deadline passed
+  PENDING --> PAID : Admin records payment
+  DUE --> PAID : Admin records payment
+  OVERDUE --> PAID : Admin records payment
+  PENDING --> CANCELLED : not started / voided
+  PAID --> [*]
+  CANCELLED --> [*]

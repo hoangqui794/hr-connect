@@ -1,0 +1,25 @@
+---
+title: MF-01 · Client creates and submits a job
+---
+sequenceDiagram
+  autonumber
+  actor CL as Client Company User
+  participant FE as Web App
+  participant API as JobEndpoints
+  participant H as CreateJob / SubmitJob handlers
+  participant DB as PostgreSQL
+  CL->>FE: Fill job form, MUST/SHOULD requirements, proposed terms
+  FE->>API: POST /api/v1/jobs (JWT)
+  API->>H: Send(CreateJobCommand)
+  H->>DB: Check company VERIFIED and can_submit for the service type
+  H->>DB: Insert Job (DRAFT) + JobRequirements, AuditLog
+  API-->>FE: 201 Created
+  CL->>FE: Submit for review
+  FE->>API: POST /api/v1/jobs/{id}/submit (ConcurrencyToken)
+  API->>H: Send(SubmitJobCommand)
+  alt no MUST_HAVE requirement or stale token
+  API-->>FE: 400 / 409 with error code
+  else valid
+  H->>DB: Job → PENDING_REVIEW, JobStatusHistory, AuditLog
+  API-->>FE: 200 OK
+  end

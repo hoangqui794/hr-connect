@@ -164,7 +164,8 @@ public class ApplicationRepository : IApplicationRepository
         int pageSize,
         CancellationToken cancellationToken = default,
         string? sortBy = null,
-        string? sortDirection = null)
+        string? sortDirection = null,
+        string? serviceTypeCode = null)
     {
         var query = _context.Applications.AsNoTracking();
 
@@ -184,8 +185,20 @@ public class ApplicationRepository : IApplicationRepository
 
         if (!string.IsNullOrWhiteSpace(status))
         {
-            var normalizedStatus = status.Trim().ToUpper();
-            query = query.Where(a => a.Status == normalizedStatus);
+            // One status, or several separated by commas (the Client stage strip groups e.g. BACKUP,REJECTED).
+            var statuses = status.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(s => s.ToUpperInvariant())
+                .Distinct()
+                .ToList();
+            query = statuses.Count == 1
+                ? query.Where(a => a.Status == statuses[0])
+                : query.Where(a => statuses.Contains(a.Status));
+        }
+
+        if (!string.IsNullOrWhiteSpace(serviceTypeCode))
+        {
+            var code = serviceTypeCode.Trim().ToUpperInvariant();
+            query = query.Where(a => a.Job.ServiceType != null && a.Job.ServiceType.Code == code);
         }
 
         if (!string.IsNullOrWhiteSpace(candidateName))

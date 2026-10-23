@@ -1,0 +1,12 @@
+---
+title: Warranty (MF-05)
+---
+stateDiagram-v2
+  direction LR
+  [*] --> ACTIVE : placement started (HEADHUNT_COD)
+  ACTIVE --> CLAIMED : Client reports resignation
+  CLAIMED --> ACTIVE : HR rejects claim
+  CLAIMED --> VOIDED : HR confirms resignation
+  ACTIVE --> PASSED : warranty period ends (worker)
+  PASSED --> [*]
+  VOIDED --> [*]

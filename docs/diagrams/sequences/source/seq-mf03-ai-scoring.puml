@@ -1,0 +1,24 @@
+@startuml seq-mf03-ai-scoring
+autonumber
+skinparam sequenceMessageAlign center
+title MF-03 · Asynchronous AI scoring
+control "Mf03ScoringDispatcher" as W
+control "AI Matching Service v2" as AI
+cloud "Google Gemini" as LLM
+boundary "AiIntegration endpoints" as API
+database "PostgreSQL" as DB
+actor "Internal HR" as HR
+W -> DB : Load PENDING AiMatchResult → PROCESSING
+W -> AI : POST /score (CV file, JD, requirements)
+AI -> AI : Extract text, Sentence-BERT similarity
+AI -> LLM : Assess each MUST/SHOULD requirement with evidence
+LLM --> AI : JSON assessment
+AI -> AI : Verify quotes exist in CV, score 0–100 and tier
+AI -> API : POST /internal/ai-results (callback)
+alt success
+API -> DB : AiMatchResult COMPLETED: score, tier, per-requirement results
+API -> HR : Ranked list updates in real time
+else error / retries exhausted
+API -> DB : FAILED + FailureCode; HR can retry
+end
+@enduml

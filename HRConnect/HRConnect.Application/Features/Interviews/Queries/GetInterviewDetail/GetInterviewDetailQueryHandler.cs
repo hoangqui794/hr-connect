@@ -110,6 +110,8 @@ public class GetInterviewDetailQueryHandler : IRequestHandler<GetInterviewDetail
             RecordedBy = request.IsCandidate ? null : interview.RecordedBy,
             RecordedByName = request.IsCandidate ? null : interview.RecordedByNavigation?.DisplayName ?? interview.RecordedByNavigation?.Email,
             RecordedAt = request.IsCandidate ? null : interview.RecordedAt,
+            CandidateAttendanceStatus = interview.CandidateAttendanceStatus,
+            CandidateRespondedAt = interview.CandidateRespondedAt,
             CreatedAt = interview.CreatedAt,
             UpdatedAt = interview.UpdatedAt,
             ConcurrencyToken = request.IsCandidate ? null : interview.ConcurrencyToken,

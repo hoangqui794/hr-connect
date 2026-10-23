@@ -64,6 +64,9 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
             request.Location,
             Mf04InputPolicy.InterviewLocationMaxLength,
             "Địa điểm phỏng vấn");
+        var meetingLink = request.MeetingLink == null
+            ? null
+            : Mf04InputPolicy.NormalizeMeetingLink(request.MeetingLink);
 
         var interview = await _interviewRepository.GetByIdForUpdateAsync(request.InterviewId, cancellationToken);
         if (interview == null)
@@ -103,11 +106,21 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
             throw new ForbiddenException("Bạn không có quyền dời lịch phỏng vấn.");
         }
 
+        var interviewType = Mf04InputPolicy.NormalizeInterviewType(interview.InterviewType);
+        var effectiveLocation = request.Location == null ? interview.Location : location;
+        var effectiveMeetingLink = request.MeetingLink == null ? interview.MeetingLink : meetingLink;
+        effectiveMeetingLink = Mf04InputPolicy.NormalizeMeetingLink(effectiveMeetingLink);
+        Mf04InputPolicy.EnsureInterviewVenue(interviewType, effectiveLocation, effectiveMeetingLink);
+
         var oldStatus = interview.Status;
         var oldScheduledAt = interview.ScheduledAt;
 
         interview.ScheduledAt = request.NewScheduledAt;
         interview.Status = InterviewStates.Scheduled;
+        // A confirmation applies to one concrete timeslot. Once the company moves
+        // the interview, the Candidate must explicitly confirm the new time.
+        interview.CandidateAttendanceStatus = null;
+        interview.CandidateRespondedAt = null;
 
         if (request.DurationMinutes.HasValue)
         {
@@ -121,8 +134,10 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
 
         if (request.MeetingLink != null)
         {
-            interview.MeetingLink = request.MeetingLink;
+            interview.MeetingLink = meetingLink;
         }
+
+        interview.InterviewType = interviewType;
 
         var newConcurrencyToken = Guid.NewGuid();
         interview.ConcurrencyToken = newConcurrencyToken;

@@ -68,6 +68,7 @@ dist-ssr/
 playwright-report/
 test-results/
 blob-report/
+artifacts/
 
 **/swagger.json
 ## Local MF-03 E2E runtime

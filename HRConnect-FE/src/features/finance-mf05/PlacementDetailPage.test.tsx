@@ -163,7 +163,7 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
     expect(screen.getByText(/Tiến độ bảo hành/i)).toBeInTheDocument();
 
     // Financial link
-    expect(screen.getByText(/Liên kết Tài chính & Hoa hồng/i)).toBeInTheDocument();
+    expect(screen.getByText(/Phí dịch vụ và hoa hồng/i)).toBeInTheDocument();
     expect(screen.getByText(/36\.000\.000/)).toBeInTheDocument();
     expect(screen.getByText(/10\.800\.000/)).toBeInTheDocument();
 

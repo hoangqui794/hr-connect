@@ -1,0 +1,242 @@
+name: CI — Quality Gates
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - 'feature/**'
+      - 'fix/**'
+  pull_request:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  delivery-scripts:
+    name: Delivery / Validate deployment scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Validate Render deployment workflow
+        run: bash .github/scripts/deploy-render.test.sh
+
+  backend:
+    name: Backend / Build & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('HRConnect/**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore HRConnect/HRConnect.sln
+
+      - name: Build release binaries
+        run: dotnet build HRConnect/HRConnect.sln --configuration Release --no-restore
+
+      - name: Run backend tests with coverage
+        run: >-
+          dotnet test HRConnect/HRConnect.sln
+          --configuration Release
+          --no-build
+          --logger "trx;LogFileName=backend-tests.trx"
+          --results-directory artifacts/backend-tests
+          --collect "XPlat Code Coverage"
+
+      - name: Publish backend test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results-${{ github.run_id }}
+          path: artifacts/backend-tests
+          if-no-files-found: warn
+          retention-days: 14
+
+  frontend:
+    name: Frontend / Lint, test & build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: HRConnect-FE
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: HRConnect-FE/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Enforce lint rules
+        run: npm run lint
+
+      - name: Run frontend tests
+        run: >-
+          npm test --
+          --reporter=default
+          --reporter=junit
+          --outputFile.junit=../artifacts/frontend-tests/junit.xml
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Publish frontend test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-results-${{ github.run_id }}
+          path: artifacts/frontend-tests
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish production bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-${{ github.sha }}
+          path: HRConnect-FE/dist
+          if-no-files-found: error
+          retention-days: 7
+
+  ai-service:
+    name: AI service / Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: ai-service-v2
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: ai-service-v2/requirements.txt
+
+      - name: Install CPU runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements.txt
+
+      - name: Validate Python modules
+        run: python -m compileall -q app tests
+
+      - name: Run AI service tests
+        run: python -m pytest -q --junitxml=../artifacts/ai-tests/junit.xml
+
+      - name: Publish AI test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-test-results-${{ github.run_id }}
+          path: artifacts/ai-tests
+          if-no-files-found: warn
+          retention-days: 14
+
+  backend-container:
+    name: Backend / Validate production image
+    needs: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: HRConnect
+          file: HRConnect/Dockerfile
+          push: false
+          tags: hrconnect/backend:${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+  ci-success:
+    name: CI / Required gate
+    if: always()
+    needs:
+      - backend
+      - frontend
+      - ai-service
+      - backend-container
+      - delivery-scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify every quality gate passed
+        env:
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          AI_RESULT: ${{ needs.ai-service.result }}
+          CONTAINER_RESULT: ${{ needs.backend-container.result }}
+          DELIVERY_RESULT: ${{ needs.delivery-scripts.result }}
+        run: |
+          printf 'Backend: %s\nFrontend: %s\nAI service: %s\nContainer: %s\nDelivery scripts: %s\n' \
+            "$BACKEND_RESULT" "$FRONTEND_RESULT" "$AI_RESULT" "$CONTAINER_RESULT" "$DELIVERY_RESULT"
+
+          if [[ "$BACKEND_RESULT" != success \
+            || "$FRONTEND_RESULT" != success \
+            || "$AI_RESULT" != success \
+            || "$CONTAINER_RESULT" != success \
+            || "$DELIVERY_RESULT" != success ]]; then
+            echo '::error::At least one required quality gate failed.'
+            exit 1
+          fi

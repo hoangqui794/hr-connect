@@ -1,0 +1,77 @@
+@startuml cls-mf03-ai-screening
+title MF-03 · AI matching and screening
+left to right direction
+hide empty members
+class AiIntegrationEndpoints <<endpoint>> {
+  +POST /internal/ai-results
+  +GET /internal/jobs/{id}/jd
+}
+class RecruitmentEndpoints <<endpoint>> {
+  +POST /jobs/{jid}/applications/{aid}/start-screening
+  +PATCH /jobs/{jid}/applications/{aid}/status
+}
+class Mf03ScoringTrigger <<service>> {
+  +TriggerScoringAsync()
+}
+class Mf03ScoringDispatcher <<worker>> {
+  +DispatchBatchAsync()
+  retry with exponential back-off
+}
+class HRConnectClient <<service>> {
+  calls AI service /score
+}
+class RetryAiScoringCommand <<handler>> {
+  +Handle(applicationId)
+}
+class UpdateApplicationScreeningStatusCommandHandler <<handler>> {
+  +Handle(SHORTLISTED | BACKUP | REJECTED)
+}
+class ScreeningPolicy <<policy>> {
+  +CanScreen(role, serviceType)
+}
+class Mf04ConcurrencyGuard <<policy>> {
+  +EnsureMatches(token)
+}
+class SourcingDeliveryHandlers <<handler>> {
+  Deliver · Decide · Replace · ReviewRejection
+}
+class SourcingAutoAcceptService <<service>> {
+  +AutoAcceptAsync()
+}
+class AiMatchResult <<entity>> {
+  +AttemptNo · Status
+  +MatchScore · MatchTier
+  +MustHaveResult · ShouldHaveResult
+  +FailureCode
+}
+class MatchTierConfig <<entity>> {
+  +TierCode · MinScore · MaxScore
+  +ColorCode
+}
+class Application <<entity>> {
+  +Status · StatusReasonCode
+  +ConcurrencyToken
+}
+class SourcingDelivery <<entity>> {
+  +Status · ReviewDueAt
+  +RejectReasonCode · ReplacedByDeliveryId
+}
+interface IMf03ScoringTrigger <<interface>> {
+  +TriggerScoringAsync()
+}
+Mf03ScoringTrigger ..|> IMf03ScoringTrigger
+Mf03ScoringTrigger --> AiMatchResult : creates PENDING
+Mf03ScoringDispatcher ..> HRConnectClient
+Mf03ScoringDispatcher --> AiMatchResult : PROCESSING / FAILED
+AiIntegrationEndpoints --> AiMatchResult : COMPLETED
+RetryAiScoringCommand ..> Mf03ScoringTrigger
+AiMatchResult ..> MatchTierConfig : tier by score
+RecruitmentEndpoints ..> UpdateApplicationScreeningStatusCommandHandler : sends
+UpdateApplicationScreeningStatusCommandHandler ..> ScreeningPolicy
+UpdateApplicationScreeningStatusCommandHandler ..> Mf04ConcurrencyGuard
+UpdateApplicationScreeningStatusCommandHandler --> Application : updates
+Application --> AiMatchResult : 0..*
+SourcingDeliveryHandlers --> SourcingDelivery
+SourcingAutoAcceptService --> SourcingDelivery : AUTO_ACCEPTED
+Application --> SourcingDelivery : 0..*
+@enduml

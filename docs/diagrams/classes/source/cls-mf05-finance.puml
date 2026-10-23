@@ -1,0 +1,89 @@
+@startuml cls-mf05-finance
+title MF-05 · Warranty, service fee, commission and payout
+left to right direction
+hide empty members
+class FinanceEndpoints <<endpoint>> {
+  +POST /placements/{id}/resignation · /resolve
+  +POST /admin/service-fees/{id}/record-payment
+  +POST /admin/commissions/{id}/approve · /payouts
+}
+class PlacementFinanceService <<service>> {
+  +InitializeAsync(placement, context)
+  +CalculateCommission(rule, fee)
+}
+class WarrantyProgressService <<service>> {
+  +CompleteWarrantyAsync()
+  +MarkServiceFeeDueAsync()
+  +MarkServiceFeeOverdueAsync()
+  +ExpireReplacementSlotAsync()
+}
+class WarrantyProgressWorker <<worker>> {
+  daily run
+}
+class SourcingFinanceService <<service>> {
+  +EnsureDepositAsync()
+  +OnDeliveryCountedAsync()
+  +SettleAsync()
+}
+class AffiliateCommissionHoldService <<service>> {
+  holds commissions of a locked affiliate
+}
+class FinanceCommands <<handler>> {
+  RecordServiceFeePayment · ApproveCommission
+  AdjustCommission · CancelCommission
+  RecordPayout · SettleSourcingJob
+}
+class ResignationHandlers <<handler>> {
+  ReportResignation · ResolveResignation
+}
+class Warranty <<entity>> {
+  +StartDate · EndDate
+  +Status
+}
+class ServiceFee <<entity>> {
+  +Kind · BaseSalary · FeeMultiplier
+  +Amount · DueDate · Status
+}
+class ReplacementSlot <<entity>> {
+  +Status · ExpiresAt
+  +FilledByPlacementId
+}
+class CommissionRule <<entity>> {
+  +RateType · RateValue
+  +MilestoneType · WarrantyRequired
+}
+class Commission <<entity>> {
+  +BaseAmount · Amount · Status
+  +RuleSnapshot · CalculationSnapshot
+}
+class CommissionAdjustment <<entity>> {
+  +OldAmount · NewAmount · Reason
+}
+class Payout <<entity>> {
+  +Amount · TransactionReference
+  +Status · AttemptNo
+}
+interface IPlacementFinanceService <<interface>> {
+  +InitializeAsync()
+}
+PlacementFinanceService ..|> IPlacementFinanceService
+PlacementFinanceService --> Warranty : creates
+PlacementFinanceService --> ServiceFee : creates
+PlacementFinanceService --> Commission : creates
+PlacementFinanceService ..> CommissionRule : reads
+WarrantyProgressWorker ..> WarrantyProgressService
+WarrantyProgressService --> Warranty : PASSED
+WarrantyProgressService --> ServiceFee : DUE / OVERDUE
+WarrantyProgressService --> ReplacementSlot : EXPIRED
+FinanceEndpoints ..> FinanceCommands : sends
+FinanceEndpoints ..> ResignationHandlers : sends
+ResignationHandlers --> Warranty : CLAIMED / VOIDED
+ResignationHandlers --> ReplacementSlot : opens
+FinanceCommands --> Commission : approves
+FinanceCommands --> Payout : records
+AffiliateCommissionHoldService --> Commission : ON_HOLD
+SourcingFinanceService --> ServiceFee : deposit / settlement
+Commission *-- CommissionAdjustment : 0..*
+Commission *-- Payout : 0..*
+ServiceFee --> ReplacementSlot : 0..*
+@enduml

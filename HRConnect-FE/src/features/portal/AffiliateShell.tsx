@@ -59,17 +59,17 @@ const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: 'Ghi nhận',
     items: [
-      { to: '/affiliate/attributions', label: 'Attribution', icon: <SafetyCertificateOutlined /> },
-      { to: '/affiliate/disputes', label: 'Khiếu nại nguồn (SF-04)', icon: <SolutionOutlined /> },
+      { to: '/affiliate/attributions', label: 'Ghi nhận nguồn', icon: <SafetyCertificateOutlined /> },
+      { to: '/affiliate/disputes', label: 'Khiếu nại nguồn', icon: <SolutionOutlined /> },
     ],
   },
+  { group: 'Thu nhập', items: [{ to: '/affiliate/commissions', label: 'Hoa hồng & chi trả', icon: <DollarOutlined /> }] },
   {
     group: 'Cá nhân & Cài đặt',
     items: [
       { to: '/affiliate/profile', label: 'Hồ sơ & Tài khoản', icon: <UserOutlined /> },
     ],
   },
-  { group: 'Chưa có API', items: [{ to: '/affiliate/commissions', label: 'Hoa hồng & chi trả', icon: <DollarOutlined />, muted: true }] },
 ];
 
 const ALL_ITEMS = NAV.flatMap((g) => g.items.map((i) => ({ ...i, group: g.group })));

@@ -20,8 +20,8 @@ describe('applicationStatusOf', () => {
 });
 
 describe('formatHeadcount', () => {
-  it('counts CVs for Sourcing and people otherwise', () => {
-    expect(formatHeadcount({ serviceTypeCode: 'CV_SOURCING', quantity: 1, sourcingTarget: 3 })).toBe('3 CV');
+  it('uses clear Vietnamese units for profile sourcing and result-based recruitment', () => {
+    expect(formatHeadcount({ serviceTypeCode: 'CV_SOURCING', quantity: 1, sourcingTarget: 3 })).toBe('3 hồ sơ');
     expect(formatHeadcount({ serviceTypeCode: 'HEADHUNT_COD', quantity: 2, sourcingTarget: null })).toBe('2 người');
   });
 });

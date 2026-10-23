@@ -52,7 +52,7 @@ describe('CandidateApplicationsPage', () => {
     fireEvent.change(await screen.findByLabelText('Tìm theo công việc hoặc doanh nghiệp'), { target: { value: 'Backend' } });
     fireEvent.keyDown(screen.getByLabelText('Tìm theo công việc hoặc doanh nghiệp'), { key: 'Enter', code: 'Enter' });
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Lọc theo nguồn ứng tuyển' }));
-    fireEvent.click(await screen.findByText('Affiliate giới thiệu'));
+    fireEvent.click(await screen.findByText('Đối tác tuyển dụng giới thiệu'));
 
     await waitFor(() => expect(candidateApplicationsApi.list).toHaveBeenLastCalledWith(expect.objectContaining({
       search: 'Backend',

@@ -1,0 +1,30 @@
+---
+title: Screen flow – Affiliate portal (/affiliate)
+config:
+  layout: elk
+---
+flowchart LR
+  affiliate_dash["<b>Affiliate home</b><br/><small>dashboard</small>"]
+  affiliate_ajobs["<b>Partner jobs</b><br/><small>jobs</small>"]
+  affiliate_ajobd["<b>Job detail + commission estimate</b><br/><small>jobs/:jobId</small>"]
+  affiliate_submit["<b>Submit candidate</b><br/><small>submit-candidate</small>"]
+  affiliate_subs["<b>My submissions</b><br/><small>submissions</small>"]
+  affiliate_subd["<b>Submission detail (resend consent)</b><br/><small>submissions/:submissionId</small>"]
+  affiliate_cands["<b>My candidate pool</b><br/><small>candidates</small>"]
+  affiliate_attr["<b>Attributions</b><br/><small>attributions</small>"]
+  affiliate_disp["<b>Disputes</b><br/><small>disputes</small>"]
+  affiliate_comm["<b>Commissions & payouts</b><br/><small>commissions</small>"]
+  affiliate_perf["<b>Performance</b><br/><small>performance</small>"]
+  affiliate_prof["<b>Profile & bank account</b><br/><small>profile</small>"]
+  affiliate_dash --> affiliate_ajobs
+  affiliate_ajobs -->|"open"| affiliate_ajobd
+  affiliate_ajobd -->|"refer"| affiliate_submit
+  affiliate_cands -->|"reuse candidate"| affiliate_submit
+  affiliate_submit -->|"submitted"| affiliate_subs
+  affiliate_subs -->|"open"| affiliate_subd
+  affiliate_subd -->|"blocked duplicate → dispute"| affiliate_disp
+  affiliate_dash --> affiliate_attr
+  affiliate_dash --> affiliate_comm
+  affiliate_dash --> affiliate_perf
+  affiliate_dash --> affiliate_prof
+  classDef default fill:#F3E8FF,stroke:#1B365D,color:#1F2A3C

@@ -48,6 +48,7 @@ public class GetRecruitmentApplicationsQueryHandlerTests
                 10,
                 It.IsAny<CancellationToken>(),
                 null,
+                null,
                 null))
             .ReturnsAsync(([app], 1));
 
@@ -111,6 +112,7 @@ public class GetRecruitmentApplicationsQueryHandlerTests
                 10,
                 It.IsAny<CancellationToken>(),
                 null,
+                null,
                 null))
             .ReturnsAsync(([app], 1));
 
@@ -128,7 +130,7 @@ public class GetRecruitmentApplicationsQueryHandlerTests
         result.Data.Total.Should().Be(1);
         _companyUserRepositoryMock.Verify(r => r.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _applicationRepositoryMock.Verify(r => r.GetRecruitmentApplicationsAsync(
-            null, null, null, null, null, null, 1, 10, It.IsAny<CancellationToken>(), null, null), Times.Once);
+            null, null, null, null, null, null, 1, 10, It.IsAny<CancellationToken>(), null, null, null), Times.Once);
     }
 
     [Fact]
@@ -212,7 +214,7 @@ public class GetRecruitmentApplicationsQueryHandlerTests
 
         _applicationRepositoryMock
             .Setup(r => r.GetRecruitmentApplicationsAsync(
-                null, null, null, null, null, null, 1, 10, It.IsAny<CancellationToken>(), null, null))
+                null, null, null, null, null, null, 1, 10, It.IsAny<CancellationToken>(), null, null, null))
             .ReturnsAsync(([app], 1));
 
         var query = new GetRecruitmentApplicationsQuery(

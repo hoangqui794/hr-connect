@@ -75,7 +75,7 @@ describe('AffiliateSubmissionDetailPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Nguyễn Văn A' })).toBeInTheDocument();
     expect(screen.getByText('candidate@example.com')).toBeInTheDocument();
-    expect(screen.getByText('Application, Attribution và MF03 chỉ được tạo sau khi Candidate đồng ý.')).toBeInTheDocument();
+    expect(screen.getByText('Hồ sơ ứng tuyển, ghi nhận nguồn và chấm điểm AI chỉ được tạo sau khi ứng viên đồng ý.')).toBeInTheDocument();
     expect(affiliateApi.submissionDetail).toHaveBeenCalledWith('submission-1');
   });
 

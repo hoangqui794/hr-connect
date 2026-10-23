@@ -155,14 +155,81 @@ export const candidateStage = (
 
 export const SUBMISSION_STATUS: Record<string, { label: string; tone: Tone; hint: string }> = {
   PENDING_CONSENT: { label: 'Chờ ứng viên xác nhận', tone: 'warning', hint: 'Đã gửi email, ứng viên có 48 giờ để đồng ý.' },
-  ACCEPTED: { label: 'Ứng viên đã đồng ý', tone: 'success', hint: 'Hồ sơ đã vào quy trình tuyển dụng và được ghi attribution cho bạn.' },
+  ACCEPTED: { label: 'Ứng viên đã đồng ý', tone: 'success', hint: 'Hồ sơ đã vào quy trình tuyển dụng và bạn được ghi nhận là người giới thiệu.' },
   CONSENT_REJECTED: { label: 'Ứng viên từ chối', tone: 'danger', hint: 'Ứng viên không đồng ý cho bạn giới thiệu.' },
   CONSENT_EXPIRED: { label: 'Hết hạn xác nhận', tone: 'neutral', hint: 'Ứng viên không trả lời trong hạn; hãy tạo lượt giới thiệu mới.' },
-  BLOCKED_DUPLICATE: { label: 'Bị chặn do trùng', tone: 'danger', hint: 'Ứng viên đã có hồ sơ trong tin này; attribution cũ được giữ nguyên.' },
+  BLOCKED_DUPLICATE: { label: 'Bị chặn do trùng', tone: 'danger', hint: 'Ứng viên đã có hồ sơ trong tin này; người giới thiệu trước vẫn được ghi nhận.' },
   JOB_UNAVAILABLE: { label: 'Tin không còn nhận hồ sơ', tone: 'neutral', hint: 'Job đã đóng hoặc không còn cho phép nhận hồ sơ.' },
 };
 
 export const submissionStatus = (s: string) => SUBMISSION_STATUS[s] ?? { label: s, tone: 'neutral' as Tone, hint: '' };
+
+export const candidateAiStatus = (status?: string | null) => {
+  const labels: Record<string, string> = {
+    PENDING: 'Đang chờ đánh giá',
+    PROCESSING: 'Đang đánh giá',
+    COMPLETED: 'Đã đánh giá',
+    FAILED: 'Chưa thể đánh giá',
+    SKIPPED: 'Không áp dụng',
+  };
+  return status ? labels[status.toUpperCase()] ?? 'Đã cập nhật' : 'Chưa có kết quả';
+};
+
+export const candidateAiTier = (tier?: string | null) => {
+  const labels: Record<string, string> = {
+    HIGH: 'Rất phù hợp',
+    MEDIUM: 'Khá phù hợp',
+    LOW: 'Cần cân nhắc',
+  };
+  return tier ? labels[tier.toUpperCase()] ?? 'Đã đánh giá' : '—';
+};
+
+export const candidateDocumentStatus = (status?: string | null) => {
+  const labels: Record<string, string> = {
+    ACTIVE: 'Đang sử dụng',
+    INACTIVE: 'Ngừng sử dụng',
+    DELETED: 'Đã xóa',
+    QUARANTINED: 'Đang kiểm tra',
+  };
+  return status ? labels[status.toUpperCase()] ?? 'Đã cập nhật' : '—';
+};
+
+export const candidateInterviewType = (type?: string | null) => {
+  const normalized = type?.trim().toUpperCase();
+  const labels: Record<string, string> = {
+    ONLINE: 'Trực tuyến',
+    OFFLINE: 'Trực tiếp',
+    ONSITE: 'Trực tiếp',
+    IN_PERSON: 'Trực tiếp',
+    PHONE: 'Qua điện thoại',
+    VIDEO: 'Trực tuyến',
+  };
+  return normalized ? labels[normalized] ?? type?.trim() ?? 'Phỏng vấn' : 'Phỏng vấn';
+};
+
+export const candidateInterviewStatus = (status?: string | null) => {
+  const labels: Record<string, string> = {
+    SCHEDULED: 'Đã lên lịch',
+    CONFIRMED: 'Đã xác nhận tham gia',
+    COMPLETED: 'Đã hoàn thành',
+    RESCHEDULED: 'Đã dời lịch',
+    CANCELLED: 'Đã hủy',
+    NO_SHOW: 'Vắng mặt',
+  };
+  return status ? labels[status.toUpperCase()] ?? 'Đã cập nhật' : 'Đã cập nhật';
+};
+
+export const candidateOfferStatus = (status?: string | null) => {
+  const labels: Record<string, string> = {
+    DRAFT: 'Đang chuẩn bị',
+    SENT: 'Chờ phản hồi',
+    ACCEPTED: 'Đã chấp nhận',
+    DECLINED: 'Đã từ chối',
+    EXPIRED: 'Đã hết hạn',
+    WITHDRAWN: 'Đã thu hồi',
+  };
+  return status ? labels[status.toUpperCase()] ?? 'Đã cập nhật' : 'Đã cập nhật';
+};
 
 export const ATTRIBUTION_STATUS: Record<string, { label: string; tone: Tone }> = {
   ACTIVE: { label: 'Đang hiệu lực', tone: 'success' },

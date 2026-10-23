@@ -1,3 +1,4 @@
+using HRConnect.Presentation.ErrorHandling;
 using System.Security.Claims;
 using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
@@ -565,7 +566,7 @@ public static class CandidateEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
         })
         .WithName("GetCandidateAffiliateCvs")
@@ -708,7 +709,7 @@ public static class CandidateEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
             catch (BadRequestException ex)
             {
@@ -749,7 +750,7 @@ public static class CandidateEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
         })
         .WithName("GetCandidateAffiliateCvUsages")
@@ -783,7 +784,7 @@ public static class CandidateEndpoints
             }
             catch (ConflictException ex)
             {
-                return Results.Conflict(new { success = false, message = ex.Message });
+                return ConflictResponse.From(ex);
             }
         })
         .WithName("GetCandidateAffiliateCvDetail")

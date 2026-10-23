@@ -60,7 +60,8 @@ public class GetRecruitmentApplicationsQueryHandler : IRequestHandler<GetRecruit
             pageSize,
             cancellationToken,
             sortBy: request.SortBy,
-            sortDirection: request.SortDirection);
+            sortDirection: request.SortDirection,
+            serviceTypeCode: request.ServiceTypeCode);
 
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
@@ -89,6 +90,7 @@ public class GetRecruitmentApplicationsQueryHandler : IRequestHandler<GetRecruit
                 Status = a.Status,
                 CurrentStage = a.CurrentStage,
                 AppliedAt = a.AppliedAt,
+                UpdatedAt = a.UpdatedAt,
                 AiMatchScore = latestAi?.MatchScore,
                 AiMatchTier = latestAi?.MatchTier,
                 AiStatus = latestAi?.Status,

@@ -39,6 +39,8 @@ import {
   formatDate,
   formatDateTime,
   formatExperience,
+  formatMultilineText,
+  formatPostingPackage,
   formatSalary,
   formatHeadcount,
   isAwaitingSourcingDeposit,
@@ -52,6 +54,7 @@ const STATUS_TAG_CLASS: Record<Job['status'], string> = {
   DRAFT: 'border-slate-200 bg-slate-50 text-slate-700',
   PENDING_REVIEW: 'border-sky-200 bg-sky-50 text-sky-800',
   PENDING_APPROVAL: 'border-sky-200 bg-sky-50 text-sky-800',
+  PENDING_AGREEMENT: 'border-purple-200 bg-purple-50 text-purple-800',
   PENDING_PAYMENT: 'border-blue-200 bg-blue-50 text-blue-800',
   REJECTED: 'border-red-200 bg-red-50 text-red-800',
   ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-800',
@@ -90,8 +93,8 @@ const RequirementList: React.FC<{ title: string; items: JobRequirement[]; emptyT
         {items.map((req) => (
           <li key={req.requirementId} className="flex gap-2 items-start">
             <CheckCircleOutlined className="text-emerald-700 mt-1 shrink-0" aria-hidden />
-            <span>
-              {req.content}
+            <span className="whitespace-pre-line break-words">
+              {formatMultilineText(req.content)}
               {req.category && <Text type="secondary"> · {req.category}</Text>}
             </span>
           </li>
@@ -104,7 +107,7 @@ const RequirementList: React.FC<{ title: string; items: JobRequirement[]; emptyT
 /** Multi-line backend text, rendered as plain paragraphs (never as HTML). */
 const LongText: React.FC<{ value: string | null; emptyText: string }> = ({ value, emptyText }) =>
   value ? (
-    <Paragraph className="whitespace-pre-line mb-0">{value}</Paragraph>
+    <Paragraph className="whitespace-pre-line break-words leading-relaxed mb-0">{formatMultilineText(value)}</Paragraph>
   ) : (
     <Text type="secondary">{emptyText}</Text>
   );
@@ -220,6 +223,8 @@ interface JobDetailPanelProps {
   onPaySuccess?: () => void;
   /** Whether the panel is rendered for an applicant (candidate or public visitor). */
   isApplicantView?: boolean;
+  /** Optional agreement status for agreement-related alerts. */
+  agreementStatus?: string;
 }
 
 export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
@@ -228,6 +233,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   isInternalReview = false,
   onPaySuccess,
   isApplicantView,
+  agreementStatus,
 }) => {
   const navigate = useNavigate();
   const currentRole = useAuthStore((s) => s.role);
@@ -250,7 +256,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   // Agreed terms (after approval) win; before approval show what the Client proposed.
   const agreed = job.commercialTerms ?? null;
   const proposed = job.proposedTerms ?? null;
-  const termLabel = agreed ? 'Đã chốt' : 'Client đề xuất';
+  const termLabel = agreed ? 'Đã thống nhất' : 'Doanh nghiệp đề xuất';
   const feeMultiplier = agreed?.feeMultiplier ?? proposed?.feeMultiplier ?? null;
   const warrantyDays = agreed?.warrantyDays ?? proposed?.warrantyDays ?? null;
   const paymentDueDays = agreed?.paymentDueDays ?? proposed?.paymentDueDays ?? null;
@@ -260,8 +266,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     (job.status === 'CLOSED' && Boolean(job.statusReason?.toLowerCase().includes('hết hạn')));
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
+    <div className={`space-y-6 ${isApplicant ? 'candidate-job-detail-panel' : ''}`}>
+      <header className="candidate-job-detail-panel__hero space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <JobStatusTag status={job.status} />
           {/* F4: Hiện nguồn mẫu ở trang duyệt job — chỉ hiển thị với Internal HR / Admin ở trang duyệt, Client và ứng viên không thấy */}
@@ -276,7 +282,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           {service && !isApplicant && <Tag className="m-0 font-medium">{service.label}</Tag>}
           {!isApplicant && job.status === 'PENDING_PAYMENT' && (
             <Tag color="warning" className="m-0 font-medium">
-              {awaitingDeposit ? 'Chờ đặt cọc CV Sourcing' : 'Chờ thanh toán phí đăng tin'}
+              {awaitingDeposit ? 'Chờ đặt cọc dịch vụ tìm kiếm hồ sơ' : 'Chờ thanh toán phí đăng tin'}
             </Tag>
           )}
           {!isApplicant && job.postingFeeStatus === 'PAID' && (
@@ -298,38 +304,90 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           </div>
         )}
 
-        {/* Thông báo chờ thanh toán phí đăng tin - CHỈ hiển thị khi đã được duyệt và cho Client/HR */}
-        {!isApplicant && job.status === 'PENDING_PAYMENT' && (
+        {/* Thông báo thỏa thuận dịch vụ - Headhunt & CV Sourcing */}
+        {!isApplicant && job.status === 'PENDING_AGREEMENT' && (
           <Alert
-            type={isInternalReview ? 'info' : 'warning'}
+            type={agreementStatus === 'CHANGE_REQUESTED' ? 'warning' : 'info'}
+            showIcon
+            className={
+              agreementStatus === 'CHANGE_REQUESTED'
+                ? 'border-amber-200 bg-amber-50/70'
+                : 'border-purple-200 bg-purple-50/70'
+            }
+            message={
+              agreementStatus === 'CHANGE_REQUESTED'
+                ? 'DN yêu cầu điều chỉnh'
+                : isInternalReview
+                  ? 'Chờ DN ký thỏa thuận'
+                  : 'Thỏa thuận chờ ký'
+            }
+            description={
+              agreementStatus === 'CHANGE_REQUESTED'
+                ? 'Chờ HR xem xét và gửi lại bản thỏa thuận mới.'
+                : isInternalReview
+                  ? 'Đã gửi dự thảo, chờ DN ký số OTP.'
+                  : 'Đã gửi dự thảo, vui lòng ký số OTP để kích hoạt tin.'
+            }
+            action={
+              !isInternalReview ? (
+                <Button
+                  type="primary"
+                  size="small"
+                  className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600"
+                  onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                >
+                  Ký thỏa thuận
+                </Button>
+              ) : undefined
+            }
+          />
+        )}
+
+        {/* Thông báo chờ thanh toán phí đăng tin - hiển thị cho Client (Internal Review đã có banner phía trên) */}
+        {!isApplicant && !isInternalReview && job.status === 'PENDING_PAYMENT' && (
+          <Alert
+            type="warning"
             showIcon
             message={
               awaitingDeposit
-                ? isInternalReview
-                  ? `Đang chờ Doanh nghiệp đặt cọc CV Sourcing (${feeText})`
-                  : `Tin đã được duyệt · Chờ đặt cọc CV Sourcing (${feeText})`
-                : isInternalReview
-                  ? `Đang chờ Doanh nghiệp thanh toán (${feeText})`
-                  : `Tin đã được duyệt · Chờ thanh toán phí đăng tin (${feeText})`
+                ? `Tin đã duyệt · Chờ đặt cọc dịch vụ (${feeText})`
+                : `Tin đã duyệt · Chờ thanh toán phí gói (${feeText})`
             }
             description={
               awaitingDeposit
-                ? 'Tin CV Sourcing chỉ được công bố cho Affiliate sau khi HR Connect nhận tiền cọc. Platform Admin ghi nhận khoản cọc ở trang Tài chính; tin tự chuyển sang Đang tuyển ngay sau đó.'
-                : isInternalReview
-                  ? 'Nội dung tin tuyển dụng đã đạt yêu cầu. Đã gửi thông báo yêu cầu thanh toán tới Doanh nghiệp. Tin sẽ tự động công khai ngay sau khi nhận được thanh toán.'
-                  : `Quý khách vui lòng hoàn tất thanh toán ${feeText} để tin tuyển dụng được công khai trên hệ thống và bắt đầu nhận hồ sơ ứng viên (kèm AI chấm điểm CV).`
+                ? 'Vui lòng hoàn tất nộp tiền cọc để kích hoạt dịch vụ tìm kiếm hồ sơ ứng viên.'
+                : `Vui lòng hoàn tất thanh toán ${feeText} để công bố tin tuyển dụng.`
             }
             action={
-              !isInternalReview && !awaitingDeposit ? (
+              awaitingDeposit ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<CreditCardOutlined />}
+                    className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600"
+                    onClick={() => setShowPaymentModal(true)}
+                  >
+                    Nộp cọc
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                  >
+                    Hợp đồng cọc
+                  </Button>
+                </div>
+              ) : (
                 <Button
                   type="primary"
                   size="small"
                   icon={<CreditCardOutlined />}
+                  className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600"
                   onClick={() => setShowPaymentModal(true)}
                 >
-                  Hướng dẫn thanh toán
+                  Thanh toán ngay
                 </Button>
-              ) : undefined
+              )
             }
           />
         )}
@@ -412,7 +470,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         <Descriptions.Item label="Hình thức">
           {job.employmentType ? EMPLOYMENT_TYPE_LABEL[job.employmentType] : '—'}
         </Descriptions.Item>
-        <Descriptions.Item label={job.serviceTypeCode === 'CV_SOURCING' ? 'Số CV cần nhận' : 'Số lượng'}>
+        <Descriptions.Item label={job.serviceTypeCode === 'CV_SOURCING' ? 'Số hồ sơ cần nhận' : 'Số lượng cần tuyển'}>
           <TeamOutlined aria-hidden className="mr-1" />
           {formatHeadcount(job)}
         </Descriptions.Item>
@@ -424,7 +482,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         {job.salaryNote && <Descriptions.Item label="Ghi chú lương">{job.salaryNote}</Descriptions.Item>}
         <Descriptions.Item label="Ngày đăng">{formatDate(job.postedAt)}</Descriptions.Item>
         {!isApplicant && job.postingPackageName && (
-          <Descriptions.Item label="Gói đăng tin">{job.postingPackageName}</Descriptions.Item>
+          <Descriptions.Item label="Gói đăng tin">{formatPostingPackage(job.postingPackageCode, job.postingPackageName)}</Descriptions.Item>
         )}
         {!isApplicant && job.maxApplications && (
           <Descriptions.Item label="Hạn mức hồ sơ">Tối đa {job.maxApplications} hồ sơ hợp lệ</Descriptions.Item>
@@ -449,7 +507,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <AuditOutlined className="text-sm" />
               </span>
               <div>
-                <span className="font-bold text-slate-800 text-sm">{feeInfo.packageName ?? 'Gói đăng tin'}</span>
+                <span className="font-bold text-slate-800 text-sm">{formatPostingPackage(job.postingPackageCode, feeInfo.packageName)}</span>
                 <span className="text-xs text-slate-500 ml-2">Đăng tin trực tiếp & tiếp nhận hồ sơ</span>
               </div>
             </div>
@@ -503,14 +561,14 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
 
       {/* ── Thông tin dịch vụ HEADHUNT (CHỈ hiển thị cho Doanh nghiệp & Quản trị/HR, KHÔNG hiển thị cho Ứng viên) ── */}
       {!isApplicant && job.serviceTypeCode === 'HEADHUNT_COD' && (
-        <section aria-label="Điều khoản dịch vụ Headhunt" className="rounded-xl border border-solid border-indigo-200/90 bg-indigo-50/40 p-4 space-y-3">
+        <section aria-label="Điều khoản dịch vụ tuyển dụng theo kết quả" className="rounded-xl border border-solid border-indigo-200/90 bg-indigo-50/40 p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2 border-0 border-b border-solid border-indigo-200/70 pb-2.5">
             <div className="flex items-center gap-2">
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
                 <SafetyCertificateOutlined className="text-sm" />
               </span>
               <div>
-                <span className="font-bold text-indigo-950 text-sm">Dịch Vụ Headhunt — Thỏa Thuận Riêng</span>
+                <span className="font-bold text-indigo-950 text-sm">Tuyển dụng theo kết quả — điều khoản đã thống nhất</span>
                 <span className="text-xs text-indigo-700/80 ml-2">Phí tuyển dụng thành công</span>
               </div>
             </div>
@@ -525,7 +583,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <DollarCircleOutlined className="text-indigo-500" /> Phí thành công (Success Fee)
               </div>
               <div className="font-bold text-indigo-700 text-[13px] mt-1">
-                {feeMultiplier != null ? `${feeMultiplier}× tháng lương` : 'Chờ Internal HR chốt'}
+                {feeMultiplier != null ? `${feeMultiplier} tháng lương` : 'Chờ bộ phận kiểm duyệt xác nhận'}
               </div>
               <div className="text-[10px] text-slate-400 mt-0.5">Chỉ trả khi ứng viên đi làm</div>
             </div>
@@ -535,7 +593,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <SafetyCertificateOutlined className="text-emerald-500" /> Bảo hành thay thế
               </div>
               <div className="font-bold text-emerald-700 text-[13px] mt-1">
-                {warrantyDays != null ? `${warrantyDays} ngày` : 'Chờ Internal HR chốt'}
+                {warrantyDays != null ? `${warrantyDays} ngày` : 'Chờ bộ phận kiểm duyệt xác nhận'}
               </div>
               <div className="text-[10px] text-slate-400 mt-0.5">Tìm ứng viên thay thế miễn phí</div>
             </div>
@@ -545,7 +603,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <CalendarOutlined className="text-blue-500" /> Hạn thanh toán
               </div>
               <div className="font-bold text-slate-800 text-[13px] mt-1">
-                {paymentDueDays != null ? `${paymentDueDays} ngày` : 'Chờ Internal HR chốt'}
+                {paymentDueDays != null ? `${paymentDueDays} ngày` : 'Chờ bộ phận kiểm duyệt xác nhận'}
               </div>
               <div className="text-[10px] text-slate-400 mt-0.5">Kể từ ngày bắt đầu đi làm</div>
             </div>
@@ -561,9 +619,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       )}
 
       {!isApplicant && job.serviceTypeCode === 'CV_SOURCING' && (
-        <section aria-label="Điều khoản CV Sourcing" className="rounded-xl border border-solid border-teal-200/90 bg-teal-50/40 p-4 space-y-3">
+        <section aria-label="Điều khoản dịch vụ tìm kiếm hồ sơ" className="rounded-xl border border-solid border-teal-200/90 bg-teal-50/40 p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2 border-0 border-b border-solid border-teal-200/70 pb-2.5">
-            <span className="font-bold text-teal-950 text-sm">Dịch vụ CV Sourcing — trả theo số CV được chấp nhận</span>
+            <span className="font-bold text-teal-950 text-sm">Dịch vụ tìm kiếm hồ sơ — trả phí theo số hồ sơ đạt yêu cầu</span>
             <div className="flex items-center gap-2">
               <Tag color={agreed ? 'success' : 'default'} className="m-0 font-medium rounded-full px-2.5">
                 {termLabel}
@@ -580,23 +638,23 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   }
                 }}
               >
-                {isInternalReview ? 'Quản lý CV đã giao' : 'Xem hồ sơ nhận được'}
+                {isInternalReview ? 'Quản lý hồ sơ đã giao' : 'Xem hồ sơ nhận được'}
               </Button>
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {[
-              { label: 'Số CV giao', value: agreed?.sourcingTarget ?? job.sourcingTarget, unit: 'CV' },
-              { label: 'Giá mỗi CV', value: agreed?.pricePerCv ?? proposed?.pricePerCv, unit: 'đ' },
+              { label: 'Số hồ sơ cần giao', value: agreed?.sourcingTarget ?? job.sourcingTarget, unit: 'hồ sơ' },
+              { label: 'Giá mỗi hồ sơ', value: agreed?.pricePerCv ?? proposed?.pricePerCv, unit: 'đ' },
               { label: 'Tiền cọc', value: agreed?.depositPercent, unit: '%' },
-              { label: 'Thời gian duyệt CV', value: agreed?.reviewDays, unit: 'ngày' },
+              { label: 'Thời gian duyệt hồ sơ', value: agreed?.reviewDays, unit: 'ngày' },
             ].map((item) => (
               <div key={item.label} className="rounded-lg bg-white p-3 border border-solid border-slate-200/80">
                 <div className="text-[11px] text-slate-600">{item.label}</div>
                 <div className="font-bold text-slate-900 text-[13px] mt-1">
                   {item.value != null
                     ? `${item.unit === 'đ' ? Number(item.value).toLocaleString('vi-VN') : item.value} ${item.unit}`
-                    : 'Chờ Internal HR chốt'}
+                    : 'Chờ bộ phận kiểm duyệt xác nhận'}
                 </div>
               </div>
             ))}
@@ -677,6 +735,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         visible={showPaymentModal}
         jobId={job.jobId}
         jobTitle={job.title}
+        isDeposit={awaitingDeposit}
+        depositAmount={sourcingDepositAmount(job) ?? 200000}
         onClose={() => setShowPaymentModal(false)}
         onPaymentSuccess={() => {
           setShowPaymentModal(false);
@@ -688,7 +748,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         open={showSourcingDrawer}
         width="min(800px, 100vw)"
         onClose={() => setShowSourcingDrawer(false)}
-        title={`CV Sourcing · ${job.title}`}
+        title={`Hồ sơ được tìm kiếm · ${job.title}`}
         destroyOnClose
       >
         <SourcingDeliveriesView

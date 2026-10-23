@@ -1,0 +1,25 @@
+---
+title: MF-02 · Affiliate refers a candidate (duplicate check and consent request)
+---
+sequenceDiagram
+  autonumber
+  actor AF as Affiliate
+  participant FE as Web App
+  participant API as JobEndpoints
+  participant H as SubmitCandidateCommandHandler
+  participant DB as PostgreSQL
+  participant R2 as Cloudflare R2
+  participant MAIL as Resend
+  AF->>FE: Referral form + CV file
+  FE->>API: POST /api/v1/jobs/{id}/candidate-submissions
+  API->>H: Send(SubmitCandidateCommand)
+  H->>R2: Upload CV (validated PDF)
+  H->>DB: Find candidate by normalised e-mail / phone
+  alt same candidate already in this job or consent pending
+  H->>DB: Submission BLOCKED_DUPLICATE, keep first attribution
+  API-->>FE: 409 BLOCKED_DUPLICATE
+  else new for this job
+  H->>DB: Submission PENDING_CONSENT + SubmissionConsent (token hash, expiry)
+  H->>MAIL: Consent e-mail through outbox
+  API-->>FE: 201 Created
+  end

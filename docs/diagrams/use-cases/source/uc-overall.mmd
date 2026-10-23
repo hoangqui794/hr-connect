@@ -1,0 +1,114 @@
+---
+title: HR Connect – Overall Use Case Diagram
+---
+flowchart LR
+  G(["👤 Guest"]):::actor
+  U(["👤 Registered User"]):::actor
+  C(["👤 Candidate"]):::actor
+  A(["👤 Affiliate"]):::actor
+  subgraph SYS["HR Connect"]
+    direction TB
+    UC01(["UC-01: Register Account"]):::uc
+    UC02(["UC-02: Login"]):::uc
+    UC03(["UC-03: Search & View Jobs"]):::uc
+    UC37(["UC-37: Verify Email / Recover Password"]):::uc
+    UC08(["UC-08: Manage Candidate Profile"]):::uc
+    UC09(["UC-09: Manage CV"]):::uc
+    UC10(["UC-10: Apply to Job"]):::uc
+    UC11(["UC-11: Submit Candidate/CV"]):::uc
+    UC13(["UC-13: Raise Duplicate / Attribution Dispute"]):::uc
+    UC38(["UC-38: Respond to Submission Consent"]):::uc
+    UC40(["UC-40: Withdraw Application"]):::uc
+    UC46(["UC-46: Build CV and View Job Suggestions"]):::uc
+    UC21(["UC-21: View Interview Schedule"]):::uc
+    UC24(["UC-24: Respond to Offer"]):::uc
+    UC31(["UC-31: View Commission & Payout"]):::uc
+    UC28(["UC-28: Manage Affiliate Profile"]):::uc
+    UC29(["UC-29: Track Own Submission"]):::uc
+    UC30(["UC-30: View Affiliate Performance"]):::uc
+    UC20(["UC-20: Participate in Interview"]):::uc
+    UC04(["UC-04: Manage Company Profile"]):::uc
+    UC05(["UC-05: Review Company Verification"]):::uc
+    UC06(["UC-06: Manage Job"]):::uc
+    UC07(["UC-07: Review Job"]):::uc
+    UC44(["UC-44: Agree and Sign Service Agreement"]):::uc
+    UC14(["UC-14: Resolve Duplicate / Attribution Dispute"]):::uc
+    UC15(["UC-15: View AI Matching Result"]):::uc
+    UC16(["UC-16: Screen Candidate"]):::uc
+    UC17(["UC-17: Review Candidate"]):::uc
+    UC45(["UC-45: Review Delivered CVs (CV Sourcing)"]):::uc
+    UC19(["UC-19: Manage Interview"]):::uc
+    UC22(["UC-22: Record Interview Result"]):::uc
+    UC23(["UC-23: Manage Offer"]):::uc
+    UC25(["UC-25: Confirm Start Work / Placement"]):::uc
+    UC41(["UC-41: Reconcile Placement [Planned]"]):::planned
+    UC27(["UC-27: Track Warranty"]):::uc
+    UC32(["UC-32: Manage Commission / Payout"]):::uc
+    UC43(["UC-43: Record Service Fee Payment"]):::uc
+    UC39(["UC-39: Review Affiliate Application"]):::uc
+    UC33(["UC-33: Manage Users"]):::uc
+    UC34(["UC-34: Manage Roles & Permissions"]):::uc
+    UC35(["UC-35: Manage System Configuration"]):::uc
+    UC36(["UC-36: View Reports / Dashboard"]):::uc
+    UC42(["UC-42: View Audit Log"]):::uc
+  end
+  CL(["👤 Client Company User"]):::actor
+  HR(["👤 Internal HR"]):::actor
+  AD(["👤 Platform Admin"]):::actor
+  G --- UC01
+  G --- UC37
+  G --- UC03
+  U --- UC02
+  U --- UC37
+  C --- UC03
+  C --- UC08
+  C --- UC09
+  C --- UC46
+  C --- UC10
+  C --- UC38
+  C --- UC40
+  C --- UC20
+  C --- UC21
+  C --- UC24
+  A --- UC03
+  A --- UC11
+  A --- UC13
+  A --- UC28
+  A --- UC29
+  A --- UC30
+  A --- UC31
+  UC04 --- CL
+  UC06 --- CL
+  UC44 --- CL
+  UC15 --- CL
+  UC16 --- CL
+  UC17 --- CL
+  UC45 --- CL
+  UC19 --- CL
+  UC20 --- CL
+  UC22 --- CL
+  UC23 --- CL
+  UC25 --- CL
+  UC27 --- CL
+  UC36 --- CL
+  UC07 --- HR
+  UC44 --- HR
+  UC15 --- HR
+  UC16 --- HR
+  UC41 --- HR
+  UC27 --- HR
+  UC36 --- HR
+  UC05 --- AD
+  UC14 --- AD
+  UC39 --- AD
+  UC43 --- AD
+  UC32 --- AD
+  UC33 --- AD
+  UC34 --- AD
+  UC35 --- AD
+  UC42 --- AD
+  UC36 --- AD
+  classDef actor fill:#FFF4E5,stroke:#B7791F,color:#7B4B0A,font-weight:bold
+  classDef uc fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
+  classDef planned fill:#FFFFFF,stroke:#1B365D,stroke-dasharray:5 4,color:#555
+  style SYS fill:#FAFBFD,stroke:#1B365D

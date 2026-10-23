@@ -1,0 +1,30 @@
+@startuml sf-affiliate
+left to right direction
+skinparam rectangle { RoundCorner 8 }
+title Screen flow – Affiliate portal (/affiliate)
+package "Affiliate portal (/affiliate)" #F3E8FF {
+  rectangle "Affiliate home\n<size:10>dashboard</size>" as affiliate_dash
+  rectangle "Partner jobs\n<size:10>jobs</size>" as affiliate_ajobs
+  rectangle "Job detail + commission estimate\n<size:10>jobs/:jobId</size>" as affiliate_ajobd
+  rectangle "Submit candidate\n<size:10>submit-candidate</size>" as affiliate_submit
+  rectangle "My submissions\n<size:10>submissions</size>" as affiliate_subs
+  rectangle "Submission detail (resend consent)\n<size:10>submissions/:submissionId</size>" as affiliate_subd
+  rectangle "My candidate pool\n<size:10>candidates</size>" as affiliate_cands
+  rectangle "Attributions\n<size:10>attributions</size>" as affiliate_attr
+  rectangle "Disputes\n<size:10>disputes</size>" as affiliate_disp
+  rectangle "Commissions & payouts\n<size:10>commissions</size>" as affiliate_comm
+  rectangle "Performance\n<size:10>performance</size>" as affiliate_perf
+  rectangle "Profile & bank account\n<size:10>profile</size>" as affiliate_prof
+}
+affiliate_dash --> affiliate_ajobs
+affiliate_ajobs --> affiliate_ajobd : open
+affiliate_ajobd --> affiliate_submit : refer
+affiliate_cands --> affiliate_submit : reuse candidate
+affiliate_submit --> affiliate_subs : submitted
+affiliate_subs --> affiliate_subd : open
+affiliate_subd --> affiliate_disp : blocked duplicate → dispute
+affiliate_dash --> affiliate_attr
+affiliate_dash --> affiliate_comm
+affiliate_dash --> affiliate_perf
+affiliate_dash --> affiliate_prof
+@enduml

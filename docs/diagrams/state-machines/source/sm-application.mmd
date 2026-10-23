@@ -1,0 +1,33 @@
+---
+title: Application (MF-03, MF-04)
+---
+stateDiagram-v2
+  direction TB
+  [*] --> SUBMITTED : submission accepted
+  SUBMITTED --> SCREENING : HR opens (HEADHUNT / SOURCING)
+  SUBMITTED --> SHORTLISTED : Client selects (CV_APPLICATION)
+  SCREENING --> SHORTLISTED : HR shortlists / CV accepted
+  SCREENING --> BACKUP : HR keeps as backup
+  SCREENING --> REJECTED : rejected with reason code
+  SUBMITTED --> REJECTED : Client rejects (CV_APPLICATION)
+  BACKUP --> SHORTLISTED : promoted from backup
+  SHORTLISTED --> INTERVIEW : Client schedules interview
+  INTERVIEW --> OFFER_PENDING : result PASS
+  INTERVIEW --> INTERVIEW_FAILED : result FAIL / no-show
+  INTERVIEW --> BACKUP : result BACKUP
+  BACKUP --> OFFER_PENDING : Client selects backup
+  BACKUP --> BACKUP_NOT_SELECTED : another candidate chosen
+  OFFER_PENDING --> OFFER_ACCEPTED : candidate accepts offer
+  OFFER_PENDING --> OFFER_DECLINED : candidate declines
+  OFFER_ACCEPTED --> PLACED : Client confirms start work
+  OFFER_ACCEPTED --> NOT_STARTED : candidate did not start
+  SUBMITTED --> WITHDRAWN : candidate withdraws
+  SHORTLISTED --> WITHDRAWN : candidate withdraws
+  PLACED --> CLOSED : warranty finished
+  REJECTED --> [*]
+  INTERVIEW_FAILED --> [*]
+  BACKUP_NOT_SELECTED --> [*]
+  OFFER_DECLINED --> [*]
+  NOT_STARTED --> [*]
+  WITHDRAWN --> [*]
+  CLOSED --> [*]

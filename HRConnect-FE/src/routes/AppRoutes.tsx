@@ -162,7 +162,7 @@ const AffiliatePerformancePage = React.lazy(() =>
 const AffiliateDisputesPage = React.lazy(() =>
   import('@/features/portal/AffiliateDisputesPage').then((m) => ({ default: m.AffiliateDisputesPage }))
 );
-const AffiliateCommissionsPlaceholder = React.lazy(() =>
+const AffiliateCommissionsPage = React.lazy(() =>
   import('@/features/finance-mf05/AffiliateCommissionsPage').then((m) => ({ default: m.AffiliateCommissionsPage }))
 );
 
@@ -184,6 +184,9 @@ const ClientWarrantyPlaceholder = React.lazy(() =>
 );
 const ClientJobSourcingDeliveriesPage = React.lazy(() =>
   import('@/features/sourcing/ClientJobSourcingDeliveriesPage').then((m) => ({ default: m.ClientJobSourcingDeliveriesPage }))
+);
+const ClientServiceAgreementsPage = React.lazy(() =>
+  import('@/features/client-console/ClientServiceAgreementsPage').then((m) => ({ default: m.ClientServiceAgreementsPage }))
 );
 
 // ── Internal HR workspace (features/hr-console), backed by the real API ─────
@@ -341,6 +344,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/dashboard': AUTHENTICATED_ROLES,
   '/client/dashboard': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/jobs': [UserRole.CLIENT, UserRole.ADMIN],
+  '/client/agreements': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/jobs/create': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/jobs/:id/edit': [UserRole.CLIENT],
   '/client/jobs/:id/sourcing': [UserRole.CLIENT, UserRole.ADMIN],
@@ -488,9 +492,10 @@ export const AppRoutes = {
   AffiliateProfilePage,
   AffiliatePerformancePage,
   AffiliateDisputesPage,
-  AffiliateCommissionsPlaceholder,
+  AffiliateCommissionsPage,
   ClientOverviewPage,
   ClientCandidatesPage,
+  ClientServiceAgreementsPage,
   ClientWorkspaceInterviewsOffersPage,
   ClientCompanyPage,
   ClientWarrantyPlaceholder,

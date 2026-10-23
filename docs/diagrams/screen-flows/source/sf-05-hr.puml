@@ -1,0 +1,27 @@
+@startuml sf-hr
+left to right direction
+skinparam rectangle { RoundCorner 8 }
+title Screen flow – Internal HR console (/hr)
+package "Internal HR console (/hr)" #E0F2FE {
+  rectangle "HR overview\n<size:10>dashboard</size>" as hr_dash
+  rectangle "Job review & agreement proposal\n<size:10>jobs</size>" as hr_rev
+  rectangle "JD templates\n<size:10>job-templates</size>" as hr_tpl
+  rectangle "AI screening workspace\n<size:10>screening</size>" as hr_scr
+  rectangle "Pipeline (interviews, offers – read only)\n<size:10>pipeline</size>" as hr_pipe
+  rectangle "Placement start-date correction\n<size:10>placement-review</size>" as hr_plr
+  rectangle "Placement detail\n<size:10>placements/:placementId</size>" as hr_plc
+  rectangle "Warranty tracking (verify resignations)\n<size:10>warranty-tracking</size>" as hr_war
+  rectangle "Contact requests\n<size:10>contact-requests</size>" as hr_contact
+  rectangle "Profile\n<size:10>profile</size>" as hr_prof
+}
+hr_dash --> hr_rev
+hr_rev --> hr_tpl
+hr_dash --> hr_scr
+hr_scr --> hr_pipe : shortlisted
+hr_dash --> hr_plr
+hr_plr --> hr_plc : open
+hr_dash --> hr_war
+hr_war --> hr_plc : open
+hr_dash --> hr_contact
+hr_dash --> hr_prof
+@enduml

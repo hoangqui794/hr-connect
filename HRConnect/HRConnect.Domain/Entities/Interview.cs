@@ -33,6 +33,10 @@ public partial class Interview
 
     public DateTime? RecordedAt { get; set; }
 
+    public string? CandidateAttendanceStatus { get; set; }
+
+    public DateTime? CandidateRespondedAt { get; set; }
+
     public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
 
     public DateTime CreatedAt { get; set; }

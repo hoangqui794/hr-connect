@@ -1,0 +1,11 @@
+---
+title: Company verification (SF-01)
+---
+stateDiagram-v2
+  direction LR
+  [*] --> PENDING : company registered
+  PENDING --> UNDER_REVIEW : verification request submitted
+  UNDER_REVIEW --> VERIFIED : Admin approves
+  UNDER_REVIEW --> REJECTED : Admin rejects (note)
+  REJECTED --> UNDER_REVIEW : Client resubmits
+  VERIFIED --> [*]

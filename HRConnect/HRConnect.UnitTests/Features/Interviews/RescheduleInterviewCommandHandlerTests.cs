@@ -244,6 +244,8 @@ public class RescheduleInterviewCommandHandlerTests
             InterviewId = interviewId,
             ScheduledAt = oldDate,
             Status = "SCHEDULED",
+            CandidateAttendanceStatus = "CONFIRMED",
+            CandidateRespondedAt = DateTime.UtcNow.AddHours(-2),
             ConcurrencyToken = oldToken,
             Application = new HRConnect.Domain.Entities.Application
             {
@@ -290,6 +292,8 @@ public class RescheduleInterviewCommandHandlerTests
 
         interview.Status.Should().Be("SCHEDULED");
         interview.ScheduledAt.Should().Be(newDate);
+        interview.CandidateAttendanceStatus.Should().BeNull();
+        interview.CandidateRespondedAt.Should().BeNull();
         interview.InterviewStatusHistories.Should().HaveCount(1);
         var history = interview.InterviewStatusHistories.First();
         history.OldStatus.Should().Be("SCHEDULED");
