@@ -28,6 +28,7 @@ import {
   CloseCircleFilled,
   CloseOutlined,
   CreditCardOutlined,
+  EditOutlined,
   ExclamationCircleOutlined,
   FileDoneOutlined,
   InfoCircleOutlined,
@@ -40,7 +41,7 @@ import type { ApproveJobInput, Job, JobRejectReasonCode, JobStatus } from '@/typ
 import { jobsApi, serviceAgreementsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAlertStore } from '@/stores/alertStore';
-import { formatMoney, useJobDetail, useJobFeeInfo, useJobMutations, useJobReviewQueue } from './useJobQueries';
+import { formatMoney, useCurrentServiceAgreement, useJobDetail, useJobFeeInfo, useJobMutations, useJobReviewQueue } from './useJobQueries';
 import { JobDetailPanel, JobTemplateOriginTag } from './JobDetailPanel';
 import { ReasonModal } from './ReasonModal';
 import { CommercialTermsApprovalModal } from './CommercialTermsApprovalModal';
@@ -58,10 +59,11 @@ const { Text } = Typography;
 
 const waitingSince = (job: Job) => job.updatedAt;
 
-type StatusFilter = 'PENDING_REVIEW' | 'PENDING_PAYMENT' | 'ACTIVE' | 'REJECTED' | 'ALL';
+type StatusFilter = 'PENDING_REVIEW' | 'PENDING_AGREEMENT' | 'PENDING_PAYMENT' | 'ACTIVE' | 'REJECTED' | 'ALL';
 
 const STATUS_TABS: { label: string; value: StatusFilter }[] = [
   { label: 'Chờ duyệt', value: 'PENDING_REVIEW' },
+  { label: 'Thỏa thuận dịch vụ', value: 'PENDING_AGREEMENT' },
   { label: 'Chờ thanh toán', value: 'PENDING_PAYMENT' },
   { label: 'Đang tuyển', value: 'ACTIVE' },
   { label: 'Bị từ chối', value: 'REJECTED' },
@@ -202,6 +204,13 @@ export const JobReviewPage: React.FC = () => {
 
   const needsTerms = job?.serviceTypeCode === 'HEADHUNT_COD' || job?.serviceTypeCode === 'CV_SOURCING';
 
+  // Thỏa thuận dịch vụ hiện hành (nếu là Headhunt hoặc Sourcing)
+  const currentAgreementQuery = useCurrentServiceAgreement(
+    job?.jobId,
+    Boolean(job?.jobId && needsTerms)
+  );
+  const currentAgreement = currentAgreementQuery.data;
+
   /** F2: approve with the commercial terms Internal HR agreed (HEADHUNT_COD, CV_SOURCING) -> Send proposal to Client. */
   const approveWithTerms = async (input: ApproveJobInput) => {
     if (!job) return;
@@ -218,7 +227,11 @@ export const JobReviewPage: React.FC = () => {
           reviewDays: terms?.reviewDays != null ? Number(terms.reviewDays) : undefined,
           agreementNote: input.note || input.agreementReference || undefined,
         });
-        message.success('Đã gửi dự thảo thỏa thuận dịch vụ cho Doanh nghiệp');
+        message.success(
+          job.status === 'PENDING_AGREEMENT'
+            ? 'Đã cập nhật và gửi lại dự thảo thỏa thuận dịch vụ cho Doanh nghiệp'
+            : 'Đã gửi dự thảo thỏa thuận dịch vụ cho Doanh nghiệp'
+        );
         setTermsOpen(false);
         const isHeadhunt = job.serviceTypeCode === 'HEADHUNT_COD';
         useAlertStore.getState().addAlert({
@@ -227,19 +240,19 @@ export const JobReviewPage: React.FC = () => {
           title: isHeadhunt ? 'Đã gửi dự thảo thỏa thuận tuyển dụng' : 'Đã gửi dự thảo thỏa thuận tìm kiếm hồ sơ',
           message: `Đã gửi dự thảo thỏa thuận cho "${job.title}" của ${job.companyName}. Đang chờ Doanh nghiệp phản hồi hoặc ký kết.`,
           actionLabel: 'Xem chi tiết',
-          actionRoute: `/internal/jobs/review?status=ALL&highlight=${encodeURIComponent(job.jobId)}`,
+          actionRoute: `/internal/jobs/review?status=PENDING_AGREEMENT&highlight=${encodeURIComponent(job.jobId)}`,
           relatedEntityId: job.jobId,
         });
         useAlertStore.getState().addAlert({
           targetRole: 'CLIENT',
           type: 'info',
           title: 'Dự thảo thỏa thuận dịch vụ đang chờ ký kết',
-          message: `Yêu cầu tuyển dụng "${job.title}" đã được HR Connect lập dự thảo thỏa thuận thương mại. Vui lòng kiểm tra và ký thỏa thuận qua OTP.`,
+          message: `Yêu cầu tuyển dụng "${job.title}" đã được HR Connect cập nhật dự thảo thỏa thuận thương mại. Vui lòng kiểm tra và ký thỏa thuận qua OTP.`,
           actionLabel: 'Xem & Ký thỏa thuận',
           actionRoute: `/client/agreements?jobId=${encodeURIComponent(job.jobId)}`,
           relatedEntityId: job.jobId,
         });
-        await Promise.all([detail.refetch(), queue.refetch()]);
+        await Promise.all([detail.refetch(), queue.refetch(), currentAgreementQuery.refetch()]);
       } else {
         const res = await approve.mutateAsync({ jobId: job.jobId, token: job.concurrencyToken, input });
         message.success(res.message);
@@ -508,6 +521,69 @@ export const JobReviewPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
+                ) : job.status === 'PENDING_AGREEMENT' ? (
+                  <div className={`flex flex-col gap-3 rounded-t-2xl border-0 border-b border-solid px-6 py-4 ${
+                    currentAgreement?.status === 'CHANGE_REQUESTED'
+                      ? 'border-amber-300 bg-amber-50/90'
+                      : 'border-purple-200 bg-purple-50/70'
+                  }`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border border-solid ${
+                          currentAgreement?.status === 'CHANGE_REQUESTED'
+                            ? 'bg-amber-500/10 text-amber-700 border-amber-300/60'
+                            : 'bg-purple-500/10 text-purple-700 border-purple-200/60'
+                        }`}>
+                          {currentAgreement?.status === 'CHANGE_REQUESTED' ? (
+                            <ExclamationCircleOutlined className="text-base text-amber-600" />
+                          ) : (
+                            <FileDoneOutlined className="text-base text-purple-600" />
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-slate-800">
+                              {currentAgreement?.status === 'CHANGE_REQUESTED'
+                                ? `DN yêu cầu điều chỉnh (v${currentAgreement.version})`
+                                : `Thỏa thuận chờ ký (v${currentAgreement?.version ?? 1})`}
+                            </span>
+                            <Tag
+                              color={currentAgreement?.status === 'CHANGE_REQUESTED' ? 'warning' : 'purple'}
+                              className="m-0 font-medium text-xs"
+                            >
+                              {currentAgreement?.status === 'CHANGE_REQUESTED' ? 'Cần điều chỉnh' : 'Chờ ký OTP'}
+                            </Tag>
+                          </div>
+                          {currentAgreement?.status === 'CHANGE_REQUESTED' && currentAgreement?.changeRequestReason ? (
+                            <div className="text-xs text-amber-900 bg-white/90 rounded-lg p-2.5 border border-solid border-amber-200 m-0 leading-relaxed max-w-2xl">
+                              <strong className="text-amber-950">Ý kiến DN: </strong>
+                              "{currentAgreement.changeRequestReason}"
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-500 m-0 leading-relaxed max-w-2xl">
+                              Đã gửi dự thảo, chờ DN ký số OTP.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          type="primary"
+                          className={
+                            currentAgreement?.status === 'CHANGE_REQUESTED'
+                              ? '!bg-amber-600 hover:!bg-amber-500 !border-amber-600 font-semibold'
+                              : '!bg-purple-600 hover:!bg-purple-500 !border-purple-600 font-semibold'
+                          }
+                          icon={<EditOutlined />}
+                          onClick={() => setTermsOpen(true)}
+                        >
+                          {currentAgreement?.status === 'CHANGE_REQUESTED'
+                            ? `Gửi bản mới (v${(currentAgreement?.version ?? 1) + 1})`
+                            : 'Sửa thỏa thuận'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 ) : job.status === 'PENDING_PAYMENT' ? (
                   <div className="flex flex-col gap-3 rounded-t-2xl border-0 border-b border-solid border-slate-200 bg-slate-50/70 px-6 py-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -577,7 +653,12 @@ export const JobReviewPage: React.FC = () => {
                 )}
 
                 <div className="p-6">
-                  <JobDetailPanel job={job} showHistory isInternalReview />
+                  <JobDetailPanel
+                    job={job}
+                    showHistory
+                    isInternalReview
+                    agreementStatus={currentAgreement?.status}
+                  />
                 </div>
               </>
             )}
@@ -590,6 +671,9 @@ export const JobReviewPage: React.FC = () => {
           job={job}
           open={termsOpen}
           loading={approve.isPending}
+          currentAgreement={currentAgreement}
+          changeRequestReason={currentAgreement?.status === 'CHANGE_REQUESTED' ? currentAgreement.changeRequestReason : undefined}
+          isRevision={job.status === 'PENDING_AGREEMENT'}
           onCancel={() => setTermsOpen(false)}
           onApprove={approveWithTerms}
         />

@@ -8,7 +8,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Form, Input, InputNumber, Modal, Skeleton, Tag } from 'antd';
 import { EditOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import type { CommercialTermsInput, ApproveJobInput, Job } from '@/types/api/jobs';
+import type { CommercialTermsInput, ApproveJobInput, Job, ServiceAgreementDto } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useCommercialTermsDefaults } from './useJobQueries';
 
@@ -46,11 +46,23 @@ interface Props {
   job: Job;
   open: boolean;
   loading: boolean;
+  changeRequestReason?: string | null;
+  currentAgreement?: ServiceAgreementDto | null;
+  isRevision?: boolean;
   onCancel: () => void;
   onApprove: (input: ApproveJobInput) => Promise<unknown>;
 }
 
-export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loading, onCancel, onApprove }) => {
+export const CommercialTermsApprovalModal: React.FC<Props> = ({
+  job,
+  open,
+  loading,
+  changeRequestReason,
+  currentAgreement,
+  isRevision,
+  onCancel,
+  onApprove,
+}) => {
   const [form] = Form.useForm<CommercialTermsInput & { agreementReference?: string; note?: string }>();
   const defaults = useCommercialTermsDefaults(job.jobId, open);
   const [serverError, setServerError] = useState<string>();
@@ -59,11 +71,24 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
   const data = defaults.data;
 
   useEffect(() => {
-    if (open && data?.prefill) {
-      form.setFieldsValue({ ...data.prefill, agreementReference: undefined, note: undefined });
+    if (open) {
+      const baseValues = data?.prefill ? { ...data.prefill } : {};
+      if (currentAgreement) {
+        if (currentAgreement.feeMultiplier != null) baseValues.feeMultiplier = currentAgreement.feeMultiplier;
+        if (currentAgreement.warrantyDays != null) baseValues.warrantyDays = currentAgreement.warrantyDays;
+        if (currentAgreement.paymentDueDays != null) baseValues.paymentDueDays = currentAgreement.paymentDueDays;
+        if (currentAgreement.sourcingTarget != null) baseValues.sourcingTarget = currentAgreement.sourcingTarget;
+        if (currentAgreement.pricePerQualifiedCv != null) baseValues.pricePerCv = currentAgreement.pricePerQualifiedCv;
+        if (currentAgreement.reviewDays != null) baseValues.reviewDays = currentAgreement.reviewDays;
+      }
+      form.setFieldsValue({
+        ...baseValues,
+        agreementReference: undefined,
+        note: currentAgreement?.agreementNote ?? undefined,
+      });
       setServerError(undefined);
     }
-  }, [open, data, form]);
+  }, [open, data, currentAgreement, form]);
 
   const watchedValues = Form.useWatch([], form);
   const values = useMemo(() => watchedValues ?? {}, [watchedValues]);
@@ -117,8 +142,16 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
     <Modal
       open={open}
       width={760}
-      title={isSourcing ? 'Duyệt điều khoản (CV Sourcing)' : 'Duyệt điều khoản (Headhunt)'}
-      okText="Gửi thỏa thuận"
+      title={
+        isRevision
+          ? isSourcing
+            ? 'Điều chỉnh thỏa thuận (CV Sourcing)'
+            : 'Điều chỉnh thỏa thuận (Headhunt)'
+          : isSourcing
+          ? 'Duyệt điều khoản (CV Sourcing)'
+          : 'Duyệt điều khoản (Headhunt)'
+      }
+      okText={isRevision ? 'Gửi thỏa thuận mới' : 'Gửi thỏa thuận'}
       cancelText="Hủy"
       confirmLoading={loading}
       okButtonProps={{ disabled: !data || defaults.isError }}
@@ -131,6 +164,17 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({ job, open, loadi
           <div className="text-sm font-semibold text-slate-900">{job.title}</div>
           <div className="text-xs text-slate-600">{job.companyName ?? '—'}</div>
         </div>
+
+        {changeRequestReason && (
+          <div className="rounded-xl border border-solid border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-900 space-y-1">
+            <div className="font-semibold text-amber-950 flex items-center gap-1.5">
+              <InfoCircleOutlined className="text-amber-600" /> Ý kiến điều chỉnh từ Doanh nghiệp:
+            </div>
+            <div className="italic bg-white/90 p-2.5 rounded-lg border border-solid border-amber-200 text-slate-800 leading-relaxed">
+              "{changeRequestReason}"
+            </div>
+          </div>
+        )}
 
         {defaults.isError ? (
           <Alert type="error" showIcon message="Không tải được điều khoản đề xuất" description={getApiErrorMessage(defaults.error)} />

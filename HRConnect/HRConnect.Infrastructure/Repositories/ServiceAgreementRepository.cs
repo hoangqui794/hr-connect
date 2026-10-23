@@ -66,7 +66,6 @@ public class ServiceAgreementRepository : IServiceAgreementRepository
     public async Task<IReadOnlyList<ServiceAgreement>> GetHistoryByJobIdAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
         return await _context.ServiceAgreements
-            .AsNoTracking()
             .Include(a => a.SignerUser)
             .Include(a => a.CreatedByUser)
             .Where(a => a.JobId == jobId)

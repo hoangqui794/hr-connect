@@ -223,6 +223,8 @@ interface JobDetailPanelProps {
   onPaySuccess?: () => void;
   /** Whether the panel is rendered for an applicant (candidate or public visitor). */
   isApplicantView?: boolean;
+  /** Optional agreement status for agreement-related alerts. */
+  agreementStatus?: string;
 }
 
 export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
@@ -231,6 +233,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   isInternalReview = false,
   onPaySuccess,
   isApplicantView,
+  agreementStatus,
 }) => {
   const navigate = useNavigate();
   const currentRole = useAuthStore((s) => s.role);
@@ -301,21 +304,29 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           </div>
         )}
 
-        {/* Thông báo chờ ký thỏa thuận dịch vụ - Headhunt & CV Sourcing */}
+        {/* Thông báo thỏa thuận dịch vụ - Headhunt & CV Sourcing */}
         {!isApplicant && job.status === 'PENDING_AGREEMENT' && (
           <Alert
-            type="info"
+            type={agreementStatus === 'CHANGE_REQUESTED' ? 'warning' : 'info'}
             showIcon
-            className="border-purple-200 bg-purple-50/70"
+            className={
+              agreementStatus === 'CHANGE_REQUESTED'
+                ? 'border-amber-200 bg-amber-50/70'
+                : 'border-purple-200 bg-purple-50/70'
+            }
             message={
-              isInternalReview
-                ? 'Đang chờ Doanh nghiệp phản hồi hoặc ký thỏa thuận'
-                : 'Dự thảo thỏa thuận dịch vụ đang chờ Quý khách xem xét & ký kết'
+              agreementStatus === 'CHANGE_REQUESTED'
+                ? 'DN yêu cầu điều chỉnh'
+                : isInternalReview
+                  ? 'Chờ DN ký thỏa thuận'
+                  : 'Thỏa thuận chờ ký'
             }
             description={
-              isInternalReview
-                ? 'HR Connect đã lập dự thảo thỏa thuận thương mại gửi tới Doanh nghiệp. Tin sẽ chuyển sang bước tiếp theo ngay khi Doanh nghiệp ký kết qua mã OTP.'
-                : 'Bộ phận HR Connect đã thẩm định yêu cầu và gửi dự thảo thỏa thuận thương mại. Quý khách vui lòng kiểm tra nội dung và ký số qua mã OTP để kích hoạt dịch vụ.'
+              agreementStatus === 'CHANGE_REQUESTED'
+                ? 'Chờ HR xem xét và gửi lại bản thỏa thuận mới.'
+                : isInternalReview
+                  ? 'Đã gửi dự thảo, chờ DN ký số OTP.'
+                  : 'Đã gửi dự thảo, vui lòng ký số OTP để kích hoạt tin.'
             }
             action={
               !isInternalReview ? (
@@ -325,7 +336,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600"
                   onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                 >
-                  Xem & Ký thỏa thuận
+                  Ký thỏa thuận
                 </Button>
               ) : undefined
             }
