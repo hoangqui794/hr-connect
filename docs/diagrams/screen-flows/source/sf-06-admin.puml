@@ -1,0 +1,36 @@
+@startuml sf-admin
+left to right direction
+skinparam rectangle { RoundCorner 8 }
+title Screen flow – Platform Admin console (/admin)
+package "Platform Admin console (/admin)" #EEF5EC {
+  rectangle "Admin overview\n<size:10>dashboard</size>" as admin_dash
+  rectangle "Approvals (companies, affiliates)\n<size:10>approvals</size>" as admin_appr
+  rectangle "Candidate identity claims\n<size:10>candidate-identity-claims</size>" as admin_idc
+  rectangle "Job review\n<size:10>jobs</size>" as admin_jobs
+  rectangle "JD templates\n<size:10>job-templates</size>" as admin_tpl
+  rectangle "Users\n<size:10>users</size>" as admin_users
+  rectangle "Roles & permissions / user authorization\n<size:10>roles-permissions · user-authorization</size>" as admin_rbac
+  rectangle "Service types\n<size:10>service-types</size>" as admin_st
+  rectangle "Commission rules\n<size:10>commission-rules</size>" as admin_cr
+  rectangle "Business settings\n<size:10>settings</size>" as admin_set
+  rectangle "Finance: posting fees, service fees, deposits, commissions, payouts\n<size:10>finance · payouts</size>" as admin_fin
+  rectangle "Disputes (empty state, FE pending)\n<size:10>disputes</size>" as admin_disp
+  rectangle "Reports\n<size:10>reports</size>" as admin_rep
+  rectangle "Audit trail\n<size:10>audit-trail</size>" as admin_audit
+  rectangle "Contact requests\n<size:10>contact-requests</size>" as admin_contact
+}
+admin_dash --> admin_appr
+admin_dash --> admin_idc
+admin_dash --> admin_jobs
+admin_jobs --> admin_tpl
+admin_dash --> admin_users
+admin_users --> admin_rbac
+admin_dash --> admin_st
+admin_st --> admin_cr
+admin_dash --> admin_set
+admin_dash --> admin_fin
+admin_dash --> admin_disp
+admin_dash --> admin_rep
+admin_dash --> admin_audit
+admin_dash --> admin_contact
+@enduml

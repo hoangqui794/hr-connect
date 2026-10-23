@@ -1,0 +1,25 @@
+@startuml sf-public
+left to right direction
+skinparam rectangle { RoundCorner 8 }
+title Screen flow – Public site & authentication
+package "Public site & authentication" #FFF4E5 {
+  rectangle "Landing page\n<size:10>/</size>" as public_home
+  rectangle "Public job search\n<size:10>/jobs</size>" as public_jobs
+  rectangle "Public job detail\n<size:10>/jobs/:id</size>" as public_jobd
+  rectangle "Services\n<size:10>/services</size>" as public_svc
+  rectangle "Contact form\n<size:10>/contact</size>" as public_contact
+  rectangle "Login\n<size:10>/login</size>" as public_login
+  rectangle "Register (Candidate / Affiliate / Client)\n<size:10>/register</size>" as public_reg
+  rectangle "Verify e-mail OTP\n<size:10>/verify-otp</size>" as public_otp
+  rectangle "Submission consent (link in e-mail)\n<size:10>/submission-consent</size>" as public_consent
+}
+public_home --> public_jobs : search
+public_jobs --> public_jobd : open job
+public_home --> public_svc
+public_home --> public_contact
+public_home --> public_login
+public_jobd --> public_login : apply → login
+public_login --> public_reg : no account
+public_reg --> public_otp : submit
+public_otp --> public_login : verified
+@enduml
