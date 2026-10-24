@@ -27,11 +27,13 @@ public sealed class AccountLifecycleEmailOutboxWorker : BackgroundService
         "CLIENT_REGISTRATION_APPROVED",
         "CLIENT_REGISTRATION_REJECTED",
         RecruitmentCandidateEmailTemplates.InterviewScheduled,
+        RecruitmentCandidateEmailTemplates.InterviewUpdated,
         RecruitmentCandidateEmailTemplates.InterviewRescheduled,
         RecruitmentCandidateEmailTemplates.InterviewCancelled,
         RecruitmentCandidateEmailTemplates.OfferSent,
         RecruitmentCandidateEmailTemplates.OfferWithdrawn,
-        RecruitmentCandidateEmailTemplates.OfferExpired
+        RecruitmentCandidateEmailTemplates.OfferExpired,
+        RecruitmentCandidateEmailTemplates.ApplicationNotStartedReported
     };
 
     /// <summary>
@@ -145,11 +147,13 @@ public sealed class AccountLifecycleEmailOutboxWorker : BackgroundService
             return row.TemplateCode switch
             {
                 RecruitmentCandidateEmailTemplates.InterviewScheduled => HrConnectEmailTemplates.InterviewScheduled(recruitmentPayload),
+                RecruitmentCandidateEmailTemplates.InterviewUpdated => HrConnectEmailTemplates.InterviewUpdated(recruitmentPayload),
                 RecruitmentCandidateEmailTemplates.InterviewRescheduled => HrConnectEmailTemplates.InterviewRescheduled(recruitmentPayload),
                 RecruitmentCandidateEmailTemplates.InterviewCancelled => HrConnectEmailTemplates.InterviewCancelled(recruitmentPayload),
                 RecruitmentCandidateEmailTemplates.OfferSent => HrConnectEmailTemplates.OfferSent(recruitmentPayload),
                 RecruitmentCandidateEmailTemplates.OfferWithdrawn => HrConnectEmailTemplates.OfferWithdrawn(recruitmentPayload),
                 RecruitmentCandidateEmailTemplates.OfferExpired => HrConnectEmailTemplates.OfferExpired(recruitmentPayload),
+                RecruitmentCandidateEmailTemplates.ApplicationNotStartedReported => HrConnectEmailTemplates.ApplicationNotStartedReported(recruitmentPayload),
                 _ => throw new InvalidOperationException($"Không hỗ trợ template email {row.TemplateCode}.")
             };
         }

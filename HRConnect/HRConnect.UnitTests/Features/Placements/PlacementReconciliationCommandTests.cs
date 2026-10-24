@@ -17,6 +17,7 @@ namespace HRConnect.UnitTests.Features.Placements;
 public sealed class PlacementReconciliationCommandTests
 {
     private readonly Mock<IPlacementReconciliationRepository> _repository = new();
+    private readonly Mock<IApplicationRepository> _applications = new();
     private readonly Mock<INotificationRepository> _notifications = new();
     private readonly Mock<IAuditLogService> _audit = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -28,7 +29,7 @@ public sealed class PlacementReconciliationCommandTests
         _warrantyProgress.Object, _settings.Object);
 
     private ResolveFlaggedReconciliationCommandHandler ResolveHandler() => new(
-        _repository.Object, _audit.Object, _unitOfWork.Object,
+        _repository.Object, _applications.Object, _audit.Object, _unitOfWork.Object,
         _warrantyProgress.Object, _settings.Object);
 
     [Fact]
@@ -129,16 +130,45 @@ public sealed class PlacementReconciliationCommandTests
         item.ReviewedAt = DateTime.UtcNow.AddHours(-1);
         _repository.Setup(r => r.GetByApplicationIdAsync(item.ApplicationId, true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(item);
+        _applications.Setup(r => r.GetByIdAsync(item.ApplicationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(item.Application);
 
         await ResolveHandler().Handle(new ResolveFlaggedReconciliationCommand(
-            item.ApplicationId, "Đã đối chiếu biên bản nhận việc.", item.ConcurrencyToken, Guid.NewGuid()), default);
+            item.ApplicationId, PlacementReconciliationResolutionActions.ConfirmReportedOutcome,
+            "Đã đối chiếu biên bản nhận việc.", item.ConcurrencyToken, Guid.NewGuid()), default);
 
         item.Status.Should().Be(PlacementReconciliationStates.Confirmed);
         item.Note.Should().Contain("Ứng viên nói đã đi làm");
         item.ResolutionNote.Should().Be("Đã đối chiếu biên bản nhận việc.");
+        item.ResolutionAction.Should().Be(PlacementReconciliationResolutionActions.ConfirmReportedOutcome);
         _audit.Verify(a => a.AddAsync(
             It.Is<AuditEntry>(entry => entry.Action == AuditActions.PlacementReconciliationResolved),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Admin_can_reopen_incorrect_not_started_claim_for_client_confirmation()
+    {
+        var item = Pending(PlacementReconciliationOutcomes.NotStarted);
+        item.Status = PlacementReconciliationStates.Flagged;
+        item.Note = "Ứng viên xác nhận đã đi làm.";
+        item.ReviewedAt = DateTime.UtcNow.AddHours(-1);
+        item.Application.Status = ApplicationStates.NotStarted;
+        _repository.Setup(r => r.GetByApplicationIdAsync(item.ApplicationId, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(item);
+        _applications.Setup(r => r.GetByIdAsync(item.ApplicationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(item.Application);
+
+        var result = await ResolveHandler().Handle(new ResolveFlaggedReconciliationCommand(
+            item.ApplicationId, PlacementReconciliationResolutionActions.ReopenForClientConfirmation,
+            "Đã kiểm tra hợp đồng và ngày bắt đầu.", item.ConcurrencyToken, Guid.NewGuid()), default);
+
+        result.ApplicationStatus.Should().Be(ApplicationStates.OfferAccepted);
+        item.Application.Status.Should().Be(ApplicationStates.OfferAccepted);
+        item.Application.ApplicationStatusHistories.Should().ContainSingle(history =>
+            history.OldStatus == ApplicationStates.NotStarted && history.NewStatus == ApplicationStates.OfferAccepted);
+        item.ResolutionAction.Should().Be(PlacementReconciliationResolutionActions.ReopenForClientConfirmation);
+        _warrantyProgress.VerifyNoOtherCalls();
     }
 
     private static PlacementReconciliation Pending(string outcome = PlacementReconciliationOutcomes.Started)
@@ -149,6 +179,7 @@ public sealed class PlacementReconciliationCommandTests
         var application = new HRConnect.Domain.Entities.Application
         {
             ApplicationId = Guid.NewGuid(), Job = job, Candidate = candidate,
+            Status = outcome == PlacementReconciliationOutcomes.NotStarted ? ApplicationStates.NotStarted : ApplicationStates.Placed,
         };
         return new PlacementReconciliation
         {

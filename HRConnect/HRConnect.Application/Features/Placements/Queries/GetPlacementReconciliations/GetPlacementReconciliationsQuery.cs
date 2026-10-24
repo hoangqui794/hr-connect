@@ -22,6 +22,7 @@ public sealed record PlacementReconciliationListItem(
     string? ContactChannel,
     string? Note,
     string? ResolutionNote,
+    string? ResolutionAction,
     Guid ConcurrencyToken,
     DateTime CreatedAt,
     DateTime? ReviewedAt);

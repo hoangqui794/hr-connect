@@ -22,19 +22,23 @@ public sealed record RecruitmentCandidateEmailPayload(
 public static class RecruitmentCandidateEmailTemplates
 {
     public const string InterviewScheduled = "CANDIDATE_INTERVIEW_SCHEDULED";
+    public const string InterviewUpdated = "CANDIDATE_INTERVIEW_UPDATED";
     public const string InterviewRescheduled = "CANDIDATE_INTERVIEW_RESCHEDULED";
     public const string InterviewCancelled = "CANDIDATE_INTERVIEW_CANCELLED";
     public const string OfferSent = "CANDIDATE_OFFER_SENT";
     public const string OfferWithdrawn = "CANDIDATE_OFFER_WITHDRAWN";
     public const string OfferExpired = "CANDIDATE_OFFER_EXPIRED";
+    public const string ApplicationNotStartedReported = "CANDIDATE_NOT_STARTED_REPORTED";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
         InterviewScheduled,
+        InterviewUpdated,
         InterviewRescheduled,
         InterviewCancelled,
         OfferSent,
         OfferWithdrawn,
-        OfferExpired
+        OfferExpired,
+        ApplicationNotStartedReported
     };
 }

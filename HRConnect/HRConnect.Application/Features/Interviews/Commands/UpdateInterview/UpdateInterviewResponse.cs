@@ -38,4 +38,6 @@ public class UpdateInterviewData
     public DateTime UpdatedAt { get; set; }
 
     public List<ScheduleInterviewParticipantDto> Participants { get; set; } = new();
+
+    public string? DeliveryChannel { get; set; }
 }

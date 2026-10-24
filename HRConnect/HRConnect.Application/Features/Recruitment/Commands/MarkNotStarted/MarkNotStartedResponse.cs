@@ -7,5 +7,6 @@ public record MarkNotStartedResponse(
     string Status,
     string Reason,
     Guid ConcurrencyToken,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string? DeliveryChannel = null
 );

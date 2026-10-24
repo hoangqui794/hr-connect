@@ -15,6 +15,7 @@ public sealed class PlacementReconciliation
     public string? ContactChannel { get; set; }
     public string? Note { get; set; }
     public string? ResolutionNote { get; set; }
+    public string? ResolutionAction { get; set; }
     public Guid? ReviewedBy { get; set; }
     public DateTime? ReviewedAt { get; set; }
     public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();

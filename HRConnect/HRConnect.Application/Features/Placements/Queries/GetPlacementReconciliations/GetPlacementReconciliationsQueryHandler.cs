@@ -39,6 +39,7 @@ public sealed class GetPlacementReconciliationsQueryHandler
                 item.ContactChannel,
                 item.Note,
                 item.ResolutionNote,
+                item.ResolutionAction,
                 item.ConcurrencyToken,
                 item.CreatedAt,
                 item.ReviewedAt)).ToList(),

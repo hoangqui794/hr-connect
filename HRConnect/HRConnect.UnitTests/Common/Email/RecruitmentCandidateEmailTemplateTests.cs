@@ -28,6 +28,16 @@ public class RecruitmentCandidateEmailTemplateTests
     }
 
     [Fact]
+    public void InterviewUpdated_ExplainsThatDetailsChanged()
+    {
+        var email = HrConnectEmailTemplates.InterviewUpdated(Payload);
+
+        email.Subject.Should().Contain("Backend Developer");
+        email.HtmlBody.Should().Contain(System.Net.WebUtility.HtmlEncode("Thông tin phỏng vấn đã được cập nhật"));
+        email.HtmlBody.Should().Contain(System.Net.WebUtility.HtmlEncode("09:30 ngày 21/10/2026"));
+    }
+
+    [Fact]
     public void OfferSent_DoesNotExposeSalaryOrDocumentContent()
     {
         var email = HrConnectEmailTemplates.OfferSent(Payload with { ExpiryDate = new DateOnly(2026, 10, 30) });
@@ -44,6 +54,19 @@ public class RecruitmentCandidateEmailTemplateTests
 
         email.HtmlBody.Should().Contain(System.Net.WebUtility.HtmlEncode("Nội dung <không tin cậy>"));
         email.HtmlBody.Should().NotContain("Nội dung <không tin cậy>");
+    }
+
+    [Fact]
+    public void ApplicationNotStartedReported_DoesNotExposeInternalReason()
+    {
+        var email = HrConnectEmailTemplates.ApplicationNotStartedReported(Payload with
+        {
+            Reason = "Ghi chú nội bộ không được lộ"
+        });
+
+        email.Subject.Should().Contain("Backend Developer");
+        email.HtmlBody.Should().Contain("HR Connect sẽ đối soát");
+        email.HtmlBody.Should().NotContain("Ghi chú nội bộ không được lộ");
     }
 
     [Fact]
