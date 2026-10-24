@@ -1,0 +1,10 @@
+---
+title: Placement Reconciliation (MF-04 UC-41)
+---
+stateDiagram-v2
+  direction LR
+  [*] --> PENDING : Client reports STARTED / NOT_STARTED
+  PENDING --> CONFIRMED : Internal HR verifies
+  PENDING --> FLAGGED : mismatch found (note required)
+  FLAGGED --> CONFIRMED : Platform Admin resolves
+  CONFIRMED --> [*]

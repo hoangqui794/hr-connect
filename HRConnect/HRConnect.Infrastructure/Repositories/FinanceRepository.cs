@@ -141,7 +141,9 @@ public class FinanceRepository : IFinanceRepository
             .FirstOrDefaultAsync(cancellationToken);
 
     public Task<ServiceFee?> GetServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default) =>
-        _context.ServiceFees.FirstOrDefaultAsync(fee => fee.ServiceFeeId == serviceFeeId, cancellationToken);
+        _context.ServiceFees
+            .Include(fee => fee.Placement!).ThenInclude(placement => placement.Reconciliation)
+            .FirstOrDefaultAsync(fee => fee.ServiceFeeId == serviceFeeId, cancellationToken);
 
     public Task<Commission?> GetCommissionForUpdateAsync(Guid commissionId, CancellationToken cancellationToken = default) =>
         _context.Commissions
@@ -298,6 +300,7 @@ public class FinanceRepository : IFinanceRepository
             .Include(fee => fee.Job)
             .Include(fee => fee.Placement!).ThenInclude(p => p.Application).ThenInclude(a => a.Job)
             .Include(fee => fee.Placement!).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
+            .Include(fee => fee.Placement!).ThenInclude(p => p.Reconciliation)
             .OrderByDescending(fee => fee.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)

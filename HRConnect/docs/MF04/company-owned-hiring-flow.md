@@ -11,7 +11,7 @@ operations role, not a member of the Company's hiring team.
 | `CLIENT_COMPANY_USER` | Screen a Company-owned `CV_APPLICATION` application, schedule and record interviews, manage offers, and confirm actual start work. |
 | `CANDIDATE` | Withdraw an owned application and accept or decline an owned offer. |
 | `AFFILIATE_RECRUITER` | Submit a candidate and view the separate, safe referral-progress projection only. |
-| `INTERNAL_HR` | Screen `HEADHUNT_COD` and `CV_SOURCING` applications (MF-03); read recruitment records, AI results, attribution, and audit records for operational support. |
+| `INTERNAL_HR` | Screen `HEADHUNT_COD` and `CV_SOURCING` applications (MF-03); read recruitment records; reconcile a Client-reported `STARTED`/`NOT_STARTED` outcome for `HEADHUNT_COD`; correct a wrongly entered actual start date. |
 | System worker | Send notifications and expire unresponded offers. |
 
 Apart from MF-03 screening of `HEADHUNT_COD` and `CV_SOURCING`, `INTERNAL_HR`
@@ -20,6 +20,11 @@ offers, or confirm placements. The database migration
 `20261005090000_RestrictInternalHrRecruitmentMutations` revokes those legacy
 permissions; `application.screen` is granted back to `INTERNAL_HR` by
 `DatabaseSeeder` and restricted per Service Type by `ScreeningPolicy`.
+
+Placement reconciliation verifies the Client's reported outcome; it does not
+transfer hiring ownership to `INTERNAL_HR`. A mismatch is marked `FLAGGED` and
+resolved by `PLATFORM_ADMIN`. Until confirmation, the related placement fee is
+held and cannot become `DUE` or `OVERDUE`.
 
 ## Screening API
 

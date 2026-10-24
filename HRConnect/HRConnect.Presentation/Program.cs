@@ -403,6 +403,7 @@ app.MapJobTemplateEndpoints();
 app.MapInterviewEndpoints();
 app.MapOfferEndpoints();
 app.MapPlacementEndpoints();
+app.MapPlacementReconciliationEndpoints();
 app.MapFinanceEndpoints();
 app.MapDisputeEndpoints();
 app.MapContactRequestEndpoints();

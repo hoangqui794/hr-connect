@@ -107,6 +107,9 @@ const AdminContactRequestsPage = React.lazy(() =>
 const AdminReportsPage = React.lazy(() =>
   import('@/features/admin-console/AdminReportsPage').then((m) => ({ default: m.AdminReportsPage }))
 );
+const AdminPlacementReconciliationPage = React.lazy(() =>
+  import('@/features/hr-console/PlacementReconciliationPage').then((m) => ({ default: m.AdminPlacementReconciliationPage }))
+);
 
 // ── Candidate & Affiliate workspaces (features/portal), MF-02 on the real API ──
 const CandidateHomePage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateHomePage })));
@@ -201,6 +204,9 @@ const HrProfilePage = React.lazy(() =>
 );
 const HrPlacementStartDateCorrectionPage = React.lazy(() =>
   import('@/features/hr-console/HrPlacementStartDateCorrectionPage').then((m) => ({ default: m.HrPlacementStartDateCorrectionPage }))
+);
+const HrPlacementReconciliationPage = React.lazy(() =>
+  import('@/features/hr-console/PlacementReconciliationPage').then((m) => ({ default: m.HrPlacementReconciliationPage }))
 );
 const HrWarrantyPlaceholder = React.lazy(() =>
   import('@/features/finance-mf05/WarrantyPages').then((m) => ({ default: m.HrWarrantyPage }))
@@ -364,6 +370,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/hr/pipeline': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/profile': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/hr/placement-review': [UserRole.INTERNAL_HR, UserRole.ADMIN],
+  '/hr/placement-reconciliations': [UserRole.INTERNAL_HR, UserRole.ADMIN],
   '/candidate/dashboard': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/jobs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/jobs/:jobId': [UserRole.CANDIDATE, UserRole.ADMIN],
@@ -423,6 +430,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/admin/user-authorization': [UserRole.ADMIN],
   '/admin/contact-requests': [UserRole.ADMIN],
   '/admin/reports': [UserRole.ADMIN],
+  '/admin/placement-reconciliations': [UserRole.ADMIN],
   '/admin/profile': [UserRole.ADMIN],
 };
 
@@ -465,6 +473,7 @@ export const AppRoutes = {
   ConsoleSettingsPlaceholder,
   AdminContactRequestsPage,
   AdminReportsPage,
+  AdminPlacementReconciliationPage,
   ContactPage,
   CandidateHomePage,
   CandidateJobsPage,
@@ -499,5 +508,6 @@ export const AppRoutes = {
   HrPipelinePage,
   HrProfilePage,
   HrPlacementStartDateCorrectionPage,
+  HrPlacementReconciliationPage,
   HrWarrantyPlaceholder,
 } as const;

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../apiClient';
-import { clientActionsApi, interviewHistoryApi, placementCorrectionApi } from './hrApi';
+import { clientActionsApi, interviewHistoryApi, placementCorrectionApi, placementReconciliationApi } from './hrApi';
 
 vi.mock('../apiClient', () => ({
   apiClient: {
@@ -124,5 +124,42 @@ describe('MF-04 API contracts', () => {
 
     await expect(placementCorrectionApi.get('placement-1')).resolves.toEqual(detail);
     expect(apiClient.get).toHaveBeenCalledWith('/placements/placement-1');
+  });
+
+  it('uses the Internal HR queue and forwards the optimistic concurrency token', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: { items: [], totalCount: 0, page: 1, pageSize: 20 } });
+    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { status: 'CONFIRMED' } });
+
+    await placementReconciliationApi.list({ status: 'PENDING', page: 1, pageSize: 20 });
+    await placementReconciliationApi.reconcile('application-1', {
+      decision: 'CONFIRM',
+      contactChannel: 'CANDIDATE',
+      note: null,
+      concurrencyToken: 'reconciliation-token',
+    });
+
+    expect(apiClient.get).toHaveBeenCalledWith('/internal-hr/placement-reconciliations', {
+      params: { status: 'PENDING', page: 1, pageSize: 20 },
+    });
+    expect(apiClient.post).toHaveBeenCalledWith('/internal-hr/placement-reconciliations/application-1', {
+      decision: 'CONFIRM',
+      contactChannel: 'CANDIDATE',
+      note: null,
+      concurrencyToken: 'reconciliation-token',
+    });
+  });
+
+  it('uses the admin endpoint only for resolving a flagged reconciliation', async () => {
+    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { status: 'CONFIRMED' } });
+
+    await placementReconciliationApi.resolve('application-1', {
+      note: 'Đã đối chiếu biên bản nhận việc.',
+      concurrencyToken: 'reconciliation-token',
+    });
+
+    expect(apiClient.post).toHaveBeenCalledWith('/admin/placement-reconciliations/application-1/resolve', {
+      note: 'Đã đối chiếu biên bản nhận việc.',
+      concurrencyToken: 'reconciliation-token',
+    });
   });
 });

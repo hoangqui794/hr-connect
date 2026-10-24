@@ -43,6 +43,8 @@ public partial class Placement
 
     public virtual ServiceFee? ServiceFee { get; set; }
 
+    public virtual PlacementReconciliation? Reconciliation { get; set; }
+
     /// <summary>MF-05 replacement slot this placement fills; null for a normal hire.</summary>
     public Guid? ReplacementSlotId { get; set; }
 
