@@ -79,6 +79,18 @@ public static class PlacementReconciliationDecisions
     public const string Flag = "FLAG";
 }
 
+public static class PlacementReconciliationResolutionActions
+{
+    public const string ConfirmReportedOutcome = "CONFIRM_REPORTED_OUTCOME";
+    public const string ReopenForClientConfirmation = "REOPEN_FOR_CLIENT_CONFIRMATION";
+
+    public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ConfirmReportedOutcome,
+        ReopenForClientConfirmation
+    };
+}
+
 public static class PlacementReconciliationContactChannels
 {
     public const string Candidate = "CANDIDATE";
@@ -99,4 +111,5 @@ public static class PlacementReconciliationErrorCodes
     public const string NoteRequired = "RECONCILIATION_NOTE_REQUIRED";
     public const string InvalidDecision = "RECONCILIATION_INVALID_DECISION";
     public const string InvalidContactChannel = "RECONCILIATION_INVALID_CONTACT_CHANNEL";
+    public const string InvalidResolutionAction = "RECONCILIATION_INVALID_RESOLUTION_ACTION";
 }

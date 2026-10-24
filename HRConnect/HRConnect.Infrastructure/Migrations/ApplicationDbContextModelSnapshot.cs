@@ -4340,14 +4340,19 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("note");
 
+                    b.Property<Guid?>("PlacementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("placement_id");
+
+                    b.Property<string>("ResolutionAction")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("resolution_action");
+
                     b.Property<string>("ResolutionNote")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("resolution_note");
-
-                    b.Property<Guid?>("PlacementId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("placement_id");
 
                     b.Property<DateTime?>("ReviewedAt")
                         .HasColumnType("timestamp with time zone")
@@ -4394,7 +4399,9 @@ namespace HRConnect.Infrastructure.Migrations
 
                             t.HasCheckConstraint("ck_placement_reconciliation_placement", "(claimed_outcome = 'STARTED' AND placement_id IS NOT NULL) OR (claimed_outcome = 'NOT_STARTED' AND placement_id IS NULL)");
 
-                                t.HasCheckConstraint("ck_placement_reconciliation_review", "(status = 'PENDING' AND reviewed_by IS NULL AND reviewed_at IS NULL) OR (status <> 'PENDING' AND reviewed_at IS NOT NULL)");
+                            t.HasCheckConstraint("ck_placement_reconciliation_resolution_action", "resolution_action IS NULL OR resolution_action IN ('CONFIRM_REPORTED_OUTCOME','REOPEN_FOR_CLIENT_CONFIRMATION')");
+
+                            t.HasCheckConstraint("ck_placement_reconciliation_review", "(status = 'PENDING' AND reviewed_by IS NULL AND reviewed_at IS NULL) OR (status <> 'PENDING' AND reviewed_at IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_placement_reconciliation_status", "status IN ('PENDING','CONFIRMED','FLAGGED')");
                         });

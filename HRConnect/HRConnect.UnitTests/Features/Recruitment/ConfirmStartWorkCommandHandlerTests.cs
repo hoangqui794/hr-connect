@@ -838,4 +838,52 @@ public class ConfirmStartWorkCommandHandlerTests
             It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_WhenNotStartedWasReopened_ShouldReuseReconciliationForStartedOutcome()
+    {
+        var fixture = ArrangeValidClientStart(null);
+        fixture.Application.Job.ServiceType = new ServiceType { Code = ServiceTypeCodes.HeadhuntCod };
+        var previousToken = Guid.NewGuid();
+        var reconciliation = new PlacementReconciliation
+        {
+            ReconciliationId = Guid.NewGuid(),
+            ApplicationId = fixture.Application.ApplicationId,
+            ClaimedOutcome = PlacementReconciliationOutcomes.NotStarted,
+            Status = PlacementReconciliationStates.Confirmed,
+            ResolutionAction = PlacementReconciliationResolutionActions.ReopenForClientConfirmation,
+            ResolutionNote = "Client reported the wrong outcome.",
+            ReviewedBy = Guid.NewGuid(),
+            ReviewedAt = DateTime.UtcNow.AddMinutes(-10),
+            ConcurrencyToken = previousToken,
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
+            UpdatedAt = DateTime.UtcNow.AddMinutes(-10)
+        };
+        Placement? createdPlacement = null;
+        _placementRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Placement>(), It.IsAny<CancellationToken>()))
+            .Callback<Placement, CancellationToken>((placement, _) => createdPlacement = placement)
+            .Returns(Task.CompletedTask);
+        _reconciliationRepositoryMock
+            .Setup(r => r.GetByApplicationIdAsync(
+                fixture.Application.ApplicationId,
+                true,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(reconciliation);
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        await CreateHandler().Handle(fixture.CreateCommand(false), default);
+
+        createdPlacement.Should().NotBeNull();
+        reconciliation.PlacementId.Should().Be(createdPlacement!.PlacementId);
+        reconciliation.ClaimedOutcome.Should().Be(PlacementReconciliationOutcomes.Started);
+        reconciliation.Status.Should().Be(PlacementReconciliationStates.Pending);
+        reconciliation.ResolutionAction.Should().BeNull();
+        reconciliation.ResolutionNote.Should().BeNull();
+        reconciliation.ReviewedBy.Should().BeNull();
+        reconciliation.ReviewedAt.Should().BeNull();
+        reconciliation.ConcurrencyToken.Should().NotBe(previousToken);
+        _reconciliationRepositoryMock.Verify(
+            r => r.AddAsync(It.IsAny<PlacementReconciliation>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
 }

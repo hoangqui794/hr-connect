@@ -16,6 +16,7 @@ export interface PagedItems<T> {
 export type PlacementReconciliationStatus = 'PENDING' | 'CONFIRMED' | 'FLAGGED';
 export type PlacementClaimedOutcome = 'STARTED' | 'NOT_STARTED';
 export type ReconciliationContactChannel = 'CANDIDATE' | 'AFFILIATE' | 'BOTH';
+export type ReconciliationResolutionAction = 'CONFIRM_REPORTED_OUTCOME' | 'REOPEN_FOR_CLIENT_CONFIRMATION';
 
 export interface PlacementReconciliationItem {
   reconciliationId: string;
@@ -34,6 +35,7 @@ export interface PlacementReconciliationItem {
   contactChannel: ReconciliationContactChannel | null;
   note: string | null;
   resolutionNote: string | null;
+  resolutionAction: ReconciliationResolutionAction | null;
   concurrencyToken: string;
   createdAt: string;
   reviewedAt: string | null;

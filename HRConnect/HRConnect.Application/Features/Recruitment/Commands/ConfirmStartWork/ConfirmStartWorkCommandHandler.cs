@@ -230,17 +230,28 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
 
             if (string.Equals(job.ServiceType?.Code, ServiceTypeCodes.HeadhuntCod, StringComparison.OrdinalIgnoreCase))
             {
-                await _reconciliationRepository.AddAsync(new PlacementReconciliation
+                var reconciliation = await _reconciliationRepository.GetByApplicationIdAsync(
+                    application.ApplicationId,
+                    cancellationToken: cancellationToken);
+                if (reconciliation == null)
                 {
-                    ReconciliationId = Guid.NewGuid(),
-                    ApplicationId = application.ApplicationId,
-                    PlacementId = placement.PlacementId,
-                    ClaimedOutcome = PlacementReconciliationOutcomes.Started,
-                    Status = PlacementReconciliationStates.Pending,
-                    ConcurrencyToken = Guid.NewGuid(),
-                    CreatedAt = now,
-                    UpdatedAt = now
-                }, cancellationToken);
+                    await _reconciliationRepository.AddAsync(new PlacementReconciliation
+                    {
+                        ReconciliationId = Guid.NewGuid(),
+                        ApplicationId = application.ApplicationId,
+                        PlacementId = placement.PlacementId,
+                        ClaimedOutcome = PlacementReconciliationOutcomes.Started,
+                        Status = PlacementReconciliationStates.Pending,
+                        ConcurrencyToken = Guid.NewGuid(),
+                        CreatedAt = now,
+                        UpdatedAt = now
+                    }, cancellationToken);
+                }
+                else
+                {
+                    EnsureReopenedReconciliation(reconciliation);
+                    ResetReconciliation(reconciliation, PlacementReconciliationOutcomes.Started, placement.PlacementId, now);
+                }
             }
 
             if (replacementSlot != null)
@@ -370,6 +381,36 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
 
             throw;
         }
+    }
+
+    private static void EnsureReopenedReconciliation(PlacementReconciliation reconciliation)
+    {
+        if (reconciliation.Status != PlacementReconciliationStates.Confirmed ||
+            reconciliation.ResolutionAction != PlacementReconciliationResolutionActions.ReopenForClientConfirmation)
+        {
+            throw new ConflictException(
+                "Hồ sơ đã có kết quả đối soát và không thể ghi đè.",
+                PlacementReconciliationErrorCodes.NotPending);
+        }
+    }
+
+    private static void ResetReconciliation(
+        PlacementReconciliation reconciliation,
+        string outcome,
+        Guid? placementId,
+        DateTime now)
+    {
+        reconciliation.PlacementId = placementId;
+        reconciliation.ClaimedOutcome = outcome;
+        reconciliation.Status = PlacementReconciliationStates.Pending;
+        reconciliation.ContactChannel = null;
+        reconciliation.Note = null;
+        reconciliation.ResolutionNote = null;
+        reconciliation.ResolutionAction = null;
+        reconciliation.ReviewedBy = null;
+        reconciliation.ReviewedAt = null;
+        reconciliation.UpdatedAt = now;
+        reconciliation.ConcurrencyToken = Guid.NewGuid();
     }
 
     private static bool IsOpenAndUsableForJob(ReplacementSlot? slot, Guid jobId, DateTime now) =>

@@ -32,6 +32,7 @@ const pending = {
   contactChannel: null,
   note: null,
   resolutionNote: null,
+  resolutionAction: null,
   concurrencyToken: 'token-1',
   createdAt: '2026-10-23T01:00:00Z',
   reviewedAt: null,
@@ -109,7 +110,29 @@ describe('PlacementReconciliationPage', () => {
     fireEvent.change(screen.getByLabelText('Kết quả xử lý'), { target: { value: 'Đã đối chiếu biên bản nhận việc.' } });
     await userEvent.click(exactButton('Hoàn tất xử lý', true));
     await waitFor(() => expect(placementReconciliationApi.resolve).toHaveBeenCalledWith('app-1', {
+      action: 'CONFIRM_REPORTED_OUTCOME',
       note: 'Đã đối chiếu biên bản nhận việc.',
+      concurrencyToken: 'token-1',
+    }));
+  });
+
+  it('lets Platform Admin reopen an incorrect not-started report', async () => {
+    vi.mocked(placementReconciliationApi.list).mockResolvedValue({
+      items: [{ ...pending, placementId: null, claimedOutcome: 'NOT_STARTED', status: 'FLAGGED', note: 'Ứng viên xác nhận đã đi làm.' }],
+      totalCount: 1,
+      page: 1,
+      pageSize: 10,
+    });
+    renderPage(true);
+    await screen.findByText('Xem');
+    await userEvent.click(exactButton('Xem'));
+    await userEvent.click(screen.getByRole('button', { name: 'Ghi nhận đã xử lý' }));
+    await userEvent.click(screen.getByLabelText('Client khai sai — mở lại để xác nhận đi làm'));
+    fireEvent.change(screen.getByLabelText('Kết quả xử lý'), { target: { value: 'Đã xác minh ứng viên thực tế đi làm.' } });
+    await userEvent.click(exactButton('Hoàn tất xử lý', true));
+    await waitFor(() => expect(placementReconciliationApi.resolve).toHaveBeenCalledWith('app-1', {
+      action: 'REOPEN_FOR_CLIENT_CONFIRMATION',
+      note: 'Đã xác minh ứng viên thực tế đi làm.',
       concurrencyToken: 'token-1',
     }));
   });

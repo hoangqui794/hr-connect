@@ -106,6 +106,7 @@ public static class PlacementReconciliationEndpoints
             {
                 return Results.Ok(await sender.Send(new ResolveFlaggedReconciliationCommand(
                     applicationId,
+                    request.Action,
                     request.Note,
                     request.ConcurrencyToken,
                     userId.Value), cancellationToken));
@@ -132,4 +133,4 @@ public static class PlacementReconciliationEndpoints
 }
 
 public sealed record ReconcilePlacementRequest(string Decision, string ContactChannel, string? Note, Guid? ConcurrencyToken);
-public sealed record ResolveFlaggedReconciliationRequest(string Note, Guid? ConcurrencyToken);
+public sealed record ResolveFlaggedReconciliationRequest(string? Action, string Note, Guid? ConcurrencyToken);

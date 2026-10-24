@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Button, Descriptions, Drawer, Form, Input, Modal, Select, Table } from 'antd';
+import { Alert, App as AntApp, Button, Descriptions, Drawer, Form, Input, Modal, Radio, Select, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { CheckCircleOutlined, ExclamationCircleOutlined, EyeOutlined, FormOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -37,6 +37,7 @@ interface ActionValues {
   decision: 'CONFIRM' | 'FLAG';
   contactChannel: ReconciliationContactChannel;
   note?: string;
+  resolutionAction?: 'CONFIRM_REPORTED_OUTCOME' | 'REOPEN_FOR_CLIENT_CONFIRMATION';
 }
 
 const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = false }) => {
@@ -78,6 +79,7 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
   });
   const resolve = useMutation({
     mutationFn: (values: ActionValues) => placementReconciliationApi.resolve(selected!.applicationId, {
+      action: values.resolutionAction ?? 'CONFIRM_REPORTED_OUTCOME',
       note: values.note!.trim(),
       concurrencyToken: selected!.concurrencyToken,
     }),
@@ -87,7 +89,7 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
 
   const openAction = (decision?: ActionValues['decision']) => {
     form.setFieldsValue(admin
-      ? { decision: 'CONFIRM', contactChannel: selected?.contactChannel ?? 'BOTH', note: '' }
+      ? { decision: 'CONFIRM', contactChannel: selected?.contactChannel ?? 'BOTH', resolutionAction: 'CONFIRM_REPORTED_OUTCOME', note: '' }
       : { decision: decision ?? 'CONFIRM', contactChannel: 'CANDIDATE', note: '' });
     setActionOpen(true);
   };
@@ -184,6 +186,7 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
             {selected.contactChannel && <Descriptions.Item label="Đã liên hệ">{channelLabels[selected.contactChannel]}</Descriptions.Item>}
             {selected.note && <Descriptions.Item label="Ghi chú không khớp">{selected.note}</Descriptions.Item>}
             {selected.resolutionNote && <Descriptions.Item label="Kết quả xử lý">{selected.resolutionNote}</Descriptions.Item>}
+            {selected.resolutionAction && <Descriptions.Item label="Hướng xử lý">{selected.resolutionAction === 'REOPEN_FOR_CLIENT_CONFIRMATION' ? 'Mở lại để Client xác nhận' : 'Xác nhận kết quả Client đã khai'}</Descriptions.Item>}
           </Descriptions>
           {!admin && selected.status === 'PENDING' && <div className="mt-5 flex flex-wrap gap-2">
             <Button type="primary" icon={<CheckCircleOutlined />} onClick={() => openAction('CONFIRM')}>Xác nhận đúng</Button>
@@ -205,6 +208,14 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
       >
         {activeMutation.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(activeMutation.error)} />}
         <Form form={form} layout="vertical" requiredMark="optional">
+          {admin && selected?.claimedOutcome === 'NOT_STARTED' && (
+            <Form.Item name="resolutionAction" label="Hướng xử lý" rules={[{ required: true, message: 'Chọn hướng xử lý.' }]}>
+              <Radio.Group className="flex flex-col gap-2">
+                <Radio value="CONFIRM_REPORTED_OUTCOME">Xác nhận ứng viên không đi làm</Radio>
+                <Radio value="REOPEN_FOR_CLIENT_CONFIRMATION">Client khai sai — mở lại để xác nhận đi làm</Radio>
+              </Radio.Group>
+            </Form.Item>
+          )}
           {!admin && <>
             <Form.Item name="decision" hidden><Input /></Form.Item>
             <Form.Item name="contactChannel" label="Đã xác minh với" rules={[{ required: true, message: 'Chọn kênh đã dùng để xác minh.' }]}>
