@@ -310,8 +310,23 @@ const ClientFees: React.FC = () => {
         </div>
       ),
     },
-    { title: 'Hạn thanh toán', dataIndex: 'dueDate', render: (v) => date(v) },
-    { title: 'Trạng thái', dataIndex: 'status', render: (v: ServiceFeeStatus) => { const s = labelOf(SERVICE_FEE_STATUS, v); return <StatusDot tone={s.tone}>{s.label}</StatusDot>; } },
+    {
+      title: 'Hạn thanh toán',
+      key: 'dueDate',
+      render: (_, fee) => fee.reconciliationStatus && fee.reconciliationStatus !== 'CONFIRMED'
+        ? <span className="text-slate-500">Sau khi đối soát</span>
+        : date(fee.dueDate),
+    },
+    {
+      title: 'Trạng thái',
+      key: 'status',
+      render: (_, fee) => {
+        if (fee.reconciliationStatus === 'PENDING') return <StatusDot tone="warning">Đang đối soát</StatusDot>;
+        if (fee.reconciliationStatus === 'FLAGGED') return <StatusDot tone="danger">Đang xác minh</StatusDot>;
+        const status = labelOf(SERVICE_FEE_STATUS, fee.status);
+        return <StatusDot tone={status.tone}>{status.label}</StatusDot>;
+      },
+    },
   ];
   return (
     <Surface>
