@@ -112,7 +112,7 @@ export const AffiliateShell: React.FC = () => {
   };
 
   const name = user?.name || 'Cộng tác viên';
-  const width = collapsed ? 76 : 268;
+  const width = collapsed ? 76 : 236;
 
   return (
     <div className="affiliate-console min-h-screen bg-[#F7F5FC] text-slate-900">
@@ -129,7 +129,7 @@ export const AffiliateShell: React.FC = () => {
         }}
         aria-label="Điều hướng cộng tác viên"
       >
-        <div className="affiliate-sidebar-brand flex h-16 items-center gap-3 px-5">
+        <div className="affiliate-sidebar-brand flex h-[58px] items-center gap-3 px-4">
           <BrandMark size={36} className="shrink-0" />
           {!collapsed && (
             <div className="min-w-0 leading-tight">
@@ -197,7 +197,7 @@ export const AffiliateShell: React.FC = () => {
 
       {/* ── Main ────────────────────────────────────────────────────────── */}
       <div className="transition-[padding] duration-200" style={{ paddingLeft: compact ? 0 : width }}>
-        <header className="affiliate-topbar sticky top-0 z-20 flex h-16 items-center justify-between border-0 border-b border-solid px-4 backdrop-blur lg:px-8">
+        <header className="affiliate-topbar sticky top-0 z-20 flex h-[58px] items-center justify-between border-0 border-b border-solid px-4 backdrop-blur lg:px-6">
           <div className="flex min-w-0 items-center gap-2">
             {compact && (
               <button
@@ -254,7 +254,7 @@ export const AffiliateShell: React.FC = () => {
         </header>
 
         <AdminTopProgress offsetLeft={compact ? 0 : width} />
-        <main className="affiliate-main mx-auto px-4 py-6 lg:px-8 lg:py-8">
+        <main className="affiliate-main mx-auto px-4 py-5 lg:px-6 lg:py-6">
           <AdminPageEnter pathKey={location.pathname}>
             <Suspense fallback={<AdminPageSkeleton />}>
               <Outlet />

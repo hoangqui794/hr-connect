@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App, Button, Form, Input, Modal, Skeleton, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { BankOutlined, ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { BankOutlined, CalendarOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { affiliateBankApi, financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Commission, CommissionStatus, Payout } from '@/types/api/finance';
@@ -81,7 +81,7 @@ const PayoutAccountCard: React.FC = () => {
         confirmLoading={save.isPending}
         onOk={() => save.mutate()}
         onCancel={() => setEditing(false)}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" preserve={false}>
           <Form.Item name="bankName" label="Ngân hàng" rules={[{ required: true, whitespace: true, message: 'Nhập tên ngân hàng.' }, { min: 2, max: 100, message: 'Từ 2 đến 100 ký tự.' }]}>
@@ -245,6 +245,14 @@ export const AffiliateCommissionsPage: React.FC = () => {
   const inGroup = (statuses: CommissionStatus[]) => items.filter((c) => statuses.includes(c.status));
   const sum = (statuses: CommissionStatus[]) => inGroup(statuses).reduce((t, c) => t + c.amount, 0);
   const shown = group === 'all' ? items : inGroup(GROUPS[group]);
+  const recognizedTotal = items.filter((item) => item.status !== 'CANCELLED').reduce((total, item) => total + item.amount, 0);
+  const monthTotals = Array.from({ length: 12 }, (_, month) =>
+    (payouts.data?.items ?? [])
+      .filter((payout) => Boolean(payout.payoutDate) && new Date(payout.payoutDate!).getFullYear() === new Date().getFullYear() && new Date(payout.payoutDate!).getMonth() === month)
+      .reduce((total, payout) => total + payout.amount, 0)
+  );
+  const maxMonthTotal = Math.max(1, ...monthTotals);
+  const upcoming = inGroup(GROUPS.payout).slice(0, 3);
 
   const payoutColumns: ColumnsType<Payout> = [
     { title: 'Ngày chi', dataIndex: 'payoutDate', render: (v) => date(v) },
@@ -261,7 +269,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
   ];
 
   return (
-    <div>
+    <div className="affiliate-commissions-page">
       <AffiliatePageHeader
         title="Hoa hồng & chi trả"
         description="Theo dõi số tiền dự kiến, điều kiện chi trả và lịch sử HR Connect chuyển tiền cho bạn."
@@ -281,24 +289,36 @@ export const AffiliateCommissionsPage: React.FC = () => {
 
       {commissions.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(commissions.error)} />}
 
-      {commissions.isLoading ? (
-        <Skeleton active />
-      ) : (
-        <div className="mb-5 grid gap-3 lg:grid-cols-[2fr_1fr_1fr]">
-          <div className="rounded-2xl bg-[color:var(--console-accent-soft)] p-4 sm:p-5">
-            <div className="text-[13px] font-medium text-[color:var(--console-accent-strong)]">Sắp nhận</div>
-            <div className="mt-1 text-[28px] font-bold leading-tight tabular-nums text-[color:var(--console-accent-strong)]">{money(sum(GROUPS.payout))}</div>
-            <div className="mt-1 text-[13px] text-[color:var(--console-accent-strong)]">Đã đủ điều kiện; chuyển khoản sau khi doanh nghiệp thanh toán và HR Connect duyệt chi.</div>
+      <div className="affiliate-finance-tabs" role="tablist" aria-label="Nội dung hoa hồng">
+        <button type="button" role="tab" aria-selected="true">Tổng quan</button>
+        <button type="button" role="tab" onClick={() => document.getElementById('affiliate-payout-history')?.scrollIntoView({ behavior: 'smooth' })}>Lịch chi trả</button>
+        <button type="button" role="tab" onClick={() => window.location.assign('/affiliate/disputes')}>Khiếu nại</button>
+      </div>
+
+      {commissions.isLoading ? <Skeleton active /> : (
+        <>
+          <div className="affiliate-finance-kpis">
+            <article><span className="is-gold"><BankOutlined /></span><div><small>Tổng hoa hồng đã ghi nhận</small><strong>{money(recognizedTotal)}</strong><em>{items.length} khoản hoa hồng</em></div></article>
+            <article><span className="sr-only">Sắp nhận</span><span className="is-violet"><ClockCircleOutlined /></span><div><small>Đang chờ chi trả</small><strong>{money(sum(GROUPS.payout))}</strong><em>{inGroup(GROUPS.payout).length} khoản đủ điều kiện</em></div></article>
+            <article><span className="is-green"><CheckCircleOutlined /></span><div><small>Đã chi trả</small><strong>{money(sum(GROUPS.paid))}</strong><em>{inGroup(GROUPS.paid).length} khoản đã nhận</em></div></article>
           </div>
-          <Surface padded>
-            <div className="text-[13px] text-slate-500">Đang bảo hành</div>
-            <div className="mt-1 text-[22px] font-bold tabular-nums text-slate-900">{money(sum(GROUPS.warranty))}</div>
-          </Surface>
-          <Surface padded>
-            <div className="text-[13px] text-slate-500">Đã nhận</div>
-            <div className="mt-1 text-[22px] font-bold tabular-nums text-slate-900">{money(sum(GROUPS.paid))}</div>
-          </Surface>
-        </div>
+
+          <div className="affiliate-finance-overview">
+            <Surface className="affiliate-monthly-chart p-5">
+              <h2>Thống kê hoa hồng theo tháng</h2>
+              <div className="affiliate-bars" aria-label={`Hoa hồng đã chi trong năm ${new Date().getFullYear()}`}>
+                {monthTotals.map((value, index) => (
+                  <div key={index}><span style={{ height: `${Math.max(value ? 12 : 3, (value / maxMonthTotal) * 100)}%` }} title={`${index + 1}/${new Date().getFullYear()}: ${money(value)}`} /><small>T{index + 1}</small></div>
+                ))}
+              </div>
+              <p>Dữ liệu chỉ tính các khoản HR Connect đã chuyển thành công.</p>
+            </Surface>
+            <Surface className="affiliate-upcoming-payouts p-5">
+              <h2>Lịch chi trả sắp tới</h2>
+              {upcoming.length ? <ul>{upcoming.map((commission) => <li key={commission.commissionId}><CalendarOutlined /><span><strong>{commission.candidateName || 'Ứng viên'}</strong><small>Chờ duyệt lịch chuyển tiền</small></span><b>{money(commission.amount)}</b></li>)}</ul> : <div className="affiliate-upcoming-empty">Chưa có khoản nào chờ lên lịch chi trả.</div>}
+            </Surface>
+          </div>
+        </>
       )}
 
       <PayoutAccountCard />
@@ -338,7 +358,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
         </ul>
       )}
 
-      <h2 className="mb-3 mt-8 text-base font-semibold text-slate-900">Lịch sử chuyển tiền</h2>
+      <h2 id="affiliate-payout-history" className="mb-3 mt-8 text-base font-semibold text-slate-900">Lịch sử chuyển tiền</h2>
       {payouts.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(payouts.error)} />}
       <Surface>
         <Table
