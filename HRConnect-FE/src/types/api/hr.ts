@@ -13,6 +13,39 @@ export interface PagedItems<T> {
   totalPages: number;
 }
 
+export type PlacementReconciliationStatus = 'PENDING' | 'CONFIRMED' | 'FLAGGED';
+export type PlacementClaimedOutcome = 'STARTED' | 'NOT_STARTED';
+export type ReconciliationContactChannel = 'CANDIDATE' | 'AFFILIATE' | 'BOTH';
+
+export interface PlacementReconciliationItem {
+  reconciliationId: string;
+  applicationId: string;
+  placementId: string | null;
+  jobTitle: string;
+  companyName: string;
+  candidateName: string;
+  candidateEmail: string | null;
+  affiliateName: string | null;
+  claimedOutcome: PlacementClaimedOutcome;
+  actualStartDate: string | null;
+  serviceFeeAmount: number | null;
+  serviceFeeCurrency: string | null;
+  status: PlacementReconciliationStatus;
+  contactChannel: ReconciliationContactChannel | null;
+  note: string | null;
+  resolutionNote: string | null;
+  concurrencyToken: string;
+  createdAt: string;
+  reviewedAt: string | null;
+}
+
+export interface PlacementReconciliationPage {
+  items: PlacementReconciliationItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
 export type ApplicationStatus =
   | 'SUBMITTED'
   | 'SCREENING'

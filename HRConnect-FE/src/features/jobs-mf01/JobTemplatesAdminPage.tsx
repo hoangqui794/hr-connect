@@ -492,16 +492,18 @@ export const JobTemplatesAdminPage: React.FC = () => {
       title: 'Trạng thái',
       dataIndex: 'isActive',
       key: 'isActive',
-      width: 140,
+      width: 150,
       render: (isActive: boolean) =>
         isActive ? (
-          <Tag color="success" className="rounded font-medium">
+          <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border border-emerald-200/90 bg-emerald-50 text-emerald-700 shadow-2xs whitespace-nowrap">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)] shrink-0" />
             Đang hoạt động
-          </Tag>
+          </span>
         ) : (
-          <Tag color="default" className="rounded font-medium text-slate-500">
+          <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border border-slate-200/90 bg-slate-100 text-slate-600 whitespace-nowrap">
+            <span className="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
             Đã ẩn
-          </Tag>
+          </span>
         ),
     },
     {

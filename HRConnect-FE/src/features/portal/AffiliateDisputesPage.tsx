@@ -13,25 +13,20 @@ import {
   Form,
   Input,
   Select,
-  Breadcrumb,
   Alert,
   App as AntApp,
 } from 'antd';
 import {
-  SolutionOutlined,
   PlusOutlined,
-  HomeOutlined,
-  ArrowLeftOutlined,
-  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { disputeApi } from '@/services/api/disputeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { StatusDot, Surface } from '@/features/admin-console/ui';
 import type { MyDisputeDto, CreateDisputeRequest } from '@/types/api/dispute';
+import { AffiliatePageHeader } from './affiliate/AffiliateUi';
 
 const fmt = (v?: string | null) => (v ? dayjs(v).format('HH:mm DD/MM/YYYY') : '—');
 
@@ -43,11 +38,10 @@ const STATUS_CONFIG: Record<string, { label: string; tone: 'warning' | 'success'
 
 const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   DUPLICATE_SUBMISSION: { label: 'Trùng ứng viên', color: 'orange' },
-  ATTRIBUTION: { label: 'Tranh chấp nguồn', color: 'blue' },
+  ATTRIBUTION: { label: 'Sai quyền ghi nhận', color: 'blue' },
 };
 
 export const AffiliateDisputesPage: React.FC = () => {
-  const navigate = useNavigate();
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -63,7 +57,7 @@ export const AffiliateDisputesPage: React.FC = () => {
   const createMutation = useMutation({
     mutationFn: (values: CreateDisputeRequest) => disputeApi.createDispute(values),
     onSuccess: () => {
-      message.success('Đã gửi yêu cầu khiếu nại tới Platform Admin.');
+      message.success('Đã gửi khiếu nại tới bộ phận vận hành HR Connect.');
       setCreateModalOpen(false);
       form.resetFields();
       queryClient.invalidateQueries({ queryKey: ['affiliate-my-disputes'] });
@@ -113,7 +107,7 @@ export const AffiliateDisputesPage: React.FC = () => {
       },
     },
     {
-      title: 'Phản hồi từ Admin',
+      title: 'Kết quả xử lý',
       dataIndex: 'resolution',
       render: (v, r) =>
         v ? (
@@ -128,50 +122,21 @@ export const AffiliateDisputesPage: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-      {/* Header & Breadcrumb */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Breadcrumb
-          items={[
-            {
-              title: (
-                <span
-                  className="cursor-pointer flex items-center gap-1 text-slate-500 hover:text-blue-600"
-                  onClick={() => navigate('/affiliate/dashboard')}
-                >
-                  <HomeOutlined /> Trang chủ
-                </span>
-              ),
-            },
-            {
-              title: (
-                <span className="font-semibold text-slate-800 flex items-center gap-1">
-                  <SolutionOutlined className="text-blue-600" /> Khiếu nại nguồn ứng viên
-                </span>
-              ),
-            },
-          ]}
-        />
-        <div className="flex gap-2">
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/affiliate/dashboard')}>
-            Quay lại
-          </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setCreateModalOpen(true)}
-          >
-            Tạo khiếu nại mới
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <AffiliatePageHeader
+        title="Khiếu nại quyền ghi nhận"
+        description="Yêu cầu HR Connect kiểm tra lại khi hồ sơ bị đánh dấu trùng hoặc quyền ghi nhận ứng viên chưa đúng."
+        actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>Tạo khiếu nại</Button>}
+      />
 
       <Alert
         type="info"
         showIcon
-        message="Khi nào bạn có thể khiếu nại"
-        description="Khi lượt giới thiệu của bạn bị hệ thống chặn vì trùng ứng viên hoặc ứng viên của bạn bị ghi nhận nguồn cho người khác không đúng quy định, bạn có thể tạo khiếu nại trong thời hạn khiếu nại để Admin đối soát chứng từ và chuyển lại quyền ghi nhận nguồn."
+        message="Trường hợp nên tạo khiếu nại"
+        description="Tạo khiếu nại khi hồ sơ của bạn bị chặn do nghi trùng, hoặc ứng viên đã xác nhận cho phép giới thiệu nhưng quyền ghi nhận đang thuộc người khác. Chuẩn bị thời gian liên hệ và bằng chứng xác nhận của ứng viên để việc kiểm tra nhanh hơn."
       />
+
+      {isError ? <Alert type="error" showIcon message="Không tải được danh sách khiếu nại" description={getApiErrorMessage(error)} /> : null}
 
       {/* Disputes Table */}
       <Surface padded>
@@ -210,24 +175,24 @@ export const AffiliateDisputesPage: React.FC = () => {
           >
             <Select
               options={[
-                { value: 'DUPLICATE_SUBMISSION', label: 'Hồ sơ bị chặn vì trùng' },
-                { value: 'ATTRIBUTION', label: 'Tranh chấp quyền ghi nhận nguồn (ATTRIBUTION)' },
+                { value: 'DUPLICATE_SUBMISSION', label: 'Hồ sơ bị chặn do nghi trùng' },
+                { value: 'ATTRIBUTION', label: 'Quyền ghi nhận chưa đúng' },
               ]}
             />
           </Form.Item>
 
           <Form.Item
             name="submissionId"
-            label="Mã lượt giới thiệu (Submission ID)"
-            rules={[{ required: true, whitespace: true, message: 'Nhập ID lượt nộp cần khiếu nại.' }]}
-            help="Xem mã lượt nộp tại danh sách Lượt giới thiệu của bạn."
+            label="Mã lượt giới thiệu"
+            rules={[{ required: true, whitespace: true, message: 'Nhập mã lượt giới thiệu cần kiểm tra.' }]}
+            help="Bạn có thể sao chép mã này tại trang chi tiết lượt giới thiệu."
           >
             <Input placeholder="Ví dụ: e3b0c442-98fc-1c14-9afb-f4c59638e235" />
           </Form.Item>
 
           <Form.Item
             name="description"
-            label="Mô tả khiếu nại (bắt buộc)"
+            label="Lý do cần kiểm tra"
             rules={[{ required: true, whitespace: true, message: 'Vui lòng nêu rõ lý do khiếu nại.' }]}
           >
             <Input.TextArea
@@ -238,7 +203,7 @@ export const AffiliateDisputesPage: React.FC = () => {
 
           <Form.Item
             name="evidenceNote"
-            label="Ghi chú bằng chứng (email, tin nhắn xác nhận từ ứng viên)"
+            label="Bằng chứng bạn đang có"
           >
             <Input.TextArea
               rows={2}

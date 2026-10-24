@@ -7,7 +7,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminFinancePage } from './AdminFinancePage';
 import { HrWarrantyPage } from './WarrantyPages';
 import { financeApi } from '@/services/api/financeApi';
-import type { Commission, Warranty } from '@/types/api/finance';
+import { placementReconciliationApi } from '@/services/api/hrApi';
+import type { Commission, ServiceFee, Warranty } from '@/types/api/finance';
 
 vi.mock('@/services/api/financeApi', () => ({
   financeApi: {
@@ -20,6 +21,12 @@ vi.mock('@/services/api/financeApi', () => ({
     getPlacements: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
     getReplacementSlots: vi.fn().mockResolvedValue([]),
     cancelReplacementSlot: vi.fn(),
+  },
+}));
+
+vi.mock('@/services/api/hrApi', () => ({
+  placementReconciliationApi: {
+    list: vi.fn().mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 1 }),
   },
 }));
 
@@ -49,7 +56,10 @@ const earned = (feeStatus: Commission['serviceFeeStatus']): Commission => ({
 });
 
 describe('MF-05 admin finance', () => {
-  beforeEach(() => vi.mocked(financeApi.commissions).mockReset());
+  beforeEach(() => {
+    vi.mocked(financeApi.commissions).mockReset();
+    vi.mocked(placementReconciliationApi.list).mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 1 });
+  });
 
   it('blocks approval until the Client has paid the service fee', async () => {
     vi.mocked(financeApi.commissions).mockResolvedValue(page([earned('PENDING')]));
@@ -67,6 +77,32 @@ describe('MF-05 admin finance', () => {
 
     const approve = await screen.findByRole('button', { name: 'Duyệt' }, { timeout: 10000 });
     expect((approve as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('links Platform Admin to placement reconciliation exceptions', async () => {
+    vi.mocked(financeApi.commissions).mockResolvedValue(page([]));
+
+    renderWith(<AdminFinancePage />);
+
+    expect(await screen.findByText('Đối soát cần xử lý')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mở danh sách đối soát' })).toBeInTheDocument();
+  });
+
+  it('does not let Admin record a placement fee before reconciliation finishes', async () => {
+    vi.mocked(financeApi.commissions).mockResolvedValue(page([]));
+    const fee: ServiceFee = {
+      serviceFeeId: 'fee-1', placementId: 'placement-1', kind: 'PLACEMENT', companyId: 'company-1',
+      companyName: 'ABC', jobTitle: 'Backend Developer', candidateName: 'Nguyễn Văn Nam',
+      baseSalary: 20_000_000, feeMultiplier: 1.5, amount: 30_000_000, currencyCode: 'VND',
+      dueDate: '2026-11-01', status: 'PENDING', reconciliationStatus: 'PENDING', createdAt: '2026-10-23',
+    };
+    vi.mocked(financeApi.serviceFees).mockResolvedValue(page([fee]));
+
+    renderWith(<AdminFinancePage />);
+    fireEvent.click(screen.getByRole('radio', { name: 'Công nợ phí' }));
+
+    const blocked = await screen.findByRole('button', { name: 'Chờ đối soát' });
+    expect((blocked as HTMLButtonElement).disabled).toBe(true);
   });
 });
 

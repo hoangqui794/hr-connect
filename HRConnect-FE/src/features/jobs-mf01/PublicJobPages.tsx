@@ -93,11 +93,18 @@ export const InAppJobDiscoveryPage: React.FC = () => {
   const inAffiliatePortal = useLocation().pathname.startsWith('/affiliate');
   return (
     <div className="space-y-5">
-      <header>
-        <Title level={3} className="!mb-1">
-          Khám phá việc làm
-        </Title>
-        <Text type="secondary">Các tin đang tuyển mà vai trò của bạn được xem.</Text>
+      <header className={inAffiliatePortal ? 'affiliate-page-header' : undefined}>
+        <div className={inAffiliatePortal ? 'affiliate-page-header__copy' : undefined}>
+          {inAffiliatePortal && <span className="affiliate-page-header__eyebrow">Cơ hội giới thiệu</span>}
+          <Title level={3} className="!mb-1">
+            {inAffiliatePortal ? 'Tìm cơ hội tuyển dụng' : 'Khám phá việc làm'}
+          </Title>
+          <Text type="secondary">
+            {inAffiliatePortal
+              ? 'Chọn vị trí phù hợp với ứng viên của bạn và xem trước mức hoa hồng dự kiến.'
+              : 'Các tin tuyển dụng đang mở mà tài khoản của bạn có thể xem.'}
+          </Text>
+        </div>
       </header>
       <JobDiscoveryPage detailBasePath={inAffiliatePortal ? '/affiliate/jobs' : '/jobs'} />
     </div>
@@ -112,8 +119,15 @@ export const AffiliateJobDetailPage: React.FC = () => {
   return (
     <div className="space-y-4">
       <Link to="/affiliate/jobs" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-violet-700">
-        <ArrowLeftOutlined aria-hidden /> Việc làm đang tuyển
+        <ArrowLeftOutlined aria-hidden /> Quay lại cơ hội tuyển dụng
       </Link>
+      <header className="affiliate-page-header">
+        <div className="affiliate-page-header__copy">
+          <span className="affiliate-page-header__eyebrow">Chi tiết cơ hội</span>
+          <Title level={3} className="!mb-1">Thông tin tuyển dụng và quyền lợi giới thiệu</Title>
+          <Text type="secondary">Kiểm tra yêu cầu của vị trí trước khi giới thiệu ứng viên phù hợp.</Text>
+        </div>
+      </header>
       {detail.isError ? (
         <Alert type="error" showIcon message="Không xem được việc làm này" description={getApiErrorMessage(detail.error)} />
       ) : detail.isLoading || !detail.data ? (

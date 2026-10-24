@@ -28,6 +28,7 @@ import { notificationApi } from '@/services/api/notificationApi';
 import type { NotificationDto } from '@/types/api/notification';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationSignalR } from '@/hooks/useNotificationSignalR';
+import { portalRoute } from './notificationRoutes';
 
 const formatTimeAgo = (isoString?: string | null): string => {
   if (!isoString) return '';
@@ -101,6 +102,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated) || !!user;
 
   // Realtime SignalR connection
@@ -204,6 +206,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
     }
 
     if (targetRoute) {
+      targetRoute = portalRoute(targetRoute, role);
       // Nếu đường dẫn đến trang tin tuyển dụng và chưa có param highlight, tự động trích xuất tên bài trong ngoặc kép
       if (targetRoute.startsWith('/client/jobs') && !targetRoute.includes('highlight=')) {
         const titleMatch = item.message.match(/"([^"]+)"/);

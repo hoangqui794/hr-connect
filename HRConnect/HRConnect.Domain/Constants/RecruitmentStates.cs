@@ -59,3 +59,44 @@ public static class PlacementStates
     /// <summary>MF-05: leaving within the warranty was confirmed by Internal HR.</summary>
     public const string LeftDuringWarranty = "LEFT_DURING_WARRANTY";
 }
+
+public static class PlacementReconciliationStates
+{
+    public const string Pending = "PENDING";
+    public const string Confirmed = "CONFIRMED";
+    public const string Flagged = "FLAGGED";
+}
+
+public static class PlacementReconciliationOutcomes
+{
+    public const string Started = "STARTED";
+    public const string NotStarted = "NOT_STARTED";
+}
+
+public static class PlacementReconciliationDecisions
+{
+    public const string Confirm = "CONFIRM";
+    public const string Flag = "FLAG";
+}
+
+public static class PlacementReconciliationContactChannels
+{
+    public const string Candidate = "CANDIDATE";
+    public const string Affiliate = "AFFILIATE";
+    public const string Both = "BOTH";
+
+    public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        Candidate,
+        Affiliate,
+        Both
+    };
+}
+
+public static class PlacementReconciliationErrorCodes
+{
+    public const string NotPending = "RECONCILIATION_NOT_PENDING";
+    public const string NoteRequired = "RECONCILIATION_NOTE_REQUIRED";
+    public const string InvalidDecision = "RECONCILIATION_INVALID_DECISION";
+    public const string InvalidContactChannel = "RECONCILIATION_INVALID_CONTACT_CHANNEL";
+}

@@ -14,6 +14,12 @@ public interface IUserRepository
 
     Task<AppUser?> GetByIdWithActiveRolesAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    /// <summary>Ids of active accounts holding an active assignment of an active role (e.g. INTERNAL_HR), for staff notifications.</summary>
+    Task<IReadOnlyList<Guid>> GetActiveUserIdsByRoleAsync(string roleCode, CancellationToken cancellationToken = default);
+
+    /// <summary>Ids of active members of a company (active account and active membership).</summary>
+    Task<IReadOnlyList<Guid>> GetActiveUserIdsByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default);
+
     Task<AppUser?> GetByIdWithRolesAndPermissionsAsync(Guid userId, CancellationToken cancellationToken = default);
 
     Task AddAsync(AppUser user, CancellationToken cancellationToken = default);

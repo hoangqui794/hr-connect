@@ -1,7 +1,7 @@
 /**
  * @file HrProfileAndPlaceholders.tsx
- * @description Internal HR profile (GET/PUT /internal/profile/me) and the MF-04/MF-05 steps that
- * have no backend yet (placement reconciliation, warranty & probation): explicit empty states.
+ * @description Internal HR profile (GET/PUT /internal/profile/me) and the remaining MF-05
+ * empty state for warranty/probation. MF-04 placement reconciliation now has a dedicated page.
  */
 import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

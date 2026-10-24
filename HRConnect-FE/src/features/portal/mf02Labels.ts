@@ -154,15 +154,20 @@ export const candidateStage = (
 };
 
 export const SUBMISSION_STATUS: Record<string, { label: string; tone: Tone; hint: string }> = {
+  RECEIVED: { label: 'Đã tiếp nhận', tone: 'info', hint: 'HR Connect đã tiếp nhận hồ sơ và đang kiểm tra thông tin.' },
   PENDING_CONSENT: { label: 'Chờ ứng viên xác nhận', tone: 'warning', hint: 'Đã gửi email, ứng viên có 48 giờ để đồng ý.' },
-  ACCEPTED: { label: 'Ứng viên đã đồng ý', tone: 'success', hint: 'Hồ sơ đã vào quy trình tuyển dụng và bạn được ghi nhận là người giới thiệu.' },
+  PENDING_IDENTITY_REVIEW: { label: 'Đang xác minh ứng viên', tone: 'warning', hint: 'HR Connect đang kiểm tra thông tin để bảo vệ quyền lợi của các bên.' },
+  ACCEPTED: { label: 'Đã cho phép giới thiệu', tone: 'success', hint: 'Ứng viên đã xác nhận cho phép giới thiệu hồ sơ vào vị trí này; quyền ghi nhận của bạn đã được thiết lập.' },
   CONSENT_REJECTED: { label: 'Ứng viên từ chối', tone: 'danger', hint: 'Ứng viên không đồng ý cho bạn giới thiệu.' },
   CONSENT_EXPIRED: { label: 'Hết hạn xác nhận', tone: 'neutral', hint: 'Ứng viên không trả lời trong hạn; hãy tạo lượt giới thiệu mới.' },
   BLOCKED_DUPLICATE: { label: 'Bị chặn do trùng', tone: 'danger', hint: 'Ứng viên đã có hồ sơ trong tin này; người giới thiệu trước vẫn được ghi nhận.' },
-  JOB_UNAVAILABLE: { label: 'Tin không còn nhận hồ sơ', tone: 'neutral', hint: 'Job đã đóng hoặc không còn cho phép nhận hồ sơ.' },
+  BLOCKED_CLIENT_OWNED: { label: 'Doanh nghiệp đã có hồ sơ', tone: 'neutral', hint: 'Ứng viên đã được doanh nghiệp tiếp nhận trước lượt giới thiệu này.' },
+  REJECTED_INVALID: { label: 'Hồ sơ không hợp lệ', tone: 'danger', hint: 'Hồ sơ chưa đáp ứng điều kiện tiếp nhận. Hãy kiểm tra lại thông tin đã gửi.' },
+  JOB_UNAVAILABLE: { label: 'Tin không còn nhận hồ sơ', tone: 'neutral', hint: 'Tin tuyển dụng đã đóng hoặc không còn nhận hồ sơ.' },
+  CANCELLED: { label: 'Đã hủy', tone: 'neutral', hint: 'Lượt giới thiệu đã được kết thúc.' },
 };
 
-export const submissionStatus = (s: string) => SUBMISSION_STATUS[s] ?? { label: s, tone: 'neutral' as Tone, hint: '' };
+export const submissionStatus = (s: string) => SUBMISSION_STATUS[s] ?? { label: 'Đang xử lý', tone: 'neutral' as Tone, hint: 'Trạng thái đang được HR Connect cập nhật.' };
 
 export const candidateAiStatus = (status?: string | null) => {
   const labels: Record<string, string> = {

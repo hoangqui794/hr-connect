@@ -18,7 +18,7 @@ public sealed class AgreementDownloadUrlResponse
     public bool IsSigned { get; set; }
 }
 
-public sealed record GetServiceAgreementDownloadUrlQuery(Guid JobId, Guid AgreementId) : IRequest<AgreementDownloadUrlResponse>;
+public sealed record GetServiceAgreementDownloadUrlQuery(Guid JobId, Guid AgreementId, bool? Signed = null) : IRequest<AgreementDownloadUrlResponse>;
 
 public sealed class GetServiceAgreementDownloadUrlQueryHandler : IRequestHandler<GetServiceAgreementDownloadUrlQuery, AgreementDownloadUrlResponse>
 {
@@ -50,8 +50,10 @@ public sealed class GetServiceAgreementDownloadUrlQueryHandler : IRequestHandler
             throw new NotFoundException("Không tìm thấy thỏa thuận dịch vụ yêu cầu.");
         }
 
-        var isSigned = agreement.Status == ServiceAgreementStatuses.Signed;
-        var storageKey = isSigned ? agreement.SignedDocumentStorageKey : agreement.UnsignedDocumentStorageKey;
+        var isSigned = request.Signed ?? (agreement.Status == ServiceAgreementStatuses.Signed || !string.IsNullOrWhiteSpace(agreement.SignedDocumentStorageKey));
+        var storageKey = (isSigned && !string.IsNullOrWhiteSpace(agreement.SignedDocumentStorageKey))
+            ? agreement.SignedDocumentStorageKey
+            : agreement.UnsignedDocumentStorageKey;
 
         // If storage key is missing, render on the fly and persist
         if (string.IsNullOrWhiteSpace(storageKey))
@@ -75,7 +77,13 @@ public sealed class GetServiceAgreementDownloadUrlQueryHandler : IRequestHandler
 
         var expiry = TimeSpan.FromMinutes(15);
         var presignedUrl = await _storage.GetPresignedDownloadUrlAsync(storageKey, expiry, ct);
-        var fileName = $"Thoa_Thuan_Dich_Vu_{agreement.JobId.ToString()[..8]}_v{agreement.Version}{(isSigned ? "_Signed" : "")}.pdf";
+        var ext = Path.GetExtension(storageKey);
+        if (string.IsNullOrWhiteSpace(ext)) ext = ".pdf";
+
+        var isClientUpload = isSigned && !string.IsNullOrWhiteSpace(agreement.SignedDocumentStorageKey);
+        var fileName = isClientUpload
+            ? $"Hop_Dong_Da_Ky_{agreement.JobId.ToString()[..8]}_v{agreement.Version}{ext}"
+            : $"Thoa_Thuan_Dich_Vu_{agreement.JobId.ToString()[..8]}_v{agreement.Version}{(isSigned ? "_Signed" : "")}.pdf";
 
         return new AgreementDownloadUrlResponse
         {

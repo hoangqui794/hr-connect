@@ -34,6 +34,11 @@ export const commissionEstimateApi = {
 const money = (value: number, currency: string) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: currency || 'VND', maximumFractionDigits: 0 }).format(value);
 
+const friendlyExplanation = (value: string) => value
+  .replace(/\bClient\b/gi, 'doanh nghiệp')
+  .replace(/\bgross\b/gi, 'trước thuế')
+  .replace(/\boffer\b/gi, 'đề nghị nhận việc');
+
 export const formatEstimate = (e: JobCommissionEstimate): string | null => {
   if (!e.hasCommission) return null;
   if (e.amountPerCv != null) return `${money(e.amountPerCv, e.currencyCode)} / CV được chấp nhận`;
@@ -73,7 +78,7 @@ export const CommissionEstimateCard: React.FC<{ jobId: string }> = ({ jobId }) =
           {estimate.data.warrantyDays != null && (
             <div className="text-[13px] text-slate-700">Bảo hành {estimate.data.warrantyDays} ngày</div>
           )}
-          <p className="m-0 mt-1.5 text-[13px] leading-relaxed text-slate-600">{estimate.data.explanation}</p>
+          <p className="m-0 mt-1.5 text-[13px] leading-relaxed text-slate-600">{friendlyExplanation(estimate.data.explanation)}</p>
         </div>
       </div>
     </section>

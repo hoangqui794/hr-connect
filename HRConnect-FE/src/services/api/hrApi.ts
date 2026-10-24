@@ -15,6 +15,8 @@ import type {
   PagedItems,
   PlacementItem,
   PlacementCorrectionDetail,
+  PlacementReconciliationPage,
+  ReconciliationContactChannel,
   RecruitmentApplicationDetail,
   RecruitmentApplicationItem,
   RecruitmentApplicationSearchParams,
@@ -85,6 +87,29 @@ export const screeningApi = {
       `/internal/applications/${applicationId}/ai-scoring/retry`
     );
     return res.data;
+  },
+};
+
+export const placementReconciliationApi = {
+  async list(params: { status?: string; page: number; pageSize: number }, admin = false): Promise<PlacementReconciliationPage> {
+    const path = admin ? '/admin/placement-reconciliations' : '/internal-hr/placement-reconciliations';
+    return (await apiClient.get<PlacementReconciliationPage>(path, { params: cleanParams(params) })).data;
+  },
+
+  async reconcile(
+    applicationId: string,
+    input: {
+      decision: 'CONFIRM' | 'FLAG';
+      contactChannel: ReconciliationContactChannel;
+      note?: string | null;
+      concurrencyToken: string;
+    }
+  ) {
+    return (await apiClient.post(`/internal-hr/placement-reconciliations/${applicationId}`, input)).data;
+  },
+
+  async resolve(applicationId: string, input: { note: string; concurrencyToken: string }) {
+    return (await apiClient.post(`/admin/placement-reconciliations/${applicationId}/resolve`, input)).data;
   },
 };
 

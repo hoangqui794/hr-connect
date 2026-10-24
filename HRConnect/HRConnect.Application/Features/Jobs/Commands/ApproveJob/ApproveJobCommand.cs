@@ -31,6 +31,7 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
     private readonly IAuditLogService _auditLogService;
     private readonly IUnitOfWork _uow;
     private readonly ISourcingFinanceService? _sourcingFinance;
+    private readonly IServiceAgreementRepository? _agreements;
 
     public ApproveJobCommandHandler(
         IJobRepository jobs,
@@ -38,7 +39,8 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
         INotificationRepository notifications,
         IAuditLogService auditLogService,
         IUnitOfWork uow,
-        ISourcingFinanceService? sourcingFinance = null)
+        ISourcingFinanceService? sourcingFinance = null,
+        IServiceAgreementRepository? agreements = null)
     {
         _jobs = jobs;
         _adminSettings = adminSettings;
@@ -46,13 +48,14 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
         _auditLogService = auditLogService;
         _uow = uow;
         _sourcingFinance = sourcingFinance;
+        _agreements = agreements;
     }
 
     public async Task<JobActionResponse> Handle(ApproveJobCommand request, CancellationToken ct)
     {
         var job = await JobHandlerGuards.GetJobAsync(_jobs, request.JobId, ct);
         JobTransitions.RequireCurrentToken(job, request.ConcurrencyToken);
-        JobHandlerGuards.RequireStatus(job, JobStatuses.PendingReview);
+        JobHandlerGuards.RequireStatus(job, JobStatuses.PendingReview, JobStatuses.PendingAgreement);
 
         var serviceTypeCode = job.ServiceType?.Code ?? await _jobs.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, ct);
         var now = DateTime.UtcNow;
@@ -370,6 +373,17 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
         await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
         job.PostedAt = now;
         job.ClosedAt = null;
+
+        if (_agreements != null)
+        {
+            var currentAgreement = await _agreements.GetCurrentByJobIdAsync(job.JobId, ct);
+            if (currentAgreement != null && currentAgreement.Status != ServiceAgreementStatuses.Signed)
+            {
+                currentAgreement.Status = ServiceAgreementStatuses.Signed;
+                currentAgreement.SignedAt = now;
+                currentAgreement.ConcurrencyToken = Guid.NewGuid();
+            }
+        }
 
         await _notifications.AddAsync(new Notification
         {

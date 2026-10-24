@@ -56,6 +56,8 @@ public partial class Application
 
     public virtual Placement? Placement { get; set; }
 
+    public virtual PlacementReconciliation? PlacementReconciliation { get; set; }
+
     public virtual Submission? Submission { get; set; }
 }
 

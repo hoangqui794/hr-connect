@@ -21,6 +21,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RecordInterviewResultCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
+    private readonly IAppNotifier? _notifier;
 
     public RecordInterviewResultCommandHandler(
         IInterviewRepository interviewRepository,
@@ -28,8 +29,10 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
         ILogger<RecordInterviewResultCommandHandler> logger,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        IAppNotifier? notifier = null)
     {
+        _notifier = notifier;
         _interviewRepository = interviewRepository;
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
@@ -207,6 +210,13 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
                 OldValues = new { status = oldApplicationStatus },
                 NewValues = new { status = interview.Application!.Status, sourceAction = AuditActions.InterviewResultRecorded }
             }, cancellationToken);
+        }
+        if (_notifier != null && interview.Application?.Candidate?.UserId is Guid candidateUserId)
+        {
+            await _notifier.NotifyUsersAsync([candidateUserId], new AppNotice(
+                "INTERVIEW", "Đã có kết quả phỏng vấn",
+                $"Doanh nghiệp đã cập nhật kết quả buổi phỏng vấn vòng {interview.InterviewRound} cho vị trí \"{interview.Application.Job?.Title}\".",
+                "INTERVIEW", interview.InterviewId, $"/candidate/applications/{interview.ApplicationId}"), cancellationToken);
         }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

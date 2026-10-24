@@ -24,20 +24,25 @@ import {
   Tag,
   Tooltip,
   Typography,
+  Upload,
 } from 'antd';
+import type { UploadFile } from 'antd';
 import {
   CheckCircleFilled,
   ClockCircleOutlined,
   DownloadOutlined,
   EditOutlined,
+  EyeOutlined,
   FilePdfOutlined,
   FileTextOutlined,
   FilterOutlined,
   HistoryOutlined,
+  InboxOutlined,
   InfoCircleOutlined,
   SafetyCertificateFilled,
   SafetyCertificateOutlined,
   SearchOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Surface } from '@/features/admin-console/ui';
@@ -189,6 +194,11 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   const [revisionReason, setRevisionReason] = useState('');
   const [submittingRevision, setSubmittingRevision] = useState(false);
 
+  // Upload signed agreement state
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [uploading, setUploading] = useState(false);
+
   const [signModalOpen, setSignModalOpen] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -199,20 +209,109 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   const [sendingChallenge, setSendingChallenge] = useState(false);
 
   // PDF Preview / Download
-  const handleDownloadPdf = async (agreement: ServiceAgreementDto) => {
+  const handleDownloadPdf = async (agreement: ServiceAgreementDto, signed: boolean = false) => {
     if (!activeJobId) return;
     try {
       message.loading({ content: 'Đang chuẩn bị tài liệu PDF...', key: 'pdf' });
-      const isSigned = agreement.status === 'SIGNED';
       const res = await serviceAgreementsApi.getDownloadUrl(
         activeJobId,
         agreement.serviceAgreementId,
-        isSigned
+        signed
       );
       message.success({ content: 'Mở tài liệu thành công', key: 'pdf' });
       window.open(res.downloadUrl, '_blank', 'noopener,noreferrer');
     } catch (err) {
       message.error({ content: getApiErrorMessage(err), key: 'pdf' });
+    }
+  };
+
+  // Xem hợp đồng ngay trên trang (modal)
+  const [preview, setPreview] = useState<{ url: string; title: string } | null>(null);
+  const handleViewDocument = async (agreement: ServiceAgreementDto, signed: boolean) => {
+    if (!activeJobId) return;
+    try {
+      message.loading({ content: 'Đang mở hợp đồng...', key: 'view' });
+      const res = await serviceAgreementsApi.getDownloadUrl(
+        activeJobId,
+        agreement.serviceAgreementId,
+        signed
+      );
+      message.destroy('view');
+      setPreview({
+        url: res.downloadUrl,
+        title: signed ? 'Hợp đồng đã ký' : 'Văn bản hợp đồng dịch vụ',
+      });
+    } catch (err) {
+      message.error({ content: getApiErrorMessage(err), key: 'view' });
+    }
+  };
+
+  // Tải file về máy (fallback mở tab mới nếu trình duyệt chặn CORS)
+  const handleSaveDocument = async (agreement: ServiceAgreementDto, signed: boolean) => {
+    if (!activeJobId) return;
+    let url = '';
+    try {
+      message.loading({ content: 'Đang tải hợp đồng...', key: 'save' });
+      const res = await serviceAgreementsApi.getDownloadUrl(
+        activeJobId,
+        agreement.serviceAgreementId,
+        signed
+      );
+      url = res.downloadUrl;
+      const blob = await fetch(url).then((r) => {
+        if (!r.ok) throw new Error('fetch failed');
+        return r.blob();
+      });
+      const extByMime: Record<string, string> = {
+        'application/pdf': 'pdf',
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'application/msword': 'doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+      };
+      const ext = extByMime[blob.type] ?? 'pdf';
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `${signed ? 'HopDong_DaKy' : 'HopDong'}_${agreement.verificationCode ?? agreement.serviceAgreementId}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+      message.success({ content: 'Đã tải hợp đồng về máy', key: 'save' });
+    } catch (err) {
+      if (url) {
+        message.destroy('save');
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        message.error({ content: getApiErrorMessage(err), key: 'save' });
+      }
+    }
+  };
+
+  // Upload signed agreement handler
+  const handleUploadSignedFile = async () => {
+    if (!activeJobId || !currentAgreement) return;
+    if (fileList.length === 0 || !fileList[0].originFileObj) {
+      message.warning('Vui lòng chọn tệp hợp đồng đã ký để tải lên.');
+      return;
+    }
+    const file = fileList[0].originFileObj as File;
+    try {
+      setUploading(true);
+      await serviceAgreementsApi.uploadSignedDocument(
+        activeJobId,
+        currentAgreement.serviceAgreementId,
+        file
+      );
+      message.success('Tải lên hợp đồng đã ký thành công. Đang chờ bên Internal HR kiểm tra và công khai tin tuyển dụng.');
+      setUploadModalOpen(false);
+      setFileList([]);
+      await Promise.all([refetchCurrent(), refetchHistory()]);
+    } catch (err) {
+      message.error(getApiErrorMessage(err));
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -514,20 +613,18 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           setActiveJobId(job.jobId);
                           setSearchParams({ jobId: job.jobId }, { replace: true });
                         }}
-                        className={`w-full cursor-pointer text-left rounded-xl p-3.5 transition-all border relative ${
-                          isSelected
+                        className={`w-full cursor-pointer text-left rounded-xl p-3.5 transition-all border relative ${isSelected
                             ? 'border-indigo-600 bg-indigo-50/70 shadow-xs ring-1 ring-indigo-500/20 border-l-4 border-l-indigo-600'
                             : isAwaitingAction
-                            ? 'border-purple-200/90 bg-purple-50/20 hover:border-purple-300 hover:bg-purple-50/40'
-                            : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/70'
-                        }`}
+                              ? 'border-purple-200/90 bg-purple-50/20 hover:border-purple-300 hover:bg-purple-50/40'
+                              : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/70'
+                          }`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <Text
                             strong
-                            className={`text-sm line-clamp-1 ${
-                              isSelected ? 'text-indigo-950 font-bold' : 'text-slate-800'
-                            }`}
+                            className={`text-sm line-clamp-1 ${isSelected ? 'text-indigo-950 font-bold' : 'text-slate-800'
+                              }`}
                           >
                             {job.title}
                           </Text>
@@ -544,8 +641,8 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             {job.serviceTypeCode === 'HEADHUNT_COD'
                               ? 'Tuyển dụng kết quả'
                               : job.serviceTypeCode === 'CV_SOURCING'
-                              ? 'Tìm kiếm hồ sơ'
-                              : job.serviceTypeCode ?? ''}
+                                ? 'Tìm kiếm hồ sơ'
+                                : job.serviceTypeCode ?? ''}
                           </span>
                           <span className="text-[11px] text-slate-400">
                             {dayjs(job.updatedAt).format('DD/MM/YYYY')}
@@ -608,9 +705,6 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           Thỏa thuận dịch vụ{' '}
                           {activeJob?.serviceTypeCode === 'HEADHUNT_COD' ? 'Tuyển dụng' : 'Tìm kiếm hồ sơ'}
                         </Text>
-                        <Tag color="blue" className="font-semibold text-xs rounded">
-                          Phiên bản v{currentAgreement.version}
-                        </Tag>
                         {(() => {
                           const meta =
                             SERVICE_AGREEMENT_STATUS[currentAgreement.status] ?? {
@@ -639,29 +733,22 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Button
-                        icon={<FilePdfOutlined />}
-                        onClick={() => handleDownloadPdf(currentAgreement)}
-                      >
-                        Xem bản PDF
+                    {/* Thao tác phụ duy nhất trên header */}
+                    {isPendingResponse && (
+                      <Button icon={<EditOutlined />} onClick={() => setReviseModalOpen(true)}>
+                        Yêu cầu điều chỉnh
                       </Button>
-                    </div>
+                    )}
                   </div>
 
-                  {/* Status Notice Banner */}
+                  {/* Hướng dẫn ngắn gọn */}
                   {isPendingResponse && (
-                    <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 text-blue-900 text-sm flex items-start gap-3">
-                      <InfoCircleOutlined className="text-blue-600 text-lg mt-0.5" />
-                      <div className="space-y-1">
-                        <div className="font-bold">Dự thảo thỏa thuận đang chờ Doanh nghiệp xem xét</div>
-                        <div className="text-xs text-blue-800 leading-relaxed">
-                          Quý khách vui lòng kiểm tra kỹ các điều khoản thương mại bên dưới. Nếu có điểm
-                          cần thương lượng lại, hãy bấm <strong>"Yêu cầu điều chỉnh"</strong>. Nếu đã đồng
-                          ý, hãy bấm <strong>"Đồng ý & Ký thỏa thuận"</strong> để ký số bằng mã OTP gửi về
-                          email.
-                        </div>
-                      </div>
+                    <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-3 flex items-center gap-3 text-sm text-slate-700">
+                      <InfoCircleOutlined className="text-indigo-600 text-base shrink-0" />
+                      <span>
+                        HR Connect đã gửi hợp đồng. Vui lòng <strong>xem / tải về</strong> hợp đồng, ký bên ngoài hệ thống,
+                        sau đó <strong>tải lên bản đã ký</strong> để HR Connect duyệt và công khai tin.
+                      </span>
                     </div>
                   )}
 
@@ -675,7 +762,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           <span className="italic font-medium">
                             "{currentAgreement.changeRequestReason}"
                           </span>
-                          . HR Connect sẽ phản hồi và gửi lại bản thỏa thuận mới trong thời gian sớm nhất.
+                          . HR Connect sẽ xem xét và phản hồi hoặc cập nhật lại bản hợp đồng trong thời gian sớm nhất.
                         </div>
                       </div>
                     </div>
@@ -685,118 +772,90 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-emerald-950 text-sm flex items-start gap-3">
                       <CheckCircleFilled className="text-emerald-600 text-lg mt-0.5" />
                       <div className="space-y-1">
-                        <div className="font-bold">Thỏa thuận đã được ký kết và có hiệu lực pháp lý</div>
+                        <div className="font-bold">Hợp đồng dịch vụ đã được duyệt và có hiệu lực pháp lý</div>
                         <div className="text-xs text-emerald-800 leading-relaxed">
-                          Đại diện doanh nghiệp <strong>{currentAgreement.signerName}</strong> (
-                          {currentAgreement.signerEmail}) đã hoàn tất ký điện tử vào{' '}
-                          {dayjs(currentAgreement.signedAt).format('DD/MM/YYYY HH:mm:ss')}.
+                          Hợp đồng đã được ký kết và hoàn tất thủ tục giữa hai bên vào ngày{' '}
+                          {dayjs(currentAgreement.signedAt || currentAgreement.createdAt).format('DD/MM/YYYY HH:mm')}.
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Commercial Terms Breakdown */}
-                  <div>
-                    <Text strong className="text-sm text-slate-800 mb-3 block">
-                      Chi tiết điều khoản thương mại
-                    </Text>
-
-                    {activeJob?.serviceTypeCode === 'HEADHUNT_COD' ? (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="rounded-xl border border-slate-200/90 bg-slate-50/60 p-4 space-y-1">
-                          <span className="text-xs text-slate-500 font-medium">Tỷ lệ phí tuyển dụng</span>
-                          <div className="text-2xl font-bold text-indigo-700">
-                            {currentAgreement.feeMultiplier ?? '—'}%
-                          </div>
-                          <span className="text-[11px] text-slate-400">
-                            Hệ số / tỷ lệ phần trăm phí tuyển dụng thành công
-                          </span>
+                  {/* Danh sách tài liệu: mỗi thao tác chỉ xuất hiện 1 lần */}
+                  <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+                    {/* Dòng 1: Hợp đồng do HR Connect soạn */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 text-xl shrink-0">
+                          <FilePdfOutlined />
                         </div>
-
-                        <div className="rounded-xl border border-slate-200/90 bg-slate-50/60 p-4 space-y-1">
-                          <span className="text-xs text-slate-500 font-medium">Thời hạn bảo hành</span>
-                          <div className="text-2xl font-bold text-slate-800">
-                            {currentAgreement.warrantyDays ?? '—'} ngày
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-800">Văn bản hợp đồng dịch vụ</div>
+                          <div className="text-xs text-slate-500 mt-0.5">
+                            Do HR Connect soạn · Số HĐ: {currentAgreement.verificationCode} · PDF
                           </div>
-                          <span className="text-[11px] text-slate-400">
-                            Cam kết tìm ứng viên thay thế miễn phí trong thời gian này
-                          </span>
-                        </div>
-
-                        <div className="rounded-xl border border-slate-200/90 bg-slate-50/60 p-4 space-y-1">
-                          <span className="text-xs text-slate-500 font-medium">Hạn thanh toán</span>
-                          <div className="text-2xl font-bold text-slate-800">
-                            {currentAgreement.paymentDueDays ?? '—'} ngày
-                          </div>
-                          <span className="text-[11px] text-slate-400">
-                            Sau ngày ứng viên chính thức bắt đầu nhận việc (Onboard)
-                          </span>
                         </div>
                       </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                          <div className="rounded-xl border border-slate-200/90 bg-slate-50/60 p-4 space-y-1">
-                            <span className="text-xs text-slate-500 font-medium">Số hồ sơ cam kết</span>
-                            <div className="text-2xl font-bold text-indigo-700">
-                              {currentAgreement.sourcingTarget ?? '—'} hồ sơ
-                            </div>
-                            <span className="text-[11px] text-slate-400">
-                              Hồ sơ đạt tiêu chuẩn sàng lọc ban đầu
-                            </span>
-                          </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button icon={<EyeOutlined />} onClick={() => handleViewDocument(currentAgreement, false)}>
+                          Xem
+                        </Button>
+                        <Button icon={<DownloadOutlined />} onClick={() => handleSaveDocument(currentAgreement, false)}>
+                          Tải về
+                        </Button>
+                      </div>
+                    </div>
 
-                          <div className="rounded-xl border border-slate-200/90 bg-slate-50/60 p-4 space-y-1">
-                            <span className="text-xs text-slate-500 font-medium">Đơn giá mỗi hồ sơ</span>
-                            <div className="text-2xl font-bold text-slate-800">
-                              {formatMoney(currentAgreement.pricePerQualifiedCv)}
-                            </div>
-                            <span className="text-[11px] text-slate-400">
-                              Chi phí cho mỗi hồ sơ doanh nghiệp duyệt nhận
-                            </span>
-                          </div>
-
-                          <div className="rounded-xl border border-slate-200/90 bg-slate-50/60 p-4 space-y-1">
-                            <span className="text-xs text-slate-500 font-medium">Thời gian duyệt hồ sơ</span>
-                            <div className="text-2xl font-bold text-slate-800">
-                              {currentAgreement.reviewDays ?? '—'} ngày
-                            </div>
-                            <span className="text-[11px] text-slate-400">
-                              Thời hạn để doanh nghiệp phản hồi hồ sơ đã giao
-                            </span>
-                          </div>
-
-                          <div className="rounded-xl border border-slate-200/90 bg-slate-50/60 p-4 space-y-1">
-                            <span className="text-xs text-slate-500 font-medium">Hạn thanh toán</span>
-                            <div className="text-2xl font-bold text-slate-800">
-                              {currentAgreement.paymentDueDays ?? '—'} ngày
-                            </div>
-                            <span className="text-[11px] text-slate-400">
-                              Thời hạn thanh toán sau khi duyệt hồ sơ
-                            </span>
-                          </div>
+                    {/* Dòng 2: Hợp đồng doanh nghiệp đã ký */}
+                    <div
+                      className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 ${
+                        currentAgreement.hasSignedDocument ? 'bg-emerald-50/40' : 'bg-slate-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0 border ${
+                            currentAgreement.hasSignedDocument
+                              ? 'bg-emerald-100 border-emerald-200 text-emerald-600'
+                              : 'bg-white border-dashed border-slate-300 text-slate-400'
+                          }`}
+                        >
+                          {currentAgreement.hasSignedDocument ? <CheckCircleFilled /> : <FileTextOutlined />}
                         </div>
-
-                        {sourcingEstimatedTotal != null && (
-                          <div className="rounded-xl bg-slate-100/80 p-4 flex flex-wrap items-center justify-between gap-4 text-xs">
-                            <div>
-                              <span className="text-slate-500">Ước tính tổng chi phí chiến dịch: </span>
-                              <strong className="text-slate-900 text-sm">
-                                {formatMoney(sourcingEstimatedTotal)}
-                              </strong>
-                            </div>
-                            {sourcingEstimatedDeposit != null && (
-                              <div>
-                                <span className="text-slate-500">Khoản cọc ước tính (30%): </span>
-                                <strong className="text-amber-700 text-sm">
-                                  {formatMoney(sourcingEstimatedDeposit)}
-                                </strong>
-                              </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                            Hợp đồng đã ký
+                            {currentAgreement.hasSignedDocument ? (
+                              <Tag color="success" className="m-0 text-[10px]">Đã nộp</Tag>
+                            ) : (
+                              <Tag color="warning" className="m-0 text-[10px]">Chưa nộp</Tag>
                             )}
                           </div>
+                          <div className="text-xs text-slate-500 mt-0.5">
+                            {currentAgreement.hasSignedDocument
+                              ? `${currentAgreement.signedAt ? `Nộp lúc ${dayjs(currentAgreement.signedAt).format('DD/MM/YYYY HH:mm')} · ` : ''}Đang chờ HR Connect duyệt`
+                              : 'Bản hợp đồng có chữ ký / con dấu của doanh nghiệp'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {currentAgreement.hasSignedDocument && (
+                          <Button icon={<EyeOutlined />} onClick={() => handleViewDocument(currentAgreement, true)}>
+                            Xem
+                          </Button>
+                        )}
+                        {isPendingResponse && (
+                          <Button
+                            type={currentAgreement.hasSignedDocument ? 'default' : 'primary'}
+                            icon={<UploadOutlined />}
+                            className={currentAgreement.hasSignedDocument ? '' : 'bg-indigo-600 hover:bg-indigo-500 font-medium'}
+                            onClick={() => setUploadModalOpen(true)}
+                          >
+                            {currentAgreement.hasSignedDocument ? 'Thay thế' : 'Tải lên'}
+                          </Button>
                         )}
                       </div>
-                    )}
+                    </div>
                   </div>
 
                   {/* Notes / Extra conditions */}
@@ -811,57 +870,6 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Digital Signature Audit Card if signed */}
-                  {currentAgreement.status === 'SIGNED' && (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-2">
-                      <div className="flex items-center gap-2 text-emerald-900 font-semibold text-xs">
-                        <SafetyCertificateFilled className="text-emerald-600 text-base" />
-                        Chứng thực ký kết điện tử (Digital Signature Audit)
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                        <div>
-                          <span className="text-slate-500 block">Đại diện ký:</span>
-                          <strong className="text-slate-800">{currentAgreement.signerName}</strong>
-                        </div>
-                        <div>
-                          <span className="text-slate-500 block">Email người ký:</span>
-                          <strong className="text-slate-800">{currentAgreement.signerEmail}</strong>
-                        </div>
-                        <div>
-                          <span className="text-slate-500 block">Thời gian xác thực OTP:</span>
-                          <strong className="text-slate-800">
-                            {dayjs(currentAgreement.signedAt).format('DD/MM/YYYY HH:mm:ss')}
-                          </strong>
-                        </div>
-                        <div>
-                          <span className="text-slate-500 block">Mã xác thực:</span>
-                          <span className="text-slate-600 font-mono text-[11px] truncate block">
-                            {currentAgreement.verificationCode || currentAgreement.serviceAgreementId.slice(0, 18)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  {isPendingResponse && (
-                    <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-100">
-                      <Button
-                        icon={<EditOutlined />}
-                        onClick={() => setReviseModalOpen(true)}
-                      >
-                        Yêu cầu điều chỉnh
-                      </Button>
-                      <Button
-                        type="primary"
-                        icon={<SafetyCertificateOutlined />}
-                        className="bg-indigo-600 hover:bg-indigo-500"
-                        onClick={handleOpenSignModal}
-                      >
-                        Đồng ý & Ký thỏa thuận
-                      </Button>
-                    </div>
-                  )}
                 </Surface>
 
                 {/* Revision History Card */}
@@ -935,9 +943,9 @@ export const ClientServiceAgreementsPage: React.FC = () => {
         </Row>
       )}
 
-      {/* Modal: Request Revision */}
+      {/* Modal: Yêu cầu điều chỉnh hợp đồng */}
       <Modal
-        title="Yêu cầu điều chỉnh điều khoản thương mại"
+        title="Yêu cầu điều chỉnh hợp đồng"
         open={reviseModalOpen}
         onCancel={() => setReviseModalOpen(false)}
         onOk={handleRequestRevision}
@@ -948,135 +956,103 @@ export const ClientServiceAgreementsPage: React.FC = () => {
       >
         <div className="space-y-4 py-2">
           <Paragraph className="text-xs text-slate-600 mb-0">
-            Vui lòng nêu rõ các điều khoản bạn mong muốn thương thảo lại (ví dụ: điều chỉnh tỷ lệ phí,
-            thời gian bảo hành, số lượng hồ sơ cam kết, đơn giá...). Đội ngũ HR Connect sẽ liên hệ trao
-            đổi và cập nhật lại dự thảo thỏa thuận.
+            Quý doanh nghiệp vui lòng nhập nội dung đề xuất điều chỉnh về hợp đồng dịch vụ đã nhận.
+            Đội ngũ Internal HR sẽ xem xét để phản hồi và cập nhật lại bản hợp đồng.
           </Paragraph>
 
           <Input.TextArea
             rows={4}
             value={revisionReason}
             onChange={(e) => setRevisionReason(e.target.value)}
-            placeholder="Ví dụ: Doanh nghiệp đề xuất giảm tỷ lệ phí tuyển dụng xuống 15% hoặc gia hạn thời gian bảo hành ứng viên lên 60 ngày..."
+            placeholder="Ví dụ: Đề xuất điều chỉnh điều khoản thanh toán, bổ sung thông tin đại diện pháp lý hoặc thời hạn phản hồi..."
             maxLength={1000}
             showCount
           />
         </div>
       </Modal>
 
-      {/* Modal: Sign Agreement with OTP */}
+      {/* Modal: Xem hợp đồng */}
       <Modal
-        title={
-          <div className="flex items-center gap-2">
-            <SafetyCertificateFilled className="text-indigo-600 text-lg" />
-            <span>Ký thỏa thuận dịch vụ điện tử qua mã OTP</span>
-          </div>
-        }
-        open={signModalOpen}
-        onCancel={() => setSignModalOpen(false)}
-        onOk={handleConfirmSign}
-        confirmLoading={signingLoading}
-        okText="Ký thỏa thuận & Xác nhận"
+        title={preview?.title}
+        open={Boolean(preview)}
+        onCancel={() => setPreview(null)}
+        width={960}
+        centered
+        destroyOnClose
+        footer={[
+          <Button
+            key="tab"
+            onClick={() => preview && window.open(preview.url, '_blank', 'noopener,noreferrer')}
+          >
+            Mở tab mới
+          </Button>,
+          <Button key="close" type="primary" className="bg-indigo-600" onClick={() => setPreview(null)}>
+            Đóng
+          </Button>,
+        ]}
+      >
+        {preview && (
+          <iframe
+            title={preview.title}
+            src={preview.url}
+            className="w-full h-[70vh] rounded-lg border border-slate-200 bg-slate-50"
+          />
+        )}
+      </Modal>
+
+      {/* Modal: Tải lên hợp đồng đã ký */}
+      <Modal
+        title="Tải lên hợp đồng dịch vụ đã ký"
+        open={uploadModalOpen}
+        onCancel={() => {
+          setUploadModalOpen(false);
+          setFileList([]);
+        }}
+        onOk={handleUploadSignedFile}
+        confirmLoading={uploading}
+        okText="Xác nhận tải lên"
         cancelText="Hủy"
-        width={560}
         destroyOnClose
       >
-        <div className="space-y-4 py-3">
-          {/* Summary */}
-          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-slate-500">Vị trí tuyển dụng:</span>
-              <strong className="text-slate-900">{activeJob?.title}</strong>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Dịch vụ:</span>
-              <span className="font-semibold text-slate-800">
-                {activeJob?.serviceTypeCode && SERVICE_TYPE_LABEL[activeJob.serviceTypeCode]
-                  ? SERVICE_TYPE_LABEL[activeJob.serviceTypeCode].label
-                  : ''}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Người thực hiện ký:</span>
-              <span className="font-semibold text-slate-800">
-                {user?.name} ({user?.email})
-              </span>
-            </div>
-          </div>
+        <div className="space-y-4 py-2">
+          <Paragraph className="text-xs text-slate-600 mb-0">
+            Quý doanh nghiệp vui lòng tải lên bản hợp đồng dịch vụ đã có đầy đủ chữ ký hoặc con dấu của người đại diện hợp pháp.
 
-          {/* Dev OTP Box */}
-          {devOtp && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-amber-900 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                  Mã OTP xác thực (Hiệu lực 10 phút):
-                </span>
-                <Button
-                  size="small"
-                  type="primary"
-                  className="bg-amber-600 hover:bg-amber-500 border-none text-xs"
-                  onClick={() => setOtpCode(devOtp)}
-                >
-                  Tự động điền mã
-                </Button>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-2xl font-mono font-bold tracking-[0.25em] text-amber-950 bg-white/95 border border-amber-300 px-3 py-1 rounded-lg shadow-sm">
-                  {devOtp}
-                </div>
-                <span className="text-[11px] text-amber-800 leading-tight">
-                  Mã có hiệu lực trong 10 phút (vẫn dùng được bình thường kể cả khi thông báo trên màn hình biến mất).
-                </span>
-              </div>
-            </div>
-          )}
+          </Paragraph>
 
-          {/* OTP Section */}
-          <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <Text strong className="text-xs text-indigo-950">
-                Mã xác thực OTP (6 chữ số)
-              </Text>
-              <Button
-                type="link"
-                size="small"
-                loading={sendingChallenge}
-                onClick={() =>
-                  currentAgreement && sendChallenge(currentAgreement.serviceAgreementId)
-                }
-              >
-                Gửi lại mã OTP
-              </Button>
-            </div>
-
-            <Input
-              size="large"
-              maxLength={6}
-              value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-              placeholder="Nhập 6 số OTP từ email..."
-              className="text-center tracking-widest text-lg font-mono font-bold"
-            />
-
-            <div className="text-[11px] text-slate-500">
-              Mã xác thực đã được gửi tới địa chỉ email đăng ký của bạn. Vui lòng kiểm tra hộp thư đến
-              (và cả mục Spam/Junk nếu cần).
-            </div>
-          </div>
-
-          {/* Consent Checkbox */}
-          <div className="pt-2">
-            <Checkbox
-              checked={consentChecked}
-              onChange={(e) => setConsentChecked(e.target.checked)}
-              className="text-xs text-slate-700 leading-normal"
-            >
-              Tôi cam kết là đại diện có thẩm quyền hợp pháp của Doanh nghiệp. Tôi đã đọc kỹ, hiểu rõ,
-              đồng ý với toàn bộ nội dung thỏa thuận dịch vụ và chấp thuận việc ký kết điện tử có giá
-              trị ràng buộc pháp lý theo quy định của pháp luật.
-            </Checkbox>
-          </div>
+          <Upload.Dragger
+            name="file"
+            multiple={false}
+            maxCount={1}
+            fileList={fileList}
+            beforeUpload={(file) => {
+              const isValidExt = /\.(pdf|png|jpe?g|docx?)$/i.test(file.name);
+              if (!isValidExt) {
+                message.error('Chỉ chấp nhận tệp định dạng PDF, hình ảnh (JPG, PNG) hoặc Word (DOC, DOCX).');
+                return Upload.LIST_IGNORE;
+              }
+              const isLt25M = file.size / 1024 / 1024 < 25;
+              if (!isLt25M) {
+                message.error('Kích thước tệp tin phải nhỏ hơn 25MB.');
+                return Upload.LIST_IGNORE;
+              }
+              setFileList([file]);
+              return false;
+            }}
+            onRemove={() => {
+              setFileList([]);
+            }}
+          >
+            <p className="ant-upload-drag-icon text-indigo-500 text-3xl mb-2">
+              <InboxOutlined />
+            </p>
+            <p className="text-sm font-semibold text-slate-700">
+              Nhấp hoặc kéo thả tệp hợp đồng đã ký vào đây
+            </p>
+            <p className="text-xs text-slate-400">
+              Định dạng hỗ trợ: PDF, JPG, PNG, DOC, DOCX. Tối đa 25MB.
+            </p>
+          </Upload.Dragger>
         </div>
       </Modal>
     </div>

@@ -34,15 +34,18 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationRepository? _notificationRepository;
+    private readonly IPlacementReconciliationRepository? _reconciliationRepository;
 
     public WarrantyProgressService(
         IFinanceRepository financeRepository, IUnitOfWork unitOfWork, IAuditLogService auditLogService,
-        INotificationRepository? notificationRepository = null)
+        INotificationRepository? notificationRepository = null,
+        IPlacementReconciliationRepository? reconciliationRepository = null)
     {
         _financeRepository = financeRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
         _notificationRepository = notificationRepository;
+        _reconciliationRepository = reconciliationRepository;
     }
 
     public async Task<bool> CompleteWarrantyAsync(Guid placementId, DateOnly today, CancellationToken cancellationToken = default)
@@ -97,6 +100,11 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
 
     public async Task<bool> MarkServiceFeeOverdueAsync(Guid serviceFeeId, DateOnly today, CancellationToken cancellationToken = default)
     {
+        if (!await CanAdvanceFeeAsync(serviceFeeId, cancellationToken))
+        {
+            return false;
+        }
+
         var fee = await _financeRepository.GetServiceFeeForUpdateAsync(serviceFeeId, cancellationToken);
         if (fee == null || fee.Status is not (ServiceFeeStates.Pending or ServiceFeeStates.Due) || fee.DueDate >= today)
         {
@@ -121,6 +129,11 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
 
     public async Task<bool> MarkServiceFeeDueAsync(Guid serviceFeeId, DateOnly today, int reminderDays, CancellationToken cancellationToken = default)
     {
+        if (!await CanAdvanceFeeAsync(serviceFeeId, cancellationToken))
+        {
+            return false;
+        }
+
         var fee = await _financeRepository.GetServiceFeeForUpdateAsync(serviceFeeId, cancellationToken);
         if (fee == null || fee.Status != ServiceFeeStates.Pending || fee.DueDate < today
             || fee.DueDate > today.AddDays(Math.Max(0, reminderDays)))
@@ -167,6 +180,18 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    private async Task<bool> CanAdvanceFeeAsync(Guid serviceFeeId, CancellationToken cancellationToken)
+    {
+        if (_reconciliationRepository == null)
+        {
+            return true;
+        }
+
+        var reconciliation = await _reconciliationRepository.GetByServiceFeeIdAsync(serviceFeeId, cancellationToken);
+        return reconciliation == null ||
+               string.Equals(reconciliation.Status, PlacementReconciliationStates.Confirmed, StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<bool> ExpireReplacementSlotAsync(Guid replacementSlotId, DateTime now, CancellationToken cancellationToken = default)

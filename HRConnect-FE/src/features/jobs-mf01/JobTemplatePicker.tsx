@@ -16,11 +16,13 @@ import {
   Space,
   Tag,
   Typography,
+  Upload,
 } from 'antd';
 import {
   AppstoreOutlined,
   CheckOutlined,
   DownOutlined,
+  DownloadOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
   FileTextOutlined,
@@ -28,6 +30,7 @@ import {
   ReloadOutlined,
   SearchOutlined,
   UpOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 import type { Job, JobTemplate, JobTemplateIndustry } from '@/types/api/jobs';
 import {
@@ -40,6 +43,7 @@ import { useJobTemplate, useJobTemplates, useMyJobs } from './useJobQueries';
 import { jobsApi } from '@/services/api/jobsApi';
 import { JobTemplatePreviewDrawer } from './JobTemplatePreviewDrawer';
 import { mergeSkillsCaseInsensitive } from './jobTemplateUtils';
+import { JD_TEMPLATE_URL, readJdExcel } from './jdExcelImport';
 
 export {
   extractTemplateNonSkillRequirements,
@@ -70,7 +74,8 @@ export interface JobTemplatePickerProps {
   /** Job ID currently being edited (to exclude from past jobs list). */
   currentJobId?: string;
   /** Callback to populate form fields when "Dùng mẫu này" is triggered. */
-  onApplyTemplate: (template: JobTemplate, mergedSkills: string[]) => void;
+  /** sourceJob is set when the Client reuses one of their own jobs: its salary, location and quantity are copied too. */
+  onApplyTemplate: (template: JobTemplate, mergedSkills: string[], sourceJob?: Partial<Job>) => void;
   /** Initial collapse state: default open if new job without content, collapsed otherwise. */
   defaultOpen?: boolean;
 }
@@ -95,6 +100,8 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
   // Preview Drawer state
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [previewTemplateData, setPreviewTemplateData] = useState<Partial<JobTemplate> | null>(null);
+  const [previewSourceJob, setPreviewSourceJob] = useState<Partial<Job> | null>(null);
+  const [importing, setImporting] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
   // Debounce search input: 300ms
@@ -156,7 +163,7 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
     }, 200);
   };
 
-  const applyTemplateToForm = (template: JobTemplate) => {
+  const applyTemplateToForm = (template: JobTemplate, sourceJob?: Partial<Job>) => {
     const templateSkills = (template.requirements ?? [])
       .filter((r) => (r.category || '').toUpperCase() === 'SKILL')
       .map((r) => r.content.trim())
@@ -164,27 +171,29 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
 
     const mergedSkills = mergeSkillsCaseInsensitive(currentSkills, templateSkills);
 
-    onApplyTemplate(template, mergedSkills);
-    message.success(`Đã áp dụng mẫu "${template.name}".`);
+    onApplyTemplate(template, mergedSkills, sourceJob);
+    message.success(sourceJob ? `Đã điền nội dung "${template.name}".` : `Đã áp dụng mẫu "${template.name}".`);
     handleCloseDrawer();
     scrollToTitleField();
   };
 
-  const confirmAndApply = (template: JobTemplate) => {
+  const confirmAndApply = (template: JobTemplate, sourceJob?: Partial<Job>) => {
     if (hasStep2Content()) {
       modal.confirm({
         title: 'Thay nội dung hiện tại bằng mẫu này?',
         icon: <ExclamationCircleOutlined className="text-amber-500" />,
-        content: 'Nội dung mô tả, quyền lợi, yêu cầu và kỹ năng sẽ được điền theo mẫu. Lương, số lượng và địa điểm giữ nguyên.',
+        content: sourceJob
+          ? 'Nội dung, yêu cầu, kỹ năng, lương, số lượng và địa điểm sẽ được điền theo tin đã đăng.'
+          : 'Nội dung mô tả, quyền lợi, yêu cầu và kỹ năng sẽ được điền theo mẫu. Lương, số lượng và địa điểm giữ nguyên.',
         okText: 'Áp dụng',
         cancelText: 'Hủy',
         okButtonProps: { className: 'client-cta' },
         onOk: () => {
-          applyTemplateToForm(template);
+          applyTemplateToForm(template, sourceJob);
         },
       });
     } else {
-      applyTemplateToForm(template);
+      applyTemplateToForm(template, sourceJob);
     }
   };
 
@@ -227,11 +236,9 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
   const handleApplyClientJob = async (job: Job) => {
     try {
       const fullJob = await jobsApi.getById(job.jobId);
-      const converted = convertJobToTemplate(fullJob);
-      confirmAndApply(converted);
+      confirmAndApply(convertJobToTemplate(fullJob), fullJob);
     } catch {
-      const converted = convertJobToTemplate(job);
-      confirmAndApply(converted);
+      confirmAndApply(convertJobToTemplate(job), job);
     }
   };
 
@@ -239,16 +246,46 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
     try {
       const fullJob = await jobsApi.getById(job.jobId);
       setPreviewTemplateData(convertJobToTemplate(fullJob));
+      setPreviewSourceJob(fullJob);
     } catch {
       setPreviewTemplateData(convertJobToTemplate(job));
+      setPreviewSourceJob(job);
     }
     setPreviewTemplateId(null);
     setIsDrawerOpen(true);
   };
 
+  /** Read the Excel JD in the browser, list problems by row, then open the usual preview. */
+  const handleImportExcel = async (file: File) => {
+    setImporting(true);
+    try {
+      const result = await readJdExcel(file);
+      if (!result.template) {
+        modal.error({
+          title: 'Chưa nhập được file JD',
+          content: (
+            <ul className="m-0 mt-2 list-disc space-y-1 pl-5 text-[13px]">
+              {result.errors.slice(0, 12).map((e) => <li key={e}>{e}</li>)}
+              {result.errors.length > 12 && <li>… và {result.errors.length - 12} lỗi khác.</li>}
+            </ul>
+          ),
+        });
+        return;
+      }
+      result.warnings.forEach((w) => message.warning(w));
+      setPreviewTemplateId(null);
+      setPreviewTemplateData(result.template);
+      setPreviewSourceJob(result.terms);
+      setIsDrawerOpen(true);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleOpenSystemPreview = (id: string) => {
     setPreviewTemplateId(id);
     setPreviewTemplateData(null);
+    setPreviewSourceJob(null);
     setIsDrawerOpen(true);
   };
 
@@ -260,7 +297,7 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
 
   const handleUseFromDrawer = () => {
     if (previewTemplateData) {
-      confirmAndApply(previewTemplateData as JobTemplate);
+      confirmAndApply(previewTemplateData as JobTemplate, previewSourceJob ?? undefined);
       return;
     }
     const template = templateDetailQuery.data;
@@ -292,11 +329,28 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
               )}
             </div>
             <p className="m-0 text-xs text-slate-500">
-              Chọn mẫu có sẵn hoặc dùng lại tin đã đăng để điền nhanh nội dung.
+              Chọn mẫu có sẵn, dùng lại tin đã đăng hoặc nhập JD từ file Excel để điền nhanh nội dung.
             </p>
           </div>
         </div>
 
+        <Space size={4} wrap>
+          <Button type="text" icon={<DownloadOutlined />} href={JD_TEMPLATE_URL} download className="text-slate-600">
+            Tải file mẫu Excel
+          </Button>
+          <Upload
+            accept=".xlsx"
+            showUploadList={false}
+            maxCount={1}
+            beforeUpload={(file) => {
+              void handleImportExcel(file);
+              return Upload.LIST_IGNORE;
+            }}
+          >
+            <Button icon={<UploadOutlined />} loading={importing}>
+              Nhập từ Excel
+            </Button>
+          </Upload>
         <Button
           type="text"
           onClick={() => setIsExpanded((prev) => !prev)}
@@ -305,6 +359,7 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
         >
           {isExpanded ? 'Thu gọn' : 'Chọn mẫu'}
         </Button>
+        </Space>
       </div>
 
       {/* Expanded Content Area */}
@@ -567,6 +622,7 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
         templateId={previewTemplateId}
         templateData={previewTemplateData}
         showClientNotice
+        copiesTerms={Boolean(previewSourceJob)}
         footer={
           <div className="flex items-center justify-between gap-3 px-2 py-1">
             <Button onClick={handleCloseDrawer}>Đóng (Esc)</Button>

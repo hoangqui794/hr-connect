@@ -22,6 +22,9 @@ public interface IFinanceRepository
     /// <summary>Placement with job, warranty, service fee and commissions, tracked for update.</summary>
     Task<Placement?> GetPlacementForFinanceAsync(Guid placementId, CancellationToken cancellationToken = default);
 
+    /// <summary>The affiliate's user id behind an attribution, for notifications.</summary>
+    Task<Guid?> GetAffiliateUserIdAsync(Guid attributionId, CancellationToken cancellationToken = default);
+
     Task<ServiceFee?> GetServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default);
 
     /// <summary>

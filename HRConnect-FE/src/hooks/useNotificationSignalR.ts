@@ -11,8 +11,11 @@ import { useNavigate } from 'react-router-dom';
 import { notification as antNotification } from 'antd';
 import { HubConnectionState } from '@microsoft/signalr';
 import { useAuthStore } from '@/stores/authStore';
+import { portalRoute } from '@/components/notifications/notificationRoutes';
+import { refreshKeysFor } from './notificationRefreshKeys';
 import {
   signalRNotificationService,
+  type ApplicationScoredPayload,
   type NotificationCreatedPayload,
   type InterviewUpdatedPayload,
 } from '@/services/signalRNotificationService';
@@ -83,6 +86,11 @@ export const useNotificationSignalR = (options: UseNotificationSignalROptions = 
         }
       );
 
+      // Refresh the pages that show the entity this notification is about, so lists update without a reload.
+      for (const queryKey of refreshKeysFor(notification.relatedEntityType)) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
+
       // MF-04 notifications carry the owning application so the Candidate portal can refresh
       // the exact application/timeline caches without relying on unrelated legacy query keys.
       const entityType = notification.relatedEntityType?.trim().toUpperCase();
@@ -138,7 +146,7 @@ export const useNotificationSignalR = (options: UseNotificationSignalROptions = 
           duration: 5,
           onClick: () => {
             if (route) {
-              navigateRef.current(route);
+              navigateRef.current(portalRoute(route, useAuthStore.getState().role));
             }
           },
           style: { cursor: route ? 'pointer' : 'default' },
@@ -159,6 +167,20 @@ export const useNotificationSignalR = (options: UseNotificationSignalROptions = 
     [queryClient]
   );
 
+  // 3. AI scoring finished: refresh every list and detail that shows the score, no page reload needed.
+  const handleApplicationScored = useCallback(
+    (payload: ApplicationScoredPayload) => {
+      for (const key of ['hr-screening', 'hr-overview', 'client-candidates', 'client-overview', 'candidate-applications']) {
+        void queryClient.invalidateQueries({ queryKey: [key] });
+      }
+      if (payload.applicationId) {
+        void queryClient.invalidateQueries({ queryKey: ['hr-application', payload.applicationId] });
+        void queryClient.invalidateQueries({ queryKey: ['hr-application-timeline', payload.applicationId] });
+      }
+    },
+    [queryClient]
+  );
+
   useEffect(() => {
     const unsubState = signalRNotificationService.onStateChange((state) => {
       setConnectionState(state);
@@ -166,13 +188,15 @@ export const useNotificationSignalR = (options: UseNotificationSignalROptions = 
 
     const unsubNotif = signalRNotificationService.onNotificationCreated(handleNotificationCreated);
     const unsubInterview = signalRNotificationService.onInterviewUpdated(handleInterviewUpdated);
+    const unsubScored = signalRNotificationService.onApplicationScored(handleApplicationScored);
 
     return () => {
       unsubState();
       unsubNotif();
       unsubInterview();
+      unsubScored();
     };
-  }, [handleNotificationCreated, handleInterviewUpdated]);
+  }, [handleNotificationCreated, handleInterviewUpdated, handleApplicationScored]);
 
   useEffect(() => {
     if (autoConnect && isAuthenticated) {

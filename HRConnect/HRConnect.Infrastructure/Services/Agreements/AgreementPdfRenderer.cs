@@ -43,10 +43,14 @@ public sealed class AgreementPdfRenderer : IAgreementPdfRenderer
             var writer = new PageWriter(document);
 
             // Header & Title
-            writer.Header("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n---o0o---");
+            var contractNum = !string.IsNullOrWhiteSpace(job.AgreementReference)
+                ? job.AgreementReference
+                : agreement.VerificationCode;
+
+            writer.Header($"CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n---o0o---\nSố: {contractNum}");
             writer.Space(8);
             writer.Title("THỎA THUẬN CUNG CẤP DỊCH VỤ TUYỂN DỤNG");
-            writer.Subtitle($"Mã thỏa thuận: {agreement.ServiceAgreementId.ToString()[..8].ToUpperInvariant()} | Phiên bản: v{agreement.Version} | Mã tra cứu: {agreement.VerificationCode}");
+            writer.Subtitle($"Số hợp đồng: {contractNum} | Phiên bản: v{agreement.Version} | Mã tra cứu: {agreement.VerificationCode}");
             writer.Rule();
 
             // Legal intro

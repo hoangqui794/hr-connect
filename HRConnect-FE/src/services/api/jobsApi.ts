@@ -334,5 +334,19 @@ export const serviceAgreementsApi = {
     );
     return res.data;
   },
+
+  /** POST /client/jobs/{jobId}/service-agreements/{agreementId}/upload-signed */
+  async uploadSignedDocument(jobId: string, agreementId: string, file: File): Promise<ServiceAgreementDto> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await apiClient.post<ServiceAgreementDto>(
+      `/client/jobs/${jobId}/service-agreements/${agreementId}/upload-signed`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
+    );
+    return res.data;
+  },
 };
 

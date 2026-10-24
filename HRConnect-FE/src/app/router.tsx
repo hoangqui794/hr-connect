@@ -180,6 +180,7 @@ export const router = createBrowserRouter([
       { path: 'user-authorization', element: <AppRoutes.ConsoleUserAuthorizationPage /> },
       { path: 'audit-trail', element: <AppRoutes.ConsoleAuditLogPage /> },
       { path: 'reports', element: <AppRoutes.AdminReportsPage /> },
+      { path: 'placement-reconciliations', element: <AppRoutes.AdminPlacementReconciliationPage /> },
       { path: 'profile', element: <AppRoutes.ConsoleProfilePage /> },
       // No backend API yet: explicit empty state, no mock numbers.
       { path: 'disputes', element: <AppRoutes.ConsoleDisputesPlaceholder /> },
@@ -329,6 +330,7 @@ export const router = createBrowserRouter([
       { path: 'interviews', element: <Navigate to="/hr/pipeline?tab=interviews" replace /> },
       { path: 'offers', element: <Navigate to="/hr/pipeline?tab=offers" replace /> },
       { path: 'placement-review', element: <AppRoutes.HrPlacementStartDateCorrectionPage /> },
+      { path: 'placement-reconciliations', element: <AppRoutes.HrPlacementReconciliationPage /> },
       { path: 'warranty-tracking', element: <AppRoutes.HrWarrantyPlaceholder /> },
       { path: 'placements/:placementId', element: <AppRoutes.PlacementDetailPage /> },
     ],

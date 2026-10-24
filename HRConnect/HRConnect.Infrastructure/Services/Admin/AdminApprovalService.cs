@@ -566,6 +566,24 @@ public class AdminApprovalService : IAdminApprovalService
             NextRetryAt = now,
             CreatedAt = now
         }, cancellationToken);
+
+        // Same result in the bell, pushed in real time after the commit.
+        var isAffiliate = templateCode.StartsWith("AFFILIATE", StringComparison.Ordinal);
+        await _context.Notifications.AddAsync(new Notification
+        {
+            NotificationId = Guid.NewGuid(),
+            UserId = userId,
+            NotificationType = "ACCOUNT",
+            Title = approved ? $"Hồ sơ {accountLabel.ToLowerInvariant()} đã được duyệt" : $"Hồ sơ {accountLabel.ToLowerInvariant()} chưa được duyệt",
+            Message = approved
+                ? "Tài khoản của bạn đã được kích hoạt. Bạn có thể bắt đầu sử dụng đầy đủ chức năng."
+                : $"Quản trị viên chưa duyệt hồ sơ.{(string.IsNullOrWhiteSpace(reviewNote) ? string.Empty : $" Lý do: {reviewNote}")}",
+            RelatedEntityType = isAffiliate ? "AFFILIATE" : "COMPANY",
+            RelatedEntityId = userId,
+            Metadata = JsonSerializer.Serialize(new { routeHint = isAffiliate ? "/affiliate/profile" : "/client/company" }),
+            IsRead = false,
+            CreatedAt = now
+        }, cancellationToken);
     }
 
     private static ConflictException CreateConcurrentReviewConflict(Exception exception)
