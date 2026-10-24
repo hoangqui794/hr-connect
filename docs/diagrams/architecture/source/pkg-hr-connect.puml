@@ -1,0 +1,55 @@
+@startuml pkg-hr-connect pkg-hr-connect
+title HR Connect – Package Diagram
+skinparam packageStyle folder
+package "HRConnect-FE (React + TypeScript)" as FE {
+  [app · routes]
+  [pages · features (portals per role)]
+  [components]
+  [services (Axios API clients)]
+  [stores (Zustand) · hooks]
+  [i18n · types · constants]
+}
+package "HRConnect.Presentation" as PRES {
+  [Endpoints/V1 (Jobs, Recruitment, Finance, Admin, …)]
+  [Endpoints/Internal (AI callback)]
+  [Hubs (SignalR NotificationHub)]
+  [Authorization · Middleware · RateLimiting]
+  [ErrorHandling · HealthChecks · Swagger]
+}
+package "HRConnect.Application" as APP {
+  [Features/Auth · Users · Admin]
+  [Features/Companies · Jobs (MF-01)]
+  [Features/Candidates · Affiliates · SubmissionConsents · CandidateDuplicates (MF-02)]
+  [Features/InternalHr · Recruitment (MF-03)]
+  [Features/Interviews · Offers · Placements (MF-04)]
+  [Features/Finance · CommissionRules · Disputes (MF-05)]
+  [Features/Notifications · Reports · Contact · Settings]
+  [Common/Interfaces · Models · Exceptions]
+}
+package "HRConnect.Domain" as DOM {
+  [Entities (71)]
+  [Constants (states, reason and error codes)]
+}
+package "HRConnect.Infrastructure" as INF {
+  [Persistence (DbContext, Migrations, Seed)]
+  [Repositories]
+  [Authentication (JWT)]
+  [Services/Storage (R2) · Email (Resend)]
+  [Services/Integration (AI client, dispatcher)]
+  [Services/Agreements · CvBuilder · Finance workers]
+}
+package "ai-service-v2 (Python FastAPI)" as AI {
+  [main · pipeline · scoring_jobs]
+  [documents · semantic (Sentence-BERT)]
+  [llm · verification]
+  [hrconnect_client (callback)]
+}
+FE ..> PRES : HTTP REST + SignalR
+PRES ..> APP : uses (MediatR)
+PRES ..> INF : registers (DI)
+APP ..> DOM : uses
+INF ..> APP : implements interfaces
+INF ..> DOM : maps entities
+INF ..> AI : HTTP score request
+AI ..> PRES : HTTP callback /internal
+@enduml

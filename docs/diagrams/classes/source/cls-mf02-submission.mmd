@@ -1,0 +1,119 @@
+---
+title: MF-02 · Application, referral, consent and attribution
+config:
+  layout: elk
+---
+classDiagram
+  direction LR
+  class JobEndpoints {
+    <<endpoint>>
+    +POST /jobs/‹id›/apply
+    +POST /jobs/‹id›/candidate-submissions
+  }
+  class SubmissionConsentEndpoints {
+    <<endpoint>>
+    +POST /submission-consents/respond
+    +POST /submissions/‹id›/consent/resend
+  }
+  class ApplyJobCommandHandler {
+    <<handler>>
+    +Handle(ApplyJobCommand)
+  }
+  class SubmitCandidateCommandHandler {
+    <<handler>>
+    +Handle(SubmitCandidateCommand)
+  }
+  class RespondSubmissionConsentCommandHandler {
+    <<handler>>
+    +Handle(token, decision)
+  }
+  class SubmissionAcceptancePolicy {
+    <<policy>>
+    +accept submission → Application + Attribution
+  }
+  class SubmissionConsentExpiryService {
+    <<service>>
+    +ExpireAsync()
+  }
+  class ICvStorageService {
+    <<interface>>
+    +UploadCvPdfAsync()
+    +UploadAffiliateCvPdfAsync()
+    +CompensateUploadAsync()
+    +DeleteCvAsync()
+  }
+  class IMf03ScoringTrigger {
+    <<interface>>
+    +TriggerScoringAsync()
+  }
+  class Candidate {
+    <<entity>>
+    +FullName · Email · Phone
+    +NormalizedEmail · NormalizedPhone
+    +ProfileVisibility
+  }
+  class CandidateCv {
+    <<entity>>
+    +SourceFileUrl · ContentSha256
+    +TextFingerprint · IsPrimary
+  }
+  class Submission {
+    <<entity>>
+    +Source (CANDIDATE/AFFILIATE)
+    +Status
+    +DuplicateOfSubmissionId
+  }
+  class SubmissionConsent {
+    <<entity>>
+    +TokenHash · Status
+    +ExpiresAt · EmailSendCount
+  }
+  class Application {
+    <<entity>>
+    +Status · CurrentStage
+    +AcceptedSubmissionId
+    +ConcurrencyToken
+  }
+  class Attribution {
+    <<entity>>
+    +AffiliateId
+    +WinningSubmissionId · AttributionRule
+  }
+  class Dispute {
+    <<entity>>
+    +DisputeType · Status
+    +Resolution
+  }
+  JobEndpoints ..> ApplyJobCommandHandler : sends
+  JobEndpoints ..> SubmitCandidateCommandHandler : sends
+  SubmissionConsentEndpoints ..> RespondSubmissionConsentCommandHandler : sends
+  ApplyJobCommandHandler ..> ICvStorageService
+  SubmitCandidateCommandHandler ..> ICvStorageService
+  ApplyJobCommandHandler ..> IMf03ScoringTrigger
+  RespondSubmissionConsentCommandHandler ..> SubmissionAcceptancePolicy
+  RespondSubmissionConsentCommandHandler ..> IMf03ScoringTrigger
+  SubmissionConsentExpiryService --> SubmissionConsent : expires
+  SubmitCandidateCommandHandler --> Submission : creates
+  SubmitCandidateCommandHandler --> SubmissionConsent : creates
+  Candidate *-- CandidateCv : 0..*
+  Candidate --> Submission : 0..*
+  Submission --> SubmissionConsent : 0..1
+  SubmissionAcceptancePolicy --> Application : creates
+  Application --> Attribution : 0..1
+  Attribution --> Dispute : 0..*
+  style JobEndpoints fill:#FFF4E5,stroke:#1B365D
+  style SubmissionConsentEndpoints fill:#FFF4E5,stroke:#1B365D
+  style ApplyJobCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style SubmitCandidateCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style RespondSubmissionConsentCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style SubmissionAcceptancePolicy fill:#F5F5F5,stroke:#1B365D
+  style SubmissionConsentExpiryService fill:#EEF5EC,stroke:#1B365D
+  style ICvStorageService fill:#F3E8FF,stroke:#1B365D
+  style IMf03ScoringTrigger fill:#F3E8FF,stroke:#1B365D
+  style Candidate fill:#FFFFFF,stroke:#1B365D
+  style CandidateCv fill:#FFFFFF,stroke:#1B365D
+  style Submission fill:#FFFFFF,stroke:#1B365D
+  style SubmissionConsent fill:#FFFFFF,stroke:#1B365D
+  style Application fill:#FFFFFF,stroke:#1B365D
+  style Attribution fill:#FFFFFF,stroke:#1B365D
+  style Dispute fill:#FFFFFF,stroke:#1B365D

@@ -1,0 +1,32 @@
+---
+title: Screen flow – Candidate portal (/candidate)
+config:
+  layout: elk
+---
+flowchart LR
+  candidate_dash["<b>Candidate home</b><br/><small>dashboard</small>"]
+  candidate_cjobs["<b>Jobs (suggestions, search)</b><br/><small>jobs</small>"]
+  candidate_cjobd["<b>Job detail + Apply</b><br/><small>jobs/:jobId</small>"]
+  candidate_saved["<b>Saved jobs</b><br/><small>saved-jobs</small>"]
+  candidate_apps["<b>My applications + consents tab</b><br/><small>applications</small>"]
+  candidate_appd["<b>Application detail / timeline</b><br/><small>applications/:applicationId</small>"]
+  candidate_intv["<b>Interview detail (confirm attendance)</b><br/><small>interviews/:interviewId</small>"]
+  candidate_cons["<b>Submission consent detail</b><br/><small>submission-consents/:submissionId</small>"]
+  candidate_cvs["<b>CV library + CV builder</b><br/><small>cvs</small>"]
+  candidate_acvs["<b>CVs uploaded by affiliates</b><br/><small>affiliate-cvs</small>"]
+  candidate_prof["<b>Profile & visibility</b><br/><small>profile</small>"]
+  candidate_ident["<b>E-mail identities</b><br/><small>settings/email-identities</small>"]
+  candidate_dash --> candidate_cjobs
+  candidate_cjobs -->|"open"| candidate_cjobd
+  candidate_cjobd -->|"save"| candidate_saved
+  candidate_cjobd -->|"apply (CV)"| candidate_apps
+  candidate_dash --> candidate_apps
+  candidate_apps -->|"open"| candidate_appd
+  candidate_appd -->|"interview"| candidate_intv
+  candidate_apps -->|"consent request"| candidate_cons
+  candidate_dash --> candidate_cvs
+  candidate_cvs -->|"use CV"| candidate_cjobd
+  candidate_dash --> candidate_acvs
+  candidate_dash --> candidate_prof
+  candidate_prof --> candidate_ident
+  classDef default fill:#E6F4EA,stroke:#1B365D,color:#1F2A3C

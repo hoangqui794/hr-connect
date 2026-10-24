@@ -435,6 +435,7 @@ export interface CreateServiceAgreementProposalInput {
   pricePerQualifiedCv?: number;
   sourcingTarget?: number;
   reviewDays?: number;
+  agreementReference?: string;
   agreementNote?: string;
 }
 

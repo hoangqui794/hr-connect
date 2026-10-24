@@ -1,0 +1,158 @@
+@startuml sf-overall
+left to right direction
+skinparam rectangle { RoundCorner 8 }
+title HR Connect – Overall Screen Flow
+package "Public site & authentication" #FFF4E5 {
+  rectangle "Landing page\n<size:10>/</size>" as public_home
+  rectangle "Public job search\n<size:10>/jobs</size>" as public_jobs
+  rectangle "Public job detail\n<size:10>/jobs/:id</size>" as public_jobd
+  rectangle "Services\n<size:10>/services</size>" as public_svc
+  rectangle "Contact form\n<size:10>/contact</size>" as public_contact
+  rectangle "Login\n<size:10>/login</size>" as public_login
+  rectangle "Register (Candidate / Affiliate / Client)\n<size:10>/register</size>" as public_reg
+  rectangle "Verify e-mail OTP\n<size:10>/verify-otp</size>" as public_otp
+  rectangle "Submission consent (link in e-mail)\n<size:10>/submission-consent</size>" as public_consent
+}
+public_home --> public_jobs : search
+public_jobs --> public_jobd : open job
+public_home --> public_svc
+public_home --> public_contact
+public_home --> public_login
+public_jobd --> public_login : apply → login
+public_login --> public_reg : no account
+public_reg --> public_otp : submit
+public_otp --> public_login : verified
+package "Candidate portal (/candidate)" #E6F4EA {
+  rectangle "Candidate home\n<size:10>dashboard</size>" as candidate_dash
+  rectangle "Jobs (suggestions, search)\n<size:10>jobs</size>" as candidate_cjobs
+  rectangle "Job detail + Apply\n<size:10>jobs/:jobId</size>" as candidate_cjobd
+  rectangle "Saved jobs\n<size:10>saved-jobs</size>" as candidate_saved
+  rectangle "My applications + consents tab\n<size:10>applications</size>" as candidate_apps
+  rectangle "Application detail / timeline\n<size:10>applications/:applicationId</size>" as candidate_appd
+  rectangle "Interview detail (confirm attendance)\n<size:10>interviews/:interviewId</size>" as candidate_intv
+  rectangle "Submission consent detail\n<size:10>submission-consents/:submissionId</size>" as candidate_cons
+  rectangle "CV library + CV builder\n<size:10>cvs</size>" as candidate_cvs
+  rectangle "CVs uploaded by affiliates\n<size:10>affiliate-cvs</size>" as candidate_acvs
+  rectangle "Profile & visibility\n<size:10>profile</size>" as candidate_prof
+  rectangle "E-mail identities\n<size:10>settings/email-identities</size>" as candidate_ident
+}
+candidate_dash --> candidate_cjobs
+candidate_cjobs --> candidate_cjobd : open
+candidate_cjobd --> candidate_saved : save
+candidate_cjobd --> candidate_apps : apply (CV)
+candidate_dash --> candidate_apps
+candidate_apps --> candidate_appd : open
+candidate_appd --> candidate_intv : interview
+candidate_apps --> candidate_cons : consent request
+candidate_dash --> candidate_cvs
+candidate_cvs --> candidate_cjobd : use CV
+candidate_dash --> candidate_acvs
+candidate_dash --> candidate_prof
+candidate_prof --> candidate_ident
+package "Affiliate portal (/affiliate)" #F3E8FF {
+  rectangle "Affiliate home\n<size:10>dashboard</size>" as affiliate_dash
+  rectangle "Partner jobs\n<size:10>jobs</size>" as affiliate_ajobs
+  rectangle "Job detail + commission estimate\n<size:10>jobs/:jobId</size>" as affiliate_ajobd
+  rectangle "Submit candidate\n<size:10>submit-candidate</size>" as affiliate_submit
+  rectangle "My submissions\n<size:10>submissions</size>" as affiliate_subs
+  rectangle "Submission detail (resend consent)\n<size:10>submissions/:submissionId</size>" as affiliate_subd
+  rectangle "My candidate pool\n<size:10>candidates</size>" as affiliate_cands
+  rectangle "Attributions\n<size:10>attributions</size>" as affiliate_attr
+  rectangle "Disputes\n<size:10>disputes</size>" as affiliate_disp
+  rectangle "Commissions & payouts\n<size:10>commissions</size>" as affiliate_comm
+  rectangle "Performance\n<size:10>performance</size>" as affiliate_perf
+  rectangle "Profile & bank account\n<size:10>profile</size>" as affiliate_prof
+}
+affiliate_dash --> affiliate_ajobs
+affiliate_ajobs --> affiliate_ajobd : open
+affiliate_ajobd --> affiliate_submit : refer
+affiliate_cands --> affiliate_submit : reuse candidate
+affiliate_submit --> affiliate_subs : submitted
+affiliate_subs --> affiliate_subd : open
+affiliate_subd --> affiliate_disp : blocked duplicate → dispute
+affiliate_dash --> affiliate_attr
+affiliate_dash --> affiliate_comm
+affiliate_dash --> affiliate_perf
+affiliate_dash --> affiliate_prof
+package "Client Company portal (/client)" #E6F0FA {
+  rectangle "Client overview\n<size:10>dashboard</size>" as client_dash
+  rectangle "Company profile & verification\n<size:10>company</size>" as client_comp
+  rectangle "My jobs\n<size:10>jobs</size>" as client_cjobs
+  rectangle "Create / edit job (wizard)\n<size:10>jobs/create · jobs/:id/edit</size>" as client_create
+  rectangle "Service agreements (accept, OTP sign)\n<size:10>agreements</size>" as client_agr
+  rectangle "Sourcing CV deliveries\n<size:10>jobs/:jobId/sourcing</size>" as client_src
+  rectangle "Candidates (Kanban, filter by service)\n<size:10>candidates</size>" as client_cands
+  rectangle "Interviews & offers\n<size:10>interviews-offers</size>" as client_io
+  rectangle "Placement detail\n<size:10>placements/:placementId</size>" as client_plc
+  rectangle "Warranty & resignations\n<size:10>warranty</size>" as client_war
+}
+client_dash --> client_comp : verify company
+client_dash --> client_cjobs
+client_cjobs --> client_create : new / edit
+client_create --> client_cjobs : submit for review
+client_cjobs --> client_agr : agreement sent by HR
+client_cjobs --> client_src : Sourcing job
+client_dash --> client_cands
+client_cands --> client_io : schedule / offer
+client_io --> client_plc : confirm start work
+client_plc --> client_war : report resignation
+client_dash --> client_war
+package "Internal HR console (/hr)" #E0F2FE {
+  rectangle "HR overview\n<size:10>dashboard</size>" as hr_dash
+  rectangle "Job review & agreement proposal\n<size:10>jobs</size>" as hr_rev
+  rectangle "JD templates\n<size:10>job-templates</size>" as hr_tpl
+  rectangle "AI screening workspace\n<size:10>screening</size>" as hr_scr
+  rectangle "Pipeline (interviews, offers – read only)\n<size:10>pipeline</size>" as hr_pipe
+  rectangle "Placement start-date correction\n<size:10>placement-review</size>" as hr_plr
+  rectangle "Placement detail\n<size:10>placements/:placementId</size>" as hr_plc
+  rectangle "Warranty tracking (verify resignations)\n<size:10>warranty-tracking</size>" as hr_war
+  rectangle "Contact requests\n<size:10>contact-requests</size>" as hr_contact
+  rectangle "Profile\n<size:10>profile</size>" as hr_prof
+}
+hr_dash --> hr_rev
+hr_rev --> hr_tpl
+hr_dash --> hr_scr
+hr_scr --> hr_pipe : shortlisted
+hr_dash --> hr_plr
+hr_plr --> hr_plc : open
+hr_dash --> hr_war
+hr_war --> hr_plc : open
+hr_dash --> hr_contact
+hr_dash --> hr_prof
+package "Platform Admin console (/admin)" #EEF5EC {
+  rectangle "Admin overview\n<size:10>dashboard</size>" as admin_dash
+  rectangle "Approvals (companies, affiliates)\n<size:10>approvals</size>" as admin_appr
+  rectangle "Candidate identity claims\n<size:10>candidate-identity-claims</size>" as admin_idc
+  rectangle "Job review\n<size:10>jobs</size>" as admin_jobs
+  rectangle "JD templates\n<size:10>job-templates</size>" as admin_tpl
+  rectangle "Users\n<size:10>users</size>" as admin_users
+  rectangle "Roles & permissions / user authorization\n<size:10>roles-permissions · user-authorization</size>" as admin_rbac
+  rectangle "Service types\n<size:10>service-types</size>" as admin_st
+  rectangle "Commission rules\n<size:10>commission-rules</size>" as admin_cr
+  rectangle "Business settings\n<size:10>settings</size>" as admin_set
+  rectangle "Finance: posting fees, service fees, deposits, commissions, payouts\n<size:10>finance · payouts</size>" as admin_fin
+  rectangle "Disputes (empty state, FE pending)\n<size:10>disputes</size>" as admin_disp
+  rectangle "Reports\n<size:10>reports</size>" as admin_rep
+  rectangle "Audit trail\n<size:10>audit-trail</size>" as admin_audit
+  rectangle "Contact requests\n<size:10>contact-requests</size>" as admin_contact
+}
+admin_dash --> admin_appr
+admin_dash --> admin_idc
+admin_dash --> admin_jobs
+admin_jobs --> admin_tpl
+admin_dash --> admin_users
+admin_users --> admin_rbac
+admin_dash --> admin_st
+admin_st --> admin_cr
+admin_dash --> admin_set
+admin_dash --> admin_fin
+admin_dash --> admin_disp
+admin_dash --> admin_rep
+admin_dash --> admin_audit
+admin_dash --> admin_contact
+public_login --> candidate_dash : Candidate
+public_login --> affiliate_dash : Affiliate
+public_login --> client_dash : Client Company User
+public_login --> hr_dash : Internal HR
+public_login --> admin_dash : Platform Admin
+@enduml

@@ -1,0 +1,30 @@
+@startuml seq-mf01-review-agreement-sign
+autonumber
+skinparam sequenceMessageAlign center
+title MF-01 · HR approves, sends a service agreement and the Client signs with OTP
+actor "Internal HR" as HR
+actor "Client (primary contact)" as CL
+boundary "Job / ServiceAgreement endpoints" as API
+control "Agreement handlers" as H
+database "PostgreSQL" as DB
+cloud "Resend" as MAIL
+cloud "Cloudflare R2" as R2
+HR -> API : POST /api/v1/internal/jobs/{id}/approve
+API -> H : ApproveJob: HEADHUNT_COD / CV_SOURCING → PENDING_AGREEMENT
+HR -> API : POST /internal/jobs/{id}/service-agreements (terms, version)
+API -> H : CreateServiceAgreementProposal → SENT_TO_CLIENT
+H -> DB : Save agreement version + snapshots, notify Client
+CL -> API : POST /client/jobs/{id}/service-agreements/{aid}/respond
+alt REQUEST_CHANGES
+H -> DB : CHANGE_REQUESTED, HR prepares a new version
+else ACCEPT
+H -> DB : ACCEPTED
+CL -> API : Request signing OTP
+H -> MAIL : CreateSignatureChallenge: OTP e-mail to primary contact
+CL -> API : Sign with OTP
+H -> H : Verify OTP hash, attempts and expiry
+H -> R2 : Render signed PDF, store privately (SHA-256 kept)
+H -> DB : Agreement SIGNED; Job → ACTIVE (Headhunt) or deposit + PENDING_PAYMENT (Sourcing)
+API --> CL : 200 OK, download link
+end
+@enduml

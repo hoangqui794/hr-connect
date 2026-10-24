@@ -1,0 +1,25 @@
+---
+title: Screen flow – Public site & authentication
+config:
+  layout: elk
+---
+flowchart LR
+  public_home["<b>Landing page</b><br/><small>/</small>"]
+  public_jobs["<b>Public job search</b><br/><small>/jobs</small>"]
+  public_jobd["<b>Public job detail</b><br/><small>/jobs/:id</small>"]
+  public_svc["<b>Services</b><br/><small>/services</small>"]
+  public_contact["<b>Contact form</b><br/><small>/contact</small>"]
+  public_login["<b>Login</b><br/><small>/login</small>"]
+  public_reg["<b>Register (Candidate / Affiliate / Client)</b><br/><small>/register</small>"]
+  public_otp["<b>Verify e-mail OTP</b><br/><small>/verify-otp</small>"]
+  public_consent["<b>Submission consent (link in e-mail)</b><br/><small>/submission-consent</small>"]
+  public_home -->|"search"| public_jobs
+  public_jobs -->|"open job"| public_jobd
+  public_home --> public_svc
+  public_home --> public_contact
+  public_home --> public_login
+  public_jobd -->|"apply → login"| public_login
+  public_login -->|"no account"| public_reg
+  public_reg -->|"submit"| public_otp
+  public_otp -->|"verified"| public_login
+  classDef default fill:#FFF4E5,stroke:#1B365D,color:#1F2A3C

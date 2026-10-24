@@ -220,32 +220,21 @@ export const ClientJobsListPage: React.FC = () => {
           ...(job.serviceTypeCode === 'HEADHUNT_COD' || job.serviceTypeCode === 'CV_SOURCING'
             ? [{ key: 'agreement', icon: <FileDoneOutlined />, label: 'Thỏa thuận dịch vụ' }]
             : []),
-          ...(job.serviceTypeCode === 'CV_SOURCING' ? [{ key: 'sourcing', icon: <TeamOutlined />, label: 'Hồ sơ được tìm kiếm' }] : []),
+          ...(job.serviceTypeCode === 'CV_SOURCING' ? [{ key: 'sourcing', icon: <TeamOutlined />, label: 'Kho CV tìm kiếm' }] : []),
           ...(can.canPause ? [{ key: 'pause', label: 'Tạm dừng tuyển' }] : []),
           ...(can.canResume ? [{ key: 'resume', label: 'Mở lại tuyển' }] : []),
           ...(can.canClose ? [{ key: 'close', label: 'Đóng tin', danger: true }] : []),
         ];
         return (
           <div className="flex items-center justify-end gap-1">
-            {job.status === 'PENDING_AGREEMENT' && (
+            {job.serviceTypeCode === 'CV_SOURCING' && job.status !== 'PENDING_AGREEMENT' && (
               <Button
                 size="small"
-                type="primary"
-                className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600 font-medium"
-                icon={<FileDoneOutlined />}
-                onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
-              >
-                Ký thỏa thuận
-              </Button>
-            )}
-            {job.serviceTypeCode === 'CV_SOURCING' && (
-              <Button
-                size="small"
-                className="!text-teal-700 !border-teal-300 hover:!border-teal-500 bg-teal-50/50 font-medium"
+                className="!text-teal-700 !border-teal-300 hover:!border-teal-500 bg-teal-50/50 font-medium whitespace-nowrap"
                 icon={<TeamOutlined />}
                 onClick={() => navigate(`/client/jobs/${job.jobId}/sourcing`)}
               >
-                Hồ sơ được tìm kiếm
+                Kho CV
               </Button>
             )}
             {needsPayment && (
@@ -527,14 +516,14 @@ export const ClientJobsListPage: React.FC = () => {
                     </div>
                     {job.status === 'PENDING_AGREEMENT' && (
                       <div className="flex items-center justify-between rounded-xl bg-purple-50 border border-solid border-purple-200 px-3 py-2 text-xs text-purple-900">
-                        <span className="font-medium">Dự thảo thỏa thuận đang chờ ký kết</span>
+                        <span className="font-medium">Hợp đồng dịch vụ đã soạn xong</span>
                         <Button
                           type="primary"
                           size="small"
-                          className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600 !text-xs !h-6 font-medium"
+                          className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600 !text-xs !h-6 font-medium whitespace-nowrap"
                           onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                         >
-                          Xem & Ký
+                          Xem hợp đồng
                         </Button>
                       </div>
                     )}
@@ -585,7 +574,7 @@ export const ClientJobsListPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => navigate(`/client/candidates?job=${job.jobId}`)}
-                          className="flex cursor-pointer items-center gap-1.5 rounded-full border-0 bg-[color:var(--console-accent-soft)] px-3 py-1 text-[13px] font-medium text-[color:var(--console-accent-strong)] hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+                          className="flex cursor-pointer items-center gap-1.5 rounded-full border-0 bg-[color:var(--console-accent-soft)] px-3 py-1 text-[13px] font-medium text-[color:var(--console-accent-strong)] hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] shrink-0 whitespace-nowrap"
                         >
                           <TeamOutlined aria-hidden />
                           <span className="tabular-nums">
@@ -594,8 +583,8 @@ export const ClientJobsListPage: React.FC = () => {
                           </span> hồ sơ
                         </button>
                       ) : (
-                        <span className="text-xs text-slate-500">
-                          {job.maxApplications ? `Tối đa ${job.maxApplications} hồ sơ • ` : ''}Cần {formatHeadcount(job)}
+                        <span className="text-xs text-slate-500 font-medium shrink-0 whitespace-nowrap">
+                          {formatHeadcount(job)}
                         </span>
                       )}
                       {renderActions(job)}

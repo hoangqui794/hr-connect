@@ -1,0 +1,21 @@
+---
+title: MF-01 · Platform Admin records a posting fee or deposit
+---
+sequenceDiagram
+  autonumber
+  actor AD as Platform Admin
+  participant FE as Web App
+  participant API as Job / Finance endpoints
+  participant H as RecordJobPostingFeePayment / RecordServiceFeePayment
+  participant DB as PostgreSQL
+  actor CL as Client Company User
+  AD->>FE: Finance › posting fees / deposits, enter bank reference
+  FE->>API: POST /jobs/{id}/posting-fee/pay or /admin/service-fees/{id}/record-payment
+  alt no reference or caller is not Platform Admin
+  API-->>FE: 400 / 403
+  else valid
+  API->>H: Send command
+  H->>DB: Fee PAID, Job PENDING_PAYMENT → ACTIVE, PostedAt, AuditLog
+  H->>CL: Notification: job is live (after commit)
+  API-->>FE: 200 OK
+  end

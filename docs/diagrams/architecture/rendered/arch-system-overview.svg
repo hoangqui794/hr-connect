@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1720" height="1080" viewBox="0 0 1720 1080" font-family="Arial, Helvetica, sans-serif">
+<rect width="1720" height="1080" fill="#fff"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#4A5568"/></marker></defs>
+<text x="860.0" y="36" font-size="24" font-weight="bold" text-anchor="middle" fill="#1B365D">HR Connect – System Overview</text>
+<rect x="40" y="60" width="1060" height="110" rx="8" fill="#FFFDF8" stroke="#B7791F" stroke-width="1.6"/>
+<rect x="40" y="220" width="1060" height="130" rx="8" fill="#F2F7FD" stroke="#1B365D" stroke-width="1.6"/>
+<rect x="40" y="410" width="1060" height="440" rx="8" fill="#F1F8F2" stroke="#2F6B3A" stroke-width="1.6"/>
+<rect x="1170" y="410" width="510" height="440" rx="8" fill="#F7F2FD" stroke="#6B46C1" stroke-width="1.6"/>
+<polyline points="180,150 180,260" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="430,150 430,260" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="680,150 680,260" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="945,150 945,260" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="540,295 600,295" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="700,330 700,390 380,390 380,450" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="600,450 600,375 900,375 900,330" fill="none" stroke="#4A5568" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<polyline points="380,520 380,545" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="380,615 380,640" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="380,700 380,725" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="730,580 690,580" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="220,825 220,930" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="530,825 530,930" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="840,825 840,930" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="1070,505 1200,505" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="1425,540 1425,580" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="1425,650 1425,690" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="1430,810 1430,930" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="1200,790 1120,790 1120,435 650,435 650,450" fill="none" stroke="#4A5568" stroke-width="1.5" marker-end="url(#a)"/>
+<polyline points="1220,175 1150,175 1150,295 1070,295" fill="none" stroke="#4A5568" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<polyline points="1430,230 1430,380 1000,380 1000,450" fill="none" stroke="#4A5568" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<rect x="48" y="68" width="160" height="17" fill="#FFFDF8"/><text x="54" y="82" font-size="14" font-weight="bold" fill="#B7791F">Users (web browser)</text>
+<rect x="48" y="228" width="608" height="17" fill="#F2F7FD"/><text x="54" y="242" font-size="14" font-weight="bold" fill="#1B365D">Sub-system 1 · Web Application – React 18 + TypeScript, Ant Design (Vercel)</text>
+<rect x="48" y="418" width="648" height="17" fill="#F1F8F2"/><text x="54" y="432" font-size="14" font-weight="bold" fill="#2F6B3A">Sub-system 2 · Backend API – ASP.NET Core 8, Clean Architecture (Render, Docker)</text>
+<rect x="1178" y="418" width="440" height="17" fill="#F7F2FD"/><text x="1184" y="432" font-size="14" font-weight="bold" fill="#6B46C1">Sub-system 3 · AI Matching Service v2 – Python FastAPI</text>
+<rect x="1178" y="434" width="239.0" height="17" fill="#F7F2FD"/><text x="1184" y="448" font-size="12" font-weight="normal" fill="#6B46C1">(reached through Cloudflare Tunnel)</text>
+<rect x="70" y="95" width="220" height="55" rx="26" fill="#FFF4E5" stroke="#B7791F" stroke-width="1.4"/>
+<text x="180.0" y="126.5" font-size="13" font-weight="bold" text-anchor="middle" fill="#7B4B0A">Guest / Candidate</text>
+<rect x="320" y="95" width="220" height="55" rx="26" fill="#FFF4E5" stroke="#B7791F" stroke-width="1.4"/>
+<text x="430.0" y="126.5" font-size="13" font-weight="bold" text-anchor="middle" fill="#7B4B0A">Affiliate</text>
+<rect x="570" y="95" width="220" height="55" rx="26" fill="#FFF4E5" stroke="#B7791F" stroke-width="1.4"/>
+<text x="680.0" y="126.5" font-size="13" font-weight="bold" text-anchor="middle" fill="#7B4B0A">Client Company User</text>
+<rect x="820" y="95" width="250" height="55" rx="26" fill="#FFF4E5" stroke="#B7791F" stroke-width="1.4"/>
+<text x="945.0" y="126.5" font-size="13" font-weight="bold" text-anchor="middle" fill="#7B4B0A">Internal HR / Platform Admin</text>
+<rect x="70" y="260" width="470" height="70" rx="6" fill="#FFFFFF" stroke="#1B365D" stroke-width="1.4"/>
+<text x="305.0" y="291.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">Public site &amp; role portals</text>
+<text x="305.0" y="307.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">Candidate · Affiliate · Client · Internal HR · Admin</text>
+<rect x="600" y="260" width="470" height="70" rx="6" fill="#FFFFFF" stroke="#1B365D" stroke-width="1.4"/>
+<text x="835.0" y="291.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">API client (Axios, JWT) + SignalR client</text>
+<text x="835.0" y="307.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">Zustand stores · route guards by role</text>
+<rect x="70" y="450" width="620" height="70" rx="6" fill="#FFFFFF" stroke="#1B365D" stroke-width="1.4"/>
+<text x="380.0" y="481.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">Presentation</text>
+<text x="380.0" y="497.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">REST /api/v1 · JWT + permission policies · rate limit · SignalR NotificationHub</text>
+<rect x="70" y="545" width="620" height="70" rx="6" fill="#FFFFFF" stroke="#1B365D" stroke-width="1.4"/>
+<text x="380.0" y="576.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">Application</text>
+<text x="380.0" y="592.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">MediatR commands/queries MF-01…MF-05, SF · FluentValidation · business policies</text>
+<rect x="70" y="640" width="620" height="60" rx="6" fill="#FFFFFF" stroke="#1B365D" stroke-width="1.4"/>
+<text x="380.0" y="666.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">Domain</text>
+<text x="380.0" y="682.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">Entities · status constants · business rules</text>
+<rect x="70" y="725" width="620" height="100" rx="6" fill="#FFFFFF" stroke="#1B365D" stroke-width="1.4"/>
+<text x="380.0" y="763.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">Infrastructure</text>
+<text x="380.0" y="779.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">EF Core DbContext &amp; repositories · JWT · password hashing</text>
+<text x="380.0" y="795.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">Adapters: R2 storage · Resend e-mail · AI client · CV PDF / masking</text>
+<rect x="730" y="450" width="340" height="375" rx="6" fill="#FFFFFF" stroke="#1B365D" stroke-width="1.4"/>
+<text x="900.0" y="474" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">Background workers</text>
+<text x="900.0" y="490" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C"></text>
+<text x="900.0" y="506" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">AI scoring dispatcher (retry)</text>
+<text x="900.0" y="522" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">Consent &amp; offer expiry</text>
+<text x="900.0" y="538" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">Sourcing auto-accept</text>
+<text x="900.0" y="554" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">Warranty &amp; service fee progress</text>
+<text x="900.0" y="570" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">Commission hold · affiliate rating</text>
+<text x="900.0" y="586" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">E-mail outbox · storage cleanup</text>
+<rect x="1200" y="470" width="450" height="70" rx="6" fill="#FFFFFF" stroke="#1B365D" stroke-width="1.4"/>
+<text x="1425.0" y="501.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">Scoring API &amp; persistent queue</text>
+<text x="1425.0" y="517.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">/score · status · health</text>
+<rect x="1200" y="580" width="450" height="70" rx="6" fill="#FFFFFF" stroke="#1B365D" stroke-width="1.4"/>
+<text x="1425.0" y="611.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">Document extraction + Sentence-BERT</text>
+<text x="1425.0" y="627.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">CV/JD text · semantic similarity</text>
+<rect x="1200" y="690" width="450" height="120" rx="6" fill="#FFFFFF" stroke="#1B365D" stroke-width="1.4"/>
+<text x="1425.0" y="714" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">LLM assessment</text>
+<text x="1425.0" y="730" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">Each MUST/SHOULD requirement with evidence</text>
+<text x="1425.0" y="746" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">Quote verification · score 0–100 · colour tier</text>
+<text x="1425.0" y="762" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">Callback to backend</text>
+<path d="M90 942 a130.0 12 0 0 1 260 0 v66 a130.0 12 0 0 1 -260 0 z" fill="#FFFFFF" stroke="#1B365D" stroke-width="1.5"/><path d="M90 942 a130.0 12 0 0 0 260 0" fill="none" stroke="#1B365D" stroke-width="1.5"/>
+<text x="220.0" y="973.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">PostgreSQL</text>
+<text x="220.0" y="989.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">transactional data · audit log</text>
+<rect x="400" y="930" width="260" height="90" rx="6" fill="#F5F5F5" stroke="#5F5E5A" stroke-width="1.4"/>
+<text x="530.0" y="971.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">Cloudflare R2 (S3 API)</text>
+<text x="530.0" y="987.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">CVs · PDFs · agreements · avatars</text>
+<rect x="710" y="930" width="260" height="90" rx="6" fill="#F5F5F5" stroke="#5F5E5A" stroke-width="1.4"/>
+<text x="840.0" y="971.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">Resend e-mail API</text>
+<text x="840.0" y="987.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">OTP · consent · notifications</text>
+<rect x="1240" y="930" width="380" height="90" rx="6" fill="#F5F5F5" stroke="#5F5E5A" stroke-width="1.4"/>
+<text x="1430.0" y="971.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">Google Gemini API</text>
+<text x="1430.0" y="987.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">OpenAI / Anthropic as fallback</text>
+<rect x="1220" y="120" width="420" height="110" rx="6" fill="#F5F5F5" stroke="#5F5E5A" stroke-width="1.4"/>
+<text x="1430.0" y="171.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#1F2A3C">GitHub + GitHub Actions</text>
+<text x="1430.0" y="187.0" font-size="11.5" font-weight="normal" text-anchor="middle" fill="#1F2A3C">build · test (xUnit, Vitest, pytest) · deploy</text>
+<rect x="159.25" y="195.0" width="41.5" height="17" rx="3" fill="#FFFFFF" stroke="#CBD5E1"/><text x="180.0" y="208.0" font-size="11" text-anchor="middle" fill="#33415C">HTTPS</text>
+<rect x="475.15" y="380.0" width="129.7" height="17" rx="3" fill="#FFFFFF" stroke="#CBD5E1"/><text x="540.0" y="393.0" font-size="11" text-anchor="middle" fill="#33415C">(1) REST JSON + JWT</text>
+<rect x="622.15" y="365.0" width="255.7" height="17" rx="3" fill="#FFFFFF" stroke="#CBD5E1"/><text x="750.0" y="378.0" font-size="11" text-anchor="middle" fill="#33415C">(8) real-time notifications (WebSocket)</text>
+<rect x="192.95" y="867.5" width="54.1" height="17" rx="3" fill="#FFFFFF" stroke="#CBD5E1"/><text x="220.0" y="880.5" font-size="11" text-anchor="middle" fill="#33415C">(2) SQL</text>
+<rect x="452.55" y="867.5" width="154.9" height="17" rx="3" fill="#FFFFFF" stroke="#CBD5E1"/><text x="530.0" y="880.5" font-size="11" text-anchor="middle" fill="#33415C">(3) files / signed URLs</text>
+<rect x="765.7" y="867.5" width="148.6" height="17" rx="3" fill="#FFFFFF" stroke="#CBD5E1"/><text x="840.0" y="880.5" font-size="11" text-anchor="middle" fill="#33415C">(4) e-mails via outbox</text>
+<rect x="1048.1" y="495.0" width="173.79999999999998" height="17" rx="3" fill="#FFFFFF" stroke="#CBD5E1"/><text x="1135.0" y="508.0" font-size="11" text-anchor="middle" fill="#33415C">(5) score request: CV + JD</text>
+<rect x="1343.1" y="860.0" width="173.79999999999998" height="17" rx="3" fill="#FFFFFF" stroke="#CBD5E1"/><text x="1430.0" y="873.0" font-size="11" text-anchor="middle" fill="#33415C">(6) CV text + requirements</text>
+<rect x="754.0" y="425.0" width="262.0" height="17" rx="3" fill="#FFFFFF" stroke="#CBD5E1"/><text x="885.0" y="438.0" font-size="11" text-anchor="middle" fill="#33415C">(7) result callback /internal/ai-results</text>
+<rect x="1097.75" y="225.0" width="104.5" height="17" rx="3" fill="#FFFFFF" stroke="#CBD5E1"/><text x="1150.0" y="238.0" font-size="11" text-anchor="middle" fill="#33415C">deploy (Vercel)</text>
+<rect x="1162.75" y="370.0" width="104.5" height="17" rx="3" fill="#FFFFFF" stroke="#CBD5E1"/><text x="1215.0" y="383.0" font-size="11" text-anchor="middle" fill="#33415C">deploy (Render)</text>
+<text x="40" y="1066" font-size="12" fill="#555">Grey = external service. Numbers follow the main data flows. Money transfers (fees, deposits, payouts) happen outside the system; Platform Admin records the reference.</text>
+</svg>

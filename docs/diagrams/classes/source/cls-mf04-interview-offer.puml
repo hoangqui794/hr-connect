@@ -1,0 +1,78 @@
+@startuml cls-mf04-interview-offer
+title MF-04 · Interview, offer and start work
+left to right direction
+hide empty members
+class InterviewEndpoints <<endpoint>> {
+  +POST /recruitment/applications/{id}/interviews
+  +PUT /interviews/{id} · result · no-show · cancel
+}
+class RecruitmentEndpoints <<endpoint>> {
+  +POST /applications/{id}/offers
+  +POST /applications/{id}/start-work
+}
+class ScheduleInterviewCommandHandler <<handler>> {
+  +Handle()
+}
+class RecordInterviewResultCommandHandler <<handler>> {
+  +Handle(PASS | FAIL | BACKUP)
+}
+class OfferHandlers <<handler>> {
+  CreateOfferDraft · UpdateOfferDraft · SendOffer
+  RespondToOffer · WithdrawOffer
+}
+class ConfirmStartWorkCommandHandler <<handler>> {
+  +Handle(actualStartDate)
+}
+class MarkNotStartedCommandHandler <<handler>> {
+  +Handle(reason)
+}
+class CorrectPlacementStartDateCommandHandler <<handler>> {
+  +Handle() HR/Admin, 7 days
+}
+class OfferSalaryPolicy <<policy>> {
+  +EnsureReadyForSending()
+  +CalculateMonthlyGrossSalary()
+}
+class InterviewParticipantPolicy <<policy>> {
+  company members only
+}
+class OfferExpiryService <<service>> {
+  +ExpireAsync()
+}
+interface IPlacementFinanceService <<interface>> {
+  +InitializeAsync(placement, context)
+}
+class Interview <<entity>> {
+  +InterviewRound · ScheduledAt
+  +Status · Result
+}
+class Offer <<entity>> {
+  +OfferVersion · Salary
+  +SalaryBasis · SalaryPeriod
+  +ExpiryDate · Status
+}
+class Placement <<entity>> {
+  +ActualStartDate · Status
+  +ReplacementSlotId
+}
+class Application <<entity>> {
+  +Status · PlannedStartDate
+}
+InterviewEndpoints ..> ScheduleInterviewCommandHandler : sends
+InterviewEndpoints ..> RecordInterviewResultCommandHandler : sends
+RecruitmentEndpoints ..> OfferHandlers : sends
+RecruitmentEndpoints ..> ConfirmStartWorkCommandHandler : sends
+ScheduleInterviewCommandHandler ..> InterviewParticipantPolicy
+ScheduleInterviewCommandHandler --> Interview : creates
+RecordInterviewResultCommandHandler --> Interview : updates
+OfferHandlers ..> OfferSalaryPolicy
+OfferHandlers --> Offer
+OfferExpiryService --> Offer : EXPIRED
+ConfirmStartWorkCommandHandler --> Placement : creates
+ConfirmStartWorkCommandHandler ..> IPlacementFinanceService
+MarkNotStartedCommandHandler --> Application : NOT_STARTED
+CorrectPlacementStartDateCommandHandler --> Placement : updates
+Application *-- Interview : 0..*
+Application *-- Offer : 0..*
+Application --> Placement : 0..1
+@enduml

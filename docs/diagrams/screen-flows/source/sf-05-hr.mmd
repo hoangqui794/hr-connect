@@ -1,0 +1,27 @@
+---
+title: Screen flow – Internal HR console (/hr)
+config:
+  layout: elk
+---
+flowchart LR
+  hr_dash["<b>HR overview</b><br/><small>dashboard</small>"]
+  hr_rev["<b>Job review & agreement proposal</b><br/><small>jobs</small>"]
+  hr_tpl["<b>JD templates</b><br/><small>job-templates</small>"]
+  hr_scr["<b>AI screening workspace</b><br/><small>screening</small>"]
+  hr_pipe["<b>Pipeline (interviews, offers – read only)</b><br/><small>pipeline</small>"]
+  hr_plr["<b>Placement start-date correction</b><br/><small>placement-review</small>"]
+  hr_plc["<b>Placement detail</b><br/><small>placements/:placementId</small>"]
+  hr_war["<b>Warranty tracking (verify resignations)</b><br/><small>warranty-tracking</small>"]
+  hr_contact["<b>Contact requests</b><br/><small>contact-requests</small>"]
+  hr_prof["<b>Profile</b><br/><small>profile</small>"]
+  hr_dash --> hr_rev
+  hr_rev --> hr_tpl
+  hr_dash --> hr_scr
+  hr_scr -->|"shortlisted"| hr_pipe
+  hr_dash --> hr_plr
+  hr_plr -->|"open"| hr_plc
+  hr_dash --> hr_war
+  hr_war -->|"open"| hr_plc
+  hr_dash --> hr_contact
+  hr_dash --> hr_prof
+  classDef default fill:#E0F2FE,stroke:#1B365D,color:#1F2A3C

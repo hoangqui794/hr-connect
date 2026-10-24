@@ -1,0 +1,25 @@
+@startuml seq-mf02-affiliate-referral
+autonumber
+skinparam sequenceMessageAlign center
+title MF-02 · Affiliate refers a candidate (duplicate check and consent request)
+actor "Affiliate" as AF
+boundary "Web App" as FE
+boundary "JobEndpoints" as API
+control "SubmitCandidateCommandHandler" as H
+database "PostgreSQL" as DB
+cloud "Cloudflare R2" as R2
+cloud "Resend" as MAIL
+AF -> FE : Referral form + CV file
+FE -> API : POST /api/v1/jobs/{id}/candidate-submissions
+API -> H : Send(SubmitCandidateCommand)
+H -> R2 : Upload CV (validated PDF)
+H -> DB : Find candidate by normalised e-mail / phone
+alt same candidate already in this job or consent pending
+H -> DB : Submission BLOCKED_DUPLICATE, keep first attribution
+API --> FE : 409 BLOCKED_DUPLICATE
+else new for this job
+H -> DB : Submission PENDING_CONSENT + SubmissionConsent (token hash, expiry)
+H -> MAIL : Consent e-mail through outbox
+API --> FE : 201 Created
+end
+@enduml

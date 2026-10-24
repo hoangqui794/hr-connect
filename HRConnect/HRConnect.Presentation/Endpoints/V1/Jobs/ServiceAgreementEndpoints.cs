@@ -69,11 +69,11 @@ public static class ServiceAgreementEndpoints
         .Produces<IReadOnlyList<ServiceAgreementDto>>(StatusCodes.Status200OK);
 
         // 4. Download presigned PDF URL
-        jobAgreementHistory.MapGet("/{agreementId:guid}/download-url", async (Guid jobId, Guid agreementId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+        jobAgreementHistory.MapGet("/{agreementId:guid}/download-url", async (Guid jobId, Guid agreementId, [FromQuery] bool? signed, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user);
             if (id == null) return Results.Unauthorized();
-            return await Run(async () => Results.Ok(await sender.Send(new GetServiceAgreementDownloadUrlQuery(jobId, agreementId), ct)));
+            return await Run(async () => Results.Ok(await sender.Send(new GetServiceAgreementDownloadUrlQuery(jobId, agreementId, signed), ct)));
         })
         .WithName("GetServiceAgreementDownloadUrl")
         .WithSummary("Lấy liên kết tải PDF thỏa thuận dịch vụ (có chữ ký nếu đã ký)")
@@ -120,6 +120,42 @@ public static class ServiceAgreementEndpoints
         .WithSummary("Client phản hồi thỏa thuận dịch vụ (Đồng ý hoặc Yêu cầu điều chỉnh)")
         .Produces<ServiceAgreementDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status409Conflict);
+
+        // 6b. Client uploads signed agreement document
+        clientAgreements.MapPost("/upload-signed", async (Guid jobId, Guid agreementId, HttpRequest request, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+        {
+            var id = UserId(user);
+            if (id == null) return Results.Unauthorized();
+            if (!user.IsInRole("CLIENT_COMPANY_USER")) return Forbidden();
+
+            if (!request.HasFormContentType || request.Form.Files.Count == 0)
+            {
+                return Results.BadRequest(new { success = false, message = "Vui lòng chọn tập tin hợp đồng đã ký để tải lên." });
+            }
+
+            var file = request.Form.Files[0];
+            await using var stream = file.OpenReadStream();
+
+            var command = new UploadSignedServiceAgreementCommand
+            {
+                JobId = jobId,
+                AgreementId = agreementId,
+                UserId = id.Value,
+                FileStream = stream,
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                FileLength = file.Length
+            };
+
+            return await Run(async () => Results.Ok(await sender.Send(command, ct)));
+        })
+        .WithName("UploadSignedServiceAgreement")
+        .WithSummary("Client tải lên văn bản hợp đồng dịch vụ đã ký ngoài hệ thống")
+        .DisableAntiforgery()
+        .Produces<ServiceAgreementDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status409Conflict);
 
         // 7. Client requests OTP challenge to sign

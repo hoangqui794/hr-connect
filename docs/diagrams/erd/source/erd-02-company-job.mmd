@@ -1,0 +1,353 @@
+---
+title: ERD – Company, job and service agreement (MF-01)
+config:
+  layout: elk
+---
+erDiagram
+  Company {
+    uuid CompanyId PK
+    text Address
+    varchar CompanyName
+    varchar CompanySize
+    uuid CompanySizeId FK
+    timestamptz CreatedAt
+    text Description
+    int FeaturedOrder
+    varchar Industry
+    uuid IndustryId FK
+    bool IsFeatured
+    varchar TaxCode
+    timestamptz UpdatedAt
+    varchar VerificationStatus
+    timestamptz VerifiedAt
+    varchar Website
+  }
+  CompanyUser {
+    uuid CompanyUserId PK
+    uuid CompanyId FK
+    timestamptz CreatedAt
+    bool IsPrimaryContact
+    varchar RoleInCompany
+    varchar Status
+    timestamptz UpdatedAt
+    uuid UserId FK
+  }
+  CompanyVerificationRequest {
+    uuid CompanyVerificationRequestId PK
+    uuid CompanyId FK
+    text ReviewNote
+    timestamptz ReviewedAt
+    uuid ReviewedBy FK
+    varchar Status
+    timestamptz SubmittedAt
+    uuid SubmittedBy FK
+    jsonb SubmittedPayload
+  }
+  Industry {
+    uuid IndustryId PK
+    varchar Code
+    timestamptz CreatedAt
+    bool IsActive
+    smallint Level
+    varchar NameEn
+    varchar NameVi
+    uuid ParentId FK
+    int SortOrder
+    timestamptz UpdatedAt
+  }
+  ServiceType {
+    uuid ServiceTypeId PK
+    varchar Code
+    timestamptz CreatedAt
+    text Description
+    bool IsActive
+    varchar Name
+    timestamptz UpdatedAt
+  }
+  ServiceTypeAllowedRole {
+    uuid ServiceTypeId PK,FK
+    uuid RoleId PK,FK
+    bool CanSubmit
+    bool CanView
+    timestamptz CreatedAt
+    timestamptz UpdatedAt
+  }
+  Job {
+    uuid JobId PK
+    timestamptz AgreedAt
+    uuid AgreedBy FK
+    text AgreementNote
+    varchar AgreementReference
+    timestamptz ApplicationDeadline
+    text Benefits
+    timestamptz ClosedAt
+    uuid CompanyId FK
+    uuid ConcurrencyToken
+    timestamptz CreatedAt
+    uuid CreatedBy FK
+    char CurrencyCode
+    uuid CurrentServiceAgreementId FK
+    decimal DepositPercent
+    text Description
+    varchar EmploymentType
+    timestamptz ExpiresAt
+    decimal FeeMultiplier
+    varchar Location
+    int MaxApplications
+    int MaxExperienceYears
+    int MinExperienceYears
+    int PaymentDueDays
+    timestamptz PostedAt
+    uuid PostingPackageId FK
+    decimal ProposedFeeMultiplier
+    varchar ProposedFeeNote
+    int ProposedPaymentDueDays
+    decimal ProposedPricePerCv
+    int ProposedWarrantyDays
+    int Quantity
+    int ReviewDays
+    decimal SalaryMax
+    decimal SalaryMin
+    bool SalaryNegotiable
+    varchar SalaryNote
+    uuid ServiceTypeId FK
+    decimal SourcingPricePerCv
+    int SourcingTarget
+    varchar Status
+    text StatusReason
+    uuid TemplateId FK
+    varchar Title
+    timestamptz UpdatedAt
+    int WarrantyDays
+    varchar WorkingTime
+  }
+  JobRequirement {
+    uuid RequirementId PK
+    varchar Category
+    text Content
+    timestamptz CreatedAt
+    uuid JobId FK
+    varchar RequirementType
+    timestamptz UpdatedAt
+    decimal Weight
+  }
+  JobSkill {
+    uuid JobId PK,FK
+    uuid SkillId PK,FK
+    bool IsMandatory
+    decimal Weight
+  }
+  Skill {
+    uuid SkillId PK
+    varchar Category
+    timestamptz CreatedAt
+    bool IsActive
+    varchar NormalizedName
+    varchar SkillName
+  }
+  JobStatusHistory {
+    uuid JobStatusHistoryId PK
+    timestamptz ChangedAt
+    uuid ChangedBy FK
+    uuid JobId FK
+    varchar NewStatus
+    varchar OldStatus
+    varchar ReasonCode
+    varchar ReasonText
+  }
+  JobTemplate {
+    uuid TemplateId PK
+    text Benefits
+    varchar Code
+    uuid ConcurrencyToken
+    timestamptz CreatedAt
+    uuid CreatedBy
+    text Description
+    varchar EmploymentType
+    varchar Industry
+    bool IsActive
+    text Keywords
+    varchar Level
+    int MaxExperienceYears
+    int MinExperienceYears
+    varchar Name
+    text SearchText
+    varchar Summary
+    varchar Title
+    timestamptz UpdatedAt
+    uuid UpdatedBy
+    int UsageCount
+  }
+  JobTemplateRequirement {
+    uuid TemplateRequirementId PK
+    varchar Category
+    varchar Content
+    int DisplayOrder
+    varchar RequirementType
+    uuid TemplateId FK
+  }
+  JobPostingPackage {
+    uuid PackageId PK
+    varchar Code
+    timestamptz CreatedAt
+    text Description
+    int DurationDays
+    bool IsActive
+    int MaxApplications
+    varchar Name
+    decimal Price
+    timestamptz UpdatedAt
+  }
+  JobPostingFee {
+    uuid PostingFeeId PK
+    timestamptz ActivatedAt
+    decimal Amount
+    uuid CompanyId FK
+    timestamptz CreatedAt
+    varchar CurrencyCode
+    timestamptz ExpiresAt
+    uuid JobId FK
+    uuid PackageId FK
+    timestamptz PaidAt
+    varchar PaymentReference
+    uuid RecordedBy FK
+    varchar Status
+    timestamptz UpdatedAt
+  }
+  ServiceAgreement {
+    uuid ServiceAgreementId PK
+    text AgreementNote
+    text ChangeRequestReason
+    text CompanyAddressSnapshot
+    uuid CompanyId FK
+    varchar CompanyNameSnapshot
+    varchar CompanyTaxCodeSnapshot
+    uuid ConcurrencyToken
+    timestamptz ConsentAcceptedAt
+    varchar ConsentTextVersion
+    timestamptz CreatedAt
+    uuid CreatedByUserId FK
+    varchar DocumentSha256Hash
+    decimal FeeMultiplier
+    text HrConnectLegalEntitySnapshot
+    bool IsCurrent
+    uuid JobId FK
+    int PaymentDueDays
+    decimal PricePerQualifiedCv
+    timestamptz RespondedAt
+    int ReviewDays
+    timestamptz SentToClientAt
+    varchar ServiceTypeCode
+    timestamptz SignedAt
+    text SignedDocumentStorageKey
+    varchar SignerEmailSnapshot
+    varchar SignerIpHash
+    varchar SignerNameSnapshot
+    varchar SignerRoleSnapshot
+    text SignerUserAgentSummary
+    uuid SignerUserId FK
+    int SourcingTarget
+    varchar Status
+    text UnsignedDocumentStorageKey
+    varchar VerificationCode
+    int Version
+    text VoidReason
+    timestamptz VoidedAt
+    uuid VoidedByUserId FK
+    int WarrantyDays
+  }
+  ServiceAgreementSignatureChallenge {
+    uuid ChallengeId PK
+    int AttemptCount
+    timestamptz ConsumedAt
+    timestamptz CreatedAt
+    timestamptz ExpiresAt
+    bool IsConsumed
+    bool IsRevoked
+    int MaxAttempts
+    varchar OtpHash
+    timestamptz RevokedAt
+    uuid ServiceAgreementId FK
+    varchar SignerEmailNormalized
+    uuid SignerUserId FK
+  }
+  CompanySizeOption {
+    uuid CompanySizeId PK
+    varchar Code
+    bool IsActive
+    varchar Label
+    int MaxEmployees
+    int MinEmployees
+    int SortOrder
+  }
+  AppUser {
+    uuid UserId PK
+  }
+  Application {
+    uuid ApplicationId PK
+  }
+  CandidateDuplicateCase {
+    uuid DuplicateCaseId PK
+  }
+  CandidateJobMatch {
+    uuid CandidateJobMatchId PK
+  }
+  CandidateSavedJob {
+    uuid CandidateSavedJobId PK
+  }
+  CandidateSkill {
+    uuid CandidateId PK
+  }
+  CommissionRule {
+    uuid CommissionRuleId PK
+  }
+  ReplacementSlot {
+    uuid ReplacementSlotId PK
+  }
+  Role {
+    uuid RoleId PK
+  }
+  ServiceFee {
+    uuid ServiceFeeId PK
+  }
+  SourcingDelivery {
+    uuid DeliveryId PK
+  }
+  Submission {
+    uuid SubmissionId PK
+  }
+  Job ||--o{ Application : "JobId"
+  Job |o--o{ CandidateDuplicateCase : "JobId"
+  Job ||--o{ CandidateJobMatch : "JobId"
+  Job ||--o{ CandidateSavedJob : "JobId"
+  Skill ||--o{ CandidateSkill : "SkillId"
+  ServiceType ||--o{ CommissionRule : "ServiceTypeId"
+  CompanySizeOption |o--o{ Company : "CompanySizeId"
+  Industry |o--o{ Company : "IndustryId"
+  Company ||--|o CompanyUser : "CompanyId"
+  AppUser ||--o{ CompanyUser : "UserId"
+  Company ||--|o CompanyVerificationRequest : "CompanyId"
+  Industry |o--o{ Industry : "ParentId"
+  Company ||--o{ Job : "CompanyId"
+  ServiceAgreement |o--o{ Job : "CurrentServiceAgreementId"
+  JobPostingPackage |o--o{ Job : "PostingPackageId"
+  ServiceType ||--o{ Job : "ServiceTypeId"
+  JobTemplate |o--o{ Job : "TemplateId"
+  Company ||--o{ JobPostingFee : "CompanyId"
+  Job ||--o{ JobPostingFee : "JobId"
+  JobPostingPackage ||--o{ JobPostingFee : "PackageId"
+  Job ||--o{ JobRequirement : "JobId"
+  Job ||--o{ JobSkill : "JobId"
+  Skill ||--o{ JobSkill : "SkillId"
+  Job ||--o{ JobStatusHistory : "JobId"
+  JobTemplate ||--o{ JobTemplateRequirement : "TemplateId"
+  Job ||--o{ ReplacementSlot : "JobId"
+  Company ||--o{ ServiceAgreement : "CompanyId"
+  Job ||--o{ ServiceAgreement : "JobId"
+  ServiceAgreement ||--o{ ServiceAgreementSignatureChallenge : "ServiceAgreementId"
+  Company ||--o{ ServiceFee : "CompanyId"
+  Job |o--o{ ServiceFee : "JobId"
+  Role ||--o{ ServiceTypeAllowedRole : "RoleId"
+  ServiceType ||--o{ ServiceTypeAllowedRole : "ServiceTypeId"
+  Job ||--o{ SourcingDelivery : "JobId"
+  Job ||--o{ Submission : "JobId"

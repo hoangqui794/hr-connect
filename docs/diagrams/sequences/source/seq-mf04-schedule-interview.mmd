@@ -1,0 +1,23 @@
+---
+title: MF-04 · Client schedules an interview
+---
+sequenceDiagram
+  autonumber
+  actor CL as Client Company User
+  participant FE as Web App
+  participant API as Recruitment endpoints
+  participant H as ScheduleInterview handler
+  participant DB as PostgreSQL
+  participant HUB as SignalR hub
+  actor CA as Candidate
+  CL->>FE: Pick time, type, location / link
+  FE->>API: POST /api/v1/recruitment/applications/{id}/interviews
+  API->>H: Send(ScheduleInterviewCommand)
+  alt caller is Internal HR or not a company member
+  API-->>FE: 403
+  else allowed
+  H->>DB: Interview SCHEDULED, Application INTERVIEW, AuditLog
+  H->>HUB: Publish after commit
+  HUB->>CA: Bell updates in real time, candidate confirms attendance
+  API-->>FE: 201 Created
+  end

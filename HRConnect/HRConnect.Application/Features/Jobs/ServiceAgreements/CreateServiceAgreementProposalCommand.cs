@@ -27,6 +27,7 @@ public sealed class CreateServiceAgreementProposalCommand : IRequest<ServiceAgre
     public decimal? PricePerQualifiedCv { get; set; }
     public int? SourcingTarget { get; set; }
     public int? ReviewDays { get; set; }
+    public string? AgreementReference { get; set; }
     public string? AgreementNote { get; set; }
 }
 
@@ -68,7 +69,7 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
             throw new ConflictException($"Không thể tạo đề xuất thỏa thuận dịch vụ khi tin tuyển dụng đang ở trạng thái {job.Status}.");
         }
 
-        var serviceTypeCode = job.ServiceType?.Code ?? await _jobs.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, ct);
+        var serviceTypeCode = job.ServiceType?.Code ?? await _jobs.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, ct) ?? string.Empty;
         if (string.Equals(serviceTypeCode, ServiceTypeCodes.CvApplication, StringComparison.OrdinalIgnoreCase))
         {
             throw new BadRequestException("Dịch vụ CV_APPLICATION sử dụng gói đăng tin công khai, không áp dụng quy trình thỏa thuận đàm phán riêng.");
@@ -116,7 +117,11 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
         }
 
         var agreementId = Guid.NewGuid();
-        var verificationCode = "HRC-" + Guid.NewGuid().ToString("N")[..10].ToUpperInvariant();
+        var verificationCode = !string.IsNullOrWhiteSpace(request.AgreementReference)
+            ? request.AgreementReference.Trim()
+            : ("HRC-" + Guid.NewGuid().ToString("N")[..10].ToUpperInvariant());
+
+        job.AgreementReference = verificationCode;
 
         var agreement = new ServiceAgreement
         {

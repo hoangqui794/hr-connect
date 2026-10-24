@@ -1,0 +1,25 @@
+@startuml seq-mf05-warranty-fee-commission
+autonumber
+skinparam sequenceMessageAlign center
+title MF-05 · Warranty passes, fee is paid and commission is paid out
+control "WarrantyProgressWorker" as W
+control "PlacementFinanceService" as F
+database "PostgreSQL" as DB
+actor "Platform Admin" as AD
+control "Finance handlers" as H
+actor "Affiliate" as AF
+W -> F : Daily: due fees and finished warranties
+F -> DB : ServiceFee PENDING → DUE (notify Client), DUE → OVERDUE
+F -> DB : Warranty PASSED, Commission IN_WARRANTY → EARNED
+AD -> H : Record service fee payment (reference)
+H -> DB : ServiceFee PAID
+AD -> H : Approve commission
+alt fee unpaid or open dispute
+H --> AD : 409 COMMISSION_UNDER_DISPUTE / fee not paid
+else allowed
+H -> DB : Commission PAYABLE
+AD -> H : Record payout (transaction reference)
+H -> DB : Payout COMPLETED (or FAILED → retry), Commission PAID
+H -> AF : Notify payout
+end
+@enduml

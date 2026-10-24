@@ -147,9 +147,13 @@ public sealed class DeliverSourcingCvsCommandHandler : IRequestHandler<DeliverSo
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _audit;
 
+    private readonly IAppNotifier? _notifier;
+
     public DeliverSourcingCvsCommandHandler(
-        ISourcingDeliveryRepository deliveries, IAdminBusinessSettings settings, IUnitOfWork unitOfWork, IAuditLogService audit)
+        ISourcingDeliveryRepository deliveries, IAdminBusinessSettings settings, IUnitOfWork unitOfWork, IAuditLogService audit,
+        IAppNotifier? notifier = null)
     {
+        _notifier = notifier;
         _deliveries = deliveries;
         _settings = settings;
         _unitOfWork = unitOfWork;
@@ -226,6 +230,14 @@ public sealed class DeliverSourcingCvsCommandHandler : IRequestHandler<DeliverSo
             created.Add(delivery);
         }
 
+        if (_notifier != null)
+        {
+            await _notifier.NotifyCompanyAsync(job.CompanyId, new AppNotice(
+                "SOURCING", "Có CV mới được giao",
+                $"HR Connect vừa giao {created.Count} CV cho tin \"{job.Title}\". Vui lòng xem xét trước ngày {now.AddDays(reviewDays):dd/MM/yyyy}.",
+                "SOURCING_DELIVERY", job.JobId, $"/client/jobs/{job.JobId}/sourcing"), cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new DeliverCvsResponse(
@@ -244,11 +256,13 @@ public sealed class DecideSourcingDeliveryCommandHandler : IRequestHandler<Decid
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _audit;
     private readonly ISourcingFinanceService? _finance;
+    private readonly IAppNotifier? _notifier;
 
     public DecideSourcingDeliveryCommandHandler(
         ISourcingDeliveryRepository deliveries, ICompanyUserRepository companyUsers, IUnitOfWork unitOfWork, IAuditLogService audit,
-        ISourcingFinanceService? finance = null)
+        ISourcingFinanceService? finance = null, IAppNotifier? notifier = null)
     {
+        _notifier = notifier;
         _deliveries = deliveries;
         _companyUsers = companyUsers;
         _unitOfWork = unitOfWork;
@@ -325,6 +339,15 @@ public sealed class DecideSourcingDeliveryCommandHandler : IRequestHandler<Decid
         {
             // MF-05: an accepted CV earns its commission and may complete the job's settlement.
             await _finance.OnDeliveryCountedAsync(delivery, request.CurrentUserId, cancellationToken);
+        }
+
+        if (_notifier != null && delivery.Status == SourcingDeliveryStates.Rejected)
+        {
+            // Internal HR reviews an OTHER reason or replaces the CV with a backup.
+            await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                "SOURCING", "Client từ chối một CV đã giao",
+                $"Tin \"{delivery.Job.Title}\": CV bị từ chối (lý do {delivery.RejectReasonCode}). Vui lòng xem xét hoặc thay CV dự phòng.",
+                "SOURCING_DELIVERY", delivery.DeliveryId, "/hr/screening"), cancellationToken);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

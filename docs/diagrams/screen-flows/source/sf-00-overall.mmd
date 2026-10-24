@@ -1,0 +1,173 @@
+---
+title: HR Connect – Overall Screen Flow
+config:
+  layout: elk
+---
+flowchart LR
+  subgraph PUBLIC["Public site & authentication"]
+    direction TB
+    public_home["<b>Landing page</b><br/><small>/</small>"]
+    public_jobs["<b>Public job search</b><br/><small>/jobs</small>"]
+    public_jobd["<b>Public job detail</b><br/><small>/jobs/:id</small>"]
+    public_svc["<b>Services</b><br/><small>/services</small>"]
+    public_contact["<b>Contact form</b><br/><small>/contact</small>"]
+    public_login["<b>Login</b><br/><small>/login</small>"]
+    public_reg["<b>Register (Candidate / Affiliate / Client)</b><br/><small>/register</small>"]
+    public_otp["<b>Verify e-mail OTP</b><br/><small>/verify-otp</small>"]
+    public_consent["<b>Submission consent (link in e-mail)</b><br/><small>/submission-consent</small>"]
+  end
+  style PUBLIC fill:#FFF4E5,stroke:#1B365D
+  subgraph CANDIDATE["Candidate portal (/candidate)"]
+    direction TB
+    candidate_dash["<b>Candidate home</b><br/><small>dashboard</small>"]
+    candidate_cjobs["<b>Jobs (suggestions, search)</b><br/><small>jobs</small>"]
+    candidate_cjobd["<b>Job detail + Apply</b><br/><small>jobs/:jobId</small>"]
+    candidate_saved["<b>Saved jobs</b><br/><small>saved-jobs</small>"]
+    candidate_apps["<b>My applications + consents tab</b><br/><small>applications</small>"]
+    candidate_appd["<b>Application detail / timeline</b><br/><small>applications/:applicationId</small>"]
+    candidate_intv["<b>Interview detail (confirm attendance)</b><br/><small>interviews/:interviewId</small>"]
+    candidate_cons["<b>Submission consent detail</b><br/><small>submission-consents/:submissionId</small>"]
+    candidate_cvs["<b>CV library + CV builder</b><br/><small>cvs</small>"]
+    candidate_acvs["<b>CVs uploaded by affiliates</b><br/><small>affiliate-cvs</small>"]
+    candidate_prof["<b>Profile & visibility</b><br/><small>profile</small>"]
+    candidate_ident["<b>E-mail identities</b><br/><small>settings/email-identities</small>"]
+  end
+  style CANDIDATE fill:#E6F4EA,stroke:#1B365D
+  subgraph AFFILIATE["Affiliate portal (/affiliate)"]
+    direction TB
+    affiliate_dash["<b>Affiliate home</b><br/><small>dashboard</small>"]
+    affiliate_ajobs["<b>Partner jobs</b><br/><small>jobs</small>"]
+    affiliate_ajobd["<b>Job detail + commission estimate</b><br/><small>jobs/:jobId</small>"]
+    affiliate_submit["<b>Submit candidate</b><br/><small>submit-candidate</small>"]
+    affiliate_subs["<b>My submissions</b><br/><small>submissions</small>"]
+    affiliate_subd["<b>Submission detail (resend consent)</b><br/><small>submissions/:submissionId</small>"]
+    affiliate_cands["<b>My candidate pool</b><br/><small>candidates</small>"]
+    affiliate_attr["<b>Attributions</b><br/><small>attributions</small>"]
+    affiliate_disp["<b>Disputes</b><br/><small>disputes</small>"]
+    affiliate_comm["<b>Commissions & payouts</b><br/><small>commissions</small>"]
+    affiliate_perf["<b>Performance</b><br/><small>performance</small>"]
+    affiliate_prof["<b>Profile & bank account</b><br/><small>profile</small>"]
+  end
+  style AFFILIATE fill:#F3E8FF,stroke:#1B365D
+  subgraph CLIENT["Client Company portal (/client)"]
+    direction TB
+    client_dash["<b>Client overview</b><br/><small>dashboard</small>"]
+    client_comp["<b>Company profile & verification</b><br/><small>company</small>"]
+    client_cjobs["<b>My jobs</b><br/><small>jobs</small>"]
+    client_create["<b>Create / edit job (wizard)</b><br/><small>jobs/create · jobs/:id/edit</small>"]
+    client_agr["<b>Service agreements (accept, OTP sign)</b><br/><small>agreements</small>"]
+    client_src["<b>Sourcing CV deliveries</b><br/><small>jobs/:jobId/sourcing</small>"]
+    client_cands["<b>Candidates (Kanban, filter by service)</b><br/><small>candidates</small>"]
+    client_io["<b>Interviews & offers</b><br/><small>interviews-offers</small>"]
+    client_plc["<b>Placement detail</b><br/><small>placements/:placementId</small>"]
+    client_war["<b>Warranty & resignations</b><br/><small>warranty</small>"]
+  end
+  style CLIENT fill:#E6F0FA,stroke:#1B365D
+  subgraph HR["Internal HR console (/hr)"]
+    direction TB
+    hr_dash["<b>HR overview</b><br/><small>dashboard</small>"]
+    hr_rev["<b>Job review & agreement proposal</b><br/><small>jobs</small>"]
+    hr_tpl["<b>JD templates</b><br/><small>job-templates</small>"]
+    hr_scr["<b>AI screening workspace</b><br/><small>screening</small>"]
+    hr_pipe["<b>Pipeline (interviews, offers – read only)</b><br/><small>pipeline</small>"]
+    hr_plr["<b>Placement start-date correction</b><br/><small>placement-review</small>"]
+    hr_plc["<b>Placement detail</b><br/><small>placements/:placementId</small>"]
+    hr_war["<b>Warranty tracking (verify resignations)</b><br/><small>warranty-tracking</small>"]
+    hr_contact["<b>Contact requests</b><br/><small>contact-requests</small>"]
+    hr_prof["<b>Profile</b><br/><small>profile</small>"]
+  end
+  style HR fill:#E0F2FE,stroke:#1B365D
+  subgraph ADMIN["Platform Admin console (/admin)"]
+    direction TB
+    admin_dash["<b>Admin overview</b><br/><small>dashboard</small>"]
+    admin_appr["<b>Approvals (companies, affiliates)</b><br/><small>approvals</small>"]
+    admin_idc["<b>Candidate identity claims</b><br/><small>candidate-identity-claims</small>"]
+    admin_jobs["<b>Job review</b><br/><small>jobs</small>"]
+    admin_tpl["<b>JD templates</b><br/><small>job-templates</small>"]
+    admin_users["<b>Users</b><br/><small>users</small>"]
+    admin_rbac["<b>Roles & permissions / user authorization</b><br/><small>roles-permissions · user-authorization</small>"]
+    admin_st["<b>Service types</b><br/><small>service-types</small>"]
+    admin_cr["<b>Commission rules</b><br/><small>commission-rules</small>"]
+    admin_set["<b>Business settings</b><br/><small>settings</small>"]
+    admin_fin["<b>Finance: posting fees, service fees, deposits, commissions, payouts</b><br/><small>finance · payouts</small>"]
+    admin_disp["<b>Disputes (empty state, FE pending)</b><br/><small>disputes</small>"]
+    admin_rep["<b>Reports</b><br/><small>reports</small>"]
+    admin_audit["<b>Audit trail</b><br/><small>audit-trail</small>"]
+    admin_contact["<b>Contact requests</b><br/><small>contact-requests</small>"]
+  end
+  style ADMIN fill:#EEF5EC,stroke:#1B365D
+  public_home --> public_jobs
+  public_jobs --> public_jobd
+  public_home --> public_svc
+  public_home --> public_contact
+  public_home --> public_login
+  public_jobd --> public_login
+  public_login --> public_reg
+  public_reg --> public_otp
+  public_otp --> public_login
+  candidate_dash --> candidate_cjobs
+  candidate_cjobs --> candidate_cjobd
+  candidate_cjobd --> candidate_saved
+  candidate_cjobd --> candidate_apps
+  candidate_dash --> candidate_apps
+  candidate_apps --> candidate_appd
+  candidate_appd --> candidate_intv
+  candidate_apps --> candidate_cons
+  candidate_dash --> candidate_cvs
+  candidate_cvs --> candidate_cjobd
+  candidate_dash --> candidate_acvs
+  candidate_dash --> candidate_prof
+  candidate_prof --> candidate_ident
+  affiliate_dash --> affiliate_ajobs
+  affiliate_ajobs --> affiliate_ajobd
+  affiliate_ajobd --> affiliate_submit
+  affiliate_cands --> affiliate_submit
+  affiliate_submit --> affiliate_subs
+  affiliate_subs --> affiliate_subd
+  affiliate_subd --> affiliate_disp
+  affiliate_dash --> affiliate_attr
+  affiliate_dash --> affiliate_comm
+  affiliate_dash --> affiliate_perf
+  affiliate_dash --> affiliate_prof
+  client_dash --> client_comp
+  client_dash --> client_cjobs
+  client_cjobs --> client_create
+  client_create --> client_cjobs
+  client_cjobs --> client_agr
+  client_cjobs --> client_src
+  client_dash --> client_cands
+  client_cands --> client_io
+  client_io --> client_plc
+  client_plc --> client_war
+  client_dash --> client_war
+  hr_dash --> hr_rev
+  hr_rev --> hr_tpl
+  hr_dash --> hr_scr
+  hr_scr --> hr_pipe
+  hr_dash --> hr_plr
+  hr_plr --> hr_plc
+  hr_dash --> hr_war
+  hr_war --> hr_plc
+  hr_dash --> hr_contact
+  hr_dash --> hr_prof
+  admin_dash --> admin_appr
+  admin_dash --> admin_idc
+  admin_dash --> admin_jobs
+  admin_jobs --> admin_tpl
+  admin_dash --> admin_users
+  admin_users --> admin_rbac
+  admin_dash --> admin_st
+  admin_st --> admin_cr
+  admin_dash --> admin_set
+  admin_dash --> admin_fin
+  admin_dash --> admin_disp
+  admin_dash --> admin_rep
+  admin_dash --> admin_audit
+  admin_dash --> admin_contact
+  public_login -->|"Candidate"| candidate_dash
+  public_login -->|"Affiliate"| affiliate_dash
+  public_login -->|"Client Company User"| client_dash
+  public_login -->|"Internal HR"| hr_dash
+  public_login -->|"Platform Admin"| admin_dash
+  public_consent -.->|"logged-in candidate"| candidate_cons
+  classDef default fill:#FFFFFF,stroke:#1B365D,color:#1F2A3C

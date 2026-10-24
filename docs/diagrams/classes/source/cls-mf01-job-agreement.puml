@@ -1,0 +1,99 @@
+@startuml cls-mf01-job-agreement
+title MF-01 · Job, review and service agreement
+left to right direction
+hide empty members
+class JobEndpoints <<endpoint>> {
+  +POST /api/v1/jobs
+  +POST /jobs/{id}/submit · pause · resume · close
+  +POST /internal/jobs/{id}/approve · reject
+  +POST /jobs/{id}/posting-fee/pay
+}
+class ServiceAgreementEndpoints <<endpoint>> {
+  +POST /internal/jobs/{id}/service-agreements
+  +POST /client/jobs/{id}/service-agreements/{aid}/…
+  +GET /public/service-agreements/verify/{code}
+}
+class CreateJobCommandHandler <<handler>> {
+  +Handle(CreateJobCommand) JobDetailDto
+}
+class ApproveJobCommand <<handler>> {
+  +Handle() moves to PENDING_AGREEMENT / PENDING_PAYMENT / ACTIVE
+}
+class CreateServiceAgreementProposalCommandHandler <<handler>> {
+  +Handle() SENT_TO_CLIENT
+}
+class RespondToServiceAgreementCommandHandler <<handler>> {
+  +Handle(ACCEPT | REQUEST_CHANGES)
+}
+class CreateSignatureChallengeCommandHandler <<handler>> {
+  +Handle() sends signing OTP
+}
+class SignServiceAgreementCommandHandler <<handler>> {
+  +Handle(otp) SIGNED, PDF to R2, job status
+}
+class JobAccessPolicy <<policy>> {
+  +CanViewDetail()
+  +CanCandidateApply()
+  +CanAffiliateSubmit()
+  +CanManageJob()
+}
+interface IOtpService <<interface>> {
+  +GenerateNumericOtp()
+  +HashOtp()
+  +VerifyOtp()
+}
+interface IAgreementPdfRenderer <<interface>> {
+  +RenderAgreementPdf(agreement, job, company, isSigned)
+}
+interface IFileStorageService <<interface>> {
+  +UploadAsync()
+  +signed download URL
+}
+class SourcingFinanceService <<service>> {
+  +EnsureDepositAsync(job)
+}
+class Job <<entity>> {
+  +JobId
+  +CompanyId · ServiceTypeId
+  +Status · Quantity
+  +FeeMultiplier · WarrantyDays
+  +SourcingTarget · SourcingPricePerCv
+  +CurrentServiceAgreementId
+  +ConcurrencyToken
+}
+class JobRequirement <<entity>> {
+  +RequirementType (MUST_HAVE/SHOULD_HAVE)
+  +Content · Weight
+}
+class ServiceAgreement <<entity>> {
+  +Version · Status
+  +FeeMultiplier · WarrantyDays
+  +SignedDocumentStorageKey
+  +DocumentSha256Hash
+}
+class ServiceAgreementSignatureChallenge <<entity>> {
+  +OtpHash · ExpiresAt
+  +AttemptCount · MaxAttempts
+}
+class JobPostingFee <<entity>> {
+  +Amount · Status
+  +PaymentReference
+}
+JobEndpoints ..> CreateJobCommandHandler : sends
+JobEndpoints ..> ApproveJobCommand : sends
+ServiceAgreementEndpoints ..> CreateServiceAgreementProposalCommandHandler
+ServiceAgreementEndpoints ..> RespondToServiceAgreementCommandHandler
+ServiceAgreementEndpoints ..> CreateSignatureChallengeCommandHandler
+ServiceAgreementEndpoints ..> SignServiceAgreementCommandHandler
+CreateJobCommandHandler ..> JobAccessPolicy : checks
+CreateJobCommandHandler --> Job : creates
+Job *-- JobRequirement : 1..*
+Job --> ServiceAgreement : current
+Job --> JobPostingFee : 0..*
+ServiceAgreement *-- ServiceAgreementSignatureChallenge : 0..*
+CreateSignatureChallengeCommandHandler ..> IOtpService
+SignServiceAgreementCommandHandler ..> IOtpService
+SignServiceAgreementCommandHandler ..> IAgreementPdfRenderer
+SignServiceAgreementCommandHandler ..> IFileStorageService
+SignServiceAgreementCommandHandler ..> SourcingFinanceService : Sourcing deposit
+@enduml

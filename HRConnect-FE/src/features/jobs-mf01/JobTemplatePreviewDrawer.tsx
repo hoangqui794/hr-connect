@@ -30,6 +30,8 @@ export interface JobTemplatePreviewDrawerProps {
   footer?: React.ReactNode;
   /** Optional notice message at the bottom */
   showClientNotice?: boolean;
+  /** True for a past job or an Excel JD: salary, location and quantity are copied as well. */
+  copiesTerms?: boolean;
 }
 
 export const JobTemplatePreviewDrawer: React.FC<JobTemplatePreviewDrawerProps> = ({
@@ -39,6 +41,7 @@ export const JobTemplatePreviewDrawer: React.FC<JobTemplatePreviewDrawerProps> =
   templateData,
   footer,
   showClientNotice = false,
+  copiesTerms = false,
 }) => {
   const query = useJobTemplate(templateId ?? undefined, Boolean(open && templateId && !templateData));
   const isLoading = Boolean(templateId && !templateData && query.isLoading);
@@ -54,11 +57,6 @@ export const JobTemplatePreviewDrawer: React.FC<JobTemplatePreviewDrawerProps> =
         <div className="flex items-center gap-2">
           <FileTextOutlined className="text-sky-600" />
           <span>Xem trước mẫu tuyển dụng</span>
-          {template?.code && (
-            <Tag color="blue" className="ml-2 font-mono text-xs">
-              {template.code}
-            </Tag>
-          )}
         </div>
       }
       placement="right"
@@ -177,7 +175,7 @@ export const JobTemplatePreviewDrawer: React.FC<JobTemplatePreviewDrawerProps> =
 
           {showClientNotice && (
             <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3.5 text-xs text-indigo-900">
-              💡 <strong>Lưu ý:</strong> Khi chọn &quot;Dùng mẫu này&quot;, các trường mô tả, quyền lợi, yêu cầu và kỹ năng sẽ được điền vào form. Các thông tin về lương, địa điểm, số lượng và điều khoản phí ở Bước 3 được <strong>giữ nguyên</strong>. Bạn hoàn toàn có thể chỉnh sửa lại nội dung sau khi điền.
+              💡 <strong>Lưu ý:</strong> Khi chọn &quot;Dùng mẫu này&quot;, các trường mô tả, quyền lợi, yêu cầu và kỹ năng sẽ được điền vào form. {copiesTerms ? (<>Lương, địa điểm và số lượng cũng được điền theo nội dung này; điều khoản phí ở Bước 3 được <strong>giữ nguyên</strong>.</>) : (<>Các thông tin về lương, địa điểm, số lượng và điều khoản phí ở Bước 3 được <strong>giữ nguyên</strong>.</>)} Bạn hoàn toàn có thể chỉnh sửa lại nội dung sau khi điền.
             </div>
           )}
         </div>

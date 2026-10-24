@@ -21,6 +21,7 @@ import dayjs from 'dayjs';
 import {
   Alert,
   App as AntApp,
+  AutoComplete,
   Badge,
   Button,
   DatePicker,
@@ -480,7 +481,7 @@ export const JobFormPage: React.FC = () => {
   const [saving, setSaving] = useState<'draft' | 'submit' | null>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
 
-  const handleApplyTemplate = (template: JobTemplate, mergedSkills: string[]) => {
+  const handleApplyTemplate = (template: JobTemplate, mergedSkills: string[], sourceJob?: Partial<Job>) => {
     const nonSkillRequirements = (template.requirements ?? [])
       .filter((r) => (r.category || '').toUpperCase() !== 'SKILL')
       .map((r) => ({
@@ -501,8 +502,22 @@ export const JobFormPage: React.FC = () => {
           ? nonSkillRequirements
           : [{ requirementType: 'MUST_HAVE', content: '' }],
       skills: mergedSkills,
-      templateId: template.templateId,
+      // An Excel JD has no template id; never send an empty one to the API.
+      templateId: template.templateId || undefined,
     });
+    // Reusing the Client's own job also copies the job-specific terms that system templates never carry.
+    if (sourceJob) {
+      form.setFieldsValue({
+        salaryMin: sourceJob.salaryMin ?? undefined,
+        salaryMax: sourceJob.salaryMax ?? undefined,
+        salaryNegotiable: sourceJob.salaryNegotiable ?? false,
+        salaryNote: sourceJob.salaryNote ?? undefined,
+        currencyCode: sourceJob.currencyCode || undefined,
+        location: sourceJob.location ?? undefined,
+        workingTime: sourceJob.workingTime ?? undefined,
+        quantity: sourceJob.quantity,
+      });
+    }
   };
 
   // Dedicated Component State for selected service to ensure robustness across steps
@@ -823,7 +838,9 @@ export const JobFormPage: React.FC = () => {
 
   const selectedPkg = packageCards.find((p) => p.key === (watched.postingPackage || 'STANDARD')) ?? packageCards[0];
 
-  const submitButton = (block?: boolean) => (
+  // "Gửi duyệt" only appears on the last step, after the service, details and needs/fees steps are done.
+  const REVIEW_STEP = 3;
+  const submitButton = (block?: boolean) => currentStep < REVIEW_STEP ? null : (
     <Button
       type="primary"
       size="large"
@@ -1186,27 +1203,74 @@ export const JobFormPage: React.FC = () => {
                         { max: 255, message: 'Tối đa 255 ký tự.' },
                       ]}
                     >
-                      <Select
+                      <AutoComplete
                         size="large"
-                        showSearch
                         allowClear
-                        optionFilterProp="label"
-                        placeholder="Chọn tỉnh/thành hoặc cách làm việc"
+                        placeholder="Chọn tỉnh/thành hoặc nhập địa chỉ cụ thể"
                         options={LOCATION_OPTIONS}
-                        suffixIcon={<EnvironmentOutlined className="text-slate-400" />}
-                      />
+                        filterOption={(inputValue, option) =>
+                          String(option?.label ?? option?.value ?? '')
+                            .toLowerCase()
+                            .includes(inputValue.toLowerCase())
+                        }
+                      >
+                        <Input size="large" suffix={<EnvironmentOutlined className="text-slate-400" />} />
+                      </AutoComplete>
                     </Form.Item>
                   </div>
 
-                  <Form.Item name="workingTime" label="Thời gian làm việc">
-                    <Select size="large" allowClear placeholder="Chọn thời gian làm việc" options={WORKING_TIME_OPTIONS} />
+                  <Form.Item
+                    name="workingTime"
+                    label="Thời gian làm việc"
+                    rules={[{ max: 255, message: 'Tối đa 255 ký tự.' }]}
+                  >
+                    <AutoComplete
+                      size="large"
+                      allowClear
+                      placeholder="Chọn hoặc nhập thời gian làm việc cụ thể"
+                      options={WORKING_TIME_OPTIONS}
+                      filterOption={(inputValue, option) =>
+                        String(option?.label ?? option?.value ?? '')
+                          .toLowerCase()
+                          .includes(inputValue.toLowerCase())
+                      }
+                    />
                   </Form.Item>
 
                   <Form.Item
                     name="minExperienceYears"
                     label="Kinh nghiệm"
+                    rules={[{ type: 'number', min: 0, max: 50, message: 'Từ 0 đến 50 năm.' }]}
+                    extra={
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                        <span>Gợi ý:</span>
+                        {[
+                          { value: 0, label: 'Không yêu cầu' },
+                          { value: 1, label: '1 năm' },
+                          { value: 2, label: '2 năm' },
+                          { value: 3, label: '3 năm' },
+                          { value: 5, label: '5 năm' },
+                        ].map((preset) => (
+                          <button
+                            key={preset.value}
+                            type="button"
+                            onClick={() => form.setFieldValue('minExperienceYears', preset.value)}
+                            className="cursor-pointer rounded border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    }
                   >
-                    <Select size="large" allowClear placeholder="Chọn số năm kinh nghiệm" options={EXPERIENCE_YEAR_OPTIONS} />
+                    <InputNumber
+                      size="large"
+                      min={0}
+                      max={50}
+                      className="w-full"
+                      placeholder="Nhập số năm kinh nghiệm (0 = Không yêu cầu)"
+                      addonAfter="năm"
+                    />
                   </Form.Item>
                 </div>
               </section>
@@ -1355,10 +1419,14 @@ export const JobFormPage: React.FC = () => {
                                 className="mb-2 md:mb-0"
                                 rules={[{ required: true, message: 'Chọn mức độ.' }]}
                               >
-                                <Radio.Group optionType="button" buttonStyle="solid" size="middle" className="inline-flex whitespace-nowrap">
-                                  <Radio.Button value="MUST_HAVE" className="px-3 text-center">Bắt buộc</Radio.Button>
-                                  <Radio.Button value="SHOULD_HAVE" className="px-3 text-center">Ưu tiên</Radio.Button>
-                                </Radio.Group>
+                                <Select
+                                  aria-label={`Mức độ yêu cầu ${index + 1}`}
+                                  style={{ width: 140 }}
+                                  options={[
+                                    { value: 'MUST_HAVE', label: 'Bắt buộc' },
+                                    { value: 'SHOULD_HAVE', label: 'Ưu tiên' },
+                                  ]}
+                                />
                               </Form.Item>
 
                               <div className="order-3 col-span-2 md:order-none md:col-span-1">
