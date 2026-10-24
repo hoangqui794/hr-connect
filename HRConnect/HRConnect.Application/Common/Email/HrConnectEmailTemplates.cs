@@ -164,6 +164,9 @@ public static class HrConnectEmailTemplates
     public static HrConnectEmail InterviewScheduled(RecruitmentCandidateEmailPayload payload) =>
         InterviewNotice(payload, "Bạn có lịch phỏng vấn mới", "Lịch phỏng vấn mới");
 
+    public static HrConnectEmail InterviewUpdated(RecruitmentCandidateEmailPayload payload) =>
+        InterviewNotice(payload, "Thông tin phỏng vấn đã được cập nhật", "Thông tin phỏng vấn đã thay đổi");
+
     public static HrConnectEmail InterviewRescheduled(RecruitmentCandidateEmailPayload payload) =>
         InterviewNotice(payload, "Lịch phỏng vấn đã được dời", "Lịch phỏng vấn đã thay đổi");
 
@@ -229,6 +232,20 @@ public static class HrConnectEmailTemplates
                 "<p style=\"margin:0 0 18px\">Bạn có thể đăng ký hoặc đăng nhập HR Connect để xem lại trạng thái hồ sơ của mình.</p>" +
                 Button("Đăng ký / đăng nhập HR Connect", payload.PortalUrl),
                 $"Offer cho vị trí {payload.JobTitle} đã hết hạn phản hồi."));
+
+    public static HrConnectEmail ApplicationNotStartedReported(RecruitmentCandidateEmailPayload payload)
+    {
+        var organization = CompanyOrPlatform(payload.CompanyName);
+        return new HrConnectEmail(
+            SubjectText($"Cập nhật kết quả nhận việc cho vị trí {payload.JobTitle}"),
+            Render(
+                "Cập nhật kết quả nhận việc",
+                Greeting(payload.CandidateName) +
+                $"<p style=\"margin:0 0 16px\">{organization} đã cập nhật rằng bạn chưa bắt đầu làm việc cho vị trí <strong>{E(payload.JobTitle)}</strong>.</p>" +
+                "<p style=\"margin:0 0 18px\">HR Connect sẽ đối soát kết quả này. Nếu thông tin chưa chính xác, vui lòng liên hệ bộ phận hỗ trợ; email này không cho phép tự thay đổi trạng thái hồ sơ.</p>" +
+                Button("Đăng ký / đăng nhập để xem hồ sơ", payload.PortalUrl),
+                $"Cập nhật hồ sơ ứng tuyển vị trí {payload.JobTitle}."));
+    }
 
     private static HrConnectEmail InterviewNotice(
         RecruitmentCandidateEmailPayload payload,

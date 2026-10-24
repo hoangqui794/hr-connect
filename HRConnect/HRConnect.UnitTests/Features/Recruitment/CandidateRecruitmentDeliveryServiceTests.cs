@@ -65,6 +65,28 @@ public class CandidateRecruitmentDeliveryServiceTests
     }
 
     [Fact]
+    public async Task DeliverInterviewAsync_WhenDetailsUpdated_UsesUpdatedTemplateAndSafeMetadata()
+    {
+        var userId = Guid.NewGuid();
+        var (application, interview) = CreateApplication(new Candidate { UserId = userId, FullName = "An" });
+        Notification? notice = null;
+        _notifications.Setup(x => x.AddAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()))
+            .Callback<Notification, CancellationToken>((value, _) => notice = value)
+            .Returns(Task.CompletedTask);
+
+        await CreateService().DeliverInterviewAsync(
+            application, interview, InterviewCandidateDeliveryEvent.Updated, null, DateTime.UtcNow);
+
+        notice.Should().NotBeNull();
+        notice!.Message.Should().Contain("kiểm tra lại");
+        using var metadata = JsonDocument.Parse(notice.Metadata!);
+        metadata.RootElement.GetProperty("eventType").GetString().Should().Be("UPDATED");
+        metadata.RootElement.GetProperty("applicationId").GetGuid().Should().Be(application.ApplicationId);
+        metadata.RootElement.GetProperty("routeHint").GetString().Should().Be($"/candidate/applications/{application.ApplicationId}");
+        notice.Metadata.Should().NotContain("participant");
+    }
+
+    [Fact]
     public async Task DeliverInterviewAsync_WithoutDeliveryChannel_IsBestEffortForChanges()
     {
         var (application, interview) = CreateApplication(new Candidate { FullName = "An" });
@@ -107,6 +129,32 @@ public class CandidateRecruitmentDeliveryServiceTests
         outbox!.TemplateCode.Should().Be(RecruitmentCandidateEmailTemplates.OfferSent);
         outbox.Payload.Should().NotContain("42000000");
         outbox.Payload.Should().NotContain("private.example");
+    }
+
+    [Fact]
+    public async Task DeliverApplicationOutcomeAsync_WithUnlinkedEmail_QueuesSafeNotStartedEmail()
+    {
+        var (application, _) = CreateApplication(new Candidate
+        {
+            FullName = "An",
+            Email = "candidate@example.com"
+        });
+        EmailOutbox? outbox = null;
+        _outboxes.Setup(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailOutbox, CancellationToken>((value, _) => outbox = value)
+            .Returns(Task.CompletedTask);
+
+        var result = await CreateService().DeliverApplicationOutcomeAsync(
+            application,
+            ApplicationCandidateDeliveryEvent.NotStartedReported,
+            "Thông tin nội bộ không được đưa vào email",
+            DateTime.UtcNow);
+
+        result.Channel.Should().Be(CandidateRecruitmentDeliveryChannel.Email);
+        outbox!.TemplateCode.Should().Be(RecruitmentCandidateEmailTemplates.ApplicationNotStartedReported);
+        outbox.Payload.Should().Contain("Backend Developer");
+        outbox.Payload.Should().NotContain("salary");
+        outbox.Payload.Should().NotContain("Thông tin nội bộ không được đưa vào email");
     }
 
     private static (JobApplication Application, Interview Interview) CreateApplication(Candidate candidate)
