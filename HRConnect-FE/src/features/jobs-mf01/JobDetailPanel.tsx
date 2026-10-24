@@ -77,6 +77,18 @@ export const JobTemplateOriginTag: React.FC<{ templateId: string }> = ({ templat
   );
 };
 
+const requirementCategoryLabel = (category?: string | null) => {
+  const labels: Record<string, string> = {
+    EXPERIENCE: 'Kinh nghiệm',
+    SKILL: 'Kỹ năng',
+    EDUCATION: 'Học vấn',
+    LANGUAGE: 'Ngoại ngữ',
+    CERTIFICATE: 'Chứng chỉ',
+    OTHER: 'Yêu cầu khác',
+  };
+  return category ? labels[category] : undefined;
+};
+
 const RequirementList: React.FC<{ title: string; items: JobRequirement[]; emptyText: string }> = ({
   title,
   items,
@@ -90,15 +102,18 @@ const RequirementList: React.FC<{ title: string; items: JobRequirement[]; emptyT
       <Text type="secondary">{emptyText}</Text>
     ) : (
       <ul className="m-0 pl-0 list-none space-y-1.5">
-        {items.map((req) => (
-          <li key={req.requirementId} className="flex gap-2 items-start">
-            <CheckCircleOutlined className="text-emerald-700 mt-1 shrink-0" aria-hidden />
-            <span className="whitespace-pre-line break-words">
-              {formatMultilineText(req.content)}
-              {req.category && <Text type="secondary"> · {req.category}</Text>}
-            </span>
-          </li>
-        ))}
+        {items.map((req) => {
+          const category = requirementCategoryLabel(req.category);
+          return (
+            <li key={req.requirementId} className="flex gap-2 items-start">
+              <CheckCircleOutlined className="text-emerald-700 mt-1 shrink-0" aria-hidden />
+              <span className="whitespace-pre-line break-words">
+                {formatMultilineText(req.content)}
+                {category && <Text type="secondary"> · {category}</Text>}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     )}
   </section>
