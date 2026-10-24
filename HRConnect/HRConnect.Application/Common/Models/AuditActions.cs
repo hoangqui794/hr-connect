@@ -73,6 +73,9 @@ public static class AuditActions
     public const string OfferExpired = "OFFER_EXPIRED";
     public const string PlacementConfirmed = "PLACEMENT_CONFIRMED";
     public const string PlacementStartDateCorrected = "PLACEMENT_START_DATE_CORRECTED";
+    public const string PlacementReconciled = "PLACEMENT_RECONCILED";
+    public const string PlacementReconciliationFlagged = "PLACEMENT_RECONCILIATION_FLAGGED";
+    public const string PlacementReconciliationResolved = "PLACEMENT_RECONCILIATION_RESOLVED";
     public const string PlacementFinanceInitialized = "PLACEMENT_FINANCE_INITIALIZED";
     public const string WarrantyPassed = "WARRANTY_PASSED";
     public const string WarrantyClaimReported = "WARRANTY_CLAIM_REPORTED";

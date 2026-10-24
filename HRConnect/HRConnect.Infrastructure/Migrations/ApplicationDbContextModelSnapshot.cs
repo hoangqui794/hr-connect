@@ -4299,6 +4299,107 @@ namespace HRConnect.Infrastructure.Migrations
                     b.ToTable("placement", "public");
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.PlacementReconciliation", b =>
+                {
+                    b.Property<Guid>("ReconciliationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("reconciliation_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("application_id");
+
+                    b.Property<string>("ClaimedOutcome")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("claimed_outcome");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_token")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("ContactChannel")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("contact_channel");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("ResolutionNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("resolution_note");
+
+                    b.Property<Guid?>("PlacementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("placement_id");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.HasKey("ReconciliationId")
+                        .HasName("placement_reconciliation_pkey");
+
+                    b.HasIndex("ReviewedBy");
+
+                    b.HasIndex(new[] { "Status", "CreatedAt" }, "idx_placement_reconciliation_status_created");
+
+                    b.HasIndex(new[] { "ApplicationId" }, "placement_reconciliation_application_id_key")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "PlacementId" }, "placement_reconciliation_placement_id_key")
+                        .IsUnique();
+
+                    b.ToTable("placement_reconciliation", "public", t =>
+                        {
+                            t.HasComment("UC-41 operational verification of HEADHUNT_COD start-work outcomes before placement finance proceeds.");
+
+                            t.HasCheckConstraint("ck_placement_reconciliation_channel", "contact_channel IS NULL OR contact_channel IN ('CANDIDATE','AFFILIATE','BOTH')");
+
+                            t.HasCheckConstraint("ck_placement_reconciliation_flag_note", "status <> 'FLAGGED' OR length(trim(note)) > 0");
+
+                            t.HasCheckConstraint("ck_placement_reconciliation_outcome", "claimed_outcome IN ('STARTED','NOT_STARTED')");
+
+                            t.HasCheckConstraint("ck_placement_reconciliation_placement", "(claimed_outcome = 'STARTED' AND placement_id IS NOT NULL) OR (claimed_outcome = 'NOT_STARTED' AND placement_id IS NULL)");
+
+                                t.HasCheckConstraint("ck_placement_reconciliation_review", "(status = 'PENDING' AND reviewed_by IS NULL AND reviewed_at IS NULL) OR (status <> 'PENDING' AND reviewed_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_placement_reconciliation_status", "status IN ('PENDING','CONFIRMED','FLAGGED')");
+                        });
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.Probation", b =>
                 {
                     b.Property<Guid>("ProbationId")
@@ -6974,6 +7075,34 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("ReplacementSlot");
                 });
 
+            modelBuilder.Entity("HRConnect.Domain.Entities.PlacementReconciliation", b =>
+                {
+                    b.HasOne("HRConnect.Domain.Entities.Application", "Application")
+                        .WithOne("PlacementReconciliation")
+                        .HasForeignKey("HRConnect.Domain.Entities.PlacementReconciliation", "ApplicationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_placement_reconciliation_application");
+
+                    b.HasOne("HRConnect.Domain.Entities.Placement", "Placement")
+                        .WithOne("Reconciliation")
+                        .HasForeignKey("HRConnect.Domain.Entities.PlacementReconciliation", "PlacementId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_placement_reconciliation_placement");
+
+                    b.HasOne("HRConnect.Domain.Entities.AppUser", "ReviewedByNavigation")
+                        .WithMany()
+                        .HasForeignKey("ReviewedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_placement_reconciliation_reviewer");
+
+                    b.Navigation("Application");
+
+                    b.Navigation("Placement");
+
+                    b.Navigation("ReviewedByNavigation");
+                });
+
             modelBuilder.Entity("HRConnect.Domain.Entities.Probation", b =>
                 {
                     b.HasOne("HRConnect.Domain.Entities.Placement", "Placement")
@@ -7503,6 +7632,8 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.Navigation("Placement");
 
+                    b.Navigation("PlacementReconciliation");
+
                     b.Navigation("SourcingDeliveries");
                 });
 
@@ -7659,6 +7790,8 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Navigation("Commissions");
 
                     b.Navigation("Probation");
+
+                    b.Navigation("Reconciliation");
 
                     b.Navigation("ServiceFee");
 

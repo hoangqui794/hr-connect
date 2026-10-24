@@ -136,6 +136,7 @@ public static class DependencyInjection
         services.AddScoped<IInterviewRepository, InterviewRepository>();
         services.AddScoped<IOfferRepository, OfferRepository>();
         services.AddScoped<IPlacementRepository, PlacementRepository>();
+        services.AddScoped<IPlacementReconciliationRepository, PlacementReconciliationRepository>();
         services.AddScoped<IFinanceRepository, FinanceRepository>();
         services.AddScoped<ISourcingDeliveryRepository, SourcingDeliveryRepository>();
         services.AddScoped<IJobTemplateRepository, JobTemplateRepository>();
