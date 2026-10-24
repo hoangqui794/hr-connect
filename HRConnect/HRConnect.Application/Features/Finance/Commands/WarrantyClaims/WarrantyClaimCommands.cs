@@ -32,15 +32,17 @@ public sealed class ReportResignationCommandHandler : IRequestHandler<ReportResi
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
+    private readonly IAppNotifier? _notifier;
 
     public ReportResignationCommandHandler(
         IFinanceRepository financeRepository, ICompanyUserRepository companyUserRepository,
-        IUnitOfWork unitOfWork, IAuditLogService auditLogService)
+        IUnitOfWork unitOfWork, IAuditLogService auditLogService, IAppNotifier? notifier = null)
     {
         _financeRepository = financeRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
+        _notifier = notifier;
     }
 
     public async Task<WarrantyClaimResponse> Handle(ReportResignationCommand request, CancellationToken cancellationToken)
@@ -93,6 +95,15 @@ public sealed class ReportResignationCommandHandler : IRequestHandler<ReportResi
             OldValues = new { status = WarrantyStates.Active },
             NewValues = new { status = warranty.Status, lastWorkingDate = request.LastWorkingDate, reason = request.Reason.Trim() },
         }, cancellationToken);
+        if (_notifier != null)
+        {
+            // Internal HR must verify the resignation before the warranty is voided.
+            await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                "WARRANTY",
+                "Doanh nghiệp báo ứng viên nghỉ việc",
+                $"Vị trí \"{placement.Application.Job.Title}\": ứng viên nghỉ ngày {request.LastWorkingDate:dd/MM/yyyy}. Vui lòng xác minh trong mục Bảo hành.",
+                "WARRANTY", warranty.WarrantyId, "/hr/warranty-tracking"), cancellationToken);
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return WarrantyClaimMapping.ToResponse(placement);

@@ -8,9 +8,11 @@ import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App, Button, DatePicker, Form, Input, InputNumber, Modal, Radio, Space, Table, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined } from '@ant-design/icons';
+import { ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
+import { useNavigate } from 'react-router-dom';
 import { financeApi } from '@/services/api/financeApi';
+import { placementReconciliationApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Commission, CommissionStatus, Payout, ServiceFee, ServiceFeeStatus } from '@/types/api/finance';
 import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
@@ -29,6 +31,7 @@ const PAGE_SIZE = 20;
 
 export const AdminFinancePage: React.FC = () => {
   const { message, modal } = App.useApp();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>('commissions');
   const [commissionStatus, setCommissionStatus] = useState<CommissionStatus | 'all'>('all');
@@ -51,6 +54,10 @@ export const AdminFinancePage: React.FC = () => {
     queryKey: ['mf05-payouts', page],
     queryFn: () => financeApi.payouts({ page, pageSize: PAGE_SIZE }),
     enabled: tab === 'payouts',
+  });
+  const flaggedReconciliations = useQuery({
+    queryKey: ['placement-reconciliations', 'admin', 'FLAGGED', 1],
+    queryFn: () => placementReconciliationApi.list({ status: 'FLAGGED', page: 1, pageSize: 1 }, true),
   });
 
   const refresh = () => queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith('mf05-') });
@@ -182,12 +189,24 @@ export const AdminFinancePage: React.FC = () => {
       title: '',
       key: 'actions',
       align: 'right',
-      render: (_, f) =>
-        (f.status === 'PENDING' || f.status === 'OVERDUE') && (
-          <Button size="small" type="primary" onClick={() => { form.setFieldsValue({ paidAt: dayjs() }); setDialog({ kind: 'fee', fee: f }); }}>
-            Ghi nhận đã thu
-          </Button>
-        ),
+      render: (_, f) => {
+        if (f.status !== 'PENDING' && f.status !== 'OVERDUE') return null;
+        const waitingForReconciliation = Boolean(f.reconciliationStatus && f.reconciliationStatus !== 'CONFIRMED');
+        return (
+          <Tooltip title={waitingForReconciliation ? 'Chờ Internal HR hoàn tất đối soát nhận việc' : undefined}>
+            <span>
+              <Button
+                size="small"
+                type="primary"
+                disabled={waitingForReconciliation}
+                onClick={() => { form.setFieldsValue({ paidAt: dayjs() }); setDialog({ kind: 'fee', fee: f }); }}
+              >
+                {waitingForReconciliation ? 'Chờ đối soát' : 'Ghi nhận đã thu'}
+              </Button>
+            </span>
+          </Tooltip>
+        );
+      },
     },
   ];
 
@@ -217,6 +236,23 @@ export const AdminFinancePage: React.FC = () => {
         description="Ghi nhận tiền Client đã trả (phí dịch vụ, cọc CV Sourcing, phí đăng tin) và chi hoa hồng cho Affiliate. Hoa hồng chỉ được duyệt chi sau khi Client đã thanh toán phí."
         actions={<Button icon={<ReloadOutlined />} onClick={refresh}>Làm mới</Button>}
       />
+
+      <Surface className="mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4">
+          <div className="flex items-center gap-3">
+            <ExclamationCircleOutlined className="text-xl text-amber-500" />
+            <div>
+              <div className="font-semibold text-slate-900">Đối soát cần xử lý</div>
+              <div className="text-sm text-slate-600">
+                {flaggedReconciliations.isLoading
+                  ? 'Đang kiểm tra hồ sơ...'
+                  : `${flaggedReconciliations.data?.totalCount ?? 0} hồ sơ có thông tin nhận việc không khớp.`}
+              </div>
+            </div>
+          </div>
+          <Button onClick={() => navigate('/admin/placement-reconciliations')}>Mở danh sách đối soát</Button>
+        </div>
+      </Surface>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <FilterPills<Tab>

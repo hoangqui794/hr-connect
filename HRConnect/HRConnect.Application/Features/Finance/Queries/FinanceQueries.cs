@@ -13,7 +13,8 @@ public sealed record PagedResult<T>(IReadOnlyList<T> Items, int TotalCount, int 
 public sealed record ServiceFeeDto(
     Guid ServiceFeeId, Guid? PlacementId, Guid CompanyId, string? CompanyName, string? JobTitle, string? CandidateName,
     decimal BaseSalary, decimal FeeMultiplier, decimal Amount, string CurrencyCode, DateOnly DueDate, string Status,
-    DateTime? PaidAt, string? PaymentReference, DateTime CreatedAt, string Kind = "PLACEMENT", Guid? JobId = null);
+    DateTime? PaidAt, string? PaymentReference, DateTime CreatedAt, string Kind = "PLACEMENT", Guid? JobId = null,
+    string? ReconciliationStatus = null);
 
 /// <summary>PlacementId is set for HEADHUNT_COD; SourcingDeliveryId for CV_SOURCING (one per accepted CV).</summary>
 public sealed record CommissionDto(
@@ -80,7 +81,8 @@ public sealed class FinanceQueryHandlers :
             fee.Job?.Title ?? fee.Placement?.Application?.Job?.Title, fee.Placement?.Application?.Candidate?.FullName,
             fee.BaseSalary, fee.FeeMultiplier, fee.Amount, fee.CurrencyCode, fee.DueDate, fee.Status,
             fee.PaidAt, fee.PaymentReference, fee.CreatedAt, fee.Kind,
-            fee.JobId ?? fee.Placement?.Application?.JobId)).ToList(), total, page, pageSize);
+            fee.JobId ?? fee.Placement?.Application?.JobId,
+            fee.Placement?.Reconciliation?.Status)).ToList(), total, page, pageSize);
     }
 
     public async Task<PagedResult<CommissionDto>> Handle(GetCommissionsQuery request, CancellationToken cancellationToken)

@@ -236,11 +236,20 @@ quan phải là `ACCEPTED`. Company là bên xác nhận một trong hai kết q
 | Candidate không bắt đầu làm việc | Company | `NOT_STARTED` | Lý do không đi làm được lưu. |
 | Candidate đã bắt đầu làm việc | Company | `PLACED` | Tạo `Placement` với trạng thái `STARTED`. |
 
-`PLACED` là bằng chứng Company đã xác nhận Candidate đi làm thực tế. Candidate
-không tự xác nhận Placement; Internal HR cũng không có quyền thay Company làm
-thao tác này. Việc Internal HR đối soát nguyên nhân hoặc Placement để tính phí
-là quy trình vận hành/định hướng cho MF-05, không phải mutation của MF-04 hiện
-tại.
+`PLACED` là kết quả Company khai Candidate đã bắt đầu làm việc. Candidate không
+tự xác nhận Placement; Internal HR cũng không có quyền thay Company thực hiện
+thao tác này.
+
+Với `HEADHUNT_COD`, cả hai kết quả `PLACED` và `NOT_STARTED` tạo một hồ sơ đối
+soát `PENDING`. Internal HR liên hệ Candidate, Affiliate hoặc cả hai để:
+
+- xác nhận đúng (`CONFIRMED`); hoặc
+- báo không khớp (`FLAGGED`, bắt buộc ghi chú) để Platform Admin xử lý.
+
+Phí placement được tạo ở `PENDING` nhưng không được chuyển sang `DUE` hoặc
+`OVERDUE` trước khi hồ sơ đối soát là `CONFIRMED`. Nếu xác nhận sau hạn thanh
+toán, phí chuyển thẳng sang `OVERDUE`; nếu còn trong cửa sổ nhắc hạn thì chuyển
+sang `DUE`. `CV_APPLICATION` và `CV_SOURCING` không tạo hồ sơ đối soát này.
 
 ## 6. Ngoại lệ và quy tắc huỷ
 

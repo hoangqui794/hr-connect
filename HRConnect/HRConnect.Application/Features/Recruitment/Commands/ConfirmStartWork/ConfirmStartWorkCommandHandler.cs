@@ -7,6 +7,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Finance.Common;
+using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
@@ -26,6 +27,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
     private readonly IAuditLogService _auditLogService;
     private readonly IPlacementFinanceService _placementFinanceService;
     private readonly IFinanceRepository _financeRepository;
+    private readonly IPlacementReconciliationRepository _reconciliationRepository;
 
     public ConfirmStartWorkCommandHandler(
         IApplicationRepository applicationRepository,
@@ -36,7 +38,8 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         ILogger<ConfirmStartWorkCommandHandler> logger,
         IAuditLogService auditLogService,
         IPlacementFinanceService placementFinanceService,
-        IFinanceRepository financeRepository)
+        IFinanceRepository financeRepository,
+        IPlacementReconciliationRepository reconciliationRepository)
     {
         _applicationRepository = applicationRepository;
         _offerRepository = offerRepository;
@@ -47,6 +50,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         _auditLogService = auditLogService;
         _placementFinanceService = placementFinanceService;
         _financeRepository = financeRepository;
+        _reconciliationRepository = reconciliationRepository;
     }
 
     public async Task<ConfirmStartWorkResponse> Handle(ConfirmStartWorkCommand request, CancellationToken cancellationToken)
@@ -223,6 +227,21 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
                     replacementSourceFee),
                 request.CurrentUserId,
                 cancellationToken);
+
+            if (string.Equals(job.ServiceType?.Code, ServiceTypeCodes.HeadhuntCod, StringComparison.OrdinalIgnoreCase))
+            {
+                await _reconciliationRepository.AddAsync(new PlacementReconciliation
+                {
+                    ReconciliationId = Guid.NewGuid(),
+                    ApplicationId = application.ApplicationId,
+                    PlacementId = placement.PlacementId,
+                    ClaimedOutcome = PlacementReconciliationOutcomes.Started,
+                    Status = PlacementReconciliationStates.Pending,
+                    ConcurrencyToken = Guid.NewGuid(),
+                    CreatedAt = now,
+                    UpdatedAt = now
+                }, cancellationToken);
+            }
 
             if (replacementSlot != null)
             {

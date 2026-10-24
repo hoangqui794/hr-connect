@@ -46,6 +46,7 @@ export interface ServiceFee {
   currencyCode: string;
   dueDate: string;
   status: ServiceFeeStatus;
+  reconciliationStatus?: 'PENDING' | 'CONFIRMED' | 'FLAGGED' | null;
   paidAt?: string | null;
   paymentReference?: string | null;
   createdAt: string;
