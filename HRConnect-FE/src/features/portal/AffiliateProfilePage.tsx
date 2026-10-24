@@ -44,8 +44,9 @@ import {
 } from '@/services/api/mf02Api';
 import { authService, ChangePasswordCommand } from '@/services/authService';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { PageHero, Surface } from '@/features/admin-console/ui';
+import { Surface } from '@/features/admin-console/ui';
 import { AvatarUpload } from '@/components/common/AvatarUpload';
+import { AffiliatePageHeader } from './affiliate/AffiliateUi';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -160,7 +161,7 @@ export const AffiliateProfilePage: React.FC = () => {
       label: (
         <span className="flex items-center gap-2">
           <UserOutlined />
-          Hồ sơ đối tác
+          Thông tin cá nhân
         </span>
       ),
       children: (
@@ -180,9 +181,9 @@ export const AffiliateProfilePage: React.FC = () => {
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1.5 justify-center">
                     <Tag color={p?.status === 'ACTIVE' ? 'success' : 'warning'}>
-                      {p?.status === 'ACTIVE' ? 'Đang hoạt động' : p?.status ?? 'Chờ duyệt'}
+                      {{ ACTIVE: 'Đang hoạt động', PENDING: 'Chờ duyệt', REJECTED: 'Chưa được chấp thuận', SUSPENDED: 'Tạm ngưng' }[p?.status ?? 'PENDING'] ?? 'Đang cập nhật'}
                     </Tag>
-                    {p?.affiliateType && <Tag color="purple">{p.affiliateType}</Tag>}
+                    {p?.affiliateType && <Tag color="purple">{p.affiliateType === 'INDIVIDUAL' ? 'Cộng tác viên cá nhân' : 'Đối tác tuyển dụng'}</Tag>}
                   </div>
                   <div className="mt-4 pt-4 border-0 border-t border-solid border-slate-100 w-full text-xs text-slate-400 space-y-1">
                     <div>Ngày tham gia: {dayjs(p?.createdAt).format('DD/MM/YYYY')}</div>
@@ -194,23 +195,23 @@ export const AffiliateProfilePage: React.FC = () => {
               <Col xs={24} md={16}>
                 <Surface padded>
                   <Title level={5} className="!mb-4 text-slate-800">
-                    Thông tin hiển thị & Liên hệ
+                    Thông tin liên hệ
                   </Title>
                   <Form
                     form={profileForm}
                     layout="vertical"
                     onFinish={(vals) => updateProfileMutation.mutate(vals)}
                     disabled={updateProfileMutation.isPending}
-                    requiredMark="optional"
+                    requiredMark={false}
                   >
                     <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="displayName"
-                          label="Tên hiển thị (Doanh nghiệp hoặc Cá nhân)"
+                          label="Tên hiển thị"
                           rules={[{ required: true, message: 'Vui lòng nhập tên hiển thị!' }]}
                         >
-                          <Input placeholder="Ví dụ: Công ty Headhunt ABC hoặc Nguyễn Văn A" />
+                          <Input placeholder="Ví dụ: Nguyễn Văn A hoặc Tuyển dụng ABC" />
                         </Form.Item>
                       </Col>
                       <Col xs={24} sm={12}>
@@ -231,8 +232,8 @@ export const AffiliateProfilePage: React.FC = () => {
                         </Form.Item>
                       </Col>
                       <Col xs={24} sm={12}>
-                        <Form.Item name="taxInformation" label="Mã số thuế / MST cá nhân">
-                          <Input placeholder="Mã số thuế để xuất chứng từ khấu trừ" />
+                        <Form.Item name="taxInformation" label="Mã số thuế (không bắt buộc)">
+                          <Input placeholder="Dùng khi cần xuất chứng từ khấu trừ" />
                         </Form.Item>
                       </Col>
                     </Row>
@@ -265,7 +266,7 @@ export const AffiliateProfilePage: React.FC = () => {
       label: (
         <span className="flex items-center gap-2">
           <BankOutlined />
-          Tài khoản nhận hoa hồng
+          Nhận tiền hoa hồng
         </span>
       ),
       children: (
@@ -279,7 +280,7 @@ export const AffiliateProfilePage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <CreditCardOutlined className="text-2xl text-amber-400" />
                       <span className="font-extrabold text-sm tracking-widest uppercase text-slate-200">
-                        HR CONNECT PAYOUT
+                        TÀI KHOẢN NHẬN TIỀN
                       </span>
                     </div>
                     <Tag
@@ -310,7 +311,7 @@ export const AffiliateProfilePage: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-[9px] text-slate-400 font-sans text-right">
-                        VND Payout
+                        Thanh toán VND
                       </div>
                     </div>
                   </div>
@@ -318,7 +319,7 @@ export const AffiliateProfilePage: React.FC = () => {
 
                 <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 leading-relaxed">
                   <SafetyCertificateOutlined className="mr-1 text-amber-600" />
-                  Hoa hồng từ các ứng viên trúng tuyển sẽ được quyết toán và chuyển khoản trực tiếp vào tài khoản này sau khi hết hạn bảo hành tuyển dụng.
+                  HR Connect chuyển hoa hồng vào tài khoản này sau khi ca tuyển dụng đủ điều kiện chi trả. Hãy kiểm tra kỹ tên chủ tài khoản và số tài khoản.
                 </div>
               </div>
             </Col>
@@ -330,7 +331,7 @@ export const AffiliateProfilePage: React.FC = () => {
                   Thông tin tài khoản ngân hàng
                 </Title>
                 <Text type="secondary" className="block mb-5 text-xs">
-                  Vui lòng cung cấp chính xác thông tin ngân hàng nội địa Việt Nam mang tên của bạn hoặc công ty.
+                  Tài khoản phải thuộc tên của bạn hoặc đơn vị đã đăng ký với HR Connect.
                 </Text>
 
                 {bankQuery.isLoading ? (
@@ -341,7 +342,7 @@ export const AffiliateProfilePage: React.FC = () => {
                     layout="vertical"
                     onFinish={(vals) => updateBankMutation.mutate(vals)}
                     disabled={updateBankMutation.isPending}
-                    requiredMark="optional"
+                    requiredMark={false}
                   >
                     <Form.Item
                       name="bankName"
@@ -416,7 +417,7 @@ export const AffiliateProfilePage: React.FC = () => {
       label: (
         <span className="flex items-center gap-2">
           <LockOutlined />
-          Bảo mật & Mật khẩu
+          Mật khẩu & bảo mật
         </span>
       ),
       children: (
@@ -434,7 +435,7 @@ export const AffiliateProfilePage: React.FC = () => {
               layout="vertical"
               onFinish={handleChangePassword}
               disabled={changingPassword}
-              requiredMark="optional"
+              requiredMark={false}
             >
               <Form.Item
                 name="currentPassword"
@@ -503,10 +504,9 @@ export const AffiliateProfilePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <PageHero
-        eyebrow="Tài khoản"
-        title="Hồ sơ đối tác & Thiết lập hoa hồng"
-        description="Quản lý thông tin định danh, tài khoản ngân hàng nhận hoa hồng giới thiệu và bảo mật tài khoản."
+      <AffiliatePageHeader
+        title="Hồ sơ & cài đặt"
+        description="Cập nhật thông tin liên hệ, tài khoản nhận hoa hồng và mật khẩu đăng nhập của bạn."
       />
 
       <Card bordered={false} className="rounded-2xl shadow-sm border border-slate-200">

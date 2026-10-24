@@ -16,6 +16,7 @@ import {
   Drawer,
   Form,
   Input,
+  Radio,
   Result,
   Segmented,
   Select,
@@ -35,6 +36,19 @@ import {
   SendOutlined,
   UserAddOutlined,
   ArrowLeftOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CalendarOutlined,
+  EnvironmentOutlined,
+  RightOutlined,
+  TeamOutlined,
+  TrophyOutlined,
+  CloseCircleOutlined,
+  ExclamationCircleOutlined,
+  FileDoneOutlined,
+  IdcardOutlined,
+  SafetyCertificateOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
@@ -44,9 +58,15 @@ import { jobsApi } from '@/services/api/jobsApi';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { AffiliateAttribution, AffiliateSubmission, LibraryCandidate } from '@/types/api/mf02';
-import { FilterPills, PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
+import { FilterPills, Initials, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
 import { ATTRIBUTION_STATUS, MAX_CV_MB, cvFileError, fileSize, submissionStatus } from './mf02Labels';
 import { useOpenSignedUrl } from './CandidatePages';
+import {
+  AffiliateFlowSteps,
+  AffiliatePageHeader,
+  AffiliateSectionHeading,
+  AffiliateStatCard,
+} from './affiliate/AffiliateUi';
 
 dayjs.extend(relativeTimePlugin);
 dayjs.locale('vi');
@@ -74,94 +94,128 @@ export const AffiliateHomePage: React.FC = () => {
     queryKey: [...keys.submissions, 'recent'],
     queryFn: async () => (await affiliateApi.submissions({ page: 1, pageSize: 5 })).items,
   });
+  const opportunities = useQuery({
+    queryKey: ['aff-jobs', 'dashboard'],
+    queryFn: async () => (await jobsApi.search({ page: 1, pageSize: 3 })).items,
+  });
   const verified = profile.data?.status === 'ACTIVE' || Boolean(profile.data?.verifiedAt);
   const p = perf.data;
-  const firstName = (profile.data?.displayName || 'bạn').trim().split(/\s+/).slice(-1)[0];
 
   const kpis = [
-    { label: 'Đã giới thiệu', value: p?.totalSubmissions, hint: 'Tổng lượt nộp' },
-    { label: 'Được chọn', value: p?.totalShortlisted, hint: 'Qua sàng lọc' },
-    { label: 'Phỏng vấn', value: p?.totalInterviews, hint: 'Có lịch phỏng vấn' },
-    { label: 'Đi làm', value: p?.totalPlacements, hint: `Tỉ lệ ${Math.round((p?.submissionToHireRate ?? 0) * 100)}%`, gold: true },
+    { label: 'Lượt giới thiệu', value: p?.totalSubmissions, hint: 'Tổng hồ sơ bạn đã gửi', icon: <SendOutlined />, color: '#5b3fd6', soft: '#f1efff' },
+    { label: 'Được doanh nghiệp chọn', value: p?.totalShortlisted, hint: 'Hồ sơ đã qua sàng lọc', icon: <CheckCircleOutlined />, color: '#087a55', soft: '#eafaf3' },
+    { label: 'Đã vào phỏng vấn', value: p?.totalInterviews, hint: 'Ứng viên có lịch phỏng vấn', icon: <TeamOutlined />, color: '#2563eb', soft: '#eef4ff' },
+    { label: 'Tuyển dụng thành công', value: p?.totalPlacements, hint: `Tỉ lệ thành công ${Math.round((p?.submissionToHireRate ?? 0) * 100)}%`, icon: <TrophyOutlined />, color: '#a9550a', soft: '#fff6e8' },
+  ];
+
+  const total = Math.max(1, p?.totalSubmissions ?? 0);
+  const chart = [
+    { label: 'Đã được ghi nhận', value: p?.totalShortlisted ?? 0, color: '#18a36f' },
+    { label: 'Đang xử lý', value: Math.max(0, (p?.totalSubmissions ?? 0) - (p?.totalShortlisted ?? 0)), color: '#6c4df6' },
+    { label: 'Không phù hợp', value: Math.max(0, total - (p?.totalShortlisted ?? 0) - Math.max(0, (p?.totalSubmissions ?? 0) - (p?.totalShortlisted ?? 0))), color: '#d8deea' },
   ];
 
   return (
-    <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-br from-violet-50 via-white to-amber-50 p-7 shadow-[0_0_0_1px_rgba(109,40,217,0.1)] sm:p-9">
-        <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-violet-200/50 blur-3xl" />
-        <div className="relative flex flex-wrap items-end justify-between gap-6">
-          <div className="max-w-xl">
-            <h1 className="m-0 text-[30px] font-extrabold leading-tight tracking-[-0.02em] text-slate-900">Chào {firstName},</h1>
-            <p className="m-0 mt-2 text-[15px] leading-relaxed text-slate-600">
-              {pending.isLoading
-                ? 'Đang tải...'
-                : pending.data
-                  ? `${pending.data} lượt giới thiệu đang chờ ứng viên xác nhận qua email.`
-                  : 'Giới thiệu ứng viên phù hợp; bạn được ghi nhận là người giới thiệu khi ứng viên đồng ý.'}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="primary" size="large" icon={<UserAddOutlined />} className="!rounded-full !px-6" onClick={() => navigate('/affiliate/submit-candidate')} disabled={!verified}>
-              Giới thiệu ứng viên
-            </Button>
-            <Button size="large" className="!rounded-full !px-6" onClick={() => navigate('/affiliate/jobs')}>
-              Xem việc làm
-            </Button>
-          </div>
-        </div>
-      </section>
+    <div className="affiliate-dashboard space-y-5">
+      <AffiliatePageHeader
+        title="Tổng quan"
+        description="Chào mừng bạn trở lại! Cùng tạo thêm nhiều cơ hội việc làm chất lượng nhé."
+        actions={
+          <Button className="affiliate-month-button" icon={<CalendarOutlined />}>Tháng {dayjs().format('M/YYYY')}</Button>
+        }
+      />
 
       {profile.data && !verified && (
-        <Alert type="warning" showIcon message="Tài khoản Affiliate chưa được duyệt" description="Bạn chỉ giới thiệu được ứng viên sau khi HR Connect duyệt hồ sơ đăng ký." />
+        <Alert type="warning" showIcon message="Hồ sơ cộng tác viên đang chờ duyệt" description="Bạn có thể xem cơ hội tuyển dụng ngay. Chức năng giới thiệu ứng viên sẽ mở sau khi HR Connect duyệt hồ sơ." />
       )}
 
-      <div className="flex items-center justify-between">
-        <h2 className="m-0 text-base font-bold text-slate-900">Hiệu suất tuyển dụng</h2>
-        <Button type="link" className="!px-0" onClick={() => navigate('/affiliate/performance')}>
-          Xem chi tiết hiệu suất & xếp hạng →
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="affiliate-kpi-grid">
         {kpis.map((k) => (
-          <div key={k.label} className="admin-surface p-5">
-            <span className="block text-[13px] font-medium text-slate-600">{k.label}</span>
-            <span className={`mt-1 block text-[28px] font-bold tabular-nums ${k.gold ? 'text-[color:var(--affiliate-gold)]' : 'text-slate-900'}`}>
-              {perf.isLoading ? <Skeleton.Input active size="small" /> : k.value ?? 0}
-            </span>
-            <span className="block text-xs text-slate-500">{k.hint}</span>
-          </div>
+          <AffiliateStatCard
+            key={k.label}
+            label={k.label}
+            value={perf.isLoading ? <Skeleton.Input active size="small" /> : k.value ?? 0}
+            hint={k.hint}
+            icon={k.icon}
+            color={k.color}
+            softColor={k.soft}
+          />
         ))}
       </div>
 
-      <Surface className="p-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="m-0 text-base font-bold text-slate-900">Lượt giới thiệu gần đây</h2>
-          <Button type="link" className="!px-0" onClick={() => navigate('/affiliate/submissions')}>
-            Xem tất cả
-          </Button>
+      {pending.data ? (
+        <section className="affiliate-action-panel flex flex-wrap items-center justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="affiliate-stat-card__icon !bg-white !text-amber-700"><ClockCircleOutlined /></span>
+            <div>
+              <h2 className="m-0 text-[16px] font-bold text-slate-900">Việc cần bạn theo dõi</h2>
+              <p className="m-0 mt-1 text-sm leading-relaxed text-slate-600">Có {pending.data} lượt giới thiệu đang chờ ứng viên xác nhận qua email.</p>
+            </div>
+          </div>
+          <Button onClick={() => navigate('/affiliate/submissions?status=PENDING_CONSENT')}>Xem và nhắc xác nhận</Button>
+        </section>
+      ) : null}
+
+      <div className="affiliate-dashboard-grid">
+        <Surface className="affiliate-task-card p-5">
+          <AffiliateSectionHeading
+            title="Việc cần bạn xử lý"
+            description="Các hồ sơ cần chú ý để không bỏ lỡ thời hạn."
+            action={<Button type="link" className="!px-0" onClick={() => navigate('/affiliate/submissions')}>Xem tất cả <RightOutlined /></Button>}
+          />
+          {recent.isLoading ? <Skeleton active paragraph={{ rows: 4 }} /> : (
+            <ul className="affiliate-task-list">
+              {(recent.data ?? []).slice(0, 4).map((s, index) => {
+                const st = submissionStatus(s.status);
+                return (
+                  <li key={s.submissionId}>
+                    <span className={`affiliate-task-icon tone-${index % 4}`}><FilePdfOutlined /></span>
+                    <button type="button" onClick={() => navigate(`/affiliate/submissions/${s.submissionId}`)}>
+                      <strong>{s.candidateName}</strong>
+                      <small>Vị trí: {s.jobTitle}</small>
+                    </button>
+                    <span className="affiliate-task-meta"><StatusDot tone={st.tone}>{st.label}</StatusDot><small>{dayjs(s.submittedAt).fromNow()}</small></span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Surface>
+
+        <Surface className="affiliate-progress-card p-5">
+          <AffiliateSectionHeading title="Tiến độ giới thiệu trong tháng" />
+          <div className="affiliate-progress-content">
+            <div className="affiliate-donut" style={{ '--donut-value': `${Math.min(100, Math.round(((p?.totalShortlisted ?? 0) / total) * 100))}%` } as React.CSSProperties}>
+              <span><strong>{p?.totalSubmissions ?? 0}</strong><small>lượt giới thiệu</small></span>
+            </div>
+            <ul>
+              {chart.map((item) => <li key={item.label}><i style={{ background: item.color }} /><span>{item.label}</span><strong>{item.value}</strong></li>)}
+            </ul>
+          </div>
+          <div className="affiliate-thankyou"><CheckCircleOutlined /><span><strong>Cảm ơn bạn đã đồng hành!</strong><small>Mỗi lượt giới thiệu là một cơ hội thay đổi sự nghiệp.</small></span></div>
+        </Surface>
+      </div>
+
+      <section>
+        <AffiliateSectionHeading
+          title="Cơ hội tuyển dụng nổi bật"
+          description="Những vị trí đang ưu tiên nhận ứng viên từ cộng tác viên."
+          action={<Button type="link" className="!px-0" onClick={() => navigate('/affiliate/jobs')}>Xem tất cả <RightOutlined /></Button>}
+        />
+        <div className="affiliate-opportunity-grid">
+          {(opportunities.data ?? []).map((job) => (
+            <article key={job.jobId} className="affiliate-opportunity-card">
+              <div className="affiliate-opportunity-card__head"><span><UserAddOutlined /></span><button type="button" aria-label={`Lưu ${job.title}`}>♡</button></div>
+              <h3>{job.title}</h3>
+              <p>{job.companyName || 'Doanh nghiệp tuyển dụng'}</p>
+              <div className="affiliate-opportunity-meta"><span><EnvironmentOutlined /> {job.location || 'Toàn quốc'}</span></div>
+              <strong>Hoa hồng theo chính sách</strong>
+              <Button type="primary" block onClick={() => navigate(`/affiliate/submit-candidate?job=${job.jobId}`)} disabled={!verified}>Giới thiệu ngay <RightOutlined /></Button>
+            </article>
+          ))}
+          {opportunities.isLoading && [0, 1, 2].map((item) => <Surface key={item} className="p-5"><Skeleton active /></Surface>)}
         </div>
-        {recent.isLoading ? (
-          <Skeleton active paragraph={{ rows: 3 }} />
-        ) : (recent.data ?? []).length === 0 ? (
-          <p className="m-0 text-sm text-slate-600">Chưa có lượt giới thiệu nào.</p>
-        ) : (
-          <ul className="m-0 list-none space-y-1 p-0">
-            {recent.data!.map((s) => {
-              const st = submissionStatus(s.status);
-              return (
-                <li key={s.submissionId} className="flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-slate-50">
-                  <span className="min-w-0 flex-1">
-                    <PersonCell name={s.candidateName} secondary={s.jobTitle} size={34} />
-                  </span>
-                  <StatusDot tone={st.tone}>{st.label}</StatusDot>
-                  <span className="hidden w-24 text-right text-xs text-slate-500 sm:block">{dayjs(s.submittedAt).fromNow()}</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Surface>
+      </section>
     </div>
   );
 };
@@ -179,6 +233,7 @@ export const AffiliateSubmitPage: React.FC = () => {
   const [fileError, setFileError] = useState<string | null>(null);
   const [presetCvRejected, setPresetCvRejected] = useState(false);
   const [librarySearch, setLibrarySearch] = useState('');
+  const [jobSearch, setJobSearch] = useState('');
   const mode = Form.useWatch('mode', form) ?? 'new';
   const candidateId = Form.useWatch('candidateId', form);
   const jobId = Form.useWatch('jobId', form);
@@ -219,6 +274,12 @@ export const AffiliateSubmitPage: React.FC = () => {
   }, [searchParams, libraryDetail.data, form]);
 
   const selectedJob = useMemo(() => jobs.data?.items.find((j) => j.jobId === jobId), [jobs.data, jobId]);
+  const visibleJobs = useMemo(() => {
+    const query = jobSearch.trim().toLocaleLowerCase('vi');
+    return (jobs.data?.items ?? [])
+      .filter((job) => !query || `${job.title} ${job.companyName ?? ''} ${job.location ?? ''}`.toLocaleLowerCase('vi').includes(query))
+      .slice(0, 5);
+  }, [jobs.data, jobSearch]);
 
   // A preset job the affiliate cannot refer into (service-type rules) is not in the list: say so.
   const [presetRejected, setPresetRejected] = useState(false);
@@ -250,8 +311,8 @@ export const AffiliateSubmitPage: React.FC = () => {
         <Result
           status="success"
           icon={<MailOutlined className="!text-[color:var(--console-accent)]" />}
-          title={d.emailDeliveryStatus === 'FAILED' ? 'Đã lưu hồ sơ, đang chờ gửi lại email' : 'Đã gửi hồ sơ và đang chờ Candidate xác nhận'}
-          subTitle={`Submission đang ở trạng thái chờ xác nhận${d.consentExpiresAt ? ` đến ${fmt(d.consentExpiresAt)}` : ''}. Hồ sơ ứng tuyển, ghi nhận nguồn và chấm điểm AI chỉ bắt đầu khi ứng viên đồng ý.`}
+          title={d.emailDeliveryStatus === 'FAILED' ? 'Đã lưu hồ sơ, cần gửi lại email xác nhận' : 'Đã gửi yêu cầu xác nhận cho ứng viên'}
+          subTitle={`Lượt giới thiệu đang chờ ứng viên xác nhận${d.consentExpiresAt ? ` đến ${fmt(d.consentExpiresAt)}` : ''}. Quy trình ứng tuyển và quyền ghi nhận của bạn sẽ bắt đầu sau khi ứng viên đồng ý.`}
           extra={[
             <Button key="list" type="primary" onClick={() => navigate('/affiliate/submissions')}>
               Xem lượt giới thiệu
@@ -282,12 +343,12 @@ export const AffiliateSubmitPage: React.FC = () => {
   }
 
   return (
-    <div>
-      <PageHero
-        eyebrow="Giới thiệu"
+    <div className="affiliate-submit-page">
+      <AffiliatePageHeader
         title="Giới thiệu ứng viên"
-        description="Ứng viên sẽ nhận yêu cầu xác nhận. Hồ sơ ứng tuyển, ghi nhận nguồn và chấm điểm AI chỉ bắt đầu sau khi ứng viên đồng ý."
+        description="Chọn vị trí phù hợp, cung cấp thông tin ứng viên và kiểm tra lại trước khi gửi. Ứng viên luôn được yêu cầu xác nhận qua email."
       />
+      <AffiliateFlowSteps active={jobId ? (mode === 'library' ? (candidateId ? 3 : 2) : 2) : 1} />
       <Form<SubmitForm>
         form={form}
         layout="vertical"
@@ -311,8 +372,8 @@ export const AffiliateSubmitPage: React.FC = () => {
                 showIcon
                 closable
                 onClose={() => setPresetRejected(false)}
-                message="Tin bạn chọn không nhận giới thiệu từ Affiliate"
-                description="Loại dịch vụ của tin này chỉ nhận ứng viên tự nộp. Hãy chọn một tin trong danh sách bên dưới."
+                message="Cơ hội này không nhận hồ sơ từ cộng tác viên"
+                description="Vị trí này chỉ nhận ứng viên tự ứng tuyển. Vui lòng chọn một cơ hội khác trong danh sách."
               />
             )}
             {presetCvRejected && (
@@ -321,33 +382,52 @@ export const AffiliateSubmitPage: React.FC = () => {
                 showIcon
                 closable
                 onClose={() => setPresetCvRejected(false)}
-                message="CV đã chọn không còn được phép tái sử dụng"
-                description="Hãy chọn một CV ACTIVE khác trong kho của Candidate."
+                message="CV đã chọn hiện không thể sử dụng"
+                description="Vui lòng chọn một CV đang hoạt động khác trong kho ứng viên."
               />
             )}
 
             <Surface className="p-6">
-              <h2 className="m-0 mb-4 text-base font-semibold text-slate-900">1. Việc làm</h2>
-              <Form.Item name="jobId" label="Tin tuyển dụng" rules={[{ required: true, message: 'Chọn tin tuyển dụng.' }]} className="mb-0">
-                <Select
-                  size="large"
-                  showSearch
-                  optionFilterProp="label"
-                  loading={jobs.isLoading}
-                  placeholder="Chọn tin bạn muốn giới thiệu ứng viên vào"
-                  options={(jobs.data?.items ?? []).map((j) => ({ value: j.jobId, label: `${j.title} — ${j.companyName ?? ''}` }))}
-                />
+              <h2 className="m-0 mb-1 text-base font-semibold text-slate-900">1. Chọn cơ hội tuyển dụng</h2>
+              <p className="mb-4 mt-0 text-[13px] text-slate-600">Chọn vị trí phù hợp nhất với kinh nghiệm của ứng viên.</p>
+              <Input
+                size="large"
+                allowClear
+                prefix={<SearchOutlined />}
+                value={jobSearch}
+                onChange={(event) => setJobSearch(event.target.value)}
+                placeholder="Nhập tên vị trí, kỹ năng hoặc doanh nghiệp"
+                aria-label="Tìm vị trí tuyển dụng"
+                className="mb-3"
+              />
+              <Form.Item name="jobId" rules={[{ required: true, message: 'Chọn vị trí tuyển dụng.' }]} className="mb-0">
+                <Radio.Group className="affiliate-job-picker" aria-label="Danh sách vị trí tuyển dụng">
+                  {visibleJobs.map((job) => (
+                    <Radio key={job.jobId} value={job.jobId} className="affiliate-job-option">
+                      <span className="affiliate-job-option__copy">
+                        <strong>{job.title}</strong>
+                        <small>{job.companyName || 'Doanh nghiệp tuyển dụng'} · {job.location || 'Toàn quốc'}</small>
+                      </span>
+                      <span className="affiliate-job-option__state">Đang tuyển</span>
+                    </Radio>
+                  ))}
+                  {jobs.isLoading && <Skeleton active paragraph={{ rows: 3 }} />}
+                  {!jobs.isLoading && visibleJobs.length === 0 && <div className="affiliate-job-empty">Không tìm thấy vị trí phù hợp.</div>}
+                </Radio.Group>
               </Form.Item>
             </Surface>
 
             <Surface className="p-6">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="m-0 text-base font-semibold text-slate-900">2. Ứng viên</h2>
+                <div>
+                  <h2 className="m-0 text-base font-semibold text-slate-900">2. Thông tin ứng viên</h2>
+                  <p className="mb-0 mt-1 text-[13px] text-slate-600">Thêm người mới hoặc chọn hồ sơ đã có trong kho của bạn.</p>
+                </div>
                 <Form.Item name="mode" noStyle>
                   <Segmented
                     options={[
                       { value: 'new', label: 'Ứng viên mới' },
-                      { value: 'library', label: 'Từ kho của tôi' },
+                      { value: 'library', label: 'Chọn từ kho' },
                     ]}
                   />
                 </Form.Item>
@@ -361,17 +441,17 @@ export const AffiliateSubmitPage: React.FC = () => {
                   <div className="grid gap-x-4 sm:grid-cols-2">
                     <Form.Item
                       name="email"
-                      label="Email"
-                      extra="Bắt buộc: ứng viên xác nhận qua email này."
+                      label="Email của ứng viên"
+                      extra="Hệ thống gửi đường dẫn xác nhận tới email này."
                       rules={[{ required: true, message: 'Nhập email ứng viên.' }, { type: 'email', message: 'Email không hợp lệ.' }]}
                     >
                       <Input size="large" />
                     </Form.Item>
-                    <Form.Item name="phone" label="Điện thoại" rules={[{ pattern: /^[0-9+() \-.]{8,20}$/, message: 'Số điện thoại không hợp lệ.' }]}>
+                    <Form.Item name="phone" label="Số điện thoại của ứng viên" rules={[{ pattern: /^[0-9+() \-.]{8,20}$/, message: 'Số điện thoại không hợp lệ.' }]}>
                       <Input size="large" />
                     </Form.Item>
                   </div>
-                  <div className="mb-1 text-sm text-slate-900">CV (PDF)</div>
+                  <div className="mb-1 text-sm font-semibold text-slate-700">CV ứng viên (PDF)</div>
                   <Upload.Dragger
                     accept="application/pdf,.pdf"
                     multiple={false}
@@ -394,7 +474,8 @@ export const AffiliateSubmitPage: React.FC = () => {
                         <p className="ant-upload-drag-icon !mb-1">
                           <InboxOutlined className="!text-[color:var(--console-accent)]" />
                         </p>
-                        <p className="ant-upload-hint">PDF, tối đa {MAX_CV_MB}MB.</p>
+                        <p className="ant-upload-text !mb-1 !text-sm !font-semibold">Kéo thả CV vào đây hoặc bấm để chọn file</p>
+                        <p className="ant-upload-hint">Chỉ nhận PDF, dung lượng tối đa {MAX_CV_MB}MB.</p>
                       </>
                     )}
                   </Upload.Dragger>
@@ -410,7 +491,7 @@ export const AffiliateSubmitPage: React.FC = () => {
                       onSearch={setLibrarySearch}
                       loading={library.isFetching}
                       placeholder="Tìm theo tên, email hoặc số điện thoại"
-                      notFoundContent={library.isFetching ? 'Đang tìm...' : 'Kho trống. Giới thiệu “Ứng viên mới” để thêm vào kho.'}
+                      notFoundContent={library.isFetching ? 'Đang tìm...' : 'Kho chưa có ứng viên phù hợp. Chọn “Ứng viên mới” để thêm hồ sơ.'}
                       options={(library.data?.items ?? []).map((c) => ({ value: c.candidateId, label: `${c.fullName}${c.email ? ` · ${c.email}` : ''}` }))}
                       onChange={() => form.setFieldValue('cvId', undefined)}
                     />
@@ -425,7 +506,7 @@ export const AffiliateSubmitPage: React.FC = () => {
                           placeholder="Chọn CV"
                           options={(libraryDetail.data?.cvs ?? []).map((cv) => ({
                             value: cv.cvId,
-                            label: `${cv.title || cv.fileName} · ${cv.status}`,
+                            label: `${cv.title || cv.fileName}${cv.status !== 'ACTIVE' ? ' · Không thể sử dụng' : ''}`,
                             disabled: cv.status !== 'ACTIVE',
                           }))}
                         />
@@ -437,9 +518,10 @@ export const AffiliateSubmitPage: React.FC = () => {
             </Surface>
 
             <Surface className="p-6">
-              <h2 className="m-0 mb-4 text-base font-semibold text-slate-900">3. Ghi chú cho nhà tuyển dụng</h2>
+              <h2 className="m-0 mb-1 text-base font-semibold text-slate-900">3. Thông tin bổ sung</h2>
+              <p className="mb-4 mt-0 text-[13px] text-slate-600">Không bắt buộc. Nêu ngắn gọn điểm mạnh giúp doanh nghiệp hiểu ứng viên nhanh hơn.</p>
               <Form.Item name="note" className="mb-0" rules={[{ max: 2000, message: 'Tối đa 2000 ký tự.' }]}>
-                <Input.TextArea rows={3} showCount maxLength={2000} placeholder="Điểm mạnh của ứng viên, mức lương mong muốn, thời gian có thể đi làm…" />
+                <Input.TextArea rows={3} showCount maxLength={2000} placeholder="Ví dụ: 3 năm kinh nghiệm Java, có thể nhận việc sau 30 ngày, mong muốn làm việc tại Hà Nội…" />
               </Form.Item>
             </Surface>
           </div>
@@ -454,16 +536,16 @@ export const AffiliateSubmitPage: React.FC = () => {
                   <div className="text-[13px] text-slate-600">{selectedJob.location}</div>
                 </div>
               ) : (
-                <p className="m-0 mt-2 text-sm text-slate-500">Chưa chọn tin.</p>
+                <p className="m-0 mt-2 text-sm text-slate-500">Chưa chọn vị trí tuyển dụng.</p>
               )}
               <ul className="m-0 mt-4 space-y-1.5 pl-4 text-[13px] text-slate-600">
-                <li>Candidate nhận yêu cầu xác nhận theo thời hạn backend trả về.</li>
-                <li>Bạn được ghi nhận nguồn khi ứng viên đồng ý.</li>
-                <li>Ứng viên đã có hồ sơ trong tin này sẽ bị chặn trùng.</li>
+                <li>Ứng viên sẽ nhận email để đồng ý cho bạn gửi hồ sơ.</li>
+                <li>Quyền ghi nhận được tạo ngay sau khi ứng viên xác nhận.</li>
+                <li>Hệ thống tự cảnh báo nếu ứng viên đã có hồ sơ cho vị trí này.</li>
               </ul>
             </Surface>
             <Button type="primary" size="large" block htmlType="submit" icon={<SendOutlined />} loading={submit.isPending}>
-              Gửi giới thiệu
+              Gửi yêu cầu xác nhận
             </Button>
           </aside>
         </div>
@@ -483,10 +565,82 @@ const REFERRAL_PROGRESS: Record<string, string> = {
   CV_REVIEW: 'Đang xem xét CV',
   SHORTLISTED: 'Đã được chọn',
   INTERVIEW: 'Đang phỏng vấn',
-  OFFER: 'Đang ở bước offer',
+  OFFER: 'Đang chuẩn bị đề nghị nhận việc',
   BACKUP: 'Dự phòng',
   PLACED: 'Đã đi làm',
   CLOSED: 'Đã kết thúc',
+};
+
+const submissionToneClass = (tone: string) => `is-${tone}`;
+
+const submissionStatusIcon = (tone: string) => {
+  if (tone === 'success') return <CheckCircleOutlined />;
+  if (tone === 'warning') return <ClockCircleOutlined />;
+  if (tone === 'danger') return <CloseCircleOutlined />;
+  if (tone === 'info') return <ExclamationCircleOutlined />;
+  return <InboxOutlined />;
+};
+
+const SubmissionStatusBadge: React.FC<{ status: string; className?: string }> = ({ status, className = '' }) => {
+  const config = submissionStatus(status);
+  return (
+    <span className={`affiliate-submission-badge ${submissionToneClass(config.tone)} ${className}`} role="status">
+      {submissionStatusIcon(config.tone)}
+      <span>{config.label}</span>
+    </span>
+  );
+};
+
+const referralProgressPresentation = (progress: string) => {
+  const normalized = progress.toLowerCase();
+  if (normalized.includes('đi làm')) return { tone: 'success', icon: <TrophyOutlined /> };
+  if (normalized.includes('phỏng vấn')) return { tone: 'info', icon: <TeamOutlined /> };
+  if (normalized.includes('được chọn')) return { tone: 'violet', icon: <CheckCircleOutlined /> };
+  if (normalized.includes('offer') || normalized.includes('đề nghị')) return { tone: 'warning', icon: <FileDoneOutlined /> };
+  return { tone: 'neutral', icon: <ClockCircleOutlined /> };
+};
+
+const ReferralProgressState: React.FC<{ progress: string }> = ({ progress }) => {
+  const presentation = referralProgressPresentation(progress);
+  return (
+    <div className={`affiliate-referral-state is-${presentation.tone}`} role="status">
+      <span className="affiliate-referral-state__icon" aria-hidden>{presentation.icon}</span>
+      <span className="affiliate-referral-state__copy">
+        <strong>{progress}</strong>
+        <small>Ứng viên đã đồng ý cho giới thiệu</small>
+      </span>
+    </div>
+  );
+};
+
+const submissionListCaption = (status: string) => {
+  const captions: Record<string, string> = {
+    RECEIVED: 'HR Connect đang kiểm tra hồ sơ',
+    PENDING_CONSENT: 'Chờ ứng viên phản hồi email',
+    PENDING_IDENTITY_REVIEW: 'Đang kiểm tra thông tin ứng viên',
+    ACCEPTED: 'Ứng viên đã đồng ý cho giới thiệu',
+    CONSENT_REJECTED: 'Ứng viên không đồng ý giới thiệu',
+    CONSENT_EXPIRED: 'Không phản hồi trong thời hạn',
+    BLOCKED_DUPLICATE: 'Đã có hồ sơ cho vị trí này',
+    BLOCKED_CLIENT_OWNED: 'Doanh nghiệp đã tiếp nhận trước đó',
+    REJECTED_INVALID: 'Cần kiểm tra lại thông tin đã gửi',
+    JOB_UNAVAILABLE: 'Vị trí đã đóng hoặc ngừng nhận hồ sơ',
+    CANCELLED: 'Lượt giới thiệu đã kết thúc',
+  };
+  return captions[status] ?? 'HR Connect đang cập nhật';
+};
+
+const SubmissionListState: React.FC<{ status: string }> = ({ status }) => {
+  const config = submissionStatus(status);
+  return (
+    <div className={`affiliate-referral-state ${submissionToneClass(config.tone)}`} role="status">
+      <span className="affiliate-referral-state__icon" aria-hidden>{submissionStatusIcon(config.tone)}</span>
+      <span className="affiliate-referral-state__copy">
+        <strong>{config.label}</strong>
+        <small>{submissionListCaption(status)}</small>
+      </span>
+    </div>
+  );
 };
 
 export const AffiliateSubmissionsPage: React.FC = () => {
@@ -520,40 +674,38 @@ export const AffiliateSubmissionsPage: React.FC = () => {
   };
 
   const columns: ColumnsType<AffiliateSubmission> = [
-    { title: 'Ứng viên', key: 'c', render: (_, r) => <PersonCell name={r.candidateName} /> },
-    { title: 'Việc làm', dataIndex: 'jobTitle', render: (v: string) => <span className="font-medium text-slate-900">{v}</span> },
+    { title: 'Ứng viên', key: 'c', width: 160, render: (_, r) => <PersonCell name={r.candidateName} /> },
+    { title: 'Việc làm', dataIndex: 'jobTitle', width: 230, ellipsis: true, render: (v: string) => <Tooltip title={v}><span className="font-medium text-slate-900">{v}</span></Tooltip> },
     {
       title: 'Trạng thái',
       key: 's',
-      width: 230,
+      width: 210,
       render: (_, r) => {
         const st = submissionStatus(r.status);
         const prog = r.status === 'ACCEPTED' ? progressOf(r.submissionId) : undefined;
         return (
-          <div>
-            <Tooltip title={st.hint}>
-              <span>
-                <StatusDot tone={st.tone}>{st.label}</StatusDot>
-              </span>
-            </Tooltip>
-            {r.status === 'PENDING_CONSENT' && r.consentExpiresAt && (
-              <div className="mt-0.5 text-xs text-slate-500">Hết hạn {dayjs(r.consentExpiresAt).fromNow()}</div>
+          <div className="affiliate-submission-status">
+            {prog ? (
+              <Tooltip title={`${st.label}. ${st.hint}`}><span><ReferralProgressState progress={prog} /></span></Tooltip>
+            ) : (
+              <Tooltip title={st.hint}><span><SubmissionListState status={r.status} /></span></Tooltip>
             )}
-            {prog && <div className="mt-0.5 text-xs text-slate-600">Tiến độ: {prog}</div>}
-            {r.reason && <div className="mt-0.5 text-xs text-slate-500">{r.reason}</div>}
+            {r.status === 'PENDING_CONSENT' && r.consentExpiresAt && (
+              <div className="affiliate-submission-status__meta"><ClockCircleOutlined /> Hết hạn {dayjs(r.consentExpiresAt).fromNow()}</div>
+            )}
           </div>
         );
       },
     },
-    { title: 'Gửi lúc', dataIndex: 'submittedAt', width: 150, render: (v: string) => <span className="tabular-nums">{fmt(v)}</span> },
+    { title: 'Thời gian gửi', dataIndex: 'submittedAt', width: 130, render: (v: string) => <span className="tabular-nums">{fmt(v)}</span> },
     {
       title: <span className="sr-only">Thao tác</span>,
       key: 'a',
-      width: 235,
+      width: 165,
       render: (_, r) => (
-        <div className="flex gap-2">
-          <Button size="small" onClick={() => navigate(`/affiliate/submissions/${r.submissionId}`)}>
-            Xem
+        <div className="flex flex-wrap gap-2">
+          <Button className="affiliate-view-detail-button" size="small" icon={<EyeOutlined />} onClick={() => navigate(`/affiliate/submissions/${r.submissionId}`)}>
+            Xem chi tiết
           </Button>
           {r.status === 'PENDING_CONSENT' && (
             <Button
@@ -561,7 +713,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               icon={<MailOutlined />}
               onClick={() => navigate(`/affiliate/submissions/${r.submissionId}`)}
             >
-              Gửi lại
+              Nhắc xác nhận
             </Button>
           )}
         </div>
@@ -582,14 +734,13 @@ export const AffiliateSubmissionsPage: React.FC = () => {
   const setStatus = (value: string) => updateFilters({ status: value === 'all' ? undefined : value });
 
   return (
-    <div>
-      <PageHero
-        eyebrow="Giới thiệu"
+    <div className="affiliate-submissions-page">
+      <AffiliatePageHeader
         title="Lượt giới thiệu"
-        description="Mọi ứng viên bạn đã giới thiệu, trạng thái xác nhận và tiến độ tuyển dụng sau khi ứng viên đồng ý."
+        description="Theo dõi từ lúc gửi yêu cầu xác nhận đến khi ứng viên hoàn tất quy trình tuyển dụng."
         actions={
           <Button size="large" icon={<ReloadOutlined />} onClick={() => list.refetch()}>
-            Tải lại
+            Cập nhật dữ liệu
           </Button>
         }
       />
@@ -608,7 +759,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               showSearch
               optionFilterProp="label"
               loading={jobs.isLoading}
-              placeholder="Tất cả việc làm"
+              placeholder="Tất cả vị trí tuyển dụng"
               value={jobId}
               className="min-w-64"
               onChange={(value) => updateFilters({ jobId: value })}
@@ -635,7 +786,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
         ) : (
           <Table<AffiliateSubmission>
             className="admin-soft-table"
-            scroll={{ x: 'max-content' }}
+            scroll={{ x: 890 }}
             rowKey="submissionId"
             columns={columns}
             dataSource={list.data?.items ?? []}
@@ -647,7 +798,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               showSizeChanger: false,
               onChange: (nextPage) => updateFilters({ page: String(nextPage) }),
             }}
-            locale={{ emptyText: <div className="py-10 text-slate-600">Chưa có lượt giới thiệu nào.</div> }}
+            locale={{ emptyText: <div className="py-10 text-slate-600">Chưa có lượt giới thiệu phù hợp với bộ lọc.</div> }}
           />
         )}
       </Surface>
@@ -723,44 +874,108 @@ export const AffiliateSubmissionDetailPage: React.FC = () => {
 
   const submission = detail.data;
   const status = submissionStatus(submission.status);
+  const reasonIsActionable = ['CONSENT_REJECTED', 'BLOCKED_DUPLICATE', 'BLOCKED_CLIENT_OWNED', 'REJECTED_INVALID', 'JOB_UNAVAILABLE', 'CANCELLED'].includes(submission.status);
+  const consentResolved = !['RECEIVED', 'PENDING_CONSENT', 'PENDING_IDENTITY_REVIEW'].includes(submission.status);
+  const detailMilestones = [
+    { label: 'Đã gửi yêu cầu', caption: fmt(submission.submittedAt), complete: true },
+    {
+      label: consentResolved ? 'Đã có phản hồi' : 'Chờ ứng viên phản hồi',
+      caption: submission.consentRespondedAt ? fmt(submission.consentRespondedAt) : `Hạn ${fmt(submission.consentExpiresAt)}`,
+      complete: consentResolved,
+      current: !consentResolved,
+    },
+    {
+      label: submission.applicationId ? 'Đã tạo hồ sơ ứng tuyển' : 'Chưa tạo hồ sơ ứng tuyển',
+      caption: submission.attributionId ? 'Quyền giới thiệu đã được ghi nhận' : 'Thực hiện sau khi ứng viên đồng ý',
+      complete: Boolean(submission.applicationId && submission.attributionId),
+      current: consentResolved && !submission.applicationId,
+    },
+  ];
   return (
-    <div className="space-y-5">
-      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/affiliate/submissions')}>
+    <div className="affiliate-submission-detail">
+      <Button className="affiliate-submission-detail__back" icon={<ArrowLeftOutlined />} onClick={() => navigate('/affiliate/submissions')}>
         Lượt giới thiệu
       </Button>
-      <PageHero
-        eyebrow="Chi tiết lượt giới thiệu"
-        title={submission.candidateName}
-        description={`${submission.jobTitle} — ${submission.companyName}`}
-        actions={<StatusDot tone={status.tone}>{status.label}</StatusDot>}
-      />
-      <Surface className="p-6">
-        <dl className="grid grid-cols-1 gap-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            ['Email Candidate', submission.candidateEmail || '—'],
-            ['Số điện thoại', submission.candidatePhone || '—'],
-            ['CV', submission.cvTitle || submission.cvFileName || '—'],
-            ['Gửi hồ sơ lúc', fmt(submission.submittedAt)],
-            ['Gửi email lúc', fmt(submission.consentEmailSentAt)],
-            ['Hạn xác nhận', fmt(submission.consentExpiresAt)],
-            ['Candidate phản hồi lúc', fmt(submission.consentRespondedAt)],
-            ['Application', submission.applicationId || 'Chưa tạo'],
-            ['Ghi nhận nguồn', submission.attributionId ? 'Đã ghi nhận' : 'Chưa có'],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <dt className="text-slate-500">{label}</dt>
-              <dd className="m-0 mt-1 break-words font-medium text-slate-900">{value}</dd>
-            </div>
+      <section className="affiliate-submission-detail__hero">
+        <div className="affiliate-submission-detail__identity">
+          <div className="affiliate-submission-detail__avatar" aria-hidden><UserOutlined /></div>
+          <div>
+            <div className="affiliate-submission-detail__eyebrow">Chi tiết lượt giới thiệu</div>
+            <h1>{submission.candidateName}</h1>
+            <div className="affiliate-submission-detail__job"><IdcardOutlined /> {submission.jobTitle}</div>
+            <div className="affiliate-submission-detail__company">{submission.companyName}</div>
+          </div>
+        </div>
+        <div className="affiliate-submission-detail__current">
+          <span>Trạng thái hiện tại</span>
+          <SubmissionStatusBadge status={submission.status} />
+          <p>{status.hint}</p>
+        </div>
+      </section>
+
+      <Surface className="affiliate-submission-journey">
+        <div className="affiliate-submission-journey__heading">
+          <div>
+            <span>TIẾN TRÌNH</span>
+            <h2>Hồ sơ đang ở đâu?</h2>
+          </div>
+          <SafetyCertificateOutlined aria-hidden />
+        </div>
+        <ol>
+          {detailMilestones.map((milestone, index) => (
+            <li key={milestone.label} className={`${milestone.complete ? 'is-complete' : ''} ${milestone.current ? 'is-current' : ''}`}>
+              <div className="affiliate-submission-journey__marker">{milestone.complete ? <CheckCircleOutlined /> : index + 1}</div>
+              <div>
+                <strong>{milestone.label}</strong>
+                <small>{milestone.caption}</small>
+              </div>
+            </li>
           ))}
+        </ol>
+      </Surface>
+
+      <div className="affiliate-submission-detail__grid">
+        <Surface className="affiliate-detail-card">
+          <div className="affiliate-detail-card__heading"><UserOutlined /><h2>Thông tin ứng viên</h2></div>
+          <dl>
+            <div><dt>Email</dt><dd>{submission.candidateEmail || 'Chưa cung cấp'}</dd></div>
+            <div><dt>Số điện thoại</dt><dd>{submission.candidatePhone || 'Chưa cung cấp'}</dd></div>
+          </dl>
+        </Surface>
+        <Surface className="affiliate-detail-card">
+          <div className="affiliate-detail-card__heading is-violet"><FileDoneOutlined /><h2>Hồ sơ đã gửi</h2></div>
+          <dl>
+            <div><dt>CV ứng tuyển</dt><dd>{submission.cvTitle || submission.cvFileName || 'Chưa có tên CV'}</dd></div>
+            <div><dt>Thời gian gửi</dt><dd>{fmt(submission.submittedAt)}</dd></div>
+          </dl>
+        </Surface>
+        <Surface className="affiliate-detail-card">
+          <div className="affiliate-detail-card__heading is-green"><SafetyCertificateOutlined /><h2>Quyền giới thiệu</h2></div>
+          <dl>
+            <div><dt>Hồ sơ ứng tuyển</dt><dd className={submission.applicationId ? 'is-positive' : ''}>{submission.applicationId ? 'Đã được tạo' : 'Chưa được tạo'}</dd></div>
+            <div><dt>Quyền ghi nhận</dt><dd className={submission.attributionId ? 'is-positive' : ''}>{submission.attributionId ? 'Đã ghi nhận cho bạn' : 'Chưa được ghi nhận'}</dd></div>
+          </dl>
+        </Surface>
+      </div>
+
+      <Surface className="affiliate-consent-card">
+        <div className="affiliate-consent-card__heading">
+          <div className="affiliate-consent-card__icon"><MailOutlined /></div>
+          <div><span>XÁC NHẬN CỦA ỨNG VIÊN</span><h2>Lịch sử gửi và phản hồi</h2></div>
+        </div>
+        <dl>
+          <div><dt><MailOutlined /> Đã gửi email</dt><dd>{fmt(submission.consentEmailSentAt)}</dd></div>
+          <div><dt><ClockCircleOutlined /> Hạn xác nhận</dt><dd>{fmt(submission.consentExpiresAt)}</dd></div>
+          <div><dt><CheckCircleOutlined /> Thời gian phản hồi</dt><dd>{fmt(submission.consentRespondedAt)}</dd></div>
         </dl>
-        {submission.reason && <Alert className="mt-5" type="info" showIcon message="Thông tin xử lý" description={submission.reason} />}
+        {submission.reason && reasonIsActionable && <Alert className="mt-5" type="info" showIcon message="Lý do cần lưu ý" description={submission.reason} />}
         {submission.status === 'PENDING_CONSENT' && (
           <Alert
             className="mt-5"
             type="warning"
             showIcon
-            message="Đang chờ Candidate xác nhận"
-            description="Hồ sơ ứng tuyển, ghi nhận nguồn và chấm điểm AI chỉ được tạo sau khi ứng viên đồng ý."
+            message="Đang chờ ứng viên xác nhận"
+            description="Hồ sơ ứng tuyển và quyền ghi nhận của bạn chỉ được tạo sau khi ứng viên xác nhận cho phép giới thiệu vào vị trí này."
           />
         )}
         {resend.data && (
@@ -811,23 +1026,52 @@ export const AffiliateCandidatesPage: React.FC = () => {
   const detail = useQuery({ queryKey: [...keys.library, 'detail', openId], queryFn: () => affiliateApi.libraryDetail(openId!), enabled: Boolean(openId) });
 
   const columns: ColumnsType<LibraryCandidate> = [
-    { title: 'Ứng viên', key: 'c', render: (_, r) => <PersonCell name={r.fullName} secondary={r.email ?? r.phone} /> },
-    { title: 'CV', dataIndex: 'activeCvCount', width: 80 },
-    { title: 'Đã nhận', dataIndex: 'acceptedSubmissionCount', width: 100 },
-    { title: 'Lần cuối giới thiệu', dataIndex: 'lastSubmittedAt', width: 170, render: (v: string | null) => fmt(v) },
+    { title: 'Ứng viên', key: 'c', width: 300, render: (_, r) => <PersonCell name={r.fullName} secondary={r.email ?? r.phone} /> },
+    {
+      title: 'Hồ sơ sẵn sàng',
+      dataIndex: 'activeCvCount',
+      width: 165,
+      render: (value: number) => <span className={`affiliate-library-metric ${value > 0 ? 'is-ready' : ''}`}><FilePdfOutlined /> {value > 0 ? `${value} CV có thể dùng` : 'Chưa có CV'}</span>,
+    },
+    {
+      title: 'Đã được xác nhận',
+      dataIndex: 'acceptedSubmissionCount',
+      width: 160,
+      render: (value: number) => <span className="affiliate-library-confirmed"><SafetyCertificateOutlined /> {value} lượt giới thiệu</span>,
+    },
+    {
+      title: 'Lần giới thiệu gần nhất',
+      dataIndex: 'lastSubmittedAt',
+      width: 175,
+      render: (value: string | null) => value ? <span className="affiliate-library-time"><strong>{dayjs(value).fromNow()}</strong><small>{fmt(value)}</small></span> : 'Chưa có',
+    },
+    {
+      title: <span className="sr-only">Thao tác</span>,
+      key: 'actions',
+      width: 135,
+      render: (_, row) => <Button className="affiliate-view-detail-button" size="small" icon={<EyeOutlined />} onClick={(event) => { event.stopPropagation(); setOpenId(row.candidateId); }}>Xem hồ sơ</Button>,
+    },
   ];
 
   return (
-    <div>
-      <PageHero eyebrow="Giới thiệu" title="Kho ứng viên" description="Ứng viên và CV bạn đã từng giới thiệu. Dùng lại để giới thiệu vào tin khác mà không phải tải CV lần nữa." />
+    <div className="affiliate-candidates-page">
+      <AffiliatePageHeader
+        title="Kho ứng viên"
+        description={`${list.data?.total ?? 0} ứng viên bạn đã giới thiệu. Tìm lại hồ sơ và sử dụng CV phù hợp cho cơ hội tuyển dụng mới.`}
+        actions={<Button type="primary" size="large" icon={<UserAddOutlined />} onClick={() => navigate('/affiliate/submit-candidate')}>Giới thiệu ứng viên mới</Button>}
+      />
       <Surface>
-        <div className="px-5 pb-3 pt-5">
+        <div className="affiliate-library-toolbar">
+          <div>
+            <strong>Tìm nhanh trong kho</strong>
+            <small>Tìm theo thông tin liên hệ của ứng viên</small>
+          </div>
           <Input
             size="large"
             allowClear
             prefix={<SearchOutlined className="text-slate-400" />}
-            placeholder="Tìm theo tên, email, số điện thoại — nhấn Enter"
-            className="w-full sm:max-w-sm"
+            placeholder="Tên, email hoặc số điện thoại"
+            className="affiliate-library-search"
             onPressEnter={(e) => {
               setPage(1);
               setSearch((e.target as HTMLInputElement).value.trim());
@@ -836,8 +1080,8 @@ export const AffiliateCandidatesPage: React.FC = () => {
           />
         </div>
         <Table<LibraryCandidate>
-          className="admin-soft-table"
-          scroll={{ x: 'max-content' }}
+          className="admin-soft-table affiliate-library-table"
+          scroll={{ x: 930 }}
           rowKey="candidateId"
           columns={columns}
           dataSource={list.data?.items ?? []}
@@ -848,43 +1092,41 @@ export const AffiliateCandidatesPage: React.FC = () => {
         />
       </Surface>
 
-      <Drawer open={Boolean(openId)} onClose={() => setOpenId(undefined)} width="min(560px, 100vw)" title="Ứng viên trong kho" destroyOnClose>
+      <Drawer className="affiliate-candidate-drawer" open={Boolean(openId)} onClose={() => setOpenId(undefined)} width="min(590px, 100vw)" title="Hồ sơ ứng viên" destroyOnHidden>
         {detail.isLoading ? (
           <Skeleton active paragraph={{ rows: 6 }} />
         ) : detail.data ? (
-          <div className="space-y-4">
-            <PersonCell name={detail.data.fullName} secondary={[detail.data.email, detail.data.phone].filter(Boolean).join(' · ')} size={48} />
-            <Button type="primary" icon={<UserAddOutlined />} onClick={() => navigate(`/affiliate/submit-candidate?candidate=${detail.data!.candidateId}`)}>
-              Giới thiệu vào việc làm
+          <div className="affiliate-candidate-profile">
+            <section className="affiliate-candidate-profile__hero">
+              <Initials name={detail.data.fullName} size={68} />
+              <div><span>ỨNG VIÊN TRONG KHO</span><h2>{detail.data.fullName}</h2><p>{detail.data.hasAccount ? 'Đã có tài khoản HR Connect' : 'Chưa có tài khoản HR Connect'}</p></div>
+            </section>
+            <div className="affiliate-candidate-profile__contact">
+              <div><MailOutlined /><span><small>Email</small><strong>{detail.data.email || 'Chưa cung cấp'}</strong></span></div>
+              <div><UserOutlined /><span><small>Số điện thoại</small><strong>{detail.data.phone || 'Chưa cung cấp'}</strong></span></div>
+            </div>
+            <div className="affiliate-candidate-profile__stats">
+              <div><strong>{detail.data.cvs.filter((cv) => cv.status === 'ACTIVE').length}</strong><small>CV có thể dùng</small></div>
+              <div><strong>{detail.data.acceptedSubmissionCount}</strong><small>Lượt đã xác nhận</small></div>
+            </div>
+            <Button className="affiliate-candidate-profile__cta" size="large" block type="primary" icon={<UserAddOutlined />} onClick={() => navigate(`/affiliate/submit-candidate?candidate=${detail.data!.candidateId}`)}>
+              Giới thiệu vào cơ hội mới
             </Button>
-            <div>
-              <div className="mb-2 text-sm font-semibold text-slate-900">CV ({detail.data.cvs.length})</div>
-              <ul className="m-0 list-none space-y-2 p-0">
+            <section className="affiliate-candidate-profile__cvs">
+              <div className="affiliate-candidate-profile__section-heading"><div><span>HỒ SƠ ỨNG TUYỂN</span><h3>CV đã lưu ({detail.data.cvs.length})</h3></div><FilePdfOutlined /></div>
+              <ul>
                 {detail.data.cvs.map((cv) => (
-                  <li key={cv.cvId} className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
-                    <FilePdfOutlined className="text-xl text-red-700" aria-hidden />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-slate-900">{cv.title || cv.fileName}</span>
-                      <span className="block text-xs text-slate-500">
-                        {cv.status} · dùng {cv.acceptedSubmissionCount} lần
-                      </span>
-                    </span>
-                    <Button size="small" icon={<EyeOutlined />} onClick={() => openSigned(() => affiliateApi.libraryCvUrl(detail.data!.candidateId, cv.cvId))}>
-                      Xem
-                    </Button>
-                    {cv.status === 'ACTIVE' && (
-                      <Button
-                        size="small"
-                        type="primary"
-                        onClick={() => navigate(`/affiliate/submit-candidate?candidate=${detail.data!.candidateId}&cv=${cv.cvId}`)}
-                      >
-                        Dùng CV này
-                      </Button>
-                    )}
+                  <li key={cv.cvId}>
+                    <span className="affiliate-candidate-profile__pdf"><FilePdfOutlined /></span>
+                    <span className="affiliate-candidate-profile__cv-copy"><strong>{cv.title || cv.fileName}</strong><small>{cv.status === 'ACTIVE' ? 'Sẵn sàng sử dụng' : 'Không thể sử dụng'} · đã dùng {cv.acceptedSubmissionCount} lần</small></span>
+                    <div className="affiliate-candidate-profile__cv-actions">
+                      <Button size="small" icon={<EyeOutlined />} onClick={() => openSigned(() => affiliateApi.libraryCvUrl(detail.data!.candidateId, cv.cvId))}>Xem CV</Button>
+                      {cv.status === 'ACTIVE' && <Button size="small" type="primary" onClick={() => navigate(`/affiliate/submit-candidate?candidate=${detail.data!.candidateId}&cv=${cv.cvId}`)}>Chọn CV</Button>}
+                    </div>
                   </li>
                 ))}
               </ul>
-            </div>
+            </section>
           </div>
         ) : null}
       </Drawer>
@@ -895,39 +1137,57 @@ export const AffiliateCandidatesPage: React.FC = () => {
 // ─── Attributions ───────────────────────────────────────────────────────────
 
 export const AffiliateAttributionsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const list = useQuery({ queryKey: ['aff-attributions', page], queryFn: () => affiliateApi.attributions({ page, pageSize: 10 }), placeholderData: (prev) => prev });
+  const attributionRuleLabel = (rule: string) => {
+    const labels: Record<string, string> = {
+      FIRST_TOUCH: 'Ghi nhận lượt giới thiệu đầu tiên',
+      FIRST_ACCEPTED: 'Hồ sơ hợp lệ đầu tiên',
+      FIRST_ACCEPTED_SUBMISSION: 'Hồ sơ được ứng viên đồng ý đầu tiên',
+      CANDIDATE_CONSENT_THEN_FIRST_ACCEPTED: 'Ứng viên đồng ý và hồ sơ hợp lệ đầu tiên',
+      EARLIEST_CANDIDATE_CONFIRMED_VALID_SUBMISSION: 'Xác nhận hợp lệ sớm nhất của ứng viên',
+      DISPUTE_RESOLUTION: 'Kết quả giải quyết khiếu nại',
+    };
+    return labels[rule] ?? 'Theo quy tắc ghi nhận của hệ thống';
+  };
   const columns: ColumnsType<AffiliateAttribution> = [
-    { title: 'Ứng viên', key: 'c', render: (_, r) => <PersonCell name={r.candidateName} /> },
-    { title: 'Việc làm', dataIndex: 'jobTitle', render: (v: string) => <span className="font-medium text-slate-900">{v}</span> },
+    { title: 'Ứng viên', key: 'c', width: 210, render: (_, r) => <PersonCell name={r.candidateName} /> },
+    { title: 'Việc làm', dataIndex: 'jobTitle', width: 260, ellipsis: true, render: (v: string) => <Tooltip title={v}><span className="font-medium text-slate-900">{v}</span></Tooltip> },
+    { title: 'Căn cứ ghi nhận', dataIndex: 'attributionRule', width: 230, render: (value: string) => <span className="affiliate-attribution-rule"><SafetyCertificateOutlined /><span>{attributionRuleLabel(value)}</span></span> },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
-      width: 170,
+      width: 150,
       render: (v: string) => {
         const st = ATTRIBUTION_STATUS[v] ?? { label: v, tone: 'neutral' as const };
-        return <StatusDot tone={st.tone}>{st.label}</StatusDot>;
+        return <span className={`affiliate-attribution-state ${submissionToneClass(st.tone)}`}>{submissionStatusIcon(st.tone)}<span><strong>{st.label}</strong><small>{v === 'ACTIVE' ? 'Được dùng để tính quyền lợi' : v === 'DISPUTED' ? 'Đang được HR Connect xem xét' : 'Không còn được áp dụng'}</small></span></span>;
       },
     },
-    { title: 'Ghi nhận lúc', dataIndex: 'establishedAt', width: 160, render: (v: string) => <span className="tabular-nums">{fmt(v)}</span> },
+    { title: 'Ghi nhận từ', dataIndex: 'establishedAt', width: 145, render: (v: string) => <span className="affiliate-library-time"><strong>{dayjs(v).fromNow()}</strong><small>{fmt(v)}</small></span> },
   ];
   return (
-    <div>
-      <PageHero
-        eyebrow="Ghi nhận"
-        title="Ghi nhận nguồn"
-        description="Mỗi dòng là một ứng viên được ghi nhận là do bạn giới thiệu (lúc ứng viên đồng ý). Đây là căn cứ tính hoa hồng."
+    <div className="affiliate-attributions-page">
+      <AffiliatePageHeader
+        title="Quyền ghi nhận"
+        description="Theo dõi những ứng viên đã xác nhận bạn là người giới thiệu và căn cứ bảo vệ quyền lợi của bạn."
+        actions={<Button size="large" type="primary" icon={<TrophyOutlined />} onClick={() => navigate('/affiliate/commissions')}>Xem hoa hồng</Button>}
       />
+      <section className="affiliate-attribution-summary">
+        <div className="affiliate-attribution-summary__icon"><SafetyCertificateOutlined /></div>
+        <div><span>QUYỀN GHI NHẬN LÀ GÌ?</span><h2>Căn cứ xác định quyền lợi của cộng tác viên</h2><p>Khi ứng viên xác nhận và hồ sơ hợp lệ, hệ thống ghi nhận bạn là người giới thiệu. Quyền này được dùng để xử lý khiếu nại và tính hoa hồng nếu ứng viên được tuyển.</p></div>
+        <div className="affiliate-attribution-summary__count"><strong>{list.data?.totalCount ?? 0}</strong><small>quyền đã ghi nhận</small></div>
+      </section>
       <Surface>
         <Table<AffiliateAttribution>
-          className="admin-soft-table"
-          scroll={{ x: 'max-content' }}
+          className="admin-soft-table affiliate-attribution-table"
+          scroll={{ x: 995 }}
           rowKey="attributionId"
           columns={columns}
           dataSource={list.data?.items ?? []}
           loading={list.isFetching}
           pagination={{ current: page, pageSize: 10, total: list.data?.totalCount ?? 0, showSizeChanger: false, onChange: setPage }}
-          locale={{ emptyText: <div className="py-10 text-slate-600">Chưa có ứng viên nào được ghi nhận. Bạn được ghi nhận khi ứng viên đồng ý lượt giới thiệu.</div> }}
+          locale={{ emptyText: <div className="py-10 text-slate-600">Chưa có quyền ghi nhận nào. Quyền này được tạo sau khi ứng viên đồng ý yêu cầu xác nhận.</div> }}
         />
       </Surface>
     </div>
