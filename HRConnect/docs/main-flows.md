@@ -267,7 +267,7 @@ Code: quy tắc nằm ở `ScreeningPolicy`; sai người theo loại dịch v�
 | Lên lịch, phỏng vấn, ghi kết quả, quyết định hồ sơ dự bị | Client | Bộ phận tuyển dụng của Client trực tiếp làm việc với ứng viên |
 | Tạo và gửi offer | Client | Lương và điều kiện làm việc do Client đưa ra |
 | Xác nhận ngày bắt đầu, xác nhận đi làm, đánh dấu không nhận việc | Client | |
-| Đối soát placement trước khi tính phí (`HEADHUNT_COD`) | Internal HR | **[CHƯA CÓ CODE] [CẦN XÁC NHẬN]** |
+| Đối soát placement trước khi tính phí (`HEADHUNT_COD`) | Internal HR | **Đã có code UC-41**: xác nhận hoặc đánh dấu sai lệch; phí bị giữ đến khi đối soát hoàn tất |
 | Kiểm tra lý do khi hồ sơ bị đánh dấu không nhận việc | Internal HR | **[CHƯA CÓ CODE] [CẦN XÁC NHẬN]** |
 
 Internal HR thuộc đơn vị vận hành nền tảng, không thuộc công ty Client, nên không lên lịch phỏng vấn, không ghi kết quả và không tạo offer. Migration `20261005090000_RestrictInternalHrRecruitmentMutations` đã thu hồi các quyền thao tác MF-04 này; Internal HR chỉ giữ `application.screen` cho bước tiền sàng lọc `HEADHUNT_COD` và `CV_SOURCING`. Vai trò kiểm soát mốc phát sinh phí vẫn là bước đề xuất: với `HEADHUNT_COD` cần một bước đối soát độc lập (với ứng viên hoặc Affiliate) trước khi chuyển sang tính phí ở MF-05.
@@ -447,7 +447,7 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 **Phân vai**
 
 1. Người sàng lọc tách theo loại dịch vụ: Client với `CV_APPLICATION`; Internal HR với `HEADHUNT_COD` và `CV_SOURCING` (MF-03).
-2. Ở MF-04, Client thực hiện mọi bước tuyển dụng; Internal HR chỉ đối soát placement trước khi tính phí với `HEADHUNT_COD` và kiểm tra hồ sơ bị đánh dấu không nhận việc.
+2. Ở MF-04, Client thực hiện mọi quyết định tuyển dụng; Internal HR đối soát kết quả nhận việc trước khi tính phí với `HEADHUNT_COD` và kiểm tra hồ sơ bị đánh dấu không nhận việc. **Đã có code UC-41 ngày 23/10/2026.**
 3. Platform Admin là người ghi nhận thu phí, duyệt hoa hồng, ghi nhận payout và xử lý tranh chấp; không có vai trò kế toán riêng.
 4. ~~Internal HR có cần chức năng nộp hồ sơ thay ứng viên không (MF-02)~~ → **đã chốt 2026-10-16:** không làm.
 
@@ -489,7 +489,7 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 | Đếm bảo hành, tự ghi nhận mốc, báo nghỉ việc, tuyển thay thế | MF-05 — đã có code |
 | Tính, duyệt hoa hồng; ghi nhận payout; đánh giá Affiliate | MF-05 — đã có code |
 | Thu hẹp quyền của Internal HR ở MF-04 (không lên lịch, không ghi kết quả, không tạo offer) | MF-04 — đã có code |
-| Bước Internal HR đối soát placement và kiểm tra lý do không nhận việc | MF-04 — **chưa có code, cần chốt làm hay bỏ** |
+| Bước Internal HR đối soát placement và kiểm tra lý do không nhận việc | MF-04 — **đã có code UC-41**: `PENDING → CONFIRMED/FLAGGED`; phí bị giữ đến khi xác nhận; Admin giải quyết ngoại lệ |
 | Ghi kết quả thử việc | MF-05 — **ngoài phạm vi** (chốt 2026-10-17) |
 | Đổi mã vai trò `AFFILIATE_RECRUITER` thành `AFFILIATE` | Toàn hệ thống — **chưa làm** |
 | Form liên hệ, tạo CV theo mẫu / dựng trên nền tảng, gợi ý việc phù hợp, thông báo realtime | SF-05 → SF-08 — đã có code backend; FE chưa có màn |
@@ -599,5 +599,5 @@ Bước 1–4 của bản đầu (bảo vệ doanh thu, nối luồng sàng lọ
 1. **Kiểm chứng trên bản deploy** toàn luồng của 3 dịch vụ, nhất là `CV_SOURCING` (cọc → mở job → giao CV → hoa hồng → quyết toán) và `HEADHUNT_COD` tới bảo hành.
 2. **Hạ tầng AI:** nâng dịch vụ AI trên Render lên tối thiểu 1 CPU / 2 GB (gói Free bị Render tắt khi đang chấm), hoặc giữ AI chạy trên máy qua tunnel khi demo.
 3. **Bảo mật:** đổi các key / token đã lộ; thêm rule WAF cho tunnel AI.
-4. **Chốt và làm:** chặn tuyển quá `Quantity` (MF-04); đối soát placement của Internal HR (làm hay bỏ); màn khiếu nại SF-04 cho Affiliate và Admin (FE).
+4. **Đã chốt:** đối soát placement của Internal HR được làm ở UC-41. Việc còn lại: chặn tuyển quá `Quantity` (MF-04) và hoàn thiện màn khiếu nại SF-04 cho Affiliate/Admin.
 5. **Giao diện:** lỗi FE còn mở trong `tasks/FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md` (mục 5, 6); việc hạ tầng trong `deploy/render-be-ai-local.md` (mục 7). Lỗi của buổi test 3 dịch vụ 17/10 (N1–N27) đã sửa 19/10.
