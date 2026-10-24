@@ -182,6 +182,46 @@ describe('useNotificationSignalR', () => {
     });
   });
 
+  it('refreshes interview detail when an updated-interview notification arrives', () => {
+    vi.spyOn(signalRNotificationService, 'start').mockResolvedValue();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    renderHook(() => useNotificationSignalR({ showToasts: false }), { wrapper });
+
+    act(() => {
+      (signalRNotificationService as any).notificationCreatedListeners.forEach((fn: any) =>
+        fn({
+          notification: {
+            notificationId: 'notif-interview-updated',
+            notificationType: 'INTERVIEW_UPDATED',
+            title: 'Thông tin phỏng vấn đã thay đổi',
+            message: 'Doanh nghiệp đã cập nhật thông tin buổi phỏng vấn.',
+            relatedEntityType: 'INTERVIEW',
+            relatedEntityId: 'interview-123',
+            metadata: JSON.stringify({
+              applicationId: 'application-123',
+              interviewId: 'interview-123',
+              eventType: 'UPDATED',
+            }),
+            isRead: false,
+            createdAt: '2026-10-25T10:00:00Z',
+          },
+          unreadCount: 1,
+        })
+      );
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ['candidate-applications', 'application-123'],
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ['candidate-application-timeline', 'application-123'],
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ['candidate', 'interviews', 'interview-123'],
+    });
+  });
+
   it('reflects connection state and isConnected property', () => {
     vi.spyOn(signalRNotificationService, 'start').mockResolvedValue();
     vi.spyOn(signalRNotificationService, 'getConnectionState').mockReturnValue(

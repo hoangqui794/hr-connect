@@ -8,6 +8,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.Recruitment.Commands.MarkNotStarted;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -25,8 +26,9 @@ public class MarkNotStartedCommandHandlerTests
     private readonly Mock<ILogger<MarkNotStartedCommandHandler>> _loggerMock = new();
     private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
     private readonly Mock<IPlacementReconciliationRepository> _reconciliationRepositoryMock = new();
+    private readonly Mock<ICandidateRecruitmentDeliveryService> _candidateDeliveryServiceMock = new();
 
-    private MarkNotStartedCommandHandler CreateHandler() =>
+    private MarkNotStartedCommandHandler CreateHandler(bool withDelivery = false) =>
         new(
             _applicationRepositoryMock.Object,
             _placementRepositoryMock.Object,
@@ -34,7 +36,8 @@ public class MarkNotStartedCommandHandlerTests
             _unitOfWorkMock.Object,
             _loggerMock.Object,
             _auditLogServiceMock.Object,
-            _reconciliationRepositoryMock.Object);
+            _reconciliationRepositoryMock.Object,
+            withDelivery ? _candidateDeliveryServiceMock.Object : null);
 
     [Theory]
     [InlineData("")]
@@ -404,5 +407,106 @@ public class MarkNotStartedCommandHandlerTests
                 item.ClaimedOutcome == PlacementReconciliationOutcomes.NotStarted &&
                 item.Status == PlacementReconciliationStates.Pending),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidateIsReachable_ShouldDeliverNotStartedNotice()
+    {
+        var appId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var candidate = new Candidate { UserId = Guid.NewGuid(), Email = "candidate@example.com" };
+        var application = new Domain.Entities.Application
+        {
+            ApplicationId = appId,
+            Status = ApplicationStates.OfferAccepted,
+            ConcurrencyToken = Guid.NewGuid(),
+            Candidate = candidate,
+            Job = new Job
+            {
+                CompanyId = companyId,
+                Title = "Backend Developer",
+                ServiceType = new ServiceType { Code = ServiceTypeCodes.HeadhuntCod }
+            }
+        };
+        _applicationRepositoryMock.Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>())).ReturnsAsync(application);
+        _companyUserRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+        _placementRepositoryMock.Setup(r => r.GetByApplicationIdAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Placement?)null);
+        _candidateDeliveryServiceMock.Setup(s => s.DeliverApplicationOutcomeAsync(
+                application, ApplicationCandidateDeliveryEvent.NotStartedReported, "Ứng viên không đến.",
+                It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CandidateRecruitmentDeliveryOutcome(CandidateRecruitmentDeliveryChannel.InApp));
+
+        var result = await CreateHandler(withDelivery: true).Handle(new MarkNotStartedCommand(
+            appId, "Ứng viên không đến.", application.ConcurrencyToken, userId, IsClientCompanyUser: true), default);
+
+        result.DeliveryChannel.Should().Be("IN_APP");
+        _candidateDeliveryServiceMock.Verify(s => s.DeliverApplicationOutcomeAsync(
+            application, ApplicationCandidateDeliveryEvent.NotStartedReported, "Ứng viên không đến.",
+            It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPreviousOutcomeWasReopened_ShouldReuseReconciliationForNotStartedOutcome()
+    {
+        var appId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var application = new Domain.Entities.Application
+        {
+            ApplicationId = appId,
+            Status = ApplicationStates.OfferAccepted,
+            ConcurrencyToken = Guid.NewGuid(),
+            Job = new Job
+            {
+                CompanyId = companyId,
+                ServiceType = new ServiceType { Code = ServiceTypeCodes.HeadhuntCod }
+            }
+        };
+        var previousToken = Guid.NewGuid();
+        var reconciliation = new PlacementReconciliation
+        {
+            ReconciliationId = Guid.NewGuid(),
+            ApplicationId = appId,
+            PlacementId = Guid.NewGuid(),
+            ClaimedOutcome = PlacementReconciliationOutcomes.Started,
+            Status = PlacementReconciliationStates.Confirmed,
+            ResolutionAction = PlacementReconciliationResolutionActions.ReopenForClientConfirmation,
+            ResolutionNote = "Client must confirm again.",
+            ReviewedBy = Guid.NewGuid(),
+            ReviewedAt = DateTime.UtcNow.AddMinutes(-10),
+            ConcurrencyToken = previousToken,
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
+            UpdatedAt = DateTime.UtcNow.AddMinutes(-10)
+        };
+        _applicationRepositoryMock.Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(application);
+        _companyUserRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+        _placementRepositoryMock.Setup(r => r.GetByApplicationIdAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Placement?)null);
+        _reconciliationRepositoryMock.Setup(r => r.GetByApplicationIdAsync(
+                appId,
+                true,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(reconciliation);
+
+        await CreateHandler().Handle(new MarkNotStartedCommand(
+            appId, "Ứng viên xác nhận không đến nhận việc.", application.ConcurrencyToken,
+            userId, IsClientCompanyUser: true), default);
+
+        reconciliation.PlacementId.Should().BeNull();
+        reconciliation.ClaimedOutcome.Should().Be(PlacementReconciliationOutcomes.NotStarted);
+        reconciliation.Status.Should().Be(PlacementReconciliationStates.Pending);
+        reconciliation.ResolutionAction.Should().BeNull();
+        reconciliation.ResolutionNote.Should().BeNull();
+        reconciliation.ReviewedBy.Should().BeNull();
+        reconciliation.ReviewedAt.Should().BeNull();
+        reconciliation.ConcurrencyToken.Should().NotBe(previousToken);
+        _reconciliationRepositoryMock.Verify(
+            r => r.AddAsync(It.IsAny<PlacementReconciliation>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

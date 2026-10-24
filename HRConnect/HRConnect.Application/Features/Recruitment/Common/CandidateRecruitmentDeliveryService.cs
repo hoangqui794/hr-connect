@@ -26,11 +26,20 @@ public interface ICandidateRecruitmentDeliveryService
         DateTime occurredAt,
         CandidateRecruitmentDeliveryDecision? decision = null,
         CancellationToken cancellationToken = default);
+
+    Task<CandidateRecruitmentDeliveryOutcome> DeliverApplicationOutcomeAsync(
+        JobApplication application,
+        ApplicationCandidateDeliveryEvent deliveryEvent,
+        string? reason,
+        DateTime occurredAt,
+        CandidateRecruitmentDeliveryDecision? decision = null,
+        CancellationToken cancellationToken = default);
 }
 
 public enum InterviewCandidateDeliveryEvent
 {
     Scheduled,
+    Updated,
     Rescheduled,
     Cancelled
 }
@@ -40,6 +49,11 @@ public enum OfferCandidateDeliveryEvent
     Sent,
     Withdrawn,
     Expired
+}
+
+public enum ApplicationCandidateDeliveryEvent
+{
+    NotStartedReported
 }
 
 public sealed record CandidateRecruitmentDeliveryOutcome(CandidateRecruitmentDeliveryChannel Channel)
@@ -157,6 +171,64 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
         return new CandidateRecruitmentDeliveryOutcome(resolved.Channel);
     }
 
+    public async Task<CandidateRecruitmentDeliveryOutcome> DeliverApplicationOutcomeAsync(
+        JobApplication application,
+        ApplicationCandidateDeliveryEvent deliveryEvent,
+        string? reason,
+        DateTime occurredAt,
+        CandidateRecruitmentDeliveryDecision? decision = null,
+        CancellationToken cancellationToken = default)
+    {
+        var resolved = decision ?? CandidateRecruitmentDeliveryPolicy.Resolve(application.Candidate);
+        if (resolved.Channel == CandidateRecruitmentDeliveryChannel.Unavailable)
+        {
+            return CandidateRecruitmentDeliveryOutcome.Unavailable;
+        }
+
+        if (resolved.Channel == CandidateRecruitmentDeliveryChannel.InApp)
+        {
+            await _notifications.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = resolved.UserId!.Value,
+                NotificationType = "APPLICATION",
+                Title = "Cập nhật kết quả nhận việc",
+                Message = "Doanh nghiệp đã cập nhật rằng bạn chưa bắt đầu làm việc. HR Connect sẽ đối soát kết quả này.",
+                RelatedEntityType = "APPLICATION",
+                RelatedEntityId = application.ApplicationId,
+                Metadata = JsonSerializer.Serialize(new
+                {
+                    applicationId = application.ApplicationId,
+                    eventType = deliveryEvent.ToString().ToUpperInvariant(),
+                    routeHint = $"/candidate/applications/{application.ApplicationId}"
+                }),
+                IsRead = false,
+                CreatedAt = occurredAt
+            }, cancellationToken);
+        }
+        else
+        {
+            var payload = new RecruitmentCandidateEmailPayload(
+                application.Candidate?.FullName ?? "bạn",
+                application.Job?.Title ?? "vị trí ứng tuyển",
+                application.Job?.Company?.CompanyName,
+                BuildCandidatePortalUrl());
+            await _emailOutboxes.AddAsync(new EmailOutbox
+            {
+                EmailOutboxId = Guid.NewGuid(),
+                RecipientEmail = resolved.RecipientEmail!,
+                TemplateCode = RecruitmentCandidateEmailTemplates.ApplicationNotStartedReported,
+                Subject = null,
+                Payload = JsonSerializer.Serialize(payload),
+                Status = "PENDING",
+                RetryCount = 0,
+                CreatedAt = occurredAt
+            }, cancellationToken);
+        }
+
+        return new CandidateRecruitmentDeliveryOutcome(resolved.Channel);
+    }
+
     private Notification CreateInterviewNotification(
         JobApplication application,
         Interview interview,
@@ -169,6 +241,9 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
             InterviewCandidateDeliveryEvent.Scheduled => (
                 $"Lịch phỏng vấn Vòng {interview.InterviewRound}",
                 $"Bạn có lịch phỏng vấn Vòng {interview.InterviewRound} vào lúc {interview.ScheduledAt:dd/MM/yyyy HH:mm}."),
+            InterviewCandidateDeliveryEvent.Updated => (
+                $"Thông tin phỏng vấn Vòng {interview.InterviewRound} đã thay đổi",
+                $"Doanh nghiệp đã cập nhật thông tin phỏng vấn Vòng {interview.InterviewRound}. Vui lòng kiểm tra lại trước khi tham gia."),
             InterviewCandidateDeliveryEvent.Rescheduled => (
                 $"Dời lịch phỏng vấn Vòng {interview.InterviewRound}",
                 $"Lịch phỏng vấn Vòng {interview.InterviewRound} đã được dời sang {interview.ScheduledAt:dd/MM/yyyy HH:mm}."),
@@ -192,7 +267,8 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
                 interviewId = interview.InterviewId,
                 round = interview.InterviewRound,
                 scheduledAt = interview.ScheduledAt,
-                eventType = deliveryEvent.ToString().ToUpperInvariant()
+                eventType = deliveryEvent.ToString().ToUpperInvariant(),
+                routeHint = $"/candidate/applications/{application.ApplicationId}"
             }),
             IsRead = false,
             CreatedAt = occurredAt
@@ -276,6 +352,7 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
     private static string GetInterviewTemplateCode(InterviewCandidateDeliveryEvent deliveryEvent) => deliveryEvent switch
     {
         InterviewCandidateDeliveryEvent.Scheduled => RecruitmentCandidateEmailTemplates.InterviewScheduled,
+        InterviewCandidateDeliveryEvent.Updated => RecruitmentCandidateEmailTemplates.InterviewUpdated,
         InterviewCandidateDeliveryEvent.Rescheduled => RecruitmentCandidateEmailTemplates.InterviewRescheduled,
         InterviewCandidateDeliveryEvent.Cancelled => RecruitmentCandidateEmailTemplates.InterviewCancelled,
         _ => throw new ArgumentOutOfRangeException(nameof(deliveryEvent), deliveryEvent, null)

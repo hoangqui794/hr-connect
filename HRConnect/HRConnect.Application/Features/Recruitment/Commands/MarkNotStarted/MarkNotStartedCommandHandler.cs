@@ -23,6 +23,7 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
     private readonly ILogger<MarkNotStartedCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
     private readonly IPlacementReconciliationRepository _reconciliationRepository;
+    private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
 
     public MarkNotStartedCommandHandler(
         IApplicationRepository applicationRepository,
@@ -31,7 +32,8 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
         IUnitOfWork unitOfWork,
         ILogger<MarkNotStartedCommandHandler> logger,
         IAuditLogService auditLogService,
-        IPlacementReconciliationRepository reconciliationRepository)
+        IPlacementReconciliationRepository reconciliationRepository,
+        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
     {
         _applicationRepository = applicationRepository;
         _placementRepository = placementRepository;
@@ -40,6 +42,7 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
         _logger = logger;
         _auditLogService = auditLogService;
         _reconciliationRepository = reconciliationRepository;
+        _candidateDeliveryService = candidateDeliveryService;
     }
 
     public async Task<MarkNotStartedResponse> Handle(MarkNotStartedCommand request, CancellationToken cancellationToken)
@@ -124,16 +127,44 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
 
         if (string.Equals(application.Job?.ServiceType?.Code, ServiceTypeCodes.HeadhuntCod, StringComparison.OrdinalIgnoreCase))
         {
-            await _reconciliationRepository.AddAsync(new PlacementReconciliation
+            var reconciliation = await _reconciliationRepository.GetByApplicationIdAsync(
+                application.ApplicationId,
+                cancellationToken: cancellationToken);
+            if (reconciliation == null)
             {
-                ReconciliationId = Guid.NewGuid(),
-                ApplicationId = application.ApplicationId,
-                ClaimedOutcome = PlacementReconciliationOutcomes.NotStarted,
-                Status = PlacementReconciliationStates.Pending,
-                ConcurrencyToken = Guid.NewGuid(),
-                CreatedAt = now,
-                UpdatedAt = now
-            }, cancellationToken);
+                await _reconciliationRepository.AddAsync(new PlacementReconciliation
+                {
+                    ReconciliationId = Guid.NewGuid(),
+                    ApplicationId = application.ApplicationId,
+                    ClaimedOutcome = PlacementReconciliationOutcomes.NotStarted,
+                    Status = PlacementReconciliationStates.Pending,
+                    ConcurrencyToken = Guid.NewGuid(),
+                    CreatedAt = now,
+                    UpdatedAt = now
+                }, cancellationToken);
+            }
+            else
+            {
+                if (reconciliation.Status != PlacementReconciliationStates.Confirmed ||
+                    reconciliation.ResolutionAction != PlacementReconciliationResolutionActions.ReopenForClientConfirmation)
+                {
+                    throw new ConflictException(
+                        "Hồ sơ đã có kết quả đối soát và không thể ghi đè.",
+                        PlacementReconciliationErrorCodes.NotPending);
+                }
+
+                reconciliation.PlacementId = null;
+                reconciliation.ClaimedOutcome = PlacementReconciliationOutcomes.NotStarted;
+                reconciliation.Status = PlacementReconciliationStates.Pending;
+                reconciliation.ContactChannel = null;
+                reconciliation.Note = null;
+                reconciliation.ResolutionNote = null;
+                reconciliation.ResolutionAction = null;
+                reconciliation.ReviewedBy = null;
+                reconciliation.ReviewedAt = null;
+                reconciliation.UpdatedAt = now;
+                reconciliation.ConcurrencyToken = Guid.NewGuid();
+            }
         }
         await _auditLogService.AddAsync(new AuditEntry
         {
@@ -153,6 +184,17 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
             OldValues = new { status = oldStatus },
             NewValues = new { status = application.Status, sourceAction = AuditActions.ApplicationNotStarted }
         }, cancellationToken);
+
+        CandidateRecruitmentDeliveryOutcome? deliveryOutcome = null;
+        if (_candidateDeliveryService != null)
+        {
+            deliveryOutcome = await _candidateDeliveryService.DeliverApplicationOutcomeAsync(
+                application,
+                ApplicationCandidateDeliveryEvent.NotStartedReported,
+                trimmedReason,
+                now,
+                cancellationToken: cancellationToken);
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Đã đánh dấu hồ sơ {ApplicationId} thành NOT_STARTED. Lý do: {Reason}",
@@ -163,7 +205,8 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
             application.Status,
             application.StatusReason,
             application.ConcurrencyToken,
-            application.UpdatedAt
+            application.UpdatedAt,
+            deliveryOutcome?.Channel.ToApiValue()
         );
     }
 }

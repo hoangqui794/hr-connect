@@ -108,7 +108,7 @@ export const placementReconciliationApi = {
     return (await apiClient.post(`/internal-hr/placement-reconciliations/${applicationId}`, input)).data;
   },
 
-  async resolve(applicationId: string, input: { note: string; concurrencyToken: string }) {
+  async resolve(applicationId: string, input: { action?: 'CONFIRM_REPORTED_OUTCOME' | 'REOPEN_FOR_CLIENT_CONFIRMATION'; note: string; concurrencyToken: string }) {
     return (await apiClient.post(`/admin/placement-reconciliations/${applicationId}/resolve`, input)).data;
   },
 };

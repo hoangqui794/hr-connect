@@ -24,19 +24,22 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateInterviewCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
+    private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
 
     public UpdateInterviewCommandHandler(
         IInterviewRepository interviewRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
         ILogger<UpdateInterviewCommandHandler> logger,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
     {
         _interviewRepository = interviewRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
         _auditLogService = auditLogService;
+        _candidateDeliveryService = candidateDeliveryService;
     }
 
     public async Task<UpdateInterviewResponse> Handle(UpdateInterviewCommand request, CancellationToken cancellationToken)
@@ -108,8 +111,15 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
             durationMinutes = interview.DurationMinutes,
             interviewType = interview.InterviewType,
             location = interview.Location,
+            meetingLink = interview.MeetingLink,
             participantCount = interview.InterviewParticipants.Count
         };
+
+        var candidateVisibleDetailsChanged =
+            (request.DurationMinutes.HasValue && request.DurationMinutes.Value != interview.DurationMinutes) ||
+            (request.InterviewType != null && !string.Equals(interviewType, interview.InterviewType, StringComparison.OrdinalIgnoreCase)) ||
+            (request.Location != null && !string.Equals(location, interview.Location, StringComparison.Ordinal)) ||
+            (request.MeetingLink != null && !string.Equals(meetingLink, interview.MeetingLink, StringComparison.Ordinal));
 
         if (request.DurationMinutes.HasValue)
         {
@@ -184,9 +194,22 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
                 durationMinutes = interview.DurationMinutes,
                 interviewType = interview.InterviewType,
                 location = interview.Location,
+                meetingLink = interview.MeetingLink,
                 participantCount = interview.InterviewParticipants.Count
             }
         }, cancellationToken);
+
+        CandidateRecruitmentDeliveryOutcome? deliveryOutcome = null;
+        if (candidateVisibleDetailsChanged && _candidateDeliveryService != null && interview.Application != null)
+        {
+            deliveryOutcome = await _candidateDeliveryService.DeliverInterviewAsync(
+                interview.Application,
+                interview,
+                InterviewCandidateDeliveryEvent.Updated,
+                reason: null,
+                occurredAt: now,
+                cancellationToken: cancellationToken);
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new UpdateInterviewResponse
@@ -206,7 +229,8 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
                 Status = interview.Status,
                 ConcurrencyToken = newConcurrencyToken,
                 UpdatedAt = now,
-                Participants = participantsDto
+                Participants = participantsDto,
+                DeliveryChannel = deliveryOutcome?.Channel.ToApiValue()
             }
         };
     }

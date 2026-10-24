@@ -25,6 +25,7 @@ public partial class ApplicationDbContext
                 table.HasCheckConstraint("ck_placement_reconciliation_outcome", "claimed_outcome IN ('STARTED','NOT_STARTED')");
                 table.HasCheckConstraint("ck_placement_reconciliation_status", "status IN ('PENDING','CONFIRMED','FLAGGED')");
                 table.HasCheckConstraint("ck_placement_reconciliation_channel", "contact_channel IS NULL OR contact_channel IN ('CANDIDATE','AFFILIATE','BOTH')");
+                table.HasCheckConstraint("ck_placement_reconciliation_resolution_action", "resolution_action IS NULL OR resolution_action IN ('CONFIRM_REPORTED_OUTCOME','REOPEN_FOR_CLIENT_CONFIRMATION')");
                 table.HasCheckConstraint("ck_placement_reconciliation_flag_note", "status <> 'FLAGGED' OR length(trim(note)) > 0");
                 // Legacy rows are confirmed by migration rather than a human reviewer, so ReviewedBy is optional.
                 table.HasCheckConstraint("ck_placement_reconciliation_review", "(status = 'PENDING' AND reviewed_by IS NULL AND reviewed_at IS NULL) OR (status <> 'PENDING' AND reviewed_at IS NOT NULL)");
@@ -43,6 +44,7 @@ public partial class ApplicationDbContext
             entity.Property(e => e.ContactChannel).HasMaxLength(30).HasColumnName("contact_channel");
             entity.Property(e => e.Note).HasMaxLength(1000).HasColumnName("note");
             entity.Property(e => e.ResolutionNote).HasMaxLength(1000).HasColumnName("resolution_note");
+            entity.Property(e => e.ResolutionAction).HasMaxLength(50).HasColumnName("resolution_action");
             entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
             entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
             entity.Property(e => e.ConcurrencyToken).IsConcurrencyToken().HasDefaultValueSql("gen_random_uuid()").HasColumnName("concurrency_token");
