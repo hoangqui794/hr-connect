@@ -229,4 +229,3 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
 
 export const HrPlacementReconciliationPage = () => <PlacementReconciliationPage />;
 export const AdminPlacementReconciliationPage = () => <PlacementReconciliationPage admin />;
-
