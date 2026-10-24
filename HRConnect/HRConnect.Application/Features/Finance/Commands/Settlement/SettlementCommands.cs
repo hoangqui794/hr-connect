@@ -67,15 +67,18 @@ public sealed class SettlementCommandHandlers :
     private readonly ISourcingFinanceService? _sourcingFinance;
     private readonly ISourcingDeliveryRepository? _deliveries;
     private readonly IJobRepository? _jobs;
+    private readonly IAppNotifier? _notifier;
 
     public SettlementCommandHandlers(
         IFinanceRepository financeRepository, IUnitOfWork unitOfWork, IAuditLogService auditLogService,
         INotificationRepository? notificationRepository = null,
         ISourcingFinanceService? sourcingFinance = null,
         ISourcingDeliveryRepository? deliveries = null,
-        IJobRepository? jobs = null)
+        IJobRepository? jobs = null,
+        IAppNotifier? notifier = null)
     {
         _jobs = jobs;
+        _notifier = notifier;
         _financeRepository = financeRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
@@ -123,6 +126,14 @@ public sealed class SettlementCommandHandlers :
                 new { status = ReplacementSlotStates.WaitingPayment }, new { slot.Status, slot.OpenedAt, slot.ExpiresAt }, cancellationToken);
         }
 
+        // The Client sees its receivable change to paid without reloading.
+        if (_notifier != null)
+        {
+            await _notifier.NotifyCompanyAsync(fee.CompanyId, new AppNotice(
+                "SERVICE_FEE", "Đã ghi nhận thanh toán",
+                $"HR Connect đã ghi nhận khoản thanh toán {fee.Amount:N0} {fee.CurrencyCode} (mã tham chiếu {fee.PaymentReference}).",
+                "SERVICE_FEE", fee.ServiceFeeId, "/client/dashboard"), cancellationToken);
+        }
         if (fee.Kind == ServiceFeeKinds.Deposit && fee.JobId is Guid jobId)
         {
             await OpenJobAfterDepositAsync(jobId, request.CurrentUserId, cancellationToken);
@@ -185,6 +196,9 @@ public sealed class SettlementCommandHandlers :
 
         await AuditAsync(AuditActions.CommissionApproved, "COMMISSION", commission.CommissionId, request.CurrentUserId,
             new { status = CommissionStates.Earned }, new { status = commission.Status, commission.Amount, serviceFeeId }, cancellationToken);
+        await NotifyAsync(await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken), "COMMISSION", "Hoa hồng đã được duyệt chi",
+            $"Khoản hoa hồng {commission.Amount:N0} đ đã được duyệt và đang chờ chi trả.", "COMMISSION", commission.CommissionId,
+            "/affiliate/commissions", now, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return ToResponse(commission);
     }
@@ -295,6 +309,26 @@ public sealed class SettlementCommandHandlers :
             cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return new PayoutResponse(payout.PayoutId, commission.CommissionId, payout.Status, commission.Status, payout.Amount, payout.AttemptNo);
+    }
+
+    private async Task NotifyAsync(
+        Guid? userId, string type, string title, string message, string entityType, Guid entityId, string? route,
+        DateTime now, CancellationToken cancellationToken)
+    {
+        if (_notificationRepository == null || userId is not Guid recipient || recipient == Guid.Empty) return;
+        await _notificationRepository.AddAsync(new Notification
+        {
+            NotificationId = Guid.NewGuid(),
+            UserId = recipient,
+            NotificationType = type,
+            Title = title,
+            Message = message,
+            RelatedEntityType = entityType,
+            RelatedEntityId = entityId,
+            Metadata = System.Text.Json.JsonSerializer.Serialize(new { routeHint = route }),
+            IsRead = false,
+            CreatedAt = now
+        }, cancellationToken);
     }
 
     /// <summary>CV_SOURCING waits in PENDING_PAYMENT until its deposit is paid (decision 2026-10-17).</summary>

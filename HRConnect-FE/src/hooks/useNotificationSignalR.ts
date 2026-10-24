@@ -12,6 +12,7 @@ import { notification as antNotification } from 'antd';
 import { HubConnectionState } from '@microsoft/signalr';
 import { useAuthStore } from '@/stores/authStore';
 import { portalRoute } from '@/components/notifications/notificationRoutes';
+import { refreshKeysFor } from './notificationRefreshKeys';
 import {
   signalRNotificationService,
   type ApplicationScoredPayload,
@@ -84,6 +85,11 @@ export const useNotificationSignalR = (options: UseNotificationSignalROptions = 
           };
         }
       );
+
+      // Refresh the pages that show the entity this notification is about, so lists update without a reload.
+      for (const queryKey of refreshKeysFor(notification.relatedEntityType)) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
 
       // MF-04 notifications carry the owning application so the Candidate portal can refresh
       // the exact application/timeline caches without relying on unrelated legacy query keys.

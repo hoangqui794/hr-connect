@@ -134,6 +134,12 @@ public class FinanceRepository : IFinanceRepository
             .Include(p => p.Commissions)
             .FirstOrDefaultAsync(p => p.PlacementId == placementId, cancellationToken);
 
+    public async Task<Guid?> GetAffiliateUserIdAsync(Guid attributionId, CancellationToken cancellationToken = default) =>
+        await _context.Attributions.AsNoTracking()
+            .Where(a => a.AttributionId == attributionId)
+            .Select(a => (Guid?)a.Affiliate.UserId)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public Task<ServiceFee?> GetServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default) =>
         _context.ServiceFees.FirstOrDefaultAsync(fee => fee.ServiceFeeId == serviceFeeId, cancellationToken);
 
