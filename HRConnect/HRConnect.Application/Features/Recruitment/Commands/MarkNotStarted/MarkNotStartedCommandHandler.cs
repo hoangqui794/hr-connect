@@ -6,6 +6,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Recruitment.Common;
+using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -21,6 +22,7 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<MarkNotStartedCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
+    private readonly IPlacementReconciliationRepository _reconciliationRepository;
 
     public MarkNotStartedCommandHandler(
         IApplicationRepository applicationRepository,
@@ -28,7 +30,8 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
         ILogger<MarkNotStartedCommandHandler> logger,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        IPlacementReconciliationRepository reconciliationRepository)
     {
         _applicationRepository = applicationRepository;
         _placementRepository = placementRepository;
@@ -36,6 +39,7 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
         _unitOfWork = unitOfWork;
         _logger = logger;
         _auditLogService = auditLogService;
+        _reconciliationRepository = reconciliationRepository;
     }
 
     public async Task<MarkNotStartedResponse> Handle(MarkNotStartedCommand request, CancellationToken cancellationToken)
@@ -117,6 +121,20 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
         });
 
         _applicationRepository.Update(application);
+
+        if (string.Equals(application.Job?.ServiceType?.Code, ServiceTypeCodes.HeadhuntCod, StringComparison.OrdinalIgnoreCase))
+        {
+            await _reconciliationRepository.AddAsync(new PlacementReconciliation
+            {
+                ReconciliationId = Guid.NewGuid(),
+                ApplicationId = application.ApplicationId,
+                ClaimedOutcome = PlacementReconciliationOutcomes.NotStarted,
+                Status = PlacementReconciliationStates.Pending,
+                ConcurrencyToken = Guid.NewGuid(),
+                CreatedAt = now,
+                UpdatedAt = now
+            }, cancellationToken);
+        }
         await _auditLogService.AddAsync(new AuditEntry
         {
             Action = AuditActions.ApplicationNotStarted,

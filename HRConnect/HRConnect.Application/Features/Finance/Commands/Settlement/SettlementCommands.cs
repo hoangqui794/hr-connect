@@ -103,6 +103,11 @@ public sealed class SettlementCommandHandlers :
             throw new ConflictException($"Chỉ ghi nhận thanh toán cho công nợ PENDING, DUE hoặc OVERDUE. Trạng thái hiện tại: {fee.Status}.");
         }
 
+        if (fee.Placement?.Reconciliation is { Status: not PlacementReconciliationStates.Confirmed })
+        {
+            throw new ConflictException("Phí placement chỉ được ghi nhận thanh toán sau khi Internal HR hoàn tất đối soát.");
+        }
+
         var oldStatus = fee.Status;
         fee.Status = ServiceFeeStates.Paid;
         fee.PaidAt = DateTime.SpecifyKind(request.PaidAt, DateTimeKind.Utc);

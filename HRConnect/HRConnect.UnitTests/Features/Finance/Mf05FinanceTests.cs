@@ -43,6 +43,12 @@ public class Mf05FinanceTests
 
     private WarrantyProgressService Progress() => new(Repository, UnitOfWork, _audit.Object);
 
+    private WarrantyProgressService ReconciliationAwareProgress() => new(
+        Repository,
+        UnitOfWork,
+        _audit.Object,
+        reconciliationRepository: new PlacementReconciliationRepository(_context));
+
     private ResolveResignationCommandHandler Resolve() => new(
         Repository, UnitOfWork, _audit.Object, new BusinessSettingsService(new SystemSettingRepository(_context)));
 
@@ -127,6 +133,32 @@ public class Mf05FinanceTests
     private static class ServiceTypeCodesForTest
     {
         public const string Headhunt = "HEADHUNT_COD";
+    }
+
+    [Fact]
+    public async Task RecordServiceFeePayment_WhenReconciliationIsPending_IsRejected()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        var finance = await InitializeAsync(placement, offer);
+        _context.PlacementReconciliations.Add(new PlacementReconciliation
+        {
+            ReconciliationId = Guid.NewGuid(),
+            ApplicationId = placement.ApplicationId,
+            PlacementId = placement.PlacementId,
+            ClaimedOutcome = PlacementReconciliationOutcomes.Started,
+            Status = PlacementReconciliationStates.Pending,
+            ConcurrencyToken = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync();
+
+        var action = () => Settlement().Handle(
+            new RecordServiceFeePaymentCommand(finance.ServiceFeeId!.Value, DateTime.UtcNow, "UC41-PENDING", _actor), default);
+
+        await action.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*hoàn tất đối soát*");
+        (await _context.ServiceFees.SingleAsync()).Status.Should().Be(ServiceFeeStates.Pending);
     }
 
     [Fact]
@@ -626,6 +658,58 @@ public class Mf05FinanceTests
         (await Progress().MarkServiceFeeDueAsync(fee.ServiceFeeId, today, reminderDays: 5)).Should().BeFalse();
 
         (await _context.ServiceFees.SingleAsync()).Status.Should().Be(ServiceFeeStates.Pending);
+    }
+
+    [Fact]
+    public async Task Pending_reconciliation_blocks_both_due_and_overdue_fee_transitions()
+    {
+        var today = new DateOnly(2026, 10, 15);
+        var fee = await FeeDueOnAsync(today.AddDays(1));
+        var placement = await _context.Placements.SingleAsync();
+        _context.PlacementReconciliations.Add(new PlacementReconciliation
+        {
+            ReconciliationId = Guid.NewGuid(),
+            ApplicationId = placement.ApplicationId,
+            PlacementId = placement.PlacementId,
+            ClaimedOutcome = PlacementReconciliationOutcomes.Started,
+            Status = PlacementReconciliationStates.Pending,
+            ConcurrencyToken = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        });
+        await _context.SaveChangesAsync();
+        var progress = ReconciliationAwareProgress();
+
+        (await progress.MarkServiceFeeDueAsync(fee.ServiceFeeId, today, reminderDays: 5)).Should().BeFalse();
+        fee.DueDate = today.AddDays(-1);
+        await _context.SaveChangesAsync();
+        (await progress.MarkServiceFeeOverdueAsync(fee.ServiceFeeId, today)).Should().BeFalse();
+
+        (await _context.ServiceFees.SingleAsync()).Status.Should().Be(ServiceFeeStates.Pending);
+    }
+
+    [Fact]
+    public async Task Confirmed_reconciliation_allows_fee_to_become_due()
+    {
+        var today = new DateOnly(2026, 10, 15);
+        var fee = await FeeDueOnAsync(today.AddDays(1));
+        var placement = await _context.Placements.SingleAsync();
+        _context.PlacementReconciliations.Add(new PlacementReconciliation
+        {
+            ReconciliationId = Guid.NewGuid(),
+            ApplicationId = placement.ApplicationId,
+            PlacementId = placement.PlacementId,
+            ClaimedOutcome = PlacementReconciliationOutcomes.Started,
+            Status = PlacementReconciliationStates.Confirmed,
+            ReviewedAt = DateTime.UtcNow,
+            ConcurrencyToken = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        });
+        await _context.SaveChangesAsync();
+
+        (await ReconciliationAwareProgress().MarkServiceFeeDueAsync(fee.ServiceFeeId, today, reminderDays: 5)).Should().BeTrue();
+        (await _context.ServiceFees.SingleAsync()).Status.Should().Be(ServiceFeeStates.Due);
     }
 
     [Fact]

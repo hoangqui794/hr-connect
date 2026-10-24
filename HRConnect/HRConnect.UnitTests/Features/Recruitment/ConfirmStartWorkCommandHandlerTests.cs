@@ -6,6 +6,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Finance.Common;
+using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmStartWork;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
@@ -26,6 +27,7 @@ public class ConfirmStartWorkCommandHandlerTests
     private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
     private readonly Mock<IPlacementFinanceService> _placementFinanceServiceMock = CreateFinanceMock();
     private readonly Mock<IFinanceRepository> _financeRepositoryMock = new();
+    private readonly Mock<IPlacementReconciliationRepository> _reconciliationRepositoryMock = new();
 
     private static Mock<IPlacementFinanceService> CreateFinanceMock()
     {
@@ -45,7 +47,8 @@ public class ConfirmStartWorkCommandHandlerTests
             _loggerMock.Object,
             _auditLogServiceMock.Object,
             _placementFinanceServiceMock.Object,
-            _financeRepositoryMock.Object);
+            _financeRepositoryMock.Object,
+            _reconciliationRepositoryMock.Object);
 
     [Fact]
     public async Task Handle_WhenActualStartDateIsInFuture_ShouldThrowBadRequestException()
@@ -548,7 +551,12 @@ public class ConfirmStartWorkCommandHandlerTests
             ApplicationId = appId,
             Status = "OFFER_ACCEPTED",
             ConcurrencyToken = initialToken,
-            Job = new Job { CompanyId = companyId, Title = "Senior .NET Developer" }
+            Job = new Job
+            {
+                CompanyId = companyId,
+                Title = "Senior .NET Developer",
+                ServiceType = new ServiceType { Code = "CV_SOURCING" }
+            }
         };
 
         var offer = new Offer
@@ -620,6 +628,9 @@ public class ConfirmStartWorkCommandHandlerTests
 
         _placementRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Placement>(), It.IsAny<CancellationToken>()), Times.Once);
         _applicationRepositoryMock.Verify(r => r.Update(application), Times.Once);
+        _reconciliationRepositoryMock.Verify(
+            r => r.AddAsync(It.IsAny<PlacementReconciliation>(), It.IsAny<CancellationToken>()),
+            Times.Never);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -628,6 +639,7 @@ public class ConfirmStartWorkCommandHandlerTests
     {
         var slotId = Guid.NewGuid();
         var fixture = ArrangeValidClientStart(slotId);
+        fixture.Application.Job.ServiceType = new ServiceType { Code = ServiceTypeCodes.HeadhuntCod };
         var originalPlacementId = Guid.NewGuid();
         var slot = new ReplacementSlot
         {
@@ -660,6 +672,9 @@ public class ConfirmStartWorkCommandHandlerTests
             .Setup(r => r.AddAsync(It.IsAny<Placement>(), It.IsAny<CancellationToken>()))
             .Callback<Placement, CancellationToken>((placement, _) => createdPlacement = placement)
             .Returns(Task.CompletedTask);
+        _reconciliationRepositoryMock
+            .Setup(r => r.AddAsync(It.IsAny<PlacementReconciliation>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         _placementFinanceServiceMock
             .Setup(s => s.InitializeAsync(It.IsAny<Placement>(), It.IsAny<JobApplicationContext>(), fixture.UserId, It.IsAny<CancellationToken>()))
             .Callback<Placement, JobApplicationContext, Guid, CancellationToken>((_, context, _, _) => capturedContext = context)
@@ -681,6 +696,12 @@ public class ConfirmStartWorkCommandHandlerTests
         slot.ClosedAt.Should().NotBeNull();
         capturedContext.Should().NotBeNull();
         capturedContext!.ReplacementSourceServiceFee.Should().BeSameAs(sourceFee);
+        _reconciliationRepositoryMock.Verify(r => r.AddAsync(
+            It.Is<PlacementReconciliation>(item =>
+                item.ApplicationId == fixture.Application.ApplicationId &&
+                item.PlacementId == createdPlacement!.PlacementId &&
+                item.Status == PlacementReconciliationStates.Pending),
+            It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -793,5 +814,28 @@ public class ConfirmStartWorkCommandHandlerTests
             AcceptAsNewHire: acceptAsNewHire);
 
         return (application, offer, userId, CreateCommand);
+    }
+
+    [Fact]
+    public async Task Handle_WhenHeadhuntCandidateStarts_ShouldCreatePendingReconciliationInSameUnitOfWork()
+    {
+        var fixture = ArrangeValidClientStart(null);
+        fixture.Application.Job.ServiceType = new ServiceType { Code = ServiceTypeCodes.HeadhuntCod };
+        _placementRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Placement>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _reconciliationRepositoryMock.Setup(r => r.AddAsync(It.IsAny<PlacementReconciliation>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        await CreateHandler().Handle(fixture.CreateCommand(false), default);
+
+        _reconciliationRepositoryMock.Verify(r => r.AddAsync(
+            It.Is<PlacementReconciliation>(item =>
+                item.ApplicationId == fixture.Application.ApplicationId &&
+                item.PlacementId.HasValue &&
+                item.ClaimedOutcome == PlacementReconciliationOutcomes.Started &&
+                item.Status == PlacementReconciliationStates.Pending),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }

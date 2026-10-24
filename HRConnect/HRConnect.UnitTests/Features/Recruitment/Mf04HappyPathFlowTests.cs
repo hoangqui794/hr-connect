@@ -225,7 +225,8 @@ public sealed class Mf04HappyPathFlowTests
             Mock.Of<ILogger<ConfirmStartWorkCommandHandler>>(),
             audit.Object,
             NotApplicableFinance(),
-            financeRepository.Object);
+            financeRepository.Object,
+            Mock.Of<IPlacementReconciliationRepository>());
         await confirmStartHandler.Handle(new ConfirmStartWorkCommand(
             application.ApplicationId,
             persistedOffer.OfferId,
