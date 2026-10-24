@@ -20,6 +20,7 @@ import {
   UserAddOutlined,
   UserOutlined,
   KeyOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { TrophyOutlined, SolutionOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
@@ -30,6 +31,7 @@ import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import '@/features/admin-console/admin-console.css';
+import './affiliate/affiliate.css';
 import { BrandMark } from '@/components/common/BrandMark';
 
 interface NavItem {
@@ -44,30 +46,30 @@ const NAV: { group: string; items: NavItem[] }[] = [
     group: 'Tổng quan',
     items: [
       { to: '/affiliate/dashboard', label: 'Tổng quan', icon: <DashboardOutlined /> },
-      { to: '/affiliate/performance', label: 'Hiệu suất của tôi', icon: <TrophyOutlined /> },
+      { to: '/affiliate/performance', label: 'Kết quả giới thiệu', icon: <TrophyOutlined /> },
     ],
   },
   {
-    group: 'Giới thiệu',
+    group: 'Tuyển dụng',
     items: [
-      { to: '/affiliate/jobs', label: 'Việc làm đang tuyển', icon: <FileTextOutlined /> },
+      { to: '/affiliate/jobs', label: 'Tìm cơ hội tuyển dụng', icon: <FileTextOutlined /> },
       { to: '/affiliate/submit-candidate', label: 'Giới thiệu ứng viên', icon: <UserAddOutlined /> },
       { to: '/affiliate/submissions', label: 'Lượt giới thiệu', icon: <SendOutlined /> },
       { to: '/affiliate/candidates', label: 'Kho ứng viên', icon: <TeamOutlined /> },
     ],
   },
   {
-    group: 'Ghi nhận',
+    group: 'Quyền lợi & hỗ trợ',
     items: [
-      { to: '/affiliate/attributions', label: 'Ghi nhận nguồn', icon: <SafetyCertificateOutlined /> },
-      { to: '/affiliate/disputes', label: 'Khiếu nại nguồn', icon: <SolutionOutlined /> },
+      { to: '/affiliate/attributions', label: 'Quyền ghi nhận', icon: <SafetyCertificateOutlined /> },
+      { to: '/affiliate/disputes', label: 'Khiếu nại', icon: <SolutionOutlined /> },
+      { to: '/affiliate/commissions', label: 'Hoa hồng & chi trả', icon: <DollarOutlined /> },
     ],
   },
-  { group: 'Thu nhập', items: [{ to: '/affiliate/commissions', label: 'Hoa hồng & chi trả', icon: <DollarOutlined /> }] },
   {
-    group: 'Cá nhân & Cài đặt',
+    group: 'Tài khoản',
     items: [
-      { to: '/affiliate/profile', label: 'Hồ sơ & Tài khoản', icon: <UserOutlined /> },
+      { to: '/affiliate/profile', label: 'Hồ sơ & cài đặt', icon: <UserOutlined /> },
     ],
   },
 ];
@@ -110,7 +112,7 @@ export const AffiliateShell: React.FC = () => {
   };
 
   const name = user?.name || 'Cộng tác viên';
-  const width = collapsed ? 76 : 256;
+  const width = collapsed ? 76 : 268;
 
   return (
     <div className="affiliate-console min-h-screen bg-[#F7F5FC] text-slate-900">
@@ -119,20 +121,20 @@ export const AffiliateShell: React.FC = () => {
         <div className="fixed inset-0 z-[25] bg-slate-900/40" onClick={() => setMenuOpen(false)} aria-hidden />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex flex-col border-0 border-r border-solid border-slate-200 bg-white transition-[width,transform] duration-200${compact && menuOpen ? ' shadow-2xl' : ''}`}
+        className={`affiliate-sidebar fixed inset-y-0 left-0 z-30 flex flex-col border-0 border-r border-solid transition-[width,transform] duration-200${compact && menuOpen ? ' shadow-2xl' : ''}`}
         style={{
           width: compact ? 272 : width,
           transform: compact && !menuOpen ? 'translateX(-100%)' : undefined,
           visibility: compact && !menuOpen ? 'hidden' : undefined,
         }}
-        aria-label="Điều hướng Affiliate"
+        aria-label="Điều hướng cộng tác viên"
       >
-        <div className="flex h-16 items-center gap-3 px-5">
+        <div className="affiliate-sidebar-brand flex h-16 items-center gap-3 px-5">
           <BrandMark size={36} className="shrink-0" />
           {!collapsed && (
             <div className="min-w-0 leading-tight">
-              <div className="truncate text-[15px] font-bold text-slate-900">HR Connect</div>
-              <div className="text-[11px] font-medium tracking-wide text-[color:var(--console-accent-strong)]">Cộng tác viên tuyển dụng</div>
+              <div className="truncate text-[15px] font-bold text-white">HR Connect</div>
+              <div className="text-[11px] font-medium tracking-wide text-violet-200">Cộng tác viên tuyển dụng</div>
             </div>
           )}
         </div>
@@ -141,7 +143,7 @@ export const AffiliateShell: React.FC = () => {
           {NAV.map((g) => (
             <div key={g.group} className="mt-5 first:mt-2">
               {!collapsed && (
-                <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">{g.group}</div>
+                <div className="affiliate-nav-group px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.11em]">{g.group}</div>
               )}
               <ul className="m-0 list-none space-y-0.5 p-0">
                 {g.items.map((item) => (
@@ -151,14 +153,10 @@ export const AffiliateShell: React.FC = () => {
                         to={item.to}
                         className={({ isActive }) =>
                           [
-                            'flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium no-underline transition-colors duration-150',
-                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[color:var(--console-accent)]',
+                            'affiliate-nav-link relative flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium no-underline transition-colors duration-150',
+                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300',
                             collapsed ? 'justify-center' : '',
-                            isActive
-                              ? 'bg-[color:var(--console-accent-soft)] font-semibold text-[color:var(--console-accent-strong)] shadow-[inset_3px_0_0_var(--console-accent)]'
-                              : item.muted
-                                ? 'font-normal text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                                : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900',
+                            isActive ? 'active font-semibold' : item.muted ? 'font-normal opacity-80' : '',
                           ].join(' ')
                         }
                       >
@@ -175,11 +173,20 @@ export const AffiliateShell: React.FC = () => {
           ))}
         </nav>
 
+        {!collapsed && (
+          <div className="affiliate-sidebar-footer px-4 py-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-white">
+              <QuestionCircleOutlined aria-hidden /> Cần hỗ trợ?
+            </div>
+            <div className="mt-1 text-[11px] leading-relaxed text-slate-300">Xem hướng dẫn tại từng màn hình hoặc liên hệ bộ phận vận hành HR Connect.</div>
+          </div>
+        )}
+
         {!compact && (
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="flex h-11 cursor-pointer items-center gap-2 border-0 border-t border-solid border-slate-200 bg-transparent px-5 text-slate-500 transition-colors hover:text-slate-900"
+          className="flex h-11 cursor-pointer items-center gap-2 border-0 border-t border-solid border-white/10 bg-transparent px-5 text-slate-300 transition-colors hover:text-white"
           aria-label={collapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
         >
           {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
@@ -190,7 +197,7 @@ export const AffiliateShell: React.FC = () => {
 
       {/* ── Main ────────────────────────────────────────────────────────── */}
       <div className="transition-[padding] duration-200" style={{ paddingLeft: compact ? 0 : width }}>
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-0 border-b border-solid border-slate-200/70 bg-white/80 px-4 backdrop-blur lg:px-8">
+        <header className="affiliate-topbar sticky top-0 z-20 flex h-16 items-center justify-between border-0 border-b border-solid px-4 backdrop-blur lg:px-8">
           <div className="flex min-w-0 items-center gap-2">
             {compact && (
               <button
@@ -204,7 +211,7 @@ export const AffiliateShell: React.FC = () => {
               </button>
             )}
           <nav aria-label="Vị trí hiện tại" className="flex min-w-0 items-center gap-2 text-sm">
-            <span className="hidden text-slate-500 sm:inline">{current?.group ?? 'Affiliate'}</span>
+            <span className="hidden text-slate-500 sm:inline">Không gian cộng tác viên</span>
             {current && (
               <>
                 <span className="hidden text-slate-300 sm:inline" aria-hidden>/</span>
@@ -247,7 +254,7 @@ export const AffiliateShell: React.FC = () => {
         </header>
 
         <AdminTopProgress offsetLeft={compact ? 0 : width} />
-        <main className="mx-auto max-w-[1360px] px-4 py-6 lg:px-8 lg:py-8">
+        <main className="affiliate-main mx-auto px-4 py-6 lg:px-8 lg:py-8">
           <AdminPageEnter pathKey={location.pathname}>
             <Suspense fallback={<AdminPageSkeleton />}>
               <Outlet />

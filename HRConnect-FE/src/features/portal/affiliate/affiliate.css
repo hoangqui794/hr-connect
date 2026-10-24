@@ -1,0 +1,396 @@
+.affiliate-console {
+  --console-accent: #5b3fd6;
+  --console-accent-strong: #4527b8;
+  --console-accent-soft: #f1efff;
+  --console-accent-bright: #8b7cf6;
+  --console-accent-glow: rgba(91, 63, 214, 0.3);
+  --affiliate-gold: #a9550a;
+  --affiliate-navy: #0f1f45;
+  --affiliate-canvas: #f5f7fb;
+  --affiliate-border: #e4e8f1;
+  --affiliate-muted: #667085;
+  background: var(--affiliate-canvas);
+  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;
+}
+
+.affiliate-console .affiliate-sidebar {
+  background: var(--affiliate-navy);
+  border-color: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+
+.affiliate-console .affiliate-sidebar-brand {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.affiliate-console .affiliate-nav-group {
+  color: #8fa1c6;
+}
+
+.affiliate-console .affiliate-nav-link {
+  color: #cbd5e8;
+}
+
+.affiliate-console .affiliate-nav-link:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+}
+
+.affiliate-console .affiliate-nav-link.active {
+  background: #5b3fd6;
+  color: #fff;
+  box-shadow: 0 8px 20px -12px rgba(139, 124, 246, 0.85);
+}
+
+.affiliate-console .affiliate-nav-link.active::before {
+  content: '';
+  width: 3px;
+  height: 18px;
+  border-radius: 999px;
+  background: #c4baff;
+  position: absolute;
+  left: 0;
+}
+
+.affiliate-console .affiliate-sidebar-footer {
+  margin: 10px 12px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #d7def0;
+}
+
+.affiliate-console .affiliate-topbar {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: var(--affiliate-border);
+  box-shadow: 0 1px 0 rgba(15, 31, 69, 0.03);
+}
+
+.affiliate-console .affiliate-main {
+  width: min(100%, 1440px);
+}
+
+.affiliate-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.affiliate-page-header__copy {
+  max-width: 760px;
+}
+
+.affiliate-page-header h1 {
+  margin: 0;
+  color: #101828;
+  font-size: clamp(26px, 2vw, 34px);
+  line-height: 1.18;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.affiliate-page-header p {
+  max-width: 720px;
+  margin: 8px 0 0;
+  color: #667085;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.affiliate-page-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.affiliate-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.affiliate-section-heading h2 {
+  margin: 0;
+  color: #101828;
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.affiliate-section-heading p {
+  margin: 3px 0 0;
+  color: #667085;
+  font-size: 13px;
+}
+
+.affiliate-console .admin-surface,
+.affiliate-console .ant-card {
+  border: 1px solid var(--affiliate-border);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 10px 28px -24px rgba(15, 31, 69, 0.45);
+}
+
+.affiliate-stat-card {
+  position: relative;
+  min-height: 132px;
+  overflow: hidden;
+  padding: 20px;
+  border: 1px solid var(--affiliate-border);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.affiliate-stat-card::after {
+  content: '';
+  position: absolute;
+  right: -24px;
+  bottom: -34px;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: var(--stat-soft, #f1efff);
+}
+
+.affiliate-stat-card__icon {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--stat-soft, #f1efff);
+  color: var(--stat-color, #5b3fd6);
+  font-size: 18px;
+}
+
+.affiliate-stat-card__label {
+  display: block;
+  margin-top: 13px;
+  color: #667085;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.affiliate-stat-card__value {
+  display: block;
+  margin-top: 2px;
+  color: #101828;
+  font-size: 28px;
+  font-weight: 750;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+
+.affiliate-stat-card__hint {
+  display: block;
+  margin-top: 5px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.affiliate-action-panel {
+  border: 1px solid #ddd8ff;
+  border-radius: 18px;
+  background: #f8f7ff;
+  padding: 22px;
+}
+
+.affiliate-stepper {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 22px;
+  padding: 14px 18px;
+  border: 1px solid var(--affiliate-border);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.affiliate-stepper__item {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  color: #667085;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.affiliate-stepper__item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: 38px;
+  right: 14px;
+  top: 15px;
+  height: 1px;
+  background: #d8deea;
+}
+
+.affiliate-stepper__number {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d8deea;
+  border-radius: 50%;
+  background: #fff;
+  color: #667085;
+}
+
+.affiliate-stepper__item.is-active {
+  color: #4527b8;
+}
+
+.affiliate-stepper__item.is-active .affiliate-stepper__number {
+  border-color: #5b3fd6;
+  background: #5b3fd6;
+  color: #fff;
+}
+
+.affiliate-console .ant-btn {
+  min-height: 40px;
+  border-radius: 10px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.affiliate-console .ant-btn-primary {
+  background: #5b3fd6;
+}
+
+.affiliate-console .ant-btn-primary:not(:disabled):hover {
+  background: #4527b8;
+}
+
+.affiliate-console .ant-input,
+.affiliate-console .ant-input-affix-wrapper,
+.affiliate-console .ant-select-selector,
+.affiliate-console .ant-picker,
+.affiliate-console .ant-upload-drag,
+.affiliate-console .ant-segmented {
+  border-color: #d8deea !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+
+.affiliate-console .ant-input,
+.affiliate-console .ant-input-affix-wrapper,
+.affiliate-console .ant-picker,
+.affiliate-console .ant-select-single .ant-select-selector {
+  min-height: 42px;
+}
+
+.affiliate-console .ant-form-item-label > label {
+  color: #344054;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.affiliate-console .ant-form-item-extra,
+.affiliate-console .ant-form-item-explain {
+  margin-top: 5px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.affiliate-console .admin-soft-table .ant-table-thead > tr > th {
+  background: #f8fafc !important;
+  color: #475467 !important;
+  letter-spacing: 0.025em;
+  text-transform: none;
+}
+
+.affiliate-console .admin-soft-table .ant-table-tbody > tr > td {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+.affiliate-console .ant-alert {
+  border-radius: 12px;
+}
+
+.affiliate-console .ant-modal-content {
+  border-radius: 18px;
+  padding: 24px;
+}
+
+.affiliate-console .ant-tabs-nav::before {
+  border-color: var(--affiliate-border);
+}
+
+.affiliate-console .ant-tabs-tab {
+  min-height: 46px;
+  font-weight: 600;
+}
+
+.affiliate-console .admin-console-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--console-accent-strong) !important;
+}
+
+.affiliate-console .admin-console-tabs .ant-tabs-ink-bar {
+  background: var(--console-accent) !important;
+}
+
+.affiliate-console .ant-pagination-item,
+.affiliate-console .ant-pagination-prev,
+.affiliate-console .ant-pagination-next {
+  border-radius: 9px;
+}
+
+.affiliate-console .ant-tag {
+  white-space: normal;
+}
+
+@media (max-width: 767px) {
+  .affiliate-page-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .affiliate-page-header__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .affiliate-page-header__actions .ant-btn {
+    flex: 1 1 auto;
+  }
+
+  .affiliate-stepper {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .affiliate-stepper__item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .affiliate-stepper__item:not(:last-child)::after {
+    left: 31px;
+    right: -5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .affiliate-console *,
+  .affiliate-console *::before,
+  .affiliate-console *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

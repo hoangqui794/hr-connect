@@ -11,8 +11,9 @@ import { BankOutlined, ExclamationCircleOutlined, ReloadOutlined } from '@ant-de
 import { affiliateBankApi, financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Commission, CommissionStatus, Payout } from '@/types/api/finance';
-import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { FilterPills, StatusDot, Surface } from '@/features/admin-console/ui';
 import { COMMISSION_STATUS, PAYOUT_STATUS, date, labelOf, money } from './financeLabels';
+import { AffiliatePageHeader } from '@/features/portal/affiliate/AffiliateUi';
 
 const PAGE_SIZE = 20;
 
@@ -140,7 +141,7 @@ const stepNote = (c: Commission): string | null => {
     const left = daysLeft(c.warrantyEndDate);
     return `${left === 0 ? 'Hết bảo hành hôm nay' : `Còn ${left} ngày`} · hết bảo hành ${date(c.warrantyEndDate)}`;
   }
-  if (c.status === 'EARNED') return c.serviceFeeStatus === 'PAID' ? 'Client đã trả phí, chờ Admin duyệt' : 'Chờ Client thanh toán phí dịch vụ';
+  if (c.status === 'EARNED') return c.serviceFeeStatus === 'PAID' ? 'Doanh nghiệp đã thanh toán, chờ HR Connect duyệt chi' : 'Chờ doanh nghiệp thanh toán phí dịch vụ';
   if (c.status === 'PAYABLE') return 'Đã duyệt, chờ chuyển khoản cho bạn';
   if (c.status === 'PENDING') return 'Chờ ứng viên bắt đầu đi làm';
   return null;
@@ -162,7 +163,7 @@ const CommissionCard: React.FC<{ c: Commission }> = ({ c }) => {
         <div className="min-w-0">
           <div className="truncate text-[15px] font-semibold text-slate-900">{c.candidateName ?? '—'}</div>
           <div className="truncate text-[13px] text-slate-500">
-            {c.jobTitle ?? '—'} · {c.placementId ? 'Headhunt' : 'CV Sourcing'}
+            {c.jobTitle ?? '—'} · {c.placementId ? 'Tuyển dụng trọn gói' : 'Cung cấp CV phù hợp'}
           </div>
         </div>
         <div className="text-right">
@@ -207,7 +208,7 @@ const CommissionCard: React.FC<{ c: Commission }> = ({ c }) => {
           {onHold ? (
             <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-[13px] text-amber-800">
               <ExclamationCircleOutlined className="mr-1.5" aria-hidden />
-              Client báo ứng viên nghỉ việc; Internal HR đang xác minh. Nếu báo nghỉ bị bác bỏ, hoa hồng tiếp tục bảo hành.
+              Doanh nghiệp báo ứng viên đã nghỉ việc; bộ phận vận hành đang xác minh. Nếu thông tin không chính xác, tiến trình hoa hồng sẽ tiếp tục.
             </div>
           ) : note ? (
             <div className="mt-2 text-[13px] text-slate-600">{note}</div>
@@ -261,10 +262,9 @@ export const AffiliateCommissionsPage: React.FC = () => {
 
   return (
     <div>
-      <PageHero
-        eyebrow="Thu nhập"
+      <AffiliatePageHeader
         title="Hoa hồng & chi trả"
-        description="Theo dõi từng ca giới thiệu từ lúc ứng viên đi làm đến khi bạn nhận tiền."
+        description="Theo dõi số tiền dự kiến, điều kiện chi trả và lịch sử HR Connect chuyển tiền cho bạn."
         actions={
           <Button
             icon={<ReloadOutlined />}
@@ -288,7 +288,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
           <div className="rounded-2xl bg-[color:var(--console-accent-soft)] p-4 sm:p-5">
             <div className="text-[13px] font-medium text-[color:var(--console-accent-strong)]">Sắp nhận</div>
             <div className="mt-1 text-[28px] font-bold leading-tight tabular-nums text-[color:var(--console-accent-strong)]">{money(sum(GROUPS.payout))}</div>
-            <div className="mt-1 text-[13px] text-[color:var(--console-accent-strong)]">Đã đạt; chuyển khoản sau khi Client thanh toán phí và Admin duyệt.</div>
+            <div className="mt-1 text-[13px] text-[color:var(--console-accent-strong)]">Đã đủ điều kiện; chuyển khoản sau khi doanh nghiệp thanh toán và HR Connect duyệt chi.</div>
           </div>
           <Surface padded>
             <div className="text-[13px] text-slate-500">Đang bảo hành</div>
@@ -304,7 +304,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
       <PayoutAccountCard />
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="m-0 text-base font-semibold text-slate-900">Các ca giới thiệu</h2>
+        <h2 className="m-0 text-base font-semibold text-slate-900">Tiến trình từng khoản hoa hồng</h2>
         <FilterPills<Group>
           label="Lọc hoa hồng"
           value={group}
@@ -325,7 +325,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
             <div className="text-[15px] font-semibold text-slate-900">{items.length === 0 ? 'Chưa có hoa hồng' : 'Không có ca nào ở mục này'}</div>
             <div className="mt-1 text-[13px] text-slate-500">
               {items.length === 0
-                ? 'Hoa hồng xuất hiện khi ứng viên bạn giới thiệu bắt đầu đi làm hoặc CV được Client nhận.'
+                ? 'Hoa hồng xuất hiện khi ứng viên bạn giới thiệu bắt đầu đi làm hoặc doanh nghiệp tiếp nhận CV.'
                 : 'Chọn mục khác để xem.'}
             </div>
           </div>
@@ -338,7 +338,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
         </ul>
       )}
 
-      <h2 className="mb-3 mt-8 text-base font-semibold text-slate-900">Lịch sử chi</h2>
+      <h2 className="mb-3 mt-8 text-base font-semibold text-slate-900">Lịch sử chuyển tiền</h2>
       {payouts.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(payouts.error)} />}
       <Surface>
         <Table

@@ -1,244 +1,104 @@
-/**
- * @file AffiliatePerformancePage.tsx
- * @description Dedicated page for Affiliate to view recruitment performance metrics,
- * quality ratings, conversion rates, and period history (GET /api/v1/affiliates/profile/me/performance).
- */
-
-import React, { useState } from 'react';
-import {
-  Table,
-  Tag,
-  Radio,
-  Progress,
-  Skeleton,
-  Alert,
-  Breadcrumb,
-  Button,
-} from 'antd';
-import {
-  TrophyOutlined,
-  CheckCircleOutlined,
-  RiseOutlined,
-  CalendarOutlined,
-  HomeOutlined,
-  ArrowLeftOutlined,
-  StarFilled,
-} from '@ant-design/icons';
+import React from 'react';
+import { Alert, Button, Progress, Skeleton, Table } from 'antd';
+import { CheckCircleOutlined, ReloadOutlined, SendOutlined, TeamOutlined, TrophyOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { affiliateApi } from '@/services/api/mf02/affiliateApi';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { Surface } from '@/features/admin-console/ui';
-import type { AffiliatePerformance, AffiliatePerformanceHistoryItem } from '@/types/api/mf02/affiliate';
+import { StatusDot, Surface } from '@/features/admin-console/ui';
+import type { AffiliatePerformanceHistoryItem } from '@/types/api/mf02/affiliate';
+import { AffiliatePageHeader, AffiliateSectionHeading, AffiliateStatCard } from './affiliate/AffiliateUi';
 
-const fmtDate = (d?: string | null) => (d ? dayjs(d).format('DD/MM/YYYY') : '—');
-const fmtDateTime = (d?: string | null) => (d ? dayjs(d).format('HH:mm DD/MM/YYYY') : '—');
+const fmtDate = (value?: string | null) => (value ? dayjs(value).format('DD/MM/YYYY') : '—');
+const fmtDateTime = (value?: string | null) => (value ? dayjs(value).format('HH:mm DD/MM/YYYY') : '—');
+const qualityLabel = (value?: string | null) => {
+  const labels: Record<string, string> = {
+    EXCELLENT: 'Xuất sắc',
+    GOOD: 'Tốt',
+    AVERAGE: 'Đạt yêu cầu',
+    FAIR: 'Cần cải thiện',
+    POOR: 'Chưa đạt',
+  };
+  return value ? labels[value.toUpperCase()] ?? value : 'Chưa đủ dữ liệu đánh giá';
+};
 
 export const AffiliatePerformancePage: React.FC = () => {
-  const navigate = useNavigate();
-  const [period, setPeriod] = useState<'MONTH' | 'QUARTER' | 'YEAR'>('MONTH');
-
-  const { data: perf, isLoading, isError, error } = useQuery({
-    queryKey: ['affiliate-performance', period],
-    queryFn: () => affiliateApi.performance(),
-  });
-
-  const p = perf;
+  const performance = useQuery({ queryKey: ['affiliate-performance'], queryFn: () => affiliateApi.performance() });
+  const data = performance.data;
+  const successRate = Math.round((data?.submissionToHireRate ?? 0) * 100);
+  const qualityScore = Math.round(data?.qualityRating ?? 0);
 
   const historyColumns: ColumnsType<AffiliatePerformanceHistoryItem> = [
+    { title: 'Kỳ đánh giá', key: 'period', render: (_, item) => <span className="font-semibold text-slate-900">{fmtDate(item.periodStart)} – {fmtDate(item.periodEnd)}</span> },
+    { title: 'Đã giới thiệu', dataIndex: 'totalSubmissions', width: 120, render: (value) => <span className="tabular-nums">{value}</span> },
+    { title: 'Được chọn', dataIndex: 'totalShortlisted', width: 110, render: (value) => <span className="tabular-nums">{value}</span> },
+    { title: 'Phỏng vấn', dataIndex: 'totalInterviews', width: 110, render: (value) => <span className="tabular-nums">{value}</span> },
+    { title: 'Đi làm', dataIndex: 'totalPlacements', width: 90, render: (value) => <span className="font-semibold tabular-nums text-emerald-700">{value}</span> },
+    { title: 'Tỉ lệ thành công', dataIndex: 'submissionToHireRate', width: 140, render: (value) => (value != null ? `${Math.round(value * 100)}%` : '—') },
     {
-      title: 'Kỳ đánh giá',
-      key: 'period',
-      render: (_, r) => (
-        <span className="font-medium text-slate-900">
-          {fmtDate(r.periodStart)} – {fmtDate(r.periodEnd)}
-        </span>
+      title: 'Đánh giá', key: 'rating', width: 150,
+      render: (_, item) => (
+        <StatusDot tone={item.qualityRating != null && item.qualityRating >= 80 ? 'success' : 'info'}>
+          {item.ratingLabel ? qualityLabel(item.ratingLabel) : (item.qualityRating != null ? `${Math.round(item.qualityRating)} điểm` : 'Chưa đánh giá')}
+        </StatusDot>
       ),
-    },
-    {
-      title: 'Lượt nộp',
-      dataIndex: 'totalSubmissions',
-      width: 100,
-      render: (v) => <span className="tabular-nums">{v}</span>,
-    },
-    {
-      title: 'Qua sàng lọc',
-      dataIndex: 'totalShortlisted',
-      width: 110,
-      render: (v) => <span className="tabular-nums text-slate-700">{v}</span>,
-    },
-    {
-      title: 'Phỏng vấn',
-      dataIndex: 'totalInterviews',
-      width: 110,
-      render: (v) => <span className="tabular-nums text-blue-700">{v}</span>,
-    },
-    {
-      title: 'Đi làm',
-      dataIndex: 'totalPlacements',
-      width: 100,
-      render: (v) => <span className="font-bold tabular-nums text-emerald-700">{v}</span>,
-    },
-    {
-      title: 'Tỉ lệ tuyển',
-      dataIndex: 'submissionToHireRate',
-      width: 120,
-      render: (v) => (v != null ? `${Math.round(v * 100)}%` : '—'),
-    },
-    {
-      title: 'Xếp hạng',
-      key: 'rating',
-      width: 140,
-      render: (_, r) => (
-        <Tag color={r.qualityRating && r.qualityRating >= 80 ? 'green' : 'blue'}>
-          {r.ratingLabel || (r.qualityRating ? `${Math.round(r.qualityRating)} điểm` : 'Tiêu chuẩn')}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Tính lúc',
-      dataIndex: 'calculatedAt',
-      width: 140,
-      render: (v) => <span className="text-xs text-slate-500">{fmtDateTime(v)}</span>,
     },
   ];
 
+  const stats = [
+    { label: 'Lượt giới thiệu', value: data?.totalSubmissions, hint: 'Tổng hồ sơ đã gửi', icon: <SendOutlined />, color: '#5b3fd6', soft: '#f1efff' },
+    { label: 'Được doanh nghiệp chọn', value: data?.totalShortlisted, hint: 'Hồ sơ qua sàng lọc', icon: <CheckCircleOutlined />, color: '#087a55', soft: '#eafaf3' },
+    { label: 'Đã vào phỏng vấn', value: data?.totalInterviews, hint: 'Ứng viên có lịch phỏng vấn', icon: <TeamOutlined />, color: '#2563eb', soft: '#eef4ff' },
+    { label: 'Tuyển dụng thành công', value: data?.totalPlacements, hint: `${successRate}% trên tổng lượt gửi`, icon: <TrophyOutlined />, color: '#a9550a', soft: '#fff6e8' },
+  ];
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-      {/* Header & Breadcrumb */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Breadcrumb
-          items={[
-            {
-              title: (
-                <span
-                  className="cursor-pointer flex items-center gap-1 text-slate-500 hover:text-blue-600"
-                  onClick={() => navigate('/affiliate/dashboard')}
-                >
-                  <HomeOutlined /> Trang chủ
-                </span>
-              ),
-            },
-            {
-              title: (
-                <span className="font-semibold text-slate-800 flex items-center gap-1">
-                  <TrophyOutlined className="text-amber-500" /> Hiệu suất tuyển dụng của tôi
-                </span>
-              ),
-            },
-          ]}
-        />
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/affiliate/dashboard')}>
-          Quay lại tổng quan
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <AffiliatePageHeader
+        title="Kết quả giới thiệu"
+        description="Theo dõi chất lượng hồ sơ, tỉ lệ chuyển đổi và kết quả tuyển dụng để biết nhóm ứng viên nào đang mang lại hiệu quả tốt nhất."
+        actions={<Button icon={<ReloadOutlined />} loading={performance.isFetching} onClick={() => performance.refetch()}>Cập nhật dữ liệu</Button>}
+      />
+      {performance.isError ? <Alert type="error" showIcon message="Không tải được báo cáo" description={getApiErrorMessage(performance.error)} /> : null}
 
-      {/* Hero Banner with Period selector */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-900 via-indigo-900 to-slate-900 p-8 text-white shadow-xl">
-        <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-64 w-64 rounded-full bg-violet-500/20 blur-3xl" />
-        <div className="relative flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-amber-300 backdrop-blur-md">
-              <StarFilled className="text-amber-400" /> Báo cáo chất lượng CTV
-            </span>
-            <h1 className="m-0 mt-3 text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-              Hiệu suất tuyển dụng {p?.displayName ? `· ${p.displayName}` : ''}
-            </h1>
-            <p className="m-0 mt-2 max-w-xl text-sm leading-relaxed text-indigo-100/80">
-              Đánh giá chất lượng hồ sơ giới thiệu, tỷ lệ ứng viên đi làm và lịch sử duy trì chất lượng qua các kỳ tuyển dụng.
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-white/10 p-1.5 backdrop-blur-md border border-white/10">
-            <Radio.Group
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              size="middle"
-              optionType="button"
-              buttonStyle="solid"
-              options={[
-                { label: 'Tháng này', value: 'MONTH' },
-                { label: 'Quý này', value: 'QUARTER' },
-                { label: 'Năm nay', value: 'YEAR' },
-              ]}
-            />
-          </div>
-        </div>
-
-        {/* Current Period Highlights */}
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 border-0 border-t border-solid border-white/10 pt-6">
-          <div>
-            <span className="text-xs font-medium text-indigo-200">Xếp hạng chất lượng</span>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-amber-300">
-                {isLoading ? '...' : p?.ratingLabel || 'Tiêu chuẩn'}
-              </span>
-              {p?.qualityRating != null && (
-                <span className="text-sm text-indigo-200">({Math.round(p.qualityRating)}/100)</span>
-              )}
-            </div>
-          </div>
-          <div>
-            <span className="text-xs font-medium text-indigo-200">Tỉ lệ ứng viên đi làm</span>
-            <div className="mt-1 text-2xl font-bold text-white">
-              {isLoading ? '...' : `${Math.round((p?.submissionToHireRate ?? 0) * 100)}%`}
-            </div>
-          </div>
-          <div>
-            <span className="text-xs font-medium text-indigo-200">Kỳ đánh giá hiện tại</span>
-            <div className="mt-1 text-sm font-semibold text-indigo-100">
-              {p?.periodStart && p?.periodEnd ? `${fmtDate(p.periodStart)} – ${fmtDate(p.periodEnd)}` : 'Kỳ hiện tại'}
-            </div>
-          </div>
-          <div>
-            <span className="text-xs font-medium text-indigo-200">Cập nhật lần cuối</span>
-            <div className="mt-1 text-sm text-indigo-200">
-              {fmtDateTime(p?.calculatedAt)}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: 'Tổng lượt giới thiệu', val: p?.totalSubmissions, hint: 'Hồ sơ đã nộp', color: 'text-slate-900' },
-          { label: 'Được chọn sàng lọc', val: p?.totalShortlisted, hint: 'Doanh nghiệp quan tâm', color: 'text-indigo-600' },
-          { label: 'Tham gia phỏng vấn', val: p?.totalInterviews, hint: 'Có lịch phỏng vấn', color: 'text-blue-600' },
-          { label: 'Đi làm thành công', val: p?.totalPlacements, hint: 'Đã nhận việc', color: 'text-emerald-600' },
-        ].map((item) => (
-          <div key={item.label} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              {item.label}
-            </span>
-            <div className={`mt-2 text-3xl font-extrabold tabular-nums ${item.color}`}>
-              {isLoading ? <Skeleton.Input active size="small" /> : item.val ?? 0}
-            </div>
-            <div className="mt-1 text-xs text-slate-400">{item.hint}</div>
-          </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map((item) => (
+          <AffiliateStatCard key={item.label} label={item.label} value={performance.isLoading ? <Skeleton.Input active size="small" /> : item.value ?? 0} hint={item.hint} icon={item.icon} color={item.color} softColor={item.soft} />
         ))}
       </div>
 
-      {/* History Table */}
-      <Surface padded>
-        <div className="mb-4">
-          <h3 className="m-0 text-base font-bold text-slate-900">Lịch sử hiệu suất các kỳ trước</h3>
-          <p className="m-0 text-xs text-slate-500 mt-0.5">
-            Dữ liệu tổng hợp theo chu kỳ giúp theo dõi tiến trình cộng tác và duy trì xếp hạng thưởng hoa hồng.
-          </p>
-        </div>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+        <Surface className="p-6">
+          <AffiliateSectionHeading title="Chất lượng hồ sơ" description="Điểm được tổng hợp từ kết quả xử lý thực tế của các hồ sơ bạn giới thiệu." />
+          {performance.isLoading ? <Skeleton active paragraph={{ rows: 4 }} /> : (
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <div className="mb-2 flex items-end justify-between gap-3"><span className="text-sm font-semibold text-slate-700">Điểm chất lượng</span><span className="text-2xl font-bold text-slate-900">{qualityScore}<small className="text-sm font-medium text-slate-500">/100</small></span></div>
+                <Progress percent={qualityScore} showInfo={false} strokeColor="#5b3fd6" trailColor="#e8eaf1" />
+                <p className="mb-0 mt-3 text-[13px] leading-relaxed text-slate-600">Mức hiện tại: <strong className="text-slate-900">{qualityLabel(data?.ratingLabel)}</strong>.</p>
+              </div>
+              <div>
+                <div className="mb-2 flex items-end justify-between gap-3"><span className="text-sm font-semibold text-slate-700">Tỉ lệ tuyển thành công</span><span className="text-2xl font-bold text-slate-900">{successRate}%</span></div>
+                <Progress percent={successRate} showInfo={false} strokeColor="#087a55" trailColor="#e8eaf1" />
+                <p className="mb-0 mt-3 text-[13px] leading-relaxed text-slate-600">Tính từ số ứng viên đi làm trên tổng lượt giới thiệu.</p>
+              </div>
+            </div>
+          )}
+        </Surface>
+        <Surface className="p-6">
+          <AffiliateSectionHeading title="Kỳ đánh giá hiện tại" />
+          <dl className="m-0 space-y-4 text-sm">
+            <div><dt className="text-slate-500">Thời gian</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{data?.periodStart && data?.periodEnd ? `${fmtDate(data.periodStart)} – ${fmtDate(data.periodEnd)}` : 'Kỳ hiện tại'}</dd></div>
+            <div><dt className="text-slate-500">Cập nhật gần nhất</dt><dd className="m-0 mt-1 font-semibold text-slate-900">{fmtDateTime(data?.calculatedAt)}</dd></div>
+            <div><dt className="text-slate-500">Cách cải thiện</dt><dd className="m-0 mt-1 leading-relaxed text-slate-700">Ưu tiên ứng viên phù hợp yêu cầu, thông tin liên hệ chính xác và CV còn cập nhật.</dd></div>
+          </dl>
+        </Surface>
+      </div>
 
-        <Table
-          className="admin-soft-table"
-          rowKey="affiliatePerformanceId"
-          columns={historyColumns}
-          dataSource={p?.history ?? []}
-          loading={isLoading}
-          pagination={false}
-          locale={{ emptyText: <div className="py-8 text-slate-400">Chưa có bản ghi lịch sử hiệu suất nào.</div> }}
-        />
+      <Surface className="p-6">
+        <AffiliateSectionHeading title="Lịch sử các kỳ đánh giá" description="So sánh kết quả theo thời gian để nhận biết xu hướng chất lượng hồ sơ." />
+        <Table className="admin-soft-table" rowKey="affiliatePerformanceId" columns={historyColumns} dataSource={data?.history ?? []} loading={performance.isLoading} pagination={false} scroll={{ x: 820 }} locale={{ emptyText: <div className="py-8 text-slate-500">Chưa có dữ liệu của kỳ đánh giá trước.</div> }} />
       </Surface>
     </div>
   );

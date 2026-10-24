@@ -67,7 +67,7 @@ describe('Affiliate › Hoa hồng & chi trả', () => {
     vi.mocked(financeApi.commissions).mockResolvedValue(page([commission({ status: 'ON_HOLD' })]));
     renderPage();
 
-    expect(await screen.findByText(/Internal HR đang xác minh/)).toBeInTheDocument();
+    expect(await screen.findByText(/bộ phận vận hành đang xác minh/)).toBeInTheDocument();
   });
 
   it('filters by group and shows an empty state for an empty group', async () => {
