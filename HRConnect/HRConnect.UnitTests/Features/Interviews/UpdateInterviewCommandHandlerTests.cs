@@ -8,6 +8,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Interviews.Commands.ScheduleInterview;
 using HRConnect.Application.Features.Interviews.Commands.UpdateInterview;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -22,6 +23,7 @@ public class UpdateInterviewCommandHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<UpdateInterviewCommandHandler>> _loggerMock = new();
     private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
+    private readonly Mock<ICandidateRecruitmentDeliveryService> _candidateDeliveryServiceMock = new();
 
     private UpdateInterviewCommandHandler CreateHandler() =>
         new(
@@ -29,7 +31,8 @@ public class UpdateInterviewCommandHandlerTests
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _loggerMock.Object,
-            _auditLogServiceMock.Object);
+            _auditLogServiceMock.Object,
+            _candidateDeliveryServiceMock.Object);
 
     [Fact]
     public async Task Handle_WhenInterviewNotFound_ShouldThrowNotFoundException()
@@ -290,5 +293,78 @@ public class UpdateInterviewCommandHandlerTests
         // Assert
         await act.Should().ThrowAsync<BadRequestException>()
             .WithMessage("*từ 1 đến 480 phút*");
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidateVisibleDetailsChange_ShouldDeliverUpdatedNotice()
+    {
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var application = new HRConnect.Domain.Entities.Application
+        {
+            ApplicationId = Guid.NewGuid(),
+            Candidate = new Candidate { UserId = Guid.NewGuid() },
+            Job = new Job { CompanyId = companyId }
+        };
+        var interview = new Interview
+        {
+            InterviewId = Guid.NewGuid(),
+            ApplicationId = application.ApplicationId,
+            Application = application,
+            Status = "SCHEDULED",
+            DurationMinutes = 45,
+            InterviewType = "ONLINE",
+            MeetingLink = "https://meet.example.com/old",
+            ConcurrencyToken = Guid.NewGuid()
+        };
+        _interviewRepositoryMock.Setup(r => r.GetByIdForUpdateAsync(interview.InterviewId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(interview);
+        _companyUserRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+        _candidateDeliveryServiceMock.Setup(s => s.DeliverInterviewAsync(
+                application, interview, InterviewCandidateDeliveryEvent.Updated, null, It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CandidateRecruitmentDeliveryOutcome(CandidateRecruitmentDeliveryChannel.InApp));
+
+        var result = await CreateHandler().Handle(new UpdateInterviewCommand(
+            interview.InterviewId, 60, "ONLINE", null, "https://meet.example.com/new", null,
+            interview.ConcurrencyToken, userId, IsClientCompanyUser: true), CancellationToken.None);
+
+        result.Data.DeliveryChannel.Should().Be("IN_APP");
+        _candidateDeliveryServiceMock.Verify(s => s.DeliverInterviewAsync(
+            application, interview, InterviewCandidateDeliveryEvent.Updated, null, It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenOnlyParticipantsChange_ShouldNotNotifyCandidate()
+    {
+        var userId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var application = new HRConnect.Domain.Entities.Application
+        {
+            ApplicationId = Guid.NewGuid(),
+            Job = new Job { CompanyId = companyId }
+        };
+        var interview = new Interview
+        {
+            InterviewId = Guid.NewGuid(), ApplicationId = application.ApplicationId, Application = application,
+            Status = "SCHEDULED", DurationMinutes = 45, InterviewType = "ONLINE",
+            MeetingLink = "https://meet.example.com/room", ConcurrencyToken = Guid.NewGuid()
+        };
+        _interviewRepositoryMock.Setup(r => r.GetByIdForUpdateAsync(interview.InterviewId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(interview);
+        _companyUserRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+        _companyUserRepositoryMock.Setup(r => r.GetActiveByUserIdsAsync(companyId, It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<CompanyUser> { new() { UserId = participantId, CompanyId = companyId, Status = "ACTIVE" } });
+
+        await CreateHandler().Handle(new UpdateInterviewCommand(
+            interview.InterviewId, 45, "ONLINE", null, "https://meet.example.com/room",
+            new List<ScheduleInterviewParticipantDto> { new(participantId, "INTERVIEWER") },
+            interview.ConcurrencyToken, userId, IsClientCompanyUser: true), CancellationToken.None);
+
+        _candidateDeliveryServiceMock.Verify(s => s.DeliverInterviewAsync(
+            It.IsAny<HRConnect.Domain.Entities.Application>(), It.IsAny<Interview>(), It.IsAny<InterviewCandidateDeliveryEvent>(),
+            It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<CandidateRecruitmentDeliveryDecision?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }
