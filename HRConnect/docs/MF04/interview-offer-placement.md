@@ -140,7 +140,8 @@ chính mình. Người tham gia Interview phải là Company User đang hoạt �
 feedback nội bộ, actor nội bộ, lý do history nội bộ hoặc concurrency token của
 Interview.
 
-Khi Company tạo lịch, dời lịch hoặc hủy lịch, hệ thống chọn **một** kênh gửi
+Khi Company tạo lịch, thay đổi nội dung Candidate nhìn thấy, dời lịch hoặc hủy lịch,
+hệ thống chọn **một** kênh gửi
 thông báo bền vững cho Candidate:
 
 1. Candidate có `UserId`: tạo notification in-app an toàn.
@@ -149,8 +150,9 @@ thông báo bền vững cho Candidate:
 
 Email Interview chỉ chứa vị trí, thời gian, hình thức/địa điểm hoặc meeting
 link và nút đăng ký/đăng nhập. Nó không tiết lộ người phỏng vấn, feedback,
-lý do history nội bộ hoặc concurrency token. Việc cập nhật nội dung lịch không
-tự tạo notification riêng.
+lý do history nội bộ hoặc concurrency token. Việc chỉ thay đổi participant nội
+bộ không gửi Candidate; thay đổi hình thức, thời lượng, địa điểm hoặc meeting
+link thì có gửi để Candidate nhìn thấy dữ liệu mới.
 
 Khi ghi kết quả, Interview chuyển sang `COMPLETED`. Kết quả có ba giá trị:
 
@@ -215,6 +217,12 @@ có tài khoản, hệ thống tạo EmailOutbox. Thu hồi và hết hạn Offe
 kênh này theo khả năng liên hệ, nhưng không bị chặn nếu Candidate cũ không còn
 kênh liên hệ.
 
+Trên giao diện, `Gross` là lương trước thuế và các khoản khấu trừ; `Net` là số
+tiền thực nhận theo thỏa thuận. `HEADHUNT_COD` bắt buộc dùng Gross để đối soát
+phí thống nhất. `Hạn phản hồi Offer` là ngày cuối Candidate có thể chấp nhận
+hoặc từ chối. `Tài liệu Offer` là đường dẫn bảo mật tới thư mời/PDF và không bắt
+buộc; đây chưa phải chức năng tải file trực tiếp lên Object Storage.
+
 Email Offer chỉ thông báo có Offer mới/đã thu hồi/đã hết hạn và chứa nút đăng
 ký hoặc đăng nhập. Email **không** chứa lương, tài liệu Offer hay URL tài liệu.
 Khi Candidate chấp nhận hoặc từ chối Offer, hệ thống thông báo lại cho người đã
@@ -240,11 +248,27 @@ quan phải là `ACCEPTED`. Company là bên xác nhận một trong hai kết q
 tự xác nhận Placement; Internal HR cũng không có quyền thay Company thực hiện
 thao tác này.
 
+Khi Company khai `NOT_STARTED`, Candidate nhận notification in-app nếu đã có
+tài khoản hoặc email fallback nếu chưa liên kết tài khoản. Nội dung Candidate
+nhận không chứa lý do nội bộ do Company nhập; Candidate chỉ được thông báo kết
+quả đang được HR Connect xác minh và có thể liên hệ hỗ trợ nếu dữ liệu sai.
+
 Với `HEADHUNT_COD`, cả hai kết quả `PLACED` và `NOT_STARTED` tạo một hồ sơ đối
 soát `PENDING`. Internal HR liên hệ Candidate, Affiliate hoặc cả hai để:
 
 - xác nhận đúng (`CONFIRMED`); hoặc
 - báo không khớp (`FLAGGED`, bắt buộc ghi chú) để Platform Admin xử lý.
+
+Platform Admin giải quyết một hồ sơ `FLAGGED` bằng một trong hai action:
+
+- `CONFIRM_REPORTED_OUTCOME`: giữ kết quả Client đã khai;
+- `REOPEN_FOR_CLIENT_CONFIRMATION`: chỉ dùng cho claim `NOT_STARTED` chưa có
+  Placement; Application quay lại `OFFER_ACCEPTED` để Client xác nhận lại kết
+  quả thực tế.
+
+Client không có nút tự hoàn tác `NOT_STARTED`. Khi Admin mở lại, lần xác nhận
+tiếp theo tái sử dụng hồ sơ đối soát cũ và đặt lại thành `PENDING`, tránh tạo hai
+record cho cùng Application và giữ đầy đủ lịch sử audit.
 
 Phí placement được tạo ở `PENDING` nhưng không được chuyển sang `DUE` hoặc
 `OVERDUE` trước khi hồ sơ đối soát là `CONFIRMED`. Nếu xác nhận sau hạn thanh

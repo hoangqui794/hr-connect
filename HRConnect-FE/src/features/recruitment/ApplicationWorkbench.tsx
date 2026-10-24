@@ -1238,6 +1238,11 @@ export const ApplicationWorkbench: React.FC<{
                 <Form.Item
                   name="salaryBasis"
                   label="Loại lương"
+                  extra={
+                    isHeadhuntCod
+                      ? 'Tin Headhunt bắt buộc dùng Gross để hệ thống đối soát phí thống nhất.'
+                      : 'Gross: trước thuế và khấu trừ. Net: số tiền thực nhận theo thỏa thuận.'
+                  }
                   rules={[
                     { required: true, message: 'Chọn Gross hoặc Net.' },
                     {
@@ -1248,7 +1253,14 @@ export const ApplicationWorkbench: React.FC<{
                     },
                   ]}
                 >
-                  <Radio.Group options={SALARY_BASIS_OPTIONS} optionType="button" buttonStyle="solid" />
+                  <Radio.Group
+                    options={SALARY_BASIS_OPTIONS.map((option) => ({
+                      ...option,
+                      disabled: isHeadhuntCod && option.value === 'NET',
+                    }))}
+                    optionType="button"
+                    buttonStyle="solid"
+                  />
                 </Form.Item>
                 <Form.Item name="salaryPeriod" label="Kỳ lương" rules={[{ required: true, message: 'Chọn kỳ lương.' }]}>
                   <Radio.Group options={SALARY_PERIOD_OPTIONS} optionType="button" buttonStyle="solid" />
@@ -1269,7 +1281,12 @@ export const ApplicationWorkbench: React.FC<{
                 </div>
               )}
               <div className="grid gap-x-4 sm:grid-cols-2">
-                <Form.Item name="expiryDate" label="Hạn phản hồi" rules={[{ required: true, message: 'Chọn hạn phản hồi.' }]}>
+                <Form.Item
+                  name="expiryDate"
+                  label="Hạn phản hồi Offer"
+                  extra="Ngày cuối cùng ứng viên có thể chấp nhận hoặc từ chối Offer."
+                  rules={[{ required: true, message: 'Chọn hạn phản hồi Offer.' }]}
+                >
                   <DatePicker format="DD/MM/YYYY" disabledDate={notPast} className="w-full" />
                 </Form.Item>
                 <Form.Item
@@ -1291,8 +1308,12 @@ export const ApplicationWorkbench: React.FC<{
               </div>
               <Form.Item
                 name="offerDocumentUrl"
-                label="Link tài liệu/PDF Offer (không bắt buộc)"
-                extra={has('UPDATE_OFFER') ? 'Để trống rồi lưu để gỡ link tài liệu hiện có.' : undefined}
+                label="Tài liệu Offer (không bắt buộc)"
+                extra={
+                  has('UPDATE_OFFER')
+                    ? 'Dán đường dẫn bảo mật tới thư mời hoặc PDF Offer. Để trống rồi lưu để gỡ link hiện có.'
+                    : 'Dán đường dẫn bảo mật tới thư mời hoặc PDF Offer.'
+                }
                 rules={[
                   { type: 'url', message: 'Link tài liệu không hợp lệ.' },
                   { max: 2048, message: 'Link tối đa 2048 ký tự.' },

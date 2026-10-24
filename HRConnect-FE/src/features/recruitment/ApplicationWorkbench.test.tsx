@@ -119,7 +119,7 @@ describe('ApplicationWorkbench MF-04', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Sửa offer' }));
 
-    const documentUrl = screen.getByLabelText('Link tài liệu/PDF Offer (không bắt buộc)');
+    const documentUrl = screen.getByLabelText('Tài liệu Offer (không bắt buộc)');
     expect(documentUrl).toHaveValue('https://files.example.com/offer-v1.pdf');
 
     fireEvent.change(documentUrl, { target: { value: 'https://files.example.com/offer-v2.pdf' } });
@@ -134,6 +134,23 @@ describe('ApplicationWorkbench MF-04', () => {
         })
       );
     });
+  });
+
+  it('explains offer terms and prevents Net salary for a Headhunt job', async () => {
+    renderWorkbench({
+      ...baseApplication,
+      serviceTypeCode: 'HEADHUNT_COD',
+      allowedActions: ['CREATE_OFFER'],
+      offers: [],
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tạo offer' }));
+
+    expect(screen.getByText(/bắt buộc dùng Gross/)).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Net' })).toBeDisabled();
+    expect(screen.getByLabelText('Hạn phản hồi Offer')).toBeInTheDocument();
+    expect(screen.getByText(/Ngày cuối cùng ứng viên có thể chấp nhận hoặc từ chối Offer/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Tài liệu Offer (không bắt buộc)')).toBeInTheDocument();
   });
 
   it('does not render Client MF-04 mutation controls for Internal HR when the backend does not allow them', async () => {
