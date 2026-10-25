@@ -265,6 +265,7 @@ export interface CompanyProfile {
   website: string | null;
   address: string | null;
   description: string | null;
+  logoUrl: string | null;
   [key: string]: unknown;
 }
 export const companyProfileApi = {
@@ -273,5 +274,13 @@ export const companyProfileApi = {
   },
   async update(input: Partial<CompanyProfile>) {
     return (await apiClient.put<{ message?: string }>('/companies/profile/me', input)).data;
+  },
+  async uploadLogo(file: File): Promise<{ message?: string; data?: { logoUrl?: string | null } }> {
+    const body = new FormData();
+    body.append('file', file);
+    return (await apiClient.post('/companies/profile/me/logo', body)).data;
+  },
+  async deleteLogo(): Promise<{ message?: string }> {
+    return (await apiClient.delete('/companies/profile/me/logo')).data;
   },
 };

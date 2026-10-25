@@ -137,6 +137,7 @@ export interface Job {
   jobId: string;
   companyId: string;
   companyName: string | null;
+  companyLogoUrl?: string | null;
   /** Present on Job detail; list endpoints only guarantee companyId/companyName. */
   company?: PublicJobCompany | null;
   serviceTypeId: string;

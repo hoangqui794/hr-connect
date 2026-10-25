@@ -6,15 +6,17 @@
  *  - ClientCompanyPage: company profile (GET/PUT /companies/profile/me).
  *  - ClientWarrantyPlaceholder: MF-05 warranty has no backend endpoint yet.
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Form, Input, Select, Skeleton } from 'antd';
+import { CameraOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { companyProfileApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { NoApiYet } from '@/features/admin-console/adminTheme';
-import { Initials, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { CompanyLogo } from '@/components/common/CompanyLogo';
 import { HrPipelinePage } from '@/features/hr-console/HrPipelinePage';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
 import { ClientInterviewDetailDrawer } from '@/features/client-console/ClientInterviewDetailDrawer';
@@ -60,8 +62,9 @@ const SIZES = ['1-10', '11-50', '50-100', '101-200', '201-500', '500+'].map((v) 
 type CompanyForm = { companyName: string; taxCode?: string; industry?: string; companySize?: string; website?: string; address?: string; description?: string };
 
 export const ClientCompanyPage: React.FC = () => {
-  const { message } = AntApp.useApp();
+  const { message, modal } = AntApp.useApp();
   const queryClient = useQueryClient();
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [form] = Form.useForm<CompanyForm>();
   const company = useQuery({ queryKey: ['client-company'], queryFn: () => companyProfileApi.get() });
 
@@ -97,6 +100,48 @@ export const ClientCompanyPage: React.FC = () => {
     onError: (err) => message.error(getApiErrorMessage(err)),
   });
 
+  const uploadLogo = useMutation({
+    mutationFn: (file: File) => companyProfileApi.uploadLogo(file),
+    onSuccess: async (res) => {
+      message.success(res?.message || 'Đã cập nhật logo doanh nghiệp.');
+      await queryClient.invalidateQueries({ queryKey: ['client-company'] });
+    },
+    onError: (err) => message.error(getApiErrorMessage(err, 'Không thể tải logo lên.')),
+  });
+
+  const deleteLogo = useMutation({
+    mutationFn: () => companyProfileApi.deleteLogo(),
+    onSuccess: async (res) => {
+      message.success(res?.message || 'Đã xóa logo doanh nghiệp.');
+      await queryClient.invalidateQueries({ queryKey: ['client-company'] });
+    },
+    onError: (err) => message.error(getApiErrorMessage(err, 'Không thể xóa logo.')),
+  });
+
+  const selectLogo = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      message.error('Logo phải là ảnh JPG, PNG hoặc WebP.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      message.error('Logo không được vượt quá 5MB.');
+      return;
+    }
+    uploadLogo.mutate(file);
+  };
+
+  const confirmDeleteLogo = () => modal.confirm({
+    title: 'Xóa logo doanh nghiệp?',
+    content: 'Logo sẽ được gỡ khỏi hồ sơ công ty và tất cả tin tuyển dụng đang hiển thị.',
+    okText: 'Xóa logo',
+    cancelText: 'Giữ lại',
+    okButtonProps: { danger: true, loading: deleteLogo.isPending },
+    onOk: () => deleteLogo.mutateAsync(),
+  });
+
   const c = company.data;
   const verified = c?.verificationStatus === 'VERIFIED';
 
@@ -113,12 +158,29 @@ export const ClientCompanyPage: React.FC = () => {
         <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
           <Surface padded className="self-start">
             <div className="flex flex-col items-center text-center">
-              <Initials name={c.companyName} size={72} />
+              <div className="relative rounded-[22px] bg-gradient-to-br from-blue-50 to-cyan-50 p-3 ring-1 ring-blue-100">
+                <CompanyLogo companyName={c.companyName} logoUrl={c.logoUrl ?? undefined} size="xl" className="!h-24 !w-24 !rounded-2xl !shadow-sm" />
+                {uploadLogo.isPending && (
+                  <div className="absolute inset-3 flex items-center justify-center rounded-2xl bg-white/80 text-sm font-semibold text-blue-700 backdrop-blur-sm">
+                    Đang tải…
+                  </div>
+                )}
+              </div>
               <div className="mt-3 text-lg font-bold text-slate-900">{c.companyName}</div>
               <div className="text-sm text-slate-600">{c.industry || 'Chưa cập nhật ngành'}</div>
               <div className="mt-3">
                 <StatusDot tone={verified ? 'success' : 'warning'}>{verified ? 'Đã xác thực' : 'Chưa xác thực'}</StatusDot>
               </div>
+              <input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={selectLogo} aria-label="Chọn logo doanh nghiệp" />
+              <div className="mt-4 flex w-full gap-2">
+                <Button className="min-h-11 flex-1" icon={<CameraOutlined />} loading={uploadLogo.isPending} onClick={() => logoInputRef.current?.click()}>
+                  {c.logoUrl ? 'Đổi logo' : 'Thêm logo'}
+                </Button>
+                {c.logoUrl && (
+                  <Button danger className="min-h-11" icon={<DeleteOutlined />} loading={deleteLogo.isPending} onClick={confirmDeleteLogo} aria-label="Xóa logo doanh nghiệp" />
+                )}
+              </div>
+              <p className="mb-0 mt-2 text-xs leading-5 text-slate-500">JPG, PNG hoặc WebP · tối đa 5MB. Logo sẽ xuất hiện trên tin tuyển dụng.</p>
             </div>
             <div className="mt-5">
               {(
