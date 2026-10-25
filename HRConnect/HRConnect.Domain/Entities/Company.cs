@@ -21,6 +21,14 @@ public partial class Company
 
     public string? Description { get; set; }
 
+    /// <summary>Legacy/external logo URL kept for backward compatibility.</summary>
+    public string? LogoUrl { get; set; }
+
+    /// <summary>Private object-storage key owned by this company.</summary>
+    public string? LogoObjectKey { get; set; }
+
+    public DateTime? LogoUpdatedAt { get; set; }
+
     public string VerificationStatus { get; set; } = null!;
 
     public DateTime? VerifiedAt { get; set; }

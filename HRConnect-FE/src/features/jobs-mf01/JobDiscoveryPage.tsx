@@ -7,11 +7,12 @@
 import React, { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Alert, Button, Card, Empty, Input, Pagination, Select, Skeleton, Tag, Typography } from 'antd';
-import { ArrowRightOutlined, BankOutlined, CheckCircleFilled, EnvironmentOutlined, SearchOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, CheckCircleFilled, EnvironmentOutlined, SearchOutlined } from '@ant-design/icons';
 import type { EmploymentType, Job, JobSearchParams } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
 import { BookmarkButton } from '@/components/common/BookmarkButton';
+import { CompanyLogo } from '@/components/common/CompanyLogo';
 import { useJobSearch, usePublicJobSearch, useServiceTypes } from './useJobQueries';
 import { EMPLOYMENT_TYPE_LABEL, SERVICE_TYPE_LABEL, formatDate, formatExperience, formatSalary } from './jobDisplay';
 
@@ -25,9 +26,12 @@ const JobCard: React.FC<{ job: Job; detailBasePath: string; isApplied?: boolean 
     styles={{ body: { padding: 16, display: 'flex', flexDirection: 'column', gap: 8, height: '100%' } }}
   >
     <div className="candidate-job-card__topline">
-      <div className="candidate-job-card__company-mark" aria-hidden>
-        {(job.companyName || 'HR').trim().charAt(0).toUpperCase() || <BankOutlined />}
-      </div>
+      <CompanyLogo
+        companyName={job.companyName || 'Doanh nghiệp tuyển dụng'}
+        logoUrl={job.companyLogoUrl || undefined}
+        size="md"
+        className="candidate-job-card__company-mark !rounded-xl"
+      />
       <div className="flex items-center gap-1.5 shrink-0">
         <BookmarkButton jobId={job.jobId} jobTitle={job.title} size="sm" />
         {isApplied && (

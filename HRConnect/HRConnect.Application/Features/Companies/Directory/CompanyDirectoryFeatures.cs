@@ -92,12 +92,15 @@ public sealed class CompanyDirectoryHandlers :
     private readonly ICompanyDirectoryRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _audit;
+    private readonly ICompanyLogoUrlResolver? _logoUrlResolver;
 
-    public CompanyDirectoryHandlers(ICompanyDirectoryRepository repository, IUnitOfWork unitOfWork, IAuditLogService audit)
+    public CompanyDirectoryHandlers(ICompanyDirectoryRepository repository, IUnitOfWork unitOfWork, IAuditLogService audit,
+        ICompanyLogoUrlResolver? logoUrlResolver = null)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _audit = audit;
+        _logoUrlResolver = logoUrlResolver;
     }
 
     public async Task<IReadOnlyList<IndustryDto>> Handle(GetIndustriesQuery request, CancellationToken cancellationToken)
@@ -196,19 +199,20 @@ public sealed class CompanyDirectoryHandlers :
             new CompanyDirectoryFilter(request.Search?.Trim(), industryIds, request.CompanySizeId, request.Location?.Trim(), page, pageSize),
             PublicRoles, cancellationToken);
         return new CompanyDirectoryPageDto(
-            items.Select(x => ToItem(x.Company, x.ActiveJobCount)).ToList(), page, pageSize, total,
+            items.Select(x => ToItem(x.Company, x.ActiveJobCount, _logoUrlResolver)).ToList(), page, pageSize, total,
             (int)Math.Ceiling(total / (double)pageSize));
     }
 
     public async Task<IReadOnlyList<CompanyDirectoryItemDto>> Handle(GetFeaturedCompaniesQuery request, CancellationToken cancellationToken) =>
-        (await _repository.GetFeaturedAsync(PublicRoles, cancellationToken)).Select(x => ToItem(x.Company, x.ActiveJobCount)).ToList();
+        (await _repository.GetFeaturedAsync(PublicRoles, cancellationToken)).Select(x => ToItem(x.Company, x.ActiveJobCount, _logoUrlResolver)).ToList();
 
     public async Task<CompanyDirectoryDetailDto> Handle(GetPublicCompanyQuery request, CancellationToken cancellationToken)
     {
         var result = await _repository.GetVerifiedWithJobsAsync(request.CompanyId, PublicRoles, cancellationToken)
             ?? throw new NotFoundException("Không tìm thấy công ty.");
         return new CompanyDirectoryDetailDto(
-            ToItem(result.Company, result.Jobs.Count), result.Jobs.Select(job => JobDto.From(job)).ToList());
+            ToItem(result.Company, result.Jobs.Count, _logoUrlResolver),
+            result.Jobs.Select(job => JobDto.From(job, logoUrlResolver: _logoUrlResolver)).ToList());
     }
 
     public async Task<CompanyDirectoryItemDto> Handle(SetCompanyFeaturedCommand request, CancellationToken cancellationToken)
@@ -227,7 +231,7 @@ public sealed class CompanyDirectoryHandlers :
         await AuditAsync(AuditActions.CompanyFeaturedChanged, "COMPANY", company.CompanyId, request.UserId,
             new { company.IsFeatured, company.FeaturedOrder }, cancellationToken, old);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return ToItem(company, 0);
+        return ToItem(company, 0, _logoUrlResolver);
     }
 
     public static IReadOnlyCollection<Guid> Descendants(IReadOnlyList<Industry> all, Guid rootId)
@@ -245,7 +249,7 @@ public sealed class CompanyDirectoryHandlers :
         return result;
     }
 
-    public static CompanyDirectoryItemDto ToItem(Company company, int activeJobCount)
+    public static CompanyDirectoryItemDto ToItem(Company company, int activeJobCount, ICompanyLogoUrlResolver? logoUrlResolver = null)
     {
         var website = company.Website?.Trim();
         if (!string.IsNullOrEmpty(website) && !website.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
@@ -255,7 +259,7 @@ public sealed class CompanyDirectoryHandlers :
         }
 
         return new CompanyDirectoryItemDto(
-            company.CompanyId, company.CompanyName, null,
+            company.CompanyId, company.CompanyName, logoUrlResolver?.Resolve(company) ?? company.LogoUrl,
             company.IndustryRef == null ? null : new IndustryRefDto(company.IndustryRef.IndustryId, company.IndustryRef.NameVi ?? company.IndustryRef.NameEn),
             company.CompanySizeRef == null ? null : new CompanySizeRefDto(company.CompanySizeRef.CompanySizeId, company.CompanySizeRef.Label),
             string.IsNullOrEmpty(website) ? null : website, company.Address, company.Description,

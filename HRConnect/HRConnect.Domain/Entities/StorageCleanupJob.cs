@@ -1,6 +1,6 @@
 namespace HRConnect.Domain.Entities;
 
-/// <summary>Durable queue for deleting obsolete avatar objects after the database pointer is committed.</summary>
+/// <summary>Durable queue for deleting obsolete owned image objects after the database pointer is committed.</summary>
 public sealed class StorageCleanupJob
 {
     public Guid StorageCleanupJobId { get; set; }

@@ -61,11 +61,15 @@ public sealed class AvatarStorageCleanupWorker(
         var job = await context.StorageCleanupJobs.SingleAsync(item => item.StorageCleanupJobId == id, cancellationToken);
         try
         {
-            if (!IsAvatarKey(job.ObjectKey))
-                throw new InvalidOperationException("Cleanup key is outside the avatar namespace.");
-            if (await context.AppUsers.AsNoTracking().AnyAsync(user =>
-                    user.AvatarObjectKey == job.ObjectKey || user.AvatarUrl == job.ObjectKey, cancellationToken))
-                throw new InvalidOperationException("Cleanup key is still referenced by an active user avatar.");
+            if (!IsOwnedImageKey(job.ObjectKey))
+                throw new InvalidOperationException("Cleanup key is outside an owned image namespace.");
+            var stillReferenced = job.ObjectKey.StartsWith("avatars/", StringComparison.Ordinal)
+                ? await context.AppUsers.AsNoTracking().AnyAsync(user =>
+                    user.AvatarObjectKey == job.ObjectKey || user.AvatarUrl == job.ObjectKey, cancellationToken)
+                : await context.Companies.AsNoTracking().AnyAsync(company =>
+                    company.LogoObjectKey == job.ObjectKey || company.LogoUrl == job.ObjectKey, cancellationToken);
+            if (stillReferenced)
+                throw new InvalidOperationException("Cleanup key is still referenced by an active image.");
 
             await storage.DeleteAsync(job.ObjectKey, cancellationToken);
             job.Status = "COMPLETED";
@@ -85,13 +89,17 @@ public sealed class AvatarStorageCleanupWorker(
             job.NextAttemptAt = job.Status == "DEAD" ? null : DateTime.UtcNow.Add(CalculateRetryDelay(job.AttemptCount));
             job.UpdatedAt = DateTime.UtcNow;
             await context.SaveChangesAsync(CancellationToken.None);
-            logger.LogWarning(ex, "Avatar cleanup job {CleanupJobId} failed at attempt {Attempt}/{MaxAttempts}",
+            logger.LogWarning(ex, "Image cleanup job {CleanupJobId} failed at attempt {Attempt}/{MaxAttempts}",
                 job.StorageCleanupJobId, job.AttemptCount, MaxAttempts);
         }
     }
 
     internal static bool IsAvatarKey(string? key) =>
         !string.IsNullOrWhiteSpace(key) && key.StartsWith("avatars/", StringComparison.Ordinal) && !key.Contains("..", StringComparison.Ordinal);
+
+    internal static bool IsOwnedImageKey(string? key) =>
+        IsAvatarKey(key) || (!string.IsNullOrWhiteSpace(key) &&
+            key.StartsWith("company-logos/", StringComparison.Ordinal) && !key.Contains("..", StringComparison.Ordinal));
 
     internal static TimeSpan CalculateRetryDelay(int attempt) =>
         TimeSpan.FromMinutes(Math.Min(60, Math.Pow(2, Math.Clamp(attempt, 1, MaxAttempts))));
