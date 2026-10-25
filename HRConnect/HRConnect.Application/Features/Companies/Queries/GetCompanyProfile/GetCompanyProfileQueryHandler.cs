@@ -1,5 +1,6 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -9,13 +10,16 @@ public class GetCompanyProfileQueryHandler : IRequestHandler<GetCompanyProfileQu
 {
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly ILogger<GetCompanyProfileQueryHandler> _logger;
+    private readonly ICompanyLogoUrlResolver? _logoUrlResolver;
 
     public GetCompanyProfileQueryHandler(
         ICompanyUserRepository companyUserRepository,
-        ILogger<GetCompanyProfileQueryHandler> logger)
+        ILogger<GetCompanyProfileQueryHandler> logger,
+        ICompanyLogoUrlResolver? logoUrlResolver = null)
     {
         _companyUserRepository = companyUserRepository;
         _logger = logger;
+        _logoUrlResolver = logoUrlResolver;
     }
 
     public async Task<CompanyProfileResponse> Handle(
@@ -47,6 +51,7 @@ public class GetCompanyProfileQueryHandler : IRequestHandler<GetCompanyProfileQu
                 Website = company.Website,
                 Address = company.Address,
                 Description = company.Description,
+                LogoUrl = _logoUrlResolver?.Resolve(company) ?? company.LogoUrl,
                 VerificationStatus = company.VerificationStatus,
                 VerifiedAt = company.VerifiedAt,
                 RoleInCompany = companyUser.RoleInCompany,

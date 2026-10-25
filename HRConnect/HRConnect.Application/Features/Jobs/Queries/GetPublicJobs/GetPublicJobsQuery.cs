@@ -1,4 +1,5 @@
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Features.Jobs.Common;
 using MediatR;
 
@@ -29,8 +30,10 @@ public sealed record JobPageDto(
 public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQuery, JobPageDto>
 {
     private readonly IJobRepository _jobs;
+    private readonly ICompanyLogoUrlResolver? _logoUrlResolver;
 
-    public GetPublicJobsQueryHandler(IJobRepository jobs) => _jobs = jobs;
+    public GetPublicJobsQueryHandler(IJobRepository jobs, ICompanyLogoUrlResolver? logoUrlResolver = null)
+        => (_jobs, _logoUrlResolver) = (jobs, logoUrlResolver);
 
     public async Task<JobPageDto> Handle(GetPublicJobsQuery request, CancellationToken cancellationToken)
     {
@@ -84,7 +87,7 @@ public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQue
             cancellationToken);
 
         return new JobPageDto(
-            items.Select(job => JobDto.From(job)).ToList(),
+            items.Select(job => JobDto.From(job, logoUrlResolver: _logoUrlResolver)).ToList(),
             page,
             pageSize,
             totalCount,

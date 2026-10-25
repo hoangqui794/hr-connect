@@ -2095,6 +2095,20 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_featured");
 
+                    b.Property<string>("LogoObjectKey")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("logo_object_key");
+
+                    b.Property<DateTime?>("LogoUpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("logo_updated_at");
+
+                    b.Property<string>("LogoUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("logo_url");
+
                     b.Property<string>("TaxCode")
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)")
@@ -4340,14 +4354,14 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("note");
 
+                    b.Property<Guid?>("PlacementId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("placement_id");
+
                     b.Property<string>("ResolutionNote")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("resolution_note");
-
-                    b.Property<Guid?>("PlacementId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("placement_id");
 
                     b.Property<DateTime?>("ReviewedAt")
                         .HasColumnType("timestamp with time zone")
@@ -4394,7 +4408,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                             t.HasCheckConstraint("ck_placement_reconciliation_placement", "(claimed_outcome = 'STARTED' AND placement_id IS NOT NULL) OR (claimed_outcome = 'NOT_STARTED' AND placement_id IS NULL)");
 
-                                t.HasCheckConstraint("ck_placement_reconciliation_review", "(status = 'PENDING' AND reviewed_by IS NULL AND reviewed_at IS NULL) OR (status <> 'PENDING' AND reviewed_at IS NOT NULL)");
+                            t.HasCheckConstraint("ck_placement_reconciliation_review", "(status = 'PENDING' AND reviewed_by IS NULL AND reviewed_at IS NULL) OR (status <> 'PENDING' AND reviewed_at IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_placement_reconciliation_status", "status IN ('PENDING','CONFIRMED','FLAGGED')");
                         });

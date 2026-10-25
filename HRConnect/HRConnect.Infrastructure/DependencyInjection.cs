@@ -248,6 +248,7 @@ public static class DependencyInjection
         services.AddScoped<IFileStorageService, HRConnect.Infrastructure.Services.Storage.CloudflareR2StorageService>();
         services.AddScoped<IAvatarImageProcessor, HRConnect.Infrastructure.Services.Storage.AvatarImageProcessor>();
         services.AddSingleton<IAvatarUrlResolver, HRConnect.Infrastructure.Services.Storage.AvatarUrlResolver>();
+        services.AddSingleton<ICompanyLogoUrlResolver, HRConnect.Infrastructure.Services.Storage.CompanyLogoUrlResolver>();
         services.AddSingleton<HRConnect.Infrastructure.Services.Storage.PdfCvValidator>();
         // BE-04 B: CV builder (render, store, templates).
         services.AddSingleton<HRConnect.Infrastructure.Services.CvBuilder.CvPdfRenderer>();

@@ -1,5 +1,6 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Features.Jobs.Common;
 using MediatR;
 
@@ -12,7 +13,9 @@ public sealed record GetJobDetailQuery(
 public sealed class GetJobDetailQueryHandler : IRequestHandler<GetJobDetailQuery, JobDetailDto>
 {
     private readonly IJobRepository _jobs; private readonly ICompanyUserRepository _members;
-    public GetJobDetailQueryHandler(IJobRepository jobs, ICompanyUserRepository members) => (_jobs, _members) = (jobs, members);
+    private readonly ICompanyLogoUrlResolver? _logoUrlResolver;
+    public GetJobDetailQueryHandler(IJobRepository jobs, ICompanyUserRepository members, ICompanyLogoUrlResolver? logoUrlResolver = null)
+        => (_jobs, _members, _logoUrlResolver) = (jobs, members, logoUrlResolver);
     public async Task<JobDetailDto> Handle(GetJobDetailQuery request, CancellationToken ct)
     {
         var job = await JobHandlerGuards.GetJobAsync(_jobs, request.JobId, ct);
@@ -25,6 +28,7 @@ public sealed class GetJobDetailQueryHandler : IRequestHandler<GetJobDetailQuery
                        await _jobs.CanAnyRoleViewJobAsync(job.ServiceTypeId, request.RoleCodes, ct));
         if (!canView) throw new ForbiddenException("Bạn không có quyền xem công việc này.");
 
-        return JobDetailDto.From(job, includeStatusHistories: isOwner || request.HasInternalAccess, isReviewer: request.HasInternalAccess);
+        return JobDetailDto.From(job, includeStatusHistories: isOwner || request.HasInternalAccess,
+            isReviewer: request.HasInternalAccess, logoUrlResolver: _logoUrlResolver);
     }
 }
