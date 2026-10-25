@@ -2095,6 +2095,20 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_featured");
 
+                    b.Property<string>("LogoObjectKey")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("logo_object_key");
+
+                    b.Property<DateTime?>("LogoUpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("logo_updated_at");
+
+                    b.Property<string>("LogoUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("logo_url");
+
                     b.Property<string>("TaxCode")
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)")

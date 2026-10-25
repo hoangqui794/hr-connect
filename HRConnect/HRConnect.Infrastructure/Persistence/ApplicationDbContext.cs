@@ -1392,6 +1392,13 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Industry)
                 .HasMaxLength(120)
                 .HasColumnName("industry");
+            entity.Property(e => e.LogoObjectKey)
+                .HasMaxLength(1024)
+                .HasColumnName("logo_object_key");
+            entity.Property(e => e.LogoUpdatedAt).HasColumnName("logo_updated_at");
+            entity.Property(e => e.LogoUrl)
+                .HasMaxLength(2048)
+                .HasColumnName("logo_url");
             entity.Property(e => e.TaxCode)
                 .HasMaxLength(80)
                 .HasColumnName("tax_code");

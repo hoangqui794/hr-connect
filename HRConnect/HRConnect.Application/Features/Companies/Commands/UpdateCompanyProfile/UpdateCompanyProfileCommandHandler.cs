@@ -14,19 +14,22 @@ public class UpdateCompanyProfileCommandHandler : IRequestHandler<UpdateCompanyP
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UpdateCompanyProfileCommandHandler> _logger;
     private readonly ICompanyDirectoryRepository? _directory;
+    private readonly ICompanyLogoUrlResolver? _logoUrlResolver;
 
     public UpdateCompanyProfileCommandHandler(
         ICompanyUserRepository companyUserRepository,
         ICompanyRepository companyRepository,
         IUnitOfWork unitOfWork,
         ILogger<UpdateCompanyProfileCommandHandler> logger,
-        ICompanyDirectoryRepository? directory = null)
+        ICompanyDirectoryRepository? directory = null,
+        ICompanyLogoUrlResolver? logoUrlResolver = null)
     {
         _directory = directory;
         _companyUserRepository = companyUserRepository;
         _companyRepository = companyRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _logoUrlResolver = logoUrlResolver;
     }
 
     public async Task<UpdateCompanyProfileResponse> Handle(
@@ -92,6 +95,7 @@ public class UpdateCompanyProfileCommandHandler : IRequestHandler<UpdateCompanyP
                 Website = company.Website,
                 Address = company.Address,
                 Description = company.Description,
+                LogoUrl = _logoUrlResolver?.Resolve(company) ?? company.LogoUrl,
                 VerificationStatus = company.VerificationStatus,
                 VerifiedAt = company.VerifiedAt,
                 RoleInCompany = companyUser.RoleInCompany,

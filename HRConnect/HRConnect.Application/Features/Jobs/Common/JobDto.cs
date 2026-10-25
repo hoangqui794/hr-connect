@@ -1,4 +1,5 @@
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Domain.Entities;
 
 namespace HRConnect.Application.Features.Jobs.Common;
@@ -22,7 +23,7 @@ public sealed record PublicCompanyDto(
     string? Description,
     bool IsVerified)
 {
-    public static PublicCompanyDto? From(Company? company)
+    public static PublicCompanyDto? From(Company? company, ICompanyLogoUrlResolver? logoUrlResolver = null)
     {
         if (company == null) return null;
 
@@ -32,7 +33,7 @@ public sealed record PublicCompanyDto(
         return new PublicCompanyDto(
             company.CompanyId,
             company.CompanyName,
-            null, // Logo URL will be added when object storage is introduced (returns null for initials)
+            logoUrlResolver?.Resolve(company) ?? company.LogoUrl,
             company.Industry,
             company.CompanySize,
             normalizedWebsite,
@@ -78,7 +79,9 @@ public sealed record JobListItemDto(
     DateTime? ApplicationDeadline,
     bool IsAcceptingApplications)
 {
-    public static JobListItemDto From(Job job) => new(
+    public PublicCompanyDto? Company { get; init; }
+
+    public static JobListItemDto From(Job job, ICompanyLogoUrlResolver? logoUrlResolver = null) => new(
         job.JobId,
         job.Title,
         job.CompanyId,
@@ -96,7 +99,10 @@ public sealed record JobListItemDto(
         job.MaxExperienceYears,
         job.PostedAt,
         job.ApplicationDeadline,
-        JobAccessPolicy.IsAcceptingApplications(job));
+        JobAccessPolicy.IsAcceptingApplications(job))
+    {
+        Company = PublicCompanyDto.From(job.Company, logoUrlResolver)
+    };
 }
 
 public sealed record JobDto(
@@ -123,7 +129,10 @@ public sealed record JobDto(
     IReadOnlyList<JobStatusHistoryDto> StatusHistories,
     Guid? TemplateId = null)
 {
-    public static JobDto From(Job job, bool includeStatusHistories = false, bool isReviewer = false)
+    public string? CompanyLogoUrl { get; init; }
+
+    public static JobDto From(Job job, bool includeStatusHistories = false, bool isReviewer = false,
+        ICompanyLogoUrlResolver? logoUrlResolver = null)
     {
         var hasProposed = job.ProposedFeeMultiplier != null ||
                           job.ProposedWarrantyDays != null ||
@@ -186,7 +195,10 @@ public sealed record JobDto(
                 ? job.JobStatusHistories.OrderBy(x => x.ChangedAt).Select(x => new JobStatusHistoryDto(
                     x.JobStatusHistoryId, x.OldStatus, x.NewStatus, x.ChangedBy, x.ReasonCode, x.ReasonText, x.ChangedAt)).ToList()
                 : [],
-            job.TemplateId);
+            job.TemplateId)
+        {
+            CompanyLogoUrl = job.Company is null ? null : logoUrlResolver?.Resolve(job.Company) ?? job.Company.LogoUrl
+        };
     }
 }
 
@@ -215,7 +227,8 @@ public sealed record JobDetailDto(
     PublicCompanyDto? Company,
     Guid? TemplateId = null)
 {
-    public static JobDetailDto From(Job job, bool includeStatusHistories = false, bool isReviewer = false)
+    public static JobDetailDto From(Job job, bool includeStatusHistories = false, bool isReviewer = false,
+        ICompanyLogoUrlResolver? logoUrlResolver = null)
     {
         var hasProposed = job.ProposedFeeMultiplier != null ||
                           job.ProposedWarrantyDays != null ||
@@ -278,7 +291,7 @@ public sealed record JobDetailDto(
                 ? job.JobStatusHistories.OrderBy(x => x.ChangedAt).Select(x => new JobStatusHistoryDto(
                     x.JobStatusHistoryId, x.OldStatus, x.NewStatus, x.ChangedBy, x.ReasonCode, x.ReasonText, x.ChangedAt)).ToList()
                 : [],
-            PublicCompanyDto.From(job.Company),
+            PublicCompanyDto.From(job.Company, logoUrlResolver),
             job.TemplateId);
     }
 }

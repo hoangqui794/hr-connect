@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Features.Candidates.SavedJobs.DTOs;
 using HRConnect.Application.Features.Jobs.Common;
 using MediatR;
@@ -19,13 +20,16 @@ public sealed class GetCandidateSavedJobsQueryHandler : IRequestHandler<GetCandi
 {
     private readonly ICandidateRepository _candidateRepository;
     private readonly ICandidateSavedJobRepository _savedJobRepository;
+    private readonly ICompanyLogoUrlResolver? _logoUrlResolver;
 
     public GetCandidateSavedJobsQueryHandler(
         ICandidateRepository candidateRepository,
-        ICandidateSavedJobRepository savedJobRepository)
+        ICandidateSavedJobRepository savedJobRepository,
+        ICompanyLogoUrlResolver? logoUrlResolver = null)
     {
         _candidateRepository = candidateRepository;
         _savedJobRepository = savedJobRepository;
+        _logoUrlResolver = logoUrlResolver;
     }
 
     public async Task<SavedJobPageDto> Handle(GetCandidateSavedJobsQuery request, CancellationToken cancellationToken)
@@ -43,7 +47,7 @@ public sealed class GetCandidateSavedJobsQueryHandler : IRequestHandler<GetCandi
         var dtoList = items.Select(s => new SavedJobDto(
             s.CandidateSavedJobId,
             s.CreatedAt,
-            JobListItemDto.From(s.Job))).ToList();
+            JobListItemDto.From(s.Job, _logoUrlResolver))).ToList();
 
         var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
