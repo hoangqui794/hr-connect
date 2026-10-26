@@ -34,12 +34,25 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
   REJECTED: { label: 'Bị từ chối', tone: 'neutral' },
 };
 
+const ROLE_BADGE_STYLES: Partial<Record<RoleCode, string>> = {
+  PLATFORM_ADMIN: 'bg-purple-50 text-purple-700 border border-purple-200/80',
+  CLIENT_COMPANY_USER: 'bg-blue-50 text-blue-700 border border-blue-200/80',
+  AFFILIATE_RECRUITER: 'bg-amber-50 text-amber-700 border border-amber-200/80',
+  CANDIDATE: 'bg-slate-100 text-slate-700 border border-slate-200/80',
+  INTERNAL_HR: 'bg-sky-50 text-sky-700 border border-sky-200/80',
+};
+
 const RoleChips: React.FC<{ roles: RoleCode[] }> = ({ roles }) => (
-  <div className="flex flex-wrap gap-1">
+  <div className="flex flex-wrap gap-1.5">
     {roles.length === 0
       ? '—'
       : roles.map((r) => (
-          <span key={r} className="rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-medium text-slate-700">
+          <span
+            key={r}
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              ROLE_BADGE_STYLES[r] ?? 'bg-slate-100 text-slate-700 border border-slate-200/80'
+            }`}
+          >
             {ROLE_LABEL[r] ?? r}
           </span>
         ))}

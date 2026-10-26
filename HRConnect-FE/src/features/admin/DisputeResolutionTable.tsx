@@ -317,9 +317,9 @@ export const DisputeResolutionTable: React.FC<DisputeResolutionTableProps> = ({
     {
       title: 'Thao tác',
       key: 'action',
-      width: 128,
+      width: 112,
       align: 'right',
-      className: 'w-32 text-right pr-4',
+      className: 'w-28 text-right pr-4',
       render: (_, record) =>
         record.status === 'DISPUTE_PENDING' ? (
           <Button

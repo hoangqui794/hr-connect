@@ -37,9 +37,12 @@ import {
   ReloadOutlined,
   SearchOutlined,
   ClockCircleOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import { contactApi } from '@/services/api/contactApi';
 import { getApiErrorMessage } from '@/services/apiClient';
+import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/roles';
 import type {
   ContactRequestDto,
   ContactRequestStatus,
@@ -76,6 +79,10 @@ export const AdminContactRequestsPage: React.FC = () => {
   const pageParam = Math.max(1, Number(searchParams.get('page')) || 1);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const { user, role } = useAuthStore();
+  const isAdmin = user?.roles?.includes('PLATFORM_ADMIN') || role === UserRole.ADMIN;
+  const hasManagePermission = isAdmin || (user?.permissions ? user.permissions.includes('contact_request.manage') : true);
+
   // Selected item for drawer detail / quick update
   const [detailItem, setDetailItem] = useState<ContactRequestDto | null>(null);
   const [statusModalItem, setStatusModalItem] = useState<ContactRequestDto | null>(null);
@@ -90,7 +97,12 @@ export const AdminContactRequestsPage: React.FC = () => {
         page: pageParam,
         pageSize: PAGE_SIZE,
       }),
+    enabled: hasManagePermission,
   });
+
+  const isForbidden =
+    !hasManagePermission ||
+    (isError && ((error as any)?.response?.status === 403 || (error as any)?.status === 403 || String(error).includes('403')));
 
   const updateMutation = useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateContactRequestInput }) =>
@@ -244,9 +256,9 @@ export const AdminContactRequestsPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 128,
+      width: 112,
       align: 'right',
-      className: 'w-32 text-right pr-4',
+      className: 'w-28 text-right pr-4',
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="Xem chi tiết nội dung lời nhắn">
@@ -299,53 +311,74 @@ export const AdminContactRequestsPage: React.FC = () => {
         }
       />
 
-      {isError && (
-        <Alert
-          type="error"
-          showIcon
-          message={getApiErrorMessage(error, 'Không thể tải danh sách yêu cầu tư vấn')}
-        />
-      )}
-
-      <Surface padded className="space-y-4">
-        {/* Filter bar: status pills + quick search */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <FilterPills
-            label="Lọc theo trạng thái"
-            value={statusParam}
-            onChange={handleStatusChangeFilter}
-            options={filterOptions}
-          />
-
-          <div className="w-full sm:w-72">
-            <Input
-              allowClear
-              prefix={<SearchOutlined className="text-slate-400" />}
-              placeholder="Tìm theo tên, email, công ty..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="rounded-lg"
-            />
+      {isForbidden ? (
+        <Surface className="p-16 text-center my-6">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+            <LockOutlined className="text-3xl" />
           </div>
-        </div>
+          <h3 className="mt-4 text-lg font-bold text-slate-900">
+            Bạn chưa được cấp quyền truy cập mục này
+          </h3>
+          <p className="mx-auto mt-2 max-w-md text-sm text-slate-500 leading-relaxed">
+            Tài khoản của bạn hiện chưa được phân quyền quản lý yêu cầu liên hệ tư vấn. Vui lòng liên hệ Quản trị viên hệ thống để được hỗ trợ cấp quyền.
+          </p>
+          <div className="mt-6">
+            <Button onClick={() => window.history.back()} className="rounded-lg shadow-sm font-medium">
+              Quay lại
+            </Button>
+          </div>
+        </Surface>
+      ) : (
+        <>
+          {isError && (
+            <Alert
+              type="error"
+              showIcon
+              message={getApiErrorMessage(error, 'Không thể tải danh sách yêu cầu tư vấn')}
+            />
+          )}
 
-        {/* Table */}
-        <Table<ContactRequestDto>
-          columns={columns}
-          dataSource={filteredItems}
-          rowKey="contactRequestId"
-          loading={isLoading}
-          pagination={{
-            current: pageParam,
-            pageSize: PAGE_SIZE,
-            total: data?.totalCount || 0,
-            showTotal: (total) => `Tổng cộng ${total} yêu cầu`,
-            onChange: handlePageChange,
-            showSizeChanger: false,
-          }}
-          className="admin-soft-table w-full table-auto"
-        />
-      </Surface>
+          <Surface padded className="space-y-4">
+            {/* Filter bar: status pills + quick search */}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <FilterPills
+                label="Lọc theo trạng thái"
+                value={statusParam}
+                onChange={handleStatusChangeFilter}
+                options={filterOptions}
+              />
+
+              <div className="w-full sm:w-72">
+                <Input
+                  allowClear
+                  prefix={<SearchOutlined className="text-slate-400" />}
+                  placeholder="Tìm theo tên, email, công ty..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="rounded-lg"
+                />
+              </div>
+            </div>
+
+            {/* Table */}
+            <Table<ContactRequestDto>
+              columns={columns}
+              dataSource={filteredItems}
+              rowKey="contactRequestId"
+              loading={isLoading}
+              pagination={{
+                current: pageParam,
+                pageSize: PAGE_SIZE,
+                total: data?.totalCount || 0,
+                showTotal: (total) => `Tổng cộng ${total} yêu cầu`,
+                onChange: handlePageChange,
+                showSizeChanger: false,
+              }}
+              className="admin-soft-table w-full table-auto"
+            />
+          </Surface>
+        </>
+      )}
 
       {/* Detail Drawer */}
       <Drawer

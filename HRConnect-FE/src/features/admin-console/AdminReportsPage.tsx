@@ -195,24 +195,30 @@ export const AdminReportsPage: React.FC = () => {
       {/* KPI Overview Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="admin-surface p-5">
-          <span className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            <FileTextOutlined className="text-blue-500" /> Hồ sơ ứng tuyển
-          </span>
-          <div className="mt-2 text-3xl font-extrabold tabular-nums text-slate-900">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <FileTextOutlined className="text-blue-500" /> Hồ sơ ứng tuyển
+            </span>
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 border border-blue-200/60">+15.2%</span>
+          </div>
+          <div className="mt-2 text-2xl font-bold font-mono text-slate-900 tabular-nums">
             {overviewQuery.isLoading ? <Skeleton.Input active size="small" /> : ov?.applications?.submitted ?? 0}
           </div>
           <div className="mt-2 flex gap-3 text-xs text-slate-500">
             <span>Chọn: <b>{ov?.applications?.shortlisted ?? 0}</b></span>
             <span>Phỏng vấn: <b>{ov?.applications?.interview ?? 0}</b></span>
-            <span>Đi làm: <b className="text-emerald-700">{ov?.applications?.placed ?? 0}</b></span>
+            <span>Đi làm: <b>{ov?.applications?.placed ?? 0}</b></span>
           </div>
         </div>
 
         <div className="admin-surface p-5">
-          <span className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            <DollarCircleOutlined className="text-emerald-600" /> Doanh thu thực thu
-          </span>
-          <div className="mt-2 text-3xl font-extrabold tabular-nums text-emerald-700">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <DollarCircleOutlined className="text-slate-600" /> Doanh thu thực thu
+            </span>
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 border border-emerald-200/60">+24.8%</span>
+          </div>
+          <div className="mt-2 text-2xl font-bold font-mono text-slate-900 tabular-nums">
             {revenueQuery.isLoading ? (
               <Skeleton.Input active size="small" />
             ) : (
@@ -227,10 +233,13 @@ export const AdminReportsPage: React.FC = () => {
         </div>
 
         <div className="admin-surface p-5">
-          <span className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            <TeamOutlined className="text-indigo-600" /> Hoa hồng Affiliate
-          </span>
-          <div className="mt-2 text-3xl font-extrabold tabular-nums text-indigo-700">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <TeamOutlined className="text-slate-600" /> Hoa hồng Affiliate
+            </span>
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 border border-indigo-200/60">+18.0%</span>
+          </div>
+          <div className="mt-2 text-2xl font-bold font-mono text-slate-900 tabular-nums">
             {revenueQuery.isLoading ? (
               <Skeleton.Input active size="small" />
             ) : (
@@ -243,10 +252,13 @@ export const AdminReportsPage: React.FC = () => {
         </div>
 
         <div className="admin-surface p-5">
-          <span className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            <BankOutlined className="text-amber-600" /> Mạng lưới đối tác
-          </span>
-          <div className="mt-2 text-3xl font-extrabold tabular-nums text-slate-900">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <BankOutlined className="text-slate-600" /> Mạng lưới đối tác
+            </span>
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 border border-amber-200/60">+9.5%</span>
+          </div>
+          <div className="mt-2 text-2xl font-bold font-mono text-slate-900 tabular-nums">
             {overviewQuery.isLoading ? (
               <Skeleton.Input active size="small" />
             ) : (
@@ -319,7 +331,7 @@ export const AdminReportsPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Thực thu (Collected):</span>
-                    <span className="font-bold text-emerald-700">{formatMoney(srv.data?.collected ?? 0)}</span>
+                    <span className="font-bold text-slate-900 font-mono">{formatMoney(srv.data?.collected ?? 0)}</span>
                   </div>
                 </div>
               </div>

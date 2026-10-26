@@ -25,7 +25,7 @@ import {
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { adminCommissionApi, adminServiceTypesApi } from '@/services/api/adminApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { CommissionRateType, CommissionRule } from '@/types/api/admin';
@@ -230,7 +230,7 @@ export const AdminCommissionRulesPage: React.FC = () => {
     {
       title: 'Trạng thái',
       key: 'active',
-      width: 210,
+      width: 160,
       render: (_, r) => {
         const isToggling = togglingRuleId === r.commissionRuleId;
         return (
@@ -254,6 +254,25 @@ export const AdminCommissionRulesPage: React.FC = () => {
           </div>
         );
       },
+    },
+    {
+      title: 'Thao tác',
+      key: 'actions',
+      width: 112,
+      align: 'right',
+      className: 'w-28 text-right pr-4',
+      render: (_, r) => (
+        <Button
+          size="small"
+          icon={<EditOutlined />}
+          onClick={(e) => {
+            e.stopPropagation();
+            setEditing(r);
+          }}
+        >
+          Sửa
+        </Button>
+      ),
     },
   ];
 

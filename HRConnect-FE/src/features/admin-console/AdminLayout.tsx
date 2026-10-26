@@ -186,10 +186,10 @@ export const AdminLayout: React.FC = () => {
                         className={({ isActive }) =>
                           [
                             'group flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium no-underline transition-colors duration-150',
-                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-emerald-400',
+                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-blue-500',
                             collapsed ? 'justify-center' : '',
                             isActive
-                              ? 'bg-white/[0.08] text-white shadow-[inset_3px_0_0_#34D399]'
+                              ? 'bg-slate-800 text-white font-medium rounded-lg border-l-2 border-blue-500'
                               : item.muted
                                 ? 'text-slate-400 font-normal hover:bg-white/[0.04] hover:text-slate-200'
                                 : 'text-slate-300 hover:bg-white/[0.05] hover:text-white',

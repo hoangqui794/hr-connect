@@ -448,9 +448,9 @@ export const AdminRolesPermissionsPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 128,
+      width: 112,
       align: 'right',
-      className: 'w-32 text-right pr-4',
+      className: 'w-28 text-right pr-4',
       render: (_, r) => (
         <Space size="small">
           {r.isSystem ? (
@@ -576,8 +576,9 @@ export const AdminRolesPermissionsPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 100,
+      width: 112,
       align: 'right',
+      className: 'w-28 text-right pr-4',
       render: (_, p) => (
         <Button
           size="small"

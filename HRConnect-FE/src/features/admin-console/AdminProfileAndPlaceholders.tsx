@@ -132,7 +132,13 @@ export const AdminProfilePage: React.FC = () => {
                 </Form.Item>
               </div>
               <div className="flex justify-end">
-                <Button type="primary" size="large" htmlType="submit" loading={save.isPending}>
+                <Button
+                  type="primary"
+                  size="large"
+                  htmlType="submit"
+                  loading={save.isPending}
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm active:scale-[0.98] font-medium border-0"
+                >
                   Lưu thay đổi
                 </Button>
               </div>

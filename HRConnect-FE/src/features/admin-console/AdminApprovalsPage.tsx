@@ -334,7 +334,12 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
               <Button danger icon={<CloseOutlined />} onClick={() => setDecision('reject')}>
                 Từ chối
               </Button>
-              <Button type="primary" icon={<CheckOutlined />} onClick={() => setDecision('approve')}>
+              <Button
+                type="primary"
+                icon={<CheckOutlined />}
+                onClick={() => setDecision('approve')}
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm active:scale-[0.98] font-medium"
+              >
                 Duyệt
               </Button>
             </div>
@@ -347,9 +352,13 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
       <Modal
         open={Boolean(decision)}
         title={decision === 'approve' ? 'Duyệt hồ sơ này?' : 'Từ chối hồ sơ này?'}
-        okText={decision === 'approve' ? 'Duyệt' : 'Từ chối'}
+        okText={decision === 'approve' ? 'Duyệt tài khoản' : 'Từ chối'}
         cancelText="Hủy"
-        okButtonProps={{ danger: decision === 'reject', loading: act.isPending }}
+        okButtonProps={{
+          danger: decision === 'reject',
+          loading: act.isPending,
+          className: decision === 'approve' ? 'bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm active:scale-[0.98] font-medium' : undefined,
+        }}
         onCancel={() => setDecision(null)}
         onOk={() => form.submit()}
         destroyOnClose

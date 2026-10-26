@@ -9,7 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Divider, Drawer, Form, Input, Skeleton, Switch, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { DeleteOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { adminServiceTypesApi } from '@/services/api/adminApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { AdminServiceType, ServiceTypeAllowedRole, ServiceTypeInput } from '@/types/api/admin';
@@ -176,6 +176,25 @@ export const AdminServiceTypesPage: React.FC = () => {
       render: (v: boolean) => <StatusDot tone={v ? 'success' : 'neutral'}>{v ? 'Đang dùng' : 'Ngừng hoạt động'}</StatusDot>,
     },
     { title: 'Tạo lúc', dataIndex: 'createdAt', width: 150, render: (v: string) => <span className="tabular-nums">{formatDateTime(v)}</span> },
+    {
+      title: 'Thao tác',
+      key: 'actions',
+      width: 112,
+      align: 'right',
+      className: 'w-28 text-right pr-4',
+      render: (_, r) => (
+        <Button
+          size="small"
+          icon={<EditOutlined />}
+          onClick={(e) => {
+            e.stopPropagation();
+            setEditing(r);
+          }}
+        >
+          Sửa
+        </Button>
+      ),
+    },
   ];
 
   const current = editing && editing !== 'new' ? editing : null;

@@ -135,8 +135,8 @@ export const AdminFinancePage: React.FC = () => {
       title: 'Thao tác',
       key: 'actions',
       align: 'right',
-      width: 128,
-      className: 'w-32 text-right pr-4',
+      width: 112,
+      className: 'w-28 text-right pr-4',
       render: (_, c) => (
         <Space size={4} wrap>
           {c.status === 'EARNED' && (
@@ -191,8 +191,8 @@ export const AdminFinancePage: React.FC = () => {
       title: 'Thao tác',
       key: 'actions',
       align: 'right',
-      width: 128,
-      className: 'w-32 text-right pr-4',
+      width: 112,
+      className: 'w-28 text-right pr-4',
       render: (_, f) => {
         if (f.status !== 'PENDING' && f.status !== 'OVERDUE') return null;
         const waitingForReconciliation = Boolean(f.reconciliationStatus && f.reconciliationStatus !== 'CONFIRMED');

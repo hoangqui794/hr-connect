@@ -151,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse }) => {
                 darkItemColor: '#CBD5E1',
                 darkItemHoverColor: '#FFFFFF',
                 darkItemHoverBg: 'rgba(148, 163, 184, 0.12)',
-                darkItemSelectedBg: '#047857',
+                darkItemSelectedBg: '#1E293B',
                 darkItemSelectedColor: '#FFFFFF',
                 darkGroupTitleColor: '#94A3B8',
               },
