@@ -155,14 +155,14 @@ export const AdminDisputesPlaceholder: React.FC = () => <AdminDisputesPage />;
 
 export const AdminPayoutsPlaceholder: React.FC = () => (
   <div>
-    <PageHero eyebrow="Chưa có API" title="Chi trả hoa hồng" description="Duyệt và theo dõi các khoản hoa hồng trả cho Cộng tác viên." />
+    <PageHero eyebrow="Tài chính" title="Chi trả hoa hồng" description="Duyệt và theo dõi các khoản hoa hồng trả cho Cộng tác viên." />
     <NoApiYet feature="Chi trả hoa hồng" detail="Tính năng đang được hoàn thiện." />
   </div>
 );
 
 export const AdminSettingsPlaceholder: React.FC = () => (
   <div>
-    <PageHero eyebrow="Chưa có API" title="Cài đặt hệ thống" description="Tham số vận hành chung của nền tảng." />
-    <NoApiYet feature="Cài đặt hệ thống" detail="Quyền system_config.manage đã có, nhưng chưa có endpoint. Loại dịch vụ và hoa hồng đã có trang riêng." />
+    <PageHero eyebrow="Cài đặt" title="Cài đặt hệ thống" description="Tham số vận hành chung của nền tảng." />
+    <NoApiYet feature="Cài đặt hệ thống" detail="Tính năng đang được hoàn thiện. Loại dịch vụ và quy tắc hoa hồng có thể thiết lập ở trang chuyên biệt." />
   </div>
 );

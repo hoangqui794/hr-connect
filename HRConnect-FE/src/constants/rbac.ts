@@ -276,6 +276,7 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
       children: [
         { key: '/admin/service-types', label: 'Loại dịch vụ', icon: 'AppstoreOutlined' },
         { key: '/admin/commission-rules', label: 'Quy tắc hoa hồng', icon: 'DollarOutlined' },
+        { key: '/admin/settings', label: 'Cài đặt hệ thống', icon: 'SettingOutlined' },
       ],
     },
     {
@@ -289,15 +290,8 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
       label: 'Giám sát',
       type: 'group',
       children: [
-        { key: '/admin/audit-trail', label: 'Nhật ký hệ thống', icon: 'AuditOutlined' },
-      ],
-    },
-    {
-      label: 'Chưa có API',
-      type: 'group',
-      children: [
         { key: '/admin/disputes', label: 'Tranh chấp', icon: 'SolutionOutlined' },
-        { key: '/admin/settings', label: 'Cài đặt hệ thống', icon: 'SettingOutlined' },
+        { key: '/admin/audit-trail', label: 'Nhật ký hệ thống', icon: 'AuditOutlined' },
       ],
     },
   ],

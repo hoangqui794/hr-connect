@@ -785,8 +785,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
           </div>
         ) : (
           <Table<AffiliateSubmission>
-            className="admin-soft-table"
-            scroll={{ x: 890 }}
+            className="admin-soft-table w-full table-auto"
             rowKey="submissionId"
             columns={columns}
             dataSource={list.data?.items ?? []}
@@ -1080,8 +1079,7 @@ export const AffiliateCandidatesPage: React.FC = () => {
           />
         </div>
         <Table<LibraryCandidate>
-          className="admin-soft-table affiliate-library-table"
-          scroll={{ x: 930 }}
+          className="admin-soft-table affiliate-library-table w-full table-auto"
           rowKey="candidateId"
           columns={columns}
           dataSource={list.data?.items ?? []}
@@ -1180,8 +1178,7 @@ export const AffiliateAttributionsPage: React.FC = () => {
       </section>
       <Surface>
         <Table<AffiliateAttribution>
-          className="admin-soft-table affiliate-attribution-table"
-          scroll={{ x: 995 }}
+          className="admin-soft-table affiliate-attribution-table w-full table-auto"
           rowKey="attributionId"
           columns={columns}
           dataSource={list.data?.items ?? []}

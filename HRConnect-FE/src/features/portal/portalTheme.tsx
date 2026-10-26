@@ -20,15 +20,15 @@ const scope = (primary: string, hover: string, bg: string) =>
             colorLink: primary,
             colorLinkHover: hover,
             colorInfo: primary,
-            colorSuccess: '#047857',
+            colorSuccess: '#16A34A',
             colorWarning: '#B45309',
-            colorError: '#B91C1C',
+            colorError: '#E11D48',
             colorText: '#0F172A',
             colorTextSecondary: '#475569',
             colorBorder: '#E2E8F0',
-            borderRadius: 10,
+            borderRadius: 8,
           },
-          components: { Button: { primaryShadow: 'none', dangerShadow: 'none', defaultShadow: 'none' } },
+          components: { Button: { primaryShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', dangerShadow: 'none', defaultShadow: 'none' } },
         }}
       >
         {children}
@@ -37,4 +37,4 @@ const scope = (primary: string, hover: string, bg: string) =>
   };
 
 export const CandidateScope = scope('#2563EB', '#1D4ED8', '#EFF6FF');
-export const AffiliateScope = scope('#6D28D9', '#5B21B6', '#F5F3FF');
+export const AffiliateScope = scope('#2563EB', '#1D4ED8', '#EFF6FF');

@@ -111,7 +111,7 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
       title: 'Trạng thái', key: 'status', width: 145,
       render: (_, row) => <StatusDot tone={statusMeta[row.status].tone}>{statusMeta[row.status].label}</StatusDot>,
     },
-    { title: '', key: 'actions', width: 95, render: (_, row) => <Button size="small" icon={<EyeOutlined />} onClick={() => setSelected(row)}>Xem</Button> },
+    { title: '', key: 'actions', width: 128, align: 'right', className: 'w-32 text-right pr-4', render: (_, row) => <Button size="small" icon={<EyeOutlined />} onClick={() => setSelected(row)}>Xem</Button> },
   ], []);
 
   const submit = async () => {
@@ -159,12 +159,11 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
           <div className="p-5"><Alert type="error" showIcon message="Không tải được danh sách đối soát" description={getApiErrorMessage(list.error)} /></div>
         ) : (
           <Table
-            className="admin-soft-table"
+            className="admin-soft-table w-full table-auto"
             rowKey="reconciliationId"
             columns={columns}
             dataSource={list.data?.items ?? []}
             loading={list.isFetching}
-            scroll={{ x: 900 }}
             pagination={{ current: page, pageSize: PAGE_SIZE, total: list.data?.totalCount ?? 0, showSizeChanger: false, onChange: setPage }}
             locale={{ emptyText: 'Không có hồ sơ phù hợp.' }}
           />

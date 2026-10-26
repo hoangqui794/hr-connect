@@ -58,7 +58,7 @@ const RolePermissions: React.FC<{ serviceType: AdminServiceType }> = ({ serviceT
         được nộp hồ sơ vào tin. Thay đổi có hiệu lực ngay.
       </Typography.Paragraph>
       {draft.length === 0 ? (
-        <Alert type="info" showIcon message="Loại dịch vụ này chưa gán vai trò nào." description="Backend chưa có API liệt kê vai trò, nên chưa thể thêm vai trò mới từ giao diện." />
+        <Alert type="info" showIcon message="Chưa có vai trò nào được gán cho loại dịch vụ này." />
       ) : (
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -205,13 +205,12 @@ export const AdminServiceTypesPage: React.FC = () => {
           </div>
         ) : (
           <Table<AdminServiceType>
-            className="admin-soft-table"
+            className="admin-soft-table w-full table-auto"
             rowKey="id"
             loading={list.isLoading}
             columns={columns}
             dataSource={list.data ?? []}
             pagination={false}
-            scroll={{ x: 860 }}
             locale={{ emptyText: 'Chưa có loại dịch vụ nào.' }}
             onRow={(r) => ({
               onClick: () => setEditing(r),

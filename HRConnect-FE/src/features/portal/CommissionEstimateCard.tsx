@@ -64,14 +64,14 @@ export const CommissionEstimateCard: React.FC<{ jobId: string }> = ({ jobId }) =
   return (
     <section
       aria-label="Hoa hồng ước tính"
-      className="rounded-2xl border border-solid border-violet-200 bg-violet-50/70 p-4"
+      className="rounded-2xl border border-solid border-blue-200 bg-blue-50/70 p-4"
     >
       <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-600 text-white" aria-hidden>
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-600 text-white shadow-sm" aria-hidden>
           <DollarOutlined />
         </span>
         <div className="min-w-0">
-          <div className="text-xs font-semibold uppercase tracking-[0.08em] text-violet-700">Hoa hồng ước tính</div>
+          <div className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-700">Hoa hồng ước tính</div>
           <div className="mt-0.5 text-lg font-bold text-slate-900 tabular-nums">
             {headline ?? 'Không áp dụng'}
           </div>

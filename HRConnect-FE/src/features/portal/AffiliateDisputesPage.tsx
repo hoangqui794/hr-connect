@@ -141,7 +141,7 @@ export const AffiliateDisputesPage: React.FC = () => {
       {/* Disputes Table */}
       <Surface padded>
         <Table
-          className="admin-soft-table"
+          className="admin-soft-table w-full table-auto"
           rowKey="disputeId"
           columns={columns}
           dataSource={disputes}

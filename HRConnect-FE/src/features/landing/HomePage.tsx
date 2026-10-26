@@ -394,7 +394,7 @@ export const HomePage: React.FC = () => {
                       </h3>
 
                       {/* Đúng 1 câu mô tả giá trị cốt lõi */}
-                      <p className="mb-0 mt-2 text-sm leading-relaxed text-slate-500 line-clamp-2">
+                      <p className="mb-0 mt-2 text-sm leading-relaxed text-slate-500">
                         {role.description}
                       </p>
                     </div>

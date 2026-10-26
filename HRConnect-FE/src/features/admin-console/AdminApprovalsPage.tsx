@@ -206,12 +206,10 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
       title: 'Người đăng ký',
       key: 'who',
       render: (_, r) => (
-        <div className="min-w-[240px]">
-          <PersonCell
-            name={r.companyName || r.displayName}
-            secondary={`${r.companyName ? `${r.displayName} · ` : ''}${r.email}`}
-          />
-        </div>
+        <PersonCell
+          name={r.companyName || r.displayName}
+          secondary={`${r.companyName ? `${r.displayName} · ` : ''}${r.email}`}
+        />
       ),
     },
     {
@@ -289,12 +287,11 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
           </div>
         ) : (
           <Table<ApprovalListItemDto>
-            className="admin-soft-table"
+            className="admin-soft-table w-full table-auto"
             rowKey="approvalId"
             loading={list.isLoading}
             columns={columns}
             dataSource={data?.items ?? []}
-            scroll={{ x: 760 }}
             locale={{
               emptyText: (
                 <div className="py-10 text-slate-600">

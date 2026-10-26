@@ -137,9 +137,7 @@ export const AdminUsersPage: React.FC = () => {
       title: 'Người dùng',
       key: 'user',
       render: (_, u) => (
-        <div className="min-w-[260px]">
-          <PersonCell name={u.displayName || u.email} secondary={u.displayName ? u.email : null} />
-        </div>
+        <PersonCell name={u.displayName || u.email} secondary={u.displayName ? u.email : null} />
       ),
     },
     { title: 'Vai trò', dataIndex: 'roles', width: 200, render: (roles: RoleCode[]) => <RoleChips roles={roles} /> },
@@ -209,12 +207,11 @@ export const AdminUsersPage: React.FC = () => {
           </div>
         ) : (
           <Table<AdminUserListItem>
-            className="admin-soft-table"
+            className="admin-soft-table w-full table-auto"
             rowKey="userId"
             loading={list.isLoading}
             columns={columns}
             dataSource={page?.items ?? []}
-            scroll={{ x: 820 }}
             locale={{ emptyText: <div className="py-10 text-slate-600">Không có tài khoản phù hợp bộ lọc.</div> }}
             onRow={(u) => ({
               onClick: () => setSelectedId(u.userId),

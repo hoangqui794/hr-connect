@@ -341,12 +341,11 @@ export const AdminCommissionRulesPage: React.FC = () => {
           </div>
         ) : (
           <Table<CommissionRule>
-            className="admin-soft-table"
+            className="admin-soft-table w-full table-auto"
             rowKey="commissionRuleId"
             loading={list.isFetching && !list.isLoading}
             columns={columns}
             dataSource={page.items}
-            scroll={{ x: 1080 }}
             pagination={{
               current: page.page ?? params.page,
               pageSize: PAGE_SIZE,

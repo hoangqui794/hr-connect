@@ -131,7 +131,9 @@ export const AdminDisputesPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'action',
-      width: 110,
+      width: 128,
+      align: 'right',
+      className: 'w-32 text-right pr-4',
       render: (_, r) => (
         <Button
           size="small"

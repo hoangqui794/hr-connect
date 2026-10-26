@@ -330,8 +330,9 @@ export const AdminUserAuthorizationPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'action',
-      width: 130,
+      width: 128,
       align: 'right',
+      className: 'w-32 text-right pr-4',
       render: (_, r) => {
         if (r.isSystem) {
           return (
@@ -592,18 +593,17 @@ export const AdminUserAuthorizationPage: React.FC = () => {
                 <span className="text-base font-bold text-slate-900">Vai trò được gán</span>
                 <Badge
                   count={authData.roles?.length ?? 0}
-                  style={{ backgroundColor: '#047857' }}
+                  style={{ backgroundColor: '#2563EB' }}
                 />
               </div>
             </div>
 
             <Table<RbacUserRoleAssignment>
-              className="admin-soft-table"
+              className="admin-soft-table w-full table-auto"
               rowKey={(r) => `${r.roleId}_${r.status}`}
               columns={roleColumns}
               dataSource={authData.roles ?? []}
               pagination={false}
-              scroll={{ x: 860 }}
               locale={{ emptyText: <div className="py-8 text-slate-500">Chưa được gán vai trò nào.</div> }}
             />
           </Surface>
@@ -650,12 +650,11 @@ export const AdminUserAuthorizationPage: React.FC = () => {
             </div>
 
             <Table<RbacEffectivePermission>
-              className="admin-soft-table"
+              className="admin-soft-table w-full table-auto"
               rowKey="permissionId"
               columns={permissionColumns}
               dataSource={filteredEffectivePermissions}
               pagination={{ pageSize: 20, showSizeChanger: false, hideOnSinglePage: true }}
-              scroll={{ x: 860 }}
               locale={{ emptyText: <div className="py-8 text-slate-500">Không có quyền hiệu lực nào phù hợp.</div> }}
             />
           </Surface>

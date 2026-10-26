@@ -154,7 +154,7 @@ export const AffiliateShell: React.FC = () => {
                         className={({ isActive }) =>
                           [
                             'affiliate-nav-link relative flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium no-underline transition-colors duration-150',
-                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300',
+                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400',
                             collapsed ? 'justify-center' : '',
                             isActive ? 'active font-semibold' : item.muted ? 'font-normal opacity-80' : '',
                           ].join(' ')

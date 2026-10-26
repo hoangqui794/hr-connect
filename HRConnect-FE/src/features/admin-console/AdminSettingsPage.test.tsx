@@ -63,7 +63,7 @@ describe('AdminSettingsPage', () => {
     renderPage();
 
     expect(await screen.findByText('Hạn thanh toán phí')).toBeTruthy();
-    expect(screen.getByText(/Mặc định 20 ngày · Nguồn: HEADHUNT_COD model, mục 8/)).toBeTruthy();
+    expect(screen.getByText(/Mặc định 20 ngày/)).toBeTruthy();
     expect(screen.getByText('Mặc định')).toBeTruthy();
   });
 

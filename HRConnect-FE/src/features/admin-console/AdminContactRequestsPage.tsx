@@ -163,7 +163,6 @@ export const AdminContactRequestsPage: React.FC = () => {
     {
       title: 'Họ tên',
       key: 'fullName',
-      width: 220,
       render: (_, record) => (
         <PersonCell
           name={record.fullName}
@@ -175,7 +174,7 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Email',
       dataIndex: 'email',
       key: 'email',
-      width: 200,
+      width: 170,
       render: (val: string) => (
         <div className="flex items-center gap-1.5 text-slate-700">
           <MailOutlined className="text-slate-400 text-xs" />
@@ -189,7 +188,7 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Số điện thoại',
       dataIndex: 'phone',
       key: 'phone',
-      width: 140,
+      width: 120,
       render: (val?: string | null) =>
         val ? (
           <div className="flex items-center gap-1.5 text-slate-700">
@@ -206,7 +205,7 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Công ty',
       dataIndex: 'companyName',
       key: 'companyName',
-      width: 170,
+      width: 130,
       render: (val?: string | null) => (
         <span className="font-medium text-slate-800">{val || '—'}</span>
       ),
@@ -215,7 +214,7 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Dịch vụ quan tâm',
       dataIndex: 'serviceInterest',
       key: 'serviceInterest',
-      width: 190,
+      width: 150,
       render: (val: ContactServiceInterest) => {
         const conf = SERVICE_INTEREST_LABELS[val] || { label: val, color: 'default' };
         return <Tag color={conf.color} className="font-semibold">{conf.label}</Tag>;
@@ -225,7 +224,7 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      width: 150,
+      width: 130,
       render: (val: ContactRequestStatus) => {
         const conf = STATUS_CONFIG[val] || { label: val, tone: 'neutral' };
         return <StatusDot tone={conf.tone}>{conf.label}</StatusDot>;
@@ -235,7 +234,7 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Ngày tạo',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 150,
+      width: 130,
       render: (val: string) => (
         <span className="text-xs text-slate-600 tabular-nums">
           {formatDateTime(val)}
@@ -243,21 +242,11 @@ export const AdminContactRequestsPage: React.FC = () => {
       ),
     },
     {
-      title: 'Ghi chú',
-      dataIndex: 'note',
-      key: 'note',
-      ellipsis: true,
-      render: (val?: string | null) => (
-        <span className="text-xs text-slate-600 italic">
-          {val ? val : <Text type="secondary">Chưa có ghi chú</Text>}
-        </span>
-      ),
-    },
-    {
       title: 'Thao tác',
       key: 'actions',
-      width: 150,
-      fixed: 'right',
+      width: 128,
+      align: 'right',
+      className: 'w-32 text-right pr-4',
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="Xem chi tiết nội dung lời nhắn">
@@ -276,7 +265,7 @@ export const AdminContactRequestsPage: React.FC = () => {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openStatusModal(record)}
-              className="font-semibold"
+              className="font-semibold text-blue-600"
             >
               Xử lý
             </Button>
@@ -354,8 +343,7 @@ export const AdminContactRequestsPage: React.FC = () => {
             onChange: handlePageChange,
             showSizeChanger: false,
           }}
-          scroll={{ x: 1200 }}
-          className="admin-soft-table"
+          className="admin-soft-table w-full table-auto"
         />
       </Surface>
 
