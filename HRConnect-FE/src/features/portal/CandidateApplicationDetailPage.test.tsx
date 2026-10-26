@@ -68,7 +68,7 @@ describe('CandidateApplicationDetailPage', () => {
         salary: 45000000,
         currencyCode: 'VND',
         startDate: '2026-11-01',
-        expiryDate: '2026-10-25',
+        expiryDate: '2099-10-25',
         status: 'SENT',
         concurrencyToken: 'token-off-1',
         canRespond: true,
