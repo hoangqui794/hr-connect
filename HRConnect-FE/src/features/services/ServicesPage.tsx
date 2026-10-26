@@ -33,7 +33,7 @@ export const ServicesPage: React.FC = () => {
               <h1 className="mb-0 mt-6 max-w-3xl text-[44px] font-extrabold leading-[1.1] tracking-[-0.045em] text-slate-950 lg:text-[58px]">Chọn đúng mô hình,<span className="block text-blue-700">tuyển đúng người dễ dàng hơn.</span></h1>
               <p className="mb-0 mt-6 max-w-2xl text-lg leading-8 text-slate-600">Từ đăng tin chủ động đến tuyển dụng trọn gói, HR Connect giúp doanh nghiệp hiểu rõ phạm vi dịch vụ, trách nhiệm của từng bên và tiến độ của mỗi hồ sơ.</p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <button type="button" onClick={() => document.getElementById('service-models')?.scrollIntoView({ behavior: 'smooth' })} className="inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border-0 bg-blue-700 px-6 text-base font-bold text-white transition hover:bg-blue-800">Xem các mô hình<ArrowRightOutlined aria-hidden /></button>
+                <button type="button" onClick={() => document.getElementById('service-models')?.scrollIntoView({ behavior: 'smooth' })} className="inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border-0 bg-blue-600 px-6 text-base font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]">Xem các mô hình<ArrowRightOutlined aria-hidden /></button>
                 <button type="button" onClick={() => navigate('/contact')} className="inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border border-solid border-blue-600 bg-blue-50 px-6 text-base font-bold text-blue-800 transition hover:bg-blue-100">Liên hệ tư vấn</button>
                 <button type="button" onClick={() => navigate('/register?role=CLIENT')} className="min-h-12 cursor-pointer rounded-xl border border-solid border-slate-300 bg-white px-6 text-base font-bold text-slate-800 transition hover:border-blue-300 hover:bg-blue-50">Đăng ký doanh nghiệp</button>
               </div>
@@ -78,7 +78,7 @@ export const ServicesPage: React.FC = () => {
             <div><p className="m-0 text-sm font-bold uppercase tracking-[0.14em] text-blue-300">Bắt đầu cùng HR Connect</p><h2 className="mb-0 mt-2 text-3xl font-extrabold">Đưa nhu cầu tuyển dụng vào một quy trình rõ ràng.</h2><p className="mb-0 mt-3 text-slate-300">Đăng ký doanh nghiệp để tạo Job và chọn dịch vụ phù hợp.</p></div>
             <div className="flex flex-wrap items-center gap-3">
               <button type="button" onClick={() => navigate('/contact')} className="inline-flex min-h-12 shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-solid border-blue-400 bg-blue-900/40 px-6 text-base font-bold text-white transition hover:bg-blue-800">Liên hệ tư vấn</button>
-              <button type="button" onClick={() => navigate('/register?role=CLIENT')} className="inline-flex min-h-12 shrink-0 cursor-pointer items-center gap-2 rounded-xl border-0 bg-blue-600 px-6 text-base font-bold text-white transition hover:bg-blue-500">Đăng ký doanh nghiệp<ArrowRightOutlined aria-hidden /></button>
+              <button type="button" onClick={() => navigate('/register?role=CLIENT')} className="inline-flex min-h-12 shrink-0 cursor-pointer items-center gap-2 rounded-xl border-0 bg-blue-600 px-6 text-base font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]">Đăng ký doanh nghiệp<ArrowRightOutlined aria-hidden /></button>
             </div>
           </div>
         </section>

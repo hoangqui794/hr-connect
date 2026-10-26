@@ -949,7 +949,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                           <Button
                             type="primary"
                             size="small"
-                            className="bg-emerald-600 hover:bg-emerald-500 border-none"
+                            className="!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] border-none"
                             onClick={() => {
                               setSelectedOffer(offer);
                               setOfferResponseChoice('ACCEPTED');

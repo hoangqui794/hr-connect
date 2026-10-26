@@ -252,8 +252,7 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
     { key: '/hr/placement-review', label: 'Sửa ngày đi làm thực tế', icon: 'AuditOutlined' },
     { key: '/hr/warranty-tracking', label: 'Bảo hành', icon: 'SafetyCertificateOutlined' },
   ],
-  // Admin console ("Slate Command"): pages map to backend endpoints; groups marked
-  // "Chưa có API" open an explicit empty state instead of mock numbers.
+  // Admin console ("Slate Command"): pages map to backend endpoints.
   [UserRole.ADMIN]: [
     {
       label: 'Tổng quan',

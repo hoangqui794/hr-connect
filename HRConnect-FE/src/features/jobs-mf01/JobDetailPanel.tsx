@@ -335,7 +335,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             className={
               agreementStatus === 'CHANGE_REQUESTED'
                 ? 'border-amber-200 bg-amber-50/70'
-                : 'border-purple-200 bg-purple-50/70'
+                : 'border-blue-200 bg-blue-50/70'
             }
             message={
               agreementStatus === 'CHANGE_REQUESTED'
@@ -356,7 +356,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <Button
                   type="primary"
                   size="small"
-                  className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600"
+                  className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
                   onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                 >
                   Xem hợp đồng
@@ -388,7 +388,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     type="primary"
                     size="small"
                     icon={<CreditCardOutlined />}
-                    className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600"
+                    className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
                     onClick={() => setShowPaymentModal(true)}
                   >
                     Nộp cọc
@@ -405,7 +405,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   type="primary"
                   size="small"
                   icon={<CreditCardOutlined />}
-                  className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600"
+                  className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
                   onClick={() => setShowPaymentModal(true)}
                 >
                   Thanh toán ngay
@@ -467,7 +467,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               <Button
                 type="primary"
                 size="small"
-                className="!bg-emerald-600 hover:!bg-emerald-500 !border-emerald-600 font-medium text-xs shadow-2xs"
+                className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium text-xs"
                 onClick={() => navigate(`/candidate/applications/${appliedApp.applicationId}`)}
               >
                 Xem chi tiết đơn

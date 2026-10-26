@@ -728,7 +728,7 @@ export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
               icon={<CheckCircleFilled />}
               onClick={handleApprove}
               disabled={decisionState !== 'pending'}
-              className="flex-1 rounded-lg font-bold h-11 bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-sm flex items-center justify-center gap-1.5"
+              className="flex-1 rounded-lg font-bold h-11 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
             >
               Duyệt phỏng vấn
             </Button>

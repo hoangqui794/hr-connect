@@ -267,7 +267,7 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
                 type="primary"
                 icon={<CheckCircleOutlined />}
                 loading={confirmAttendance.isPending}
-                className="bg-emerald-600 hover:!bg-emerald-700"
+                className="!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
               >
                 Xác nhận tham gia
               </Button>

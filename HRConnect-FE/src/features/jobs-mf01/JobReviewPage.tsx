@@ -307,7 +307,7 @@ export const JobReviewPage: React.FC = () => {
           </div>
         ),
         okText: 'Duyệt tin',
-        okButtonProps: { className: '!bg-indigo-600 hover:!bg-indigo-500 font-semibold' },
+        okButtonProps: { className: '!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold' },
         cancelText: 'Hủy bỏ',
         onOk: () =>
           approve
@@ -409,7 +409,7 @@ export const JobReviewPage: React.FC = () => {
         </div>
       ),
       okText: 'Công khai tin tuyển dụng',
-      okButtonProps: { className: '!bg-emerald-600 hover:!bg-emerald-500 font-semibold' },
+      okButtonProps: { className: '!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold' },
       cancelText: 'Hủy bỏ',
       onOk: () =>
         approve
@@ -583,7 +583,7 @@ export const JobReviewPage: React.FC = () => {
                           type="primary"
                           className={
                             isStandardUnpaid
-                              ? '!bg-indigo-600 hover:!bg-indigo-500 !border-indigo-600 font-semibold shadow-xs'
+                              ? '!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold'
                               : 'font-semibold shadow-xs'
                           }
                           icon={isStandardUnpaid ? <SendOutlined /> : <CheckOutlined />}
@@ -687,7 +687,7 @@ export const JobReviewPage: React.FC = () => {
                         </Button>
                         <Button
                           type="primary"
-                          className="!bg-emerald-600 hover:!bg-emerald-500 !border-emerald-600 font-semibold"
+                          className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold"
                           icon={<CheckOutlined />}
                           loading={approve.isPending}
                           onClick={confirmPublishAgreementJob}

@@ -126,7 +126,7 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
   return (
     <div>
       <PageHero
-        eyebrow={admin ? 'Platform Admin · MF-04' : 'Internal HR · MF-04'}
+        eyebrow={admin ? 'Platform Admin' : 'Internal HR'}
         title={admin ? 'Xử lý đối soát nhận việc' : 'Đối soát kết quả nhận việc'}
         description={admin
           ? 'Xử lý các trường hợp Internal HR xác minh thấy thông tin Client khai không khớp.'
