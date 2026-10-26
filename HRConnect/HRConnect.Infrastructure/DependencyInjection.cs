@@ -177,6 +177,7 @@ public static class DependencyInjection
         });
         services.AddScoped<HRConnect.Application.Features.Candidates.JobMatches.IJobMatchAiClient, HRConnect.Infrastructure.Services.JobMatching.JobMatchAiClient>();
         services.AddScoped<HRConnect.Application.Features.Candidates.JobMatches.IJobMatchReader, HRConnect.Infrastructure.Services.JobMatching.JobMatchReader>();
+        services.AddScoped<HRConnect.Application.Features.Candidates.JobMatches.IJobMatchWriter, HRConnect.Infrastructure.Services.JobMatching.JobMatchWriter>();
         services.AddScoped<HRConnect.Infrastructure.Services.JobMatching.JobMatchRunner>();
         services.AddHostedService<HRConnect.Infrastructure.Services.JobMatching.JobMatchWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.SubmissionConsents.SubmissionConsentExpiryWorker>();

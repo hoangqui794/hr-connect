@@ -1628,6 +1628,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("cv_id");
 
+                    b.Property<DateTime?>("DismissedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dismissed_at");
+
                     b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
@@ -1638,9 +1642,18 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnName("generated_at")
                         .HasDefaultValueSql("now()");
 
+                    b.Property<string>("InputFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("input_fingerprint");
+
                     b.Property<Guid>("JobId")
                         .HasColumnType("uuid")
                         .HasColumnName("job_id");
+
+                    b.Property<DateTime?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_attempt_at");
 
                     b.Property<decimal?>("MatchScore")
                         .HasPrecision(5, 2)
@@ -1664,6 +1677,21 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("missing_requirements");
 
+                    b.Property<DateTime?>("NextRetryAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_retry_at");
+
+                    b.Property<int>("RetryCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("retry_count");
+
+                    b.Property<string>("ScoringVersion")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("scoring_version");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -1685,8 +1713,15 @@ namespace HRConnect.Infrastructure.Migrations
                     b.HasIndex(new[] { "CandidateId", "MatchScore", "GeneratedAt" }, "idx_candidate_job_match_candidate_score")
                         .IsDescending(false, true, true);
 
+                    b.HasIndex(new[] { "CandidateId", "Status", "GeneratedAt" }, "idx_candidate_job_match_feed")
+                        .IsDescending(false, false, true);
+
                     b.HasIndex(new[] { "JobId", "GeneratedAt" }, "idx_candidate_job_match_job")
                         .IsDescending(false, true);
+
+                    b.HasIndex(new[] { "CandidateId", "JobId", "InputFingerprint" }, "ux_candidate_job_match_input")
+                        .IsUnique()
+                        .HasFilter("input_fingerprint IS NOT NULL");
 
                     b.ToTable("candidate_job_match", "public", t =>
                         {

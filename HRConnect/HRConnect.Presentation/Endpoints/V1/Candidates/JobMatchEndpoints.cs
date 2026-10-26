@@ -21,7 +21,8 @@ public static class JobMatchEndpoints
                 if (!PermissionAuthorization.HasPermission(user, Permission)) return PermissionAuthorization.Forbidden(Permission);
                 try
                 {
-                    return Results.Ok(new { success = true, data = await sender.Send(new GetMyJobMatchesQuery(userId), ct) });
+                    var result = await sender.Send(new GetMyJobMatchesQuery(userId), ct);
+                    return Results.Ok(new { success = true, data = result.Items, meta = result.Meta });
                 }
                 catch (NotFoundException ex)
                 {
@@ -32,7 +33,31 @@ public static class JobMatchEndpoints
             .WithTags("Candidate Job Matches")
             .WithName("GetMyJobMatches")
             .WithSummary("Việc làm phù hợp với CV chính")
-            .WithDescription("AI so CV chính (hồ sơ PUBLIC) với JD các tin ACTIVE theo định kỳ. Trả tối đa 20 gợi ý còn hạn, điểm từ job_match.min_score trở lên, chưa ứng tuyển, xếp theo điểm. Quyền candidate.profile.view_own.");
+            .WithDescription("Hệ thống kết hợp độ tương đồng CV-JD với kỹ năng và thông tin nghề nghiệp để trả tối đa 20 gợi ý còn hạn, chưa ứng tuyển, xếp theo mức phù hợp. Hồ sơ công khai hay riêng tư không ảnh hưởng gợi ý chỉ dành cho chính Candidate.");
+
+        app.MapPost("/api/v1/candidates/me/job-matches/{matchId:guid}/dismiss", async (
+                Guid matchId,
+                ClaimsPrincipal user,
+                [FromServices] ISender sender,
+                CancellationToken ct) =>
+            {
+                var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
+                if (!Guid.TryParse(idClaim, out var userId)) return Results.Unauthorized();
+                if (!PermissionAuthorization.HasPermission(user, Permission)) return PermissionAuthorization.Forbidden(Permission);
+                try
+                {
+                    await sender.Send(new DismissMyJobMatchCommand(userId, matchId), ct);
+                    return Results.Ok(new { success = true, message = "Đã ẩn gợi ý việc làm." });
+                }
+                catch (NotFoundException ex)
+                {
+                    return Results.NotFound(new { success = false, message = ex.Message });
+                }
+            })
+            .RequireAuthorization()
+            .WithTags("Candidate Job Matches")
+            .WithName("DismissMyJobMatch")
+            .WithSummary("Ẩn một gợi ý việc làm");
 
         return app;
     }

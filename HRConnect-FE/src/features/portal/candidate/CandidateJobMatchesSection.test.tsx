@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
+import { App as AntApp } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CandidateJobMatchesSection, formatMatchScore, getMatchScoreConfig } from './CandidateJobMatchesSection';
 import { candidateJobMatchApi } from '@/services/api/candidateJobMatchApi';
@@ -17,6 +18,7 @@ vi.mock('react-router-dom', async () => {
 vi.mock('@/services/api/candidateJobMatchApi', () => ({
   candidateJobMatchApi: {
     getJobMatches: vi.fn(),
+    dismissJobMatch: vi.fn(),
   },
 }));
 
@@ -37,9 +39,11 @@ describe('CandidateJobMatchesSection', () => {
   const renderSection = (props = {}) =>
     render(
       <MemoryRouter>
-        <QueryClientProvider client={queryClient}>
-          <CandidateJobMatchesSection {...props} />
-        </QueryClientProvider>
+        <AntApp>
+          <QueryClientProvider client={queryClient}>
+            <CandidateJobMatchesSection {...props} />
+          </QueryClientProvider>
+        </AntApp>
       </MemoryRouter>
     );
 
@@ -53,15 +57,15 @@ describe('CandidateJobMatchesSection', () => {
 
     it('returns score config based on threshold', () => {
       expect(getMatchScoreConfig(85).label).toBe('Rất phù hợp');
-      expect(getMatchScoreConfig(70).label).toBe('Phù hợp tốt');
-      expect(getMatchScoreConfig(50).label).toBe('Tiềm năng');
+      expect(getMatchScoreConfig(70).label).toBe('Khá phù hợp');
+      expect(getMatchScoreConfig(50).label).toBe('Có tiềm năng');
     });
   });
 
   describe('rendering matches', () => {
     it('renders list of job matches with highlighted score badges', async () => {
-      getMatchesMock.mockResolvedValueOnce([
-        {
+      getMatchesMock.mockResolvedValueOnce({
+        items: [{
           candidateJobMatchId: 'match-1',
           jobId: 'job-101',
           jobTitle: 'Senior React Engineer',
@@ -70,6 +74,7 @@ describe('CandidateJobMatchesSection', () => {
           matchScore: 83,
           generatedAt: '2026-10-19T10:00:00Z',
           expiresAt: '2026-10-26T10:00:00Z',
+          matchingReasons: ['Kỹ năng React phù hợp'],
         },
         {
           candidateJobMatchId: 'match-2',
@@ -80,8 +85,9 @@ describe('CandidateJobMatchesSection', () => {
           matchScore: 72,
           generatedAt: '2026-10-19T10:00:00Z',
           expiresAt: '2026-10-26T10:00:00Z',
-        },
-      ]);
+        }],
+        meta: { hasPrimaryCv: true, lastGeneratedAt: '2026-10-19T10:00:00Z', scoringVersion: 'HYBRID_V1' },
+      });
 
       renderSection();
 
@@ -91,34 +97,37 @@ describe('CandidateJobMatchesSection', () => {
       });
 
       expect(screen.getByText('Công ty Công nghệ Alpha')).toBeInTheDocument();
-      expect(screen.getByText('Phù hợp 83%')).toBeInTheDocument();
-      expect(screen.getByText('Phù hợp 72%')).toBeInTheDocument();
+      expect(screen.getByText(/Rất phù hợp · 83%/)).toBeInTheDocument();
+      expect(screen.getByText(/Khá phù hợp · 72%/)).toBeInTheDocument();
+      expect(screen.getByText('Kỹ năng React phù hợp')).toBeInTheDocument();
 
-      // Click on card navigates to job detail
-      fireEvent.click(screen.getByText('Senior React Engineer'));
+      fireEvent.click(screen.getAllByRole('button', { name: /Xem việc làm/i })[0]);
       expect(mockNavigate).toHaveBeenCalledWith('/candidate/jobs/job-101');
     });
   });
 
   describe('empty state', () => {
-    it('displays custom empty state with profile and CV direct actions when list is empty', async () => {
-      getMatchesMock.mockResolvedValueOnce([]);
+    it('guides the Candidate to select a primary CV when one is missing', async () => {
+      getMatchesMock.mockResolvedValueOnce({
+        items: [],
+        meta: { hasPrimaryCv: false, lastGeneratedAt: null, scoringVersion: 'HYBRID_V1' },
+      });
 
       renderSection();
 
       await waitFor(() => {
         expect(
-          screen.getByText('Chưa có việc làm phù hợp được gợi ý')
+          screen.getByText('Chọn CV chính để nhận gợi ý')
         ).toBeInTheDocument();
       });
 
       expect(
-        screen.getByText(/Bật hồ sơ công khai và đặt CV chính/)
+        screen.getByText(/Hồ sơ không cần bật công khai/)
       ).toBeInTheDocument();
 
       // Action buttons
-      const profileBtn = screen.getByRole('button', { name: /Hồ sơ cá nhân/i });
-      const cvsBtn = screen.getByRole('button', { name: /Kho CV & Đặt CV chính/i });
+      const profileBtn = screen.getByRole('button', { name: /Cập nhật hồ sơ/i });
+      const cvsBtn = screen.getByRole('button', { name: /Đến kho CV/i });
 
       expect(profileBtn).toBeInTheDocument();
       expect(cvsBtn).toBeInTheDocument();
@@ -130,6 +139,19 @@ describe('CandidateJobMatchesSection', () => {
       // Click CVs button
       fireEvent.click(cvsBtn);
       expect(mockNavigate).toHaveBeenCalledWith('/candidate/cvs');
+    });
+
+    it('offers job discovery when the primary CV has no qualifying matches yet', async () => {
+      getMatchesMock.mockResolvedValueOnce({
+        items: [],
+        meta: { hasPrimaryCv: true, lastGeneratedAt: null, scoringVersion: 'HYBRID_V1' },
+      });
+
+      renderSection();
+
+      expect(await screen.findByText('Chúng tôi đang tìm cơ hội phù hợp cho bạn')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Xem tất cả việc làm/i }));
+      expect(mockNavigate).toHaveBeenCalledWith('/candidate/jobs?tab=all');
     });
   });
 });

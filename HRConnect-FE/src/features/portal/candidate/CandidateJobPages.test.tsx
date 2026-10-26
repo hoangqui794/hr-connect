@@ -8,6 +8,7 @@ import { candidateJobMatchApi } from '@/services/api/candidateJobMatchApi';
 vi.mock('@/services/api/candidateJobMatchApi', () => ({
   candidateJobMatchApi: {
     getJobMatches: vi.fn(),
+    dismissJobMatch: vi.fn(),
   },
 }));
 
@@ -37,8 +38,8 @@ describe('CandidateJobsPage', () => {
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 0 } },
     });
-    vi.mocked(candidateJobMatchApi.getJobMatches).mockResolvedValue([
-      {
+    vi.mocked(candidateJobMatchApi.getJobMatches).mockResolvedValue({
+      items: [{
         candidateJobMatchId: 'm-1',
         jobId: 'j-1',
         jobTitle: 'Senior Fullstack Developer',
@@ -47,8 +48,9 @@ describe('CandidateJobsPage', () => {
         matchScore: 88,
         generatedAt: '2026-10-19T10:00:00Z',
         expiresAt: '2026-10-26T10:00:00Z',
-      },
-    ]);
+      }],
+      meta: { hasPrimaryCv: true, lastGeneratedAt: '2026-10-19T10:00:00Z', scoringVersion: 'HYBRID_V1' },
+    });
   });
 
   const renderPage = (initialEntry = '/candidate/jobs') =>
@@ -71,7 +73,7 @@ describe('CandidateJobsPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Senior Fullstack Developer')).toBeInTheDocument();
-      expect(screen.getByText('Phù hợp 88%')).toBeInTheDocument();
+      expect(screen.getByText(/Rất phù hợp · 88%/)).toBeInTheDocument();
     });
   });
 
