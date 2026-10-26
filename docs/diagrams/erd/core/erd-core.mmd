@@ -1,0 +1,284 @@
+---
+title: HR Connect – Core ERD (32 main tables)
+config:
+  layout: elk
+---
+erDiagram
+  AppUser {
+    uuid UserId PK
+    varchar Email
+    varchar Status
+  }
+  Role {
+    uuid RoleId PK
+    varchar Code
+  }
+  UserRole {
+    uuid UserId PK,FK
+    uuid RoleId PK,FK
+  }
+  Company {
+    uuid CompanyId PK
+    varchar CompanyName
+    varchar TaxCode
+    varchar VerificationStatus
+  }
+  CompanyUser {
+    uuid CompanyUserId PK
+    uuid CompanyId FK
+    uuid UserId FK
+    boolean IsPrimaryContact
+  }
+  AffiliateProfile {
+    uuid AffiliateId PK
+    uuid UserId FK
+    varchar Status
+  }
+  Candidate {
+    uuid CandidateId PK
+    uuid UserId FK
+    varchar NormalizedEmail
+    varchar NormalizedPhone
+    varchar Status
+  }
+  CandidateCv {
+    uuid CvId PK
+    uuid CandidateId FK
+    varchar Status
+  }
+  ServiceType {
+    uuid ServiceTypeId PK
+    varchar Code
+  }
+  Job {
+    uuid JobId PK
+    uuid CompanyId FK
+    uuid ServiceTypeId FK
+    uuid CreatedBy FK
+    varchar Title
+    varchar Status
+    int Quantity
+    numeric FeeMultiplier
+    int WarrantyDays
+    int SourcingTarget
+  }
+  JobRequirement {
+    uuid RequirementId PK
+    uuid JobId FK
+    varchar RequirementType
+  }
+  ServiceAgreement {
+    uuid ServiceAgreementId PK
+    uuid JobId FK
+    uuid CompanyId FK
+    int Version
+    varchar Status
+  }
+  JobPostingPackage {
+    uuid PackageId PK
+    varchar Code
+    numeric Price
+    int MaxApplications
+  }
+  JobPostingFee {
+    uuid PostingFeeId PK
+    uuid JobId FK
+    uuid PackageId FK
+    uuid CompanyId FK
+    numeric Amount
+    varchar Status
+    varchar PaymentReference
+  }
+  Submission {
+    uuid SubmissionId PK
+    uuid CandidateId FK
+    uuid CvId FK
+    uuid JobId FK
+    uuid SubmittedBy FK
+    uuid ReplacementSlotId FK
+    varchar Source
+    varchar Status
+  }
+  SubmissionConsent {
+    uuid ConsentId PK
+    uuid SubmissionId FK
+    varchar Status
+    timestamptz ExpiresAt
+  }
+  Application {
+    uuid ApplicationId PK
+    uuid JobId FK
+    uuid CandidateId FK
+    uuid ReplacementSlotId FK
+    varchar Status
+  }
+  ApplicationStatusHistory {
+    uuid ApplicationStatusHistoryId PK
+    uuid ApplicationId FK
+    varchar OldStatus
+    varchar NewStatus
+    varchar ReasonCode
+  }
+  Attribution {
+    uuid AttributionId PK
+    uuid ApplicationId FK
+    uuid AffiliateId FK
+    varchar Status
+  }
+  AiMatchResult {
+    uuid MatchResultId PK
+    uuid ApplicationId FK
+    numeric MatchScore
+    varchar MatchTier
+    varchar Status
+  }
+  Interview {
+    uuid InterviewId PK
+    uuid ApplicationId FK
+    uuid CreatedBy FK
+    timestamptz ScheduledAt
+    varchar Status
+    varchar Result
+  }
+  Offer {
+    uuid OfferId PK
+    uuid ApplicationId FK
+    uuid CreatedBy FK
+    numeric Salary
+    varchar Status
+  }
+  Placement {
+    uuid PlacementId PK
+    uuid ApplicationId FK
+    uuid OfferId FK
+    uuid ReplacementSlotId FK
+    date ActualStartDate
+    varchar Status
+  }
+  PlacementReconciliation {
+    uuid ReconciliationId PK
+    uuid ApplicationId FK
+    uuid PlacementId FK
+    varchar ClaimedOutcome
+    varchar Status
+  }
+  SourcingDelivery {
+    uuid DeliveryId PK
+    uuid JobId FK
+    uuid ApplicationId FK
+    varchar Status
+    timestamptz ReviewDueAt
+  }
+  Warranty {
+    uuid WarrantyId PK
+    uuid PlacementId FK
+    date EndDate
+    varchar Status
+  }
+  ServiceFee {
+    uuid ServiceFeeId PK
+    uuid PlacementId FK
+    uuid JobId FK
+    uuid CompanyId FK
+    numeric Amount
+    date DueDate
+    varchar Status
+  }
+  ReplacementSlot {
+    uuid ReplacementSlotId PK
+    uuid JobId FK
+    uuid OriginalPlacementId FK
+    uuid ServiceFeeId FK
+    uuid FilledByPlacementId FK
+    uuid CreatedBy FK
+    varchar Status
+    timestamptz ExpiresAt
+  }
+  CommissionRule {
+    uuid CommissionRuleId PK
+    uuid ServiceTypeId FK
+    varchar RateType
+    numeric RateValue
+  }
+  Commission {
+    uuid CommissionId PK
+    uuid AttributionId FK
+    uuid PlacementId FK
+    uuid CommissionRuleId FK
+    numeric Amount
+    varchar Status
+  }
+  Payout {
+    uuid PayoutId PK
+    uuid CommissionId FK
+    numeric Amount
+    varchar Status
+  }
+  Dispute {
+    uuid DisputeId PK
+    uuid SubmissionId FK
+    uuid AttributionId FK
+    uuid CommissionId FK
+    uuid RaisedBy FK
+    varchar DisputeType
+    varchar Status
+    varchar Resolution
+  }
+  AppUser ||--o{ UserRole : "UserId"
+  Role ||--o{ UserRole : "RoleId"
+  Company ||--o{ CompanyUser : "CompanyId"
+  AppUser ||--o{ CompanyUser : "UserId"
+  AppUser ||--o{ AffiliateProfile : "UserId"
+  AppUser ||--o{ Candidate : "UserId"
+  Candidate ||--o{ CandidateCv : "CandidateId"
+  Company ||--o{ Job : "CompanyId"
+  ServiceType ||--o{ Job : "ServiceTypeId"
+  AppUser ||--o{ Job : "CreatedBy"
+  Job ||--o{ JobRequirement : "JobId"
+  Job ||--o{ ServiceAgreement : "JobId"
+  Company ||--o{ ServiceAgreement : "CompanyId"
+  Job ||--o{ JobPostingFee : "JobId"
+  JobPostingPackage ||--o{ JobPostingFee : "PackageId"
+  Company ||--o{ JobPostingFee : "CompanyId"
+  Candidate ||--o{ Submission : "CandidateId"
+  CandidateCv ||--o{ Submission : "CvId"
+  Job ||--o{ Submission : "JobId"
+  AppUser ||--o{ Submission : "SubmittedBy"
+  ReplacementSlot ||--o{ Submission : "ReplacementSlotId"
+  Submission ||--o{ SubmissionConsent : "SubmissionId"
+  Job ||--o{ Application : "JobId"
+  Candidate ||--o{ Application : "CandidateId"
+  ReplacementSlot ||--o{ Application : "ReplacementSlotId"
+  Application ||--o{ ApplicationStatusHistory : "ApplicationId"
+  Application ||--o{ Attribution : "ApplicationId"
+  AffiliateProfile ||--o{ Attribution : "AffiliateId"
+  Application ||--o{ AiMatchResult : "ApplicationId"
+  Application ||--o{ Interview : "ApplicationId"
+  AppUser ||--o{ Interview : "CreatedBy"
+  Application ||--o{ Offer : "ApplicationId"
+  AppUser ||--o{ Offer : "CreatedBy"
+  Application ||--o{ Placement : "ApplicationId"
+  Offer ||--o{ Placement : "OfferId"
+  ReplacementSlot ||--o{ Placement : "ReplacementSlotId"
+  Application ||--o{ PlacementReconciliation : "ApplicationId"
+  Placement ||--o{ PlacementReconciliation : "PlacementId"
+  Job ||--o{ SourcingDelivery : "JobId"
+  Application ||--o{ SourcingDelivery : "ApplicationId"
+  Placement ||--o{ Warranty : "PlacementId"
+  Placement ||--o{ ServiceFee : "PlacementId"
+  Job ||--o{ ServiceFee : "JobId"
+  Company ||--o{ ServiceFee : "CompanyId"
+  Job ||--o{ ReplacementSlot : "JobId"
+  Placement ||--o{ ReplacementSlot : "OriginalPlacementId"
+  ServiceFee ||--o{ ReplacementSlot : "ServiceFeeId"
+  Placement ||--o{ ReplacementSlot : "FilledByPlacementId"
+  AppUser ||--o{ ReplacementSlot : "CreatedBy"
+  ServiceType ||--o{ CommissionRule : "ServiceTypeId"
+  Attribution ||--o{ Commission : "AttributionId"
+  Placement ||--o{ Commission : "PlacementId"
+  CommissionRule ||--o{ Commission : "CommissionRuleId"
+  Commission ||--o{ Payout : "CommissionId"
+  Submission ||--o{ Dispute : "SubmissionId"
+  Attribution ||--o{ Dispute : "AttributionId"
+  Commission ||--o{ Dispute : "CommissionId"
+  AppUser ||--o{ Dispute : "RaisedBy"

@@ -14,6 +14,8 @@ package "Platform Admin console (/admin)" #EEF5EC {
   rectangle "Commission rules\n<size:10>commission-rules</size>" as admin_cr
   rectangle "Business settings\n<size:10>settings</size>" as admin_set
   rectangle "Finance: posting fees, service fees, deposits, commissions, payouts\n<size:10>finance · payouts</size>" as admin_fin
+  rectangle "Start-work reconciliation
+<size:10>placement-reconciliations</size>" as admin_rec
   rectangle "Disputes (empty state, FE pending)\n<size:10>disputes</size>" as admin_disp
   rectangle "Reports\n<size:10>reports</size>" as admin_rep
   rectangle "Audit trail\n<size:10>audit-trail</size>" as admin_audit
@@ -29,6 +31,7 @@ admin_dash --> admin_st
 admin_st --> admin_cr
 admin_dash --> admin_set
 admin_dash --> admin_fin
+admin_dash --> admin_rec
 admin_dash --> admin_disp
 admin_dash --> admin_rep
 admin_dash --> admin_audit

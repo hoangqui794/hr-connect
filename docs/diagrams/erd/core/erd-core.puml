@@ -1,0 +1,317 @@
+@startuml erd-core
+title HR Connect – Core ERD (32 main tables)
+hide circle
+skinparam linetype ortho
+skinparam class { BackgroundColor #FDFDFE
+ BorderColor #1B365D }
+entity AppUser {
+  * UserId : uuid <<PK>>
+  --
+  Email : varchar
+  Status : varchar
+}
+entity Role {
+  * RoleId : uuid <<PK>>
+  --
+  Code : varchar
+}
+entity UserRole {
+  * UserId : uuid <<PK,FK>>
+  * RoleId : uuid <<PK,FK>>
+  --
+}
+entity Company {
+  * CompanyId : uuid <<PK>>
+  --
+  CompanyName : varchar
+  TaxCode : varchar
+  VerificationStatus : varchar
+}
+entity CompanyUser {
+  * CompanyUserId : uuid <<PK>>
+  --
+  CompanyId : uuid <<FK>>
+  UserId : uuid <<FK>>
+  IsPrimaryContact : boolean
+}
+entity AffiliateProfile {
+  * AffiliateId : uuid <<PK>>
+  --
+  UserId : uuid <<FK>>
+  Status : varchar
+}
+entity Candidate {
+  * CandidateId : uuid <<PK>>
+  --
+  UserId : uuid <<FK>>
+  NormalizedEmail : varchar
+  NormalizedPhone : varchar
+  Status : varchar
+}
+entity CandidateCv {
+  * CvId : uuid <<PK>>
+  --
+  CandidateId : uuid <<FK>>
+  Status : varchar
+}
+entity ServiceType {
+  * ServiceTypeId : uuid <<PK>>
+  --
+  Code : varchar
+}
+entity Job {
+  * JobId : uuid <<PK>>
+  --
+  CompanyId : uuid <<FK>>
+  ServiceTypeId : uuid <<FK>>
+  CreatedBy : uuid <<FK>>
+  Title : varchar
+  Status : varchar
+  Quantity : int
+  FeeMultiplier : numeric
+  WarrantyDays : int
+  SourcingTarget : int
+}
+entity JobRequirement {
+  * RequirementId : uuid <<PK>>
+  --
+  JobId : uuid <<FK>>
+  RequirementType : varchar
+}
+entity ServiceAgreement {
+  * ServiceAgreementId : uuid <<PK>>
+  --
+  JobId : uuid <<FK>>
+  CompanyId : uuid <<FK>>
+  Version : int
+  Status : varchar
+}
+entity JobPostingPackage {
+  * PackageId : uuid <<PK>>
+  --
+  Code : varchar
+  Price : numeric
+  MaxApplications : int
+}
+entity JobPostingFee {
+  * PostingFeeId : uuid <<PK>>
+  --
+  JobId : uuid <<FK>>
+  PackageId : uuid <<FK>>
+  CompanyId : uuid <<FK>>
+  Amount : numeric
+  Status : varchar
+  PaymentReference : varchar
+}
+entity Submission {
+  * SubmissionId : uuid <<PK>>
+  --
+  CandidateId : uuid <<FK>>
+  CvId : uuid <<FK>>
+  JobId : uuid <<FK>>
+  SubmittedBy : uuid <<FK>>
+  ReplacementSlotId : uuid <<FK>>
+  Source : varchar
+  Status : varchar
+}
+entity SubmissionConsent {
+  * ConsentId : uuid <<PK>>
+  --
+  SubmissionId : uuid <<FK>>
+  Status : varchar
+  ExpiresAt : timestamptz
+}
+entity Application {
+  * ApplicationId : uuid <<PK>>
+  --
+  JobId : uuid <<FK>>
+  CandidateId : uuid <<FK>>
+  ReplacementSlotId : uuid <<FK>>
+  Status : varchar
+}
+entity ApplicationStatusHistory {
+  * ApplicationStatusHistoryId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  OldStatus : varchar
+  NewStatus : varchar
+  ReasonCode : varchar
+}
+entity Attribution {
+  * AttributionId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  AffiliateId : uuid <<FK>>
+  Status : varchar
+}
+entity AiMatchResult {
+  * MatchResultId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  MatchScore : numeric
+  MatchTier : varchar
+  Status : varchar
+}
+entity Interview {
+  * InterviewId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  CreatedBy : uuid <<FK>>
+  ScheduledAt : timestamptz
+  Status : varchar
+  Result : varchar
+}
+entity Offer {
+  * OfferId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  CreatedBy : uuid <<FK>>
+  Salary : numeric
+  Status : varchar
+}
+entity Placement {
+  * PlacementId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  OfferId : uuid <<FK>>
+  ReplacementSlotId : uuid <<FK>>
+  ActualStartDate : date
+  Status : varchar
+}
+entity PlacementReconciliation {
+  * ReconciliationId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  PlacementId : uuid <<FK>>
+  ClaimedOutcome : varchar
+  Status : varchar
+}
+entity SourcingDelivery {
+  * DeliveryId : uuid <<PK>>
+  --
+  JobId : uuid <<FK>>
+  ApplicationId : uuid <<FK>>
+  Status : varchar
+  ReviewDueAt : timestamptz
+}
+entity Warranty {
+  * WarrantyId : uuid <<PK>>
+  --
+  PlacementId : uuid <<FK>>
+  EndDate : date
+  Status : varchar
+}
+entity ServiceFee {
+  * ServiceFeeId : uuid <<PK>>
+  --
+  PlacementId : uuid <<FK>>
+  JobId : uuid <<FK>>
+  CompanyId : uuid <<FK>>
+  Amount : numeric
+  DueDate : date
+  Status : varchar
+}
+entity ReplacementSlot {
+  * ReplacementSlotId : uuid <<PK>>
+  --
+  JobId : uuid <<FK>>
+  OriginalPlacementId : uuid <<FK>>
+  ServiceFeeId : uuid <<FK>>
+  FilledByPlacementId : uuid <<FK>>
+  CreatedBy : uuid <<FK>>
+  Status : varchar
+  ExpiresAt : timestamptz
+}
+entity CommissionRule {
+  * CommissionRuleId : uuid <<PK>>
+  --
+  ServiceTypeId : uuid <<FK>>
+  RateType : varchar
+  RateValue : numeric
+}
+entity Commission {
+  * CommissionId : uuid <<PK>>
+  --
+  AttributionId : uuid <<FK>>
+  PlacementId : uuid <<FK>>
+  CommissionRuleId : uuid <<FK>>
+  Amount : numeric
+  Status : varchar
+}
+entity Payout {
+  * PayoutId : uuid <<PK>>
+  --
+  CommissionId : uuid <<FK>>
+  Amount : numeric
+  Status : varchar
+}
+entity Dispute {
+  * DisputeId : uuid <<PK>>
+  --
+  SubmissionId : uuid <<FK>>
+  AttributionId : uuid <<FK>>
+  CommissionId : uuid <<FK>>
+  RaisedBy : uuid <<FK>>
+  DisputeType : varchar
+  Status : varchar
+  Resolution : varchar
+}
+AppUser ||--o{ UserRole : UserId
+Role ||--o{ UserRole : RoleId
+Company ||--o{ CompanyUser : CompanyId
+AppUser ||--o{ CompanyUser : UserId
+AppUser ||--o{ AffiliateProfile : UserId
+AppUser ||--o{ Candidate : UserId
+Candidate ||--o{ CandidateCv : CandidateId
+Company ||--o{ Job : CompanyId
+ServiceType ||--o{ Job : ServiceTypeId
+AppUser ||--o{ Job : CreatedBy
+Job ||--o{ JobRequirement : JobId
+Job ||--o{ ServiceAgreement : JobId
+Company ||--o{ ServiceAgreement : CompanyId
+Job ||--o{ JobPostingFee : JobId
+JobPostingPackage ||--o{ JobPostingFee : PackageId
+Company ||--o{ JobPostingFee : CompanyId
+Candidate ||--o{ Submission : CandidateId
+CandidateCv ||--o{ Submission : CvId
+Job ||--o{ Submission : JobId
+AppUser ||--o{ Submission : SubmittedBy
+ReplacementSlot ||--o{ Submission : ReplacementSlotId
+Submission ||--o{ SubmissionConsent : SubmissionId
+Job ||--o{ Application : JobId
+Candidate ||--o{ Application : CandidateId
+ReplacementSlot ||--o{ Application : ReplacementSlotId
+Application ||--o{ ApplicationStatusHistory : ApplicationId
+Application ||--o{ Attribution : ApplicationId
+AffiliateProfile ||--o{ Attribution : AffiliateId
+Application ||--o{ AiMatchResult : ApplicationId
+Application ||--o{ Interview : ApplicationId
+AppUser ||--o{ Interview : CreatedBy
+Application ||--o{ Offer : ApplicationId
+AppUser ||--o{ Offer : CreatedBy
+Application ||--o{ Placement : ApplicationId
+Offer ||--o{ Placement : OfferId
+ReplacementSlot ||--o{ Placement : ReplacementSlotId
+Application ||--o{ PlacementReconciliation : ApplicationId
+Placement ||--o{ PlacementReconciliation : PlacementId
+Job ||--o{ SourcingDelivery : JobId
+Application ||--o{ SourcingDelivery : ApplicationId
+Placement ||--o{ Warranty : PlacementId
+Placement ||--o{ ServiceFee : PlacementId
+Job ||--o{ ServiceFee : JobId
+Company ||--o{ ServiceFee : CompanyId
+Job ||--o{ ReplacementSlot : JobId
+Placement ||--o{ ReplacementSlot : OriginalPlacementId
+ServiceFee ||--o{ ReplacementSlot : ServiceFeeId
+Placement ||--o{ ReplacementSlot : FilledByPlacementId
+AppUser ||--o{ ReplacementSlot : CreatedBy
+ServiceType ||--o{ CommissionRule : ServiceTypeId
+Attribution ||--o{ Commission : AttributionId
+Placement ||--o{ Commission : PlacementId
+CommissionRule ||--o{ Commission : CommissionRuleId
+Commission ||--o{ Payout : CommissionId
+Submission ||--o{ Dispute : SubmissionId
+Attribution ||--o{ Dispute : AttributionId
+Commission ||--o{ Dispute : CommissionId
+AppUser ||--o{ Dispute : RaisedBy
+@enduml
