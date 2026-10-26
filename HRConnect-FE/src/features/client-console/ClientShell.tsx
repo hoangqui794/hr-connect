@@ -29,16 +29,24 @@ const NAV = [
   { to: '/client/warranty', label: 'Bảo hành', muted: true },
 ] as const;
 
-const linkClass = (active: boolean, muted?: boolean, compact?: boolean) =>
-  [
-    'no-underline transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--console-accent)]',
-    compact ? 'block rounded-xl px-4 py-3 text-[15px]' : 'flex h-10 items-center rounded-full px-4 text-[14px]',
+const linkClass = (active: boolean, muted?: boolean, compact?: boolean) => {
+  if (compact) {
+    return [
+      'block rounded-xl px-4 py-3 text-[15px] no-underline transition-colors duration-150',
+      active
+        ? 'bg-blue-50 font-semibold text-blue-600'
+        : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+    ].join(' ');
+  }
+  return [
+    'flex h-16 items-center px-3.5 text-sm no-underline transition-colors duration-150',
     active
-      ? 'bg-[color:var(--console-accent-soft)] font-semibold text-[color:var(--console-accent-strong)] shadow-[inset_0_0_0_1px_rgba(37,99,235,0.15)]'
+      ? 'border-0 border-b-2 border-solid border-blue-600 font-semibold text-slate-900'
       : muted
-        ? 'font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800'
-        : 'font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900',
+        ? 'border-0 border-b-2 border-solid border-transparent font-medium text-slate-400 hover:text-slate-700'
+        : 'border-0 border-b-2 border-solid border-transparent font-medium text-slate-500 hover:text-slate-900',
   ].join(' ');
+};
 
 export const ClientShell: React.FC = () => {
   const location = useLocation();
@@ -69,8 +77,8 @@ export const ClientShell: React.FC = () => {
   const isActive = (to: string) => location.pathname === to || location.pathname.startsWith(`${to}/`);
 
   return (
-    <div className="client-console min-h-screen bg-[#F4F7FD] text-slate-900">
-      <header className="sticky top-0 z-30 border-0 border-b border-solid border-slate-200/80 bg-white/90 backdrop-blur">
+    <div className="client-console min-h-screen bg-slate-50 text-slate-900">
+      <header className="sticky top-0 z-30 border-0 border-b border-solid border-slate-200/80 bg-white/95 backdrop-blur">
         <div className="flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex shrink-0 items-center gap-3">
             {compact && (
@@ -89,13 +97,13 @@ export const ClientShell: React.FC = () => {
               <BrandMark size={36} />
               <span className="leading-tight">
                 <span className="block text-[15px] font-bold text-slate-900">HR Connect</span>
-                <span className="hidden text-[11px] font-medium tracking-wide text-[color:var(--console-accent-strong)] sm:block">Doanh nghiệp tuyển dụng</span>
+                <span className="hidden text-[11px] font-medium tracking-wide text-blue-600 sm:block">Doanh nghiệp tuyển dụng</span>
               </span>
             </NavLink>
           </div>
 
           {!compact && (
-            <nav aria-label="Điều hướng chính" className="flex items-center gap-1 rounded-full bg-slate-50 p-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
+            <nav aria-label="Điều hướng chính" className="flex items-center gap-1 h-16">
               {NAV.map((n) => (
                 <NavLink key={n.to} to={n.to} className={linkClass(isActive(n.to), 'muted' in n && n.muted)} aria-current={isActive(n.to) ? 'page' : undefined}>
                   {n.label}
@@ -109,7 +117,7 @@ export const ClientShell: React.FC = () => {
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => navigate('/client/jobs/create')}
-              className="client-cta hidden !rounded-full !px-5 sm:inline-flex"
+              className="hidden sm:inline-flex !bg-blue-600 hover:!bg-blue-700 !text-white !rounded-lg !border-0 shadow-sm font-medium transition-all active:scale-[0.98] !h-9 !px-4"
             >
               Đăng tin
             </Button>

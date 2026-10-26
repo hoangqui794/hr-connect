@@ -49,21 +49,23 @@ import {
 
 const { Paragraph, Text, Title } = Typography;
 
-// Fixed colours (text on tinted bg ≥ 4.5:1) so the tag reads the same under every console theme.
+// Standardized SaaS status tags: ACTIVE (emerald), PENDING_REVIEW (amber), CLOSED (slate)
 const STATUS_TAG_CLASS: Record<Job['status'], string> = {
   DRAFT: 'border-slate-200 bg-slate-50 text-slate-700',
-  PENDING_REVIEW: 'border-sky-200 bg-sky-50 text-sky-800',
-  PENDING_APPROVAL: 'border-sky-200 bg-sky-50 text-sky-800',
-  PENDING_AGREEMENT: 'border-purple-200 bg-purple-50 text-purple-800',
-  PENDING_PAYMENT: 'border-blue-200 bg-blue-50 text-blue-800',
-  REJECTED: 'border-red-200 bg-red-50 text-red-800',
-  ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  PAUSED: 'border-amber-200 bg-amber-50 text-amber-800',
+  PENDING_REVIEW: 'border-amber-200 bg-amber-50 text-amber-700',
+  PENDING_APPROVAL: 'border-amber-200 bg-amber-50 text-amber-700',
+  PENDING_AGREEMENT: 'border-purple-200 bg-purple-50 text-purple-700',
+  PENDING_PAYMENT: 'border-blue-200 bg-blue-50 text-blue-700',
+  REJECTED: 'border-red-200 bg-red-50 text-red-700',
+  ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  PAUSED: 'border-amber-200 bg-amber-50 text-amber-700',
   CLOSED: 'border-slate-200 bg-slate-100 text-slate-600',
 };
 
 export const JobStatusTag: React.FC<{ status: Job['status'] }> = ({ status }) => (
-  <Tag className={`m-0 border border-solid font-medium ${STATUS_TAG_CLASS[status]}`}>{JOB_STATUS[status].label}</Tag>
+  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border border-solid ${STATUS_TAG_CLASS[status]}`}>
+    {JOB_STATUS[status]?.label || status}
+  </span>
 );
 
 export const JobTemplateOriginTag: React.FC<{ templateId: string }> = ({ templateId }) => {

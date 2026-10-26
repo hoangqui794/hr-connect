@@ -42,28 +42,27 @@ const FUNNEL = [
 
 const Kpi: React.FC<{
   icon: React.ReactNode;
-  tint: string;
   label: string;
   value?: number;
   loading: boolean;
   hint: string;
   onClick: () => void;
-}> = ({ icon, tint, label, value, loading, hint, onClick }) => (
+}> = ({ icon, label, value, loading, hint, onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    className="admin-surface client-soft-card flex w-full cursor-pointer items-center gap-4 border-0 p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+    className="bg-white rounded-xl border border-slate-200/80 p-5 text-left cursor-pointer transition-all hover:border-slate-300 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 flex flex-col justify-between"
   >
-    <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-xl ${tint}`} aria-hidden>
-      {icon}
-    </span>
-    <span className="min-w-0">
-      <span className="block text-[13px] font-medium text-slate-600">{label}</span>
-      <span className="block text-[26px] font-bold leading-tight tabular-nums text-slate-900">
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</span>
+      <span className="text-slate-400 text-lg">{icon}</span>
+    </div>
+    <div className="my-2">
+      <span className="text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">
         {loading ? <Skeleton.Input active size="small" /> : value ?? 0}
       </span>
-      <span className="block truncate text-xs text-slate-500">{hint}</span>
-    </span>
+    </div>
+    <div className="text-xs text-slate-500 truncate">{hint}</div>
   </button>
 );
 
@@ -115,24 +114,32 @@ export const ClientOverviewPage: React.FC = () => {
     <div className="space-y-6">
       {/* ── Greeting + to-do ─────────────────────────────────────────── */}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-        <section className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-blue-50 via-white to-orange-50 p-7 shadow-[0_0_0_1px_rgba(37,99,235,0.08),0_12px_32px_-16px_rgba(30,64,175,0.25)] sm:p-9">
-          <div aria-hidden className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-blue-200/50 blur-3xl" />
-          <div aria-hidden className="pointer-events-none absolute -bottom-28 right-24 h-64 w-64 rounded-full bg-orange-200/40 blur-3xl" />
-          <div className="relative">
-            <div className="text-xs font-semibold uppercase tracking-[0.1em] text-blue-700">{dayjs().format('dddd, DD/MM/YYYY')}</div>
-            <h1 className="m-0 mt-2 text-[32px] font-extrabold leading-tight tracking-[-0.02em] text-slate-900">Chào {firstName},</h1>
-            <p className="m-0 mt-2 max-w-lg text-[15px] leading-relaxed text-slate-600">
+        <section className="rounded-2xl bg-white border border-slate-200/80 p-7 sm:p-8 shadow-sm">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-blue-600">{dayjs().format('dddd, DD/MM/YYYY')}</div>
+            <h1 className="m-0 mt-2 text-2xl sm:text-3xl font-extrabold leading-tight tracking-tight text-slate-900">Chào {firstName},</h1>
+            <p className="m-0 mt-2 max-w-lg text-sm sm:text-[15px] leading-relaxed text-slate-600">
               {jobs.isLoading || stagesLoading
                 ? 'Đang tổng hợp tình hình tuyển dụng...'
                 : `Bạn có ${activeJobs.length} tin đang tuyển${pendingReview ? `, ${pendingReview} tin chờ duyệt` : ''} và ${
                     n('SUBMITTED') + n('SCREENING')
                   } hồ sơ đang chờ xem.`}
             </p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <Button size="large" type="primary" icon={<PlusOutlined />} className="client-cta !rounded-full !px-6" onClick={() => navigate('/client/jobs/create')}>
+            <div className="mt-6 flex flex-wrap gap-2.5">
+              <Button
+                size="large"
+                type="primary"
+                icon={<PlusOutlined />}
+                className="!bg-blue-600 hover:!bg-blue-700 !text-white !rounded-lg !border-0 font-medium shadow-sm transition-all active:scale-[0.98] !px-5"
+                onClick={() => navigate('/client/jobs/create')}
+              >
                 Đăng tin mới
               </Button>
-              <Button size="large" className="!rounded-full !px-6" onClick={() => navigate('/client/candidates')}>
+              <Button
+                size="large"
+                className="!rounded-lg !px-5 border-slate-200 hover:!border-slate-300 text-slate-700"
+                onClick={() => navigate('/client/candidates')}
+              >
                 Xem ứng viên
               </Button>
             </div>
@@ -149,33 +156,34 @@ export const ClientOverviewPage: React.FC = () => {
               <p className="m-0 mt-3 text-sm text-slate-600">Không có việc nào đang chờ. Mọi hồ sơ đã được xử lý.</p>
             </div>
           ) : (
-            <ul className="m-0 mt-3 list-none space-y-1.5 p-0">
+            <div className="divide-y divide-slate-100 mt-2">
               {todos.map((t) => (
-                <li key={t.text}>
-                  <button
-                    type="button"
-                    onClick={() => navigate(t.to)}
-                    className="group flex w-full cursor-pointer items-center gap-3 rounded-2xl border-0 bg-slate-50 px-3.5 py-3 text-left transition-colors hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
-                  >
-                    <span className="flex h-9 min-w-[36px] items-center justify-center rounded-xl bg-white px-2 text-sm font-bold tabular-nums text-blue-700 shadow-sm">
+                <button
+                  key={t.text}
+                  type="button"
+                  onClick={() => navigate(t.to)}
+                  className="w-full flex items-center justify-between py-3 px-1 text-left hover:bg-slate-50/80 transition-colors group cursor-pointer border-0 bg-transparent rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded bg-amber-50 text-amber-700 font-bold text-xs inline-flex items-center justify-center shrink-0">
                       {t.count}
                     </span>
-                    <span className="flex-1 text-[13.5px] text-slate-700">{t.text}</span>
-                    <ArrowRightOutlined className="text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-700" aria-hidden />
-                  </button>
-                </li>
+                    <span className="text-sm text-slate-700 group-hover:text-slate-900 transition-colors">{t.text}</span>
+                  </div>
+                  <ArrowRightOutlined className="text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all text-xs" aria-hidden />
+                </button>
               ))}
-            </ul>
+            </div>
           )}
         </Surface>
       </div>
 
-      {/* ── KPI tiles ─────────────────────────────────────────────────── */}
+      {/* ── KPI tiles (Stripe Style) ─────────────────────────────────── */}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi icon={<FileTextOutlined />} tint="bg-blue-50 text-blue-700" label="Tin đang tuyển" value={activeJobs.length} loading={jobs.isLoading} hint={`${list.length} tin tổng cộng`} onClick={() => navigate('/client/jobs?status=ACTIVE')} />
-        <Kpi icon={<InboxOutlined />} tint="bg-orange-50 text-orange-700" label="Hồ sơ mới" value={n('SUBMITTED')} loading={stagesLoading} hint="Chưa ai mở xem" onClick={() => navigate('/client/candidates?status=SUBMITTED')} />
-        <Kpi icon={<CalendarOutlined />} tint="bg-violet-50 text-violet-700" label="Đang phỏng vấn" value={n('INTERVIEW')} loading={stagesLoading} hint="Có lịch hoặc chờ kết quả" onClick={() => navigate('/client/candidates?status=INTERVIEW')} />
-        <Kpi icon={<SolutionOutlined />} tint="bg-emerald-50 text-emerald-700" label="Đã đi làm" value={n('PLACED')} loading={stagesLoading} hint="Tuyển thành công" onClick={() => navigate('/client/candidates?status=PLACED')} />
+        <Kpi icon={<FileTextOutlined />} label="Tin đang tuyển" value={activeJobs.length} loading={jobs.isLoading} hint={`${list.length} tin tổng cộng`} onClick={() => navigate('/client/jobs?status=ACTIVE')} />
+        <Kpi icon={<InboxOutlined />} label="Hồ sơ mới" value={n('SUBMITTED')} loading={stagesLoading} hint="Chưa ai mở xem" onClick={() => navigate('/client/candidates?status=SUBMITTED')} />
+        <Kpi icon={<CalendarOutlined />} label="Đang phỏng vấn" value={n('INTERVIEW')} loading={stagesLoading} hint="Có lịch hoặc chờ kết quả" onClick={() => navigate('/client/candidates?status=INTERVIEW')} />
+        <Kpi icon={<SolutionOutlined />} label="Đã đi làm" value={n('PLACED')} loading={stagesLoading} hint="Tuyển thành công" onClick={() => navigate('/client/candidates?status=PLACED')} />
       </div>
 
       {/* ── Funnel + interviews ───────────────────────────────────────── */}
