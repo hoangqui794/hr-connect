@@ -80,7 +80,7 @@ public class JobMatchTests
         var job = SeedJob();
         var (good, goodCv) = SeedCandidate();
         var (low, lowCv) = SeedCandidate();
-        var (_, privateCv) = SeedCandidate("PRIVATE");
+        var (privateCandidate, privateCv) = SeedCandidate("PRIVATE");
         var (applied, appliedCv) = SeedCandidate();
         _context.Add(new JobApplication
         {
@@ -90,24 +90,24 @@ public class JobMatchTests
         _context.SaveChanges();
         _ai.Scores[goodCv.CvId] = new JobMatchScore(goodCv.CvId, 82.5m, null);
         _ai.Scores[lowCv.CvId] = new JobMatchScore(lowCv.CvId, 40m, null);
+        _ai.Scores[privateCv.CvId] = new JobMatchScore(privateCv.CvId, 78m, null);
 
         var saved = await Runner().RunOnceAsync(5, 30);
 
-        saved.Should().Be(2);
-        _ai.Calls.Single().Should().BeEquivalentTo([goodCv.CvId, lowCv.CvId]);
-        _ai.Calls.Single().Should().NotContain([privateCv.CvId, appliedCv.CvId]);
-        var notification = _context.Notifications.Single();
-        notification.UserId.Should().Be(good.UserId!.Value);
-        notification.NotificationType.Should().Be("JOB_FIT");
-        notification.RelatedEntityId.Should().Be(job.JobId);
+        saved.Should().Be(3);
+        _ai.Calls.Single().Should().BeEquivalentTo([goodCv.CvId, lowCv.CvId, privateCv.CvId]);
+        _ai.Calls.Single().Should().NotContain(appliedCv.CvId);
+        _context.Notifications.Select(n => n.UserId).Should().BeEquivalentTo([good.UserId!.Value, privateCandidate.UserId!.Value]);
+        _context.Notifications.Should().OnlyContain(n => n.NotificationType == "JOB_FIT" && n.RelatedEntityId == job.JobId);
 
         var forGood = await new JobMatchReader(_context).GetForCandidateAsync(good.CandidateId, 70m, 20, DateTime.UtcNow);
-        forGood.Should().ContainSingle().Which.CompanyName.Should().Be("Công ty A");
-        (await new JobMatchReader(_context).GetForCandidateAsync(low.CandidateId, 70m, 20, DateTime.UtcNow)).Should().BeEmpty();
+        forGood.Items.Should().ContainSingle().Which.CompanyName.Should().Be("Công ty A");
+        forGood.Meta.HasPrimaryCv.Should().BeTrue();
+        (await new JobMatchReader(_context).GetForCandidateAsync(low.CandidateId, 70m, 20, DateTime.UtcNow)).Items.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task Run_ShouldNotRescoreTheSamePair_AndKeepFailedCvsFromRetrying()
+    public async Task Run_ShouldNotImmediatelyRetryTheSameFailedInput()
     {
         SeedJob();
         var (_, cv) = SeedCandidate();
@@ -118,6 +118,8 @@ public class JobMatchTests
 
         _ai.Calls.Should().ContainSingle();
         _context.CandidateJobMatches.Single().Status.Should().Be(JobMatchStates.Failed);
+        _context.CandidateJobMatches.Single().RetryCount.Should().Be(1);
+        _context.CandidateJobMatches.Single().NextRetryAt.Should().BeAfter(DateTime.UtcNow);
         _context.Notifications.Should().BeEmpty();
     }
 
@@ -143,5 +145,100 @@ public class JobMatchTests
 
         (await Runner().RunOnceAsync(5, 30)).Should().Be(0);
         _ai.Calls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Run_ShouldRescoreWhenCandidateInputChanges()
+    {
+        SeedJob();
+        var (candidate, cv) = SeedCandidate();
+        _ai.Scores[cv.CvId] = new JobMatchScore(cv.CvId, 80m, null);
+
+        (await Runner().RunOnceAsync(5, 30)).Should().Be(1);
+        candidate.TargetRole = "Backend Engineer";
+        candidate.UpdatedAt = DateTime.UtcNow.AddMinutes(1);
+        await _context.SaveChangesAsync();
+
+        (await Runner().RunOnceAsync(5, 30)).Should().Be(1);
+        _context.CandidateJobMatches.Count().Should().Be(2);
+        _context.CandidateJobMatches.Select(m => m.InputFingerprint).Distinct().Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Run_ShouldContinuePastAlreadyScoredCandidates_WhenBatchLimitIsSmall()
+    {
+        var job = SeedJob();
+        var first = SeedCandidate();
+        var second = SeedCandidate();
+        var ordered = new[] { first, second }.OrderBy(x => x.Candidate.CandidateId).ToArray();
+        var alreadyScored = ordered[0];
+        var waiting = ordered[1];
+        _context.CandidateJobMatches.Add(new CandidateJobMatch
+        {
+            CandidateJobMatchId = Guid.NewGuid(), CandidateId = alreadyScored.Candidate.CandidateId,
+            JobId = job.JobId, CvId = alreadyScored.Cv.CvId, AttemptNo = 1, RetryCount = 1,
+            InputFingerprint = HybridJobMatchScorer.BuildFingerprint(alreadyScored.Candidate, alreadyScored.Cv, job),
+            ScoringVersion = HybridJobMatchScorer.Version, MatchScore = 80m, Status = JobMatchStates.Generated,
+            GeneratedAt = DateTime.UtcNow, ExpiresAt = DateTime.UtcNow.AddDays(7), CreatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync();
+        _ai.Scores[waiting.Cv.CvId] = new JobMatchScore(waiting.Cv.CvId, 85m, null);
+
+        (await Runner().RunOnceAsync(5, 1)).Should().Be(1);
+
+        _ai.Calls.Should().ContainSingle();
+        _ai.Calls.Single().Should().Equal(waiting.Cv.CvId);
+        _context.CandidateJobMatches.Should().Contain(m => m.CandidateId == waiting.Candidate.CandidateId);
+    }
+
+    [Fact]
+    public async Task Dismiss_ShouldBeOwnedAndIdempotent()
+    {
+        var job = SeedJob();
+        var (candidate, cv) = SeedCandidate();
+        var other = SeedCandidate().Candidate;
+        var match = new CandidateJobMatch
+        {
+            CandidateJobMatchId = Guid.NewGuid(), CandidateId = candidate.CandidateId, JobId = job.JobId, CvId = cv.CvId,
+            AttemptNo = 1, RetryCount = 1, Status = JobMatchStates.Generated, GeneratedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.CandidateJobMatches.Add(match);
+        await _context.SaveChangesAsync();
+        var writer = new JobMatchWriter(_context);
+
+        (await writer.DismissAsync(other.CandidateId, match.CandidateJobMatchId, DateTime.UtcNow)).Should().BeFalse();
+        (await writer.DismissAsync(candidate.CandidateId, match.CandidateJobMatchId, DateTime.UtcNow)).Should().BeTrue();
+        (await writer.DismissAsync(candidate.CandidateId, match.CandidateJobMatchId, DateTime.UtcNow)).Should().BeTrue();
+        match.Status.Should().Be(JobMatchStates.Dismissed);
+        match.DismissedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void HybridScore_ShouldUseStructuredSignals_AndExplainTheResult()
+    {
+        var now = DateTime.UtcNow;
+        var skill = new Skill { SkillId = Guid.NewGuid(), SkillName = ".NET", NormalizedName = "dotnet", IsActive = true, CreatedAt = now };
+        var candidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(), FullName = "A", ProfileVisibility = "PRIVATE", Status = "ACTIVE",
+            TargetRole = "Backend .NET Developer", YearsOfExperience = 3, PreferredLocations = "[\"Hà Nội\"]",
+            ExpectedSalaryMin = 20_000_000, ExpectedSalaryMax = 30_000_000, ExpectedSalaryCurrency = "VND"
+        };
+        candidate.CandidateSkills.Add(new CandidateSkill { CandidateId = candidate.CandidateId, SkillId = skill.SkillId, Skill = skill });
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(), Title = ".NET Backend Developer", Location = "Hà Nội", CurrencyCode = "VND",
+            MinExperienceYears = 2, SalaryMin = 22_000_000, SalaryMax = 28_000_000, PostedAt = now, CreatedAt = now, UpdatedAt = now
+        };
+        job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = skill.SkillId, Skill = skill, IsMandatory = true });
+        var tier = new MatchTierConfig { TierCode = "HIGH", DisplayName = "Rất phù hợp", MinScore = 80, MaxScore = 100, IsActive = true };
+
+        var result = HybridJobMatchScorer.Evaluate(candidate, job, 80m, [tier], now);
+
+        result.Score.Should().BeGreaterThan(85m);
+        result.TierCode.Should().Be("HIGH");
+        result.MatchingReasons.Should().Contain(reason => reason.Contains("Kỹ năng"));
+        result.MissingRequirements.Should().BeEmpty();
     }
 }

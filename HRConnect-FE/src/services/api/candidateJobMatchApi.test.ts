@@ -5,6 +5,7 @@ import { apiClient } from '../apiClient';
 vi.mock('../apiClient', () => ({
   apiClient: {
     get: vi.fn(),
+    post: vi.fn(),
   },
 }));
 
@@ -32,12 +33,14 @@ describe('candidateJobMatchApi', () => {
         data: {
           success: true,
           data: mockMatches,
+          meta: { hasPrimaryCv: true, lastGeneratedAt: '2026-10-19T10:00:00Z', scoringVersion: 'HYBRID_V1' },
         },
       } as any);
 
       const result = await candidateJobMatchApi.getJobMatches();
       expect(apiClient.get).toHaveBeenCalledWith('/candidates/me/job-matches');
-      expect(result).toEqual(mockMatches);
+      expect(result.items).toEqual(mockMatches);
+      expect(result.meta.hasPrimaryCv).toBe(true);
     });
 
     it('handles direct array response without envelope', async () => {
@@ -59,7 +62,7 @@ describe('candidateJobMatchApi', () => {
       } as any);
 
       const result = await candidateJobMatchApi.getJobMatches();
-      expect(result).toEqual(mockMatches);
+      expect(result.items).toEqual(mockMatches);
     });
 
     it('returns empty array if response is empty or invalid', async () => {
@@ -68,7 +71,15 @@ describe('candidateJobMatchApi', () => {
       } as any);
 
       const result = await candidateJobMatchApi.getJobMatches();
-      expect(result).toEqual([]);
+      expect(result.items).toEqual([]);
     });
+  });
+
+  it('dismisses a suggestion through the Candidate endpoint', async () => {
+    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { success: true } } as any);
+
+    await candidateJobMatchApi.dismissJobMatch('match-1');
+
+    expect(apiClient.post).toHaveBeenCalledWith('/candidates/me/job-matches/match-1/dismiss');
   });
 });

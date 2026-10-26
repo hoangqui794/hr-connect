@@ -9,32 +9,59 @@ namespace HRConnect.Application.Features.Candidates.JobMatches;
 public static class JobMatchStates
 {
     public const string Generated = "GENERATED";
-    /// <summary>The AI could not read the CV; kept so the same pair is not retried every cycle.</summary>
+    /// <summary>The semantic service could not score the CV; retried with bounded backoff.</summary>
     public const string Failed = "FAILED";
+    public const string Dismissed = "DISMISSED";
 }
 
 public sealed record JobMatchScore(Guid CvId, decimal? Score, string? Error);
 
-/// <summary>Semantic CV↔JD score from the AI service (POST /api/v1/semantic-match, no LLM).</summary>
+/// <summary>Semantic CV↔JD score from the existing AI v2 service (POST /api/v1/semantic-match).</summary>
 public interface IJobMatchAiClient
 {
     Task<IReadOnlyList<JobMatchScore>> ScoreAsync(Guid jobId, IReadOnlyList<Guid> cvIds, CancellationToken cancellationToken = default);
 }
 
 public sealed record JobMatchDto(
-    Guid CandidateJobMatchId, Guid JobId, string JobTitle, string CompanyName, string? Location,
-    decimal MatchScore, DateTime GeneratedAt, DateTime? ExpiresAt);
+    Guid CandidateJobMatchId,
+    Guid JobId,
+    string JobTitle,
+    string CompanyName,
+    string? CompanyLogoUrl,
+    string? Location,
+    string? EmploymentType,
+    decimal? SalaryMin,
+    decimal? SalaryMax,
+    bool SalaryNegotiable,
+    string CurrencyCode,
+    decimal MatchScore,
+    string? MatchTier,
+    string? MatchTierLabel,
+    IReadOnlyList<string> MatchingReasons,
+    IReadOnlyList<string> MissingRequirements,
+    DateTime GeneratedAt,
+    DateTime? ApplicationDeadline,
+    DateTime? ExpiresAt);
+
+public sealed record JobMatchFeedMeta(bool HasPrimaryCv, DateTime? LastGeneratedAt, string ScoringVersion);
+
+public sealed record JobMatchFeedDto(IReadOnlyList<JobMatchDto> Items, JobMatchFeedMeta Meta);
 
 public interface IJobMatchReader
 {
-    /// <summary>Unexpired GENERATED matches at or above minScore whose job is still ACTIVE, best first.</summary>
-    Task<IReadOnlyList<JobMatchDto>> GetForCandidateAsync(
+    /// <summary>Newest unexpired GENERATED result per job at or above minScore, best first.</summary>
+    Task<JobMatchFeedDto> GetForCandidateAsync(
         Guid candidateId, decimal minScore, int take, DateTime now, CancellationToken cancellationToken = default);
 }
 
-public sealed record GetMyJobMatchesQuery(Guid UserId) : IRequest<IReadOnlyList<JobMatchDto>>;
+public interface IJobMatchWriter
+{
+    Task<bool> DismissAsync(Guid candidateId, Guid candidateJobMatchId, DateTime now, CancellationToken cancellationToken = default);
+}
 
-public sealed class GetMyJobMatchesQueryHandler : IRequestHandler<GetMyJobMatchesQuery, IReadOnlyList<JobMatchDto>>
+public sealed record GetMyJobMatchesQuery(Guid UserId) : IRequest<JobMatchFeedDto>;
+
+public sealed class GetMyJobMatchesQueryHandler : IRequestHandler<GetMyJobMatchesQuery, JobMatchFeedDto>
 {
     private const int MaxSuggestions = 20;
     private readonly ICandidateRepository _candidates;
@@ -48,11 +75,35 @@ public sealed class GetMyJobMatchesQueryHandler : IRequestHandler<GetMyJobMatche
         _settings = settings;
     }
 
-    public async Task<IReadOnlyList<JobMatchDto>> Handle(GetMyJobMatchesQuery request, CancellationToken cancellationToken)
+    public async Task<JobMatchFeedDto> Handle(GetMyJobMatchesQuery request, CancellationToken cancellationToken)
     {
         var candidate = await _candidates.GetByUserIdAsync(request.UserId, cancellationToken)
             ?? throw new NotFoundException("Không tìm thấy hồ sơ ứng viên.");
         var minScore = await _settings.GetDecimalAsync(BusinessSettingKeys.JobMatchMinScore, cancellationToken);
         return await _reader.GetForCandidateAsync(candidate.CandidateId, minScore, MaxSuggestions, DateTime.UtcNow, cancellationToken);
+    }
+}
+
+public sealed record DismissMyJobMatchCommand(Guid UserId, Guid CandidateJobMatchId) : IRequest;
+
+public sealed class DismissMyJobMatchCommandHandler : IRequestHandler<DismissMyJobMatchCommand>
+{
+    private readonly ICandidateRepository _candidates;
+    private readonly IJobMatchWriter _writer;
+
+    public DismissMyJobMatchCommandHandler(ICandidateRepository candidates, IJobMatchWriter writer)
+    {
+        _candidates = candidates;
+        _writer = writer;
+    }
+
+    public async Task Handle(DismissMyJobMatchCommand request, CancellationToken cancellationToken)
+    {
+        var candidate = await _candidates.GetByUserIdAsync(request.UserId, cancellationToken)
+            ?? throw new NotFoundException("Không tìm thấy hồ sơ ứng viên.");
+        if (!await _writer.DismissAsync(candidate.CandidateId, request.CandidateJobMatchId, DateTime.UtcNow, cancellationToken))
+        {
+            throw new NotFoundException("Không tìm thấy gợi ý việc làm này.");
+        }
     }
 }

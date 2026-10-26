@@ -18,6 +18,15 @@ public partial class CandidateJobMatch
 
     public int AttemptNo { get; set; }
 
+    /// <summary>Number of semantic scoring attempts for this exact input fingerprint.</summary>
+    public int RetryCount { get; set; }
+
+    /// <summary>SHA-256 of the versioned Candidate/CV/Job inputs used for this result.</summary>
+    public string? InputFingerprint { get; set; }
+
+    /// <summary>Version of the deterministic matching policy that produced this result.</summary>
+    public string? ScoringVersion { get; set; }
+
     public decimal? MatchScore { get; set; }
 
     public string? MatchTier { get; set; }
@@ -31,6 +40,12 @@ public partial class CandidateJobMatch
     public string Status { get; set; } = null!;
 
     public DateTime GeneratedAt { get; set; }
+
+    public DateTime? LastAttemptAt { get; set; }
+
+    public DateTime? NextRetryAt { get; set; }
+
+    public DateTime? DismissedAt { get; set; }
 
     public DateTime? ExpiresAt { get; set; }
 
