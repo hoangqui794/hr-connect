@@ -2,38 +2,42 @@
 
 > **Người rà soát và đề xuất bổ sung:** Khúc Ngọc Sơn
 >
-> **Trạng thái triển khai ngày 25/10/2026:** đã đối chiếu và rebase trên `main` tại merge commit `601cdd2`; bốn nhóm sửa bên dưới được lưu thành bốn commit trên nhánh `codex/mf04-demo-flow-corrections`. Backend build sạch; 69/69 test backend mục tiêu MF-04 pass. Toàn bộ FE có 76/76 file và 396/396 test pass; lint mục tiêu và production build đều pass. Bộ test backend toàn repository đạt 1784/1785; test duy nhất lỗi thuộc MF-01 do PostgreSQL local chưa có cột `company_size_id`, không phát sinh từ thay đổi MF-04.
+> **Trạng thái hoàn tất ngày 26/10/2026:** bốn nhóm sửa đã được triển khai bằng bốn commit và merge lên `main` tại `8498a82`. CI của merge MF-04 (`40127165410`) và CD kế tiếp (`40127711943`) đều thành công. Regression test liên-handler cho nhánh sửa sai `NOT_STARTED -> OFFER_ACCEPTED -> PLACED` được bổ sung sau đó để khóa hành vi tái sử dụng reconciliation, concurrency token, audit history và thời điểm khởi tạo finance.
+>
+> **Kết quả kiểm tra trước khi merge:** backend build sạch; 69/69 test backend mục tiêu MF-04 pass. Toàn bộ FE có 76/76 file và 396/396 test pass; lint mục tiêu và production build đều pass. Bộ test backend toàn repository đạt 1784/1785; test duy nhất lỗi thuộc MF-01 do PostgreSQL local chưa có cột `company_size_id`, không phát sinh từ thay đổi MF-04.
 >
 > **Phạm vi:** bổ sung sau UC-41 đã merge. Giữ nguyên lịch sử và quy tắc giữ phí của UC-41; không sửa nghiệp vụ MF-01, MF-02, MF-03 hoặc MF-05 ngoài điểm tích hợp bắt buộc với placement finance.
 
 ## 1. Kết luận rà soát
 
+> Các mục trong phần này ghi lại hiện trạng phát hiện ngày 23/10/2026. Chúng đã được xử lý trong bốn commit liệt kê tại mục 4; không còn là danh sách việc chưa làm.
+
 ### 1.1 Lỗi chức năng cần sửa
 
-1. **Sửa thông tin lịch không báo Candidate.**
+1. **[Đã sửa] Sửa thông tin lịch không báo Candidate.**
    - FE dùng nút `Sửa thông tin lịch` và gọi `UpdateInterview` để đổi hình thức, thời lượng, địa điểm, link họp hoặc participant.
-   - `UpdateInterviewCommandHandler` hiện chỉ lưu dữ liệu và audit; không gọi `ICandidateRecruitmentDeliveryService`, không tạo notification và không tạo email outbox.
-   - `RescheduleInterview` và `CancelInterview` đã gửi đúng qua in-app hoặc email fallback. Vì vậy lỗi chỉ nằm ở đường **sửa thông tin lịch**, đúng với hiện tượng đã thấy trên deploy.
+   - Trước bản sửa, `UpdateInterviewCommandHandler` chỉ lưu dữ liệu và audit; chưa gọi `ICandidateRecruitmentDeliveryService`, chưa tạo notification hoặc email outbox.
+   - `RescheduleInterview` và `CancelInterview` khi đó đã gửi đúng qua in-app hoặc email fallback. Vì vậy lỗi được khoanh đúng ở đường **sửa thông tin lịch**.
 
-2. **UC-41 phát hiện Client khai sai `NOT_STARTED`, nhưng chưa sửa lại được trạng thái nghiệp vụ.**
+2. **[Đã sửa] UC-41 phát hiện Client khai sai `NOT_STARTED`, nhưng chưa sửa lại được trạng thái nghiệp vụ.**
    - `MarkNotStarted` chuyển Application từ `OFFER_ACCEPTED` sang `NOT_STARTED` và không cho Client tự hoàn tác. Đây là nguyên tắc đúng vì Client không nên tự sửa một quyết định terminal đã ảnh hưởng phí/audit.
-   - Luồng đối soát mới cho HR gắn `FLAGGED` và Platform Admin đóng hồ sơ, nhưng `ResolveFlaggedReconciliation` hiện chỉ đổi trạng thái đối soát sang `CONFIRMED` và lưu `ResolutionNote`.
-   - Nếu Candidate/Affiliate chứng minh ứng viên thực sự đã đi làm, Application vẫn là `NOT_STARTED`, chưa có Placement và chưa có đường sửa chính thức. Đây là khoảng trống nghiệp vụ thật.
+   - Trước bản sửa, luồng đối soát cho HR gắn `FLAGGED` nhưng `ResolveFlaggedReconciliation` chỉ đổi đối soát sang `CONFIRMED` và lưu `ResolutionNote`.
+   - Khi Candidate/Affiliate chứng minh ứng viên thực sự đã đi làm, Application vẫn mắc ở `NOT_STARTED`, chưa có Placement và chưa có đường sửa chính thức. Đây là khoảng trống nghiệp vụ đã được khép lại.
 
 ### 1.2 Thiếu thông báo cần bổ sung
 
-3. **Candidate không được báo khi Client đánh dấu “Không nhận việc”.**
-   - `MarkNotStartedCommandHandler` hiện cập nhật trạng thái, audit và tạo đối soát cho `HEADHUNT_COD`, nhưng không gửi notification/email cho Candidate.
-   - Candidate có thể tiếp tục nhìn dữ liệu cũ cho tới khi tải lại, và không biết để phản hồi với HR Connect nếu Client khai nhầm.
+3. **[Đã sửa] Candidate không được báo khi Client đánh dấu “Không nhận việc”.**
+   - Trước bản sửa, `MarkNotStartedCommandHandler` cập nhật trạng thái, audit và tạo đối soát cho `HEADHUNT_COD`, nhưng chưa gửi notification/email cho Candidate.
+   - Candidate khi đó có thể tiếp tục nhìn dữ liệu cũ tới khi tải lại và không biết để phản hồi với HR Connect nếu Client khai nhầm.
 
 ### 1.3 Điểm UI Offer cần làm rõ, không phải lỗi backend
 
-4. **Gross/Net:** nghiệp vụ hiện đúng. `HEADHUNT_COD` chỉ nhận Gross và backend đã chặn Net. FE cần chú thích ngắn:
+4. **[Đã làm rõ trên FE] Gross/Net:** nghiệp vụ hiện đúng. `HEADHUNT_COD` chỉ nhận Gross và backend đã chặn Net. FE hiển thị chú thích ngắn:
    - `Gross — trước thuế và các khoản khấu trừ`.
    - `Net — số tiền thực nhận theo thỏa thuận`.
    - Với Headhunt, khóa lựa chọn Net thay vì chờ submit mới báo lỗi.
-5. **“Hạn phản hồi”:** không sai, nhưng nên đổi thành **“Hạn phản hồi Offer”** hoặc **“Phản hồi trước ngày”** để tránh hiểu là hạn bắt đầu làm việc.
-6. **“Link tài liệu/PDF Offer (không bắt buộc)”:** đây là URL dẫn tới thư mời/PDF chi tiết. Trước mắt đổi câu chữ thành **“Tài liệu Offer (không bắt buộc)”** và giải thích “Dán đường dẫn bảo mật tới thư mời/PDF”. Upload file riêng tư lên Object Storage là cải tiến lớn hơn, chỉ làm khi nhóm chốt phạm vi vì cần API upload, quyền tải và signed URL.
+5. **[Đã làm rõ trên FE] “Hạn phản hồi”:** đổi thành **“Hạn phản hồi Offer”** để tránh hiểu là hạn bắt đầu làm việc.
+6. **[Đã làm rõ trên FE] “Link tài liệu/PDF Offer (không bắt buộc)”:** đây là URL dẫn tới thư mời/PDF chi tiết. Nhãn được đổi thành **“Tài liệu Offer (không bắt buộc)”** kèm giải thích “Dán đường dẫn bảo mật tới thư mời/PDF”. Upload file riêng tư lên Object Storage vẫn nằm ngoài phạm vi vì cần API upload, quyền tải và signed URL riêng.
 
 ## 2. Những phần đã đúng, không sửa lại
 
@@ -49,12 +53,12 @@
 
 ### 3.0 Kết quả kiểm tra lại code mới
 
-- `UpdateInterviewCommandHandler` vẫn chỉ lưu và audit; chưa gọi delivery service. Đây là lỗi thật.
-- Realtime FE đã có sẵn ánh xạ `INTERVIEW` tới application, timeline và interview detail. Vì vậy không tạo thêm cơ chế realtime thứ hai; chỉ cần tạo notification đúng metadata và thêm regression test.
-- `MarkNotStartedCommandHandler` vẫn chưa giao thông báo cho Candidate.
-- `ResolveFlaggedReconciliationCommandHandler` vẫn chỉ đóng `FLAGGED -> CONFIRMED`; chưa thể sửa một khai báo `NOT_STARTED` sai.
-- Hai handler `ConfirmStartWork` và `MarkNotStarted` vẫn luôn thêm reconciliation mới. Sau khi Admin mở lại hồ sơ, cách này sẽ đụng unique `ApplicationId`; phải đổi sang tái sử dụng bản ghi hiện có.
-- Các nhãn Offer vẫn là `Hạn phản hồi` và `Link tài liệu/PDF Offer (không bắt buộc)`; Gross/Net chưa có giải thích và Net chưa bị khóa sớm cho `HEADHUNT_COD`.
+- `UpdateInterviewCommandHandler` đã giao thay đổi Candidate nhìn thấy qua delivery service; participant-only không gửi thông báo.
+- Realtime FE tiếp tục dùng ánh xạ `INTERVIEW` sẵn có tới application, timeline và interview detail; không tạo cơ chế realtime thứ hai.
+- `MarkNotStartedCommandHandler` đã giao kết quả cho Candidate theo account-or-email policy.
+- `ResolveFlaggedReconciliationCommandHandler` hỗ trợ `REOPEN_FOR_CLIENT_CONFIRMATION` và ghi đầy đủ audit/history.
+- `ConfirmStartWork` và `MarkNotStarted` tái sử dụng reconciliation đã được Admin mở lại, không insert trùng `ApplicationId`.
+- Form Offer đã làm rõ Gross/Net, hạn phản hồi và trường tài liệu; API contract và database Offer không đổi.
 
 ### 3.1 Thông báo khi sửa thông tin lịch
 
@@ -91,49 +95,53 @@
 - Đổi label URL thành `Tài liệu Offer (không bắt buộc)` và thêm help text về đường dẫn bảo mật.
 - Giữ nguyên contract API và database ở commit UI này.
 
-## 4. Chia commit triển khai
+## 4. Lịch sử triển khai thực tế
 
-### Commit 1 — `fix(mf04): deliver interview detail updates to candidates`
+Bản sửa được triển khai bằng **4 commit**, không phải 5 commit:
 
-- Backend event/template `InterviewUpdated`.
-- Gắn delivery vào `UpdateInterviewCommandHandler` sau khi xác định thay đổi Candidate nhìn thấy.
-- Test in-app, email fallback, participant-only không gửi và payload không lộ dữ liệu nội bộ.
-- Giữ cơ chế SignalR hiện có; thêm regression test xác nhận notification `INTERVIEW/UPDATED` làm mới application detail, timeline và interview detail.
+1. `edb0167` — `feat(mf04): extend candidate recruitment delivery`
+   - Bổ sung delivery account-or-email cho kết quả `NOT_STARTED` và nền tảng template/metadata dùng chung.
+2. `5c25886` — `fix(mf04): deliver interview detail updates`
+   - Gửi thay đổi lịch Candidate cần biết; không gửi khi chỉ thay participant nội bộ.
+3. `e6f9838` — `fix(mf04): reconcile incorrect not-started outcomes`
+   - Thêm hành động Admin mở lại hồ sơ, migration `ResolutionAction`, audit/history và tái sử dụng reconciliation.
+4. `71965a4` — `fix(mf04-fe): clarify offer terms and workflow guidance`
+   - Làm rõ Gross/Net, hạn phản hồi Offer và tài liệu Offer; cập nhật UI Admin cho bước giải quyết sai lệch.
 
-### Commit 2 — `feat(mf04): add audited correction for incorrect not-started outcomes`
-
-- Migration bổ sung `ResolutionAction` và trạng thái cần thiết cho reconciliation.
-- Mở rộng command và UI Admin để chọn xác nhận claim hoặc mở lại `OFFER_ACCEPTED`.
-- Tái sử dụng reconciliation khi Client ghi nhận kết quả lần nữa.
-- Test concurrency, idempotency, audit và không tạo phí sớm.
-
-### Commit 3 — `feat(mf04): notify candidates of reported not-started outcomes`
-
-- Delivery account-or-email cho `MarkNotStarted`.
-- Metadata/route an toàn và realtime invalidation.
-- Test Candidate có tài khoản, không có tài khoản và không có kênh liên hệ.
-
-### Commit 4 — `fix(mf04-fe): clarify offer salary deadline and document fields`
-
-- Tooltip Gross/Net, khóa Net cho Headhunt.
-- Sửa label hạn phản hồi và tài liệu Offer.
-- Test form tạo/sửa Offer giữ nguyên DTO hiện tại.
-
-### Commit 5 — `test(mf04): cover corrected demo flow end to end`
-
-- Test tích hợp: sửa thông tin lịch → Candidate nhận realtime và thấy dữ liệu mới.
-- Test: Client khai `NOT_STARTED` → HR flag → Admin mở lại → Client xác nhận đi làm → reconciliation mới `PENDING` → HR xác nhận.
-- Test phân quyền: Candidate/Client/Internal HR không gọi được endpoint sửa sai của Platform Admin.
-- Cập nhật activity diagram, tài liệu MF-04 và test script Swagger/deploy.
+Bốn commit trên được merge lên `main` tại `8498a82`. Regression test bổ sung sau merge nằm trong commit độc lập `test(mf04): cover corrected not-started lifecycle`; commit này chỉ khóa luồng đã có, không bổ sung API, bảng hoặc nghiệp vụ mới.
 
 ## 5. Tiêu chí hoàn tất
 
-- Không có notification khi chỉ thay participant nội bộ.
-- Candidate nhận đúng một notification/email khi thông tin họ cần biết thay đổi.
-- Không cho Client tự hoàn tác `NOT_STARTED`.
-- Admin mở lại hồ sơ có audit đầy đủ và không làm phát sinh phí trước `ConfirmStartWork`.
-- Không còn lỗi unique reconciliation khi ghi nhận lại kết quả.
-- Candidate thấy trạng thái mới qua realtime hoặc REST polling fallback.
-- FE test, backend targeted test, full build và CI đều pass trước khi chuyển sang nhánh tiếp theo.
-- Chỉ push khi người dùng yêu cầu rõ; mỗi nhánh phải chờ CI xanh trước khi merge tiếp.
+- [x] Không có notification khi chỉ thay participant nội bộ.
+- [x] Candidate nhận đúng một notification/email khi thông tin họ cần biết thay đổi.
+- [x] Không cho Client tự hoàn tác `NOT_STARTED`.
+- [x] Admin mở lại hồ sơ có audit đầy đủ và không làm phát sinh phí trước `ConfirmStartWork`.
+- [x] Không còn lỗi unique reconciliation khi ghi nhận lại kết quả.
+- [x] Candidate thấy trạng thái mới qua realtime hoặc REST polling fallback.
+- [x] FE test, backend targeted test, full build và CI của merge MF-04 đều pass.
+- [x] Quy tắc phát hành được giữ: chỉ push khi người dùng yêu cầu rõ; chờ CI xanh trước khi merge nhánh kế tiếp.
+
+## 6. Regression test và smoke checklist
+
+### 6.1 Regression test tự động
+
+`Mf04HappyPathFlowTests.IncorrectNotStartedClaim_CanBeReopenedAndCorrectedWithoutDuplicateReconciliation` kiểm tra xuyên handler:
+
+1. Client khai `NOT_STARTED` từ `OFFER_ACCEPTED`; Candidate nhận delivery đúng một lần.
+2. Hệ thống tạo đúng một reconciliation `PENDING`; stale concurrency token bị từ chối.
+3. Internal HR đánh dấu sai lệch `FLAGGED`; Platform Admin mở lại hồ sơ về `OFFER_ACCEPTED`.
+4. Chưa khởi tạo finance ở bước mở lại.
+5. Client xác nhận đi làm; Application sang `PLACED` và reconciliation cũ được reset về `PENDING/STARTED` thay vì insert bản ghi mới.
+6. Dữ liệu review cũ được xóa, token đổi và lịch sử trạng thái vẫn được giữ.
+7. Internal HR xác nhận lần cuối; reconciliation sang `CONFIRMED`.
+
+### 6.2 Smoke checklist trên deploy
+
+- Client sửa địa điểm/link/hình thức/thời lượng: Candidate nhận một cập nhật và thấy dữ liệu mới sau realtime hoặc tải lại.
+- Client chỉ sửa participant: Candidate không nhận thông báo.
+- Client khai “Không nhận việc”: Candidate nhận thông báo; Application sang `NOT_STARTED`; Client không có nút tự hoàn tác.
+- Internal HR đối soát không khớp: hồ sơ sang `FLAGGED`; Platform Admin thấy hai lựa chọn xử lý.
+- Platform Admin mở lại: Application về `OFFER_ACCEPTED`, chưa phát sinh Placement hoặc finance.
+- Client xác nhận đi làm: Application sang `PLACED`; danh sách đối soát chỉ có một bản ghi của Application và quay lại `PENDING`.
+- Internal HR xác nhận kết quả mới: reconciliation sang `CONFIRMED`.
 
