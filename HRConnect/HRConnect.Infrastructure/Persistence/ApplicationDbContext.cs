@@ -1050,6 +1050,13 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => new { e.CandidateId, e.JobId, e.AttemptNo }, "candidate_job_match_candidate_id_job_id_attempt_no_key").IsUnique();
 
+            entity.HasIndex(e => new { e.CandidateId, e.JobId, e.InputFingerprint }, "ux_candidate_job_match_input")
+                .IsUnique()
+                .HasFilter("input_fingerprint IS NOT NULL");
+
+            entity.HasIndex(e => new { e.CandidateId, e.Status, e.GeneratedAt }, "idx_candidate_job_match_feed")
+                .IsDescending(false, false, true);
+
             entity.HasIndex(e => new { e.CandidateId, e.MatchScore, e.GeneratedAt }, "idx_candidate_job_match_candidate_score").IsDescending(false, true, true);
 
             entity.HasIndex(e => new { e.JobId, e.GeneratedAt }, "idx_candidate_job_match_job").IsDescending(false, true);
@@ -1060,16 +1067,24 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.AttemptNo)
                 .HasDefaultValue(1)
                 .HasColumnName("attempt_no");
+            entity.Property(e => e.RetryCount)
+                .HasDefaultValue(1)
+                .HasColumnName("retry_count");
             entity.Property(e => e.CandidateId).HasColumnName("candidate_id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.CvId).HasColumnName("cv_id");
+            entity.Property(e => e.DismissedAt).HasColumnName("dismissed_at");
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
             entity.Property(e => e.GeneratedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("generated_at");
             entity.Property(e => e.JobId).HasColumnName("job_id");
+            entity.Property(e => e.InputFingerprint)
+                .HasMaxLength(64)
+                .HasColumnName("input_fingerprint");
+            entity.Property(e => e.LastAttemptAt).HasColumnName("last_attempt_at");
             entity.Property(e => e.MatchScore)
                 .HasPrecision(5, 2)
                 .HasColumnName("match_score");
@@ -1085,6 +1100,10 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.MissingRequirements)
                 .HasColumnType("jsonb")
                 .HasColumnName("missing_requirements");
+            entity.Property(e => e.NextRetryAt).HasColumnName("next_retry_at");
+            entity.Property(e => e.ScoringVersion)
+                .HasMaxLength(30)
+                .HasColumnName("scoring_version");
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
                 .HasDefaultValueSql("'GENERATED'::character varying")
