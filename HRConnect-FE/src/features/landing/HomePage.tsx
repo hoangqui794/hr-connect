@@ -1,15 +1,17 @@
 import React, { useEffect } from 'react';
 import {
   ArrowRightOutlined,
-  BankOutlined,
   CheckCircleFilled,
   CheckOutlined,
-  FileSearchOutlined,
-  SafetyCertificateOutlined,
-  TeamOutlined,
   ThunderboltFilled,
-  UserOutlined,
 } from '@ant-design/icons';
+import {
+  UserCheck,
+  Users,
+  Briefcase,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { BrandMark } from '@/components/common/BrandMark';
@@ -18,32 +20,28 @@ const ROLE_SOLUTIONS = [
   {
     title: 'Candidate',
     description: 'Tìm kiếm cơ hội việc làm mơ ước, tối ưu CV bằng AI và theo dõi minh bạch từng vòng ứng tuyển.',
-    icon: UserOutlined,
-    accent: 'bg-blue-50 text-blue-600 border border-blue-100',
+    icon: UserCheck,
     action: 'Tìm việc ngay',
     path: '/jobs',
   },
   {
     title: 'Affiliate Recruiter',
     description: 'Giới thiệu nhân tài với xác thực ủy quyền Consent, cơ chế chống trùng nguồn và nhận hoa hồng tự động.',
-    icon: TeamOutlined,
-    accent: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
+    icon: Users,
     action: 'Đăng ký Affiliate',
     path: '/register',
   },
   {
     title: 'Client Company',
     description: 'Đăng tin tuyển dụng đa kênh, tiếp cận nguồn ứng viên chất lượng cao đã qua sàng lọc AI và tối ưu chi phí.',
-    icon: BankOutlined,
-    accent: 'bg-indigo-50 text-indigo-600 border border-indigo-100',
+    icon: Briefcase,
     action: 'Đăng ký Doanh nghiệp',
     path: '/register',
   },
   {
     title: 'Internal HR & Admin',
     description: 'Điều phối toàn diện pipeline phỏng vấn, kiểm soát phân quyền RBAC và truy vết audit log minh bạch.',
-    icon: SafetyCertificateOutlined,
-    accent: 'bg-slate-100 text-slate-700 border border-slate-200',
+    icon: ShieldCheck,
     action: 'Đăng nhập hệ thống',
     path: '/login',
   },
@@ -128,7 +126,7 @@ export const HomePage: React.FC = () => {
               {/* Headline */}
               <h1 className="m-0 max-w-[620px] text-3xl sm:text-4xl md:text-5xl lg:text-[50px] font-extrabold leading-[1.12] tracking-tight text-slate-900 break-words">
                 Kết nối đúng nhân tài,
-                <span className="block mt-1 sm:mt-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 bg-clip-text text-transparent">
+                <span className="block mt-1 sm:mt-1.5 text-slate-900 font-extrabold tracking-tight">
                   bứt phá tốc độ cùng AI.
                 </span>
               </h1>
@@ -174,20 +172,16 @@ export const HomePage: React.FC = () => {
             {/* 2. VISUAL CARD BÊN PHẢI (LIGHT MODE CLEAN & MODERN)          */}
             {/* ============================================================= */}
             <div id="workflow" className="relative min-w-0">
-              {/* Quầng sáng mờ tuyệt đối phía sau (Ambient Glow) */}
-              <div className="pointer-events-none absolute -inset-6 rounded-full bg-blue-400/15 blur-3xl -z-10" />
+              {/* Quầng sáng mờ tuyệt đối phía sau */}
+              <div className="pointer-events-none absolute -inset-6 rounded-full bg-slate-100/60 blur-3xl -z-10" />
 
-              {/* Surface Card Trắng Cao Cấp */}
-              <div className="relative w-full rounded-2xl border border-solid border-slate-200/90 bg-white/80 p-5 sm:p-6 shadow-xl shadow-slate-200/50 backdrop-blur-md">
-                {/* Header status bar */}
+              {/* Surface Card Trắng Sắc Nét */}
+              <div className="relative w-full rounded-2xl border border-solid border-slate-200/80 bg-white p-5 sm:p-6 shadow-sm">
+                {/* Header status bar - Bỏ 3 chấm tròn macOS */}
                 <div className="flex items-center justify-between border-0 border-b border-solid border-slate-100 pb-3.5">
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
-                    </div>
-                    <span className="ml-1 text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                    <Sparkles className="h-4 w-4 text-blue-600" strokeWidth={1.5} />
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500 font-bold">
                       Live AI Matching Engine
                     </span>
                   </div>
@@ -202,13 +196,13 @@ export const HomePage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Candidate Mini-Card: Nền xám nhạt tinh tế */}
-                <div className="mt-4 rounded-xl border border-solid border-slate-200/60 bg-slate-50 p-4">
+                {/* Candidate Profile Card sắc nét */}
+                <div className="mt-4 rounded-xl border border-solid border-slate-200/80 bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       {/* Avatar */}
                       <div className="relative shrink-0">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-sm shadow-sm">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white font-bold text-sm shadow-sm">
                           QA
                         </div>
                         <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
@@ -216,32 +210,32 @@ export const HomePage: React.FC = () => {
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h4 className="m-0 text-sm sm:text-base font-bold text-slate-900 truncate">Nguyễn Quốc Anh</h4>
-                          <span className="shrink-0 rounded bg-blue-100/70 border border-blue-200/60 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                          <h4 className="m-0 text-sm sm:text-base font-bold text-slate-900">Nguyễn Quốc Anh</h4>
+                          <span className="shrink-0 rounded bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">
                             Senior
                           </span>
                         </div>
-                        <p className="mb-0 mt-0.5 text-xs text-slate-500 truncate">
+                        <p className="mb-0 mt-0.5 text-xs text-slate-500">
                           Senior React Developer · 5 năm kinh nghiệm
                         </p>
                       </div>
                     </div>
 
-                    {/* Badge 96% Phù hợp: Màu xanh ngọc nhẹ nhàng */}
+                    {/* Badge 96% Phù hợp */}
                     <div className="shrink-0 text-right">
-                      <div className="inline-flex items-center gap-1 rounded-lg border border-solid border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 shadow-xs">
+                      <div className="inline-flex items-center gap-1 rounded-md border border-solid border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                         <ThunderboltFilled className="text-emerald-600 text-xs" />
                         <span>96% Phù hợp</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Skill Tags */}
+                  {/* Skill Tags phẳng */}
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {['React', 'TypeScript', 'Next.js', 'Tailwind CSS'].map((skill) => (
                       <span
                         key={skill}
-                        className="rounded-md border border-solid border-slate-200/80 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600"
+                        className="bg-slate-100 text-slate-700 text-xs px-2 py-1 rounded-md font-medium"
                       >
                         {skill}
                       </span>
@@ -249,13 +243,13 @@ export const HomePage: React.FC = () => {
                   </div>
 
                   {/* Evaluation Line */}
-                  <div className="mt-3 pt-2.5 border-0 border-t border-solid border-slate-200/60 flex items-center justify-between text-xs text-slate-500">
+                  <div className="mt-3 pt-2.5 border-0 border-t border-solid border-slate-100 flex items-center justify-between text-xs text-slate-500">
                     <span>Khớp JD: <strong className="text-slate-800">9.6 / 10</strong></span>
                     <span className="text-emerald-700 font-semibold">Chuẩn ATS ✓</span>
                   </div>
                 </div>
 
-                {/* Mini Pipeline: 4 Step tròn thanh mảnh trên nền trắng */}
+                {/* Mini Pipeline: 4 Step */}
                 <div className="mt-4 pt-1">
                   <div className="mb-3 flex items-center justify-between">
                     <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
@@ -265,7 +259,7 @@ export const HomePage: React.FC = () => {
                       <span className="rounded border border-solid border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
                         Verified
                       </span>
-                      <span className="rounded border border-solid border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[10px] font-semibold text-cyan-700">
+                      <span className="rounded border border-solid border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
                         Anti-duplicate
                       </span>
                     </div>
@@ -274,7 +268,7 @@ export const HomePage: React.FC = () => {
                   <div className="relative">
                     {/* Đường line kết nối slate-200 */}
                     <div className="absolute top-[16px] left-[10%] right-[10%] h-[2px] bg-slate-200 -z-0" />
-                    <div className="absolute top-[16px] left-[10%] w-[58%] h-[2px] bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 -z-0" />
+                    <div className="absolute top-[16px] left-[10%] w-[58%] h-[2px] bg-blue-600 -z-0" />
 
                     <div className="grid grid-cols-4 gap-2 relative z-10">
                       {/* Step 1 */}
@@ -287,7 +281,7 @@ export const HomePage: React.FC = () => {
 
                       {/* Step 2 */}
                       <div className="flex flex-col items-center text-center">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-solid border-indigo-200 bg-indigo-50 text-indigo-600 shadow-xs">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-solid border-blue-200 bg-blue-50 text-blue-600 shadow-xs">
                           <CheckOutlined className="text-xs" />
                         </div>
                         <span className="mt-1.5 text-[11px] font-semibold text-slate-800">Xác thực</span>
@@ -378,14 +372,12 @@ export const HomePage: React.FC = () => {
                 return (
                   <article
                     key={role.title}
-                    className="group flex flex-col justify-between rounded-2xl border border-solid border-slate-200/80 bg-white p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200"
+                    className="group flex flex-col justify-between rounded-2xl border border-solid border-slate-200/80 bg-white p-6 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200"
                   >
                     <div>
-                      {/* Icon vuông bo góc mềm */}
-                      <div
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl transition-transform duration-200 group-hover:scale-105 ${role.accent}`}
-                      >
-                        <Icon aria-hidden />
+                      {/* Icon stroke mảnh đồng bộ, tone text-slate-700 */}
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-solid border-slate-200/80 bg-slate-50 text-slate-700 transition-colors group-hover:border-blue-200 group-hover:bg-blue-50/50 group-hover:text-blue-600">
+                        <Icon className="h-5 w-5" strokeWidth={1.5} />
                       </div>
 
                       {/* Tiêu đề vai trò rõ nét */}
@@ -393,8 +385,8 @@ export const HomePage: React.FC = () => {
                         {role.title}
                       </h3>
 
-                      {/* Đúng 1 câu mô tả giá trị cốt lõi */}
-                      <p className="mb-0 mt-2 text-sm leading-relaxed text-slate-500">
+                      {/* Nội dung mô tả trọn vẹn, không truncate / line-clamp */}
+                      <p className="mb-0 mt-2 text-sm leading-relaxed text-slate-600">
                         {role.description}
                       </p>
                     </div>
@@ -457,27 +449,27 @@ export const HomePage: React.FC = () => {
         {/* 5. ENTERPRISE GUARANTEE & AI SECURITY                             */}
         {/* ================================================================= */}
         <section className="px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-24">
-          <div className="mx-auto grid max-w-[1240px] grid-cols-1 overflow-hidden rounded-3xl border border-solid border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/80 shadow-2xl ring-1 ring-white/10 lg:grid-cols-[1.05fr_0.95fr]">
-            <div className="p-6 sm:p-8 lg:p-12 text-white">
-              <span className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-xl border border-solid border-blue-500/20 bg-blue-500/15 text-lg sm:text-xl text-blue-400">
-                <FileSearchOutlined aria-hidden />
+          <div className="mx-auto grid max-w-[1240px] grid-cols-1 overflow-hidden rounded-2xl border border-solid border-slate-200/80 bg-white shadow-sm lg:grid-cols-2">
+            <div className="p-8 sm:p-10 lg:p-12 flex flex-col justify-center">
+              <span className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-xl border border-solid border-blue-200 bg-blue-50 text-lg sm:text-xl text-blue-600">
+                <ShieldCheck className="h-5 w-5 text-blue-600" strokeWidth={1.5} />
               </span>
-              <h2 className="mb-0 mt-5 sm:mt-6 text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight">
+              <h2 className="mb-0 mt-5 sm:mt-6 text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">
                 Tuyển dụng nhanh hơn nhưng vẫn giữ trọn quyền kiểm soát
               </h2>
-              <p className="mb-0 mt-4 sm:mt-5 max-w-2xl text-base sm:text-lg leading-relaxed text-slate-300">
+              <p className="mb-0 mt-4 sm:mt-5 max-w-2xl text-base sm:text-lg leading-relaxed text-slate-600">
                 AI đóng vai trò đồng hành hỗ trợ phân tích và xếp loại ứng viên. Quyết định tuyển dụng và ủy quyền vẫn thuộc về con người với sự minh bạch tuyệt đối.
               </p>
             </div>
-            <div className="border-0 border-t border-solid border-slate-800 bg-slate-950/30 p-6 sm:p-8 lg:border-l lg:border-t-0 lg:p-12 flex flex-col justify-center">
+            <div className="border-0 border-t border-solid border-slate-200/80 bg-slate-50/60 p-8 sm:p-10 lg:border-l lg:border-t-0 lg:p-12 flex flex-col justify-center">
               <div className="space-y-3.5">
                 {GUARANTEES.map((item) => (
                   <div
                     key={item}
-                    className="flex items-start gap-3 rounded-xl border border-solid border-slate-800/80 bg-slate-800/40 p-3.5 sm:p-4 backdrop-blur-sm transition-colors hover:border-slate-700"
+                    className="flex items-start gap-3 rounded-xl border border-solid border-slate-200/80 bg-white p-3.5 sm:p-4 shadow-xs transition-colors hover:border-blue-200"
                   >
-                    <CheckCircleFilled aria-hidden className="mt-0.5 text-blue-400 shrink-0 text-base" />
-                    <span className="leading-relaxed text-sm sm:text-base text-slate-200">{item}</span>
+                    <CheckCircleFilled aria-hidden className="mt-0.5 text-blue-600 shrink-0 text-base" />
+                    <span className="leading-relaxed text-sm sm:text-base text-slate-700 font-medium">{item}</span>
                   </div>
                 ))}
               </div>

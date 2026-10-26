@@ -9,28 +9,33 @@ export interface BenefitItem {
   desc?: string;
 }
 
+export interface TestimonialInfo {
+  quote: string;
+  author: string;
+  role: string;
+  company: string;
+  metrics?: string;
+}
+
 interface AuthPageShellProps {
   eyebrow: string;
   title: string;
   description: string;
   sideTitle: string;
   sideDescription?: string;
-  benefits: (string | BenefitItem)[];
+  benefits?: (string | BenefitItem)[];
   children: React.ReactNode;
   wide?: boolean;
   fitScreen?: boolean;
-  /** Optional block under the benefits, rendered on the photo panel. */
+  /** Optional block under the benefits, rendered on the side panel. */
   extraVisual?: React.ReactNode;
+  testimonial?: TestimonialInfo;
 }
 
-/** Team photo (Unsplash, hotlinked per Unsplash guidelines). The panel keeps a solid brand color if it fails. */
-const AUTH_PHOTO_URL =
-  'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1600&q=75';
-
 /**
- * Auth layout (20/10, option "ảnh người thật"): left half is a real team photo under a brand-blue
- * overlay with the logo, one large slogan and short benefits; right half is a compact white form.
- * Below lg only the form shows, with a small brand row.
+ * Modern SaaS Auth layout:
+ * - Left half: Flat luxury navy (bg-slate-950) with sharp brand mark, enterprise value prop, and social proof testimonial.
+ * - Right half: Clean, focused form panel with lightweight border-slate-200 inputs and blue-600 CTA.
  */
 export const AuthPageShell: React.FC<AuthPageShellProps> = ({
   eyebrow,
@@ -43,74 +48,106 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
   wide = false,
   fitScreen = false,
   extraVisual,
+  testimonial,
 }) => {
   const navigate = useNavigate();
 
   return (
     <main className={`flex w-full bg-white text-slate-900 ${fitScreen ? 'min-h-[100dvh] lg:h-[100dvh]' : 'min-h-screen'}`}>
       <section className="grid w-full lg:grid-cols-2">
-        {/* Photo panel */}
-        <aside className="relative hidden overflow-hidden bg-[#0C4A6E] lg:block">
-          <img
-            src={AUTH_PHOTO_URL}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover"
-            loading="lazy"
-            decoding="async"
-            referrerPolicy="no-referrer"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#082F49] via-[#0C4A6E]/80 to-[#0369A1]/45" aria-hidden="true" />
-
-          <div className="relative z-10 flex h-full flex-col justify-between p-10 text-white xl:p-14">
+        {/* Left Column: Premium Flat Navy bg-slate-950 with Testimonial / Social Proof */}
+        <aside className="relative hidden overflow-hidden bg-slate-950 border-r border-slate-900 lg:flex lg:flex-col lg:justify-between p-10 xl:p-14 text-white">
+          {/* Top: Flat Sharp Brand Logo */}
+          <div>
             <button
               type="button"
               onClick={() => navigate('/')}
               className="flex w-fit cursor-pointer items-center gap-3 rounded-lg border-0 bg-transparent p-1 text-left text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               aria-label="Về trang chủ HR Connect"
             >
-              <BrandMark size={44} tone="light" />
+              <BrandMark size={40} tone="light" />
               <span>
-                <strong className="block text-lg font-extrabold leading-none">HR Connect</strong>
-                <span className="mt-1 block text-sm text-sky-100">Nền tảng tuyển dụng & headhunt</span>
+                <strong className="block text-lg font-bold leading-none tracking-tight text-white">HR Connect</strong>
+                <span className="mt-1 block text-xs font-medium text-slate-400">Nền tảng Tuyển dụng & Headhunt</span>
               </span>
             </button>
+          </div>
 
-            <div className="max-w-xl">
-              <h2 className="m-0 text-4xl font-extrabold leading-[1.15] tracking-[-0.02em] text-white xl:text-5xl">{sideTitle}</h2>
-              {sideDescription && <p className="mb-0 mt-4 max-w-lg text-lg leading-relaxed text-sky-50">{sideDescription}</p>}
+          {/* Center: Slogan + Testimonial / Social Proof */}
+          <div className="max-w-lg my-auto py-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-400 mb-6">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+              <span>Hệ sinh thái Tuyển dụng Thông minh</span>
+            </div>
 
-              <ul className="m-0 mt-8 flex list-none flex-wrap gap-2.5 p-0">
+            <h2 className="m-0 text-3xl font-extrabold leading-[1.2] tracking-tight text-white xl:text-4xl">
+              {sideTitle}
+            </h2>
+            {sideDescription && (
+              <p className="mb-0 mt-3 text-base leading-relaxed text-slate-400">
+                {sideDescription}
+              </p>
+            )}
+
+            {/* Testimonial / Social Proof Card */}
+            <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 backdrop-blur-sm">
+              <div className="flex items-center gap-1 text-amber-400 text-xs mb-3">
+                ★★★★★
+              </div>
+              <p className="m-0 text-sm sm:text-base italic leading-relaxed text-slate-200">
+                "{testimonial?.quote || 'HR Connect giúp chúng tôi chuẩn hóa toàn bộ pipeline tuyển dụng và rút ngắn hơn 60% thời gian từ lúc lọc CV đến vòng phỏng vấn cuối cùng.'}"
+              </p>
+              <div className="mt-4 flex items-center justify-between border-t border-slate-800/80 pt-4">
+                <div>
+                  <strong className="block text-sm font-semibold text-white">
+                    {testimonial?.author || 'Trần Minh Hoàng'}
+                  </strong>
+                  <span className="text-xs text-slate-400">
+                    {testimonial?.role || 'Head of Talent Acquisition'} · {testimonial?.company || 'V-Tech Group'}
+                  </span>
+                </div>
+                <div className="rounded border border-slate-700/60 bg-slate-800/80 px-2.5 py-1 text-[11px] font-mono font-medium text-slate-300">
+                  {testimonial?.metrics || '500+ Hires/năm'}
+                </div>
+              </div>
+            </div>
+
+            {/* Short Proof points */}
+            {benefits && benefits.length > 0 && (
+              <div className="mt-6 flex flex-wrap gap-2">
                 {benefits.map((item, idx) => {
                   const isObject = typeof item !== 'string';
                   const itemTitle = isObject ? item.title : item;
-                  const icon = isObject && item.icon ? item.icon : <CheckCircleFilled />;
                   return (
-                    <li
+                    <span
                       key={idx}
-                      className="flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/25 backdrop-blur-sm [&_.anticon]:!text-sky-200"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800/80 bg-slate-900/50 px-3 py-1.5 text-xs text-slate-300 font-medium"
                     >
-                      <span aria-hidden="true">{icon}</span>
-                      {itemTitle}
-                    </li>
+                      <CheckCircleFilled className="text-blue-500 text-xs" />
+                      <span>{itemTitle}</span>
+                    </span>
                   );
                 })}
-              </ul>
+              </div>
+            )}
 
-              {extraVisual && <div className="mt-6">{extraVisual}</div>}
-            </div>
+            {extraVisual && <div className="mt-6">{extraVisual}</div>}
+          </div>
 
-            <p className="m-0 text-sm text-sky-100">© HR Connect · Kết nối đúng người, đúng cơ hội</p>
+          {/* Bottom: Flat brand trust & copyright */}
+          <div className="flex items-center justify-between border-t border-slate-900 pt-6 text-xs text-slate-500">
+            <span>© HR Connect · Enterprise Talent Network</span>
+            <span className="font-medium text-slate-400">500+ Doanh nghiệp tin dùng</span>
           </div>
         </aside>
 
-        {/* Form panel */}
+        {/* Right Column: Form panel */}
         <div className={`flex flex-col ${fitScreen ? 'lg:h-[100dvh] lg:overflow-y-auto' : ''}`}>
           <div className={`mx-auto flex w-full flex-1 flex-col px-5 py-6 sm:px-10 sm:py-10 ${wide ? 'max-w-[600px]' : 'max-w-[440px]'}`}>
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="mb-6 inline-flex min-h-[44px] w-fit cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-0 text-sm font-medium text-slate-600 transition-colors duration-150 hover:text-[#0369A1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1]"
+              className="mb-6 inline-flex min-h-[44px] w-fit cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-0 text-sm font-medium text-slate-600 transition-colors duration-150 hover:text-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
             >
               <ArrowLeftOutlined aria-hidden="true" />
               <span>Về trang chủ</span>
@@ -122,8 +159,8 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
                   <BrandMark size={36} />
                   <strong className="text-base text-slate-900">HR Connect</strong>
                 </div>
-                <p className="mb-1 text-xs font-bold uppercase tracking-[0.12em] text-[#0369A1]">{eyebrow}</p>
-                <h1 className="m-0 text-[28px] font-extrabold tracking-[-0.02em] text-slate-900">{title}</h1>
+                <p className="mb-1 text-xs font-bold uppercase tracking-[0.12em] text-blue-600">{eyebrow}</p>
+                <h1 className="m-0 text-[28px] font-extrabold tracking-tight text-slate-900">{title}</h1>
                 <p className="mb-0 mt-2 text-sm leading-relaxed text-slate-600">{description}</p>
               </div>
 
@@ -137,13 +174,14 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
 };
 
 export const AUTH_INPUT_CLASS =
-  'h-11 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 hover:border-[#0EA5E9] focus:border-[#0369A1] transition-colors duration-150';
+  'h-11 rounded-xl !border !border-slate-200 !bg-white text-slate-900 placeholder:text-slate-400 hover:!border-slate-300 focus:!border-blue-600 focus:!ring-4 focus:!ring-blue-50 focus-within:!border-blue-600 focus-within:!ring-4 focus-within:!ring-blue-50 transition-all duration-150';
 
-export const AUTH_LABEL_CLASS = 'text-sm font-semibold text-slate-700';
+export const AUTH_LABEL_CLASS = 'text-xs font-semibold text-slate-700';
 
 /** Primary submit button: solid brand blue, 48px tall, visible keyboard focus. */
 export const AUTH_PRIMARY_BUTTON_CLASS =
-  'flex h-12 w-full items-center justify-center gap-2 rounded-xl border-0 !bg-[#0369A1] text-[15px] font-semibold !text-white shadow-none transition-colors duration-150 hover:!bg-[#075985] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1] disabled:!bg-slate-300';
+  'flex !h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-0 !bg-blue-600 text-[15px] font-semibold !text-white shadow-sm transition-all duration-150 hover:!bg-blue-700 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:!bg-slate-300';
 
 export const AUTH_LINK_CLASS =
-  'font-semibold text-[#0369A1] underline-offset-2 hover:text-[#075985] hover:underline';
+  'font-semibold text-blue-600 underline-offset-2 hover:text-blue-700 hover:underline';
+
