@@ -1,0 +1,85 @@
+@startuml erd-core-02-company-job
+title Core ERD 02 - Company and job publishing
+hide circle
+skinparam linetype ortho
+entity Company {
+  * CompanyId : uuid <<PK>>
+  --
+  CompanyName : varchar
+  TaxCode : varchar
+  VerificationStatus : varchar
+}
+entity CompanyUser {
+  * CompanyUserId : uuid <<PK>>
+  --
+  CompanyId : uuid <<FK>>
+  UserId : uuid <<FK>>
+  IsPrimaryContact : boolean
+}
+entity AppUser #EEEEEE {
+  * UserId : uuid <<PK>>
+  --
+  Email : varchar
+  Status : varchar
+}
+entity ServiceType {
+  * ServiceTypeId : uuid <<PK>>
+  --
+  Code : varchar
+}
+entity Job {
+  * JobId : uuid <<PK>>
+  --
+  CompanyId : uuid <<FK>>
+  ServiceTypeId : uuid <<FK>>
+  CreatedBy : uuid <<FK>>
+  Title : varchar
+  Status : varchar
+  Quantity : int
+  FeeMultiplier : numeric
+  WarrantyDays : int
+  SourcingTarget : int
+}
+entity JobRequirement {
+  * RequirementId : uuid <<PK>>
+  --
+  JobId : uuid <<FK>>
+  RequirementType : varchar
+}
+entity ServiceAgreement {
+  * ServiceAgreementId : uuid <<PK>>
+  --
+  JobId : uuid <<FK>>
+  CompanyId : uuid <<FK>>
+  Version : int
+  Status : varchar
+}
+entity JobPostingPackage {
+  * PackageId : uuid <<PK>>
+  --
+  Code : varchar
+  Price : numeric
+  MaxApplications : int
+}
+entity JobPostingFee {
+  * PostingFeeId : uuid <<PK>>
+  --
+  JobId : uuid <<FK>>
+  PackageId : uuid <<FK>>
+  CompanyId : uuid <<FK>>
+  Amount : numeric
+  Status : varchar
+  PaymentReference : varchar
+}
+Company ||--o{ CompanyUser : CompanyId
+AppUser ||--o{ CompanyUser : UserId
+Company ||--o{ Job : CompanyId
+ServiceType ||--o{ Job : ServiceTypeId
+AppUser ||--o{ Job : CreatedBy
+Job ||--o{ JobRequirement : JobId
+Job ||--o{ ServiceAgreement : JobId
+Company ||--o{ ServiceAgreement : CompanyId
+Job ||--o{ JobPostingFee : JobId
+JobPostingPackage ||--o{ JobPostingFee : PackageId
+Company ||--o{ JobPostingFee : CompanyId
+@enduml

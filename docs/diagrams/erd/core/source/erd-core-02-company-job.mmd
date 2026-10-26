@@ -1,0 +1,77 @@
+---
+title: Core ERD 02 - Company and job publishing
+config:
+  layout: elk
+---
+erDiagram
+  Company {
+    uuid CompanyId PK
+    varchar CompanyName
+    varchar TaxCode
+    varchar VerificationStatus
+  }
+  CompanyUser {
+    uuid CompanyUserId PK
+    uuid CompanyId FK
+    uuid UserId FK
+    boolean IsPrimaryContact
+  }
+  AppUser {
+    uuid UserId PK
+    varchar Email
+    varchar Status
+  }
+  ServiceType {
+    uuid ServiceTypeId PK
+    varchar Code
+  }
+  Job {
+    uuid JobId PK
+    uuid CompanyId FK
+    uuid ServiceTypeId FK
+    uuid CreatedBy FK
+    varchar Title
+    varchar Status
+    int Quantity
+    numeric FeeMultiplier
+    int WarrantyDays
+    int SourcingTarget
+  }
+  JobRequirement {
+    uuid RequirementId PK
+    uuid JobId FK
+    varchar RequirementType
+  }
+  ServiceAgreement {
+    uuid ServiceAgreementId PK
+    uuid JobId FK
+    uuid CompanyId FK
+    int Version
+    varchar Status
+  }
+  JobPostingPackage {
+    uuid PackageId PK
+    varchar Code
+    numeric Price
+    int MaxApplications
+  }
+  JobPostingFee {
+    uuid PostingFeeId PK
+    uuid JobId FK
+    uuid PackageId FK
+    uuid CompanyId FK
+    numeric Amount
+    varchar Status
+    varchar PaymentReference
+  }
+  Company ||--o{ CompanyUser : "CompanyId"
+  AppUser ||--o{ CompanyUser : "UserId"
+  Company ||--o{ Job : "CompanyId"
+  ServiceType ||--o{ Job : "ServiceTypeId"
+  AppUser ||--o{ Job : "CreatedBy"
+  Job ||--o{ JobRequirement : "JobId"
+  Job ||--o{ ServiceAgreement : "JobId"
+  Company ||--o{ ServiceAgreement : "CompanyId"
+  Job ||--o{ JobPostingFee : "JobId"
+  JobPostingPackage ||--o{ JobPostingFee : "PackageId"
+  Company ||--o{ JobPostingFee : "CompanyId"

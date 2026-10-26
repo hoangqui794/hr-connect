@@ -1,0 +1,95 @@
+---
+title: Core ERD 04 - Screening, interview, offer and placement
+config:
+  layout: elk
+---
+erDiagram
+  Job {
+    uuid JobId PK
+    uuid CompanyId FK
+    uuid ServiceTypeId FK
+    uuid CreatedBy FK
+    varchar Title
+    varchar Status
+    int Quantity
+    numeric FeeMultiplier
+    int WarrantyDays
+    int SourcingTarget
+  }
+  Candidate {
+    uuid CandidateId PK
+    uuid UserId FK
+    varchar NormalizedEmail
+    varchar NormalizedPhone
+    varchar Status
+  }
+  Application {
+    uuid ApplicationId PK
+    uuid JobId FK
+    uuid CandidateId FK
+    uuid ReplacementSlotId FK
+    varchar Status
+  }
+  ApplicationStatusHistory {
+    uuid ApplicationStatusHistoryId PK
+    uuid ApplicationId FK
+    varchar OldStatus
+    varchar NewStatus
+    varchar ReasonCode
+  }
+  AiMatchResult {
+    uuid MatchResultId PK
+    uuid ApplicationId FK
+    numeric MatchScore
+    varchar MatchTier
+    varchar Status
+  }
+  SourcingDelivery {
+    uuid DeliveryId PK
+    uuid JobId FK
+    uuid ApplicationId FK
+    varchar Status
+    timestamptz ReviewDueAt
+  }
+  Interview {
+    uuid InterviewId PK
+    uuid ApplicationId FK
+    uuid CreatedBy FK
+    timestamptz ScheduledAt
+    varchar Status
+    varchar Result
+  }
+  Offer {
+    uuid OfferId PK
+    uuid ApplicationId FK
+    uuid CreatedBy FK
+    numeric Salary
+    varchar Status
+  }
+  Placement {
+    uuid PlacementId PK
+    uuid ApplicationId FK
+    uuid OfferId FK
+    uuid ReplacementSlotId FK
+    date ActualStartDate
+    varchar Status
+  }
+  PlacementReconciliation {
+    uuid ReconciliationId PK
+    uuid ApplicationId FK
+    uuid PlacementId FK
+    varchar ClaimedOutcome
+    varchar Status
+  }
+  Job ||--o{ Application : "JobId"
+  Candidate ||--o{ Application : "CandidateId"
+  Application ||--o{ ApplicationStatusHistory : "ApplicationId"
+  Application ||--o{ AiMatchResult : "ApplicationId"
+  Job ||--o{ SourcingDelivery : "JobId"
+  Application ||--o{ SourcingDelivery : "ApplicationId"
+  Application ||--o{ Interview : "ApplicationId"
+  Application ||--o{ Offer : "ApplicationId"
+  Application ||--o{ Placement : "ApplicationId"
+  Offer ||--o{ Placement : "OfferId"
+  Application ||--o{ PlacementReconciliation : "ApplicationId"
+  Placement ||--o{ PlacementReconciliation : "PlacementId"

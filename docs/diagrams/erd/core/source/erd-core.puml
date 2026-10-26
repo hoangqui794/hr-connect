@@ -1,9 +1,7 @@
 @startuml erd-core
-title HR Connect – Core ERD (32 main tables)
+title HR Connect - Core ERD (32 main tables)
 hide circle
 skinparam linetype ortho
-skinparam class { BackgroundColor #FDFDFE
- BorderColor #1B365D }
 entity AppUser {
   * UserId : uuid <<PK>>
   --

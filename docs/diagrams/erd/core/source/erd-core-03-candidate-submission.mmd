@@ -1,0 +1,85 @@
+---
+title: Core ERD 03 - Candidate, submission and attribution
+config:
+  layout: elk
+---
+erDiagram
+  Candidate {
+    uuid CandidateId PK
+    uuid UserId FK
+    varchar NormalizedEmail
+    varchar NormalizedPhone
+    varchar Status
+  }
+  CandidateCv {
+    uuid CvId PK
+    uuid CandidateId FK
+    varchar Status
+  }
+  AffiliateProfile {
+    uuid AffiliateId PK
+    uuid UserId FK
+    varchar Status
+  }
+  Job {
+    uuid JobId PK
+    uuid CompanyId FK
+    uuid ServiceTypeId FK
+    uuid CreatedBy FK
+    varchar Title
+    varchar Status
+    int Quantity
+    numeric FeeMultiplier
+    int WarrantyDays
+    int SourcingTarget
+  }
+  Submission {
+    uuid SubmissionId PK
+    uuid CandidateId FK
+    uuid CvId FK
+    uuid JobId FK
+    uuid SubmittedBy FK
+    uuid ReplacementSlotId FK
+    varchar Source
+    varchar Status
+  }
+  SubmissionConsent {
+    uuid ConsentId PK
+    uuid SubmissionId FK
+    varchar Status
+    timestamptz ExpiresAt
+  }
+  Application {
+    uuid ApplicationId PK
+    uuid JobId FK
+    uuid CandidateId FK
+    uuid ReplacementSlotId FK
+    varchar Status
+  }
+  Attribution {
+    uuid AttributionId PK
+    uuid ApplicationId FK
+    uuid AffiliateId FK
+    varchar Status
+  }
+  Dispute {
+    uuid DisputeId PK
+    uuid SubmissionId FK
+    uuid AttributionId FK
+    uuid CommissionId FK
+    uuid RaisedBy FK
+    varchar DisputeType
+    varchar Status
+    varchar Resolution
+  }
+  Candidate ||--o{ CandidateCv : "CandidateId"
+  Candidate ||--o{ Submission : "CandidateId"
+  CandidateCv ||--o{ Submission : "CvId"
+  Job ||--o{ Submission : "JobId"
+  Submission ||--o{ SubmissionConsent : "SubmissionId"
+  Job ||--o{ Application : "JobId"
+  Candidate ||--o{ Application : "CandidateId"
+  Application ||--o{ Attribution : "ApplicationId"
+  AffiliateProfile ||--o{ Attribution : "AffiliateId"
+  Submission ||--o{ Dispute : "SubmissionId"
+  Attribution ||--o{ Dispute : "AttributionId"

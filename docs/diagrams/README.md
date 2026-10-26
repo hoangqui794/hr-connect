@@ -8,7 +8,10 @@ Thư mục này lưu toàn bộ sơ đồ chính thức dùng trong SRS, SDD, De
 diagrams/
 ├── context/            # Context diagram: actor và hệ thống bên ngoài
 ├── architecture/       # System overview, component và deployment
-├── erd/                # Conceptual data model và logical ERD
+├── erd/
+│   ├── full/           # Logical ERD đầy đủ 71 bảng (overview + 5 nhóm, mọi cột)
+│   └── core/           # Core ERD 32 bảng chính + 5 nhóm, chỉ PK/FK và cột nghiệp vụ chính
+├── activity/           # Activity diagram MF-01..MF-04 dùng trong Report 3 (draw.io)
 ├── state-machines/     # Vòng đời của các thực thể chính
 ├── workflows/          # Activity diagram của các main workflow
 ├── sequences/          # Sequence diagram khi cần mô tả tương tác API

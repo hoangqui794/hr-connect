@@ -1,0 +1,110 @@
+@startuml erd-core-05-finance
+title Core ERD 05 - Warranty, fees, commission and payout
+hide circle
+skinparam linetype ortho
+entity Job #EEEEEE {
+  * JobId : uuid <<PK>>
+  --
+  CompanyId : uuid <<FK>>
+  ServiceTypeId : uuid <<FK>>
+  CreatedBy : uuid <<FK>>
+  Title : varchar
+  Status : varchar
+  Quantity : int
+  FeeMultiplier : numeric
+  WarrantyDays : int
+  SourcingTarget : int
+}
+entity Placement #EEEEEE {
+  * PlacementId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  OfferId : uuid <<FK>>
+  ReplacementSlotId : uuid <<FK>>
+  ActualStartDate : date
+  Status : varchar
+}
+entity Attribution #EEEEEE {
+  * AttributionId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  AffiliateId : uuid <<FK>>
+  Status : varchar
+}
+entity Warranty {
+  * WarrantyId : uuid <<PK>>
+  --
+  PlacementId : uuid <<FK>>
+  EndDate : date
+  Status : varchar
+}
+entity ServiceFee {
+  * ServiceFeeId : uuid <<PK>>
+  --
+  PlacementId : uuid <<FK>>
+  JobId : uuid <<FK>>
+  CompanyId : uuid <<FK>>
+  Amount : numeric
+  DueDate : date
+  Status : varchar
+}
+entity ReplacementSlot {
+  * ReplacementSlotId : uuid <<PK>>
+  --
+  JobId : uuid <<FK>>
+  OriginalPlacementId : uuid <<FK>>
+  ServiceFeeId : uuid <<FK>>
+  FilledByPlacementId : uuid <<FK>>
+  CreatedBy : uuid <<FK>>
+  Status : varchar
+  ExpiresAt : timestamptz
+}
+entity CommissionRule {
+  * CommissionRuleId : uuid <<PK>>
+  --
+  ServiceTypeId : uuid <<FK>>
+  RateType : varchar
+  RateValue : numeric
+}
+entity Commission {
+  * CommissionId : uuid <<PK>>
+  --
+  AttributionId : uuid <<FK>>
+  PlacementId : uuid <<FK>>
+  CommissionRuleId : uuid <<FK>>
+  Amount : numeric
+  Status : varchar
+}
+entity Payout {
+  * PayoutId : uuid <<PK>>
+  --
+  CommissionId : uuid <<FK>>
+  Amount : numeric
+  Status : varchar
+}
+entity Dispute {
+  * DisputeId : uuid <<PK>>
+  --
+  SubmissionId : uuid <<FK>>
+  AttributionId : uuid <<FK>>
+  CommissionId : uuid <<FK>>
+  RaisedBy : uuid <<FK>>
+  DisputeType : varchar
+  Status : varchar
+  Resolution : varchar
+}
+ReplacementSlot ||--o{ Placement : ReplacementSlotId
+Placement ||--o{ Warranty : PlacementId
+Placement ||--o{ ServiceFee : PlacementId
+Job ||--o{ ServiceFee : JobId
+Job ||--o{ ReplacementSlot : JobId
+Placement ||--o{ ReplacementSlot : OriginalPlacementId
+ServiceFee ||--o{ ReplacementSlot : ServiceFeeId
+Placement ||--o{ ReplacementSlot : FilledByPlacementId
+Attribution ||--o{ Commission : AttributionId
+Placement ||--o{ Commission : PlacementId
+CommissionRule ||--o{ Commission : CommissionRuleId
+Commission ||--o{ Payout : CommissionId
+Attribution ||--o{ Dispute : AttributionId
+Commission ||--o{ Dispute : CommissionId
+@enduml
