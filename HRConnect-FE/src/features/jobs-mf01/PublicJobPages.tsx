@@ -118,7 +118,7 @@ export const AffiliateJobDetailPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <Link to="/affiliate/jobs" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-violet-700">
+      <Link to="/affiliate/jobs" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-blue-700">
         <ArrowLeftOutlined aria-hidden /> Quay lại cơ hội tuyển dụng
       </Link>
       <header className="affiliate-page-header">

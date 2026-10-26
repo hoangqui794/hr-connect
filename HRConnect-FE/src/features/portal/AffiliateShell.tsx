@@ -1,6 +1,6 @@
 /**
  * @file AffiliateShell.tsx
- * @description Affiliate workspace (MF-02 branch B): light sidebar, violet accent.
+ * @description Affiliate workspace (MF-02 branch B): light sidebar, blue primary accent.
  * Derived from HrLayout: same off-canvas menu below lg, loading feedback and Escape handling.
  */
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
@@ -115,7 +115,7 @@ export const AffiliateShell: React.FC = () => {
   const width = collapsed ? 76 : 236;
 
   return (
-    <div className="affiliate-console min-h-screen bg-[#F7F5FC] text-slate-900">
+    <div className="affiliate-console min-h-screen bg-slate-50 text-slate-900">
       {/* ── Sidebar (light) ─────────────────────────────────────────────── */}
       {compact && menuOpen && (
         <div className="fixed inset-0 z-[25] bg-slate-900/40" onClick={() => setMenuOpen(false)} aria-hidden />
@@ -134,7 +134,7 @@ export const AffiliateShell: React.FC = () => {
           {!collapsed && (
             <div className="min-w-0 leading-tight">
               <div className="truncate text-[15px] font-bold text-white">HR Connect</div>
-              <div className="text-[11px] font-medium tracking-wide text-violet-200">Cộng tác viên tuyển dụng</div>
+              <div className="text-[11px] font-medium tracking-wide text-blue-200">Cộng tác viên tuyển dụng</div>
             </div>
           )}
         </div>
