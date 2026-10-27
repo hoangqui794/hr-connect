@@ -95,7 +95,7 @@ export interface RecruitmentApplicationItem {
 export interface RecruitmentApplicationSearchParams {
   /** One status, or several separated by commas. */
   status?: string;
-  /** CV_APPLICATION, HEADHUNT_COD or CV_SOURCING. */
+  /** CV_APPLICATION, HEADHUNT_COD or CV_SOURCING; several separated by commas. */
   serviceTypeCode?: string;
   candidateName?: string;
   jobId?: string;
