@@ -314,32 +314,32 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-5 text-xs sm:text-sm">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-400">
               <button
                 type="button"
                 onClick={() => navigate('/jobs')}
-                className="text-slate-400 hover:text-white transition-colors cursor-pointer bg-transparent border-0 p-0"
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer bg-transparent border-0 p-0 whitespace-nowrap"
               >
                 Tìm việc làm
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/cv-builder')}
-                className="text-slate-400 hover:text-white transition-colors cursor-pointer bg-transparent border-0 p-0"
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer bg-transparent border-0 p-0 whitespace-nowrap"
               >
                 Tạo CV AI
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/register?role=CLIENT')}
-                className="text-slate-400 hover:text-white transition-colors cursor-pointer bg-transparent border-0 p-0"
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer bg-transparent border-0 p-0 whitespace-nowrap"
               >
                 Đăng tin tuyển dụng
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/register?role=AFFILIATE')}
-                className="text-slate-400 hover:text-white transition-colors cursor-pointer bg-transparent border-0 p-0"
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer bg-transparent border-0 p-0 whitespace-nowrap"
               >
                 Trở thành Affiliate
               </button>

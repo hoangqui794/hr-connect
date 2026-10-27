@@ -71,7 +71,7 @@ const CATEGORIES: CategoryItem[] = [
     jobCount: '3.608+ việc làm',
     icon: Calculator,
     iconBg: 'bg-[#f2f3ff]',
-    iconColor: 'text-[#3e4943]',
+    iconColor: 'text-[#007a5a]',
     hoverColor: 'group-hover:text-[#007a5a]',
     queryParam: 'ACCOUNTING',
   },
@@ -115,19 +115,19 @@ export const TopCategoriesGrid: React.FC = () => {
   };
 
   return (
-    <section className="bg-slate-50/70 border-b border-slate-200/80 py-10 md:py-12">
+    <section className="bg-[#faf8ff] border-b border-slate-200/80 py-10 md:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
           <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#007a5a] mb-1.5">
-              <Sparkles className="h-3.5 w-3.5" />
+            <div className="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-200/60 text-xs font-bold uppercase tracking-wider text-blue-700 px-3 py-1 rounded-full mb-2">
+              <Sparkles className="h-3.5 w-3.5 text-blue-600" />
               <span>Khám phá cơ hội nghề nghiệp</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#131b2e] m-0">
               Top ngành nghề trọng điểm
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 mb-0">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1.5 mb-0">
               Tìm kiếm công việc lý tưởng theo từng nhóm ngành nghề phát triển mạnh nhất năm 2026
             </p>
           </div>
@@ -135,14 +135,14 @@ export const TopCategoriesGrid: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/jobs')}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#007a5a] hover:text-[#005f45] transition-colors cursor-pointer self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer self-start sm:self-auto bg-transparent border-0 p-0"
           >
             <span>Xem tất cả ngành nghề</span>
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Categories Grid (Soft Color Tokens from DESIGN.md) */}
+        {/* Categories Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {CATEGORIES.map((cat) => {
             const IconComponent = cat.icon;
@@ -150,19 +150,19 @@ export const TopCategoriesGrid: React.FC = () => {
               <div
                 key={cat.id}
                 onClick={() => handleCategoryClick(cat.queryParam)}
-                className="bg-white rounded-xl border border-slate-200/90 hover:border-[#79d9b2] hover:shadow-lg transition-all duration-300 p-4 sm:p-5 flex flex-col justify-between cursor-pointer group hover:-translate-y-0.5"
+                className="bg-white rounded-xl border border-slate-200/80 hover:border-blue-300 shadow-xs hover:shadow-xl transition-all duration-300 p-4 sm:p-5 flex flex-col justify-between cursor-pointer group hover:-translate-y-1"
               >
                 <div>
                   {/* Icon with Soft Tinted Color */}
                   <div
-                    className={`${cat.iconBg} ${cat.iconColor} p-2.5 rounded-xl flex items-center justify-center w-11 h-11 transition-transform duration-200 group-hover:scale-110 shadow-2xs`}
+                    className={`${cat.iconBg} ${cat.iconColor} p-2.5 rounded-xl flex items-center justify-center w-12 h-12 transition-transform duration-200 group-hover:scale-110 shadow-2xs`}
                   >
                     <IconComponent className="h-5 w-5" strokeWidth={1.75} />
                   </div>
 
                   {/* Tên ngành */}
                   <h3
-                    className={`text-[#131b2e] font-bold text-sm sm:text-base ${cat.hoverColor} transition-colors mt-3 mb-0 line-clamp-1`}
+                    className="text-[#131b2e] font-bold text-sm sm:text-base group-hover:text-blue-600 transition-colors mt-3.5 mb-0 line-clamp-1"
                   >
                     {cat.name}
                   </h3>
@@ -173,7 +173,7 @@ export const TopCategoriesGrid: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="mt-3.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-400 group-hover:text-[#007a5a] transition-colors">
+                <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-400 group-hover:text-blue-600 transition-colors">
                   <span>Khám phá ngay</span>
                   <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                 </div>
@@ -187,3 +187,4 @@ export const TopCategoriesGrid: React.FC = () => {
 };
 
 export default TopCategoriesGrid;
+

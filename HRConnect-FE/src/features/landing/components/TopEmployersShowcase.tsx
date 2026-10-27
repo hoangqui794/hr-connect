@@ -96,21 +96,23 @@ export const TopEmployersShowcase: React.FC = () => {
   );
 
   return (
-    <section className="bg-slate-50/60 py-10 md:py-12 border-b border-slate-200/80">
+    <section className="bg-[#faf8ff] py-10 md:py-12 border-b border-slate-200/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Banner Vàng Kim / Đồng Sang Trọng Chuẩn TopCV Pro */}
-        <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-900 text-white rounded-2xl p-6 sm:p-7 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-lg relative overflow-hidden">
-          <div className="pointer-events-none absolute -right-8 -bottom-8 h-44 w-44 rounded-full bg-yellow-400/20 blur-2xl" />
+        {/* Banner Đối tác Tuyển dụng Chiến lược - Tone Sáng & Trang Nhã Chuẩn DESIGN.md */}
+        <div className="bg-gradient-to-r from-blue-50/80 via-white to-indigo-50/80 border border-slate-200/90 rounded-2xl p-6 sm:p-7 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm relative overflow-hidden">
+          {/* Subtle Ambient Glows */}
+          <div className="pointer-events-none absolute -right-6 -bottom-6 h-40 w-40 rounded-full bg-blue-200/30 blur-2xl" />
+          <div className="pointer-events-none absolute top-0 left-1/3 h-32 w-32 rounded-full bg-indigo-200/40 blur-2xl" />
 
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-200 mb-1">
-              <Sparkles className="h-3.5 w-3.5" />
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-50/90 border border-blue-200/60 px-3 py-1 rounded-full mb-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-blue-600" />
               <span>Đối tác tuyển dụng chiến lược</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white m-0">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#131b2e] m-0">
               Thương hiệu lớn tiêu biểu
             </h2>
-            <p className="mt-1 text-xs sm:text-sm text-amber-100 m-0">
+            <p className="mt-1.5 text-xs sm:text-sm text-slate-600 m-0 leading-relaxed max-w-2xl font-normal">
               Hàng trăm thương hiệu doanh nghiệp uy tín hàng đầu đang tuyển dụng trên HR Connect Pro
             </p>
           </div>
@@ -118,13 +120,13 @@ export const TopEmployersShowcase: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/jobs')}
-            className="relative z-10 shrink-0 bg-gradient-to-r from-amber-200 to-yellow-400 hover:from-amber-100 hover:to-yellow-300 text-amber-950 font-extrabold px-6 py-2.5 rounded-xl text-sm shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            className="relative z-10 shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm shadow-sm hover:shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer border-0"
           >
             Pro Company ⭐
           </button>
         </div>
 
-        {/* Filter Category Chips */}
+        {/* Filter Category Chips (Đồng bộ Brand Primary Blue) */}
         <div className="flex flex-wrap items-center gap-2 mb-6">
           {CATEGORY_TABS.map((tab) => {
             const isActive = selectedCat === tab.id;
@@ -135,8 +137,8 @@ export const TopEmployersShowcase: React.FC = () => {
                 onClick={() => setSelectedCat(tab.id as any)}
                 className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-amber-800 text-white shadow-2xs'
-                    : 'bg-white border border-slate-200 text-slate-700 hover:border-amber-300 hover:bg-amber-50/50'
+                    ? 'bg-blue-600 text-white shadow-sm border-0'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-blue-50/50'
                 }`}
               >
                 {tab.label}
@@ -151,29 +153,41 @@ export const TopEmployersShowcase: React.FC = () => {
             <div
               key={emp.id}
               onClick={() => navigate(`/jobs?company=${encodeURIComponent(emp.name)}`)}
-              className="bg-white rounded-xl border border-slate-200 hover:border-amber-400 hover:shadow-lg transition-all p-5 flex flex-col items-center text-center cursor-pointer group hover:scale-[1.02]"
+              className="bg-white rounded-xl border border-slate-200/80 hover:border-blue-300 shadow-xs hover:shadow-xl transition-all duration-300 p-5 flex flex-col items-center text-center cursor-pointer group hover:-translate-y-1"
             >
-              {/* Logo to rõ ràng ở giữa */}
-              <div className="w-16 h-16 rounded-xl border border-slate-200 p-2 flex items-center justify-center bg-white shadow-2xs mb-3 group-hover:scale-110 transition-transform">
-                <CompanyLogo id={emp.companyId} name={emp.name} size={44} />
+              {/* Logo to rõ ràng ở giữa trong squircle container mở rộng */}
+              <div className="w-16 h-16 rounded-xl border border-slate-200 p-2 flex items-center justify-center bg-slate-50 shadow-2xs mb-3 group-hover:scale-105 transition-transform overflow-hidden">
+                <CompanyLogo id={emp.companyId} name={emp.name} size={48} className="w-full h-full object-contain" />
               </div>
 
               {/* Tên công ty */}
-              <h3 className="text-sm font-bold text-slate-900 group-hover:text-amber-700 transition-colors line-clamp-1 m-0">
+              <h3 className="text-sm font-bold text-[#131b2e] group-hover:text-blue-600 transition-colors line-clamp-1 m-0">
                 {emp.name}
               </h3>
 
               {/* Lĩnh vực */}
-              <p className="text-xs text-slate-500 line-clamp-1 mt-0.5 mb-0 font-medium">
+              <p className="text-xs text-slate-500 line-clamp-1 mt-1 mb-0 font-medium">
                 {emp.industry}
               </p>
 
-              {/* Số lượng vị trí */}
-              <span className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full mt-3">
+              {/* Số lượng vị trí - Tone nhẹ nhàng tinh tế */}
+              <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-3.5 py-1 rounded-full mt-3.5 group-hover:bg-blue-100/70 transition-colors">
                 Đang tuyển {emp.activeJobs} vị trí
               </span>
             </div>
           ))}
+        </div>
+
+        {/* Khám phá 500+ doanh nghiệp link */}
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={() => navigate('/jobs')}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer bg-transparent border-0 p-0"
+          >
+            <span>Khám phá 500+ doanh nghiệp hàng đầu</span>
+            <ArrowRight className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </section>
@@ -181,3 +195,4 @@ export const TopEmployersShowcase: React.FC = () => {
 };
 
 export default TopEmployersShowcase;
+

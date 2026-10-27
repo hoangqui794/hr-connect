@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Heart,
   ArrowRight,
-  Flame,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { message } from 'antd';
@@ -204,7 +203,7 @@ export const FeaturedJobsGrid: React.FC = () => {
             </p>
           </div>
 
-          {/* Segment Tabs (Chuẩn code.html lines 194-200) */}
+          {/* Segment Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
             {SEGMENT_TABS.map((tab) => {
               const isActive = selectedTab === tab.id;
@@ -213,9 +212,9 @@ export const FeaturedJobsGrid: React.FC = () => {
                   key={tab.id}
                   type="button"
                   onClick={() => setSelectedTab(tab.id)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer border-0 ${
                     isActive
-                      ? 'bg-[#007a5a] text-white shadow-sm'
+                      ? 'bg-blue-600 text-white shadow-sm'
                       : 'bg-[#f2f3ff] hover:bg-[#eaedff] text-slate-700'
                   }`}
                 >
@@ -226,7 +225,7 @@ export const FeaturedJobsGrid: React.FC = () => {
           </div>
         </div>
 
-        {/* Job Cards Grid (Chuẩn code.html lines 204-432) */}
+        {/* Job Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredJobs.map((job) => {
             const isSaved = savedJobIds.has(job.id);
@@ -234,14 +233,14 @@ export const FeaturedJobsGrid: React.FC = () => {
               <div
                 key={job.id}
                 onClick={() => navigate(`/jobs/${job.id}`)}
-                className="bg-white rounded-xl p-5 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group border border-slate-200/90 hover:border-[#79d9b2] hover:-translate-y-0.5 cursor-pointer relative"
+                className="bg-white rounded-xl p-5 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group border border-slate-200/80 hover:border-blue-300 hover:-translate-y-1 cursor-pointer relative"
               >
                 <div>
-                  {/* Top Row: Real Vector Logo + Badge + Bookmark */}
-                  <div className="flex items-start justify-between gap-3 mb-2.5">
-                    {/* Logo Squircle Box */}
-                    <div className="w-12 h-12 rounded-xl bg-[#f2f3ff] border border-slate-200/70 p-1 flex items-center justify-center font-bold text-[#007a5a] shadow-2xs shrink-0 overflow-hidden">
-                      <CompanyLogo id={job.companyId} name={job.company} size={36} />
+                  {/* Top Row: Real Vector Logo (w-12 h-12 p-2) + Badge + Bookmark */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    {/* Logo Squircle Box rộng rãi, sắc nét */}
+                    <div className="w-12 h-12 rounded-xl p-2 bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                      <CompanyLogo id={job.companyId} name={job.company} size={40} className="w-full h-full object-contain" />
                     </div>
 
                     {/* Badges & Bookmark */}
@@ -261,7 +260,7 @@ export const FeaturedJobsGrid: React.FC = () => {
                           return (
                             <span
                               key={badge}
-                              className="inline-flex items-center gap-1 bg-[#95f5ce] text-[#002116] font-bold text-[11px] px-2 py-0.5 rounded-full"
+                              className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-bold text-[11px] px-2.5 py-0.5 rounded-full"
                             >
                               Tuyển gấp
                             </span>
@@ -282,10 +281,10 @@ export const FeaturedJobsGrid: React.FC = () => {
                         type="button"
                         aria-label="Lưu việc làm"
                         onClick={(e) => handleToggleSave(e, job.id, job.title)}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer border-0 ${
                           isSaved
                             ? 'text-rose-500 bg-rose-50'
-                            : 'text-slate-400 hover:text-rose-500 hover:bg-slate-100'
+                            : 'text-slate-400 hover:text-rose-500 hover:bg-[#f2f3ff]'
                         }`}
                         title="Lưu việc làm"
                       >
@@ -299,7 +298,7 @@ export const FeaturedJobsGrid: React.FC = () => {
                   </div>
 
                   {/* Job Title */}
-                  <h3 className="font-bold text-base text-[#131b2e] group-hover:text-[#007a5a] transition-colors line-clamp-1 mb-1 m-0">
+                  <h3 className="font-bold text-base text-[#131b2e] group-hover:text-blue-600 transition-colors line-clamp-1 mb-1 m-0">
                     {job.title}
                   </h3>
 
@@ -308,28 +307,28 @@ export const FeaturedJobsGrid: React.FC = () => {
                     {job.company}
                   </p>
 
-                  {/* Salary Chip (Chuẩn code.html line 225) */}
+                  {/* Salary Chip (Giữ màu xanh lá duy nhất cho Mức lương) */}
                   <div className="flex items-center gap-2 mb-2.5">
-                    <span className="font-bold text-sm text-[#005f45] bg-[#95f5ce]/40 px-2.5 py-1 rounded-md inline-block">
+                    <span className="font-bold text-sm text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-md inline-block">
                       {job.salaryText}
                     </span>
                   </div>
 
                   {/* Metadata Chips */}
                   <div className="flex flex-wrap gap-1.5 mb-3">
-                    <span className="text-xs bg-[#f2f3ff] text-slate-700 px-2 py-1 rounded-md font-medium">
+                    <span className="text-xs bg-[#f2f3ff] text-slate-700 px-2 py-1 rounded font-medium">
                       {job.location}
                     </span>
-                    <span className="text-xs bg-[#f2f3ff] text-slate-700 px-2 py-1 rounded-md font-medium">
+                    <span className="text-xs bg-[#f2f3ff] text-slate-700 px-2 py-1 rounded font-medium">
                       {job.experience}
                     </span>
-                    <span className="text-xs bg-[#f2f3ff] text-slate-700 px-2 py-1 rounded-md font-medium">
+                    <span className="text-xs bg-[#f2f3ff] text-slate-700 px-2 py-1 rounded font-medium">
                       Phúc lợi tốt
                     </span>
                   </div>
                 </div>
 
-                {/* Bottom Row */}
+                {/* Bottom Row - Nút Ứng tuyển ngay màu Brand Primary Blue */}
                 <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-xs text-slate-400 font-medium">
                     Đăng {job.postedTime}
@@ -337,7 +336,7 @@ export const FeaturedJobsGrid: React.FC = () => {
                   <button
                     type="button"
                     onClick={(e) => handleApplyQuick(e, job.id)}
-                    className="bg-[#007a5a] hover:bg-[#005f45] text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-all active:scale-95 shadow-2xs cursor-pointer"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-sm transition-all active:scale-[0.98] cursor-pointer border-0"
                   >
                     Ứng tuyển ngay
                   </button>
@@ -347,12 +346,12 @@ export const FeaturedJobsGrid: React.FC = () => {
           })}
         </div>
 
-        {/* View All Button (Chuẩn code.html lines 434-439) */}
+        {/* View All Button */}
         <div className="mt-8 text-center">
           <button
             type="button"
             onClick={() => navigate('/jobs')}
-            className="inline-flex items-center gap-2 bg-[#eaedff] hover:bg-[#dae2fd] text-[#131b2e] font-semibold text-sm px-6 py-2.5 rounded-xl transition-all shadow-2xs cursor-pointer"
+            className="inline-flex items-center gap-2 bg-[#eaedff] hover:bg-blue-100/70 text-slate-800 hover:text-blue-700 font-semibold text-sm px-6 py-2.5 rounded-xl transition-all shadow-2xs cursor-pointer border-0"
           >
             <span>Xem tất cả 45,210 việc làm đang mở</span>
             <ArrowRight className="h-4 w-4" />
@@ -364,3 +363,4 @@ export const FeaturedJobsGrid: React.FC = () => {
 };
 
 export default FeaturedJobsGrid;
+
