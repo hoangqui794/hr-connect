@@ -516,8 +516,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
 
       {isApplicant && job.company && <JobCompanyCard company={job.company} />}
 
-      {/* ── Thông tin dịch vụ & Phí đăng tin (CHỈ hiển thị cho Doanh nghiệp & Quản trị/HR, KHÔNG hiển thị cho Ứng viên) ── */}
-      {!isApplicant && job.serviceTypeCode === 'CV_APPLICATION' && (
+      {/* ── Thông tin dịch vụ & Phí đăng tin (CHỈ hiển thị cho Doanh nghiệp, KHÔNG hiển thị khi Internal HR duyệt hay cho Ứng viên) ── */}
+      {!isApplicant && !isInternalReview && job.serviceTypeCode === 'CV_APPLICATION' && (
         <section aria-label="Gói dịch vụ tuyển dụng" className="rounded-xl border border-solid border-slate-200/90 bg-slate-50/60 p-4 space-y-3.5">
           <div className="flex flex-wrap items-center justify-between gap-2 border-0 border-b border-solid border-slate-200/70 pb-3">
             <div className="flex items-center gap-2">

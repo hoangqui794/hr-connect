@@ -229,6 +229,7 @@ export const VerifyOtpPage: React.FC = () => {
 
   return (
     <AuthPageShell
+      wide={approvalPending}
       eyebrow="Bảo vệ tài khoản"
       title={approvalPending ? 'Hồ sơ đã được gửi xét duyệt' : 'Xác thực email của bạn'}
       description={approvalPending ? 'Bạn đã hoàn tất bước xác thực email. Hệ thống sẽ thông báo khi hồ sơ được duyệt.' : 'Nhập mã gồm 6 chữ số trong email để hoàn tất bước đăng ký.'}
@@ -262,8 +263,19 @@ export const VerifyOtpPage: React.FC = () => {
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Button size="large" onClick={() => navigate('/')} className="h-12 rounded-xl border-slate-300 font-bold">Về trang chủ</Button>
-            <Button type="primary" size="large" onClick={() => navigate(`/login?email=${encodeURIComponent(email)}`)} className="h-12 rounded-xl border-0 bg-blue-600 font-bold hover:!bg-blue-700">Đến trang đăng nhập</Button>
+            <Button
+              onClick={() => navigate('/')}
+              className="!h-11 rounded-xl border-slate-300 !px-3 text-xs sm:text-sm font-semibold text-slate-700 hover:border-slate-400"
+            >
+              Về trang chủ
+            </Button>
+            <Button
+              type="primary"
+              onClick={() => navigate(`/login?email=${encodeURIComponent(email)}`)}
+              className="!h-11 rounded-xl border-0 bg-blue-600 !px-3 text-xs sm:text-sm font-semibold !text-white hover:!bg-blue-700"
+            >
+              Đến trang đăng nhập
+            </Button>
           </div>
         </div>
       ) : (

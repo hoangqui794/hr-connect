@@ -30,6 +30,7 @@ import type { RcFile } from 'antd/es/upload';
 import {
   CheckCircleFilled,
   ClockCircleOutlined,
+  CreditCardOutlined,
   DownloadOutlined,
   EditOutlined,
   EyeOutlined,
@@ -44,12 +45,14 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useQueryClient } from '@tanstack/react-query';
 import { Surface } from '@/features/admin-console/ui';
 import { useAuthStore } from '@/stores/authStore';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { serviceAgreementsApi } from '@/services/api/jobsApi';
 import {
   formatMoney,
+  jobQueryKeys,
   useCurrentServiceAgreement,
   useMyJobs,
   useServiceAgreementHistory,
@@ -58,7 +61,10 @@ import {
   JOB_STATUS,
   SERVICE_AGREEMENT_STATUS,
   SERVICE_TYPE_LABEL,
+  isAwaitingSourcingDeposit,
+  sourcingDepositAmount,
 } from '@/features/jobs-mf01/jobDisplay';
+import { PaymentDemoModal } from '@/features/jobs-mf01/PaymentDemoModal';
 import type { ServiceAgreementDto } from '@/types/api/jobs';
 
 const { Text, Title, Paragraph } = Typography;
@@ -68,6 +74,7 @@ type AgreementTabKey = 'ALL' | 'PENDING_AGREEMENT' | 'PENDING_PAYMENT' | 'ACTIVE
 export const ClientServiceAgreementsPage: React.FC = () => {
   const { message } = AntApp.useApp();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
 
@@ -351,6 +358,28 @@ export const ClientServiceAgreementsPage: React.FC = () => {
     currentAgreement?.status === 'ACCEPTED' ||
     currentAgreement?.status === 'AWAITING_SIGNATURE';
 
+  // Detection of pending deposit (CV_SOURCING) or pending posting fee (CV_APPLICATION)
+  const isAwaitingDeposit = Boolean(
+    activeJob &&
+      (isAwaitingSourcingDeposit(activeJob) ||
+        (activeJob.serviceTypeCode === 'CV_SOURCING' && activeJob.status === 'PENDING_PAYMENT'))
+  );
+  const isAwaitingPostingPayment = Boolean(
+    activeJob && activeJob.status === 'PENDING_PAYMENT' && !isAwaitingDeposit
+  );
+  const isPendingPayment = isAwaitingDeposit || isAwaitingPostingPayment;
+
+  const depositAmount = useMemo(() => {
+    if (activeJob) {
+      const amt = sourcingDepositAmount(activeJob);
+      if (amt) return amt;
+    }
+    if (sourcingEstimatedDeposit) return sourcingEstimatedDeposit;
+    return 6000000;
+  }, [activeJob, sourcingEstimatedDeposit]);
+
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       {/* Top Banner / Hero */}
@@ -609,16 +638,30 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Thao tác phụ duy nhất trên header */}
-                    {isPendingResponse && (
-                      <Button icon={<EditOutlined />} onClick={() => setReviseModalOpen(true)}>
-                        Yêu cầu điều chỉnh
-                      </Button>
-                    )}
+                    {/* Thao tác header: Nút đặt cọc / thanh toán & Yêu cầu điều chỉnh */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {isPendingPayment && (
+                        <Button
+                          type="primary"
+                          icon={<CreditCardOutlined />}
+                          className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm font-semibold h-9"
+                          onClick={() => setPaymentModalOpen(true)}
+                        >
+                          {isAwaitingDeposit
+                            ? `Đặt cọc (${formatMoney(depositAmount, 'VND')})`
+                            : 'Thanh toán phí đăng tin'}
+                        </Button>
+                      )}
+                      {isPendingResponse && (
+                        <Button icon={<EditOutlined />} onClick={() => setReviseModalOpen(true)}>
+                          Yêu cầu điều chỉnh
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Hướng dẫn ngắn gọn */}
-                  {isPendingResponse && !currentAgreement.hasSignedDocument && (
+                  {isPendingResponse && !currentAgreement.hasSignedDocument && !isPendingPayment && (
                     <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-3 flex items-center gap-3 text-sm text-slate-700">
                       <InfoCircleOutlined className="text-indigo-600 text-base shrink-0" />
                       <span>
@@ -627,7 +670,34 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                     </div>
                   )}
 
-                  {isPendingResponse && currentAgreement.hasSignedDocument && (
+                  {/* Banner trạng thái Chờ đặt cọc / Chờ thanh toán */}
+                  {isPendingPayment ? (
+                    <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-4 text-amber-950 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                      <div className="flex items-start gap-3">
+                        <CreditCardOutlined className="text-amber-600 text-xl mt-0.5 shrink-0" />
+                        <div className="space-y-1">
+                          <div className="font-bold text-amber-900 flex items-center gap-2">
+                            {isAwaitingDeposit ? 'Chờ đặt cọc dịch vụ tìm kiếm hồ sơ' : 'Chờ thanh toán phí gói đăng tin'}
+                            <Tag color="warning" className="m-0 font-medium text-xs">Chờ thanh toán</Tag>
+                          </div>
+                          <div className="text-xs text-amber-800 leading-relaxed">
+                            {isAwaitingDeposit
+                              ? `Hợp đồng đã được xác nhận. Quý doanh nghiệp vui lòng nộp tiền cọc (${formatMoney(depositAmount, 'VND')}) để kích hoạt tin tuyển dụng và mở nguồn tìm kiếm hồ sơ.`
+                              : 'Nội dung tin đã được duyệt. Quý doanh nghiệp vui lòng hoàn tất thanh toán phí gói đăng tin để công khai tin tuyển dụng.'}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        type="primary"
+                        size="middle"
+                        icon={<CreditCardOutlined />}
+                        className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-xl shadow-sm font-bold shrink-0 self-start sm:self-center"
+                        onClick={() => setPaymentModalOpen(true)}
+                      >
+                        {isAwaitingDeposit ? 'Đặt cọc ngay' : 'Thanh toán ngay'}
+                      </Button>
+                    </div>
+                  ) : isPendingResponse && currentAgreement.hasSignedDocument ? (
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-emerald-950 text-sm flex items-start gap-3">
                       <CheckCircleFilled className="text-emerald-600 text-lg mt-0.5 shrink-0" />
                       <div className="space-y-1">
@@ -638,7 +708,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  )}
+                  ) : null}
 
                   {currentAgreement.status === 'CHANGE_REQUESTED' && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-amber-900 text-sm flex items-start gap-3">
@@ -730,6 +800,16 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                         {currentAgreement.hasSignedDocument && (
                           <Button icon={<EyeOutlined />} onClick={() => handleViewDocument(currentAgreement, true)}>
                             Xem
+                          </Button>
+                        )}
+                        {isPendingPayment && (
+                          <Button
+                            type="primary"
+                            icon={<CreditCardOutlined />}
+                            className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm font-medium"
+                            onClick={() => setPaymentModalOpen(true)}
+                          >
+                            {isAwaitingDeposit ? 'Đặt cọc' : 'Thanh toán'}
                           </Button>
                         )}
                         {isPendingResponse && (
@@ -960,6 +1040,27 @@ export const ClientServiceAgreementsPage: React.FC = () => {
           </Upload.Dragger>
         </div>
       </Modal>
+
+      {/* Modal: Thanh toán / Đặt cọc dịch vụ */}
+      {activeJob && (
+        <PaymentDemoModal
+          open={paymentModalOpen}
+          jobId={activeJob.jobId}
+          jobTitle={activeJob.title}
+          isDeposit={isAwaitingDeposit}
+          depositAmount={depositAmount}
+          serviceTypeCode={activeJob.serviceTypeCode}
+          onClose={() => setPaymentModalOpen(false)}
+          onPaymentSuccess={async () => {
+            setPaymentModalOpen(false);
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: jobQueryKeys.all }),
+              refetchCurrent(),
+              refetchHistory(),
+            ]);
+          }}
+        />
+      )}
     </div>
   );
 };
