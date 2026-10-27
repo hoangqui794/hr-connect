@@ -848,7 +848,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           <Button
                             type={currentAgreement.hasSignedDocument ? 'default' : 'primary'}
                             icon={<UploadOutlined />}
-                            className={currentAgreement.hasSignedDocument ? '' : 'bg-indigo-600 hover:bg-indigo-500 font-medium'}
+                            className={currentAgreement.hasSignedDocument ? '' : '!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium'}
                             onClick={() => setUploadModalOpen(true)}
                           >
                             {currentAgreement.hasSignedDocument ? 'Thay thế' : 'Tải lên'}
@@ -986,7 +986,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
           >
             Mở tab mới
           </Button>,
-          <Button key="close" type="primary" className="bg-indigo-600" onClick={() => setPreview(null)}>
+          <Button key="close" type="primary" className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]" onClick={() => setPreview(null)}>
             Đóng
           </Button>,
         ]}

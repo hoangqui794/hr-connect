@@ -78,7 +78,7 @@ const TIER: Record<string, { label: string; cls: string }> = {
   LOW: { label: 'Ít phù hợp', cls: 'bg-slate-100 text-slate-600' },
 };
 
-/** AI score with its tier. A failed scoring is the platform's problem, so it stays grey, not red. */
+/** AI score rendered as a sleek mini progress bar with percentage. */
 export const AiScore: React.FC<{ score: number | null; tier?: string | null; status?: string | null; compact?: boolean }> = ({
   score,
   tier,
@@ -87,15 +87,27 @@ export const AiScore: React.FC<{ score: number | null; tier?: string | null; sta
 }) => {
   if (score == null) {
     const st = status?.toUpperCase();
-    if (st === 'PENDING' || st === 'PROCESSING') return <span className="text-xs text-sky-700">Đang chấm…</span>;
-    return <span className="text-xs text-slate-500">Chưa có điểm</span>;
+    if (st === 'PENDING' || st === 'PROCESSING') return <span className="text-xs text-blue-600 font-medium">Đang chấm…</span>;
+    return <span className="text-xs text-slate-400">Chưa có điểm</span>;
   }
+  const rounded = Math.round(score);
   const t = tier ? TIER[tier.toUpperCase()] : undefined;
+  const barColor =
+    rounded >= 80 ? 'bg-emerald-500' : rounded >= 60 ? 'bg-blue-500' : rounded >= 40 ? 'bg-amber-500' : 'bg-slate-400';
+  const textColor =
+    rounded >= 80 ? 'text-emerald-700' : rounded >= 60 ? 'text-blue-700' : rounded >= 40 ? 'text-amber-700' : 'text-slate-600';
+
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-      <span className="min-w-[24px] text-sm font-bold tabular-nums text-slate-900">{Math.round(score)}</span>
-      {t && !compact && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${t.cls}`}>{t.label}</span>}
-    </span>
+    <div className="inline-flex items-center gap-2 whitespace-nowrap" title={t?.label ? `Điểm AI: ${rounded}% (${t.label})` : `Điểm AI: ${rounded}%`}>
+      <div className={`${compact ? 'w-10' : 'w-16'} h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0`}>
+        <div
+          className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+          style={{ width: `${Math.min(100, Math.max(0, rounded))}%` }}
+        />
+      </div>
+      <span className={`text-xs font-bold tabular-nums ${textColor}`}>{rounded}%</span>
+      {t && <span className="sr-only">{t.label}</span>}
+    </div>
   );
 };
 

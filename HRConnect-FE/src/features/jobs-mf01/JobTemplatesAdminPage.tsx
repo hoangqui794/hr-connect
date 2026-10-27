@@ -570,7 +570,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
             type="primary"
             icon={<PlusOutlined />}
             onClick={handleOpenCreate}
-            className="!bg-sky-600 hover:!bg-sky-500 font-medium shadow-xs"
+            className="!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium"
           >
             Tạo mẫu mới
           </Button>
@@ -668,7 +668,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
               type="primary"
               onClick={handleSaveForm}
               loading={mutations.create.isPending || mutations.update.isPending}
-              className="!bg-sky-600 hover:!bg-sky-500 font-medium"
+              className="!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium"
             >
               {editingTemplateId ? 'Cập nhật mẫu' : 'Lưu mẫu mới'}
             </Button>

@@ -55,12 +55,10 @@ export const AdminIdentityClaimsPage: React.FC = () => {
       title: 'Candidate yêu cầu',
       key: 'requester',
       render: (_, item) => (
-        <div className="min-w-[250px]">
-          <PersonCell
-            name={item.requesterCandidateName || item.requesterDisplayName}
-            secondary={`${item.requesterDisplayName} · ${item.requesterPrimaryEmail}`}
-          />
-        </div>
+        <PersonCell
+          name={item.requesterCandidateName || item.requesterDisplayName}
+          secondary={`${item.requesterDisplayName} · ${item.requesterPrimaryEmail}`}
+        />
       ),
     },
     {
@@ -165,12 +163,11 @@ export const AdminIdentityClaimsPage: React.FC = () => {
           </div>
         ) : (
           <Table<AdminIdentityClaimListItem>
-            className="admin-soft-table"
+            className="admin-soft-table w-full table-auto"
             rowKey="claimId"
             loading={list.isLoading}
             columns={columns}
             dataSource={data?.items ?? []}
-            scroll={{ x: 1000 }}
             locale={{
               emptyText:
                 status === DEFAULT_STATUS

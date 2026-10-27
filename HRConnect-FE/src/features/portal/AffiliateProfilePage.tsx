@@ -28,6 +28,7 @@ import {
 import {
   BankOutlined,
   CheckCircleOutlined,
+  CopyOutlined,
   CreditCardOutlined,
   IdcardOutlined,
   LockOutlined,
@@ -154,6 +155,7 @@ export const AffiliateProfilePage: React.FC = () => {
   const bankHolderWatched = Form.useWatch('bankAccountHolder', bankForm) || b?.bankAccountHolder || 'CHỦ TÀI KHOẢN';
   const bankNumberWatched = Form.useWatch('bankAccountNumber', bankForm) || b?.bankAccountNumber || '•••• •••• •••• ••••';
   const bankNameWatched = Form.useWatch('bankName', bankForm) || b?.bankName || 'NGÂN HÀNG';
+  const bankBranchWatched = Form.useWatch('bankBranch', bankForm) || b?.bankBranch || '';
 
   const tabItems = [
     {
@@ -183,7 +185,7 @@ export const AffiliateProfilePage: React.FC = () => {
                     <Tag color={p?.status === 'ACTIVE' ? 'success' : 'warning'}>
                       {{ ACTIVE: 'Đang hoạt động', PENDING: 'Chờ duyệt', REJECTED: 'Chưa được chấp thuận', SUSPENDED: 'Tạm ngưng' }[p?.status ?? 'PENDING'] ?? 'Đang cập nhật'}
                     </Tag>
-                    {p?.affiliateType && <Tag color="purple">{p.affiliateType === 'INDIVIDUAL' ? 'Cộng tác viên cá nhân' : 'Đối tác tuyển dụng'}</Tag>}
+                    {p?.affiliateType && <Tag color="blue">{p.affiliateType === 'INDIVIDUAL' ? 'Cộng tác viên cá nhân' : 'Đối tác tuyển dụng'}</Tag>}
                   </div>
                   <div className="mt-4 pt-4 border-0 border-t border-solid border-slate-100 w-full text-xs text-slate-400 space-y-1">
                     <div>Ngày tham gia: {dayjs(p?.createdAt).format('DD/MM/YYYY')}</div>
@@ -272,54 +274,75 @@ export const AffiliateProfilePage: React.FC = () => {
       children: (
         <div className="space-y-6 pt-2">
           <Row gutter={[32, 24]}>
-            {/* ATM Card Visual */}
+            {/* Fintech Payment Summary Card */}
             <Col xs={24} lg={10}>
-              <div className="sticky top-24">
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-tr from-slate-900 via-indigo-950 to-violet-900 p-6 text-white shadow-xl aspect-[1.586/1] flex flex-col justify-between border border-slate-700/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CreditCardOutlined className="text-2xl text-amber-400" />
-                      <span className="font-extrabold text-sm tracking-widest uppercase text-slate-200">
-                        TÀI KHOẢN NHẬN TIỀN
+              <div className="sticky top-24 space-y-4">
+                <div className="bg-white border border-slate-200/80 rounded-xl p-6 shadow-sm">
+                  {/* Header */}
+                  <div className="flex items-center justify-between pb-4 border-0 border-b border-solid border-slate-100">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-solid border-emerald-100 font-bold text-base">
+                        <BankOutlined />
                       </span>
-                    </div>
-                    <Tag
-                      color={b?.isConfigured ? 'success' : 'warning'}
-                      className="m-0 font-semibold uppercase text-[10px]"
-                    >
-                      {b?.isConfigured ? 'Đã kích hoạt' : 'Chưa cấu hình'}
-                    </Tag>
-                  </div>
-
-                  {/* Microchip icon simulation */}
-                  <div className="w-11 h-8 rounded-md bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 border border-amber-600/60 flex items-center justify-center shadow-inner opacity-90 my-auto">
-                    <div className="w-9 h-6 border-t border-b border-amber-700/40" />
-                  </div>
-
-                  <div>
-                    <div className="text-xs uppercase tracking-wider text-slate-400 font-mono mb-1">
-                      {bankNameWatched}
-                    </div>
-                    <div className="text-xl sm:text-2xl font-mono tracking-widest text-slate-100 font-bold mb-3 drop-shadow">
-                      {bankNumberWatched}
-                    </div>
-                    <div className="flex justify-between items-end text-xs tracking-wider uppercase text-slate-300">
                       <div>
-                        <div className="text-[9px] text-slate-400 font-sans">Chủ tài khoản</div>
-                        <div className="font-semibold font-mono truncate max-w-[200px]">
-                          {String(bankHolderWatched).toUpperCase()}
+                        <div className="text-[11px] uppercase font-semibold text-slate-400">Ngân hàng thụ hưởng</div>
+                        <div className="text-sm font-bold text-slate-900 leading-tight">
+                          {bankNameWatched || 'Vietcombank'}
                         </div>
                       </div>
-                      <div className="text-[9px] text-slate-400 font-sans text-right">
-                        Thanh toán VND
+                    </div>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-solid border-emerald-200/60">
+                      ✓ Đã xác thực thanh toán
+                    </span>
+                  </div>
+
+                  {/* 2-column info */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                    <div className="sm:col-span-2">
+                      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Số tài khoản</div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="font-mono text-lg font-bold text-slate-900 tracking-wider">
+                          {bankNumberWatched}
+                        </span>
+                        {bankNumberWatched && bankNumberWatched !== '•••• •••• •••• ••••' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(bankNumberWatched);
+                              message.success('Đã sao chép số tài khoản');
+                            }}
+                            className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-solid border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-400 bg-white transition-colors cursor-pointer"
+                            title="Sao chép số tài khoản"
+                            aria-label="Sao chép số tài khoản"
+                          >
+                            <CopyOutlined className="text-xs" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Chủ tài khoản</div>
+                      <div className="mt-1 text-sm font-semibold text-slate-700 uppercase truncate">
+                        {String(bankHolderWatched).toUpperCase()}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Chi nhánh</div>
+                      <div className="mt-1 text-sm text-slate-600 truncate">
+                        {bankBranchWatched || 'Hội sở chính'}
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 leading-relaxed">
-                  <SafetyCertificateOutlined className="mr-1 text-amber-600" />
-                  HR Connect chuyển hoa hồng vào tài khoản này sau khi ca tuyển dụng đủ điều kiện chi trả. Hãy kiểm tra kỹ tên chủ tài khoản và số tài khoản.
+                  {/* Security callout */}
+                  <div className="mt-5 bg-blue-50/60 border border-solid border-blue-100 text-blue-800 text-xs rounded-lg p-3 leading-relaxed flex items-start gap-2.5">
+                    <SafetyCertificateOutlined className="mt-0.5 text-blue-600 shrink-0 text-sm" />
+                    <div>
+                      HR Connect chuyển hoa hồng định kỳ vào tài khoản này sau khi tuyển dụng hoàn tất. Vui lòng đảm bảo thông tin chính xác và trùng khớp với CCCD/CMND.
+                    </div>
+                  </div>
                 </div>
               </div>
             </Col>

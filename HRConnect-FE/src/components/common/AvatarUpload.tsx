@@ -107,7 +107,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
     <div className={`flex flex-col items-center gap-3 ${className}`}>
       <div className="relative group" style={{ width: size, height: size }}>
         <div
-          className="rounded-full overflow-hidden border-2 border-white shadow-md flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold"
+          className="rounded-full overflow-hidden border-2 border-white shadow-md flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold"
           style={{ width: size, height: size, fontSize: size * 0.38 }}
         >
           {loading ? (

@@ -170,10 +170,10 @@ export const HrLayout: React.FC = () => {
                         className={({ isActive }) =>
                           [
                             'flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium no-underline transition-colors duration-150',
-                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-sky-700',
+                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-blue-600',
                             collapsed ? 'justify-center' : '',
                             isActive
-                              ? 'bg-sky-50 font-semibold text-sky-900 shadow-[inset_3px_0_0_#0369A1]'
+                              ? 'bg-blue-50/70 font-semibold text-blue-900 border-l-2 border-blue-600 rounded-lg'
                               : item.muted
                                 ? 'font-normal text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                                 : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900',

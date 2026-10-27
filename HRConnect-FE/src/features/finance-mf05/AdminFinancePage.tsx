@@ -132,9 +132,11 @@ export const AdminFinancePage: React.FC = () => {
       },
     },
     {
-      title: '',
+      title: 'Thao tác',
       key: 'actions',
       align: 'right',
+      width: 112,
+      className: 'w-28 text-right pr-4',
       render: (_, c) => (
         <Space size={4} wrap>
           {c.status === 'EARNED' && (
@@ -186,9 +188,11 @@ export const AdminFinancePage: React.FC = () => {
     { title: 'Hạn trả', dataIndex: 'dueDate', render: (v) => date(v) },
     { title: 'Trạng thái', dataIndex: 'status', render: (v: ServiceFeeStatus) => { const s = labelOf(SERVICE_FEE_STATUS, v); return <StatusDot tone={s.tone}>{s.label}</StatusDot>; } },
     {
-      title: '',
+      title: 'Thao tác',
       key: 'actions',
       align: 'right',
+      width: 112,
+      className: 'w-28 text-right pr-4',
       render: (_, f) => {
         if (f.status !== 'PENDING' && f.status !== 'OVERDUE') return null;
         const waitingForReconciliation = Boolean(f.reconciliationStatus && f.reconciliationStatus !== 'CONFIRMED');
@@ -287,14 +291,14 @@ export const AdminFinancePage: React.FC = () => {
       {active?.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(active.error)} />}
       <Surface>
         {tab === 'commissions' && (
-          <Table rowKey="commissionId" columns={commissionColumns} dataSource={commissions.data?.items} loading={commissions.isFetching} pagination={pagination} scroll={{ x: 900 }} locale={{ emptyText: 'Chưa có hoa hồng nào.' }} />
+          <Table className="admin-soft-table w-full table-auto" rowKey="commissionId" columns={commissionColumns} dataSource={commissions.data?.items} loading={commissions.isFetching} pagination={pagination} locale={{ emptyText: 'Chưa có hoa hồng nào.' }} />
         )}
         {tab === 'fees' && (
-          <Table rowKey="serviceFeeId" columns={feeColumns} dataSource={fees.data?.items} loading={fees.isFetching} pagination={pagination} scroll={{ x: 800 }} locale={{ emptyText: 'Chưa có công nợ phí nào.' }} />
+          <Table className="admin-soft-table w-full table-auto" rowKey="serviceFeeId" columns={feeColumns} dataSource={fees.data?.items} loading={fees.isFetching} pagination={pagination} locale={{ emptyText: 'Chưa có công nợ phí nào.' }} />
         )}
         {tab === 'postingFees' && <PostingFeePaymentsPanel enabled={tab === 'postingFees'} />}
         {tab === 'payouts' && (
-          <Table rowKey="payoutId" columns={payoutColumns} dataSource={payouts.data?.items} loading={payouts.isFetching} pagination={pagination} scroll={{ x: 700 }} locale={{ emptyText: 'Chưa có lần chi nào.' }} />
+          <Table className="admin-soft-table w-full table-auto" rowKey="payoutId" columns={payoutColumns} dataSource={payouts.data?.items} loading={payouts.isFetching} pagination={pagination} locale={{ emptyText: 'Chưa có lần chi nào.' }} />
         )}
       </Surface>
 

@@ -315,25 +315,23 @@ export const DisputeResolutionTable: React.FC<DisputeResolutionTableProps> = ({
       ),
     },
     {
-      title: 'Hành động',
+      title: 'Thao tác',
       key: 'action',
-      width: 130,
+      width: 112,
+      align: 'right',
+      className: 'w-28 text-right pr-4',
       render: (_, record) =>
         record.status === 'DISPUTE_PENDING' ? (
           <Button
             type="primary"
             onClick={() => handleOpenResolve(record)}
-            className="rounded-lg font-bold text-xs h-8 px-3.5 shadow-sm text-white border-none transition-all duration-200 hover:scale-105"
-            style={{
-              background: 'linear-gradient(135deg, #be123c, #9f1239)', // Đỏ mận sang trọng
-              boxShadow: '0 2px 8px rgba(190, 18, 60, 0.3)',
-            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm active:scale-[0.98] transition-all font-semibold text-xs h-8 px-3 border-none"
           >
             Phán quyết
           </Button>
         ) : (
           <Tooltip title={record.arbitrationNote || 'Đã phân xử xong'}>
-            <span className="text-emerald-700 font-bold text-xs flex items-center gap-1 cursor-help">
+            <span className="text-emerald-700 font-bold text-xs flex items-center justify-end gap-1 cursor-help">
               <CheckCircleOutlined /> Đã giải quyết
             </span>
           </Tooltip>
@@ -375,11 +373,11 @@ export const DisputeResolutionTable: React.FC<DisputeResolutionTableProps> = ({
         bodyStyle={{ padding: 0 }}
       >
         <Table
+          className="w-full table-auto"
           dataSource={disputes}
           columns={columns}
           rowKey="id"
           pagination={false}
-          scroll={{ x: 1000 }}
         />
       </Card>
 

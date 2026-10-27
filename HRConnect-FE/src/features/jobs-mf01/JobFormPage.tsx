@@ -845,7 +845,7 @@ export const JobFormPage: React.FC = () => {
       type="primary"
       size="large"
       block={block}
-      className="client-cta font-medium shadow-sm"
+      className="!bg-blue-600 hover:!bg-blue-700 !text-white !rounded-lg !border-0 font-medium shadow-sm transition-all active:scale-[0.98]"
       onClick={() => save(true)}
       loading={saving === 'submit'}
       disabled={saving === 'draft'}
@@ -1059,8 +1059,8 @@ export const JobFormPage: React.FC = () => {
                             onKeyDown={(e) => e.key === 'Enter' && handleSelectService(st)}
                             className={`group relative flex flex-col justify-between rounded-2xl border-2 border-solid p-5 text-left transition-all duration-200 cursor-pointer ${
                               isSelected
-                                ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)]/40 shadow-md ring-2 ring-[color:var(--console-accent)]/20'
-                                : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                                ? 'border-2 border-blue-600 bg-blue-50/20 shadow-sm'
+                                : 'border-2 border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
                             } ${serviceTypeLocked || !editable ? 'opacity-65 cursor-not-allowed' : ''}`}
                           >
                             <div>
@@ -1077,11 +1077,11 @@ export const JobFormPage: React.FC = () => {
                                   aria-hidden
                                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-solid transition-colors ${
                                     isSelected
-                                      ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent)]'
+                                      ? 'border-blue-600 bg-blue-600 text-white'
                                       : 'border-slate-300 bg-white'
                                   }`}
                                 >
-                                  {isSelected && <span className="h-2 w-2 rounded-full bg-white" />}
+                                  {isSelected && <span className="text-[11px] font-bold leading-none">✓</span>}
                                 </div>
                               </div>
 
@@ -1096,7 +1096,7 @@ export const JobFormPage: React.FC = () => {
                             {/* Read-only Fee Rule Block */}
                             <div className="mt-4 rounded-xl border border-solid border-slate-200/90 bg-white/90 p-3 text-[12px] text-slate-700">
                               <span className="font-semibold text-slate-900 flex items-center gap-1.5 mb-1">
-                                <WalletOutlined className="text-[color:var(--console-accent)]" />
+                                <WalletOutlined className="text-blue-600" />
                                 Cách thanh toán
                               </span>
                               <div className="space-y-1 text-slate-600 leading-relaxed">
@@ -1121,7 +1121,7 @@ export const JobFormPage: React.FC = () => {
                   <Button
                     type="primary"
                     size="large"
-                    className="client-cta px-8"
+                    className="!bg-blue-600 hover:!bg-blue-700 !text-white !rounded-lg !border-0 font-medium shadow-sm transition-all active:scale-[0.98] px-8"
                     onClick={handleNext}
                     disabled={!effectiveServiceId}
                   >
@@ -1522,7 +1522,12 @@ export const JobFormPage: React.FC = () => {
                 </Button>
                 <div className="flex items-center gap-2">
                   {draftButton()}
-                  <Button type="primary" size="large" className="client-cta px-6" onClick={handleNext}>
+                  <Button
+                    type="primary"
+                    size="large"
+                    className="!bg-blue-600 hover:!bg-blue-700 !text-white !rounded-lg !border-0 font-medium shadow-sm transition-all active:scale-[0.98] px-6"
+                    onClick={handleNext}
+                  >
                     Tiếp tục
                   </Button>
                 </div>
@@ -1827,7 +1832,12 @@ export const JobFormPage: React.FC = () => {
                 </Button>
                 <div className="flex items-center gap-2">
                   {draftButton()}
-                  <Button type="primary" size="large" className="client-cta px-6" onClick={handleNext}>
+                  <Button
+                    type="primary"
+                    size="large"
+                    className="!bg-blue-600 hover:!bg-blue-700 !text-white !rounded-lg !border-0 font-medium shadow-sm transition-all active:scale-[0.98] px-6"
+                    onClick={handleNext}
+                  >
                     Tiếp tục
                   </Button>
                 </div>
@@ -2110,20 +2120,22 @@ export const JobFormPage: React.FC = () => {
               </div>
             </div>
 
-            <ul className="m-0 mt-4 list-none space-y-0.5 p-0">
-              {checklist.map((c) => (
+            <ul className="m-0 mt-4 list-none space-y-1 p-0">
+              {checklist.map((c, idx) => (
                 <li key={c.label}>
                   <button
                     type="button"
                     onClick={() => goToStep(c.step, c.field)}
-                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-0 bg-transparent px-2 py-1.5 text-left text-[13.5px] transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-0 bg-transparent px-2 py-1.5 text-left text-[13.5px] transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
                   >
                     {c.done ? (
-                      <CheckCircleFilled className="text-emerald-700" aria-label="Đã xong" />
+                      <CheckCircleFilled className="text-emerald-600 text-sm shrink-0" aria-label="Đã xong" />
                     ) : (
-                      <ExclamationCircleOutlined className="text-amber-700" aria-label="Còn thiếu" />
+                      <span className="w-4 h-4 rounded-full border border-slate-300 text-slate-400 text-[10px] font-medium flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </span>
                     )}
-                    <span className={c.done ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-900'}>
+                    <span className={c.done ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-700'}>
                       {c.label}
                     </span>
                   </button>

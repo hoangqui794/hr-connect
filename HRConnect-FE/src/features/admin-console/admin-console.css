@@ -1,11 +1,11 @@
 /* Console accent: emerald Admin (default), sky Internal HR, blue Client, teal Candidate, violet Affiliate.
    Shared components read these variables instead of hard-coded colours. */
 :root {
-  --console-accent: #047857;        /* white text on it: 5.5:1 */
-  --console-accent-strong: #065f46; /* text on white: 7.7:1 */
-  --console-accent-soft: #ecfdf5;
-  --console-accent-bright: #34d399;
-  --console-accent-glow: rgba(52, 211, 153, 0.7);
+  --console-accent: #2563eb;        /* blue-600 */
+  --console-accent-strong: #1d4ed8; /* blue-700 */
+  --console-accent-soft: #eff6ff;
+  --console-accent-bright: #60a5fa;
+  --console-accent-glow: rgba(37, 99, 235, 0.4);
 }
 
 .client-console {
@@ -14,8 +14,8 @@
   --console-accent-soft: #eff4ff;
   --console-accent-bright: #60a5fa;
   --console-accent-glow: rgba(96, 165, 250, 0.6);
-  --client-cta: #c2410c;            /* white text on it: 5.2:1 */
-  --client-cta-hover: #9a3412;
+  --client-cta: #2563eb;            /* Unified Primary Action blue-600 */
+  --client-cta-hover: #1d4ed8;      /* blue-700 */
   font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;
 }
 
@@ -77,11 +77,11 @@
 }
 
 .affiliate-console {
-  --console-accent: #6d28d9;        /* white text on it: 7.1:1 */
-  --console-accent-strong: #5b21b6; /* text on white: 8.6:1 */
-  --console-accent-soft: #f5f3ff;
-  --console-accent-bright: #a78bfa;
-  --console-accent-glow: rgba(167, 139, 250, 0.6);
+  --console-accent: #2563eb;        /* Unified Primary Action blue-600 */
+  --console-accent-strong: #1d4ed8; /* blue-700 */
+  --console-accent-soft: #eff6ff;
+  --console-accent-bright: #60a5fa;
+  --console-accent-glow: rgba(37, 99, 235, 0.4);
   --affiliate-gold: #b45309;        /* money figures, text on white: 5.0:1 */
 }
 
@@ -121,16 +121,20 @@
   background: transparent;
 }
 
+.admin-soft-table .ant-table table {
+  width: 100% !important;
+  table-layout: auto !important;
+}
+
 .admin-soft-table .ant-table-thead > tr > th {
   background: #ffffff !important;
   color: #475569 !important;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   border-bottom: 1px solid #eef2f6 !important;
-  padding-top: 14px !important;
-  padding-bottom: 14px !important;
+  padding: 12px 14px !important; /* px-3.5 py-3 */
 }
 
 .admin-soft-table .ant-table-thead > tr > th::before {
@@ -139,8 +143,7 @@
 
 .admin-soft-table .ant-table-tbody > tr > td {
   border-bottom: 1px solid #f1f5f9 !important;
-  padding-top: 14px !important;
-  padding-bottom: 14px !important;
+  padding: 12px 14px !important; /* px-3.5 py-3 */
   transition: background-color 150ms ease;
 }
 

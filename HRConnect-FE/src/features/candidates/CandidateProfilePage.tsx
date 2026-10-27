@@ -487,15 +487,31 @@ export const CandidateProfilePage: React.FC = () => {
     },
   };
 
-  // Formatted salary string
+  // Formatted salary string (Định dạng thông minh dạng 100M - 150M VNĐ tránh tràn và cắt cụt ba chấm)
   const formatSalaryDisplay = () => {
+    const formatValue = (num: number) => {
+      if (num >= 1_000_000_000) {
+        return `${(num / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`;
+      }
+      if (num >= 1_000_000) {
+        return `${(num / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+      }
+      if (num >= 1_000) {
+        return `${(num / 1_000).toFixed(0)}K`;
+      }
+      return num.toLocaleString('vi-VN');
+    };
+
+    const currency = profile?.expectedSalaryCurrency || 'VNĐ';
+
     if (profile?.expectedSalaryMin && profile?.expectedSalaryMax) {
-      const min = profile.expectedSalaryMin.toLocaleString('vi-VN');
-      const max = profile.expectedSalaryMax.toLocaleString('vi-VN');
-      return `${min} - ${max} ${profile.expectedSalaryCurrency || 'VND'}`;
+      return `${formatValue(profile.expectedSalaryMin)} - ${formatValue(profile.expectedSalaryMax)} ${currency}`;
     }
     if (profile?.expectedSalaryMin) {
-      return `Từ ${profile.expectedSalaryMin.toLocaleString('vi-VN')} ${profile.expectedSalaryCurrency || 'VND'}`;
+      return `Từ ${formatValue(profile.expectedSalaryMin)} ${currency}`;
+    }
+    if (profile?.expectedSalaryMax) {
+      return `Đến ${formatValue(profile.expectedSalaryMax)} ${currency}`;
     }
     return 'Thương lượng';
   };
@@ -552,7 +568,7 @@ export const CandidateProfilePage: React.FC = () => {
 
   return (
     <div className="candidate-page candidate-profile-page" style={{ width: '100%', paddingBottom: 60 }}>
-      <div className="candidate-profile-hero">
+      <div className="candidate-profile-hero bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
         <div className="candidate-profile-identity">
           <div className="candidate-profile-avatar-wrap">
             <AvatarUpload
@@ -562,37 +578,43 @@ export const CandidateProfilePage: React.FC = () => {
             />
           </div>
           <div className="candidate-profile-identity__content">
-            <div className="candidate-profile-kicker">Hồ sơ nghề nghiệp của bạn</div>
+            <div className="candidate-profile-kicker text-slate-500 font-semibold text-xs uppercase tracking-wider">Hồ sơ nghề nghiệp của bạn</div>
             <div className="candidate-profile-name-row">
-              <h1>{profile?.fullName || user?.name || 'Ứng viên'}</h1>
-              <span className="candidate-profile-level">
+              <h1 className="text-slate-900 font-bold">{profile?.fullName || user?.name || 'Ứng viên'}</h1>
+              <span className="candidate-profile-level bg-slate-100 text-slate-700 border border-slate-200">
                 {levelLabel[profile?.currentLevel || ''] || profile?.currentLevel || 'Chuyên viên'}
               </span>
             </div>
-            <p className="candidate-profile-role">
+            <p className="candidate-profile-role text-slate-600">
               {profile?.currentJobTitle || profile?.targetRole || 'Bổ sung chức danh để hồ sơ nổi bật hơn'}
               {profile?.yearsOfExperience ? <><span aria-hidden> · </span><span>{profile.yearsOfExperience} năm kinh nghiệm</span></> : null}
             </p>
             <div className="candidate-profile-contact-list">
-              <span><MailOutlined /> {profile?.email || user?.email || 'Chưa có email'}</span>
-              <span><PhoneOutlined /> {profile?.phone || user?.phone || 'Chưa có số điện thoại'}</span>
+              <span className="bg-slate-50 border border-slate-200 text-slate-700"><MailOutlined className="text-slate-400" /> {profile?.email || user?.email || 'Chưa có email'}</span>
+              <span className="bg-slate-50 border border-slate-200 text-slate-700"><PhoneOutlined className="text-slate-400" /> {profile?.phone || user?.phone || 'Chưa có số điện thoại'}</span>
             </div>
           </div>
         </div>
 
-        <div className="candidate-profile-overview">
+        <div className="candidate-profile-overview bg-slate-50 border border-slate-100 rounded-xl p-4">
           <div className="candidate-profile-completion">
-            <div className="candidate-profile-overview__label"><CompassOutlined /> Mức hoàn thiện hồ sơ</div>
-            <strong>{profileCompletion}%</strong>
+            <div className="candidate-profile-overview__label text-slate-600 font-semibold"><CompassOutlined /> Mức hoàn thiện hồ sơ</div>
+            <strong className="text-slate-900 font-bold">{profileCompletion}%</strong>
             <div className="candidate-profile-completion__track"><span style={{ width: `${profileCompletion}%` }} /></div>
-            <small>{profileCompletion < 100 ? 'Bổ sung thông tin để tăng cơ hội được chú ý.' : 'Hồ sơ của bạn đã sẵn sàng.'}</small>
+            <small className="text-slate-500">{profileCompletion < 100 ? 'Bổ sung thông tin để tăng cơ hội được chú ý.' : 'Hồ sơ của bạn đã sẵn sàng.'}</small>
           </div>
-          <div className="candidate-profile-facts">
-            <div><span><DollarOutlined /> Lương kỳ vọng</span><strong>{formatSalaryDisplay()}</strong></div>
-            <div><span><CalendarOutlined /> Có thể nhận việc</span><strong>{profile?.availableFrom || 'Linh hoạt'}</strong></div>
+          <div className="candidate-profile-facts mt-3">
+            <div className="bg-white border border-slate-200/80 rounded-xl p-3">
+              <span className="text-slate-500 font-medium text-xs"><DollarOutlined /> Lương kỳ vọng</span>
+              <strong className="text-slate-900 font-bold text-sm block mt-0.5 break-words">{formatSalaryDisplay()}</strong>
+            </div>
+            <div className="bg-white border border-slate-200/80 rounded-xl p-3">
+              <span className="text-slate-500 font-medium text-xs"><CalendarOutlined /> Có thể nhận việc</span>
+              <strong className="text-slate-900 font-bold text-sm block mt-0.5 break-words">{profile?.availableFrom || 'Linh hoạt'}</strong>
+            </div>
           </div>
-          <div className="candidate-profile-visibility">
-            <span><GlobalOutlined /> {isPublic ? 'Nhà tuyển dụng có thể tìm thấy bạn' : 'Hồ sơ đang ở chế độ riêng tư'}</span>
+          <div className="candidate-profile-visibility border-t border-slate-200/80 pt-3">
+            <span className="text-slate-600 font-medium text-xs"><GlobalOutlined /> {isPublic ? 'Nhà tuyển dụng có thể tìm thấy bạn' : 'Hồ sơ đang ở chế độ riêng tư'}</span>
             <Switch
               checked={isPublic}
               loading={visibilityMutation.isPending}

@@ -975,57 +975,46 @@ html:has(.candidate-console) {
   }
 
   .candidate-dashboard-hero {
-    min-height: 18rem;
-    border: 0;
-    border-radius: 1.5rem;
-    background:
-      radial-gradient(circle at 73% 15%, rgb(78 193 255 / 28%) 0, transparent 16rem),
-      radial-gradient(circle at 25% 110%, rgb(45 212 191 / 22%) 0, transparent 18rem),
-      linear-gradient(118deg, #0b2148 0%, #0b4c98 54%, #0878d7 100%);
-    box-shadow: 0 24px 60px rgb(7 51 101 / 20%);
+    min-height: auto;
+    border: 1px solid rgba(226, 232, 240, 0.85) !important;
+    border-radius: 1rem !important;
+    background: #ffffff !important;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04) !important;
   }
 
   .candidate-dashboard-hero::after {
-    position: absolute;
-    top: -6rem;
-    left: 44%;
-    width: 19rem;
-    height: 19rem;
-    border: 1px solid rgb(255 255 255 / 14%);
-    border-radius: 999px;
-    content: '';
-    pointer-events: none;
+    display: none !important;
   }
 
   .candidate-dashboard-hero__content { align-self: center; }
-  .candidate-dashboard-hero__date { color: #a9dcff; letter-spacing: 0.08em; text-transform: uppercase; }
-  .candidate-dashboard-hero__content h1 { color: #fff !important; }
-  .candidate-dashboard-hero__content > p:not(.candidate-dashboard-hero__date) { color: #d9eaff !important; }
+  .candidate-dashboard-hero__date { color: #64748b !important; letter-spacing: 0.05em; text-transform: uppercase; }
+  .candidate-dashboard-hero__content h1 { color: #0f172a !important; }
+  .candidate-dashboard-hero__content > p:not(.candidate-dashboard-hero__date) { color: #475569 !important; }
   .candidate-dashboard-hero__content .ant-btn-primary {
-    color: #0758b8;
-    background: #fff;
-    box-shadow: 0 10px 24px rgb(3 28 65 / 20%);
+    color: #fff !important;
+    background: #2563eb !important;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
   }
-  .candidate-dashboard-hero__content .ant-btn-primary:not(:disabled):hover { color: #064a9b; background: #edf7ff; }
+  .candidate-dashboard-hero__content .ant-btn-primary:not(:disabled):hover { color: #fff !important; background: #1d4ed8 !important; }
   .candidate-dashboard-hero__content .ant-btn-default {
-    border-color: rgb(255 255 255 / 40%);
-    color: #fff;
-    background: rgb(255 255 255 / 10%);
+    border-color: #e2e8f0 !important;
+    color: #334155 !important;
+    background: #ffffff !important;
   }
-  .candidate-dashboard-hero__content .ant-btn-default:hover { border-color: #fff; color: #fff; background: rgb(255 255 255 / 18%); }
+  .candidate-dashboard-hero__content .ant-btn-default:hover { border-color: #cbd5e1 !important; color: #0f172a !important; background: #f8fafc !important; }
 
   .candidate-readiness-card {
-    border-color: rgb(255 255 255 / 44%);
-    border-radius: 1.15rem;
-    background: rgb(255 255 255 / 94%);
-    box-shadow: 0 18px 42px rgb(3 28 65 / 20%);
-    backdrop-filter: blur(16px);
+    border: 1px solid #f1f5f9 !important;
+    border-radius: 0.875rem !important;
+    background: #f8fafc !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
   }
   .candidate-readiness-card:hover {
-    border-color: #fff;
-    background: #fff;
-    transform: translateY(-2px);
-    box-shadow: 0 22px 48px rgb(3 28 65 / 26%);
+    border-color: #cbd5e1 !important;
+    background: #f1f5f9 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.04) !important;
   }
 
   .candidate-action-center,
@@ -1099,19 +1088,18 @@ html:has(.candidate-console) {
   }
 
   .candidate-profile-hero {
-    border-radius: 1.5rem !important;
-    background:
-      radial-gradient(circle at 80% 0%, rgb(56 189 248 / 28%) 0, transparent 20rem),
-      linear-gradient(115deg, #0a2045 0%, #133e86 54%, #1268cf 100%) !important;
-    box-shadow: 0 24px 58px rgb(9 49 91 / 22%) !important;
+    border-radius: 1rem !important;
+    border: 1px solid rgba(226, 232, 240, 0.85) !important;
+    background: #ffffff !important;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04) !important;
   }
 }
 
 /* Candidate experience v2 — stronger hierarchy for desktop web */
 .candidate-profile-page {
-  --profile-ink: #09203f;
-  --profile-blue: #0b6edb;
-  --profile-teal: #0e9f87;
+  --profile-ink: #0f172a;
+  --profile-blue: #2563eb;
+  --profile-teal: #10b981;
 }
 
 .candidate-profile-hero {
@@ -1122,23 +1110,14 @@ html:has(.candidate-console) {
   margin-bottom: 1.5rem;
   padding: 1.5rem !important;
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 56%) !important;
-  border-radius: 1.5rem !important;
-  background:
-    radial-gradient(circle at 88% 4%, rgb(255 255 255 / 20%) 0, transparent 14rem),
-    linear-gradient(120deg, #082451 0%, #0b5ab5 62%, #1189d3 100%) !important;
-  box-shadow: 0 24px 58px rgb(9 49 91 / 18%) !important;
+  border: 1px solid rgba(226, 232, 240, 0.85) !important;
+  border-radius: 1rem !important;
+  background: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04) !important;
 }
 
 .candidate-profile-hero::before {
-  position: absolute;
-  right: 36%;
-  bottom: -8rem;
-  width: 17rem;
-  height: 17rem;
-  border: 1px solid rgb(255 255 255 / 15%);
-  border-radius: 999px;
-  content: '';
+  display: none !important;
 }
 
 .candidate-profile-identity,
@@ -1184,10 +1163,10 @@ html:has(.candidate-console) {
 
 .candidate-profile-kicker {
   margin-bottom: 0.35rem;
-  color: #a9dcff;
+  color: #64748b;
   font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -1200,7 +1179,7 @@ html:has(.candidate-console) {
 
 .candidate-profile-name-row h1 {
   margin: 0;
-  color: #fff;
+  color: #0f172a;
   font-size: clamp(1.55rem, 2.2vw, 2.15rem);
   font-weight: 850;
   letter-spacing: -0.04em;
@@ -1208,22 +1187,22 @@ html:has(.candidate-console) {
 
 .candidate-profile-level {
   padding: 0.32rem 0.7rem;
-  border: 1px solid rgb(147 197 253 / 40%);
+  border: 1px solid #e2e8f0;
   border-radius: 999px;
-  color: #d9efff;
-  background: rgb(255 255 255 / 12%);
+  color: #475569;
+  background: #f1f5f9;
   font-size: 0.72rem;
   font-weight: 750;
 }
 
 .candidate-profile-role {
   margin: 0.38rem 0 0.85rem;
-  color: #c9e8ff;
+  color: #475569;
   font-size: 0.92rem;
   font-weight: 650;
 }
 
-.candidate-profile-role span { color: #98c8ec; }
+.candidate-profile-role span { color: #64748b; }
 
 .candidate-profile-contact-list {
   display: flex;
@@ -1237,19 +1216,19 @@ html:has(.candidate-console) {
   gap: 0.42rem;
   min-width: 0;
   padding: 0.42rem 0.7rem;
-  border: 1px solid rgb(255 255 255 / 18%);
+  border: 1px solid #e2e8f0;
   border-radius: 0.65rem;
-  color: #e8f5ff;
-  background: rgb(3 25 58 / 34%);
+  color: #334155;
+  background: #f8fafc;
   font-size: 0.78rem;
 }
 
 .candidate-profile-overview {
   padding: 1.1rem;
-  border: 1px solid rgb(255 255 255 / 36%);
-  border-radius: 1.15rem;
-  background: rgb(255 255 255 / 95%);
-  box-shadow: 0 16px 36px rgb(3 28 65 / 20%);
+  border: 1px solid #f1f5f9;
+  border-radius: 0.875rem;
+  background: #f8fafc;
+  box-shadow: none;
 }
 
 .candidate-profile-overview__label {
@@ -1293,15 +1272,15 @@ html:has(.candidate-console) {
 .candidate-profile-facts > div {
   min-width: 0;
   padding: 0.7rem;
-  border: 1px solid #dbe8f2;
+  border: 1px solid #e2e8f0;
   border-radius: 0.8rem;
-  background: #f7fbfe;
+  background: #ffffff;
 }
 
 .candidate-profile-facts span,
 .candidate-profile-facts strong { display: block; }
-.candidate-profile-facts span { margin-bottom: 0.28rem; color: #71879c; font-size: 0.68rem; font-weight: 700; }
-.candidate-profile-facts strong { overflow: hidden; color: #12304e; font-size: 0.78rem; text-overflow: ellipsis; white-space: nowrap; }
+.candidate-profile-facts span { margin-bottom: 0.28rem; color: #64748b; font-size: 0.68rem; font-weight: 700; }
+.candidate-profile-facts strong { overflow: visible; color: #0f172a; font-size: 0.8rem; word-break: break-word; white-space: normal; }
 
 .candidate-profile-visibility {
   display: flex;

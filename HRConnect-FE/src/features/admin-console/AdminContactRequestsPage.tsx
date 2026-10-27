@@ -37,9 +37,12 @@ import {
   ReloadOutlined,
   SearchOutlined,
   ClockCircleOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import { contactApi } from '@/services/api/contactApi';
 import { getApiErrorMessage } from '@/services/apiClient';
+import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/roles';
 import type {
   ContactRequestDto,
   ContactRequestStatus,
@@ -76,6 +79,10 @@ export const AdminContactRequestsPage: React.FC = () => {
   const pageParam = Math.max(1, Number(searchParams.get('page')) || 1);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const { user, role } = useAuthStore();
+  const isAdmin = user?.roles?.includes('PLATFORM_ADMIN') || role === UserRole.ADMIN;
+  const hasManagePermission = isAdmin || (user?.permissions ? user.permissions.includes('contact_request.manage') : true);
+
   // Selected item for drawer detail / quick update
   const [detailItem, setDetailItem] = useState<ContactRequestDto | null>(null);
   const [statusModalItem, setStatusModalItem] = useState<ContactRequestDto | null>(null);
@@ -90,7 +97,12 @@ export const AdminContactRequestsPage: React.FC = () => {
         page: pageParam,
         pageSize: PAGE_SIZE,
       }),
+    enabled: hasManagePermission,
   });
+
+  const isForbidden =
+    !hasManagePermission ||
+    (isError && ((error as any)?.response?.status === 403 || (error as any)?.status === 403 || String(error).includes('403')));
 
   const updateMutation = useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateContactRequestInput }) =>
@@ -163,7 +175,6 @@ export const AdminContactRequestsPage: React.FC = () => {
     {
       title: 'Họ tên',
       key: 'fullName',
-      width: 220,
       render: (_, record) => (
         <PersonCell
           name={record.fullName}
@@ -175,7 +186,7 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Email',
       dataIndex: 'email',
       key: 'email',
-      width: 200,
+      width: 170,
       render: (val: string) => (
         <div className="flex items-center gap-1.5 text-slate-700">
           <MailOutlined className="text-slate-400 text-xs" />
@@ -189,7 +200,7 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Số điện thoại',
       dataIndex: 'phone',
       key: 'phone',
-      width: 140,
+      width: 120,
       render: (val?: string | null) =>
         val ? (
           <div className="flex items-center gap-1.5 text-slate-700">
@@ -206,7 +217,7 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Công ty',
       dataIndex: 'companyName',
       key: 'companyName',
-      width: 170,
+      width: 130,
       render: (val?: string | null) => (
         <span className="font-medium text-slate-800">{val || '—'}</span>
       ),
@@ -215,7 +226,7 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Dịch vụ quan tâm',
       dataIndex: 'serviceInterest',
       key: 'serviceInterest',
-      width: 190,
+      width: 150,
       render: (val: ContactServiceInterest) => {
         const conf = SERVICE_INTEREST_LABELS[val] || { label: val, color: 'default' };
         return <Tag color={conf.color} className="font-semibold">{conf.label}</Tag>;
@@ -225,7 +236,7 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      width: 150,
+      width: 130,
       render: (val: ContactRequestStatus) => {
         const conf = STATUS_CONFIG[val] || { label: val, tone: 'neutral' };
         return <StatusDot tone={conf.tone}>{conf.label}</StatusDot>;
@@ -235,7 +246,7 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Ngày tạo',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 150,
+      width: 130,
       render: (val: string) => (
         <span className="text-xs text-slate-600 tabular-nums">
           {formatDateTime(val)}
@@ -243,21 +254,11 @@ export const AdminContactRequestsPage: React.FC = () => {
       ),
     },
     {
-      title: 'Ghi chú',
-      dataIndex: 'note',
-      key: 'note',
-      ellipsis: true,
-      render: (val?: string | null) => (
-        <span className="text-xs text-slate-600 italic">
-          {val ? val : <Text type="secondary">Chưa có ghi chú</Text>}
-        </span>
-      ),
-    },
-    {
       title: 'Thao tác',
       key: 'actions',
-      width: 150,
-      fixed: 'right',
+      width: 112,
+      align: 'right',
+      className: 'w-28 text-right pr-4',
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="Xem chi tiết nội dung lời nhắn">
@@ -276,7 +277,7 @@ export const AdminContactRequestsPage: React.FC = () => {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openStatusModal(record)}
-              className="font-semibold"
+              className="font-semibold text-blue-600"
             >
               Xử lý
             </Button>
@@ -310,54 +311,74 @@ export const AdminContactRequestsPage: React.FC = () => {
         }
       />
 
-      {isError && (
-        <Alert
-          type="error"
-          showIcon
-          message={getApiErrorMessage(error, 'Không thể tải danh sách yêu cầu tư vấn')}
-        />
-      )}
-
-      <Surface padded className="space-y-4">
-        {/* Filter bar: status pills + quick search */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <FilterPills
-            label="Lọc theo trạng thái"
-            value={statusParam}
-            onChange={handleStatusChangeFilter}
-            options={filterOptions}
-          />
-
-          <div className="w-full sm:w-72">
-            <Input
-              allowClear
-              prefix={<SearchOutlined className="text-slate-400" />}
-              placeholder="Tìm theo tên, email, công ty..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="rounded-lg"
-            />
+      {isForbidden ? (
+        <Surface className="p-16 text-center my-6">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+            <LockOutlined className="text-3xl" />
           </div>
-        </div>
+          <h3 className="mt-4 text-lg font-bold text-slate-900">
+            Bạn chưa được cấp quyền truy cập mục này
+          </h3>
+          <p className="mx-auto mt-2 max-w-md text-sm text-slate-500 leading-relaxed">
+            Tài khoản của bạn hiện chưa được phân quyền quản lý yêu cầu liên hệ tư vấn. Vui lòng liên hệ Quản trị viên hệ thống để được hỗ trợ cấp quyền.
+          </p>
+          <div className="mt-6">
+            <Button onClick={() => window.history.back()} className="rounded-lg shadow-sm font-medium">
+              Quay lại
+            </Button>
+          </div>
+        </Surface>
+      ) : (
+        <>
+          {isError && (
+            <Alert
+              type="error"
+              showIcon
+              message={getApiErrorMessage(error, 'Không thể tải danh sách yêu cầu tư vấn')}
+            />
+          )}
 
-        {/* Table */}
-        <Table<ContactRequestDto>
-          columns={columns}
-          dataSource={filteredItems}
-          rowKey="contactRequestId"
-          loading={isLoading}
-          pagination={{
-            current: pageParam,
-            pageSize: PAGE_SIZE,
-            total: data?.totalCount || 0,
-            showTotal: (total) => `Tổng cộng ${total} yêu cầu`,
-            onChange: handlePageChange,
-            showSizeChanger: false,
-          }}
-          scroll={{ x: 1200 }}
-          className="admin-soft-table"
-        />
-      </Surface>
+          <Surface padded className="space-y-4">
+            {/* Filter bar: status pills + quick search */}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <FilterPills
+                label="Lọc theo trạng thái"
+                value={statusParam}
+                onChange={handleStatusChangeFilter}
+                options={filterOptions}
+              />
+
+              <div className="w-full sm:w-72">
+                <Input
+                  allowClear
+                  prefix={<SearchOutlined className="text-slate-400" />}
+                  placeholder="Tìm theo tên, email, công ty..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="rounded-lg"
+                />
+              </div>
+            </div>
+
+            {/* Table */}
+            <Table<ContactRequestDto>
+              columns={columns}
+              dataSource={filteredItems}
+              rowKey="contactRequestId"
+              loading={isLoading}
+              pagination={{
+                current: pageParam,
+                pageSize: PAGE_SIZE,
+                total: data?.totalCount || 0,
+                showTotal: (total) => `Tổng cộng ${total} yêu cầu`,
+                onChange: handlePageChange,
+                showSizeChanger: false,
+              }}
+              className="admin-soft-table w-full table-auto"
+            />
+          </Surface>
+        </>
+      )}
 
       {/* Detail Drawer */}
       <Drawer

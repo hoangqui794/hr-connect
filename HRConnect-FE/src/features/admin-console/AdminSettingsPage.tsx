@@ -77,7 +77,7 @@ export const AdminSettingsPage: React.FC = () => {
                       <div className="text-[15px] font-semibold text-slate-900">{s.label}</div>
                       <div className="mt-0.5 text-[13.5px] leading-relaxed text-slate-600">{s.description}</div>
                       <div className="mt-1 text-xs text-slate-500">
-                        Mặc định {formatNumber(s.defaultValue)} {s.unit} · Nguồn: {s.source}
+                        Mặc định {formatNumber(s.defaultValue)} {s.unit}
                       </div>
                     </div>
                     <div className="text-right">

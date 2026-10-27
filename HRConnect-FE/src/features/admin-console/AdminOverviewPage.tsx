@@ -132,7 +132,7 @@ export const AdminOverviewPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => navigate(`/admin/audit-trail?action=${encodeURIComponent(log.action)}`)}
-                    className="flex w-full cursor-pointer items-center gap-3 rounded-xl border-0 bg-transparent px-2 py-2.5 text-left transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"
+                    className="flex w-full cursor-pointer items-center gap-3 rounded-xl border-0 bg-transparent px-2 py-2.5 text-left transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
                   >
                     <Initials name={actor} size={34} />
                     <span className="min-w-0 flex-1">
@@ -189,9 +189,9 @@ export const AdminOverviewPage: React.FC = () => {
               key={c.to}
               type="button"
               onClick={() => navigate(c.to)}
-              className="flex cursor-pointer items-center gap-3 rounded-xl border border-solid border-slate-200 bg-white p-4 text-left transition-colors hover:border-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"
+              className="flex cursor-pointer items-center gap-3 rounded-xl border border-solid border-slate-200 bg-white p-4 text-left transition-colors hover:border-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-lg text-emerald-800" aria-hidden>
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-lg text-blue-600" aria-hidden>
                 {c.icon}
               </span>
               <span>
@@ -201,7 +201,6 @@ export const AdminOverviewPage: React.FC = () => {
             </button>
           ))}
         </div>
-        <p className="m-0 mt-4 text-xs text-slate-600">Biểu đồ và báo cáo chưa hiển thị vì backend chưa có API thống kê.</p>
       </Surface>
     </div>
   );
