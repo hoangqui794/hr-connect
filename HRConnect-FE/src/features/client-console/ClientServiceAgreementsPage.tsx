@@ -11,7 +11,6 @@ import {
   Badge,
   Button,
   Card,
-  Checkbox,
   Col,
   Empty,
   Input,
@@ -27,6 +26,7 @@ import {
   Upload,
 } from 'antd';
 import type { UploadFile } from 'antd';
+import type { RcFile } from 'antd/es/upload';
 import {
   CheckCircleFilled,
   ClockCircleOutlined,
@@ -39,7 +39,6 @@ import {
   HistoryOutlined,
   InboxOutlined,
   InfoCircleOutlined,
-  SafetyCertificateFilled,
   SafetyCertificateOutlined,
   SearchOutlined,
   UploadOutlined,
@@ -67,7 +66,7 @@ const { Text, Title, Paragraph } = Typography;
 type AgreementTabKey = 'ALL' | 'PENDING_AGREEMENT' | 'PENDING_PAYMENT' | 'ACTIVE' | 'CLOSED';
 
 export const ClientServiceAgreementsPage: React.FC = () => {
-  const { message, modal } = AntApp.useApp();
+  const { message } = AntApp.useApp();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
@@ -199,15 +198,6 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  const [signModalOpen, setSignModalOpen] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [devOtp, setDevOtp] = useState<string | null>(null);
-  const [activeConcurrencyToken, setActiveConcurrencyToken] = useState<string>('');
-  const [consentChecked, setConsentChecked] = useState(false);
-  const [signingLoading, setSigningLoading] = useState(false);
-  const [sendingChallenge, setSendingChallenge] = useState(false);
-
   // PDF Preview / Download
   const handleDownloadPdf = async (agreement: ServiceAgreementDto, signed: boolean = false) => {
     if (!activeJobId) return;
@@ -292,11 +282,13 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   // Upload signed agreement handler
   const handleUploadSignedFile = async () => {
     if (!activeJobId || !currentAgreement) return;
-    if (fileList.length === 0 || !fileList[0].originFileObj) {
+    const firstItem = fileList[0];
+    const file = (firstItem?.originFileObj || firstItem) as unknown as File;
+    if (!file || !(file instanceof Blob) || fileList.length === 0) {
       message.warning('Vui lòng chọn tệp hợp đồng đã ký để tải lên.');
       return;
     }
-    const file = fileList[0].originFileObj as File;
+
     try {
       setUploading(true);
       await serviceAgreementsApi.uploadSignedDocument(
@@ -340,122 +332,6 @@ export const ClientServiceAgreementsPage: React.FC = () => {
     }
   };
 
-  // Action: Open Sign Modal & Send OTP
-  const handleOpenSignModal = async () => {
-    if (!currentAgreement || !activeJobId) return;
-    setSignModalOpen(true);
-    setOtpSent(false);
-    setOtpCode('');
-    setDevOtp(null);
-    setActiveConcurrencyToken(currentAgreement.concurrencyToken);
-    setConsentChecked(false);
-    // Request challenge immediately
-    sendChallenge(currentAgreement.serviceAgreementId);
-  };
-
-  const sendChallenge = async (agreementId: string) => {
-    if (!activeJobId || !currentAgreement) return;
-    try {
-      setSendingChallenge(true);
-      const res = await serviceAgreementsApi.createSignatureChallenge(activeJobId, agreementId);
-      setOtpSent(true);
-
-      if (res.concurrencyToken) {
-        setActiveConcurrencyToken(res.concurrencyToken);
-      }
-
-      // Auto-extract dev OTP if available
-      const extractedOtp = res.devOtp || res.message?.match(/\b\d{6}\b/)?.[0] || null;
-      if (extractedOtp) {
-        setDevOtp(extractedOtp);
-        setOtpCode(extractedOtp);
-      }
-
-      message.success(
-        res.message || `Mã OTP xác thực đã được gửi tới email ${res.signerEmail}.`,
-        12
-      );
-      await refetchCurrent();
-    } catch (err) {
-      message.error(getApiErrorMessage(err));
-    } finally {
-      setSendingChallenge(false);
-    }
-  };
-
-
-  // Action: Submit Sign
-  const handleConfirmSign = async () => {
-    if (!currentAgreement || !activeJobId) return;
-    if (!otpCode || otpCode.trim().length !== 6) {
-      message.warning('Vui lòng nhập đầy đủ mã OTP gồm 6 chữ số.');
-      return;
-    }
-    if (!consentChecked) {
-      message.warning('Vui lòng tích xác nhận đồng ý các điều khoản thỏa thuận.');
-      return;
-    }
-
-    try {
-      setSigningLoading(true);
-      const tokenToUse = activeConcurrencyToken || currentAgreement.concurrencyToken;
-      await serviceAgreementsApi.sign(activeJobId, currentAgreement.serviceAgreementId, {
-        concurrencyToken: tokenToUse,
-        otp: otpCode.trim(),
-        consentAccepted: true,
-        consentTextVersion: '1.0',
-      });
-
-      message.success('Ký thỏa thuận dịch vụ thành công!');
-      setSignModalOpen(false);
-      await Promise.all([refetchCurrent(), refetchHistory()]);
-
-      // Pop-up next steps
-      if (activeJob?.serviceTypeCode === 'CV_SOURCING') {
-        modal.success({
-          title: 'Thỏa thuận đã được ký kết!',
-          content: (
-            <div className="space-y-2 py-2">
-              <p>
-                Thỏa thuận tìm kiếm hồ sơ cho vị trí <strong>{activeJob.title}</strong> đã được hai
-                bên ký kết thành công.
-              </p>
-              <p className="text-amber-700 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
-                Bước tiếp theo: Vui lòng hoàn tất nộp tiền cọc để HR Connect và mạng lưới CTV bắt đầu tìm
-                kiếm & sàng lọc hồ sơ chất lượng cao cho doanh nghiệp.
-              </p>
-            </div>
-          ),
-          okText: 'Xem tin tuyển dụng',
-          onOk: () => navigate(`/client/jobs?highlight=${encodeURIComponent(activeJob.jobId)}`),
-        });
-      } else {
-        modal.success({
-          title: 'Thỏa thuận tuyển dụng đã có hiệu lực!',
-          content: (
-            <div className="space-y-2 py-2">
-              <p>
-                Thỏa thuận tuyển dụng theo kết quả (Headhunt) cho vị trí{' '}
-                <strong>{activeJob?.title}</strong> đã được kích hoạt thành công.
-              </p>
-              <p className="text-emerald-700 bg-emerald-50 p-2.5 rounded-lg border border-emerald-200">
-                Tin tuyển dụng đã chính thức công khai. Các chuyên gia tuyển dụng và cộng tác viên của
-                HR Connect sẽ bắt đầu giới thiệu những ứng viên sáng giá nhất!
-              </p>
-            </div>
-          ),
-          okText: 'Xem chi tiết tin tuyển dụng',
-          onOk: () =>
-            activeJob && navigate(`/client/jobs?highlight=${encodeURIComponent(activeJob.jobId)}`),
-        });
-      }
-    } catch (err) {
-      message.error(getApiErrorMessage(err));
-    } finally {
-      setSigningLoading(false);
-    }
-  };
-
   // Helper calculation for CV Sourcing
   const sourcingEstimatedTotal = useMemo(() => {
     if (!currentAgreement || activeJob?.serviceTypeCode !== 'CV_SOURCING') return null;
@@ -490,7 +366,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
               </Tag>
             </div>
             <Paragraph className="!mb-0 text-slate-500 text-sm mt-1 max-w-2xl">
-              Xem xét, phản hồi điều khoản thương mại và ký số điện tử qua OTP cho các vị trí tuyển dụng
+              Xem xét văn bản hợp đồng dịch vụ, ký kết và tải lên bản đã ký cho các vị trí tuyển dụng
               Headhunt hoặc tìm kiếm hồ sơ ứng viên (CV Sourcing).
             </Paragraph>
           </div>
@@ -652,7 +528,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                         {job.status === 'PENDING_AGREEMENT' && (
                           <div className="mt-2 pt-1.5 border-t border-purple-100 flex items-center gap-1.5 text-[11px] text-purple-700 font-medium">
                             <SafetyCertificateOutlined />
-                            <span>Cần xem xét & ký số thỏa thuận</span>
+                            <span>Cần ký & tải lên hợp đồng</span>
                           </div>
                         )}
                         {job.status === 'PENDING_PAYMENT' && (
@@ -742,13 +618,25 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                   </div>
 
                   {/* Hướng dẫn ngắn gọn */}
-                  {isPendingResponse && (
+                  {isPendingResponse && !currentAgreement.hasSignedDocument && (
                     <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-3 flex items-center gap-3 text-sm text-slate-700">
                       <InfoCircleOutlined className="text-indigo-600 text-base shrink-0" />
                       <span>
-                        HR Connect đã gửi hợp đồng. Vui lòng <strong>xem / tải về</strong> hợp đồng, ký bên ngoài hệ thống,
-                        sau đó <strong>tải lên bản đã ký</strong> để HR Connect duyệt và công khai tin.
+                        HR Connect đã gửi hợp đồng dịch vụ. Quý doanh nghiệp vui lòng <strong>xem / tải về</strong>, ký kết và <strong>tải lên bản đã ký</strong> để HR Connect duyệt và công khai tin.
                       </span>
+                    </div>
+                  )}
+
+                  {isPendingResponse && currentAgreement.hasSignedDocument && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-emerald-950 text-sm flex items-start gap-3">
+                      <CheckCircleFilled className="text-emerald-600 text-lg mt-0.5 shrink-0" />
+                      <div className="space-y-1">
+                        <div className="font-bold">Đã tải lên hợp đồng đã ký thành công</div>
+                        <div className="text-xs text-emerald-800 leading-relaxed">
+                          Doanh nghiệp đã nộp bản hợp đồng ký kết{currentAgreement.signedAt ? ` vào ngày ${dayjs(currentAgreement.signedAt).format('DD/MM/YYYY HH:mm')}` : ''}.
+                          Đội ngũ HR Connect đang đối soát và sẽ công khai tin tuyển dụng trong thời gian sớm nhất.
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -1036,8 +924,25 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                 message.error('Kích thước tệp tin phải nhỏ hơn 25MB.');
                 return Upload.LIST_IGNORE;
               }
-              setFileList([file]);
+              const rcFile = file as RcFile;
+              const uploadFileItem: UploadFile = {
+                uid: rcFile.uid || `${Date.now()}`,
+                name: rcFile.name,
+                size: rcFile.size,
+                type: rcFile.type,
+                status: 'done',
+                originFileObj: rcFile,
+              };
+              setFileList([uploadFileItem]);
               return false;
+            }}
+            onChange={({ fileList: newFileList }) => {
+              if (newFileList.length > 0) {
+                const latest = newFileList[newFileList.length - 1];
+                setFileList([latest]);
+              } else {
+                setFileList([]);
+              }
             }}
             onRemove={() => {
               setFileList([]);

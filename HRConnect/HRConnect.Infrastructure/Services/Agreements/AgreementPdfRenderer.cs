@@ -117,18 +117,34 @@ public sealed class AgreementPdfRenderer : IAgreementPdfRenderer
             writer.Section("ĐIỀU 4: XÁC NHẬN VÀ HIỆU LỰC");
             if (isSigned && agreement.SignedAt.HasValue)
             {
-                writer.Body($"Thỏa thuận này đã được Bên B ký điện tử thành công vào lúc: {agreement.SignedAt.Value:dd/MM/yyyy HH:mm:ss} UTC");
-                writer.Body($"Người ký: {agreement.SignerNameSnapshot} ({agreement.SignerEmailSnapshot})");
-                writer.Body($"Mã băm tài liệu (SHA-256): {agreement.DocumentSha256Hash ?? "EVIDENCE-SEALED"}");
-                writer.Body($"Tra cứu tính pháp lý tại: https://hrconnect.vn/verify/{agreement.VerificationCode}");
-                writer.Space(12);
-                writer.SignatureBox("ĐẠI DIỆN BÊN A\n(Đã xác thực điện tử qua hệ thống)", "ĐẠI DIỆN BÊN B\n(Đã ký xác thực qua Email OTP)");
+                writer.Body("1. Thỏa thuận này đã được hai bên thống nhất và hoàn tất giao kết hợp pháp trên nền tảng HR Connect.");
+                writer.Body("2. Bên A (HR Connect): Đã hoàn tất phê duyệt điều khoản và ký số xác thực điện tử qua hệ thống.");
+                writer.Body($"3. Bên B ({agreement.CompanyNameSnapshot ?? "Doanh nghiệp"}): Đã ký kết và nộp bản hợp đồng hợp lệ vào lúc {agreement.SignedAt.Value:dd/MM/yyyy HH:mm:ss} UTC.");
+                writer.Body($"   Người ký đại diện: {agreement.SignerNameSnapshot ?? "Đại diện Doanh nghiệp"} ({agreement.SignerEmailSnapshot ?? ""})");
+                writer.Body($"4. Mã tra cứu xác thực: {agreement.VerificationCode} | Tra cứu tại: https://hrconnect.vn/verify/{agreement.VerificationCode}");
+                writer.Space(10);
+                writer.SignatureSection(
+                    isSigned: true,
+                    signDateA: agreement.CreatedAt,
+                    companyBName: agreement.CompanyNameSnapshot ?? "DOANH NGHIỆP TUYỂN DỤNG",
+                    signerBName: agreement.SignerNameSnapshot,
+                    signerBRole: agreement.SignerRoleSnapshot,
+                    signedAtB: agreement.SignedAt);
             }
             else
             {
-                writer.Body("TRẠNG THÁI: DỰ THẢO THỎA THUẬN (CHƯA KÝ) - CẦN ĐẠI DIỆN BÊN B XÁC THỰC MÃ OTP ĐỂ HOÀN TẤT KÝ ĐIỆN TỬ.");
-                writer.Space(12);
-                writer.SignatureBox("ĐẠI DIỆN BÊN A\n(Đã duyệt dự thảo)", "ĐẠI DIỆN BÊN B\n(Chờ ký điện tử)");
+                writer.Body("1. Thỏa thuận cung cấp dịch vụ tuyển dụng này được lập thành văn bản điện tử và có giá trị ràng buộc kể từ thời điểm hai bên hoàn tất ký kết.");
+                writer.Body("2. Bên A (HR Connect) đã kiểm duyệt các điều khoản và đính kèm sẵn chữ ký số xác nhận trên văn bản thỏa thuận này.");
+                writer.Body("3. Bên B (Doanh nghiệp) tải tệp hợp đồng này xuống, thực hiện ký tên và đóng dấu của người đại diện hợp pháp, sau đó tải bản hợp đồng đã ký lên nền tảng HR Connect để phát hành tin tuyển dụng.");
+                writer.Body($"4. Mã tra cứu xác thực: {agreement.VerificationCode} | Tra cứu tại: https://hrconnect.vn/verify/{agreement.VerificationCode}");
+                writer.Space(10);
+                writer.SignatureSection(
+                    isSigned: false,
+                    signDateA: agreement.CreatedAt,
+                    companyBName: agreement.CompanyNameSnapshot ?? "DOANH NGHIỆP TUYỂN DỤNG",
+                    signerBName: agreement.SignerNameSnapshot,
+                    signerBRole: agreement.SignerRoleSnapshot,
+                    signedAtB: null);
             }
 
             writer.Finish();
@@ -175,16 +191,89 @@ public sealed class AgreementPdfRenderer : IAgreementPdfRenderer
             Space(6);
         }
 
-        public void SignatureBox(string titleA, string titleB)
+        public void SignatureSection(
+            bool isSigned,
+            DateTime signDateA,
+            string companyBName,
+            string? signerBName,
+            string? signerBRole,
+            DateTime? signedAtB)
         {
-            EnsureRoom(60);
-            using var font = new SKFont(Roboto.Value, 10) { Embolden = true };
-            using var paint = new SKPaint { Color = SKColor.Parse(PrimaryColorHex), IsAntialias = true };
-            
+            EnsureRoom(140);
+
+            using var titleFont = new SKFont(Roboto.Value, 10f) { Embolden = true };
+            using var subtitleFont = new SKFont(Roboto.Value, 7.5f);
+            using var instructionFont = new SKFont(Roboto.Value, 8f);
+            using var signerFont = new SKFont(Roboto.Value, 8.5f);
+
+            using var primaryPaint = new SKPaint { Color = SKColor.Parse(PrimaryColorHex), IsAntialias = true };
+            using var grayPaint = new SKPaint { Color = SKColors.DimGray, IsAntialias = true };
+
             var halfWidth = (PageWidth - 2 * Margin) / 2;
-            _canvas!.DrawText(titleA, Margin + 30, _y + 15, SKTextAlign.Left, font, paint);
-            _canvas.DrawText(titleB, Margin + halfWidth + 30, _y + 15, SKTextAlign.Left, font, paint);
-            _y += 60;
+            var colAX = Margin;
+            var colBX = Margin + halfWidth + 12;
+            var colWidth = halfWidth - 12;
+
+            // --- Tiêu đề Bên A & Bên B ---
+            _canvas!.DrawText("ĐẠI DIỆN BÊN A", colAX + 15, _y + 12, SKTextAlign.Left, titleFont, primaryPaint);
+            _canvas.DrawText("CÔNG TY CP CÔNG NGHỆ NHÂN SỰ HR CONNECT", colAX + 15, _y + 24, SKTextAlign.Left, subtitleFont, grayPaint);
+
+            _canvas.DrawText("ĐẠI DIỆN BÊN B", colBX + 15, _y + 12, SKTextAlign.Left, titleFont, primaryPaint);
+            var safeCompB = (companyBName.Length > 40 ? companyBName[..38] + "..." : companyBName).ToUpperInvariant();
+            _canvas.DrawText(safeCompB, colBX + 15, _y + 24, SKTextAlign.Left, subtitleFont, grayPaint);
+
+            // --- Con dấu / Chữ ký số điện tử của Bên A (HR Connect) ---
+            var stampAY = _y + 32;
+            var stampHeight = 64f;
+            var stampWidth = colWidth - 20;
+
+            using var stampBgPaint = new SKPaint { Style = SKPaintStyle.Fill, Color = SKColor.Parse("#F0FDF4"), IsAntialias = true };
+            using var stampBorderPaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = SKColor.Parse("#16A34A"), StrokeWidth = 1f, IsAntialias = true };
+            var stampARect = new SKRoundRect(new SKRect(colAX + 10, stampAY, colAX + 10 + stampWidth, stampAY + stampHeight), 4f, 4f);
+            _canvas.DrawRoundRect(stampARect, stampBgPaint);
+            _canvas.DrawRoundRect(stampARect, stampBorderPaint);
+
+            using var stampTitleFont = new SKFont(Roboto.Value, 8.5f) { Embolden = true };
+            using var stampDetailFont = new SKFont(Roboto.Value, 7.5f);
+            using var emeraldPaint = new SKPaint { Color = SKColor.Parse("#15803D"), IsAntialias = true };
+            using var darkTextPaint = new SKPaint { Color = SKColor.Parse("#0F172A"), IsAntialias = true };
+            using var mutedTextPaint = new SKPaint { Color = SKColor.Parse("#475569"), IsAntialias = true };
+
+            _canvas.DrawText("[✓] KÝ SỐ BỞI HR CONNECT VIETNAM", colAX + 18, stampAY + 15, SKTextAlign.Left, stampTitleFont, emeraldPaint);
+            _canvas.DrawText("CÔNG TY CP CÔNG NGHỆ NHÂN SỰ HR CONNECT", colAX + 18, stampAY + 29, SKTextAlign.Left, stampDetailFont, darkTextPaint);
+            _canvas.DrawText($"Ngày ký số: {signDateA:dd/MM/yyyy HH:mm:ss} UTC", colAX + 18, stampAY + 42, SKTextAlign.Left, stampDetailFont, mutedTextPaint);
+            _canvas.DrawText("Chứng thực: HỢP LỆ & SẴN SÀNG GIAO KẾT", colAX + 18, stampAY + 55, SKTextAlign.Left, stampDetailFont, emeraldPaint);
+
+            _canvas.DrawText("Ban Quản trị & Điều hành Nền tảng HR Connect", colAX + 15, stampAY + stampHeight + 14, SKTextAlign.Left, subtitleFont, grayPaint);
+
+            // --- Phần chữ ký Bên B ---
+            if (isSigned && signedAtB.HasValue)
+            {
+                var stampBY = _y + 32;
+                var stampBRect = new SKRoundRect(new SKRect(colBX + 10, stampBY, colBX + 10 + stampWidth, stampBY + stampHeight), 4f, 4f);
+                _canvas.DrawRoundRect(stampBRect, stampBgPaint);
+                _canvas.DrawRoundRect(stampBRect, stampBorderPaint);
+
+                _canvas.DrawText("[✓] ĐÃ KÝ VÀ TẢI LÊN BẢN HỢP ĐỒNG", colBX + 18, stampBY + 15, SKTextAlign.Left, stampTitleFont, emeraldPaint);
+                _canvas.DrawText($"Người ký: {signerBName ?? "Đại diện hợp pháp"}", colBX + 18, stampBY + 29, SKTextAlign.Left, stampDetailFont, darkTextPaint);
+                _canvas.DrawText($"Thời gian: {signedAtB.Value:dd/MM/yyyy HH:mm:ss} UTC", colBX + 18, stampBY + 42, SKTextAlign.Left, stampDetailFont, mutedTextPaint);
+                _canvas.DrawText("Trạng thái: Đã ghi nhận bản ký kết trên hệ thống", colBX + 18, stampBY + 55, SKTextAlign.Left, stampDetailFont, emeraldPaint);
+
+                _canvas.DrawText(signerBName ?? "Người đại diện theo pháp luật", colBX + 15, stampBY + stampHeight + 14, SKTextAlign.Left, subtitleFont, primaryPaint);
+            }
+            else
+            {
+                _canvas.DrawText("(Ký, ghi rõ họ tên và đóng dấu)", colBX + 15, _y + 38, SKTextAlign.Left, instructionFont, grayPaint);
+
+                var lineY = _y + 92;
+                using var linePaint = new SKPaint { Color = SKColors.LightGray, StrokeWidth = 0.75f };
+                _canvas.DrawLine(colBX + 15, lineY, colBX + 15 + stampWidth - 20, lineY, linePaint);
+
+                _canvas.DrawText($"Họ và tên: {signerBName ?? "........................................................"}", colBX + 15, lineY + 12, SKTextAlign.Left, signerFont, primaryPaint);
+                _canvas.DrawText($"Chức vụ: {signerBRole ?? "Đại diện theo pháp luật / Người được ủy quyền"}", colBX + 15, lineY + 23, SKTextAlign.Left, subtitleFont, grayPaint);
+            }
+
+            _y += 135;
         }
 
         public void Finish() => _document.EndPage();
