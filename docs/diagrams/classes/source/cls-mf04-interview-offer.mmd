@@ -14,6 +14,7 @@ classDiagram
     <<endpoint>>
     +POST /applications/‹id›/offers
     +POST /applications/‹id›/start-work
+    +POST /internal/placement-reconciliations/‹id›
   }
   class ScheduleInterviewCommandHandler {
     <<handler>>
@@ -21,7 +22,7 @@ classDiagram
   }
   class RecordInterviewResultCommandHandler {
     <<handler>>
-    +Handle(PASS | FAIL | BACKUP)
+    +Handle(PASS | FAIL | BACKUP | NO_SHOW)
   }
   class OfferHandlers {
     <<handler>>
@@ -35,6 +36,7 @@ classDiagram
   class MarkNotStartedCommandHandler {
     <<handler>>
     +Handle(reason)
+    +HEADHUNT_COD: Reconciliation PENDING (NOT_STARTED)
   }
   class CorrectPlacementStartDateCommandHandler {
     <<handler>>
@@ -73,6 +75,21 @@ classDiagram
     +ActualStartDate · Status
     +ReplacementSlotId
   }
+  class PlacementReconciliation {
+    <<entity>>
+    +ClaimedOutcome (STARTED | NOT_STARTED)
+    +Status (PENDING | CONFIRMED | FLAGGED)
+    +ContactChannel · Note · ResolutionAction
+  }
+  class ReconcilePlacementCommandHandler {
+    <<handler>>
+    +Handle(CONFIRM | FLAG) — Internal HR
+    +CONFIRMED → ServiceFee DUE / OVERDUE
+  }
+  class ResolveFlaggedReconciliationCommandHandler {
+    <<handler>>
+    +Handle(CONFIRM_REPORTED_OUTCOME | REOPEN_FOR_CLIENT_CONFIRMATION) — Admin
+  }
   class Application {
     <<entity>>
     +Status · PlannedStartDate
@@ -94,6 +111,14 @@ classDiagram
   Application *-- Interview : 0..*
   Application *-- Offer : 0..*
   Application --> Placement : 0..1
+  RecruitmentEndpoints ..> ReconcilePlacementCommandHandler : sends
+  ConfirmStartWorkCommandHandler --> PlacementReconciliation : creates PENDING (HEADHUNT_COD)
+  PlacementReconciliation --> Placement : 0..1
+  ReconcilePlacementCommandHandler --> PlacementReconciliation : CONFIRMED / FLAGGED
+  ResolveFlaggedReconciliationCommandHandler --> PlacementReconciliation : resolves FLAGGED
+  style PlacementReconciliation fill:#FFFFFF,stroke:#1B365D
+  style ReconcilePlacementCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style ResolveFlaggedReconciliationCommandHandler fill:#EAF2FB,stroke:#1B365D
   style InterviewEndpoints fill:#FFF4E5,stroke:#1B365D
   style RecruitmentEndpoints fill:#FFF4E5,stroke:#1B365D
   style ScheduleInterviewCommandHandler fill:#EAF2FB,stroke:#1B365D

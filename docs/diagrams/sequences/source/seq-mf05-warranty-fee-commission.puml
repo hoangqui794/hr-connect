@@ -9,7 +9,7 @@ actor "Platform Admin" as AD
 control "Finance handlers" as H
 actor "Affiliate" as AF
 W -> F : Daily: due fees and finished warranties
-F -> DB : ServiceFee PENDING → DUE (notify Client), DUE → OVERDUE
+F -> DB : ServiceFee PENDING → DUE only after PlacementReconciliation CONFIRMED (notify Client), DUE → OVERDUE
 F -> DB : Warranty PASSED, Commission IN_WARRANTY → EARNED
 AD -> H : Record service fee payment (reference)
 H -> DB : ServiceFee PAID

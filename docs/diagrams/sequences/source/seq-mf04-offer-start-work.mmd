@@ -8,6 +8,8 @@ sequenceDiagram
   participant DB as PostgreSQL
   actor CA as Candidate
   participant F as PlacementFinanceService
+  actor HR as Internal HR
+  actor AD as Platform Admin
   CL->>H: Create draft and send offer
   alt HEADHUNT_COD and salary not gross monthly
   H-->>CL: 400 HEADHUNT_REQUIRES_GROSS
@@ -21,4 +23,12 @@ sequenceDiagram
   H->>H: Date not in future and not before acceptance
   H->>DB: Placement STARTED, Application PLACED
   H->>F: InitializeAsync(placement)
-  F->>DB: HEADHUNT_COD: ServiceFee PENDING, Warranty ACTIVE, Commission IN_WARRANTY
+  F->>DB: HEADHUNT_COD: ServiceFee PENDING (not yet due), Warranty ACTIVE, Commission IN_WARRANTY
+  H->>DB: HEADHUNT_COD: PlacementReconciliation PENDING (claimed STARTED)
+  HR->>H: Reconcile start-work outcome (CONFIRM / FLAG, contact channel, note)
+  alt CONFIRM
+  H->>DB: Reconciliation CONFIRMED, ServiceFee PENDING → DUE (or OVERDUE)
+  else FLAG (note required)
+  H->>DB: Reconciliation FLAGGED, ServiceFee stays PENDING
+  H->>AD: Notify Platform Admin to resolve
+  end
