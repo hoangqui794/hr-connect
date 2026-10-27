@@ -142,14 +142,6 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
             >
               <span>Việc làm đã ứng tuyển</span>
             </button>
-
-            <button
-              type="button"
-              onClick={() => handleNavigate('/jobs')}
-              className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-slate-600 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
-            >
-              <span>Việc làm phù hợp với bạn</span>
-            </button>
           </div>
         )}
       </div>
