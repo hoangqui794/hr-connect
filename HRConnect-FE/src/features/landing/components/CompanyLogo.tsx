@@ -155,6 +155,15 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({ id, name, className = 
         </svg>
       );
 
+    case 'vng':
+      return (
+        <svg width={size} height={size} viewBox="0 0 48 48" className={className} aria-label={name}>
+          <rect width="48" height="48" rx="8" fill="#F97316" />
+          <path d="M12 16 L20 32 L28 16" fill="none" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="34" cy="24" r="5" fill="#FFFFFF" />
+        </svg>
+      );
+
     default:
       return (
         <div

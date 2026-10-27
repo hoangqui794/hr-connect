@@ -18,6 +18,9 @@ interface CategoryItem {
   name: string;
   jobCount: string;
   icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
+  hoverColor: string;
   queryParam: string;
 }
 
@@ -27,6 +30,9 @@ const CATEGORIES: CategoryItem[] = [
     name: 'Công nghệ Thông tin',
     jobCount: '1.607+ việc làm',
     icon: Code2,
+    iconBg: 'bg-[#95f5ce]/40',
+    iconColor: 'text-[#005f45]',
+    hoverColor: 'group-hover:text-[#005f45]',
     queryParam: 'IT',
   },
   {
@@ -34,6 +40,9 @@ const CATEGORIES: CategoryItem[] = [
     name: 'Kinh doanh / Bán hàng',
     jobCount: '8.321+ việc làm',
     icon: TrendingUp,
+    iconBg: 'bg-[#ffdbd0]/60',
+    iconColor: 'text-[#982e00]',
+    hoverColor: 'group-hover:text-[#982e00]',
     queryParam: 'SALES',
   },
   {
@@ -41,6 +50,9 @@ const CATEGORIES: CategoryItem[] = [
     name: 'Marketing / Truyền thông',
     jobCount: '5.567+ việc làm',
     icon: Megaphone,
+    iconBg: 'bg-[#d9e2ff]',
+    iconColor: 'text-[#1d59c1]',
+    hoverColor: 'group-hover:text-[#1d59c1]',
     queryParam: 'MARKETING',
   },
   {
@@ -48,6 +60,9 @@ const CATEGORIES: CategoryItem[] = [
     name: 'Tài chính / Ngân hàng',
     jobCount: '1.420+ việc làm',
     icon: Landmark,
+    iconBg: 'bg-[#eaedff]',
+    iconColor: 'text-[#0f52ba]',
+    hoverColor: 'group-hover:text-[#0f52ba]',
     queryParam: 'FINANCE',
   },
   {
@@ -55,6 +70,9 @@ const CATEGORIES: CategoryItem[] = [
     name: 'Kế toán / Kiểm toán / Thuế',
     jobCount: '3.608+ việc làm',
     icon: Calculator,
+    iconBg: 'bg-[#f2f3ff]',
+    iconColor: 'text-[#3e4943]',
+    hoverColor: 'group-hover:text-[#007a5a]',
     queryParam: 'ACCOUNTING',
   },
   {
@@ -62,6 +80,9 @@ const CATEGORIES: CategoryItem[] = [
     name: 'Nhân sự / Hành chính',
     jobCount: '2.560+ việc làm',
     icon: Users,
+    iconBg: 'bg-[#ffdbd0]/70',
+    iconColor: 'text-[#c03e05]',
+    hoverColor: 'group-hover:text-[#c03e05]',
     queryParam: 'HR',
   },
   {
@@ -69,13 +90,19 @@ const CATEGORIES: CategoryItem[] = [
     name: 'Thiết kế UI/UX & Sáng tạo',
     jobCount: '890+ việc làm',
     icon: Palette,
+    iconBg: 'bg-[#eaedff]',
+    iconColor: 'text-[#6292fd]',
+    hoverColor: 'group-hover:text-[#1d59c1]',
     queryParam: 'DESIGN',
   },
   {
     id: 'real-estate',
-    name: 'Bất động sản',
+    name: 'Bất động sản / Xây dựng',
     jobCount: '740+ việc làm',
     icon: Building2,
+    iconBg: 'bg-[#95f5ce]/30',
+    iconColor: 'text-[#006c4f]',
+    hoverColor: 'group-hover:text-[#006c4f]',
     queryParam: 'REAL_ESTATE',
   },
 ];
@@ -88,34 +115,34 @@ export const TopCategoriesGrid: React.FC = () => {
   };
 
   return (
-    <section className="bg-slate-50/60 border-b border-slate-200/80 py-10 md:py-12">
+    <section className="bg-slate-50/70 border-b border-slate-200/80 py-10 md:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
           <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-600 mb-1.5">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#007a5a] mb-1.5">
               <Sparkles className="h-3.5 w-3.5" />
               <span>Khám phá cơ hội nghề nghiệp</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 m-0">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#131b2e] m-0">
               Top ngành nghề trọng điểm
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1 mb-0">
-              Tìm kiếm công việc lý tưởng theo từng nhóm ngành nghề phát triển mạnh nhất
+              Tìm kiếm công việc lý tưởng theo từng nhóm ngành nghề phát triển mạnh nhất năm 2026
             </p>
           </div>
 
           <button
             type="button"
             onClick={() => navigate('/jobs')}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#007a5a] hover:text-[#005f45] transition-colors cursor-pointer self-start sm:self-auto"
           >
             <span>Xem tất cả ngành nghề</span>
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Categories Grid (Clean Flat White Theme) */}
+        {/* Categories Grid (Soft Color Tokens from DESIGN.md) */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {CATEGORIES.map((cat) => {
             const IconComponent = cat.icon;
@@ -123,28 +150,32 @@ export const TopCategoriesGrid: React.FC = () => {
               <div
                 key={cat.id}
                 onClick={() => handleCategoryClick(cat.queryParam)}
-                className="bg-white rounded-xl border border-slate-200 hover:border-blue-500 hover:shadow-md transition-all p-4 flex flex-col justify-between cursor-pointer group"
+                className="bg-white rounded-xl border border-slate-200/90 hover:border-[#79d9b2] hover:shadow-lg transition-all duration-300 p-4 sm:p-5 flex flex-col justify-between cursor-pointer group hover:-translate-y-0.5"
               >
                 <div>
-                  {/* Icon stroke mảnh 1.5px tone xanh dịu */}
-                  <div className="text-blue-600 bg-blue-50/60 p-2.5 rounded-xl flex items-center justify-center w-11 h-11 transition-transform duration-200 group-hover:scale-105">
-                    <IconComponent className="h-5 w-5" strokeWidth={1.5} />
+                  {/* Icon with Soft Tinted Color */}
+                  <div
+                    className={`${cat.iconBg} ${cat.iconColor} p-2.5 rounded-xl flex items-center justify-center w-11 h-11 transition-transform duration-200 group-hover:scale-110 shadow-2xs`}
+                  >
+                    <IconComponent className="h-5 w-5" strokeWidth={1.75} />
                   </div>
 
                   {/* Tên ngành */}
-                  <h3 className="text-slate-800 font-semibold text-sm group-hover:text-blue-600 transition-colors mt-3 mb-0 line-clamp-1">
+                  <h3
+                    className={`text-[#131b2e] font-bold text-sm sm:text-base ${cat.hoverColor} transition-colors mt-3 mb-0 line-clamp-1`}
+                  >
                     {cat.name}
                   </h3>
 
                   {/* Số lượng */}
-                  <p className="text-slate-400 text-xs mt-0.5 mb-0 font-medium">
+                  <p className="text-slate-500 text-xs mt-1 mb-0 font-medium">
                     {cat.jobCount}
                   </p>
                 </div>
 
-                <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-medium text-slate-400 group-hover:text-blue-600 transition-colors">
-                  <span>Khám phá</span>
-                  <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                <div className="mt-3.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-400 group-hover:text-[#007a5a] transition-colors">
+                  <span>Khám phá ngay</span>
+                  <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                 </div>
               </div>
             );
