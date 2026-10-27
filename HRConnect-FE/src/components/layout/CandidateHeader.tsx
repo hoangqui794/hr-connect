@@ -9,7 +9,7 @@ import {
   CompassOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWorkspaceMenu';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -45,10 +45,10 @@ export const CandidateHeader: React.FC = () => {
       {/* Left: Brand Logo & Navigation Links */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
         {/* Logo: HR Connect */}
-        <div
-          onClick={() => navigate('/')}
-          style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}
-          title="HR Connect — Nền tảng Tuyển dụng AI"
+        <Link
+          to="/"
+          style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', textDecoration: 'none' }}
+          title="HR Connect — Nền tảng Tuyển dụng AI, về trang chủ"
         >
           <BrandMark size={36} className="shrink-0" />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -69,7 +69,7 @@ export const CandidateHeader: React.FC = () => {
               AI-Powered
             </Tag>
           </div>
-        </div>
+        </Link>
 
         {/* Menu điều hướng chính */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

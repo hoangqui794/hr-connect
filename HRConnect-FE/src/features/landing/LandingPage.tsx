@@ -5,7 +5,6 @@ import { UserRole } from '@/types/roles';
 import { HomePage } from './HomePage';
 
 const WORKSPACE_BY_ROLE: Partial<Record<UserRole, string>> = {
-  [UserRole.CANDIDATE]: '/candidate/dashboard',
   [UserRole.AFFILIATE]: '/affiliate/dashboard',
   [UserRole.CLIENT]: '/client/dashboard',
   [UserRole.INTERNAL_HR]: '/hr/dashboard',

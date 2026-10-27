@@ -152,9 +152,9 @@ export const AffiliateProfilePage: React.FC = () => {
 
   const p = profileQuery.data;
   const b = bankQuery.data;
-  const bankHolderWatched = Form.useWatch('bankAccountHolder', bankForm) || b?.bankAccountHolder || 'CHỦ TÀI KHOẢN';
-  const bankNumberWatched = Form.useWatch('bankAccountNumber', bankForm) || b?.bankAccountNumber || '•••• •••• •••• ••••';
-  const bankNameWatched = Form.useWatch('bankName', bankForm) || b?.bankName || 'NGÂN HÀNG';
+  const bankHolderWatched = Form.useWatch('bankAccountHolder', bankForm) || b?.bankAccountHolder || '';
+  const bankNumberWatched = Form.useWatch('bankAccountNumber', bankForm) || b?.bankAccountNumber || '';
+  const bankNameWatched = Form.useWatch('bankName', bankForm) || b?.bankName || '';
   const bankBranchWatched = Form.useWatch('bankBranch', bankForm) || b?.bankBranch || '';
 
   const tabItems = [
@@ -287,13 +287,19 @@ export const AffiliateProfilePage: React.FC = () => {
                       <div>
                         <div className="text-[11px] uppercase font-semibold text-slate-400">Ngân hàng thụ hưởng</div>
                         <div className="text-sm font-bold text-slate-900 leading-tight">
-                          {bankNameWatched || 'Vietcombank'}
+                          {bankNameWatched || 'Chưa cập nhật'}
                         </div>
                       </div>
                     </div>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-solid border-emerald-200/60">
-                      ✓ Đã xác thực thanh toán
-                    </span>
+                    {bankNumberWatched ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-solid border-emerald-200/60">
+                        ✓ Đã lưu tài khoản
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-solid border-amber-200/60">
+                        Chưa thiết lập tài khoản
+                      </span>
+                    )}
                   </div>
 
                   {/* 2-column info */}
@@ -302,9 +308,9 @@ export const AffiliateProfilePage: React.FC = () => {
                       <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Số tài khoản</div>
                       <div className="mt-1 flex items-center gap-2">
                         <span className="font-mono text-lg font-bold text-slate-900 tracking-wider">
-                          {bankNumberWatched}
+                          {bankNumberWatched || 'Chưa cập nhật'}
                         </span>
-                        {bankNumberWatched && bankNumberWatched !== '•••• •••• •••• ••••' && (
+                        {bankNumberWatched && (
                           <button
                             type="button"
                             onClick={() => {
@@ -324,14 +330,14 @@ export const AffiliateProfilePage: React.FC = () => {
                     <div>
                       <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Chủ tài khoản</div>
                       <div className="mt-1 text-sm font-semibold text-slate-700 uppercase truncate">
-                        {String(bankHolderWatched).toUpperCase()}
+                        {bankHolderWatched ? String(bankHolderWatched).toUpperCase() : 'Chưa cập nhật'}
                       </div>
                     </div>
 
                     <div>
                       <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Chi nhánh</div>
                       <div className="mt-1 text-sm text-slate-600 truncate">
-                        {bankBranchWatched || 'Hội sở chính'}
+                        {bankBranchWatched || 'Chưa cập nhật'}
                       </div>
                     </div>
                   </div>

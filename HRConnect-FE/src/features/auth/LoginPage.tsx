@@ -250,8 +250,8 @@ export const LoginPage: React.FC = () => {
       const redirectFrom = redirectState?.from;
       const emailReturnTo = getSafeCandidateReturnPath(new URLSearchParams(location.search).get('returnTo'));
       const destination =
-        resolvedRole === UserRole.CANDIDATE && emailReturnTo
-          ? emailReturnTo
+        resolvedRole === UserRole.CANDIDATE
+          ? emailReturnTo || (redirectFrom && redirectFrom !== '/login' && redirectFrom !== '/candidate/dashboard' && belongsToRoleWorkspace(resolvedRole, redirectFrom) ? redirectFrom : '/')
           : redirectFrom && redirectFrom !== '/login' && belongsToRoleWorkspace(resolvedRole, redirectFrom)
           ? redirectFrom
           : getDashboardRouteForRole(resolvedRole);

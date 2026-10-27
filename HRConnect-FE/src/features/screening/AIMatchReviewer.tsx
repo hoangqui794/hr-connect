@@ -101,75 +101,6 @@ export interface AIMatchReviewerProps {
   className?: string;
 }
 
-// ─── Mock Default Data ──────────────────────────────────────────────────────
-
-const DEFAULT_CANDIDATE: AIMatchReviewerCandidate = {
-  id: 'cand-089',
-  name: 'Nguyễn Đăng Quang',
-  currentTitle: 'Kỹ sư Frontend Web / ReactJS Developer',
-  email: 'dangquang.frontend@techcorp.vn',
-  phone: '+84 912 345 678',
-  location: 'Hà Nội, Việt Nam (Hybrid)',
-  linkedInUrl: 'https://linkedin.com/in/quang-frontend-dev',
-  yearsOfExperience: 5.5,
-  expectedSalary: '45.000.000 đ',
-  noticePeriod: '15 ngày (Sẵn sàng nhận việc)',
-  englishLevel: 'IELTS 7.0 (Fluent Professional)',
-  summary:
-    'Kỹ sư Frontend Web 5+ năm kinh nghiệm thực chiến phát triển các ứng dụng SaaS B2B quy mô lớn và hệ thống Web App Fintech hiệu năng cao. Thành thạo React 18, TypeScript, Tailwind CSS, Ant Design v5, Quản lý State với Zustand/Redux Toolkit và Tối ưu hóa Web Vitals (LCP < 1.2s).',
-  skills: [
-    'React',
-    'TypeScript',
-    'Tailwind CSS',
-    'Ant Design',
-    'Next.js',
-    'Zustand',
-    'TanStack Query',
-    'RESTful API',
-    'CI/CD Pipeline',
-    'Micro-frontends',
-    'Vite',
-    'Jest / Testing',
-  ],
-  workExperience: [
-    {
-      role: 'Senior React Developer & Tech Lead',
-      company: 'VinTech Solutions Global',
-      period: '03/2023 — Hiện tại',
-      highlights: [
-        'Chủ trì tái cấu trúc kiến trúc Frontend Web Portal phục vụ 250.000 người dùng hàng ngày.',
-        'Đồng bộ hệ thống Ant Design v5 với Tailwind CSS, giảm 45% thời gian phát triển UI cho đội ngũ 12 kỹ sư.',
-        'Tối ưu hóa bundle Vite và Core Web Vitals, nâng điểm Google Lighthouse từ 62 lên 94 điểm.',
-      ],
-    },
-    {
-      role: 'Frontend Web Engineer',
-      company: 'FPT Software & Cloud Lab',
-      period: '08/2020 — 02/2023',
-      highlights: [
-        'Phát triển ứng dụng tuyển dụng & phân hệ Dashboard quản trị cho đối tác Ngân hàng Nhật Bản.',
-        'Triển khai TanStack Query caching đa tầng và Realtime WebSockets cho thông báo trạng thái hồ sơ.',
-      ],
-    },
-  ],
-  education: [
-    {
-      degree: 'Cử nhân Kỹ thuật Phần mềm (Bằng Giỏi)',
-      school: 'Đại học Bách Khoa Hà Nội',
-      year: '2016 — 2020',
-    },
-  ],
-};
-
-const DEFAULT_JOB: AIMatchReviewerJob = {
-  id: 'job-fe-01',
-  title: 'Kỹ sư Frontend Web / ReactJS Developer (Lead Level)',
-  department: 'Khối Công nghệ & Sản phẩm (Core Platform)',
-  salaryBudget: '40.000.000 - 55.000.000 đ',
-  mustHaveSkills: ['React', 'TypeScript', 'Ant Design', 'Tailwind CSS', 'Next.js'],
-  shouldHaveSkills: ['Zustand', 'Micro-frontends', 'CI/CD Pipeline', 'GraphQL', 'Docker'],
-};
-
 const REJECT_REASONS = [
   { value: 'skills_gap', label: 'Thiếu kỹ năng chuyên môn bắt buộc theo JD' },
   { value: 'insufficient_exp', label: 'Chưa đủ số năm kinh nghiệm yêu cầu' },
@@ -180,9 +111,9 @@ const REJECT_REASONS = [
 ];
 
 export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
-  score = 89, // Mặc định 89% theo đúng proposal
-  candidate = DEFAULT_CANDIDATE,
-  job = DEFAULT_JOB,
+  score = 0,
+  candidate,
+  job,
   onApproveInterview,
   onReject,
   className = '',
@@ -192,6 +123,14 @@ export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
   const [rejectReason, setRejectReason] = useState<string>('');
   const [rejectNote, setRejectNote] = useState<string>('');
   const [decisionState, setDecisionState] = useState<'pending' | 'approved' | 'rejected'>('pending');
+
+  if (!candidate || !job) {
+    return (
+      <div className={`w-full font-sans p-8 bg-white rounded-xl border border-dashed border-slate-200 text-center ${className}`}>
+        <p className="text-slate-500 font-medium m-0">Chưa có thông tin ứng viên hoặc tin tuyển dụng để đánh giá độ phù hợp AI.</p>
+      </div>
+    );
+  }
 
   // Xác định tier dựa trên điểm số khớp 100% proposal
   const getTierInfo = (s: number) => {

@@ -137,7 +137,7 @@ export const CandidateSavedJobsPage: React.FC = () => {
           <Button
             type="primary"
             icon={<CompassOutlined />}
-            onClick={() => navigate('/candidate/jobs')}
+            onClick={() => navigate('/jobs')}
             className="!h-10 !px-5 !rounded-full !font-semibold !shadow-xs"
           >
             Tìm kiếm việc làm mới
@@ -200,7 +200,7 @@ export const CandidateSavedJobsPage: React.FC = () => {
             type="primary"
             size="large"
             icon={<CompassOutlined />}
-            onClick={() => navigate('/candidate/jobs')}
+            onClick={() => navigate('/jobs')}
             className="!h-11 !px-7 !rounded-full !font-bold !bg-blue-600 hover:!bg-blue-500 !text-white !shadow-xs"
           >
             Khám phá việc làm ngay

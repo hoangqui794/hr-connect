@@ -6,7 +6,7 @@
  *  - Cột phải: CTV Nộp Sau (Trùng lặp) gắn nhãn cam cảnh báo (17:45:10 18/9/2026 - Trùng lặp).
  *  - Nút "Phán quyết" màu đỏ mận sang trọng, click mở Antd Modal xác nhận chuyển nhượng hoa hồng có log mã băm SHA-256.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Table,
   Card,
@@ -70,76 +70,16 @@ export interface DisputeResolutionTableProps {
   className?: string;
 }
 
-// ─── Mock Initial Data ──────────────────────────────────────────────────────
-
-const MOCK_DISPUTES: DisputeItem[] = [
-  {
-    id: 'dsp-001',
-    originalSubmissionId: 'sub-099',
-    candidateName: 'Bùi Văn Hữu',
-    candidateEmail: 'bui.vanhuu@techcorp.io',
-    candidatePhone: '0988 123 456',
-    jobId: 'job-001',
-    jobTitle: 'Kỹ sư Frontend Web / ReactJS Developer',
-    commissionAmount: 15000000,
-    originalAffiliateName: 'David Trần',
-    originalAffiliateCode: 'AFF-001',
-    originalTimestamp: '17:15:32 18/09/2026',
-    competingAffiliateName: 'Sarah Lê',
-    competingAffiliateCode: 'AFF-042',
-    competingTimestamp: '17:45:10 18/09/2026',
-    timeDelta: '+29 phút 38 giây',
-    sha256Proof: '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
-    status: 'DISPUTE_PENDING',
-  },
-  {
-    id: 'dsp-002',
-    originalSubmissionId: 'sub-102',
-    candidateName: 'Lê Thành Đạt',
-    candidateEmail: 'le.thanhdat@fintech.vn',
-    candidatePhone: '0912 999 888',
-    jobId: 'job-002',
-    jobTitle: 'Tech Lead / Frontend Architect',
-    commissionAmount: 22000000,
-    originalAffiliateName: 'Minh Vũ Recruiter',
-    originalAffiliateCode: 'AFF-015',
-    originalTimestamp: '08:20:00 15/09/2026',
-    competingAffiliateName: 'Nguyễn Văn Talent',
-    competingAffiliateCode: 'AFF-088',
-    competingTimestamp: '14:30:22 15/09/2026',
-    timeDelta: '+6 giờ 10 phút',
-    sha256Proof: '4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a',
-    status: 'DISPUTE_PENDING',
-  },
-  {
-    id: 'dsp-003',
-    originalSubmissionId: 'sub-088',
-    candidateName: 'Hoàng Nam Anh',
-    candidateEmail: 'hoang.namanh@devops.io',
-    candidatePhone: '0903 456 789',
-    jobId: 'job-003',
-    jobTitle: 'DevOps & Cloud Lead Specialist',
-    commissionAmount: 18000000,
-    originalAffiliateName: 'David Trần',
-    originalAffiliateCode: 'AFF-001',
-    originalTimestamp: '09:00:15 10/09/2026',
-    competingAffiliateName: 'Headhunt Agency Pro',
-    competingAffiliateCode: 'AFF-021',
-    competingTimestamp: '16:12:00 10/09/2026',
-    timeDelta: '+7 giờ 11 phút',
-    sha256Proof: 'ef2d127de37b942baad06145e54b0c619a1f22327b2ebbcfbec78f5564afe39d',
-    status: 'RESOLVED',
-    arbitrationNote:
-      'Công nhận quyền sở hữu hồ sơ và hoa hồng cho CTV David Trần dựa trên dấu thời gian First-Submission nộp sớm 7h11m.',
-  },
-];
-
 export const DisputeResolutionTable: React.FC<DisputeResolutionTableProps> = ({
-  data = MOCK_DISPUTES,
+  data = [],
   onResolve,
   className = '',
 }) => {
   const [disputes, setDisputes] = useState<DisputeItem[]>(data);
+
+  useEffect(() => {
+    setDisputes(data);
+  }, [data]);
   const [selectedDispute, setSelectedDispute] = useState<DisputeItem | null>(null);
   const [resolveModalOpen, setResolveModalOpen] = useState<boolean>(false);
   const [arbitrationRationale, setArbitrationRationale] = useState<string>('');

@@ -56,6 +56,8 @@ import type { UpdateCandidateProfileCommand, CandidateProfileData } from '@/type
 import { candidateService, type CandidateSkillItemDto } from '@/services/candidateService';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { AvatarUpload } from '@/components/common/AvatarUpload';
+import { JobHuntingModeWidget } from '@/features/portal/candidate/JobHuntingModeWidget';
+import { ProfileStrengthMeter } from '@/features/portal/candidate/ProfileStrengthMeter';
 import type { UploadProps } from 'antd';
 
 export interface CandidateCV {
@@ -568,6 +570,23 @@ export const CandidateProfilePage: React.FC = () => {
 
   return (
     <div className="candidate-page candidate-profile-page" style={{ width: '100%', paddingBottom: 60 }}>
+      {/* 1. Job Hunting Mode Switch chuẩn TopCV & LinkedIn */}
+      <div className="mb-6">
+        <JobHuntingModeWidget initialIsHunting={isPublic} />
+      </div>
+
+      {/* 2. Thước Đo Sức Mạnh Hồ Sơ (Profile Strength Meter) */}
+      <div className="mb-6">
+        <ProfileStrengthMeter
+          scorePercent={profileCompletion}
+          cvCount={myCvs.length}
+          hasSkills={(profile?.skills?.length ?? 0) > 0 || skillsList.length > 0}
+          onOpenCvModal={() => {
+            setSearchParams({ tab: 'cv-center' });
+          }}
+        />
+      </div>
+
       <div className="candidate-profile-hero bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
         <div className="candidate-profile-identity">
           <div className="candidate-profile-avatar-wrap">

@@ -13,7 +13,7 @@ import {
   UserAddOutlined,
   CustomerServiceOutlined,
 } from '@ant-design/icons';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -90,10 +90,10 @@ export const Navbar: React.FC = () => {
     <header className="sticky top-0 z-[100] w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md shadow-sm transition-all">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
-        <div
-          onClick={() => navigate('/')}
-          title="HR Connect — AI-Powered Recruitment Platform"
-          className="flex cursor-pointer select-none items-center gap-2.5 sm:gap-3 shrink-0"
+        <Link
+          to="/"
+          title="HR Connect — Nền tảng tuyển dụng, về trang chủ"
+          className="flex cursor-pointer select-none items-center gap-2.5 sm:gap-3 shrink-0 no-underline text-inherit"
         >
           <BrandMark size={36} />
           <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap">
@@ -104,7 +104,7 @@ export const Navbar: React.FC = () => {
           >
             Recruitment Platform
           </Tag>
-        </div>
+        </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
@@ -192,7 +192,7 @@ export const Navbar: React.FC = () => {
 
           {isAuthenticated ? (
             role === UserRole.CANDIDATE ? (
-              <CandidateWorkspaceMenu showWorkspaceButton />
+              <CandidateWorkspaceMenu />
             ) : (
               <Dropdown menu={{ items: genericMenuItems }} placement="bottomRight" trigger={['click']}>
                 <div
