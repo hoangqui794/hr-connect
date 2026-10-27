@@ -26,17 +26,9 @@ const PublicFrame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </div>
 );
 
-export const PublicJobSearchPage: React.FC = () => (
-  <PublicFrame>
-    <header className="mb-6">
-      <Title level={2} className="!mb-1">
-        Việc làm đang tuyển
-      </Title>
-      <Text type="secondary">Tin đã được bộ phận kiểm duyệt của HR Connect xác nhận.</Text>
-    </header>
-    <JobDiscoveryPage publicAccess />
-  </PublicFrame>
-);
+import { PublicJobSplitDiscovery } from './PublicJobSplitDiscovery';
+
+export const PublicJobSearchPage: React.FC = () => <PublicJobSplitDiscovery />;
 
 export const PublicJobDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
