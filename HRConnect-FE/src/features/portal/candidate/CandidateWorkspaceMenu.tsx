@@ -172,7 +172,7 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
             <button
               type="button"
               onClick={() => handleNavigate('/candidate/cvs')}
-              className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-slate-600 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
+              className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
             >
               <span>CV của tôi</span>
             </button>
@@ -180,17 +180,20 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
             <button
               type="button"
               onClick={() => handleNavigate('/candidate/cv-builder')}
-              className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-slate-600 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
+              className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-blue-600 font-semibold hover:text-blue-700 hover:bg-blue-50/50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
             >
-              <span>Cover Letter của tôi</span>
+              <span>Tạo CV Online mới</span>
+              <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.2 rounded">
+                Mới
+              </span>
             </button>
 
             <button
               type="button"
               onClick={() => handleNavigate('/candidate/profile')}
-              className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-slate-600 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
+              className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
             >
-              <span>Nhà tuyển dụng xem hồ sơ</span>
+              <span>Hồ sơ cá nhân</span>
             </button>
           </div>
         )}

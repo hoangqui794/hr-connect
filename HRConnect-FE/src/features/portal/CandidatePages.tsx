@@ -663,10 +663,10 @@ export const CandidateHomePage: React.FC = () => {
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
-                onClick={() => navigate('/candidate/cvs?action=new')}
+                onClick={() => navigate('/candidate/cv-builder')}
                 className="!bg-blue-600 hover:!bg-blue-700 text-white rounded-xl shadow-xs border-none font-semibold text-xs h-9 px-3.5"
               >
-                Tải lên / Tạo CV mới
+                Tạo CV Online mới
               </Button>
             </div>
           </div>
@@ -700,7 +700,7 @@ export const CandidateHomePage: React.FC = () => {
                   Tải CV lên (PDF)
                 </Button>
                 <Button
-                  onClick={() => navigate('/candidate/cvs?action=builder')}
+                  onClick={() => navigate('/candidate/cv-builder')}
                   className="rounded-xl border border-slate-200 font-semibold text-slate-700 text-xs h-9 px-4 hover:border-blue-400"
                 >
                   Tạo CV Online mới
@@ -767,6 +767,18 @@ export const CandidateHomePage: React.FC = () => {
                           <span>Tải</span>
                         </button>
                       </Tooltip>
+                      {(cv.creationMethod === 'TEMPLATE_FORM' || cv.creationMethod === 'PLATFORM_BUILDER') && (
+                        <Tooltip title="Chỉnh sửa trực tuyến">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/candidate/cv-builder/${cv.cvId}`)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors border border-blue-200/80 bg-blue-50/30 cursor-pointer"
+                          >
+                            <EditOutlined className="text-xs" />
+                            <span>Sửa</span>
+                          </button>
+                        </Tooltip>
+                      )}
                     </div>
 
                     {!cv.isPrimary && (

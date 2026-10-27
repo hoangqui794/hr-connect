@@ -1,0 +1,65 @@
+/* 
+ * cv-builder.css
+ * Styling and A4 Print Rules for TopCV-style CV Builder
+ */
+
+@media print {
+  /* Hide all UI elements outside the canvas */
+  header,
+  aside,
+  nav,
+  .no-print,
+  .cv-topbar,
+  .cv-sidebar,
+  .zoom-toolbar,
+  .floating-item-controls,
+  .ant-tooltip,
+  .ant-message,
+  .ant-modal-root {
+    display: none !important;
+  }
+
+  /* Reset body and wrapper margins */
+  html,
+  body,
+  #root,
+  .candidate-console {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-height: 100% !important;
+  }
+
+  /* Print A4 canvas precisely */
+  #cv-paper-canvas {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 auto !important;
+    padding: 12mm 15mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    transform: none !important;
+    page-break-after: always;
+  }
+
+  /* Ensure background colors and borders print faithfully */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* Custom scrollbars and styling */
+.cv-builder-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.cv-builder-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.5);
+  border-radius: 9999px;
+}
+.cv-builder-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
