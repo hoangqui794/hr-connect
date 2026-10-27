@@ -580,33 +580,34 @@ export const JobReviewPage: React.FC = () => {
                     </div>
                   </div>
                 ) : job.status === 'PENDING_AGREEMENT' ? (
-                  <div className={`flex flex-col gap-3 rounded-t-2xl border-0 border-b border-solid px-6 py-4 ${
+                  <div className={`rounded-t-2xl border-0 border-b border-solid px-6 py-4 ${
                     currentAgreement?.hasSignedDocument
-                      ? 'border-emerald-300 bg-emerald-50/90'
+                      ? 'border-emerald-200 bg-emerald-50/80'
                       : currentAgreement?.status === 'CHANGE_REQUESTED'
-                      ? 'border-amber-300 bg-amber-50/90'
+                      ? 'border-amber-200 bg-amber-50/80'
                       : 'border-purple-200 bg-purple-50/70'
                   }`}>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border border-solid ${
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      {/* Vế trái: Thông tin hợp đồng */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-solid shadow-2xs ${
                           currentAgreement?.hasSignedDocument
-                            ? 'bg-emerald-500/10 text-emerald-700 border-emerald-300/60'
+                            ? 'bg-emerald-500/15 text-emerald-700 border-emerald-300/80'
                             : currentAgreement?.status === 'CHANGE_REQUESTED'
-                            ? 'bg-amber-500/10 text-amber-700 border-amber-300/60'
-                            : 'bg-purple-500/10 text-purple-700 border-purple-200/60'
+                            ? 'bg-amber-500/15 text-amber-700 border-amber-300/80'
+                            : 'bg-purple-500/15 text-purple-700 border-purple-200/80'
                         }`}>
                           {currentAgreement?.hasSignedDocument ? (
-                            <CheckCircleFilled className="text-base text-emerald-600" />
+                            <CheckCircleFilled className="text-xl text-emerald-600" />
                           ) : currentAgreement?.status === 'CHANGE_REQUESTED' ? (
-                            <ExclamationCircleOutlined className="text-base text-amber-600" />
+                            <ExclamationCircleOutlined className="text-lg text-amber-600" />
                           ) : (
-                            <FileDoneOutlined className="text-base text-purple-600" />
+                            <FileDoneOutlined className="text-lg text-purple-600" />
                           )}
                         </div>
-                        <div className="space-y-1">
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-semibold text-slate-800">
+                            <span className="text-sm font-bold text-slate-800">
                               {currentAgreement?.hasSignedDocument
                                 ? `Doanh nghiệp đã tải lên hợp đồng đã ký (v${currentAgreement.version})`
                                 : currentAgreement?.status === 'CHANGE_REQUESTED'
@@ -621,7 +622,7 @@ export const JobReviewPage: React.FC = () => {
                                   ? 'warning'
                                   : 'purple'
                               }
-                              className="m-0 font-medium text-xs"
+                              className="m-0 font-medium text-xs rounded-full px-2.5"
                             >
                               {currentAgreement?.hasSignedDocument
                                 ? 'Đã có bản ký kết'
@@ -630,31 +631,32 @@ export const JobReviewPage: React.FC = () => {
                                 : 'Đã soạn xong HĐ'}
                             </Tag>
                           </div>
-                          {currentAgreement?.hasSignedDocument ? (
-                            <div className="text-xs text-emerald-900 bg-white/90 rounded-lg p-2.5 border border-solid border-emerald-200 m-0 leading-relaxed max-w-2xl">
-                              Doanh nghiệp đã tải lên văn bản hợp đồng đã ký vào ngày{' '}
-                              <strong>{dayjs(currentAgreement.signedAt).format('DD/MM/YYYY HH:mm')}</strong>
-                              {currentAgreement.signerName ? ` bởi ${currentAgreement.signerName}` : ''}.
-                              Internal HR vui lòng kiểm tra tệp hợp đồng và bấm <strong>"Công khai tin tuyển dụng"</strong> để phát hành tin.
-                            </div>
-                          ) : currentAgreement?.status === 'CHANGE_REQUESTED' && currentAgreement?.changeRequestReason ? (
-                            <div className="text-xs text-amber-900 bg-white/90 rounded-lg p-2.5 border border-solid border-amber-200 m-0 leading-relaxed max-w-2xl">
-                              <strong className="text-amber-950">Ghi chú từ Doanh nghiệp: </strong>
-                              "{currentAgreement.changeRequestReason}"
-                            </div>
-                          ) : (
-                            <p className="text-xs text-slate-500 m-0 leading-relaxed max-w-2xl">
-                              Đã gửi hợp đồng có sẵn chữ ký cho Doanh nghiệp tải về ký ngoài hệ thống. Đang chờ Doanh nghiệp tải lên bản hợp đồng đã ký để đối soát và công khai tin.
-                            </p>
-                          )}
+                          <div className="text-xs text-slate-600 mt-0.5">
+                            {currentAgreement?.hasSignedDocument ? (
+                              <span>
+                                Đã nộp ngày <strong>{dayjs(currentAgreement.signedAt).format('DD/MM/YYYY HH:mm')}</strong>
+                                {currentAgreement.signerName ? ` bởi ${currentAgreement.signerName}` : ''}
+                              </span>
+                            ) : currentAgreement?.status === 'CHANGE_REQUESTED' && currentAgreement?.changeRequestReason ? (
+                              <span>
+                                Ghi chú từ Doanh nghiệp: "{currentAgreement.changeRequestReason}"
+                              </span>
+                            ) : (
+                              <span>
+                                Đang chờ Doanh nghiệp xem xét, ký kết và tải lên bản đã ký
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+
+                      {/* Vế phải: Cụm các button hành động */}
+                      <div className="flex items-center gap-2 flex-wrap justify-start lg:justify-end">
                         {currentAgreement?.hasSignedDocument && (
                           <Button
                             type="default"
                             icon={<FilePdfOutlined />}
-                            className="font-medium"
+                            className="font-medium rounded-lg h-9 hover:!border-emerald-500 hover:!text-emerald-700 shadow-2xs"
                             onClick={handleViewClientSignedDoc}
                           >
                             Xem HĐ Doanh nghiệp đã ký
@@ -662,6 +664,7 @@ export const JobReviewPage: React.FC = () => {
                         )}
                         <Button
                           icon={<EditOutlined />}
+                          className="font-medium rounded-lg h-9 shadow-2xs"
                           onClick={() => setTermsOpen(true)}
                         >
                           {currentAgreement?.status === 'CHANGE_REQUESTED'
@@ -670,7 +673,7 @@ export const JobReviewPage: React.FC = () => {
                         </Button>
                         <Button
                           type="primary"
-                          className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold"
+                          className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold h-9"
                           icon={<CheckOutlined />}
                           loading={approve.isPending}
                           onClick={confirmPublishAgreementJob}
