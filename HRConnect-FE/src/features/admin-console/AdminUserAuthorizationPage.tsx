@@ -551,6 +551,9 @@ export const AdminUserAuthorizationPage: React.FC = () => {
                 <KeyOutlined className="text-base" />
               </div>
               <div className="space-y-0.5">
+                <div className="text-xs font-semibold uppercase tracking-wider text-blue-700">
+                  Chưa chọn người dùng
+                </div>
                 <div className="font-bold text-slate-900 text-sm">Tra cứu Ma trận Vai trò & Quyền hạn Hệ thống</div>
                 <div className="text-xs text-slate-500">
                   Chọn một người dùng từ thanh tìm kiếm ở trên để cấu hình phân quyền chi tiết. Dưới đây là ma trận đặc quyền và phạm vi trách nhiệm mặc định của hệ thống để tra cứu nhanh.
