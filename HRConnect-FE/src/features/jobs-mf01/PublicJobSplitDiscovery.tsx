@@ -37,6 +37,10 @@ import {
   List as ListIcon,
   Zap,
   Info,
+  ShieldCheck,
+  Headphones,
+  MessageSquare,
+  UserPlus,
 } from 'lucide-react';
 import { message } from 'antd';
 import dayjs from 'dayjs';
@@ -145,8 +149,12 @@ export const QUICK_LOCATION_PILLS = [
 export const PublicJobSplitDiscovery: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { isSaved, toggleSave } = useSavedJobs();
+  const { isSaved, toggleSave, savedJobsCount } = useSavedJobs();
   const pillsRef = useRef<HTMLDivElement>(null);
+
+  // Toggle sidebar Lọc nâng cao (mặc định false để giao diện toàn màn hình chuẩn 100% TopCV screenshot)
+  const [showSidebar, setShowSidebar] = useState<boolean>(false);
+  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(false);
 
   // Params từ URL
   const queryKeyword = searchParams.get('keyword') || '';
@@ -165,6 +173,18 @@ export const PublicJobSplitDiscovery: React.FC = () => {
 
   // Ô tìm kiếm lọc danh mục nghề động bên sidebar trái
   const [categorySearchText, setCategorySearchText] = useState('');
+
+  // Đếm số lượng bộ lọc nâng cao đang áp dụng
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (queryCategory !== 'ALL' || categorySearchText.trim()) count++;
+    if (queryExperience !== 'ALL') count++;
+    if (querySalary !== 'ALL') count++;
+    if (querySaturday !== 'ALL') count++;
+    if (queryLevel !== 'ALL') count++;
+    if (queryWorkType !== 'ALL') count++;
+    return count;
+  }, [queryCategory, categorySearchText, queryExperience, querySalary, querySaturday, queryLevel, queryWorkType]);
   // Tab phân loại: 'OFFICE' (Việc văn phòng) | 'MANUAL' (Việc phổ thông) | 'ALL' (Tất cả)
   const [jobTypeTab, setJobTypeTab] = useState<'OFFICE' | 'MANUAL' | 'ALL'>('OFFICE');
   // Chế độ hiển thị: 'GRID' (chuẩn TopCV) | 'LIST' (dạng ngang)
@@ -406,14 +426,14 @@ export const PublicJobSplitDiscovery: React.FC = () => {
       <Navbar />
 
       {/* =================================================================== */}
-      {/* 2. KHỐI TÌM KIẾM BRAND THEME HRCONNECT                             */}
+      {/* 2. KHỐI TÌM KIẾM BRAND THEME HRCONNECT CHUẨN TOPCV                 */}
       {/* =================================================================== */}
-      <section className="bg-gradient-to-r from-[#0C4A6E] via-[#075985] to-[#0284c7] py-5 px-4 shadow-sm">
+      <section className="bg-gradient-to-r from-[#005c30] via-[#008744] to-[#00b14f] py-5 px-4 shadow-sm">
         <div className="max-w-7xl mx-auto">
           {/* Thanh tìm kiếm tổng hợp: Danh mục nghề | Input từ khóa | Địa điểm | Nút Tìm kiếm */}
           <form
             onSubmit={handleSearchSubmit}
-            className="bg-white rounded-xl p-1.5 shadow-md flex flex-col md:flex-row items-stretch md:items-center gap-1.5 md:gap-2 border border-sky-200/50"
+            className="bg-white rounded-xl p-1.5 shadow-md flex flex-col md:flex-row items-stretch md:items-center gap-1.5 md:gap-2 border border-emerald-200/50"
           >
             {/* Dropdown Danh mục nghề */}
             <div className="relative flex items-center px-3 py-1.5 md:w-[220px] shrink-0">
@@ -478,10 +498,10 @@ export const PublicJobSplitDiscovery: React.FC = () => {
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none" />
             </div>
 
-            {/* Nút Tìm kiếm Primary HRConnect */}
+            {/* Nút Tìm kiếm Primary TopCV Green */}
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm px-7 py-2.5 rounded-lg transition-colors cursor-pointer border-0 shadow-xs whitespace-nowrap active:scale-[0.98]"
+              className="bg-[#00b14f] hover:bg-[#009643] text-white font-bold text-xs sm:text-sm px-7 py-2.5 rounded-lg transition-colors cursor-pointer border-0 shadow-xs whitespace-nowrap active:scale-[0.98]"
             >
               Tìm kiếm
             </button>
@@ -528,28 +548,271 @@ export const PublicJobSplitDiscovery: React.FC = () => {
       </section>
 
       {/* =================================================================== */}
-      {/* 3. BỐ CỤC 2 CỘT CHUẨN TOPCV (HÌNH 3)                                 */}
+      {/* 3. NỘI DUNG CHÍNH CHUẨN TOPCV (HÌNH ẢNH USER GỬI)                  */}
       {/* =================================================================== */}
-      <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* ================================================================= */}
-        {/* CỘT TRÁI (3.5 CỘT): BỘ LỌC NÂNG CAO (FILLS DYNAMIC THEO DATABASE)  */}
-        {/* ================================================================= */}
-        <aside className="lg:col-span-4 xl:col-span-3 space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs space-y-5">
-            {/* Header Lọc nâng cao */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <span className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                <Filter className="w-4 h-4 text-emerald-600" />
-                <span>Lọc nâng cao</span>
-              </span>
+      <main className="max-w-7xl mx-auto px-4 py-6 space-y-5">
+        {/* TOPCV SAFETY BANNER */}
+        <div className="bg-gradient-to-r from-[#e8f7ee] via-[#f0fbf4] to-[#e6f8ec] border border-[#bbf0cb] rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 shadow-2xs">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-[#00b14f]/15 flex items-center justify-center text-[#00b14f] shrink-0">
+              <ShieldCheck className="w-6 h-6 text-[#00b14f]" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base sm:text-lg text-slate-900 m-0">
+                Tìm việc an toàn cùng HR Connect
+              </h3>
+              <p className="text-xs text-slate-600 m-0 mt-0.5">
+                Bảo vệ quyền lợi ứng viên, xác thực 100% tin tuyển dụng &amp; minh bạch mức lương
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              void message.info('HR Connect cam kết bảo vệ thông tin cá nhân và quyền lợi ứng viên theo tiêu chuẩn an toàn.');
+            }}
+            className="bg-[#00b14f] hover:bg-[#009643] text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs border-0 flex items-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <span>Tìm hiểu thêm</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* =================================================================== */}
+        {/* HEADER TOPCV: VIỆC LÀM NỔI BẬT + TABS + XEM TẤT CẢ / ARROWS         */}
+        {/* =================================================================== */}
+        <div className="space-y-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Tiêu đề & Pill Tabs (Việc văn phòng, Việc phổ thông, Tất cả) */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-2xl font-bold text-[#00b14f] m-0 tracking-tight">
+                Việc làm nổi bật
+              </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setJobTypeTab('OFFICE')}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 ${
+                    jobTypeTab === 'OFFICE'
+                      ? 'bg-[#00b14f] text-white shadow-xs'
+                      : 'bg-[#f1f5f9] text-[#475467] hover:bg-slate-200'
+                  }`}
+                >
+                  Việc văn phòng
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setJobTypeTab('MANUAL')}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 ${
+                    jobTypeTab === 'MANUAL'
+                      ? 'bg-[#00b14f] text-white shadow-xs'
+                      : 'bg-[#f1f5f9] text-[#475467] hover:bg-slate-200'
+                  }`}
+                >
+                  Việc phổ thông
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setJobTypeTab('ALL')}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 ${
+                    jobTypeTab === 'ALL'
+                      ? 'bg-[#00b14f] text-white shadow-xs'
+                      : 'bg-[#f1f5f9] text-[#475467] hover:bg-slate-200'
+                  }`}
+                >
+                  Tất cả
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-slate-500 self-end sm:self-auto">
               <button
                 type="button"
-                onClick={handleResetFilters}
-                className="text-[11px] font-semibold text-slate-400 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0"
+                onClick={() => {
+                  setActiveLocationPill('ALL');
+                  updateParams({ location: 'ALL' });
+                }}
+                className="text-xs text-slate-600 hover:text-[#00b14f] font-medium bg-transparent border-0 cursor-pointer p-0"
               >
-                Xóa tất cả
+                Xem tất cả
+              </button>
+              <button
+                type="button"
+                aria-label="Cuộn trái"
+                onClick={() => scrollPills(-180)}
+                className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-[#00b14f] cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Cuộn phải"
+                onClick={() => scrollPills(180)}
+                className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-[#00b14f] cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
+          </div>
+
+          {/* DẢI PILLS LỌC NHANH ĐỊA ĐIỂM + NÚT BỘ LỌC NÂNG CAO */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {/* Dropdown button Lọc theo Địa điểm */}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsLocationDropdownOpen(!isLocationDropdownOpen)}
+                className="bg-white border border-slate-200/90 rounded-lg px-3 py-1.5 text-xs text-slate-700 flex items-center gap-1.5 shadow-2xs hover:border-[#00b14f] cursor-pointer transition-colors"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+                <span className="font-medium">Lọc theo: Địa điểm</span>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              </button>
+              {isLocationDropdownOpen && (
+                <div className="absolute left-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-30 p-1 py-1.5 animate-fadeIn">
+                  {LOCATION_OPTIONS.map((loc) => (
+                    <button
+                      key={loc.value}
+                      type="button"
+                      onClick={() => {
+                        setLocationSelect(loc.value);
+                        updateParams({ location: loc.value });
+                        setActiveLocationPill(loc.value);
+                        setIsLocationDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-0 transition-colors ${
+                        locationSelect === loc.value
+                          ? 'bg-emerald-50 text-[#00b14f] font-bold'
+                          : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {loc.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Nút Lọc nâng cao (mở / đóng sidebar bên trái) */}
+            <button
+              type="button"
+              onClick={() => setShowSidebar(!showSidebar)}
+              className={`border rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
+                showSidebar || activeFilterCount > 0
+                  ? 'bg-emerald-50 text-[#00b14f] border-emerald-300'
+                  : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-50'
+              }`}
+            >
+              <Filter className="w-3.5 h-3.5 text-[#00b14f]" />
+              <span>{showSidebar ? 'Ẩn bộ lọc' : 'Lọc nâng cao'}</span>
+              {activeFilterCount > 0 && (
+                <span className="bg-[#00b14f] text-white rounded-full px-1.5 py-0.2 text-[10px] font-bold">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {/* Nút scroll trái */}
+            <button
+              type="button"
+              aria-label="Cuộn trái"
+              onClick={() => scrollPills(-180)}
+              className="w-6 h-6 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-[#00b14f] cursor-pointer shrink-0"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Dải pills */}
+            <div
+              ref={pillsRef}
+              className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 scroll-smooth flex-1"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {QUICK_LOCATION_PILLS.map((pill) => {
+                const isActive = activeLocationPill === pill.id;
+                return (
+                  <button
+                    key={pill.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveLocationPill(pill.id);
+                      updateParams({ location: pill.id });
+                    }}
+                    className={`px-3.5 py-1 rounded-full text-xs whitespace-nowrap transition-all cursor-pointer border ${
+                      isActive
+                        ? 'bg-[#00b14f] text-white border-[#00b14f] font-semibold shadow-2xs'
+                        : 'bg-[#f1f5f9] text-[#475467] border-transparent hover:bg-slate-200 font-medium'
+                    }`}
+                  >
+                    {pill.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Nút scroll phải */}
+            <button
+              type="button"
+              aria-label="Cuộn phải"
+              onClick={() => scrollPills(180)}
+              className="w-6 h-6 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-[#00b14f] cursor-pointer shrink-0"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* BANNER GỢI Ý CHUẨN TOPCV (HÌNH ẢNH USER GỬI) */}
+          {showTip && (
+            <div className="bg-[#eef6fc] border border-[#d5e9f8] rounded-lg px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-[#1e40af] shadow-2xs animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <span className="text-base text-blue-500">💡</span>
+                <span className="font-normal text-slate-700">
+                  <strong>Gợi ý:</strong> Di chuột vào tiêu đề việc làm để xem thêm thông tin chi tiết
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTip(false)}
+                className="text-slate-400 hover:text-slate-600 bg-transparent border-0 cursor-pointer p-0.5"
+                title="Đóng gợi ý"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* =================================================================== */}
+        {/* LAYOUT: SIDEBAR LỌC NÂNG CAO (NẾU MỞ) + LƯỚI THẺ VIỆC LÀM TOPCV     */}
+        {/* =================================================================== */}
+        <div className={showSidebar ? 'grid grid-cols-1 lg:grid-cols-12 gap-6 items-start' : 'w-full'}>
+          {showSidebar && (
+            <aside className="lg:col-span-4 xl:col-span-3 space-y-4">
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs space-y-5">
+                {/* Header Lọc nâng cao */}
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <span className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                    <Filter className="w-4 h-4 text-[#00b14f]" />
+                    <span>Lọc nâng cao</span>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleResetFilters}
+                      className="text-[11px] font-semibold text-slate-400 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0"
+                    >
+                      Xóa tất cả
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowSidebar(false)}
+                      className="text-slate-400 hover:text-slate-700 bg-transparent border-0 cursor-pointer p-0.5"
+                      title="Ẩn bộ lọc"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
 
             {/* ── 1. Nghỉ thứ 7 (AI ✨) ── */}
             <div>
@@ -761,164 +1024,12 @@ export const PublicJobSplitDiscovery: React.FC = () => {
             </div>
           </div>
         </aside>
+      )}
 
-        {/* ================================================================= */}
-        {/* CỘT PHẢI (8.5 CỘT): DANH SÁCH VIỆC LÀM CHUẨN TOPCV (HÌNH 3)        */}
-        {/* ================================================================= */}
-        <section className="lg:col-span-8 xl:col-span-9 space-y-4">
-          {/* =============================================================== */}
-          {/* HEADER TOPCV: VIỆC LÀM NỔI BẬT + TABS + VIEW TOGGLE             */}
-          {/* =============================================================== */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs space-y-3.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              {/* Tiêu đề & Pill Tabs (Việc văn phòng, Việc phổ thông, Tất cả) */}
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-lg font-bold text-slate-900 m-0 whitespace-nowrap">
-                  Việc làm nổi bật
-                </h2>
-                <div className="flex items-center gap-1.5 bg-slate-100/90 p-1 rounded-full">
-                  <button
-                    type="button"
-                    onClick={() => setJobTypeTab('OFFICE')}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 ${
-                      jobTypeTab === 'OFFICE'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-transparent text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Việc văn phòng
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setJobTypeTab('MANUAL')}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 ${
-                      jobTypeTab === 'MANUAL'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-transparent text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Việc phổ thông
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setJobTypeTab('ALL')}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 ${
-                      jobTypeTab === 'ALL'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-transparent text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Tất cả
-                  </button>
-                </div>
-              </div>
-
-              {/* Chuyển đổi View Mode (Grid 3 cột chuẩn TopCV / List ngang) & Điều hướng */}
-              <div className="flex items-center gap-2 self-end sm:self-auto">
-                <span className="text-xs text-slate-400 font-medium hidden sm:inline">Chế độ xem:</span>
-                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/80">
-                  <button
-                    type="button"
-                    aria-label="Xem dạng lưới chuẩn TopCV"
-                    onClick={() => setViewMode('GRID')}
-                    className={`p-1.5 rounded-md border-0 cursor-pointer transition-colors ${
-                      viewMode === 'GRID' ? 'bg-white text-emerald-600 shadow-2xs' : 'bg-transparent text-slate-500 hover:text-slate-800'
-                    }`}
-                    title="Dạng lưới thẻ TopCV"
-                  >
-                    <LayoutGrid className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Xem dạng danh sách ngang"
-                    onClick={() => setViewMode('LIST')}
-                    className={`p-1.5 rounded-md border-0 cursor-pointer transition-colors ${
-                      viewMode === 'LIST' ? 'bg-white text-emerald-600 shadow-2xs' : 'bg-transparent text-slate-500 hover:text-slate-800'
-                    }`}
-                    title="Dạng danh sách ngang"
-                  >
-                    <ListIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* DẢI PILLS LỌC NHANH ĐỊA ĐIỂM CHUẨN TOPCV (HÌNH 3) */}
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-              <span className="text-xs font-semibold text-slate-600 shrink-0 flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Lọc theo:</span>
-              </span>
-
-              {/* Nút scroll trái */}
-              <button
-                type="button"
-                aria-label="Cuộn trái"
-                onClick={() => scrollPills(-180)}
-                className="w-6 h-6 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 cursor-pointer shrink-0"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
-
-              {/* Scrollable Pills container */}
-              <div
-                ref={pillsRef}
-                className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 scroll-smooth"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                {QUICK_LOCATION_PILLS.map((pill) => {
-                  const isActive = activeLocationPill === pill.id;
-                  return (
-                    <button
-                      key={pill.id}
-                      type="button"
-                      onClick={() => {
-                        setActiveLocationPill(pill.id);
-                        updateParams({ location: pill.id });
-                      }}
-                      className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer border ${
-                        isActive
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-semibold'
-                          : 'bg-slate-100 text-slate-700 border-transparent hover:bg-slate-200/90'
-                      }`}
-                    >
-                      {pill.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Nút scroll phải */}
-              <button
-                type="button"
-                aria-label="Cuộn phải"
-                onClick={() => scrollPills(180)}
-                className="w-6 h-6 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 cursor-pointer shrink-0"
-              >
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* BANNER GỢI Ý CHUẨN TOPCV (HÌNH 3) */}
-          {showTip && (
-            <div className="bg-emerald-50/70 border border-emerald-200/70 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-emerald-900 shadow-2xs animate-fadeIn">
-              <div className="flex items-center gap-2">
-                <span className="text-base">💡</span>
-                <span className="font-medium">
-                  <strong>Gợi ý:</strong> Bấm vào việc làm để xem chi tiết yêu cầu, mức lương và nộp hồ sơ nhanh chóng.
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowTip(false)}
-                className="text-emerald-700 hover:text-emerald-900 bg-transparent border-0 cursor-pointer p-0.5"
-                title="Đóng gợi ý"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+      {/* =================================================================== */}
+      {/* CỘT PHẢI / TOÀN BỘ CHIỀU RỘNG: DANH SÁCH VIỆC LÀM CHUẨN TOPCV       */}
+      {/* =================================================================== */}
+      <section className={showSidebar ? 'lg:col-span-8 xl:col-span-9 space-y-4' : 'w-full space-y-4'}>
 
           {/* Thanh Control: Tìm kiếm theo + Sắp xếp theo */}
           <div className="bg-white rounded-xl border border-slate-200/90 p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-2xs">
@@ -1046,41 +1157,42 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                   <div
                     key={job.jobId}
                     onClick={() => navigate(`/jobs/${job.jobId}`)}
-                    className="bg-white rounded-xl border border-slate-200/90 hover:border-emerald-500 hover:shadow-md transition-all p-3.5 flex flex-col justify-between cursor-pointer group relative hover:-translate-y-0.5 duration-200"
+                    className="bg-white rounded-2xl border border-slate-200/90 hover:border-[#00b14f] hover:shadow-md transition-all duration-200 p-4 flex flex-col justify-between cursor-pointer group relative hover:-translate-y-0.5"
                   >
                     <div>
                       {/* Logo + Tiêu đề + Tên công ty */}
                       <div className="flex items-start gap-3">
-                        {/* Logo công ty hình vuông bo góc */}
-                        <div className="w-12 h-12 rounded-lg border border-slate-100 p-1 bg-white flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                        {/* Logo công ty hình vuông bo góc chuẩn TopCV */}
+                        <div className="w-14 h-14 rounded-xl border border-slate-100 p-1 bg-white flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
                           <CompanyLogo
                             id={job.companyId || 'company'}
                             name={job.companyName || 'Doanh nghiệp'}
-                            size={42}
+                            size={44}
                             className="w-full h-full object-contain"
                           />
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          {/* Badge NỔI BẬT / TOP + Tiêu đề */}
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {isFeatured && (
-                              <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-200/70 inline-flex items-center gap-0.5">
-                                <Zap className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
-                                NỔI BẬT
+                          {/* Huy hiệu GẤP màu cam chuẩn TopCV */}
+                          {isFeatured && (
+                            <div className="mb-1">
+                              <span className="bg-[#ea580c] text-white text-[10px] font-bold px-2 py-0.5 rounded-full inline-block shadow-2xs">
+                                GẤP
                               </span>
-                            )}
-                            <h3
-                              className="font-bold text-sm text-slate-900 group-hover:text-emerald-600 transition-colors line-clamp-2 m-0 leading-snug"
-                              title={job.title}
-                            >
-                              {job.title}
-                            </h3>
-                          </div>
+                            </div>
+                          )}
 
-                          {/* Tên công ty */}
+                          {/* Tiêu đề việc làm */}
+                          <h3
+                            className="font-bold text-[14.5px] text-[#1e293b] group-hover:text-[#00b14f] transition-colors line-clamp-2 m-0 leading-snug"
+                            title={job.title}
+                          >
+                            {job.title}
+                          </h3>
+
+                          {/* Tên công ty viết hoa màu xám */}
                           <p
-                            className="text-xs font-medium text-slate-500 truncate mt-1 m-0 uppercase tracking-tight"
+                            className="text-xs font-normal text-[#64748b] truncate mt-1 m-0 uppercase tracking-tight"
                             title={job.companyName || 'CÔNG TY ĐỐI TÁC'}
                           >
                             {job.companyName || 'CÔNG TY CỔ PHẦN ĐỐI TÁC'}
@@ -1089,24 +1201,20 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Hàng dưới cùng: Tag lương + Tag địa điểm + Tag kinh nghiệm + Nút Lưu */}
-                    <div className="mt-3.5 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                    {/* Hàng dưới cùng: Tag lương + Tag địa điểm + Nút Lưu viền xanh tròn */}
+                    <div className="mt-4 pt-2.5 border-t border-slate-100/90 flex items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                        {/* Tag Mức lương xanh nổi bật */}
-                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded whitespace-nowrap">
+                        {/* Tag Mức lương pill xám chuẩn TopCV */}
+                        <span className="bg-[#f2f4f5] text-[#222] font-semibold text-xs px-2.5 py-1 rounded-md whitespace-nowrap">
                           {formatSalary(job)}
                         </span>
-                        {/* Tag Địa điểm */}
-                        <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded font-medium truncate max-w-[100px]">
+                        {/* Tag Địa điểm pill xám chuẩn TopCV */}
+                        <span className="bg-[#f2f4f5] text-[#555] text-xs px-2.5 py-1 rounded-md whitespace-nowrap truncate max-w-[120px]">
                           {formatLocation(job.location)}
-                        </span>
-                        {/* Tag Kinh nghiệm (Tối thiểu 1 năm...) */}
-                        <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap">
-                          {formatExperience(job.minExperienceYears)}
                         </span>
                       </div>
 
-                      {/* Nút lưu việc làm trái tim */}
+                      {/* Nút lưu việc làm: Vòng tròn viền xanh #00b14f chuẩn TopCV */}
                       <button
                         type="button"
                         aria-label="Lưu việc làm"
@@ -1114,16 +1222,16 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                           e.stopPropagation();
                           toggleSave(job.jobId, job.title);
                         }}
-                        className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                        className={`w-7 h-7 rounded-full border border-[#00b14f] flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
                           saved
-                            ? 'text-rose-500 bg-rose-50 border-rose-200'
-                            : 'text-slate-400 border-slate-200 hover:border-emerald-500 hover:text-emerald-600 bg-white'
+                            ? 'text-[#00b14f] bg-emerald-50'
+                            : 'text-[#00b14f] bg-white hover:bg-emerald-50'
                         }`}
                         title={saved ? 'Đã lưu việc làm' : 'Lưu việc làm'}
                       >
                         <Heart
                           className="h-3.5 w-3.5"
-                          fill={saved ? 'currentColor' : 'none'}
+                          fill={saved ? '#00b14f' : 'none'}
                           strokeWidth={1.8}
                         />
                       </button>
@@ -1148,7 +1256,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                   <div
                     key={job.jobId}
                     onClick={() => navigate(`/jobs/${job.jobId}`)}
-                    className="bg-white rounded-2xl border border-slate-200/90 hover:border-emerald-500 hover:shadow-md p-4 transition-all flex flex-col sm:flex-row items-start gap-4 cursor-pointer relative group"
+                    className="bg-white rounded-2xl border border-slate-200/90 hover:border-[#00b14f] hover:shadow-md p-4 transition-all flex flex-col sm:flex-row items-start gap-4 cursor-pointer relative group"
                   >
                     {/* Logo doanh nghiệp lớn bên trái */}
                     <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border border-slate-200/80 p-2 bg-white flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
@@ -1164,18 +1272,17 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {isFeatured && (
-                          <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-200/70 inline-flex items-center gap-0.5">
-                            <Zap className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
-                            NỔI BẬT
+                          <span className="bg-[#ea580c] text-white text-[10px] font-bold px-2 py-0.5 rounded-full inline-block shadow-2xs">
+                            GẤP
                           </span>
                         )}
                         <h3
-                          className="font-bold text-base text-slate-900 group-hover:text-emerald-600 transition-colors line-clamp-1 m-0 leading-tight"
+                          className="font-bold text-base text-slate-900 group-hover:text-[#00b14f] transition-colors line-clamp-1 m-0 leading-tight"
                           title={job.title}
                         >
                           {job.title}
                         </h3>
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 fill-emerald-50" />
+                        <CheckCircle2 className="w-4 h-4 text-[#00b14f] shrink-0 fill-emerald-50" />
                       </div>
 
                       <p
@@ -1186,14 +1293,14 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                       </p>
 
                       <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-0.5 rounded font-medium">
+                        <span className="bg-[#f2f4f5] text-[#222] font-semibold text-xs px-2.5 py-0.5 rounded">
+                          {formatSalary(job)}
+                        </span>
+                        <span className="bg-[#f2f4f5] text-slate-600 text-xs px-2.5 py-0.5 rounded font-medium">
                           {formatLocation(job.location)}
                         </span>
-                        <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-0.5 rounded font-medium">
+                        <span className="bg-[#f2f4f5] text-slate-600 text-xs px-2.5 py-0.5 rounded font-medium">
                           {formatExperience(job.minExperienceYears)}
-                        </span>
-                        <span className="bg-emerald-50 text-emerald-700 font-bold text-xs px-2.5 py-0.5 rounded border border-emerald-200/50">
-                          {formatSalary(job)}
                         </span>
                       </div>
 
@@ -1216,16 +1323,16 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                           e.stopPropagation();
                           toggleSave(job.jobId, job.title);
                         }}
-                        className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors cursor-pointer mt-auto ${
+                        className={`w-7 h-7 rounded-full border border-[#00b14f] flex items-center justify-center transition-colors cursor-pointer mt-auto ${
                           saved
-                            ? 'text-rose-500 bg-rose-50 border-rose-200'
-                            : 'text-slate-400 border-slate-200 hover:border-emerald-500 hover:text-emerald-600 bg-white'
+                            ? 'text-[#00b14f] bg-emerald-50'
+                            : 'text-[#00b14f] bg-white hover:bg-emerald-50'
                         }`}
                         title={saved ? 'Đã lưu việc làm' : 'Lưu việc làm'}
                       >
                         <Heart
-                          className="h-4 w-4"
-                          fill={saved ? 'currentColor' : 'none'}
+                          className="h-3.5 w-3.5"
+                          fill={saved ? '#00b14f' : 'none'}
                           strokeWidth={1.8}
                         />
                       </button>
@@ -1236,9 +1343,60 @@ export const PublicJobSplitDiscovery: React.FC = () => {
             </div>
           )}
         </section>
-      </main>
+      </div>
+    </main>
+
+    {/* =================================================================== */}
+    {/* 4. TOPCV FLOATING ACTION WIDGET (GÓC DƯỚI PHẢI MÀN HÌNH)            */}
+    {/* =================================================================== */}
+    <div className="fixed right-3 sm:right-4 bottom-6 z-40 flex flex-col items-center gap-2 select-none">
+      {/* Nút việc đã lưu với số đếm badge */}
+      <button
+        type="button"
+        onClick={() => navigate('/candidate/saved-jobs')}
+        className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-[#00b14f] hover:bg-emerald-50 transition-all cursor-pointer relative"
+        title="Việc làm đã lưu"
+      >
+        <Heart className="w-5 h-5 fill-[#00b14f] text-[#00b14f]" />
+        <span className="absolute -top-1 -right-1 bg-[#00b14f] text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-xs">
+          {savedJobsCount}
+        </span>
+      </button>
+
+      {/* Nút Thêm hồ sơ / Đăng ký ứng viên */}
+      <button
+        type="button"
+        onClick={() => navigate('/candidate/cvs')}
+        className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-slate-700 hover:text-[#00b14f] hover:bg-emerald-50 transition-all cursor-pointer"
+        title="Quản lý CV & Hồ sơ"
+      >
+        <UserPlus className="w-4 h-4 text-[#00b14f]" />
+      </button>
+
+      {/* Nút Góp ý */}
+      <button
+        type="button"
+        onClick={() => message.info('Cảm ơn bạn! Đội ngũ HR Connect luôn lắng nghe ý kiến phản hồi.')}
+        className="bg-white border border-slate-200 rounded-full px-2.5 py-1.5 shadow-md flex items-center gap-1 text-slate-700 hover:text-[#00b14f] transition-all cursor-pointer"
+        title="Góp ý"
+      >
+        <MessageSquare className="w-3.5 h-3.5 text-[#00b14f]" />
+        <span className="font-semibold text-[11px]">Góp ý</span>
+      </button>
+
+      {/* Nút Hỗ trợ */}
+      <button
+        type="button"
+        onClick={() => message.info('Tổng đài hỗ trợ ứng viên HR Connect: 1900 6868 (8:00 - 18:00)')}
+        className="bg-white border border-slate-200 rounded-full px-2.5 py-1.5 shadow-md flex items-center gap-1 text-slate-700 hover:text-[#00b14f] transition-all cursor-pointer"
+        title="Hỗ trợ"
+      >
+        <Headphones className="w-3.5 h-3.5 text-[#00b14f]" />
+        <span className="font-semibold text-[11px]">Hỗ trợ</span>
+      </button>
     </div>
-  );
+  </div>
+);
 };
 
 export default PublicJobSplitDiscovery;
