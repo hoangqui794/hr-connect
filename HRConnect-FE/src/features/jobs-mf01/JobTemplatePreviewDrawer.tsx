@@ -44,11 +44,16 @@ export const JobTemplatePreviewDrawer: React.FC<JobTemplatePreviewDrawerProps> =
   copiesTerms = false,
 }) => {
   const query = useJobTemplate(templateId ?? undefined, Boolean(open && templateId && !templateData));
-  const isLoading = Boolean(templateId && !templateData && query.isLoading);
   const template: Partial<JobTemplate> | undefined = templateData || query.data;
-
+  const isLoading = Boolean(templateId && !templateData && query.isLoading);
   const requirements = template?.requirements ?? [];
-  const nonSkillRequirements = requirements.filter((r) => (r.category || '').toUpperCase() !== 'SKILL');
+  const nonSkillRequirements = requirements
+    .filter((r) => (r.category || '').toUpperCase() !== 'SKILL')
+    .sort((a, b) => {
+      if (a.requirementType === 'MUST_HAVE' && b.requirementType !== 'MUST_HAVE') return -1;
+      if (a.requirementType !== 'MUST_HAVE' && b.requirementType === 'MUST_HAVE') return 1;
+      return 0;
+    });
   const skillRequirements = requirements.filter((r) => (r.category || '').toUpperCase() === 'SKILL');
 
   return (

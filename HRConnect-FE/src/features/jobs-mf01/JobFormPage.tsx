@@ -199,7 +199,7 @@ const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
 
 const SKILL_CATEGORY = 'SKILL';
 const isSkillTag = (r: { requirementType: string; category: string | null }) =>
-  r.requirementType === 'SHOULD_HAVE' && r.category === SKILL_CATEGORY;
+  r.category === SKILL_CATEGORY;
 
 const trimOrNull = (v?: string | null) => (v && v.trim() ? v.trim() : null);
 
@@ -362,18 +362,28 @@ const toInput = (v: JobFormValues, selectedCode?: ServiceTypeCode, postingPackag
     requirements: [
       ...(v.requirements ?? [])
         .filter((r) => r && r.content?.trim())
+        .sort((a, b) => {
+          if (a.requirementType === 'MUST_HAVE' && b.requirementType !== 'MUST_HAVE') return -1;
+          if (a.requirementType !== 'MUST_HAVE' && b.requirementType === 'MUST_HAVE') return 1;
+          return 0;
+        })
         .map((r) => ({
           requirementType: r.requirementType,
           content: r.content.trim(),
           category: trimOrNull(r.category),
         })),
       // The skills catalog (GET /skills) is candidate-only, so a Client cannot send skill ids.
-      // Each tag becomes a SHOULD_HAVE SKILL requirement: kept with the job and read by AI scoring.
-      ...Array.from(new Set((v.skills ?? []).map((name) => name.trim()).filter(Boolean))).map((name) => ({
-        requirementType: 'SHOULD_HAVE' as const,
-        content: name,
-        category: SKILL_CATEGORY,
-      })),
+      // Each tag becomes a SKILL requirement: kept with the job and read by AI scoring.
+      // If no specific MUST_HAVE requirement is present, skills are treated as MUST_HAVE so backend validation passes.
+      ...(() => {
+        const hasMustHaveReq = (v.requirements ?? []).some((r) => r && r.requirementType === 'MUST_HAVE' && r.content?.trim());
+        const skillType = (!hasMustHaveReq ? 'MUST_HAVE' : 'SHOULD_HAVE') as JobRequirementType;
+        return Array.from(new Set((v.skills ?? []).map((name) => name.trim()).filter(Boolean))).map((name) => ({
+          requirementType: skillType,
+          content: name,
+          category: SKILL_CATEGORY,
+        }));
+      })(),
     ],
     skills: [],
     // End of the chosen local day, sent as UTC: the API stores timestamptz and rejects dates without an offset.
@@ -417,8 +427,10 @@ const submitBlockers = (
   if (!trimOrNull(v.benefits)) {
     missing.push({ field: ['benefits'], message: 'Nhập quyền lợi cho ứng viên.', step: 1 });
   }
-  if (!(v.requirements ?? []).some((r) => r?.requirementType === 'MUST_HAVE' && r.content?.trim())) {
-    missing.push({ field: ['requirements'], message: 'Thêm ít nhất một yêu cầu bắt buộc (Must-have).', step: 1 });
+  const hasMustHaveReq = (v.requirements ?? []).some((r) => r?.requirementType === 'MUST_HAVE' && r.content?.trim());
+  const hasSkills = (v.skills ?? []).some((s) => Boolean(s?.trim()));
+  if (!hasMustHaveReq && !hasSkills) {
+    missing.push({ field: ['requirements'], message: 'Thêm ít nhất một yêu cầu bắt buộc hoặc nhập kỹ năng.', step: 1 });
   }
   if (!trimOrNull(v.deadline)) {
     missing.push({ field: ['deadline'], message: 'Chọn hạn nhận hồ sơ.', step: 1 });
@@ -526,7 +538,7 @@ export const JobFormPage: React.FC = () => {
 
   const serviceTypes = useServiceTypes();
   const existing = useJobDetail(jobId);
-  const { create, update } = useJobMutations();
+  const { create, update, submit } = useJobMutations();
   // Packages, prices and limits come from the backend (admin-configurable), never from the FE.
   const postingPackages = usePostingPackages();
   // FREE is limited per company (active jobs / cooldown); the backend decides who may use it.
@@ -580,7 +592,9 @@ export const JobFormPage: React.FC = () => {
     return undefined;
   }, [selectedServiceCode, effectiveServiceId, availableServiceTypes]);
 
-  const hasMustHave = (watched.requirements ?? []).some((r) => r?.requirementType === 'MUST_HAVE' && r.content?.trim());
+  const hasSkills = (watched.skills ?? []).some((s) => Boolean(s?.trim()));
+  const hasMustHaveReq = (watched.requirements ?? []).some((r) => r?.requirementType === 'MUST_HAVE' && r.content?.trim());
+  const hasMustHave = hasMustHaveReq || hasSkills;
 
   // Load existing job details
   useEffect(() => {
@@ -613,7 +627,7 @@ export const JobFormPage: React.FC = () => {
       { label: 'Địa điểm', done: Boolean(watched.location?.trim()), step: 1, field: 'form-location-item' },
       { label: 'Mô tả công việc', done: Boolean(watched.description?.trim()), step: 1, field: 'form-desc-item' },
       { label: 'Quyền lợi', done: Boolean(watched.benefits?.trim()), step: 1, field: 'form-benefits-item' },
-      { label: 'Ít nhất 1 yêu cầu bắt buộc', done: hasMustHave, step: 1, field: 'form-requirements-item' },
+      { label: 'Ít nhất 1 yêu cầu bắt buộc / kỹ năng', done: hasMustHave, step: 1, field: 'form-requirements-item' },
       { label: 'Hạn nhận hồ sơ', done: Boolean(watched.deadline), step: 1, field: 'form-deadline-item' },
     ];
     if (effectiveCode === 'CV_SOURCING') {
@@ -800,7 +814,7 @@ export const JobFormPage: React.FC = () => {
 
       if (andSubmit) {
         const fresh = await jobsApi.getById(savedId);
-        const res = await jobsApi.submit(savedId, fresh.concurrencyToken);
+        const res = await submit.mutateAsync({ jobId: savedId, token: fresh.concurrencyToken });
         message.success(res.message || 'Đã gửi duyệt tin tuyển dụng thành công.');
       } else {
         message.success('Đã lưu bản nháp tin tuyển dụng.');
@@ -1376,7 +1390,11 @@ export const JobFormPage: React.FC = () => {
                     <h2 className="m-0 text-[17px] font-semibold text-slate-900">Yêu cầu ứng viên</h2>
                   </div>
                   <Tag color={hasMustHave ? 'green' : 'orange'} className="m-0 font-medium">
-                    {hasMustHave ? 'Đã có yêu cầu bắt buộc' : 'Cần ít nhất 1 yêu cầu bắt buộc'}
+                    {hasMustHave
+                      ? hasMustHaveReq
+                        ? 'Đã có yêu cầu bắt buộc'
+                        : 'Đã có kỹ năng bắt buộc'
+                      : 'Cần ít nhất 1 yêu cầu bắt buộc (hoặc kỹ năng)'}
                   </Tag>
                 </header>
 
@@ -1405,7 +1423,12 @@ export const JobFormPage: React.FC = () => {
 
                 <div className="space-y-3">
                   <div className="text-sm font-semibold text-slate-900">
-                    Yêu cầu cụ thể <span className="text-red-500 font-bold ml-0.5">*</span>
+                    Yêu cầu cụ thể {!hasSkills && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                    {hasSkills && (
+                      <span className="text-xs text-slate-500 font-normal ml-2">
+                        (không bắt buộc nếu đã nhập kỹ năng)
+                      </span>
+                    )}
                   </div>
                   <Form.List name="requirements">
                     {(fields, { add, remove }) => (
@@ -1434,7 +1457,17 @@ export const JobFormPage: React.FC = () => {
                                   name={[field.name, 'content']}
                                   label={`Yêu cầu ${index + 1}`}
                                   className="mb-2 md:mb-0"
-                                  rules={[{ required: true, whitespace: true, message: 'Nhập nội dung yêu cầu hoặc xóa dòng này.' }]}
+                                  rules={
+                                    hasSkills
+                                      ? []
+                                      : [
+                                          {
+                                            required: true,
+                                            whitespace: true,
+                                            message: 'Nhập nội dung yêu cầu hoặc xóa dòng này.',
+                                          },
+                                        ]
+                                  }
                                 >
                                   <Input placeholder="Ví dụ: Tối thiểu 3 năm kinh nghiệm xây dựng RESTful API" />
                                 </Form.Item>
@@ -1928,8 +1961,13 @@ export const JobFormPage: React.FC = () => {
                   <div>
                     <div className="font-semibold text-slate-900 text-sm mb-2">Yêu cầu ứng viên:</div>
                     <ul className="m-0 pl-0 list-none space-y-1.5 text-sm text-slate-700">
-                      {(watched.requirements ?? [])
+                      {[...(watched.requirements ?? [])]
                         .filter((r) => r.content?.trim())
+                        .sort((a, b) => {
+                          if (a.requirementType === 'MUST_HAVE' && b.requirementType !== 'MUST_HAVE') return -1;
+                          if (a.requirementType !== 'MUST_HAVE' && b.requirementType === 'MUST_HAVE') return 1;
+                          return 0;
+                        })
                         .map((r, i) => (
                           <li key={i} className="flex items-start gap-2">
                             <CheckCircleFilled
@@ -2098,87 +2136,93 @@ export const JobFormPage: React.FC = () => {
           </Form>
         </div>
 
-        {/* ── Side Rail (Sticky Progress & Preview) ────────────────────────── */}
-        <aside aria-label="Tiến độ và xem trước" className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          {/* Progress & Checklist Card */}
-          <div className="admin-surface p-5">
-            <div className="flex items-center gap-4">
-              <Progress
-                type="circle"
-                percent={percent}
-                size={64}
-                strokeColor="var(--console-accent)"
-                format={(p) => <span className="text-sm font-bold text-slate-900">{p}%</span>}
-              />
-              <div>
-                <div className="text-[15px] font-semibold text-slate-900">
-                  {ready ? 'Sẵn sàng gửi duyệt' : 'Mức độ hoàn thiện'}
-                </div>
-                <div className="text-[13px] text-slate-600">
-                  {doneCount}/{checklist.length} mục cần khi gửi duyệt
+        {/* ── Side Rail (Sticky Progress & Preview & Actions) ────────────────────────── */}
+        <aside
+          aria-label="Tiến độ và xem trước"
+          className="lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:flex lg:flex-col gap-3"
+        >
+          {/* Scrollable checklist and candidate preview */}
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 pb-1">
+            {/* Progress & Checklist Card */}
+            <div className="admin-surface p-5">
+              <div className="flex items-center gap-4">
+                <Progress
+                  type="circle"
+                  percent={percent}
+                  size={64}
+                  strokeColor="var(--console-accent)"
+                  format={(p) => <span className="text-sm font-bold text-slate-900">{p}%</span>}
+                />
+                <div>
+                  <div className="text-[15px] font-semibold text-slate-900">
+                    {ready ? 'Sẵn sàng gửi duyệt' : 'Mức độ hoàn thiện'}
+                  </div>
+                  <div className="text-[13px] text-slate-600">
+                    {doneCount}/{checklist.length} mục cần khi gửi duyệt
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <ul className="m-0 mt-4 list-none space-y-1 p-0">
-              {checklist.map((c, idx) => (
-                <li key={c.label}>
-                  <button
-                    type="button"
-                    onClick={() => goToStep(c.step, c.field)}
-                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-0 bg-transparent px-2 py-1.5 text-left text-[13.5px] transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
-                  >
-                    {c.done ? (
-                      <CheckCircleFilled className="text-emerald-600 text-sm shrink-0" aria-label="Đã xong" />
-                    ) : (
-                      <span className="w-4 h-4 rounded-full border border-slate-300 text-slate-400 text-[10px] font-medium flex items-center justify-center shrink-0">
-                        {idx + 1}
+              <ul className="m-0 mt-4 list-none space-y-1 p-0">
+                {checklist.map((c, idx) => (
+                  <li key={c.label}>
+                    <button
+                      type="button"
+                      onClick={() => goToStep(c.step, c.field)}
+                      className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-0 bg-transparent px-2 py-1.5 text-left text-[13.5px] transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+                    >
+                      {c.done ? (
+                        <CheckCircleFilled className="text-emerald-600 text-sm shrink-0" aria-label="Đã xong" />
+                      ) : (
+                        <span className="w-4 h-4 rounded-full border border-slate-300 text-slate-400 text-[10px] font-medium flex items-center justify-center shrink-0">
+                          {idx + 1}
+                        </span>
+                      )}
+                      <span className={c.done ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-700'}>
+                        {c.label}
                       </span>
-                    )}
-                    <span className={c.done ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-700'}>
-                      {c.label}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Candidate-Facing Preview */}
-          <div className="admin-surface overflow-hidden">
-            <div className="border-0 border-b border-solid border-slate-100 px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-              Xem trước tin tuyển dụng
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="p-5">
-              <div className="text-[16px] font-semibold leading-snug text-slate-900">
-                {watched.title?.trim() || 'Tên vị trí tuyển dụng'}
+
+            {/* Candidate-Facing Preview */}
+            <div className="admin-surface overflow-hidden">
+              <div className="border-0 border-b border-solid border-slate-100 px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                Xem trước tin tuyển dụng
               </div>
-              <div className="mt-3 space-y-1.5 text-[13.5px] text-slate-700">
-                <div className="flex items-center gap-2">
-                  <WalletOutlined className="text-slate-400" aria-hidden />
-                  <span className="font-medium text-[color:var(--console-accent-strong)]">{salaryText(watched)}</span>
+              <div className="p-5">
+                <div className="text-[16px] font-semibold leading-snug text-slate-900">
+                  {watched.title?.trim() || 'Tên vị trí tuyển dụng'}
                 </div>
-                <div className="flex items-center gap-2">
-                  <EnvironmentOutlined className="text-slate-400" aria-hidden />
-                  {watched.location?.trim() || 'Địa điểm làm việc'}
+                <div className="mt-3 space-y-1.5 text-[13.5px] text-slate-700">
+                  <div className="flex items-center gap-2">
+                    <WalletOutlined className="text-slate-400" aria-hidden />
+                    <span className="font-medium text-[color:var(--console-accent-strong)]">{salaryText(watched)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <EnvironmentOutlined className="text-slate-400" aria-hidden />
+                    {watched.location?.trim() || 'Địa điểm làm việc'}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <TeamOutlined className="text-slate-400" aria-hidden />
+                    {watched.employmentType ? EMPLOYMENT_TYPE_LABEL[watched.employmentType] : 'Hình thức'} ·{' '}
+                    {watched.quantity ?? 1} người
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <TeamOutlined className="text-slate-400" aria-hidden />
-                  {watched.employmentType ? EMPLOYMENT_TYPE_LABEL[watched.employmentType] : 'Hình thức'} ·{' '}
-                  {watched.quantity ?? 1} người
-                </div>
+                {effectiveCode && (
+                  <span className="mt-3 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                    {SERVICE_TYPE_LABEL[effectiveCode]?.label}
+                  </span>
+                )}
               </div>
-              {effectiveCode && (
-                <span className="mt-3 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
-                  {SERVICE_TYPE_LABEL[effectiveCode]?.label}
-                </span>
-              )}
             </div>
           </div>
 
-          {/* Desktop Save Actions */}
+          {/* Desktop Save Actions - Cố định trên màn hình */}
           {editable && (
-            <div className="hidden space-y-2 lg:block">
+            <div className="hidden shrink-0 space-y-2 lg:block rounded-2xl border border-solid border-slate-200 bg-white/95 p-3 shadow-xs backdrop-blur">
               {submitButton(true)}
               <div className="grid grid-cols-2 gap-2">
                 {draftButton(true)}
