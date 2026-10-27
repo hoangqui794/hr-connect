@@ -6,14 +6,6 @@ import {
   DollarSign,
   ArrowRight,
   Sparkles,
-  CheckCircle2,
-  Zap,
-  ShieldCheck,
-  FileText,
-  Calculator,
-  Brain,
-  MessageSquareText,
-  ChevronRight,
   TrendingUp,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -59,49 +51,6 @@ const TRENDING_TAGS = [
   '#Thực_tập_sinh_2026',
   '#Kế_toán_trưởng',
   '#Product_Manager',
-];
-
-const UTILITY_TOOLS = [
-  {
-    title: 'Tạo CV Chuẩn ATS',
-    description: 'Hàng trăm mẫu CV chuyên nghiệp, hỗ trợ vượt qua bộ lọc tuyển dụng AI.',
-    icon: FileText,
-    iconBg: 'bg-[#95f5ce]',
-    iconColor: 'text-[#005f45]',
-    textColor: 'group-hover:text-[#005f45]',
-    ctaText: 'Bắt đầu ngay',
-    path: '/cv-builder',
-  },
-  {
-    title: 'Tính Lương Gross - Net',
-    description: 'Cập nhật biểu thuế TNCN và mức đóng BHXH mới nhất năm 2026.',
-    icon: Calculator,
-    iconBg: 'bg-[#d9e2ff]',
-    iconColor: 'text-[#1d59c1]',
-    textColor: 'group-hover:text-[#1d59c1]',
-    ctaText: 'Tra cứu chi tiết',
-    path: '/jobs',
-  },
-  {
-    title: 'Trắc Nghiệm MBTI',
-    description: 'Định vị điểm mạnh tính cách và tìm môi trường làm việc lý tưởng.',
-    icon: Brain,
-    iconBg: 'bg-[#ffdbd0]',
-    iconColor: 'text-[#982e00]',
-    textColor: 'group-hover:text-[#982e00]',
-    ctaText: 'Làm bài kiểm tra',
-    path: '/jobs',
-  },
-  {
-    title: 'Review & Cẩm Nang',
-    description: 'Kinh nghiệm phỏng vấn, văn hóa doanh nghiệp từ người đi trước.',
-    icon: MessageSquareText,
-    iconBg: 'bg-[#eaedff]',
-    iconColor: 'text-[#131b2e]',
-    textColor: 'group-hover:text-[#007a5a]',
-    ctaText: 'Khám phá chia sẻ',
-    path: '/jobs',
-  },
 ];
 
 export const JobHeroSearch: React.FC<JobHeroSearchProps> = ({ onSearch }) => {
@@ -180,8 +129,8 @@ export const JobHeroSearch: React.FC<JobHeroSearchProps> = ({ onSearch }) => {
           </p>
         </div>
 
-        {/* 3. Search Command Center Card (Chuẩn code.html lines 33-80) */}
-        <div className="bg-white rounded-2xl p-3 sm:p-4 shadow-xl border border-slate-200/90 mb-5">
+        {/* 3. Search Command Center Card */}
+        <div className="bg-white rounded-2xl p-3 sm:p-4 shadow-xl border border-slate-200/90 mb-6 sm:mb-8">
           <form
             className="grid grid-cols-1 md:grid-cols-12 gap-2.5"
             onSubmit={(e) => {
@@ -284,69 +233,7 @@ export const JobHeroSearch: React.FC<JobHeroSearchProps> = ({ onSearch }) => {
           </div>
         </div>
 
-        {/* 4. Trust Badges Strip (Chuẩn code.html lines 93-118) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-1 mb-8">
-          <div className="flex items-center gap-2.5 text-slate-700 bg-white/70 backdrop-blur-xs p-2.5 rounded-xl border border-slate-200/50 shadow-2xs">
-            <div className="w-8 h-8 rounded-full bg-[#95f5ce] flex items-center justify-center text-[#005f45] shrink-0">
-              <CheckCircle2 className="h-4 w-4" strokeWidth={2.2} />
-            </div>
-            <span className="text-xs sm:text-sm font-semibold text-[#131b2e]">100% Việc làm xác thực</span>
-          </div>
-
-          <div className="flex items-center gap-2.5 text-slate-700 bg-white/70 backdrop-blur-xs p-2.5 rounded-xl border border-slate-200/50 shadow-2xs">
-            <div className="w-8 h-8 rounded-full bg-[#d9e2ff] flex items-center justify-center text-[#1d59c1] shrink-0">
-              <Zap className="h-4 w-4" strokeWidth={2.2} />
-            </div>
-            <span className="text-xs sm:text-sm font-semibold text-[#131b2e]">Ứng tuyển 1-chạm hồ sơ</span>
-          </div>
-
-          <div className="flex items-center gap-2.5 text-slate-700 bg-white/70 backdrop-blur-xs p-2.5 rounded-xl border border-slate-200/50 shadow-2xs">
-            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 shrink-0">
-              <ShieldCheck className="h-4 w-4" strokeWidth={2.2} />
-            </div>
-            <span className="text-xs sm:text-sm font-semibold text-[#131b2e]">Tìm việc ẩn danh bảo mật</span>
-          </div>
-
-          <div className="flex items-center gap-2.5 text-slate-700 bg-white/70 backdrop-blur-xs p-2.5 rounded-xl border border-slate-200/50 shadow-2xs">
-            <div className="w-8 h-8 rounded-full bg-[#ffdbd0] flex items-center justify-center text-[#982e00] shrink-0">
-              <Sparkles className="h-4 w-4" strokeWidth={2.2} />
-            </div>
-            <span className="text-xs sm:text-sm font-semibold text-[#131b2e]">Hỗ trợ tối ưu CV bằng AI</span>
-          </div>
-        </div>
-
-        {/* 5. Interactive Utility Tools (Chuẩn code.html lines 121-180) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
-          {UTILITY_TOOLS.map((tool) => {
-            const Icon = tool.icon;
-            return (
-              <div
-                key={tool.title}
-                onClick={() => navigate(tool.path)}
-                className="group bg-white p-4 sm:p-5 rounded-xl shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between border border-slate-200/80 hover:border-[#79d9b2] cursor-pointer hover:-translate-y-0.5"
-              >
-                <div>
-                  <div className={`w-11 h-11 rounded-xl ${tool.iconBg} flex items-center justify-center ${tool.iconColor} mb-3 group-hover:scale-110 transition-transform shadow-2xs`}>
-                    <Icon className="h-5 w-5" strokeWidth={2} />
-                  </div>
-                  <h3 className={`font-bold text-sm sm:text-base text-[#131b2e] ${tool.textColor} transition-colors mb-1 m-0`}>
-                    {tool.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 leading-relaxed mb-0 mt-1">
-                    {tool.description}
-                  </p>
-                </div>
-
-                <div className={`mt-4 pt-2 border-t border-slate-100 flex items-center text-xs font-bold ${tool.iconColor} gap-1`}>
-                  <span>{tool.ctaText}</span>
-                  <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* 6. Talent Spotlight & Pro Banner (Đồng bộ chuẩn nhẹ nhàng, sang trọng) */}
+        {/* 4. Talent Spotlight & Pro Banner */}
         <div className="bg-gradient-to-r from-[#005f45] via-[#007a5a] to-[#1d59c1] text-white rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden flex flex-col lg:flex-row items-center justify-between gap-6">
           {/* Decorative ambient shape */}
           <div className="pointer-events-none absolute -right-10 -bottom-10 h-64 w-64 rounded-full bg-[#95f5ce]/15 blur-2xl" />
