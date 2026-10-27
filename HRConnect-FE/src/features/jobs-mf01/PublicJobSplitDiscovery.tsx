@@ -421,19 +421,19 @@ export const PublicJobSplitDiscovery: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F5F5] text-slate-900 font-sans">
+    <div className="min-h-screen bg-[#f0f4f8] text-slate-900 font-sans">
       {/* 1. TOP NAVBAR */}
       <Navbar />
 
       {/* =================================================================== */}
       {/* 2. KHỐI TÌM KIẾM BRAND THEME HRCONNECT CHUẨN TOPCV                 */}
       {/* =================================================================== */}
-      <section className="bg-gradient-to-r from-[#005c30] via-[#008744] to-[#00b14f] py-5 px-4 shadow-sm">
+      <section className="bg-gradient-to-r from-[#0f172a] via-[#1e3a8a] to-[#2563eb] py-6 px-4 shadow-sm">
         <div className="max-w-7xl mx-auto">
           {/* Thanh tìm kiếm tổng hợp: Danh mục nghề | Input từ khóa | Địa điểm | Nút Tìm kiếm */}
           <form
             onSubmit={handleSearchSubmit}
-            className="bg-white rounded-xl p-1.5 shadow-md flex flex-col md:flex-row items-stretch md:items-center gap-1.5 md:gap-2 border border-emerald-200/50"
+            className="bg-white rounded-xl p-1.5 shadow-md flex flex-col md:flex-row items-stretch md:items-center gap-1.5 md:gap-2 border border-blue-200/50"
           >
             {/* Dropdown Danh mục nghề */}
             <div className="relative flex items-center px-3 py-1.5 md:w-[220px] shrink-0">
@@ -501,7 +501,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
             {/* Nút Tìm kiếm Primary TopCV Green */}
             <button
               type="submit"
-              className="bg-[#00b14f] hover:bg-[#009643] text-white font-bold text-xs sm:text-sm px-7 py-2.5 rounded-lg transition-colors cursor-pointer border-0 shadow-xs whitespace-nowrap active:scale-[0.98]"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm px-7 py-2.5 rounded-lg transition-colors cursor-pointer border-0 shadow-xs whitespace-nowrap active:scale-[0.98]"
             >
               Tìm kiếm
             </button>
@@ -552,10 +552,10 @@ export const PublicJobSplitDiscovery: React.FC = () => {
       {/* =================================================================== */}
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-5">
         {/* TOPCV SAFETY BANNER */}
-        <div className="bg-gradient-to-r from-[#e8f7ee] via-[#f0fbf4] to-[#e6f8ec] border border-[#bbf0cb] rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 shadow-2xs">
+        <div className="bg-gradient-to-r from-blue-50/90 via-sky-50/60 to-indigo-50/80 border border-blue-200/90 rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 shadow-2xs">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-[#00b14f]/15 flex items-center justify-center text-[#00b14f] shrink-0">
-              <ShieldCheck className="w-6 h-6 text-[#00b14f]" />
+            <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+              <ShieldCheck className="w-6 h-6 text-blue-600" />
             </div>
             <div>
               <h3 className="font-bold text-base sm:text-lg text-slate-900 m-0">
@@ -571,7 +571,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
             onClick={() => {
               void message.info('HR Connect cam kết bảo vệ thông tin cá nhân và quyền lợi ứng viên theo tiêu chuẩn an toàn.');
             }}
-            className="bg-[#00b14f] hover:bg-[#009643] text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs border-0 flex items-center gap-1.5 shrink-0 cursor-pointer"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs border-0 flex items-center gap-1.5 shrink-0 cursor-pointer"
           >
             <span>Tìm hiểu thêm</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -585,7 +585,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             {/* Tiêu đề & Pill Tabs (Việc văn phòng, Việc phổ thông, Tất cả) */}
             <div className="flex items-center gap-3 flex-wrap">
-              <h2 className="text-2xl font-bold text-[#00b14f] m-0 tracking-tight">
+              <h2 className="text-2xl font-extrabold text-slate-900 m-0 tracking-tight">
                 Việc làm nổi bật
               </h2>
               <div className="flex items-center gap-2">
@@ -594,8 +594,8 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                   onClick={() => setJobTypeTab('OFFICE')}
                   className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 ${
                     jobTypeTab === 'OFFICE'
-                      ? 'bg-[#00b14f] text-white shadow-xs'
-                      : 'bg-[#f1f5f9] text-[#475467] hover:bg-slate-200'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
                   }`}
                 >
                   Việc văn phòng
@@ -605,8 +605,8 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                   onClick={() => setJobTypeTab('MANUAL')}
                   className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 ${
                     jobTypeTab === 'MANUAL'
-                      ? 'bg-[#00b14f] text-white shadow-xs'
-                      : 'bg-[#f1f5f9] text-[#475467] hover:bg-slate-200'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
                   }`}
                 >
                   Việc phổ thông
@@ -616,8 +616,8 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                   onClick={() => setJobTypeTab('ALL')}
                   className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 ${
                     jobTypeTab === 'ALL'
-                      ? 'bg-[#00b14f] text-white shadow-xs'
-                      : 'bg-[#f1f5f9] text-[#475467] hover:bg-slate-200'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
                   }`}
                 >
                   Tất cả
@@ -632,7 +632,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                   setActiveLocationPill('ALL');
                   updateParams({ location: 'ALL' });
                 }}
-                className="text-xs text-slate-600 hover:text-[#00b14f] font-medium bg-transparent border-0 cursor-pointer p-0"
+                className="text-xs text-slate-600 hover:text-blue-600 font-medium bg-transparent border-0 cursor-pointer p-0"
               >
                 Xem tất cả
               </button>
@@ -640,7 +640,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 type="button"
                 aria-label="Cuộn trái"
                 onClick={() => scrollPills(-180)}
-                className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-[#00b14f] cursor-pointer"
+                className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -648,7 +648,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 type="button"
                 aria-label="Cuộn phải"
                 onClick={() => scrollPills(180)}
-                className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-[#00b14f] cursor-pointer"
+                className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -662,7 +662,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsLocationDropdownOpen(!isLocationDropdownOpen)}
-                className="bg-white border border-slate-200/90 rounded-lg px-3 py-1.5 text-xs text-slate-700 flex items-center gap-1.5 shadow-2xs hover:border-[#00b14f] cursor-pointer transition-colors"
+                className="bg-white border border-slate-200/90 rounded-lg px-3 py-1.5 text-xs text-slate-700 flex items-center gap-1.5 shadow-2xs hover:border-blue-400 cursor-pointer transition-colors"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
                 <span className="font-medium">Lọc theo: Địa điểm</span>
@@ -682,7 +682,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                       }}
                       className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-0 transition-colors ${
                         locationSelect === loc.value
-                          ? 'bg-emerald-50 text-[#00b14f] font-bold'
+                          ? 'bg-blue-50 text-blue-700 font-bold'
                           : 'text-slate-700 hover:bg-slate-50'
                       }`}
                     >
@@ -699,14 +699,14 @@ export const PublicJobSplitDiscovery: React.FC = () => {
               onClick={() => setShowSidebar(!showSidebar)}
               className={`border rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
                 showSidebar || activeFilterCount > 0
-                  ? 'bg-emerald-50 text-[#00b14f] border-emerald-300'
-                  : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-50'
+                  ? 'bg-blue-50 text-blue-700 border-blue-300 font-semibold'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
               }`}
             >
-              <Filter className="w-3.5 h-3.5 text-[#00b14f]" />
+              <Filter className="w-3.5 h-3.5 text-blue-600" />
               <span>{showSidebar ? 'Ẩn bộ lọc' : 'Lọc nâng cao'}</span>
               {activeFilterCount > 0 && (
-                <span className="bg-[#00b14f] text-white rounded-full px-1.5 py-0.2 text-[10px] font-bold">
+                <span className="bg-blue-600 text-white rounded-full px-1.5 py-0.2 text-[10px] font-bold">
                   {activeFilterCount}
                 </span>
               )}
@@ -717,7 +717,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
               type="button"
               aria-label="Cuộn trái"
               onClick={() => scrollPills(-180)}
-              className="w-6 h-6 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-[#00b14f] cursor-pointer shrink-0"
+              className="w-6 h-6 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 cursor-pointer shrink-0"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
@@ -740,8 +740,8 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                     }}
                     className={`px-3.5 py-1 rounded-full text-xs whitespace-nowrap transition-all cursor-pointer border ${
                       isActive
-                        ? 'bg-[#00b14f] text-white border-[#00b14f] font-semibold shadow-2xs'
-                        : 'bg-[#f1f5f9] text-[#475467] border-transparent hover:bg-slate-200 font-medium'
+                        ? 'bg-blue-600 text-white border-blue-600 font-semibold shadow-2xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 font-medium shadow-2xs'
                     }`}
                   >
                     {pill.label}
@@ -755,7 +755,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
               type="button"
               aria-label="Cuộn phải"
               onClick={() => scrollPills(180)}
-              className="w-6 h-6 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-[#00b14f] cursor-pointer shrink-0"
+              className="w-6 h-6 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 cursor-pointer shrink-0"
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
@@ -763,7 +763,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
 
           {/* BANNER GỢI Ý CHUẨN TOPCV (HÌNH ẢNH USER GỬI) */}
           {showTip && (
-            <div className="bg-[#eef6fc] border border-[#d5e9f8] rounded-lg px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-[#1e40af] shadow-2xs animate-fadeIn">
+            <div className="bg-blue-50/90 border border-blue-200/90 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-blue-900 shadow-2xs animate-fadeIn">
               <div className="flex items-center gap-2">
                 <span className="text-base text-blue-500">💡</span>
                 <span className="font-normal text-slate-700">
@@ -792,7 +792,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 {/* Header Lọc nâng cao */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <span className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                    <Filter className="w-4 h-4 text-[#00b14f]" />
+                    <Filter className="w-4 h-4 text-blue-600" />
                     <span>Lọc nâng cao</span>
                   </span>
                   <div className="flex items-center gap-2">
@@ -818,7 +818,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
             <div>
               <div className="text-xs font-bold text-slate-800 mb-2.5 flex items-center gap-1.5">
                 <span>Nghỉ thứ 7</span>
-                <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-200/60 inline-flex items-center gap-0.5">
+                <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-200/60 inline-flex items-center gap-0.5">
                   AI ✨
                 </span>
               </div>
@@ -826,14 +826,14 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 {SATURDAY_OPTIONS.map((opt) => (
                   <label
                     key={opt.value}
-                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-emerald-600"
+                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-blue-600"
                   >
                     <input
                       type="radio"
                       name="saturday"
                       checked={querySaturday === opt.value}
                       onChange={() => updateParams({ saturday: opt.value })}
-                      className="accent-emerald-600 cursor-pointer"
+                      className="accent-blue-600 cursor-pointer"
                     />
                     <span>{opt.label}</span>
                   </label>
@@ -855,7 +855,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                   value={categorySearchText}
                   onChange={(e) => setCategorySearchText(e.target.value)}
                   placeholder="Nhập để tìm danh mục (VD: thiết kế)..."
-                  className="w-full text-xs bg-slate-50 border border-slate-200/90 rounded-lg pl-7 pr-7 py-1.5 focus:outline-none focus:border-emerald-500 text-slate-800 placeholder:text-slate-400"
+                  className="w-full text-xs bg-slate-50 border border-slate-200/90 rounded-lg pl-7 pr-7 py-1.5 focus:outline-none focus:border-blue-500 text-slate-800 placeholder:text-slate-400"
                 />
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                 {categorySearchText && (
@@ -877,14 +877,14 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                   return (
                     <label
                       key={cat.value}
-                      className="flex items-center justify-between gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-emerald-600"
+                      className="flex items-center justify-between gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-blue-600"
                     >
                       <span className="flex items-center gap-2 min-w-0">
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => updateParams({ category: isChecked ? 'ALL' : cat.value })}
-                          className="accent-emerald-600 rounded cursor-pointer shrink-0"
+                          className="accent-blue-600 rounded cursor-pointer shrink-0"
                         />
                         <span className="truncate">{cat.label}</span>
                       </span>
@@ -905,7 +905,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowAllCategories(!showAllCategories)}
-                  className="mt-2 text-xs font-semibold text-emerald-600 hover:underline bg-transparent border-0 p-0 flex items-center gap-1 cursor-pointer"
+                  className="mt-2 text-xs font-semibold text-blue-600 hover:underline bg-transparent border-0 p-0 flex items-center gap-1 cursor-pointer"
                 >
                   <span>{showAllCategories ? 'Thu gọn' : `Xem thêm (${dynamicCategories.length - 5} danh mục)`}</span>
                   {showAllCategories ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -927,7 +927,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSaveFilterAlert}
-                  className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-1.5 rounded-full font-bold shadow-2xs transition-colors cursor-pointer border-0"
+                  className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3.5 py-1.5 rounded-full font-bold shadow-2xs transition-colors cursor-pointer border-0"
                 >
                   <Star className="w-3 h-3 fill-current" />
                   <span>Lưu bộ lọc</span>
@@ -942,14 +942,14 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 {SALARY_OPTIONS.map((opt) => (
                   <label
                     key={opt.value}
-                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-emerald-600"
+                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-blue-600"
                   >
                     <input
                       type="radio"
                       name="salary"
                       checked={querySalary === opt.value}
                       onChange={() => updateParams({ salary: opt.value })}
-                      className="accent-emerald-600 cursor-pointer"
+                      className="accent-blue-600 cursor-pointer"
                     />
                     <span>{opt.label}</span>
                   </label>
@@ -964,14 +964,14 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 {EXPERIENCE_OPTIONS.map((opt) => (
                   <label
                     key={opt.value}
-                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-emerald-600"
+                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-blue-600"
                   >
                     <input
                       type="radio"
                       name="experience"
                       checked={queryExperience === opt.value}
                       onChange={() => updateParams({ experience: opt.value })}
-                      className="accent-emerald-600 cursor-pointer"
+                      className="accent-blue-600 cursor-pointer"
                     />
                     <span>{opt.label}</span>
                   </label>
@@ -986,14 +986,14 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 {LEVEL_OPTIONS.map((opt) => (
                   <label
                     key={opt.value}
-                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-emerald-600"
+                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-blue-600"
                   >
                     <input
                       type="radio"
                       name="level"
                       checked={queryLevel === opt.value}
                       onChange={() => updateParams({ level: opt.value })}
-                      className="accent-emerald-600 cursor-pointer"
+                      className="accent-blue-600 cursor-pointer"
                     />
                     <span>{opt.label}</span>
                   </label>
@@ -1008,14 +1008,14 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 {WORK_TYPE_OPTIONS.map((opt) => (
                   <label
                     key={opt.value}
-                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-emerald-600"
+                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-blue-600"
                   >
                     <input
                       type="radio"
                       name="workType"
                       checked={queryWorkType === opt.value}
                       onChange={() => updateParams({ workType: opt.value })}
-                      className="accent-emerald-600 cursor-pointer"
+                      className="accent-blue-600 cursor-pointer"
                     />
                     <span>{opt.label}</span>
                   </label>
@@ -1041,7 +1041,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 onClick={() => setSearchField('TITLE')}
                 className={`px-3 py-1 rounded-full text-xs transition-colors cursor-pointer border ${
                   searchField === 'TITLE'
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold'
+                    ? 'bg-blue-50 text-blue-700 border-blue-300 font-bold'
                     : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
                 }`}
               >
@@ -1052,7 +1052,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 onClick={() => setSearchField('COMPANY')}
                 className={`px-3 py-1 rounded-full text-xs transition-colors cursor-pointer border ${
                   searchField === 'COMPANY'
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold'
+                    ? 'bg-blue-50 text-blue-700 border-blue-300 font-bold'
                     : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
                 }`}
               >
@@ -1063,7 +1063,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 onClick={() => setSearchField('ALL')}
                 className={`px-3 py-1 rounded-full text-xs transition-colors cursor-pointer border ${
                   searchField === 'ALL'
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold'
+                    ? 'bg-blue-50 text-blue-700 border-blue-300 font-bold'
                     : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
                 }`}
               >
@@ -1079,7 +1079,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   aria-label="Sắp xếp kết quả tìm kiếm"
-                  className="appearance-none bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-7 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  className="appearance-none bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-7 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500 cursor-pointer"
                 >
                   <option value="AI">Search by AI</option>
                   <option value="NEWEST">Mới nhất</option>
@@ -1096,7 +1096,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
             <span>
               Tìm thấy <strong className="text-slate-900 font-bold">{filteredJobs.length}</strong> việc làm phù hợp
               {queryKeyword ? (
-                <> cho từ khóa &ldquo;<strong className="text-emerald-600">{queryKeyword}</strong>&rdquo;</>
+                <> cho từ khóa &ldquo;<strong className="text-blue-600">{queryKeyword}</strong>&rdquo;</>
               ) : ''}
             </span>
             <span className="text-slate-400">Ưu tiên hiển thị tin tuyển dụng xác thực</span>
@@ -1136,7 +1136,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="bg-emerald-600 text-white hover:bg-emerald-700 font-semibold text-xs px-5 py-2.5 rounded-xl transition-colors cursor-pointer border-0 shadow-xs inline-flex items-center gap-1.5"
+                className="bg-blue-600 text-white hover:bg-blue-700 font-semibold text-xs px-5 py-2.5 rounded-xl transition-colors cursor-pointer border-0 shadow-xs inline-flex items-center gap-1.5"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Xóa toàn bộ bộ lọc</span>
@@ -1157,13 +1157,13 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                   <div
                     key={job.jobId}
                     onClick={() => navigate(`/jobs/${job.jobId}`)}
-                    className="bg-white rounded-2xl border border-slate-200/90 hover:border-[#00b14f] hover:shadow-md transition-all duration-200 p-4 flex flex-col justify-between cursor-pointer group relative hover:-translate-y-0.5"
+                    className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-[0_10px_25px_-5px_rgba(30,58,138,0.12),0_8px_10px_-6px_rgba(30,58,138,0.08)] hover:border-blue-400 transition-all duration-200 p-4 flex flex-col justify-between cursor-pointer group relative hover:-translate-y-1"
                   >
                     <div>
                       {/* Logo + Tiêu đề + Tên công ty */}
                       <div className="flex items-start gap-3">
-                        {/* Logo công ty hình vuông bo góc chuẩn TopCV */}
-                        <div className="w-14 h-14 rounded-xl border border-slate-100 p-1 bg-white flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                        {/* Logo công ty hình vuông bo góc với viền rõ nét */}
+                        <div className="w-14 h-14 rounded-xl border border-slate-200 p-1 bg-slate-50 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
                           <CompanyLogo
                             id={job.companyId || 'company'}
                             name={job.companyName || 'Doanh nghiệp'}
@@ -1173,10 +1173,10 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          {/* Huy hiệu GẤP màu cam chuẩn TopCV */}
+                          {/* Huy hiệu GẤP màu cam nổi bật */}
                           {isFeatured && (
                             <div className="mb-1">
-                              <span className="bg-[#ea580c] text-white text-[10px] font-bold px-2 py-0.5 rounded-full inline-block shadow-2xs">
+                              <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full inline-block shadow-2xs">
                                 GẤP
                               </span>
                             </div>
@@ -1184,7 +1184,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
 
                           {/* Tiêu đề việc làm */}
                           <h3
-                            className="font-bold text-[14.5px] text-[#1e293b] group-hover:text-[#00b14f] transition-colors line-clamp-2 m-0 leading-snug"
+                            className="font-bold text-[14.5px] text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 m-0 leading-snug"
                             title={job.title}
                           >
                             {job.title}
@@ -1192,7 +1192,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
 
                           {/* Tên công ty viết hoa màu xám */}
                           <p
-                            className="text-xs font-normal text-[#64748b] truncate mt-1 m-0 uppercase tracking-tight"
+                            className="text-xs font-semibold text-slate-500 truncate mt-1 m-0 uppercase tracking-tight"
                             title={job.companyName || 'CÔNG TY ĐỐI TÁC'}
                           >
                             {job.companyName || 'CÔNG TY CỔ PHẦN ĐỐI TÁC'}
@@ -1201,20 +1201,20 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Hàng dưới cùng: Tag lương + Tag địa điểm + Nút Lưu viền xanh tròn */}
-                    <div className="mt-4 pt-2.5 border-t border-slate-100/90 flex items-center justify-between gap-2">
+                    {/* Hàng dưới cùng: Tag lương + Tag địa điểm + Nút Lưu */}
+                    <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                        {/* Tag Mức lương pill xám chuẩn TopCV */}
-                        <span className="bg-[#f2f4f5] text-[#222] font-semibold text-xs px-2.5 py-1 rounded-md whitespace-nowrap">
+                        {/* Tag Mức lương pill xanh thương hiệu HR Connect */}
+                        <span className="bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded-md border border-blue-200/60 whitespace-nowrap">
                           {formatSalary(job)}
                         </span>
-                        {/* Tag Địa điểm pill xám chuẩn TopCV */}
-                        <span className="bg-[#f2f4f5] text-[#555] text-xs px-2.5 py-1 rounded-md whitespace-nowrap truncate max-w-[120px]">
+                        {/* Tag Địa điểm pill xám */}
+                        <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-md font-medium whitespace-nowrap truncate max-w-[120px]">
                           {formatLocation(job.location)}
                         </span>
                       </div>
 
-                      {/* Nút lưu việc làm: Vòng tròn viền xanh #00b14f chuẩn TopCV */}
+                      {/* Nút lưu việc làm: Vòng tròn viền xám / hover hồng */}
                       <button
                         type="button"
                         aria-label="Lưu việc làm"
@@ -1222,16 +1222,17 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                           e.stopPropagation();
                           toggleSave(job.jobId, job.title);
                         }}
-                        className={`w-7 h-7 rounded-full border border-[#00b14f] flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                        className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
                           saved
-                            ? 'text-[#00b14f] bg-emerald-50'
-                            : 'text-[#00b14f] bg-white hover:bg-emerald-50'
+                            ? 'text-rose-500 bg-rose-50 border-rose-300'
+                            : 'text-slate-400 bg-white border-slate-200 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-500'
                         }`}
                         title={saved ? 'Đã lưu việc làm' : 'Lưu việc làm'}
                       >
                         <Heart
-                          className="h-3.5 w-3.5"
-                          fill={saved ? '#00b14f' : 'none'}
+                          className="h-4 w-4"
+                          fill={saved ? '#f43f5e' : 'none'}
+                          color={saved ? '#f43f5e' : 'currentColor'}
                           strokeWidth={1.8}
                         />
                       </button>
@@ -1256,10 +1257,10 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                   <div
                     key={job.jobId}
                     onClick={() => navigate(`/jobs/${job.jobId}`)}
-                    className="bg-white rounded-2xl border border-slate-200/90 hover:border-[#00b14f] hover:shadow-md p-4 transition-all flex flex-col sm:flex-row items-start gap-4 cursor-pointer relative group"
+                    className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-[0_10px_25px_-5px_rgba(30,58,138,0.12),0_8px_10px_-6px_rgba(30,58,138,0.08)] hover:border-blue-400 p-4 transition-all flex flex-col sm:flex-row items-start gap-4 cursor-pointer relative group"
                   >
                     {/* Logo doanh nghiệp lớn bên trái */}
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border border-slate-200/80 p-2 bg-white flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border border-slate-200 p-2 bg-slate-50 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
                       <CompanyLogo
                         id={job.companyId || 'company'}
                         name={job.companyName || 'Doanh nghiệp'}
@@ -1272,17 +1273,17 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {isFeatured && (
-                          <span className="bg-[#ea580c] text-white text-[10px] font-bold px-2 py-0.5 rounded-full inline-block shadow-2xs">
+                          <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full inline-block shadow-2xs">
                             GẤP
                           </span>
                         )}
                         <h3
-                          className="font-bold text-base text-slate-900 group-hover:text-[#00b14f] transition-colors line-clamp-1 m-0 leading-tight"
+                          className="font-bold text-base text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1 m-0 leading-tight"
                           title={job.title}
                         >
                           {job.title}
                         </h3>
-                        <CheckCircle2 className="w-4 h-4 text-[#00b14f] shrink-0 fill-emerald-50" />
+                        <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 fill-blue-50" />
                       </div>
 
                       <p
@@ -1293,13 +1294,13 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                       </p>
 
                       <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <span className="bg-[#f2f4f5] text-[#222] font-semibold text-xs px-2.5 py-0.5 rounded">
+                        <span className="bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-0.5 rounded border border-blue-200/60">
                           {formatSalary(job)}
                         </span>
-                        <span className="bg-[#f2f4f5] text-slate-600 text-xs px-2.5 py-0.5 rounded font-medium">
+                        <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded font-medium">
                           {formatLocation(job.location)}
                         </span>
-                        <span className="bg-[#f2f4f5] text-slate-600 text-xs px-2.5 py-0.5 rounded font-medium">
+                        <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded font-medium">
                           {formatExperience(job.minExperienceYears)}
                         </span>
                       </div>
@@ -1323,16 +1324,17 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                           e.stopPropagation();
                           toggleSave(job.jobId, job.title);
                         }}
-                        className={`w-7 h-7 rounded-full border border-[#00b14f] flex items-center justify-center transition-colors cursor-pointer mt-auto ${
+                        className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all cursor-pointer mt-auto ${
                           saved
-                            ? 'text-[#00b14f] bg-emerald-50'
-                            : 'text-[#00b14f] bg-white hover:bg-emerald-50'
+                            ? 'text-rose-500 bg-rose-50 border-rose-300'
+                            : 'text-slate-400 bg-white border-slate-200 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-500'
                         }`}
                         title={saved ? 'Đã lưu việc làm' : 'Lưu việc làm'}
                       >
                         <Heart
-                          className="h-3.5 w-3.5"
-                          fill={saved ? '#00b14f' : 'none'}
+                          className="h-4 w-4"
+                          fill={saved ? '#f43f5e' : 'none'}
+                          color={saved ? '#f43f5e' : 'currentColor'}
                           strokeWidth={1.8}
                         />
                       </button>
@@ -1354,11 +1356,11 @@ export const PublicJobSplitDiscovery: React.FC = () => {
       <button
         type="button"
         onClick={() => navigate('/candidate/saved-jobs')}
-        className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-[#00b14f] hover:bg-emerald-50 transition-all cursor-pointer relative"
+        className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-blue-600 hover:bg-blue-50 transition-all cursor-pointer relative"
         title="Việc làm đã lưu"
       >
-        <Heart className="w-5 h-5 fill-[#00b14f] text-[#00b14f]" />
-        <span className="absolute -top-1 -right-1 bg-[#00b14f] text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-xs">
+        <Heart className="w-5 h-5 fill-rose-500 text-rose-500" />
+        <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-xs">
           {savedJobsCount}
         </span>
       </button>
@@ -1367,20 +1369,20 @@ export const PublicJobSplitDiscovery: React.FC = () => {
       <button
         type="button"
         onClick={() => navigate('/candidate/cvs')}
-        className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-slate-700 hover:text-[#00b14f] hover:bg-emerald-50 transition-all cursor-pointer"
+        className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
         title="Quản lý CV & Hồ sơ"
       >
-        <UserPlus className="w-4 h-4 text-[#00b14f]" />
+        <UserPlus className="w-4 h-4 text-blue-600" />
       </button>
 
       {/* Nút Góp ý */}
       <button
         type="button"
         onClick={() => message.info('Cảm ơn bạn! Đội ngũ HR Connect luôn lắng nghe ý kiến phản hồi.')}
-        className="bg-white border border-slate-200 rounded-full px-2.5 py-1.5 shadow-md flex items-center gap-1 text-slate-700 hover:text-[#00b14f] transition-all cursor-pointer"
+        className="bg-white border border-slate-200 rounded-full px-2.5 py-1.5 shadow-md flex items-center gap-1 text-slate-700 hover:text-blue-600 transition-all cursor-pointer"
         title="Góp ý"
       >
-        <MessageSquare className="w-3.5 h-3.5 text-[#00b14f]" />
+        <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
         <span className="font-semibold text-[11px]">Góp ý</span>
       </button>
 
@@ -1388,10 +1390,10 @@ export const PublicJobSplitDiscovery: React.FC = () => {
       <button
         type="button"
         onClick={() => message.info('Tổng đài hỗ trợ ứng viên HR Connect: 1900 6868 (8:00 - 18:00)')}
-        className="bg-white border border-slate-200 rounded-full px-2.5 py-1.5 shadow-md flex items-center gap-1 text-slate-700 hover:text-[#00b14f] transition-all cursor-pointer"
+        className="bg-white border border-slate-200 rounded-full px-2.5 py-1.5 shadow-md flex items-center gap-1 text-slate-700 hover:text-blue-600 transition-all cursor-pointer"
         title="Hỗ trợ"
       >
-        <Headphones className="w-3.5 h-3.5 text-[#00b14f]" />
+        <Headphones className="w-3.5 h-3.5 text-blue-600" />
         <span className="font-semibold text-[11px]">Hỗ trợ</span>
       </button>
     </div>
