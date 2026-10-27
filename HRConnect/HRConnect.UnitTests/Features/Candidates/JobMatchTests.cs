@@ -222,14 +222,16 @@ public class JobMatchTests
         var candidate = new Candidate
         {
             CandidateId = Guid.NewGuid(), FullName = "A", ProfileVisibility = "PRIVATE", Status = "ACTIVE",
-            TargetRole = "Backend .NET Developer", YearsOfExperience = 3, PreferredLocations = "[\"Hà Nội\"]",
+            CurrentJobTitle = "Backend .NET Developer", YearsOfExperience = 3, PreferredLocations = "[\"Hà Nội\"]",
+            PreferredWorkModes = "[\"HYBRID\"]", AvailableFrom = DateOnly.FromDateTime(now),
             ExpectedSalaryMin = 20_000_000, ExpectedSalaryMax = 30_000_000, ExpectedSalaryCurrency = "VND"
         };
         candidate.CandidateSkills.Add(new CandidateSkill { CandidateId = candidate.CandidateId, SkillId = skill.SkillId, Skill = skill });
         var job = new Job
         {
             JobId = Guid.NewGuid(), Title = ".NET Backend Developer", Location = "Hà Nội", CurrencyCode = "VND",
-            MinExperienceYears = 2, SalaryMin = 22_000_000, SalaryMax = 28_000_000, PostedAt = now, CreatedAt = now, UpdatedAt = now
+            WorkingTime = "Làm việc hybrid 3 ngày tại văn phòng", MinExperienceYears = 2,
+            SalaryMin = 22_000_000, SalaryMax = 28_000_000, PostedAt = now, CreatedAt = now, UpdatedAt = now
         };
         job.JobSkills.Add(new JobSkill { JobId = job.JobId, SkillId = skill.SkillId, Skill = skill, IsMandatory = true });
         var tier = new MatchTierConfig { TierCode = "HIGH", DisplayName = "Rất phù hợp", MinScore = 80, MaxScore = 100, IsActive = true };
@@ -239,6 +241,55 @@ public class JobMatchTests
         result.Score.Should().BeGreaterThan(85m);
         result.TierCode.Should().Be("HIGH");
         result.MatchingReasons.Should().Contain(reason => reason.Contains("Kỹ năng"));
+        result.MatchingReasons.Should().Contain(reason => reason.Contains("chức danh hiện tại"));
+        result.MatchingReasons.Should().Contain(reason => reason.Contains("Kết hợp văn phòng và từ xa"));
+        result.Components["workMode"].Should().Be(100m);
         result.MissingRequirements.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void HybridScore_ShouldNotGuessWorkMode_WhenJobDoesNotDeclareOne()
+    {
+        var now = DateTime.UtcNow;
+        var candidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(), FullName = "A", ProfileVisibility = "PRIVATE", Status = "ACTIVE",
+            PreferredWorkModes = "REMOTE"
+        };
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(), Title = "Backend Developer", Location = "Hà Nội",
+            WorkingTime = "Thứ 2 - Thứ 6, 08:30 - 17:30", CurrencyCode = "VND",
+            PostedAt = now, CreatedAt = now, UpdatedAt = now
+        };
+
+        var result = HybridJobMatchScorer.Evaluate(candidate, job, 80m, [], now);
+
+        result.Components.Should().NotContainKey("workMode");
+        result.MatchingReasons.Should().NotContain(reason => reason.Contains("Chế độ làm việc"));
+        result.MissingRequirements.Should().NotContain(reason => reason.Contains("Chế độ làm việc"));
+    }
+
+    [Fact]
+    public void Fingerprint_ShouldChange_WhenCareerProfileInputChanges()
+    {
+        var now = DateTime.UtcNow;
+        var candidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(), FullName = "A", ProfileVisibility = "PRIVATE", Status = "ACTIVE",
+            CurrentJobTitle = "Backend Developer", AvailableFrom = new DateOnly(2026, 11, 1)
+        };
+        var cv = new CandidateCv { CvId = Guid.NewGuid(), CandidateId = candidate.CandidateId, Title = "CV", Status = "ACTIVE" };
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(), Title = "Backend Developer", CurrencyCode = "VND",
+            CreatedAt = now, UpdatedAt = now
+        };
+        var before = HybridJobMatchScorer.BuildFingerprint(candidate, cv, job);
+
+        candidate.AvailableFrom = new DateOnly(2026, 12, 1);
+        var after = HybridJobMatchScorer.BuildFingerprint(candidate, cv, job);
+
+        after.Should().NotBe(before);
     }
 }

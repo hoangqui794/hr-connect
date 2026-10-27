@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { App as AntApp } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CandidateJobMatchesSection, formatMatchScore, getMatchScoreConfig } from './CandidateJobMatchesSection';
+import { CandidateJobMatchesSection, formatEmploymentType, formatMatchScore, getMatchScoreConfig } from './CandidateJobMatchesSection';
 import { candidateJobMatchApi } from '@/services/api/candidateJobMatchApi';
 
 const mockNavigate = vi.fn();
@@ -60,6 +60,12 @@ describe('CandidateJobMatchesSection', () => {
       expect(getMatchScoreConfig(70).label).toBe('Khá phù hợp');
       expect(getMatchScoreConfig(50).label).toBe('Có tiềm năng');
     });
+
+    it('shows employment types in plain Vietnamese', () => {
+      expect(formatEmploymentType('FULL_TIME')).toBe('Toàn thời gian');
+      expect(formatEmploymentType('freelance')).toBe('Làm việc tự do');
+      expect(formatEmploymentType(null)).toBeNull();
+    });
   });
 
   describe('rendering matches', () => {
@@ -71,6 +77,7 @@ describe('CandidateJobMatchesSection', () => {
           jobTitle: 'Senior React Engineer',
           companyName: 'Công ty Công nghệ Alpha',
           location: 'Hà Nội',
+          employmentType: 'FULL_TIME',
           matchScore: 83,
           generatedAt: '2026-10-19T10:00:00Z',
           expiresAt: '2026-10-26T10:00:00Z',
@@ -100,6 +107,7 @@ describe('CandidateJobMatchesSection', () => {
       expect(screen.getByText(/Rất phù hợp · 83%/)).toBeInTheDocument();
       expect(screen.getByText(/Khá phù hợp · 72%/)).toBeInTheDocument();
       expect(screen.getByText('Kỹ năng React phù hợp')).toBeInTheDocument();
+      expect(screen.getByText('Toàn thời gian')).toBeInTheDocument();
 
       fireEvent.click(screen.getAllByRole('button', { name: /Xem việc làm/i })[0]);
       expect(mockNavigate).toHaveBeenCalledWith('/candidate/jobs/job-101');

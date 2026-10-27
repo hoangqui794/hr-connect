@@ -19,7 +19,7 @@ public sealed record HybridJobMatchResult(
 /// </summary>
 public static class HybridJobMatchScorer
 {
-    public const string Version = "HYBRID_V1";
+    public const string Version = "HYBRID_V2";
 
     private const decimal SemanticWeight = 45m;
     private const decimal SkillsWeight = 25m;
@@ -27,6 +27,7 @@ public static class HybridJobMatchScorer
     private const decimal TargetRoleWeight = 8m;
     private const decimal LocationWeight = 5m;
     private const decimal SalaryWeight = 5m;
+    private const decimal WorkModeWeight = 5m;
     private const decimal FreshnessWeight = 2m;
 
     public static HybridJobMatchResult Evaluate(
@@ -72,11 +73,19 @@ public static class HybridJobMatchScorer
             else gaps.Add($"Kinh nghiệm hiện tại {actual:0.#} năm, công việc yêu cầu tối thiểu {required} năm");
         }
 
-        if (!string.IsNullOrWhiteSpace(candidate.TargetRole) && !string.IsNullOrWhiteSpace(job.Title))
+        var preferredRole = !string.IsNullOrWhiteSpace(candidate.TargetRole)
+            ? candidate.TargetRole
+            : candidate.CurrentJobTitle;
+        if (!string.IsNullOrWhiteSpace(preferredRole) && !string.IsNullOrWhiteSpace(job.Title))
         {
-            var roleScore = TokenOverlap(candidate.TargetRole, job.Title);
+            var roleScore = TokenOverlap(preferredRole, job.Title);
             Add(weighted, "targetRole", TargetRoleWeight, roleScore);
-            if (roleScore >= 0.5m) reasons.Add("Vị trí gần với định hướng nghề nghiệp của bạn");
+            if (roleScore >= 0.5m)
+            {
+                reasons.Add(!string.IsNullOrWhiteSpace(candidate.TargetRole)
+                    ? "Vị trí gần với định hướng nghề nghiệp của bạn"
+                    : "Vị trí gần với chức danh hiện tại của bạn");
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(candidate.PreferredLocations) && !string.IsNullOrWhiteSpace(job.Location))
@@ -100,6 +109,22 @@ public static class HybridJobMatchScorer
             else gaps.Add("Khoảng lương công bố chưa giao với mức kỳ vọng");
         }
 
+        var preferredWorkModes = ParseWorkModes(candidate.PreferredWorkModes);
+        var jobWorkModes = DetectJobWorkModes(job);
+        if (preferredWorkModes.Count > 0 && jobWorkModes.Count > 0)
+        {
+            var matchedModes = preferredWorkModes.Intersect(jobWorkModes, StringComparer.Ordinal).ToList();
+            Add(weighted, "workMode", WorkModeWeight, matchedModes.Count > 0 ? 1m : 0m);
+            if (matchedModes.Count > 0)
+            {
+                reasons.Add($"Chế độ làm việc phù hợp: {string.Join(", ", matchedModes.Select(WorkModeLabel))}");
+            }
+            else
+            {
+                gaps.Add("Chế độ làm việc chưa trùng với mong muốn trong hồ sơ");
+            }
+        }
+
         var postedAt = job.PostedAt ?? job.CreatedAt;
         var ageDays = Math.Max(0, (now - postedAt).TotalDays);
         var freshness = ageDays <= 7 ? 1m : ageDays <= 30 ? 0.7m : ageDays <= 90 ? 0.4m : 0.2m;
@@ -118,8 +143,8 @@ public static class HybridJobMatchScorer
         return new HybridJobMatchResult(
             Math.Clamp(score, 0m, 100m),
             tier,
-            reasons.Distinct(StringComparer.OrdinalIgnoreCase).Take(5).ToList(),
-            gaps.Distinct(StringComparer.OrdinalIgnoreCase).Take(5).ToList(),
+            reasons.Distinct(StringComparer.OrdinalIgnoreCase).Take(6).ToList(),
+            gaps.Distinct(StringComparer.OrdinalIgnoreCase).Take(6).ToList(),
             weighted.ToDictionary(x => x.Key, x => Math.Round(x.Value * 100m, 2)));
     }
 
@@ -132,12 +157,14 @@ public static class HybridJobMatchScorer
             candidate = new
             {
                 candidate.TargetRole,
+                candidate.CurrentJobTitle,
                 candidate.YearsOfExperience,
                 candidate.ExpectedSalaryMin,
                 candidate.ExpectedSalaryMax,
                 candidate.ExpectedSalaryCurrency,
                 candidate.PreferredLocations,
                 candidate.PreferredWorkModes,
+                candidate.AvailableFrom,
                 skills = candidate.CandidateSkills.OrderBy(s => s.SkillId)
                     .Select(s => new { s.SkillId, s.ProficiencyLevel, s.YearsOfExperience })
             },
@@ -203,6 +230,49 @@ public static class HybridJobMatchScorer
         return raw.Split([',', ';', '|'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(Normalize).Where(x => x.Length > 0).ToList();
     }
+
+    private static HashSet<string> ParseWorkModes(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return [];
+
+        return SplitPreferences(raw)
+            .Select(CanonicalWorkMode)
+            .Where(mode => mode is not null)
+            .Select(mode => mode!)
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    private static HashSet<string> DetectJobWorkModes(Job job)
+    {
+        var searchable = Normalize(string.Join(' ', new[] { job.WorkingTime, job.Location, job.EmploymentType }
+            .Where(value => !string.IsNullOrWhiteSpace(value))));
+        var modes = new HashSet<string>(StringComparer.Ordinal);
+
+        if (ContainsAny(searchable, "remote", "tu xa")) modes.Add("REMOTE");
+        if (ContainsAny(searchable, "hybrid", "ket hop")) modes.Add("HYBRID");
+        if (ContainsAny(searchable, "onsite", "on site", "tai van phong", "lam viec tai van phong")) modes.Add("ONSITE");
+
+        return modes;
+    }
+
+    private static string? CanonicalWorkMode(string normalized) => normalized switch
+    {
+        var value when ContainsAny(value, "remote", "tu xa") => "REMOTE",
+        var value when ContainsAny(value, "hybrid", "ket hop") => "HYBRID",
+        var value when ContainsAny(value, "onsite", "on site", "tai van phong", "van phong") => "ONSITE",
+        _ => null
+    };
+
+    private static string WorkModeLabel(string mode) => mode switch
+    {
+        "REMOTE" => "Làm việc từ xa",
+        "HYBRID" => "Kết hợp văn phòng và từ xa",
+        "ONSITE" => "Tại văn phòng",
+        _ => mode
+    };
+
+    private static bool ContainsAny(string value, params string[] candidates) =>
+        candidates.Any(candidate => value.Contains(candidate, StringComparison.Ordinal));
 
     private static string Normalize(string value)
     {
