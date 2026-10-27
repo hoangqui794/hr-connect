@@ -367,4 +367,21 @@ public class SourcingDeliveryTests
         total.Should().Be(1);
         items.Single().ApplicationId.Should().Be(sourcingApp.ApplicationId);
     }
+
+    // Internal HR screening queue (27/10): CV_APPLICATION is screened by the Client, so HR lists only Headhunt and Sourcing.
+    [Fact]
+    public async Task List_AcceptsSeveralServiceTypesSeparatedByCommas()
+    {
+        _context.Add(new Company { CompanyId = _companyId, CompanyName = "Tech Corp", TaxCode = "0123456789", VerificationStatus = "VERIFIED" });
+        var sourcingApp = SeedApplication(SeedJob(serviceType: "CV_SOURCING"));
+        var headhuntApp = SeedApplication(SeedJob(serviceType: "HEADHUNT_COD"));
+        SeedApplication(SeedJob(serviceType: "CV_APPLICATION"), ApplicationStates.Submitted);
+        var repository = new ApplicationRepository(_context);
+
+        var (items, total) = await repository.GetRecruitmentApplicationsAsync(
+            null, null, null, null, null, null, 1, 20, serviceTypeCode: "HEADHUNT_COD, cv_sourcing");
+
+        total.Should().Be(2);
+        items.Select(a => a.ApplicationId).Should().BeEquivalentTo(new[] { sourcingApp.ApplicationId, headhuntApp.ApplicationId });
+    }
 }

@@ -197,8 +197,15 @@ public class ApplicationRepository : IApplicationRepository
 
         if (!string.IsNullOrWhiteSpace(serviceTypeCode))
         {
-            var code = serviceTypeCode.Trim().ToUpperInvariant();
-            query = query.Where(a => a.Job.ServiceType != null && a.Job.ServiceType.Code == code);
+            // One code, or several separated by commas (the Internal HR screening queue asks for
+            // HEADHUNT_COD,CV_SOURCING because CV_APPLICATION is screened by the Client).
+            var codes = serviceTypeCode.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(s => s.ToUpperInvariant())
+                .Distinct()
+                .ToList();
+            query = codes.Count == 1
+                ? query.Where(a => a.Job.ServiceType != null && a.Job.ServiceType.Code == codes[0])
+                : query.Where(a => a.Job.ServiceType != null && codes.Contains(a.Job.ServiceType.Code));
         }
 
         if (!string.IsNullOrWhiteSpace(candidateName))

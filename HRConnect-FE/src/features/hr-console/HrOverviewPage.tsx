@@ -13,7 +13,7 @@ import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
 import { jobsApi } from '@/services/api/jobsApi';
-import { pipelineApi, screeningApi } from '@/services/api/hrApi';
+import { HR_SCREENED_SERVICE_TYPES, pipelineApi, screeningApi } from '@/services/api/hrApi';
 import { useAuthStore } from '@/stores/authStore';
 import { PersonCell, StatTile, StatusDot, Surface } from '@/features/admin-console/ui';
 import { pick, INTERVIEW_STATUS, applicationStatusOf } from './hrLabels';
@@ -26,14 +26,12 @@ const Count: React.FC<{ q: { isLoading: boolean; isError: boolean; data?: number
 
 /**
  * N6: Internal HR screens HEADHUNT_COD and CV_SOURCING only; Client screens CV_APPLICATION itself,
- * so those are left out of the HR counters (counted from the first 100 matches).
+ * so the backend filters those out of the HR counters and recent list.
  */
-const isHrScreened = (item: { serviceTypeCode?: string | null }) => item.serviceTypeCode !== 'CV_APPLICATION';
-
 const useApplicationCount = (status: string) =>
   useQuery({
     queryKey: ['hr-overview', 'applications', status],
-    queryFn: async () => (await screeningApi.list({ status, page: 1, pageSize: 100 })).items.filter(isHrScreened).length,
+    queryFn: async () => (await screeningApi.list({ status, serviceTypeCode: HR_SCREENED_SERVICE_TYPES, page: 1, pageSize: 1 })).total,
   });
 
 export const HrOverviewPage: React.FC = () => {
@@ -46,7 +44,7 @@ export const HrOverviewPage: React.FC = () => {
   const shortlisted = useApplicationCount('SHORTLISTED');
   const recent = useQuery({
     queryKey: ['hr-overview', 'recent'],
-    queryFn: async () => (await screeningApi.list({ page: 1, pageSize: 30 })).items.filter(isHrScreened).slice(0, 6),
+    queryFn: async () => (await screeningApi.list({ serviceTypeCode: HR_SCREENED_SERVICE_TYPES, page: 1, pageSize: 6 })).items,
   });
   const upcoming = useQuery({
     queryKey: ['hr-overview', 'interviews'],

@@ -12,7 +12,7 @@ import { Alert, Button, Input, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { screeningApi } from '@/services/api/hrApi';
+import { HR_SCREENED_SERVICE_TYPES, screeningApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { RecruitmentApplicationItem } from '@/types/api/hr';
 import { FilterPills, PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
@@ -32,7 +32,15 @@ const FILTER_LABEL: Record<StatusFilter, string> = {
 const useStatusCount = (status: StatusFilter) =>
   useQuery({
     queryKey: ['hr-screening', 'count', status],
-    queryFn: async () => (await screeningApi.list({ status: status === 'all' ? undefined : status, page: 1, pageSize: 1 })).total,
+    queryFn: async () =>
+      (
+        await screeningApi.list({
+          status: status === 'all' ? undefined : status,
+          serviceTypeCode: HR_SCREENED_SERVICE_TYPES,
+          page: 1,
+          pageSize: 1,
+        })
+      ).total,
   });
 
 const formatDateTime = (v?: string | null) => (v ? dayjs(v).format('HH:mm DD/MM/YYYY') : '—');
@@ -76,7 +84,13 @@ export const HrScreeningPage: React.FC = () => {
 
   const list = useQuery({
     queryKey: ['hr-screening', 'list', status, q, page],
-    queryFn: () => screeningApi.list({ status: status === 'all' ? undefined : status, candidateName: q || undefined, page, pageSize: 10 }),
+    queryFn: () => screeningApi.list({
+        status: status === 'all' ? undefined : status,
+        serviceTypeCode: HR_SCREENED_SERVICE_TYPES,
+        candidateName: q || undefined,
+        page,
+        pageSize: 10,
+      }),
     placeholderData: (prev) => prev,
   });
 
@@ -84,7 +98,7 @@ export const HrScreeningPage: React.FC = () => {
   const undelivered = useQuery({
     queryKey: ['hr-screening', 'sourcing-undelivered'],
     queryFn: async () =>
-      (await screeningApi.list({ status: 'SHORTLISTED', page: 1, pageSize: 100 })).items.filter(
+      (await screeningApi.list({ status: 'SHORTLISTED', serviceTypeCode: 'CV_SOURCING', page: 1, pageSize: 100 })).items.filter(
         (item) => item.serviceTypeCode === 'CV_SOURCING' && !item.sourcingDeliveryStatus
       ),
   });

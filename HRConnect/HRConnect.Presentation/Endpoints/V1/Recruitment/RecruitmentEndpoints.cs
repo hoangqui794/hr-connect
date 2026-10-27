@@ -226,7 +226,7 @@ public static class RecruitmentEndpoints
         })
         .WithName("GetRecruitmentApplications")
         .WithSummary("Lấy danh sách hồ sơ tuyển dụng")
-        .WithDescription("Dành cho Client Company (xem hồ sơ thuộc công ty mình qua quyền application.view_company), Internal HR và Admin (xem toàn hệ thống qua quyền application.view). Hỗ trợ lọc theo công việc, trạng thái, tên ứng viên, khoảng thời gian, phân trang và sortBy=AI_MATCH_SCORE với sortDirection=ASC hoặc DESC.")
+        .WithDescription("Dành cho Client Company (xem hồ sơ thuộc công ty mình qua quyền application.view_company), Internal HR và Admin (xem toàn hệ thống qua quyền application.view). Hỗ trợ lọc theo công việc, trạng thái, loại dịch vụ (serviceTypeCode; status và serviceTypeCode nhận nhiều giá trị cách nhau bằng dấu phẩy, ví dụ HEADHUNT_COD,CV_SOURCING), tên ứng viên, khoảng thời gian, phân trang và sortBy=AI_MATCH_SCORE với sortDirection=ASC hoặc DESC.")
         .Produces<RecruitmentApplicationsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
