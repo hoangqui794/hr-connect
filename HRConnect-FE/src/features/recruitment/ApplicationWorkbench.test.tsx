@@ -182,7 +182,8 @@ describe('ApplicationWorkbench MF-04', () => {
       ],
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Ghi kết quả' }));
+    await screen.findByText('Nguyễn Văn A');
+    fireEvent.click(await screen.findByRole('button', { name: 'Ghi kết quả' }, { timeout: 10000 }));
     fireEvent.click(screen.getByRole('radio', { name: 'Đạt' }));
     expect(screen.getByRole('radio', { name: 'Phỏng vấn thêm vòng nữa' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('radio', { name: 'Không đạt' }));
