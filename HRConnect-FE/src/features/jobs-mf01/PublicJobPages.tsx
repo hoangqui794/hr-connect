@@ -51,7 +51,25 @@ export const PublicJobDetailPage: React.FC = () => {
       </Link>
       <div className="rounded-xl border border-solid border-slate-200 bg-white p-6">
         {detail.isError ? (
-          <Alert type="error" showIcon message="Không xem được việc làm này" description={getApiErrorMessage(detail.error)} />
+          <div className="py-12 px-6 text-center">
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 mb-4 shadow-2xs">
+              <span className="text-2xl font-bold">404</span>
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2 m-0">
+              Không tìm thấy công việc này hoặc tin tuyển dụng đã hết hạn
+            </h3>
+            <p className="text-sm text-slate-500 max-w-md mx-auto mb-6 mt-1">
+              Vị trí tuyển dụng bạn đang tìm kiếm có thể đã tạm đóng hoặc không còn khả dụng trên hệ thống HR Connect.
+            </p>
+            <Button
+              type="primary"
+              size="large"
+              onClick={() => navigate('/jobs')}
+              className="!bg-blue-600 hover:!bg-blue-700 !h-11 !px-6 !rounded-xl !font-semibold !border-none"
+            >
+              ← Khám phá các việc làm khác
+            </Button>
+          </div>
         ) : detail.isLoading || !detail.data ? (
           <Skeleton active paragraph={{ rows: 12 }} />
         ) : (

@@ -16,7 +16,6 @@ vi.mock('./HomePage', () => ({
 }));
 
 const ROLE_CASES = [
-  [UserRole.CANDIDATE, '/candidate/dashboard', 'Candidate workspace'],
   [UserRole.AFFILIATE, '/affiliate/dashboard', 'Affiliate workspace'],
   [UserRole.CLIENT, '/client/dashboard', 'Client workspace'],
   [UserRole.INTERNAL_HR, '/hr/dashboard', 'HR workspace'],
@@ -30,6 +29,7 @@ const renderEntry = (role: UserRole, isAuthenticated: boolean) => {
     <MemoryRouter initialEntries={['/']}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/candidate/dashboard" element={<div>Candidate workspace</div>} />
         {ROLE_CASES.map(([, path, label]) => (
           <Route key={path} path={path} element={<div>{label}</div>} />
         ))}
@@ -50,6 +50,12 @@ describe('LandingPage', () => {
     expect(screen.getByRole('heading', { name: /Tuyển Dụng Chuẩn ATS/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Đăng nhập/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Đăng ký/i })).toBeInTheDocument();
+  });
+
+  it('giữ Candidate ở trang chủ khi đã đăng nhập (chuẩn TopCV/Job discovery)', () => {
+    renderEntry(UserRole.CANDIDATE, true);
+
+    expect(screen.getByRole('heading', { name: /Tuyển Dụng Chuẩn ATS/i })).toBeInTheDocument();
   });
 
   it.each(ROLE_CASES)('chuyển %s vào đúng workspace', (role, _path, label) => {

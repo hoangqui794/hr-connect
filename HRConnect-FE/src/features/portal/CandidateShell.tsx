@@ -25,10 +25,12 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 import '@/features/admin-console/admin-console.css';
 import './candidate/candidate.css';
 import { BrandMark } from '@/components/common/BrandMark';
+import { CandidateWorkspaceMenu } from './candidate/CandidateWorkspaceMenu';
 
 const PRIMARY_NAV = [
   { to: '/candidate/dashboard', label: 'Tổng quan', icon: HomeOutlined, matches: ['/candidate/dashboard'] },
-  { to: '/candidate/jobs', label: 'Tìm việc', icon: SearchOutlined, matches: ['/candidate/jobs'] },
+  { to: '/jobs', label: 'Tìm việc', icon: SearchOutlined, matches: ['/jobs', '/candidate/jobs'] },
+  { to: '/candidate/saved-jobs', label: 'Việc đã lưu', icon: HeartOutlined, matches: ['/candidate/saved-jobs'] },
   { to: '/candidate/applications', label: 'Đơn ứng tuyển', icon: FileDoneOutlined, matches: ['/candidate/applications', '/candidate/submission-consents'] },
   {
     to: '/candidate/cvs',
@@ -99,6 +101,8 @@ export const CandidateShell: React.FC = () => {
 
   const name = user?.name || 'Ứng viên';
   const accountMenuItems = [
+    { key: '/', icon: <HomeOutlined />, label: 'Về Trang chủ việc làm' },
+    { type: 'divider' as const },
     ...ACCOUNT_LINKS.map((item) => ({ key: item.to, icon: React.createElement(item.icon), label: item.label })),
     { type: 'divider' as const },
     { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
@@ -126,7 +130,7 @@ export const CandidateShell: React.FC = () => {
               : 'mx-auto grid h-[72px] w-full max-w-[1536px] grid-cols-[minmax(230px,1fr)_auto_minmax(230px,1fr)] items-center gap-6 px-6 lg:px-10'
           }
         >
-          <NavLink to="/candidate/dashboard" className="flex shrink-0 items-center gap-2.5 no-underline" aria-label="HR Connect, về tổng quan">
+          <NavLink to="/" className="flex shrink-0 items-center gap-2.5 no-underline" aria-label="HR Connect, về trang chủ">
             <BrandMark size={42} />
             <span className="leading-tight">
               <span className="block text-[16px] font-extrabold tracking-[-0.02em] text-slate-950">HR Connect</span>
@@ -165,31 +169,7 @@ export const CandidateShell: React.FC = () => {
                 <span className="max-w-28 truncate text-sm font-semibold text-slate-800">{name}</span>
               </button>
             ) : (
-              <Dropdown
-                trigger={['click']}
-                menu={{
-                  items: accountMenuItems,
-                  selectedKeys: isAccountPathActive ? ACCOUNT_LINKS.filter((item) => isPathActive([item.to])).map((item) => item.to) : [],
-                  onClick: ({ key }) => (key === 'logout' ? signOut() : navigate(key)),
-                }}
-              >
-                <button
-                  type="button"
-                  aria-label="Tài khoản và cài đặt"
-                  data-active={isAccountPathActive}
-                  className={`flex cursor-pointer items-center gap-3 rounded-full border-0 py-1 pl-1 pr-3 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
-                    isAccountPathActive
-                      ? 'bg-[color:var(--console-accent-soft)] shadow-[inset_0_0_0_1px_rgba(37,99,235,0.18)]'
-                      : 'bg-transparent hover:bg-slate-100'
-                  }`}
-                >
-                  <AccountAvatar name={name} avatar={user?.avatar} size={36} />
-                  <span className="text-left leading-tight">
-                    <span className="block max-w-[170px] truncate text-sm font-semibold text-slate-900">{name}</span>
-                    <span className="block max-w-[170px] truncate text-xs text-slate-500">{user?.email}</span>
-                  </span>
-                </button>
-              </Dropdown>
+              <CandidateWorkspaceMenu />
             )}
           </div>
         </div>

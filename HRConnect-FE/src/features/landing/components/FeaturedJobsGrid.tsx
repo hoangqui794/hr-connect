@@ -1,360 +1,427 @@
-import React, { useState } from 'react';
+/**
+ * @file FeaturedJobsGrid.tsx
+ * @description Danh sách việc làm chuẩn TopCV (Hình 1):
+ * - Bộ lọc dạng Dropdown kết hợp dải Pill ngang cuộn mượt (< Ngẫu Nhiên | Hà Nội | TP.HCM... >).
+ * - Banner gợi ý phong cách TopCV (💡 Gợi ý: Di chuột vào tiêu đề việc làm để xem thêm thông tin chi tiết).
+ * - Lưới 3 cột các thẻ việc làm gọn gàng: Logo vuông, Huy hiệu GẤP/HOT, Tiêu đề, Tên công ty viết hoa, Mức lương pill, Địa điểm pill và Nút lưu việc làm góc phải.
+ */
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Heart,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Briefcase,
   ArrowRight,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { message } from 'antd';
 import { CompanyLogo } from './CompanyLogo';
+import { usePublicJobSearch } from '@/features/jobs-mf01/useJobQueries';
+import { useSavedJobs } from '@/hooks/useSavedJobs';
+import type { Job } from '@/types/api/jobs';
 
-export interface JobCardData {
+type FilterCategory = 'LOCATION' | 'SALARY' | 'EXPERIENCE' | 'CATEGORY';
+
+interface FilterOption {
   id: string;
-  title: string;
-  company: string;
-  companyId: string;
-  location: string;
-  locationRegion: 'HN' | 'HCM' | 'DN' | 'ALL';
-  experience: string;
-  salaryText: string;
-  badges: Array<'HOT' | 'GẤP' | 'TOP'>;
-  postedTime: string;
-  tag: 'FOR_YOU' | 'HIGH_SALARY' | 'URGENT' | 'REMOTE' | 'ENTERPRISE';
+  label: string;
 }
 
-const SAMPLE_JOBS: JobCardData[] = [
-  {
-    id: 'job-001',
-    title: 'Senior Frontend Engineer (React/Next)',
-    company: 'Techcombank Digital Banking Hub',
-    companyId: 'techcombank',
-    location: 'Hà Nội & HCM',
-    locationRegion: 'ALL',
-    experience: '3 năm kinh nghiệm',
-    salaryText: '35 - 55 Triệu VND',
-    badges: ['HOT'],
-    postedTime: '2 giờ trước',
-    tag: 'HIGH_SALARY',
+const FILTER_CATEGORY_MAP: Record<FilterCategory, { label: string; pills: FilterOption[] }> = {
+  LOCATION: {
+    label: 'Địa điểm',
+    pills: [
+      { id: 'ALL', label: 'Ngẫu Nhiên' },
+      { id: 'HN', label: 'Hà Nội' },
+      { id: 'HCM', label: 'Thành phố Hồ Chí Minh (cũ)' },
+      { id: 'NORTH', label: 'Miền Bắc' },
+      { id: 'SOUTH', label: 'Miền Nam' },
+      { id: 'DN', label: 'Đà Nẵng' },
+      { id: 'REMOTE', label: 'Toàn quốc / Remote' },
+    ],
   },
-  {
-    id: 'job-002',
-    title: 'Product Growth Specialist (Fintech)',
-    company: 'VNG Corporation - ZaloPay',
-    companyId: 'vng',
-    location: 'Quận 7, TP.HCM',
-    locationRegion: 'HCM',
-    experience: '2+ năm kinh nghiệm',
-    salaryText: '1,800 - 2,500 USD',
-    badges: ['GẤP'],
-    postedTime: '4 giờ trước',
-    tag: 'FOR_YOU',
+  SALARY: {
+    label: 'Mức lương',
+    pills: [
+      { id: 'ALL', label: 'Ngẫu Nhiên' },
+      { id: 'UNDER_10', label: 'Dưới 10 triệu' },
+      { id: '10_15', label: '10 - 15 triệu' },
+      { id: '15_20', label: '15 - 20 triệu' },
+      { id: '20_30', label: '20 - 30 triệu' },
+      { id: 'OVER_30', label: 'Trên 30 triệu' },
+      { id: 'NEGOTIABLE', label: 'Thoả thuận' },
+    ],
   },
-  {
-    id: 'job-003',
-    title: 'Senior Data Analyst (E-Commerce)',
-    company: 'Shopee Vietnam HQ',
-    companyId: 'shopee',
-    location: 'Quận 1, TP.HCM',
-    locationRegion: 'HCM',
-    experience: 'SQL / Tableau / Python',
-    salaryText: '30 - 45 Triệu VND',
-    badges: ['TOP'],
-    postedTime: '5 giờ trước',
-    tag: 'HIGH_SALARY',
+  EXPERIENCE: {
+    label: 'Kinh nghiệm',
+    pills: [
+      { id: 'ALL', label: 'Ngẫu Nhiên' },
+      { id: 'NO_EXP', label: 'Chưa có kinh nghiệm' },
+      { id: 'UNDER_1', label: 'Dưới 1 năm' },
+      { id: '1_3', label: '1 - 3 năm' },
+      { id: '3_5', label: '3 - 5 năm' },
+      { id: 'OVER_5', label: 'Trên 5 năm' },
+    ],
   },
-  {
-    id: 'job-004',
-    title: 'Cloud Solutions Architect (AWS/GCP)',
-    company: 'FPT Software Global',
-    companyId: 'fpt',
-    location: 'Cầu Giấy, Hà Nội',
-    locationRegion: 'HN',
-    experience: '5+ năm kinh nghiệm',
-    salaryText: '50 - 75 Triệu VND',
-    badges: ['HOT', 'GẤP'],
-    postedTime: '6 giờ trước',
-    tag: 'ENTERPRISE',
+  CATEGORY: {
+    label: 'Ngành nghề',
+    pills: [
+      { id: 'ALL', label: 'Ngẫu Nhiên' },
+      { id: 'IT', label: 'Công nghệ Thông tin' },
+      { id: 'SALES', label: 'Kinh doanh / Bán hàng' },
+      { id: 'MARKETING', label: 'Marketing / PR' },
+      { id: 'FINANCE', label: 'Tài chính / Kế toán' },
+      { id: 'HR', label: 'Nhân sự / Hành chính' },
+    ],
   },
-  {
-    id: 'job-005',
-    title: 'Trưởng Phòng Nhân Sự (HR Manager)',
-    company: 'Viettel Solutions Corporate',
-    companyId: 'viettel',
-    location: 'Ba Đình, Hà Nội',
-    locationRegion: 'HN',
-    experience: 'HR Business Partner',
-    salaryText: '40 - 60 Triệu VND',
-    badges: ['HOT'],
-    postedTime: '8 giờ trước',
-    tag: 'URGENT',
-  },
-  {
-    id: 'job-006',
-    title: 'Brand Marketing Manager (FMCG)',
-    company: 'Vinamilk Vietnam Corporation',
-    companyId: 'vinamilk',
-    location: 'Quận 7, TP.HCM',
-    locationRegion: 'HCM',
-    experience: 'Campaign & Strategy',
-    salaryText: 'Thỏa thuận (Hấp dẫn)',
-    badges: ['TOP'],
-    postedTime: '9 giờ trước',
-    tag: 'FOR_YOU',
-  },
-  {
-    id: 'job-007',
-    title: 'Chuyên viên Kế toán Thuế & Quản trị',
-    company: 'Ngân Hàng TMCP Việt Nam Thịnh Vượng (VPBank)',
-    companyId: 'vpbank',
-    location: 'Đống Đa, Hà Nội',
-    locationRegion: 'HN',
-    experience: '2 - 3 năm kinh nghiệm',
-    salaryText: '20 - 32 Triệu VND',
-    badges: ['GẤP'],
-    postedTime: '10 giờ trước',
-    tag: 'ENTERPRISE',
-  },
-  {
-    id: 'job-008',
-    title: 'Fullstack Engineer (Node.js & React)',
-    company: 'V-Tech Solutions Global',
-    companyId: 'vtech',
-    location: 'Remote (Toàn quốc)',
-    locationRegion: 'ALL',
-    experience: 'Middle - Senior (3+ năm)',
-    salaryText: '28 - 48 Triệu VND',
-    badges: ['HOT'],
-    postedTime: 'Hôm nay',
-    tag: 'REMOTE',
-  },
-  {
-    id: 'job-009',
-    title: 'DevOps & AI Infrastructure Engineer',
-    company: 'NovaTech Innovation Hub',
-    companyId: 'novatech',
-    location: 'Hải Châu, Đà Nẵng',
-    locationRegion: 'DN',
-    experience: 'Kubernetes, Terraform, MLOps',
-    salaryText: '35 - 55 Triệu VND',
-    badges: ['TOP'],
-    postedTime: 'Hôm nay',
-    tag: 'FOR_YOU',
-  },
-];
-
-const SEGMENT_TABS = [
-  { id: 'FOR_YOU', label: 'Dành riêng cho bạn' },
-  { id: 'HIGH_SALARY', label: 'Lương cao 30M+' },
-  { id: 'URGENT', label: 'Tuyển gấp / Thưởng nóng' },
-  { id: 'REMOTE', label: 'Việc làm Remote' },
-  { id: 'ENTERPRISE', label: 'Tập đoàn lớn' },
-];
+};
 
 export const FeaturedJobsGrid: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedTab, setSelectedTab] = useState<string>('FOR_YOU');
-  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set(['job-001', 'job-004']));
+  const [filterType, setFilterType] = useState<FilterCategory>('LOCATION');
+  const [selectedPill, setSelectedPill] = useState<string>('ALL');
+  const [showHint, setShowHint] = useState<boolean>(true);
+  const pillsRef = useRef<HTMLDivElement>(null);
+  const { isSaved, toggleSave } = useSavedJobs();
 
-  const handleToggleSave = (e: React.MouseEvent, jobId: string, jobTitle: string) => {
-    e.stopPropagation();
-    setSavedJobIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(jobId)) {
-        next.delete(jobId);
-        void message.info(`Đã bỏ lưu "${jobTitle}"`);
-      } else {
-        next.add(jobId);
-        void message.success(`Đã lưu "${jobTitle}" vào danh sách yêu thích!`);
-      }
-      return next;
-    });
-  };
-
-  const handleApplyQuick = (e: React.MouseEvent, jobId: string) => {
-    e.stopPropagation();
-    navigate(`/jobs/${jobId}`);
-  };
-
-  const filteredJobs = SAMPLE_JOBS.filter((job) => {
-    if (selectedTab === 'FOR_YOU') return true;
-    if (selectedTab === 'HIGH_SALARY') return job.tag === 'HIGH_SALARY' || job.salaryText.includes('50') || job.salaryText.includes('USD');
-    if (selectedTab === 'URGENT') return job.badges.includes('GẤP') || job.badges.includes('HOT');
-    if (selectedTab === 'REMOTE') return job.location.includes('Remote') || job.tag === 'REMOTE';
-    if (selectedTab === 'ENTERPRISE') return job.tag === 'ENTERPRISE' || ['techcombank', 'fpt', 'viettel', 'vinamilk'].includes(job.companyId);
-    return true;
+  // Gọi API lấy việc làm công khai thực tế từ Database
+  const { data: jobPage, isLoading } = usePublicJobSearch({
+    page: 1,
+    pageSize: 24,
   });
 
+  const rawJobs: Job[] = useMemo(() => jobPage?.items ?? [], [jobPage]);
+
+  const scrollPills = (offset: number) => {
+    if (pillsRef.current) {
+      pillsRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+    }
+  };
+
+  // Lọc danh sách việc làm dựa trên bộ lọc đã chọn
+  const filteredJobs = useMemo(() => {
+    return rawJobs.filter((job) => {
+      if (selectedPill === 'ALL') return true;
+
+      if (filterType === 'LOCATION') {
+        const loc = (job.location || '').toLowerCase();
+        if (selectedPill === 'HN') return loc.includes('hà nội') || loc.includes('hn');
+        if (selectedPill === 'HCM') return loc.includes('hồ chí minh') || loc.includes('hcm') || loc.includes('sài gòn');
+        if (selectedPill === 'NORTH') return loc.includes('hà nội') || loc.includes('bắc ninh') || loc.includes('hải phòng') || loc.includes('hưng yên');
+        if (selectedPill === 'SOUTH') return loc.includes('hồ chí minh') || loc.includes('bình dương') || loc.includes('đồng nai') || loc.includes('tây ninh');
+        if (selectedPill === 'DN') return loc.includes('đà nẵng');
+        if (selectedPill === 'REMOTE') return loc.includes('remote') || loc.includes('toàn quốc');
+      }
+
+      if (filterType === 'SALARY') {
+        if (selectedPill === 'NEGOTIABLE') return Boolean(job.salaryNegotiable);
+        const min = job.salaryMin ?? 0;
+        const max = job.salaryMax ?? min;
+        if (selectedPill === 'UNDER_10') return max < 10000000;
+        if (selectedPill === '10_15') return min >= 10000000 && max <= 15000000;
+        if (selectedPill === '15_20') return min >= 15000000 && max <= 20000000;
+        if (selectedPill === '20_30') return min >= 20000000 && max <= 30000000;
+        if (selectedPill === 'OVER_30') return max >= 30000000 || min >= 30000000;
+      }
+
+      if (filterType === 'EXPERIENCE') {
+        const exp = job.minExperienceYears ?? 0;
+        if (selectedPill === 'NO_EXP') return exp === 0;
+        if (selectedPill === 'UNDER_1') return exp > 0 && exp < 1;
+        if (selectedPill === '1_3') return exp >= 1 && exp <= 3;
+        if (selectedPill === '3_5') return exp >= 3 && exp <= 5;
+        if (selectedPill === 'OVER_5') return exp >= 5;
+      }
+
+      if (filterType === 'CATEGORY') {
+        const text = `${job.title} ${job.company?.industry || ''} ${(job.skills || []).map((s) => s.skillName).join(' ')}`.toLowerCase();
+        if (selectedPill === 'IT') return text.match(/it|công nghệ|software|developer|devops|data|frontend|backend/i);
+        if (selectedPill === 'SALES') return text.match(/sales|kinh doanh|bán hàng|phát triển thị trường/i);
+        if (selectedPill === 'MARKETING') return text.match(/marketing|truyền thông|pr|quảng cáo|content/i);
+        if (selectedPill === 'FINANCE') return text.match(/tài chính|kế toán|ngân hàng|kiểm toán/i);
+        if (selectedPill === 'HR') return text.match(/nhân sự|tuyển dụng|hành chính|hr/i);
+      }
+
+      return true;
+    });
+  }, [rawJobs, filterType, selectedPill]);
+
+  const formatSalary = (job: Job): string => {
+    if (job.salaryNegotiable) return 'Thoả thuận';
+    if (job.salaryMin && job.salaryMax) {
+      const minM = Math.round(job.salaryMin / 1000000);
+      const maxM = Math.round(job.salaryMax / 1000000);
+      return `${minM} - ${maxM} triệu`;
+    }
+    if (job.salaryMin) {
+      return `Từ ${Math.round(job.salaryMin / 1000000)} triệu`;
+    }
+    return 'Lương hấp dẫn';
+  };
+
+  const formatLocation = (loc?: string | null): string => {
+    if (!loc) return 'Toàn quốc';
+    if (loc.toLowerCase().includes('hồ chí minh') || loc.toLowerCase().includes('hcm')) return 'Hồ Chí Minh';
+    if (loc.toLowerCase().includes('hà nội') || loc.toLowerCase().includes('hn')) return 'Hà Nội';
+    if (loc.toLowerCase().includes('đà nẵng')) return 'Đà Nẵng';
+    if (loc.toLowerCase().includes('bắc ninh')) return 'Bắc Ninh';
+    if (loc.toLowerCase().includes('bình dương')) return 'Bình Dương';
+    if (loc.toLowerCase().includes('tây ninh')) return 'Tây Ninh';
+    return loc.length > 15 ? `${loc.slice(0, 15)}...` : loc;
+  };
+
+  const handleToggleSave = (e: React.MouseEvent, job: Job) => {
+    e.stopPropagation();
+    toggleSave(job.jobId, job.title);
+  };
+
+  const currentPills = FILTER_CATEGORY_MAP[filterType].pills;
+
   return (
-    <section className="bg-white py-10 md:py-12 border-b border-slate-200/80">
+    <section className="bg-white py-8 border-b border-slate-200/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header & Segment Tabs (Chuẩn code.html lines 184-201) */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#c03e05] animate-ping" />
-              <span className="text-xs font-bold uppercase tracking-wider text-[#982e00]">
-                Cơ hội việc làm hot
-              </span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#131b2e] m-0">
-              Việc Làm Tốt Nhất Dành Cho Bạn
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 mb-0">
-              Các vị trí đãi ngộ cạnh tranh, phỏng vấn nhanh và phản hồi hồ sơ trong vòng 24 giờ
-            </p>
+        {/* ================================================================= */}
+        {/* 1. THANH LỌC CHUẨN TOPCV (HÌNH 1)                                */}
+        {/* ================================================================= */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
+          {/* Dropdown "Lọc theo: [Tiêu chí]" */}
+          <div className="relative inline-flex items-center shrink-0">
+            <select
+              value={filterType}
+              onChange={(e) => {
+                setFilterType(e.target.value as FilterCategory);
+                setSelectedPill('ALL');
+              }}
+              aria-label="Chọn nhóm tiêu chí lọc"
+              className="appearance-none bg-slate-50 border border-slate-200/90 hover:border-slate-300 rounded-xl pl-8 pr-8 py-2 text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs transition-colors"
+            >
+              <option value="LOCATION">Lọc theo: Địa điểm</option>
+              <option value="SALARY">Lọc theo: Mức lương</option>
+              <option value="EXPERIENCE">Lọc theo: Kinh nghiệm</option>
+              <option value="CATEGORY">Lọc theo: Ngành nghề</option>
+            </select>
+            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 pointer-events-none" />
           </div>
 
-          {/* Segment Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-            {SEGMENT_TABS.map((tab) => {
-              const isActive = selectedTab === tab.id;
+          {/* Dải Pill điều hướng ngang với 2 nút < và > */}
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <button
+              type="button"
+              aria-label="Cuộn sang trái"
+              onClick={() => scrollPills(-180)}
+              className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 cursor-pointer transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div
+              ref={pillsRef}
+              className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1 scroll-smooth"
+            >
+              {currentPills.map((pill) => {
+                const isActive = selectedPill === pill.id;
+                return (
+                  <button
+                    key={pill.id}
+                    type="button"
+                    onClick={() => setSelectedPill(pill.id)}
+                    className={`px-4 py-1.5 rounded-full text-xs whitespace-nowrap transition-all cursor-pointer border-0 ${
+                      isActive
+                        ? 'bg-blue-600 text-white font-bold shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium'
+                    }`}
+                  >
+                    {pill.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              aria-label="Cuộn sang phải"
+              onClick={() => scrollPills(180)}
+              className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 cursor-pointer transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* ================================================================= */}
+        {/* 2. BANNER GỢI Ý CHUẨN TOPCV (HÌNH 1)                              */}
+        {/* ================================================================= */}
+        {showHint && (
+          <div className="mb-5 flex items-center justify-between rounded-xl border border-blue-200/80 bg-[#eef7ff] px-3.5 py-2 text-xs text-blue-900 shadow-2xs">
+            <span className="flex items-center gap-2">
+              <span className="text-sm">💡</span>
+              <span>
+                <strong className="font-bold">Gợi ý:</strong> Di chuột vào tiêu đề việc làm để xem thêm thông tin chi tiết
+              </span>
+            </span>
+            <button
+              type="button"
+              aria-label="Đóng thông báo"
+              onClick={() => setShowHint(false)}
+              className="text-blue-500 hover:text-blue-700 bg-transparent border-0 cursor-pointer p-0 text-xs font-bold leading-none ml-2"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* 3. TRẠNG THÁI LOADING / EMPTY                                     */}
+        {/* ================================================================= */}
+        {isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-2xs animate-pulse flex flex-col justify-between h-[120px]"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-slate-100 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-slate-200 rounded w-3/4" />
+                    <div className="h-3 bg-slate-100 rounded w-1/2" />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-2">
+                  <div className="flex gap-2">
+                    <div className="h-4 bg-slate-100 rounded w-16" />
+                    <div className="h-4 bg-slate-100 rounded w-16" />
+                  </div>
+                  <div className="w-6 h-6 rounded-full bg-slate-100" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!isLoading && filteredJobs.length === 0 && (
+          <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-10 text-center my-4">
+            <Briefcase className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+            <h3 className="text-sm font-bold text-slate-800 m-0">
+              Không tìm thấy việc làm phù hợp với tiêu chí lọc này
+            </h3>
+            <p className="text-xs text-slate-500 mt-1 mb-4">
+              Vui lòng thử chọn tiêu chí khác hoặc khám phá toàn bộ tin tuyển dụng.
+            </p>
+            <button
+              type="button"
+              onClick={() => setSelectedPill('ALL')}
+              className="bg-blue-600 text-white hover:bg-blue-700 font-semibold text-xs px-4 py-2 rounded-xl transition-colors cursor-pointer border-0 shadow-xs"
+            >
+              Xem tất cả việc làm ngẫu nhiên
+            </button>
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* 4. LƯỚI VIỆC LÀM 3 CỘT CHUẨN TOPCV (HÌNH 1)                       */}
+        {/* ================================================================= */}
+        {!isLoading && filteredJobs.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {filteredJobs.map((job, idx) => {
+              const saved = isSaved(job.jobId);
+              const isUrgent = idx % 4 === 0 || job.title.toLowerCase().includes('gấp');
+              const isHot = idx % 3 === 1;
+
               return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setSelectedTab(tab.id)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer border-0 ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'bg-[#f2f3ff] hover:bg-[#eaedff] text-slate-700'
-                  }`}
+                <div
+                  key={job.jobId}
+                  onClick={() => navigate(`/jobs/${job.jobId}`)}
+                  className="bg-white rounded-xl p-3.5 border border-slate-200/90 hover:border-blue-500 hover:shadow-md transition-all duration-200 flex flex-col justify-between group cursor-pointer relative"
                 >
-                  {tab.label}
-                </button>
+                  <div>
+                    {/* Hàng trên: Logo bên trái, Tiêu đề + Công ty bên phải */}
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 rounded-lg border border-slate-200/80 p-1 bg-white flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                        <CompanyLogo
+                          id={job.companyId || 'company'}
+                          name={job.companyName || 'Doanh nghiệp'}
+                          size={40}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 line-clamp-1">
+                          {isUrgent && (
+                            <span className="bg-[#f27420] text-white font-bold text-[10px] px-1.5 py-0.5 rounded shrink-0 leading-tight">
+                              GẤP
+                            </span>
+                          )}
+                          {isHot && !isUrgent && (
+                            <span className="bg-blue-600 text-white font-bold text-[10px] px-1.5 py-0.5 rounded shrink-0 flex items-center gap-0.5 leading-tight">
+                              ⚡ HOT
+                            </span>
+                          )}
+                          <h3
+                            className="font-bold text-[13.5px] text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1 m-0 leading-snug"
+                            title={job.title}
+                          >
+                            {job.title}
+                          </h3>
+                        </div>
+
+                        <p
+                          className="text-[11.5px] text-slate-500 uppercase line-clamp-1 mt-1 m-0 font-medium tracking-tight"
+                          title={job.companyName || 'CÔNG TY TNHH ĐỐI TÁC'}
+                        >
+                          {job.companyName || 'CÔNG TY TNHH ĐỐI TÁC'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hàng dưới: Lương pill, Địa điểm pill và Nút lưu việc làm hình trái tim */}
+                  <div className="mt-3 pt-2.5 flex items-center justify-between gap-2 border-t border-slate-100">
+                    <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                      <span className="text-[11.5px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded shrink-0">
+                        {formatSalary(job)}
+                      </span>
+                      <span className="text-[11.5px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded truncate max-w-[130px]">
+                        {formatLocation(job.location)}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      aria-label="Lưu việc làm"
+                      onClick={(e) => handleToggleSave(e, job)}
+                      className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer border shrink-0 ${
+                        saved
+                          ? 'text-rose-500 bg-rose-50 border-rose-200'
+                          : 'text-slate-400 border-slate-200 hover:border-blue-500 hover:text-blue-600 bg-white'
+                      }`}
+                      title={saved ? 'Đã lưu việc làm' : 'Lưu việc làm'}
+                    >
+                      <Heart
+                        className="h-3.5 w-3.5"
+                        fill={saved ? 'currentColor' : 'none'}
+                        strokeWidth={2}
+                      />
+                    </button>
+                  </div>
+                </div>
               );
             })}
           </div>
-        </div>
+        )}
 
-        {/* Job Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredJobs.map((job) => {
-            const isSaved = savedJobIds.has(job.id);
-            return (
-              <div
-                key={job.id}
-                onClick={() => navigate(`/jobs/${job.id}`)}
-                className="bg-white rounded-xl p-5 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group border border-slate-200/80 hover:border-blue-300 hover:-translate-y-1 cursor-pointer relative"
-              >
-                <div>
-                  {/* Top Row: Real Vector Logo (w-12 h-12 p-2) + Badge + Bookmark */}
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    {/* Logo Squircle Box rộng rãi, sắc nét */}
-                    <div className="w-12 h-12 rounded-xl p-2 bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
-                      <CompanyLogo id={job.companyId} name={job.company} size={40} className="w-full h-full object-contain" />
-                    </div>
-
-                    {/* Badges & Bookmark */}
-                    <div className="flex items-center gap-1.5">
-                      {job.badges.map((badge) => {
-                        if (badge === 'HOT') {
-                          return (
-                            <span
-                              key={badge}
-                              className="inline-flex items-center gap-1 bg-[#ffdbd0] text-[#982e00] font-bold text-[11px] px-2 py-0.5 rounded-full"
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#c03e05] animate-ping" /> HOT
-                            </span>
-                          );
-                        }
-                        if (badge === 'GẤP') {
-                          return (
-                            <span
-                              key={badge}
-                              className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-bold text-[11px] px-2.5 py-0.5 rounded-full"
-                            >
-                              Tuyển gấp
-                            </span>
-                          );
-                        }
-                        return (
-                          <span
-                            key={badge}
-                            className="inline-flex items-center gap-1 bg-[#d9e2ff] text-[#001945] font-bold text-[11px] px-2 py-0.5 rounded-full"
-                          >
-                            Top Đãi Ngộ
-                          </span>
-                        );
-                      })}
-
-                      {/* Bookmark Heart Button */}
-                      <button
-                        type="button"
-                        aria-label="Lưu việc làm"
-                        onClick={(e) => handleToggleSave(e, job.id, job.title)}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer border-0 ${
-                          isSaved
-                            ? 'text-rose-500 bg-rose-50'
-                            : 'text-slate-400 hover:text-rose-500 hover:bg-[#f2f3ff]'
-                        }`}
-                        title="Lưu việc làm"
-                      >
-                        <Heart
-                          className="h-4 w-4"
-                          fill={isSaved ? 'currentColor' : 'none'}
-                          strokeWidth={1.75}
-                        />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Job Title */}
-                  <h3 className="font-bold text-base text-[#131b2e] group-hover:text-blue-600 transition-colors line-clamp-1 mb-1 m-0">
-                    {job.title}
-                  </h3>
-
-                  {/* Company Name */}
-                  <p className="text-xs text-slate-500 mb-2.5 line-clamp-1 font-medium m-0">
-                    {job.company}
-                  </p>
-
-                  {/* Salary Chip (Giữ màu xanh lá duy nhất cho Mức lương) */}
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span className="font-bold text-sm text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-md inline-block">
-                      {job.salaryText}
-                    </span>
-                  </div>
-
-                  {/* Metadata Chips */}
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    <span className="text-xs bg-[#f2f3ff] text-slate-700 px-2 py-1 rounded font-medium">
-                      {job.location}
-                    </span>
-                    <span className="text-xs bg-[#f2f3ff] text-slate-700 px-2 py-1 rounded font-medium">
-                      {job.experience}
-                    </span>
-                    <span className="text-xs bg-[#f2f3ff] text-slate-700 px-2 py-1 rounded font-medium">
-                      Phúc lợi tốt
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bottom Row - Nút Ứng tuyển ngay màu Brand Primary Blue */}
-                <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs text-slate-400 font-medium">
-                    Đăng {job.postedTime}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => handleApplyQuick(e, job.id)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-sm transition-all active:scale-[0.98] cursor-pointer border-0"
-                  >
-                    Ứng tuyển ngay
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* View All Button */}
+        {/* Nút Xem tất cả việc làm */}
         <div className="mt-8 text-center">
           <button
             type="button"
             onClick={() => navigate('/jobs')}
-            className="inline-flex items-center gap-2 bg-[#eaedff] hover:bg-blue-100/70 text-slate-800 hover:text-blue-700 font-semibold text-sm px-6 py-2.5 rounded-xl transition-all shadow-2xs cursor-pointer border-0"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-blue-500 hover:text-blue-600 text-xs sm:text-sm font-bold text-slate-700 shadow-2xs transition-all active:scale-[0.98] cursor-pointer"
           >
-            <span>Xem tất cả 45,210 việc làm đang mở</span>
-            <ArrowRight className="h-4 w-4" />
+            <span>Khám phá thêm các việc làm hấp dẫn khác</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -363,4 +430,3 @@ export const FeaturedJobsGrid: React.FC = () => {
 };
 
 export default FeaturedJobsGrid;
-
