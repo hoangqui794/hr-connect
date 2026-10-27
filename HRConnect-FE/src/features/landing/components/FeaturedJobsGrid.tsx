@@ -8,26 +8,27 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { message } from 'antd';
+import { CompanyLogo } from './CompanyLogo';
 
 export interface JobCardData {
   id: string;
   title: string;
   company: string;
-  logoText: string;
+  companyId: string;
   location: string;
   locationRegion: 'HN' | 'HCM' | 'DN' | 'ALL';
   experience: string;
   salaryText: string;
-  badges: Array<'HOT' | 'GẤP' | 'TOP' | 'PRO'>;
+  badges: Array<'HOT' | 'GẤP' | 'TOP'>;
   postedTime: string;
 }
 
 const SAMPLE_JOBS: JobCardData[] = [
   {
     id: 'job-001',
-    title: 'Senior Frontend Developer (React / Next.js)',
-    company: 'TECHCORP SOLUTIONS VIETNAM',
-    logoText: 'TC',
+    title: 'Senior Frontend Engineer (React / Next.js)',
+    company: 'FPT TELECOM & DIGITAL SOLUTIONS',
+    companyId: 'fpt',
     location: 'Hà Nội',
     locationRegion: 'HN',
     experience: '3+ năm exp',
@@ -37,13 +38,13 @@ const SAMPLE_JOBS: JobCardData[] = [
   },
   {
     id: 'job-002',
-    title: 'Chuyên viên Kế toán Tổng hợp & Thuế',
-    company: 'CÔNG TY CP TẬP ĐOÀN AN KHANG',
-    logoText: 'AK',
-    location: 'Hà Nội',
-    locationRegion: 'HN',
-    experience: '2 năm exp',
-    salaryText: '15 - 22 triệu',
+    title: 'Chuyên viên Quản lý Khách hàng Doanh nghiệp',
+    company: 'NGÂN HÀNG TMCP KỸ THƯƠNG (TECHCOMBANK)',
+    companyId: 'techcombank',
+    location: 'Hà Nội & TP. HCM',
+    locationRegion: 'ALL',
+    experience: 'Từ 1 năm exp',
+    salaryText: '20 - 35 triệu',
     badges: ['TOP'],
     postedTime: '30 phút trước',
   },
@@ -51,22 +52,22 @@ const SAMPLE_JOBS: JobCardData[] = [
     id: 'job-003',
     title: 'Trưởng nhóm Kinh doanh B2B (Tech & SaaS)',
     company: 'V-TECH SOLUTIONS GLOBAL',
-    logoText: 'VT',
+    companyId: 'vtech',
     location: 'TP. Hồ Chí Minh',
     locationRegion: 'HCM',
     experience: '3 - 5 năm exp',
     salaryText: '25 - 45 triệu',
-    badges: ['HOT', 'PRO'],
+    badges: ['HOT'],
     postedTime: '1 giờ trước',
   },
   {
     id: 'job-004',
-    title: 'Senior Java Backend Engineer (Spring / Kafka)',
-    company: 'DIGITALWAVE FINTECH LABS',
-    logoText: 'DW',
-    location: 'TP. Hồ Chí Minh',
-    locationRegion: 'HCM',
-    experience: '4+ năm exp',
+    title: 'Senior Java Backend Engineer (Microservices)',
+    company: 'TẬP ĐOÀN CÔNG NGHIỆP VIỄN THÔNG (VIETTEL)',
+    companyId: 'viettel',
+    location: 'Hà Nội',
+    locationRegion: 'HN',
+    experience: 'Senior (4+ năm)',
     salaryText: '40 - 65 triệu',
     badges: ['GẤP'],
     postedTime: '2 giờ trước',
@@ -74,8 +75,8 @@ const SAMPLE_JOBS: JobCardData[] = [
   {
     id: 'job-005',
     title: 'Chuyên viên Tuyển dụng & Đào tạo (HRBP)',
-    company: 'SEED RETAIL GROUP',
-    logoText: 'SR',
+    company: 'CÔNG TY CP SỮA VIỆT NAM (VINAMILK)',
+    companyId: 'vinamilk',
     location: 'TP. Hồ Chí Minh',
     locationRegion: 'HCM',
     experience: '2 - 4 năm exp',
@@ -87,48 +88,48 @@ const SAMPLE_JOBS: JobCardData[] = [
     id: 'job-006',
     title: 'Senior Product Designer (UI/UX - Design System)',
     company: 'NOVATECH INNOVATION HUB',
-    logoText: 'NT',
+    companyId: 'novatech',
     location: 'Hà Nội',
     locationRegion: 'HN',
     experience: '3+ năm exp',
     salaryText: '30 - 45 triệu',
-    badges: ['HOT', 'PRO'],
-    postedTime: 'Hôm nay',
-  },
-  {
-    id: 'job-007',
-    title: 'DevOps / Cloud Platform Engineer (AWS, K8s)',
-    company: 'CLOUDNATIVE SYSTEMS LTD',
-    logoText: 'CN',
-    location: 'Đà Nẵng',
-    locationRegion: 'DN',
-    experience: 'Middle - Senior',
-    salaryText: '35 - 55 triệu',
     badges: ['HOT'],
     postedTime: 'Hôm nay',
   },
   {
+    id: 'job-007',
+    title: 'Senior E-Commerce Operations Specialist',
+    company: 'SHOPEE VIETNAM TECHNOLOGY',
+    companyId: 'shopee',
+    location: 'TP. Hồ Chí Minh',
+    locationRegion: 'HCM',
+    experience: '2+ năm exp',
+    salaryText: '22 - 38 triệu',
+    badges: ['HOT', 'TOP'],
+    postedTime: 'Hôm nay',
+  },
+  {
     id: 'job-008',
-    title: 'Chuyên viên Digital Marketing & Performance Ads',
-    company: 'MEDIAMAX COMMUNICATIONS',
-    logoText: 'MM',
+    title: 'Chuyên viên Kế toán Thuế & Quản trị Tài chính',
+    company: 'NGÂN HÀNG TMCP VN THỊNH VƯỢNG (VPBANK)',
+    companyId: 'vpbank',
     location: 'Hà Nội',
     locationRegion: 'HN',
-    experience: '1 - 3 năm exp',
-    salaryText: '16 - 26 triệu',
+    experience: '2 - 3 năm exp',
+    salaryText: '18 - 26 triệu',
     badges: ['GẤP'],
     postedTime: 'Hôm nay',
   },
   {
     id: 'job-009',
-    title: 'Chuyên viên Quản lý Khách hàng Doanh nghiệp (SME)',
-    company: 'NGÂN HÀNG TMCP KỸ THƯƠNG (TECHCOMBANK)',
-    logoText: 'TCB',
-    location: 'Hà Nội & TP. HCM',
-    locationRegion: 'ALL',
-    experience: 'Từ 1 năm exp',
-    salaryText: '20 - 35 triệu',
-    badges: ['TOP', 'PRO'],
+    title: 'DevOps / Cloud Platform Engineer (AWS, K8s)',
+    company: 'SEED LABS & CONSUMER TECH',
+    companyId: 'seedlabs',
+    location: 'Đà Nẵng & Remote',
+    locationRegion: 'DN',
+    experience: 'Middle - Senior',
+    salaryText: '35 - 55 triệu',
+    badges: ['TOP'],
     postedTime: 'Mới cập nhật',
   },
 ];
@@ -171,20 +172,20 @@ export const FeaturedJobsGrid: React.FC = () => {
   });
 
   return (
-    <section className="bg-white py-16 px-4 sm:px-6 lg:px-8 border-b border-slate-200/80">
-      <div className="mx-auto max-w-6xl">
+    <section className="bg-white py-10 md:py-12 border-b border-slate-200/80">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Title & Subtitle */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
           <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-rose-600 mb-2">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-rose-600 mb-1.5">
               <Flame className="h-3.5 w-3.5 fill-rose-600 text-rose-600" />
-              <span>Cơ hội tuyển dụng hấp dẫn</span>
+              <span>Cơ hội tuyển dụng gấp</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 m-0">
               Việc làm tốt nhất / Đang tuyển gấp
             </h2>
-            <p className="text-sm sm:text-base text-slate-500 mt-1.5 mb-0">
-              Vị trí đãi ngộ cạnh tranh, phỏng vấn nhanh và phản hồi hồ sơ trong 24 giờ
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 mb-0">
+              Các vị trí đãi ngộ cạnh tranh, phỏng vấn nhanh và phản hồi hồ sơ trong vòng 24 giờ
             </p>
           </div>
 
@@ -193,7 +194,7 @@ export const FeaturedJobsGrid: React.FC = () => {
             onClick={() => navigate('/jobs')}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer self-start md:self-auto"
           >
-            <span>Xem thêm 40.000+ việc làm</span>
+            <span>Xem thêm 41.500+ việc làm</span>
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>
@@ -220,17 +221,8 @@ export const FeaturedJobsGrid: React.FC = () => {
           })}
         </div>
 
-        {/* Helper Hint Bar */}
-        <div className="mb-6 rounded-lg bg-blue-50/60 border border-blue-100 px-3.5 py-2 text-xs text-blue-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-blue-600">💡</span>
-            <span>Gợi ý: Nhấp vào thẻ việc làm để xem mô tả chi tiết, chế độ phúc lợi hoặc ứng tuyển trực tiếp.</span>
-          </div>
-          <span className="text-[11px] font-medium text-blue-600 hidden sm:inline">Cập nhật liên tục</span>
-        </div>
-
-        {/* Job Cards Grid (Refactored Clean TopCV Style) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        {/* Job Cards Grid (3 Columns chuẩn TopCV với Logo thật) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredJobs.map((job) => {
             const isSaved = savedJobIds.has(job.id);
             return (
@@ -240,22 +232,22 @@ export const FeaturedJobsGrid: React.FC = () => {
                 className="bg-white rounded-xl border border-slate-200 hover:border-blue-500 hover:shadow-md transition-all p-4 flex flex-col justify-between h-full group cursor-pointer relative"
               >
                 <div>
-                  {/* Top Row: Slate Corporate Avatar + Badges + Heart Bookmark */}
+                  {/* Top Row: Real Company Logo + Badges + Heart Bookmark */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      {/* Logo công ty tối giản chuẩn corporate */}
-                      <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-700 text-sm flex-shrink-0">
-                        {job.logoText}
+                      {/* Logo công ty thật dạng SVG/image */}
+                      <div className="w-14 h-14 rounded-xl border border-slate-200/90 p-1.5 flex items-center justify-center bg-white shadow-2xs flex-shrink-0 object-contain">
+                        <CompanyLogo id={job.companyId} name={job.company} size={36} />
                       </div>
 
-                      {/* Badges container mỏng nhẹ */}
+                      {/* Badges container */}
                       <div className="flex flex-wrap items-center gap-1">
                         {job.badges.map((badge) => {
                           if (badge === 'HOT') {
                             return (
                               <span
                                 key={badge}
-                                className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded uppercase"
+                                className="bg-rose-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase"
                               >
                                 HOT
                               </span>
@@ -265,35 +257,25 @@ export const FeaturedJobsGrid: React.FC = () => {
                             return (
                               <span
                                 key={badge}
-                                className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded uppercase"
+                                className="bg-amber-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase"
                               >
                                 GẤP
-                              </span>
-                            );
-                          }
-                          if (badge === 'TOP') {
-                            return (
-                              <span
-                                key={badge}
-                                className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded uppercase"
-                              >
-                                TOP
                               </span>
                             );
                           }
                           return (
                             <span
                               key={badge}
-                              className="text-[10px] font-bold text-slate-700 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded uppercase"
+                              className="bg-blue-600 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase"
                             >
-                              PRO
+                              TOP
                             </span>
                           );
                         })}
                       </div>
                     </div>
 
-                    {/* Nút Trái tim Bookmark mảnh */}
+                    {/* Bookmark Heart Button */}
                     <button
                       type="button"
                       aria-label="Lưu tin việc làm"
@@ -312,19 +294,19 @@ export const FeaturedJobsGrid: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Tiêu đề việc làm */}
+                  {/* Job Title */}
                   <h3 className="font-bold text-slate-900 text-sm hover:text-blue-600 line-clamp-1 transition-colors mt-3 mb-0">
                     {job.title}
                   </h3>
 
-                  {/* Tên công ty uppercase tracking-wide */}
+                  {/* Company Name */}
                   <p className="text-xs text-slate-500 line-clamp-1 mt-0.5 uppercase tracking-wide font-medium mb-0">
                     {job.company}
                   </p>
 
-                  {/* Hàng mức lương nhã nhặn */}
+                  {/* Salary Highlight with Bold Green Font */}
                   <div className="mt-3 flex items-center justify-between">
-                    <span className="text-emerald-700 font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100/80 inline-block">
+                    <span className="text-emerald-700 font-extrabold text-sm bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/70 inline-block">
                       {job.salaryText}
                     </span>
                     <span className="text-[11px] text-slate-400 font-medium">
@@ -333,7 +315,7 @@ export const FeaturedJobsGrid: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Hàng tag phụ và nút ứng tuyển ghost/outline */}
+                {/* Bottom Row: Location & Experience Tags + Quick Apply */}
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-slate-500 text-xs flex items-center gap-1 truncate">
@@ -347,7 +329,7 @@ export const FeaturedJobsGrid: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Nút Ghost / Outline tinh tế */}
+                  {/* Ghost Apply Button */}
                   <button
                     type="button"
                     onClick={(e) => handleApplyQuick(e, job.id)}
@@ -359,25 +341,6 @@ export const FeaturedJobsGrid: React.FC = () => {
               </div>
             );
           })}
-        </div>
-
-        {/* Bottom Banner Callout (Clean Light Style) */}
-        <div className="mt-10 rounded-2xl bg-gradient-to-r from-blue-50 via-slate-50 to-indigo-50 border border-blue-200/80 p-6 sm:p-7 flex flex-col sm:flex-row items-center justify-between gap-5">
-          <div className="text-center sm:text-left">
-            <h3 className="text-base sm:text-lg font-bold text-slate-900 m-0">
-              Bạn chưa tìm thấy cơ hội việc làm mong muốn?
-            </h3>
-            <p className="mt-1 text-xs sm:text-sm text-slate-600 m-0">
-              Tải CV lên hệ thống để AI tự động so khớp và gợi ý công việc phù hợp nhất với kinh nghiệm của bạn.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/cv-builder')}
-            className="shrink-0 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2.5 text-sm shadow-sm transition-all active:scale-[0.98] cursor-pointer"
-          >
-            Tạo CV AI ngay
-          </button>
         </div>
       </div>
     </section>
