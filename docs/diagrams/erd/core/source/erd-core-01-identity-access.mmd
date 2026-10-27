@@ -1,0 +1,49 @@
+---
+title: Core ERD 01 - Identity and access
+config:
+  layout: elk
+---
+erDiagram
+  AppUser {
+    uuid UserId PK
+    varchar Email
+    varchar Status
+  }
+  Role {
+    uuid RoleId PK
+    varchar Code
+  }
+  UserRole {
+    uuid UserId PK,FK
+    uuid RoleId PK,FK
+  }
+  CompanyUser {
+    uuid CompanyUserId PK
+    uuid CompanyId FK
+    uuid UserId FK
+    boolean IsPrimaryContact
+  }
+  AffiliateProfile {
+    uuid AffiliateId PK
+    uuid UserId FK
+    varchar Status
+  }
+  Candidate {
+    uuid CandidateId PK
+    uuid UserId FK
+    varchar NormalizedEmail
+    varchar NormalizedPhone
+    varchar Status
+  }
+  Company {
+    uuid CompanyId PK
+    varchar CompanyName
+    varchar TaxCode
+    varchar VerificationStatus
+  }
+  AppUser ||--o{ UserRole : "UserId"
+  Role ||--o{ UserRole : "RoleId"
+  Company ||--o{ CompanyUser : "CompanyId"
+  AppUser ||--o{ CompanyUser : "UserId"
+  AppUser ||--o{ AffiliateProfile : "UserId"
+  AppUser ||--o{ Candidate : "UserId"

@@ -1,0 +1,55 @@
+@startuml erd-core-01-identity-access
+title Core ERD 01 - Identity and access
+hide circle
+skinparam linetype ortho
+entity AppUser {
+  * UserId : uuid <<PK>>
+  --
+  Email : varchar
+  Status : varchar
+}
+entity Role {
+  * RoleId : uuid <<PK>>
+  --
+  Code : varchar
+}
+entity UserRole {
+  * UserId : uuid <<PK,FK>>
+  * RoleId : uuid <<PK,FK>>
+  --
+}
+entity CompanyUser {
+  * CompanyUserId : uuid <<PK>>
+  --
+  CompanyId : uuid <<FK>>
+  UserId : uuid <<FK>>
+  IsPrimaryContact : boolean
+}
+entity AffiliateProfile {
+  * AffiliateId : uuid <<PK>>
+  --
+  UserId : uuid <<FK>>
+  Status : varchar
+}
+entity Candidate {
+  * CandidateId : uuid <<PK>>
+  --
+  UserId : uuid <<FK>>
+  NormalizedEmail : varchar
+  NormalizedPhone : varchar
+  Status : varchar
+}
+entity Company #EEEEEE {
+  * CompanyId : uuid <<PK>>
+  --
+  CompanyName : varchar
+  TaxCode : varchar
+  VerificationStatus : varchar
+}
+AppUser ||--o{ UserRole : UserId
+Role ||--o{ UserRole : RoleId
+Company ||--o{ CompanyUser : CompanyId
+AppUser ||--o{ CompanyUser : UserId
+AppUser ||--o{ AffiliateProfile : UserId
+AppUser ||--o{ Candidate : UserId
+@enduml

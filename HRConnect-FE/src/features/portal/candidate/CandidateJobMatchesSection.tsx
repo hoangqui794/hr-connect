@@ -39,6 +39,19 @@ export const getMatchScoreConfig = (scorePercent: number) => {
   return { label: 'Có tiềm năng', badgeClass: 'border-amber-200 bg-amber-50 text-amber-800', barClass: 'bg-amber-500' };
 };
 
+const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
+  FULL_TIME: 'Toàn thời gian',
+  PART_TIME: 'Bán thời gian',
+  CONTRACT: 'Theo hợp đồng',
+  INTERNSHIP: 'Thực tập',
+  FREELANCE: 'Làm việc tự do',
+};
+
+export const formatEmploymentType = (value?: string | null): string | null => {
+  if (!value) return null;
+  return EMPLOYMENT_TYPE_LABELS[value.trim().toUpperCase()] ?? value;
+};
+
 const formatSalary = (min?: number | null, max?: number | null, negotiable?: boolean, currency = 'VND') => {
   if (negotiable && min == null && max == null) return 'Lương thương lượng';
   if (min == null && max == null) return 'Chưa công bố mức lương';
@@ -140,7 +153,7 @@ export const CandidateJobMatchesSection: React.FC<CandidateJobMatchesSectionProp
               <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-800">{feed.items.length} gợi ý</span>
             </div>
             <p className="mb-0 mt-2 text-sm leading-6 text-slate-600">
-              Dựa trên CV chính, kỹ năng và mong muốn nghề nghiệp. Điểm phù hợp là thông tin tham khảo, không phải quyết định tuyển dụng.
+              Dựa trên CV chính và hồ sơ nghề nghiệp: kỹ năng, kinh nghiệm, vị trí mục tiêu, địa điểm, mức lương và chế độ làm việc mong muốn. Điểm phù hợp chỉ mang tính tham khảo, không phải quyết định tuyển dụng.
             </p>
           </div>
           {viewAllLink && feed.items.length > (limit || 0) && (
@@ -153,6 +166,7 @@ export const CandidateJobMatchesSection: React.FC<CandidateJobMatchesSectionProp
         {displayedMatches.map((match) => {
           const score = formatMatchScore(match.matchScore);
           const scoreConfig = getMatchScoreConfig(score);
+          const employmentTypeLabel = formatEmploymentType(match.employmentType);
           const reasons = match.matchingReasons ?? [];
           const gaps = match.missingRequirements ?? [];
           return (
@@ -177,7 +191,7 @@ export const CandidateJobMatchesSection: React.FC<CandidateJobMatchesSectionProp
 
                 <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-600">
                   <span className="inline-flex items-center gap-1.5"><EnvironmentOutlined />{match.location || 'Địa điểm linh hoạt'}</span>
-                  {match.employmentType && <span className="inline-flex items-center gap-1.5"><ClockCircleOutlined />{match.employmentType}</span>}
+                  {employmentTypeLabel && <span className="inline-flex items-center gap-1.5"><ClockCircleOutlined />{employmentTypeLabel}</span>}
                   {match.applicationDeadline && <span className="inline-flex items-center gap-1.5"><CalendarOutlined />Hạn {new Date(match.applicationDeadline).toLocaleDateString('vi-VN')}</span>}
                 </div>
 

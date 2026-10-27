@@ -10,6 +10,8 @@ package "Internal HR console (/hr)" #E0F2FE {
   rectangle "Pipeline (interviews, offers – read only)\n<size:10>pipeline</size>" as hr_pipe
   rectangle "Placement start-date correction\n<size:10>placement-review</size>" as hr_plr
   rectangle "Placement detail\n<size:10>placements/:placementId</size>" as hr_plc
+  rectangle "Start-work reconciliation (confirm / flag Client report)
+<size:10>placement-reconciliations</size>" as hr_rec
   rectangle "Warranty tracking (verify resignations)\n<size:10>warranty-tracking</size>" as hr_war
   rectangle "Contact requests\n<size:10>contact-requests</size>" as hr_contact
   rectangle "Profile\n<size:10>profile</size>" as hr_prof
@@ -20,6 +22,8 @@ hr_dash --> hr_scr
 hr_scr --> hr_pipe : shortlisted
 hr_dash --> hr_plr
 hr_plr --> hr_plc : open
+hr_dash --> hr_rec
+hr_rec --> hr_plc : confirmed
 hr_dash --> hr_war
 hr_war --> hr_plc : open
 hr_dash --> hr_contact

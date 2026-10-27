@@ -1,0 +1,93 @@
+@startuml erd-core-03-candidate-submission
+title Core ERD 03 - Candidate, submission and attribution
+hide circle
+skinparam linetype ortho
+entity Candidate {
+  * CandidateId : uuid <<PK>>
+  --
+  UserId : uuid <<FK>>
+  NormalizedEmail : varchar
+  NormalizedPhone : varchar
+  Status : varchar
+}
+entity CandidateCv {
+  * CvId : uuid <<PK>>
+  --
+  CandidateId : uuid <<FK>>
+  Status : varchar
+}
+entity AffiliateProfile {
+  * AffiliateId : uuid <<PK>>
+  --
+  UserId : uuid <<FK>>
+  Status : varchar
+}
+entity Job #EEEEEE {
+  * JobId : uuid <<PK>>
+  --
+  CompanyId : uuid <<FK>>
+  ServiceTypeId : uuid <<FK>>
+  CreatedBy : uuid <<FK>>
+  Title : varchar
+  Status : varchar
+  Quantity : int
+  FeeMultiplier : numeric
+  WarrantyDays : int
+  SourcingTarget : int
+}
+entity Submission {
+  * SubmissionId : uuid <<PK>>
+  --
+  CandidateId : uuid <<FK>>
+  CvId : uuid <<FK>>
+  JobId : uuid <<FK>>
+  SubmittedBy : uuid <<FK>>
+  ReplacementSlotId : uuid <<FK>>
+  Source : varchar
+  Status : varchar
+}
+entity SubmissionConsent {
+  * ConsentId : uuid <<PK>>
+  --
+  SubmissionId : uuid <<FK>>
+  Status : varchar
+  ExpiresAt : timestamptz
+}
+entity Application {
+  * ApplicationId : uuid <<PK>>
+  --
+  JobId : uuid <<FK>>
+  CandidateId : uuid <<FK>>
+  ReplacementSlotId : uuid <<FK>>
+  Status : varchar
+}
+entity Attribution {
+  * AttributionId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  AffiliateId : uuid <<FK>>
+  Status : varchar
+}
+entity Dispute {
+  * DisputeId : uuid <<PK>>
+  --
+  SubmissionId : uuid <<FK>>
+  AttributionId : uuid <<FK>>
+  CommissionId : uuid <<FK>>
+  RaisedBy : uuid <<FK>>
+  DisputeType : varchar
+  Status : varchar
+  Resolution : varchar
+}
+Candidate ||--o{ CandidateCv : CandidateId
+Candidate ||--o{ Submission : CandidateId
+CandidateCv ||--o{ Submission : CvId
+Job ||--o{ Submission : JobId
+Submission ||--o{ SubmissionConsent : SubmissionId
+Job ||--o{ Application : JobId
+Candidate ||--o{ Application : CandidateId
+Application ||--o{ Attribution : ApplicationId
+AffiliateProfile ||--o{ Attribution : AffiliateId
+Submission ||--o{ Dispute : SubmissionId
+Attribution ||--o{ Dispute : AttributionId
+@enduml

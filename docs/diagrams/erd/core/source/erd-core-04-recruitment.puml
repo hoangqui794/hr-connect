@@ -1,0 +1,104 @@
+@startuml erd-core-04-recruitment
+title Core ERD 04 - Screening, interview, offer and placement
+hide circle
+skinparam linetype ortho
+entity Job #EEEEEE {
+  * JobId : uuid <<PK>>
+  --
+  CompanyId : uuid <<FK>>
+  ServiceTypeId : uuid <<FK>>
+  CreatedBy : uuid <<FK>>
+  Title : varchar
+  Status : varchar
+  Quantity : int
+  FeeMultiplier : numeric
+  WarrantyDays : int
+  SourcingTarget : int
+}
+entity Candidate #EEEEEE {
+  * CandidateId : uuid <<PK>>
+  --
+  UserId : uuid <<FK>>
+  NormalizedEmail : varchar
+  NormalizedPhone : varchar
+  Status : varchar
+}
+entity Application {
+  * ApplicationId : uuid <<PK>>
+  --
+  JobId : uuid <<FK>>
+  CandidateId : uuid <<FK>>
+  ReplacementSlotId : uuid <<FK>>
+  Status : varchar
+}
+entity ApplicationStatusHistory {
+  * ApplicationStatusHistoryId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  OldStatus : varchar
+  NewStatus : varchar
+  ReasonCode : varchar
+}
+entity AiMatchResult {
+  * MatchResultId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  MatchScore : numeric
+  MatchTier : varchar
+  Status : varchar
+}
+entity SourcingDelivery {
+  * DeliveryId : uuid <<PK>>
+  --
+  JobId : uuid <<FK>>
+  ApplicationId : uuid <<FK>>
+  Status : varchar
+  ReviewDueAt : timestamptz
+}
+entity Interview {
+  * InterviewId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  CreatedBy : uuid <<FK>>
+  ScheduledAt : timestamptz
+  Status : varchar
+  Result : varchar
+}
+entity Offer {
+  * OfferId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  CreatedBy : uuid <<FK>>
+  Salary : numeric
+  Status : varchar
+}
+entity Placement {
+  * PlacementId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  OfferId : uuid <<FK>>
+  ReplacementSlotId : uuid <<FK>>
+  ActualStartDate : date
+  Status : varchar
+}
+entity PlacementReconciliation {
+  * ReconciliationId : uuid <<PK>>
+  --
+  ApplicationId : uuid <<FK>>
+  PlacementId : uuid <<FK>>
+  ClaimedOutcome : varchar
+  Status : varchar
+}
+Job ||--o{ Application : JobId
+Candidate ||--o{ Application : CandidateId
+Application ||--o{ ApplicationStatusHistory : ApplicationId
+Application ||--o{ AiMatchResult : ApplicationId
+Job ||--o{ SourcingDelivery : JobId
+Application ||--o{ SourcingDelivery : ApplicationId
+Application ||--o{ Interview : ApplicationId
+Application ||--o{ Offer : ApplicationId
+Application ||--o{ Placement : ApplicationId
+Offer ||--o{ Placement : OfferId
+Application ||--o{ PlacementReconciliation : ApplicationId
+Placement ||--o{ PlacementReconciliation : PlacementId
+@enduml

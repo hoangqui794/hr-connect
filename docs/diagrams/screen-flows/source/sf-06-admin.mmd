@@ -15,6 +15,7 @@ flowchart LR
   admin_cr["<b>Commission rules</b><br/><small>commission-rules</small>"]
   admin_set["<b>Business settings</b><br/><small>settings</small>"]
   admin_fin["<b>Finance: posting fees, service fees, deposits, commissions, payouts</b><br/><small>finance · payouts</small>"]
+  admin_rec["<b>Start-work reconciliation</b><br/><small>placement-reconciliations</small>"]
   admin_disp["<b>Disputes (empty state, FE pending)</b><br/><small>disputes</small>"]
   admin_rep["<b>Reports</b><br/><small>reports</small>"]
   admin_audit["<b>Audit trail</b><br/><small>audit-trail</small>"]
@@ -29,6 +30,7 @@ flowchart LR
   admin_st --> admin_cr
   admin_dash --> admin_set
   admin_dash --> admin_fin
+  admin_dash --> admin_rec
   admin_dash --> admin_disp
   admin_dash --> admin_rep
   admin_dash --> admin_audit

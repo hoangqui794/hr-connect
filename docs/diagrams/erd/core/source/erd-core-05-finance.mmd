@@ -1,0 +1,101 @@
+---
+title: Core ERD 05 - Warranty, fees, commission and payout
+config:
+  layout: elk
+---
+erDiagram
+  Job {
+    uuid JobId PK
+    uuid CompanyId FK
+    uuid ServiceTypeId FK
+    uuid CreatedBy FK
+    varchar Title
+    varchar Status
+    int Quantity
+    numeric FeeMultiplier
+    int WarrantyDays
+    int SourcingTarget
+  }
+  Placement {
+    uuid PlacementId PK
+    uuid ApplicationId FK
+    uuid OfferId FK
+    uuid ReplacementSlotId FK
+    date ActualStartDate
+    varchar Status
+  }
+  Attribution {
+    uuid AttributionId PK
+    uuid ApplicationId FK
+    uuid AffiliateId FK
+    varchar Status
+  }
+  Warranty {
+    uuid WarrantyId PK
+    uuid PlacementId FK
+    date EndDate
+    varchar Status
+  }
+  ServiceFee {
+    uuid ServiceFeeId PK
+    uuid PlacementId FK
+    uuid JobId FK
+    uuid CompanyId FK
+    numeric Amount
+    date DueDate
+    varchar Status
+  }
+  ReplacementSlot {
+    uuid ReplacementSlotId PK
+    uuid JobId FK
+    uuid OriginalPlacementId FK
+    uuid ServiceFeeId FK
+    uuid FilledByPlacementId FK
+    uuid CreatedBy FK
+    varchar Status
+    timestamptz ExpiresAt
+  }
+  CommissionRule {
+    uuid CommissionRuleId PK
+    uuid ServiceTypeId FK
+    varchar RateType
+    numeric RateValue
+  }
+  Commission {
+    uuid CommissionId PK
+    uuid AttributionId FK
+    uuid PlacementId FK
+    uuid CommissionRuleId FK
+    numeric Amount
+    varchar Status
+  }
+  Payout {
+    uuid PayoutId PK
+    uuid CommissionId FK
+    numeric Amount
+    varchar Status
+  }
+  Dispute {
+    uuid DisputeId PK
+    uuid SubmissionId FK
+    uuid AttributionId FK
+    uuid CommissionId FK
+    uuid RaisedBy FK
+    varchar DisputeType
+    varchar Status
+    varchar Resolution
+  }
+  ReplacementSlot ||--o{ Placement : "ReplacementSlotId"
+  Placement ||--o{ Warranty : "PlacementId"
+  Placement ||--o{ ServiceFee : "PlacementId"
+  Job ||--o{ ServiceFee : "JobId"
+  Job ||--o{ ReplacementSlot : "JobId"
+  Placement ||--o{ ReplacementSlot : "OriginalPlacementId"
+  ServiceFee ||--o{ ReplacementSlot : "ServiceFeeId"
+  Placement ||--o{ ReplacementSlot : "FilledByPlacementId"
+  Attribution ||--o{ Commission : "AttributionId"
+  Placement ||--o{ Commission : "PlacementId"
+  CommissionRule ||--o{ Commission : "CommissionRuleId"
+  Commission ||--o{ Payout : "CommissionId"
+  Attribution ||--o{ Dispute : "AttributionId"
+  Commission ||--o{ Dispute : "CommissionId"

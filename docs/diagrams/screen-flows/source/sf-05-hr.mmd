@@ -11,6 +11,7 @@ flowchart LR
   hr_pipe["<b>Pipeline (interviews, offers – read only)</b><br/><small>pipeline</small>"]
   hr_plr["<b>Placement start-date correction</b><br/><small>placement-review</small>"]
   hr_plc["<b>Placement detail</b><br/><small>placements/:placementId</small>"]
+  hr_rec["<b>Start-work reconciliation (confirm / flag Client report)</b><br/><small>placement-reconciliations</small>"]
   hr_war["<b>Warranty tracking (verify resignations)</b><br/><small>warranty-tracking</small>"]
   hr_contact["<b>Contact requests</b><br/><small>contact-requests</small>"]
   hr_prof["<b>Profile</b><br/><small>profile</small>"]
@@ -20,6 +21,8 @@ flowchart LR
   hr_scr -->|"shortlisted"| hr_pipe
   hr_dash --> hr_plr
   hr_plr -->|"open"| hr_plc
+  hr_dash --> hr_rec
+  hr_rec -->|"confirmed"| hr_plc
   hr_dash --> hr_war
   hr_war -->|"open"| hr_plc
   hr_dash --> hr_contact
