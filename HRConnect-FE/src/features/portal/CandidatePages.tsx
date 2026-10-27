@@ -349,10 +349,10 @@ export const CandidateHomePage: React.FC = () => {
               type="primary"
               size="large"
               icon={<CompassOutlined />}
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/jobs')}
               className="!bg-blue-600 hover:!bg-blue-700 text-white rounded-xl shadow-sm transition-all active:scale-[0.98] border-none font-semibold px-5"
             >
-              Tìm việc tại Trang chủ
+              Tìm việc làm ngay
             </Button>
             <Button
               size="large"
@@ -541,10 +541,10 @@ export const CandidateHomePage: React.FC = () => {
                 <Button
                   type="primary"
                   icon={<CompassOutlined />}
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate('/jobs')}
                   className="!bg-blue-600 hover:!bg-blue-700 text-white font-semibold rounded-xl text-xs h-9 px-4"
                 >
-                  Tìm việc tại Trang chủ
+                  Tìm việc làm ngay
                 </Button>
                 <Button
                   onClick={() => navigate('/jobs')}
