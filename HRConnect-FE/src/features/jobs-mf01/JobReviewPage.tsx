@@ -16,6 +16,7 @@ import {
   Segmented,
   Skeleton,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import { PageHero } from '@/features/admin-console/ui';
@@ -81,11 +82,10 @@ const QueueItem: React.FC<{ job: Job; selected: boolean; onSelect: () => void }>
         type="button"
         onClick={onSelect}
         aria-current={selected ? 'true' : undefined}
-        className={`w-full cursor-pointer rounded-lg border p-3 text-left transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${
-          selected
+        className={`w-full cursor-pointer rounded-lg border p-3 text-left transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${selected
             ? 'border-l-4 border-l-blue-600 border-y-slate-200/80 border-r-slate-200/80 bg-blue-50/40 shadow-xs'
             : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/60'
-        }`}
+          }`}
       >
         <div className="flex items-start justify-between gap-2">
           <div className={`font-semibold text-sm line-clamp-1 leading-snug ${selected ? 'text-blue-900' : 'text-slate-800'}`}>
@@ -370,6 +370,69 @@ export const JobReviewPage: React.FC = () => {
   const confirmPublishAgreementJob = () => {
     if (!job) return;
     const hasSigned = Boolean(currentAgreement?.hasSignedDocument);
+    const isSourcing = job.serviceTypeCode === 'CV_SOURCING';
+    const isPaidPackage = isStandardUnpaid;
+    const requiresDepositOrPayment = isSourcing || isPaidPackage;
+
+    if (requiresDepositOrPayment) {
+      modal.confirm({
+        title: isSourcing
+          ? 'Xác nhận duyệt hợp đồng & gửi yêu cầu đặt cọc?'
+          : 'Xác nhận duyệt hợp đồng & gửi yêu cầu thanh toán?',
+        icon: <ClockCircleOutlined className="text-amber-500 text-xl" />,
+        width: 520,
+        content: (
+          <div className="py-2 space-y-3 text-xs leading-relaxed text-slate-700">
+            <div className="rounded-xl bg-slate-50 p-3 border border-solid border-slate-200 space-y-1">
+              <div className="font-semibold text-slate-900 text-sm">{job.title}</div>
+              <div className="text-slate-600">{job.companyName ?? '—'}</div>
+            </div>
+            {hasSigned ? (
+              <div className="rounded-lg bg-emerald-50 p-2.5 border border-solid border-emerald-200 text-emerald-900">
+                ✓ Doanh nghiệp đã nộp bản hợp đồng ký kết hợp lệ.
+              </div>
+            ) : (
+              <div className="rounded-lg bg-amber-50 p-2.5 border border-solid border-amber-200 text-amber-900">
+                ⚠ Doanh nghiệp chưa tải lên bản hợp đồng đã ký trên hệ thống.
+              </div>
+            )}
+            <div className="rounded-lg bg-blue-50 p-2.5 border border-solid border-blue-200 text-blue-900">
+              ℹ Theo quy trình, vị trí này yêu cầu Doanh nghiệp <strong>hoàn tất đặt cọc / thanh toán gói</strong> trước khi tin được công khai.
+              Hệ thống sẽ chuyển tin sang trạng thái <strong>Chờ thanh toán (PENDING_PAYMENT)</strong> để Doanh nghiệp đặt cọc.
+            </div>
+          </div>
+        ),
+        okText: isSourcing ? 'Duyệt HĐ & Yêu cầu đặt cọc' : 'Duyệt HĐ & Yêu cầu thanh toán',
+        okButtonProps: { className: '!bg-amber-600 hover:!bg-amber-700 text-white rounded-lg shadow-sm font-semibold' },
+        cancelText: 'Hủy bỏ',
+        onOk: () =>
+          approve
+            .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken })
+            .then((res) => {
+              message.success(res.message || 'Đã duyệt hợp đồng và tạo yêu cầu đặt cọc/thanh toán.');
+              useAlertStore.getState().addAlert({
+                targetRole: 'INTERNAL_HR',
+                type: 'info',
+                title: 'Đã duyệt hợp đồng · Chờ đặt cọc',
+                message: `Hợp đồng cho "${job.title}" đã duyệt. Đang chờ Doanh nghiệp hoàn tất đặt cọc/thanh toán.`,
+                actionLabel: 'Xem tin tuyển dụng',
+                actionRoute: `/internal/jobs/review?status=PENDING_PAYMENT&highlight=${encodeURIComponent(job.jobId)}`,
+                relatedEntityId: job.jobId,
+              });
+              useAlertStore.getState().addAlert({
+                targetRole: 'CLIENT',
+                type: 'warning',
+                title: 'Yêu cầu đặt cọc dịch vụ',
+                message: `Hợp đồng dịch vụ cho "${job.title}" đã được xác nhận. Vui lòng hoàn tất đặt cọc để tin tuyển dụng được công khai.`,
+                actionLabel: 'Đặt cọc ngay',
+                actionRoute: `/client/agreements?jobId=${encodeURIComponent(job.jobId)}`,
+                relatedEntityId: job.jobId,
+              });
+            })
+            .catch((err) => message.error(getApiErrorMessage(err))),
+      });
+      return;
+    }
 
     modal.confirm({
       title: hasSigned
@@ -580,23 +643,21 @@ export const JobReviewPage: React.FC = () => {
                     </div>
                   </div>
                 ) : job.status === 'PENDING_AGREEMENT' ? (
-                  <div className={`rounded-t-2xl border-0 border-b border-solid px-6 py-4 ${
-                    currentAgreement?.hasSignedDocument
+                  <div className={`rounded-t-2xl border-0 border-b border-solid px-6 py-4 ${currentAgreement?.hasSignedDocument
                       ? 'border-emerald-200 bg-emerald-50/80'
                       : currentAgreement?.status === 'CHANGE_REQUESTED'
-                      ? 'border-amber-200 bg-amber-50/80'
-                      : 'border-purple-200 bg-purple-50/70'
-                  }`}>
+                        ? 'border-amber-200 bg-amber-50/80'
+                        : 'border-purple-200 bg-purple-50/70'
+                    }`}>
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                       {/* Vế trái: Thông tin hợp đồng */}
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-solid shadow-2xs ${
-                          currentAgreement?.hasSignedDocument
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-solid shadow-2xs ${currentAgreement?.hasSignedDocument
                             ? 'bg-emerald-500/15 text-emerald-700 border-emerald-300/80'
                             : currentAgreement?.status === 'CHANGE_REQUESTED'
-                            ? 'bg-amber-500/15 text-amber-700 border-amber-300/80'
-                            : 'bg-purple-500/15 text-purple-700 border-purple-200/80'
-                        }`}>
+                              ? 'bg-amber-500/15 text-amber-700 border-amber-300/80'
+                              : 'bg-purple-500/15 text-purple-700 border-purple-200/80'
+                          }`}>
                           {currentAgreement?.hasSignedDocument ? (
                             <CheckCircleFilled className="text-xl text-emerald-600" />
                           ) : currentAgreement?.status === 'CHANGE_REQUESTED' ? (
@@ -611,24 +672,24 @@ export const JobReviewPage: React.FC = () => {
                               {currentAgreement?.hasSignedDocument
                                 ? `Doanh nghiệp đã tải lên hợp đồng đã ký (v${currentAgreement.version})`
                                 : currentAgreement?.status === 'CHANGE_REQUESTED'
-                                ? `DN gửi yêu cầu điều chỉnh (v${currentAgreement.version})`
-                                : `Hợp đồng đã gửi Doanh nghiệp (v${currentAgreement?.version ?? 1})`}
+                                  ? `DN gửi yêu cầu điều chỉnh (v${currentAgreement.version})`
+                                  : `Hợp đồng đã gửi Doanh nghiệp (v${currentAgreement?.version ?? 1})`}
                             </span>
                             <Tag
                               color={
                                 currentAgreement?.hasSignedDocument
                                   ? 'success'
                                   : currentAgreement?.status === 'CHANGE_REQUESTED'
-                                  ? 'warning'
-                                  : 'purple'
+                                    ? 'warning'
+                                    : 'purple'
                               }
                               className="m-0 font-medium text-xs rounded-full px-2.5"
                             >
                               {currentAgreement?.hasSignedDocument
                                 ? 'Đã có bản ký kết'
                                 : currentAgreement?.status === 'CHANGE_REQUESTED'
-                                ? 'DN yêu cầu điều chỉnh'
-                                : 'Đã soạn xong HĐ'}
+                                  ? 'DN yêu cầu điều chỉnh'
+                                  : 'Đã soạn xong HĐ'}
                             </Tag>
                           </div>
                           <div className="text-xs text-slate-600 mt-0.5">
@@ -678,7 +739,11 @@ export const JobReviewPage: React.FC = () => {
                           loading={approve.isPending}
                           onClick={confirmPublishAgreementJob}
                         >
-                          Công khai tin tuyển dụng
+                          {job.serviceTypeCode === 'CV_SOURCING'
+                            ? 'Duyệt HĐ & Yêu cầu đặt cọc'
+                            : isStandardUnpaid
+                              ? 'Duyệt HĐ & Yêu cầu thanh toán'
+                              : 'Công khai tin tuyển dụng'}
                         </Button>
                       </div>
                     </div>
@@ -711,6 +776,19 @@ export const JobReviewPage: React.FC = () => {
                             )}
                           </p>
                         </div>
+                      </div>
+
+                      {/* Nút chỉ thị rõ: Phải đợi Client đặt cọc / thanh toán gói mới cho công khai */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Tooltip title="Doanh nghiệp cần nộp cọc / thanh toán gói trước khi tin được công khai. Hệ thống sẽ tự động kích hoạt tin sau khi nhận thanh toán.">
+                          <Button
+                            disabled
+                            icon={<ClockCircleOutlined />}
+                            className="rounded-lg h-9 font-medium text-slate-500 bg-slate-100 border-slate-200 cursor-not-allowed"
+                          >
+                            Đợi DN đặt cọc
+                          </Button>
+                        </Tooltip>
                       </div>
                     </div>
                   </div>

@@ -39,6 +39,7 @@ import { FilterPills, PageHero, Surface } from '@/features/admin-console/ui';
 import { screeningApi } from '@/services/api/hrApi';
 import '@/features/admin-console/admin-console.css';
 import { getApiErrorMessage } from '@/services/apiClient';
+import { jobsApi } from '@/services/api/jobsApi';
 import { formatMoney, useJobDetail, useJobMutations, useMyJobs } from './useJobQueries';
 import { JobDetailPanel, JobStatusTag } from './JobDetailPanel';
 import { PaymentDemoModal } from './PaymentDemoModal';
@@ -171,7 +172,10 @@ export const ClientJobsListPage: React.FC = () => {
     [jobs, filter]
   );
 
-  const notifyError = (err: unknown) => message.error(getApiErrorMessage(err));
+  const notifyError = (err: unknown) => {
+    message.error(getApiErrorMessage(err));
+    refetch();
+  };
 
   // Application count per published job (jobs never published cannot have applications).
   const countable = visibleJobs.filter((j) => j.status === 'ACTIVE' || j.status === 'PAUSED' || j.status === 'CLOSED');
@@ -194,11 +198,20 @@ export const ClientJobsListPage: React.FC = () => {
         'Bộ phận kiểm duyệt của HR Connect sẽ kiểm tra trước khi tin được hiển thị. Trong lúc chờ duyệt, bạn chưa thể sửa tin.',
       okText: 'Gửi duyệt',
       cancelText: 'Để sau',
-      onOk: () =>
-        mutations.submit
-          .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken })
-          .then((res) => message.success(res.message))
-          .catch(notifyError),
+      onOk: async () => {
+        try {
+          const fresh = await jobsApi.getById(job.jobId);
+          if (fresh.status !== 'DRAFT' && fresh.status !== 'REJECTED') {
+            message.info('Tin tuyển dụng đã ở trạng thái chờ duyệt hoặc đã được cập nhật.');
+            refetch();
+            return;
+          }
+          const res = await mutations.submit.mutateAsync({ jobId: job.jobId, token: fresh.concurrencyToken });
+          message.success(res.message);
+        } catch (err) {
+          notifyError(err);
+        }
+      },
     });
 
   const resume = (job: Job) =>
