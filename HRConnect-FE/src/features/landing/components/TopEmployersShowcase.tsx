@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CompanyLogo } from './CompanyLogo';
 
@@ -8,101 +8,74 @@ interface EmployerItem {
   name: string;
   companyId: string;
   industry: string;
-  description: string;
-  followers: string;
   category: 'ALL' | 'BANK' | 'TECH' | 'RETAIL' | 'FMCG';
   activeJobs: number;
-  bannerGradient: string;
 }
 
 const EMPLOYERS: EmployerItem[] = [
   {
     id: 'emp-001',
-    name: 'VNG Corporation',
-    companyId: 'vng',
-    industry: 'Công nghệ & Fintech',
-    description: 'Kỳ lân công nghệ đầu tiên tại Việt Nam, kiến tạo trải nghiệm số cho hàng chục triệu người dùng.',
-    followers: '12.5k Theo dõi',
-    category: 'TECH',
-    activeJobs: 28,
-    bannerGradient: 'from-[#1d59c1] via-[#007a5a] to-[#79d9b2]',
+    name: 'Techcombank',
+    companyId: 'techcombank',
+    industry: 'Ngân hàng & Tài chính',
+    category: 'BANK',
+    activeJobs: 39,
   },
   {
     id: 'emp-002',
-    name: 'FPT Software',
+    name: 'FPT Telecom',
     companyId: 'fpt',
     industry: 'Công nghệ thông tin & Viễn thông',
-    description: 'Tập đoàn công nghệ dịch vụ phần mềm số 1 Đông Nam Á, môi trường làm việc toàn cầu năng động.',
-    followers: '35.2k Theo dõi',
     category: 'TECH',
-    activeJobs: 64,
-    bannerGradient: 'from-[#005f45] via-[#007a5a] to-[#1d59c1]',
+    activeJobs: 42,
   },
   {
     id: 'emp-003',
-    name: 'Techcombank',
-    companyId: 'techcombank',
-    industry: 'Ngân hàng & Tài chính số',
-    description: 'Ngân hàng dẫn đầu chuyển đổi số tại Việt Nam với chế độ đãi ngộ và lộ trình phát triển vượt trội.',
-    followers: '21.8k Theo dõi',
-    category: 'BANK',
-    activeJobs: 42,
-    bannerGradient: 'from-[#c03e05] via-[#1d59c1] to-[#007a5a]',
-  },
-  {
-    id: 'emp-004',
     name: 'Viettel Solutions',
     companyId: 'viettel',
     industry: 'Viễn thông & Công nghệ số',
-    description: 'Tiên phong kiến tạo xã hội số, xây dựng các giải pháp số quy mô quốc gia và khu vực.',
-    followers: '29.4k Theo dõi',
     category: 'TECH',
     activeJobs: 58,
-    bannerGradient: 'from-[#ba1a1a] via-[#c03e05] to-[#1d59c1]',
+  },
+  {
+    id: 'emp-004',
+    name: 'Vinamilk Group',
+    companyId: 'vinamilk',
+    industry: 'Bán lẻ & FMCG',
+    category: 'FMCG',
+    activeJobs: 26,
   },
   {
     id: 'emp-005',
-    name: 'Vinamilk Corporation',
-    companyId: 'vinamilk',
-    industry: 'Bán lẻ & FMCG',
-    description: 'Thương hiệu sữa quốc gia số 1 Việt Nam, môi trường làm việc lý tưởng hàng đầu châu Á.',
-    followers: '18.7k Theo dõi',
-    category: 'FMCG',
-    activeJobs: 26,
-    bannerGradient: 'from-[#0f52ba] via-[#1d59c1] to-[#007a5a]',
+    name: 'Shopee Vietnam',
+    companyId: 'shopee',
+    industry: 'Thương mại điện tử & Tech',
+    category: 'RETAIL',
+    activeJobs: 34,
   },
   {
     id: 'emp-006',
-    name: 'Shopee Vietnam HQ',
-    companyId: 'shopee',
-    industry: 'Thương mại điện tử & Tech',
-    description: 'Hệ sinh thái TMĐT số 1 khu vực, môi trường làm việc sáng tạo, năng động và đãi ngộ top đầu.',
-    followers: '45.1k Theo dõi',
-    category: 'RETAIL',
-    activeJobs: 34,
-    bannerGradient: 'from-[#ff6b35] via-[#c03e05] to-[#982e00]',
-  },
-  {
-    id: 'emp-007',
     name: 'VPBank',
     companyId: 'vpbank',
     industry: 'Ngân hàng TMCP VN Thịnh Vượng',
-    description: 'Ngân hàng có tốc độ tăng trưởng bứt phá, văn hóa doanh nghiệp đổi mới và đãi ngộ nhân tài hấp dẫn.',
-    followers: '19.3k Theo dõi',
     category: 'BANK',
-    activeJobs: 48,
-    bannerGradient: 'from-[#059669] via-[#007a5a] to-[#0f52ba]',
+    activeJobs: 64,
+  },
+  {
+    id: 'emp-007',
+    name: 'V-Tech Solutions',
+    companyId: 'vtech',
+    industry: 'Phần mềm & AI Solutions',
+    category: 'TECH',
+    activeJobs: 18,
   },
   {
     id: 'emp-008',
-    name: 'NovaTech Innovation Hub',
+    name: 'NovaTech Hub',
     companyId: 'novatech',
-    industry: 'SaaS & AI Solutions',
-    description: 'Vườn ươm công nghệ AI thế hệ mới, tiên phong phát triển các ứng dụng GenAI cho doanh nghiệp.',
-    followers: '8.9k Theo dõi',
+    industry: 'SaaS & Trí tuệ Nhân tạo',
     category: 'TECH',
     activeJobs: 15,
-    bannerGradient: 'from-[#4338ca] via-[#1d59c1] to-[#007a5a]',
   },
 ];
 
@@ -123,29 +96,31 @@ export const TopEmployersShowcase: React.FC = () => {
   );
 
   return (
-    <section className="bg-slate-50/70 py-10 md:py-12 border-b border-slate-200/80">
+    <section className="bg-slate-50/60 py-10 md:py-12 border-b border-slate-200/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header (Chuẩn code.html lines 444-453) */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#007a5a] block mb-1">
-              Môi trường làm việc lý tưởng
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#131b2e] m-0">
-              Top Doanh Nghiệp Tiêu Biểu
+        {/* Banner Vàng Kim / Đồng Sang Trọng Chuẩn TopCV Pro */}
+        <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-900 text-white rounded-2xl p-6 sm:p-7 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-lg relative overflow-hidden">
+          <div className="pointer-events-none absolute -right-8 -bottom-8 h-44 w-44 rounded-full bg-yellow-400/20 blur-2xl" />
+
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-200 mb-1">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Đối tác tuyển dụng chiến lược</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white m-0">
+              Thương hiệu lớn tiêu biểu
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 mb-0">
-              Khám phá các tổ chức hàng đầu với văn hóa doanh nghiệp cởi mở và đãi ngộ cạnh tranh
+            <p className="mt-1 text-xs sm:text-sm text-amber-100 m-0">
+              Hàng trăm thương hiệu doanh nghiệp uy tín hàng đầu đang tuyển dụng trên HR Connect Pro
             </p>
           </div>
 
           <button
             type="button"
             onClick={() => navigate('/jobs')}
-            className="inline-flex items-center gap-1 text-sm font-semibold text-[#007a5a] hover:text-[#005f45] hover:underline cursor-pointer self-start md:self-auto"
+            className="relative z-10 shrink-0 bg-gradient-to-r from-amber-200 to-yellow-400 hover:from-amber-100 hover:to-yellow-300 text-amber-950 font-extrabold px-6 py-2.5 rounded-xl text-sm shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
           >
-            <span>Khám phá 500+ công ty hàng đầu</span>
-            <ChevronRight className="h-4 w-4" />
+            Pro Company ⭐
           </button>
         </div>
 
@@ -158,10 +133,10 @@ export const TopEmployersShowcase: React.FC = () => {
                 key={tab.id}
                 type="button"
                 onClick={() => setSelectedCat(tab.id as any)}
-                className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-[#007a5a] text-white shadow-2xs'
-                    : 'bg-white border border-slate-200 text-slate-700 hover:border-[#79d9b2] hover:bg-[#eaedff]/30'
+                    ? 'bg-amber-800 text-white shadow-2xs'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:border-amber-300 hover:bg-amber-50/50'
                 }`}
               >
                 {tab.label}
@@ -170,48 +145,33 @@ export const TopEmployersShowcase: React.FC = () => {
           })}
         </div>
 
-        {/* Company Cards Grid (Chuẩn code.html lines 455-534) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Grid các thương hiệu lớn với Logo to rõ ràng ở giữa và hiệu ứng hover */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {filteredEmployers.map((emp) => (
             <div
               key={emp.id}
               onClick={() => navigate(`/jobs?company=${encodeURIComponent(emp.name)}`)}
-              className="bg-white rounded-xl overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group border border-slate-200/90 hover:border-[#79d9b2] hover:-translate-y-0.5 cursor-pointer"
+              className="bg-white rounded-xl border border-slate-200 hover:border-amber-400 hover:shadow-lg transition-all p-5 flex flex-col items-center text-center cursor-pointer group hover:scale-[1.02]"
             >
-              <div>
-                {/* Banner Gradient with Overlapping Logo */}
-                <div className={`h-24 bg-gradient-to-r ${emp.bannerGradient} relative`}>
-                  <div className="absolute -bottom-6 left-4 w-14 h-14 rounded-xl bg-white p-1 shadow-md border border-slate-100 flex items-center justify-center">
-                    <CompanyLogo id={emp.companyId} name={emp.name} size={38} />
-                  </div>
-                </div>
-
-                {/* Company Info */}
-                <div className="pt-8 px-4 pb-3">
-                  <div className="flex items-center justify-between gap-1">
-                    <h3 className="font-bold text-sm sm:text-base text-[#131b2e] group-hover:text-[#007a5a] transition-colors line-clamp-1 m-0">
-                      {emp.name}
-                    </h3>
-                    <span className="text-[11px] text-slate-400 font-medium shrink-0">
-                      {emp.followers}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed mb-0">
-                    {emp.description}
-                  </p>
-                </div>
+              {/* Logo to rõ ràng ở giữa */}
+              <div className="w-16 h-16 rounded-xl border border-slate-200 p-2 flex items-center justify-center bg-white shadow-2xs mb-3 group-hover:scale-110 transition-transform">
+                <CompanyLogo id={emp.companyId} name={emp.name} size={44} />
               </div>
 
-              {/* Bottom Action Row */}
-              <div className="px-4 pb-3.5 pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-[#005f45] bg-[#95f5ce]/40 px-2 py-0.5 rounded-md">
-                  {emp.activeJobs} vị trí đang mở
-                </span>
-                <span className="text-xs font-semibold text-[#1d59c1] group-hover:underline flex items-center gap-0.5">
-                  <span>Xem việc làm</span>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </span>
-              </div>
+              {/* Tên công ty */}
+              <h3 className="text-sm font-bold text-slate-900 group-hover:text-amber-700 transition-colors line-clamp-1 m-0">
+                {emp.name}
+              </h3>
+
+              {/* Lĩnh vực */}
+              <p className="text-xs text-slate-500 line-clamp-1 mt-0.5 mb-0 font-medium">
+                {emp.industry}
+              </p>
+
+              {/* Số lượng vị trí */}
+              <span className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full mt-3">
+                Đang tuyển {emp.activeJobs} vị trí
+              </span>
             </div>
           ))}
         </div>
