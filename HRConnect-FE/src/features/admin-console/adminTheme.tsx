@@ -17,12 +17,12 @@ export const adminTokens = {
   border: '#E2E8F0',
   text: '#0F172A',
   textMuted: '#475569',
-  primary: '#047857',
-  primaryHover: '#065F46',
-  primaryBg: '#ECFDF5',
+  primary: '#2563EB',
+  primaryHover: '#1D4ED8',
+  primaryBg: '#EFF6FF',
   danger: '#B91C1C',
   warning: '#B45309',
-  info: '#1D4ED8',
+  info: '#2563EB',
   mono: "'JetBrains Mono', 'Cascadia Code', Consolas, monospace",
 } as const;
 
@@ -40,15 +40,15 @@ export const AdminScope: React.FC<{ children: React.ReactNode }> = ({ children }
         colorError: adminTokens.danger,
         colorWarning: adminTokens.warning,
         colorInfo: adminTokens.info,
-        colorSuccess: adminTokens.primary,
+        colorSuccess: '#16A34A',
         colorText: adminTokens.text,
         colorTextSecondary: adminTokens.textMuted,
         colorBorder: adminTokens.border,
         borderRadius: 8,
       },
       components: {
-        Table: { headerBg: '#F1F5F9', headerColor: adminTokens.textMuted, cellPaddingBlock: 10, rowHoverBg: '#F8FAFC' },
-        Button: { primaryShadow: 'none', dangerShadow: 'none', defaultShadow: 'none' },
+        Table: { headerBg: '#F1F5F9', headerColor: adminTokens.textMuted, cellPaddingBlock: 12, cellPaddingInline: 14, rowHoverBg: '#F8FAFC' },
+        Button: { primaryShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', dangerShadow: 'none', defaultShadow: 'none' },
       },
     }}
   >
@@ -89,16 +89,16 @@ export const StatusBadge: React.FC<{ tone: Tone; children: React.ReactNode }> = 
   </Tag>
 );
 
-/** Shown on Admin pages whose backend API does not exist yet. Never shows mock numbers. */
+/** Shown on Admin pages whose feature is in development. Never leaks internal spec strings. */
 export const NoApiYet: React.FC<{ feature: string; detail?: string }> = ({ feature, detail }) => (
   <div className="admin-surface py-16">
     <Empty
       image={Empty.PRESENTED_IMAGE_SIMPLE}
       description={
         <div className="space-y-1">
-          <div className="font-semibold text-slate-900">Chưa có dữ liệu</div>
+          <div className="font-semibold text-slate-900">Tính năng đang hoàn thiện</div>
           <div className="text-slate-600">
-            {feature} chưa có API ở backend, nên trang này chưa hiển thị số liệu.
+            Dữ liệu {feature.toLowerCase()} đang được cập nhật và hoàn thiện.
           </div>
           {detail && <div className="text-sm text-slate-500">{detail}</div>}
         </div>

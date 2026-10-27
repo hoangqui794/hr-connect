@@ -227,13 +227,12 @@ export const AdminAuditLogPage: React.FC = () => {
           </div>
         ) : (
           <Table<AuditLogItem>
-            className="admin-soft-table"
+            className="admin-soft-table w-full table-auto"
             rowKey="auditLogId"
             size="small"
             loading={list.isLoading}
             columns={columns}
             dataSource={page?.items ?? []}
-            scroll={{ x: 980 }}
             locale={{ emptyText: 'Không có sự kiện nào phù hợp bộ lọc.' }}
             onRow={(r) => ({
               onClick: () => setSelectedId(r.auditLogId),

@@ -8,9 +8,9 @@ import React from 'react';
 import { ConfigProvider } from 'antd';
 
 export const hrTokens = {
-  primary: '#0369A1',
-  primaryHover: '#075985',
-  primaryBg: '#F0F9FF',
+  primary: '#2563EB',
+  primaryHover: '#1D4ED8',
+  primaryBg: '#EFF6FF',
   canvas: '#F4F7FB',
   text: '#0F172A',
   textMuted: '#475569',

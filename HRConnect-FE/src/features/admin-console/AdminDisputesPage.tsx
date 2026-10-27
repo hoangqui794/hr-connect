@@ -131,7 +131,9 @@ export const AdminDisputesPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'action',
-      width: 110,
+      width: 112,
+      align: 'right',
+      className: 'w-28 text-right pr-4',
       render: (_, r) => (
         <Button
           size="small"
@@ -180,7 +182,7 @@ export const AdminDisputesPage: React.FC = () => {
         </div>
 
         <Table
-          className="admin-soft-table"
+          className="admin-soft-table w-full table-auto"
           rowKey="disputeId"
           columns={columns}
           dataSource={listQuery.data?.items ?? []}

@@ -921,7 +921,7 @@ export const ApplicationWorkbench: React.FC<{
                               icon={<ExperimentOutlined />}
                               loading={retry.isPending}
                               onClick={() => retry.mutate()}
-                              className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600"
+                              className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
                             >
                               Yêu cầu chấm lại
                             </Button>

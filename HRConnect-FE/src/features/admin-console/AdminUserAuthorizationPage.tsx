@@ -53,6 +53,58 @@ import type {
 import { adminTokens, formatDateTime } from './adminTheme';
 import { Initials, PageHero, PersonCell, StatusDot, Surface } from './ui';
 
+interface SystemRoleMatrixItem {
+  code: string;
+  name: string;
+  badgeClass: string;
+  description: string;
+  scope: string;
+  permissions: string[];
+}
+
+const DEFAULT_SYSTEM_MATRIX: SystemRoleMatrixItem[] = [
+  {
+    code: 'PLATFORM_ADMIN',
+    name: 'Quản trị viên',
+    badgeClass: 'bg-purple-50 text-purple-700 border border-purple-200/80',
+    description: 'Toàn quyền kiểm soát và quản trị cấu hình nền tảng, phân quyền RBAC, người dùng và đối soát tài chính.',
+    scope: 'Toàn hệ thống (Global)',
+    permissions: ['user.manage', 'role.manage', 'job.manage', 'finance.manage', 'system.configure'],
+  },
+  {
+    code: 'INTERNAL_HR',
+    name: 'Nhân sự nội bộ (Internal HR)',
+    badgeClass: 'bg-sky-50 text-sky-700 border border-sky-200/80',
+    description: 'Kiểm duyệt tin tuyển dụng, điều phối hợp đồng dịch vụ, sàng lọc ứng viên AI và đối soát nhận việc.',
+    scope: 'Vận hành tuyển dụng & Hợp đồng',
+    permissions: ['job.review', 'agreement.manage', 'screening.review', 'placement.reconcile'],
+  },
+  {
+    code: 'CLIENT_COMPANY_USER',
+    name: 'Doanh nghiệp tuyển dụng',
+    badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200/80',
+    description: 'Đăng tin tuyển dụng, quản lý quy trình phỏng vấn, ký kết thỏa thuận dịch vụ & kích hoạt bảo hành.',
+    scope: 'Không gian Doanh nghiệp',
+    permissions: ['job.create', 'candidate.view', 'interview.schedule', 'warranty.claim'],
+  },
+  {
+    code: 'AFFILIATE_RECRUITER',
+    name: 'Cộng tác viên / Headhunter',
+    badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200/80',
+    description: 'Tìm kiếm nguồn ứng viên, nộp hồ sơ vào tin tuyển dụng mở, theo dõi hoa hồng và yêu cầu quyết toán.',
+    scope: 'Mạng lưới tuyển dụng',
+    permissions: ['candidate.submit', 'commission.view', 'payout.request', 'dispute.create'],
+  },
+  {
+    code: 'CANDIDATE',
+    name: 'Ứng viên',
+    badgeClass: 'bg-slate-100 text-slate-700 border border-slate-200/80',
+    description: 'Ứng tuyển việc làm, khởi tạo CV trực tuyến, nhận gợi ý việc làm phù hợp từ AI và quản lý hồ sơ cá nhân.',
+    scope: 'Cá nhân ứng viên',
+    permissions: ['job.apply', 'cv.manage', 'profile.update'],
+  },
+];
+
 export const AdminUserAuthorizationPage: React.FC = () => {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
@@ -330,8 +382,9 @@ export const AdminUserAuthorizationPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'action',
-      width: 130,
+      width: 128,
       align: 'right',
+      className: 'w-32 text-right pr-4',
       render: (_, r) => {
         if (r.isSystem) {
           return (
@@ -491,19 +544,109 @@ export const AdminUserAuthorizationPage: React.FC = () => {
 
       {/* Main Content Area */}
       {!selectedUserId ? (
-        <Surface className="p-12 text-center">
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={
-              <div className="space-y-1">
-                <div className="font-semibold text-slate-800">Chưa chọn người dùng</div>
-                <div className="text-sm text-slate-500">
-                  Vui lòng chọn một người dùng từ thanh tìm kiếm ở trên để xem danh sách vai trò và ma trận quyền hạn hiệu lực.
+        <div className="space-y-5">
+          <Surface className="p-4 border-l-4 border-l-blue-600 bg-blue-50/30">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                <KeyOutlined className="text-base" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="font-bold text-slate-900 text-sm">Tra cứu Ma trận Vai trò & Quyền hạn Hệ thống</div>
+                <div className="text-xs text-slate-500">
+                  Chọn một người dùng từ thanh tìm kiếm ở trên để cấu hình phân quyền chi tiết. Dưới đây là ma trận đặc quyền và phạm vi trách nhiệm mặc định của hệ thống để tra cứu nhanh.
                 </div>
               </div>
-            }
-          />
-        </Surface>
+            </div>
+          </Surface>
+
+          <Surface>
+            <div className="flex items-center justify-between border-0 border-b border-solid border-slate-100 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <SafetyCertificateOutlined className="text-base text-blue-600" />
+                <span className="text-base font-bold text-slate-900">Ma trận vai trò mặc định (System Roles)</span>
+                <Badge count={DEFAULT_SYSTEM_MATRIX.length} style={{ backgroundColor: '#2563EB' }} />
+              </div>
+              <span className="text-xs text-slate-500">Quy tắc RBAC chuẩn hóa</span>
+            </div>
+
+            <Table<SystemRoleMatrixItem>
+              className="admin-soft-table w-full table-auto"
+              rowKey="code"
+              dataSource={DEFAULT_SYSTEM_MATRIX}
+              pagination={false}
+              columns={[
+                {
+                  title: 'Mã vai trò',
+                  dataIndex: 'code',
+                  key: 'code',
+                  width: 200,
+                  render: (code: string) => (
+                    <code
+                      style={{ fontFamily: adminTokens.mono }}
+                      className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-800"
+                    >
+                      {code}
+                    </code>
+                  ),
+                },
+                {
+                  title: 'Vai trò hiển thị',
+                  key: 'name',
+                  width: 220,
+                  render: (_, r) => (
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${r.badgeClass}`}
+                    >
+                      {r.name}
+                    </span>
+                  ),
+                },
+                {
+                  title: 'Mô tả & Phạm vi quyền hạn',
+                  key: 'desc',
+                  render: (_, r) => (
+                    <div>
+                      <div className="text-xs text-slate-700 leading-relaxed">{r.description}</div>
+                      <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                        <span>Phạm vi:</span>
+                        <strong className="text-slate-600">{r.scope}</strong>
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  title: 'Quyền hạn cơ sở',
+                  dataIndex: 'permissions',
+                  key: 'perms',
+                  width: 280,
+                  render: (perms: string[]) => (
+                    <div className="flex flex-wrap gap-1">
+                      {perms.map((p) => (
+                        <span
+                          key={p}
+                          className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-mono text-slate-600 border border-slate-200/80"
+                        >
+                          {p}
+                        </span>
+                      ))}
+                    </div>
+                  ),
+                },
+                {
+                  title: 'Phân loại',
+                  key: 'type',
+                  width: 140,
+                  align: 'right',
+                  render: () => (
+                    <Tag color="blue" icon={<LockOutlined />} className="m-0 font-medium text-xs">
+                      System Role
+                    </Tag>
+                  ),
+                },
+              ]}
+            />
+          </Surface>
+        </div>
       ) : authQuery.isLoading ? (
         <Surface className="p-8">
           <Skeleton active avatar paragraph={{ rows: 8 }} />
@@ -592,18 +735,17 @@ export const AdminUserAuthorizationPage: React.FC = () => {
                 <span className="text-base font-bold text-slate-900">Vai trò được gán</span>
                 <Badge
                   count={authData.roles?.length ?? 0}
-                  style={{ backgroundColor: '#047857' }}
+                  style={{ backgroundColor: '#2563EB' }}
                 />
               </div>
             </div>
 
             <Table<RbacUserRoleAssignment>
-              className="admin-soft-table"
+              className="admin-soft-table w-full table-auto"
               rowKey={(r) => `${r.roleId}_${r.status}`}
               columns={roleColumns}
               dataSource={authData.roles ?? []}
               pagination={false}
-              scroll={{ x: 860 }}
               locale={{ emptyText: <div className="py-8 text-slate-500">Chưa được gán vai trò nào.</div> }}
             />
           </Surface>
@@ -650,12 +792,11 @@ export const AdminUserAuthorizationPage: React.FC = () => {
             </div>
 
             <Table<RbacEffectivePermission>
-              className="admin-soft-table"
+              className="admin-soft-table w-full table-auto"
               rowKey="permissionId"
               columns={permissionColumns}
               dataSource={filteredEffectivePermissions}
               pagination={{ pageSize: 20, showSizeChanger: false, hideOnSinglePage: true }}
-              scroll={{ x: 860 }}
               locale={{ emptyText: <div className="py-8 text-slate-500">Không có quyền hiệu lực nào phù hợp.</div> }}
             />
           </Surface>

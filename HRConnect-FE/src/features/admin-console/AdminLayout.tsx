@@ -66,6 +66,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/admin/roles-permissions', label: 'Vai trò & Quyền', icon: <KeyOutlined /> },
       { to: '/admin/service-types', label: 'Loại dịch vụ', icon: <AppstoreOutlined /> },
       { to: '/admin/commission-rules', label: 'Quy tắc hoa hồng', icon: <DollarOutlined /> },
+      { to: '/admin/settings', label: 'Cài đặt hệ thống', icon: <SettingOutlined /> },
     ],
   },
   { group: 'Tài chính', items: [{ to: '/admin/payouts', label: 'Tài chính', icon: <BankOutlined /> }] },
@@ -74,12 +75,6 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { to: '/admin/reports', label: 'Báo cáo & Thống kê', icon: <BarChartOutlined /> },
       { to: '/admin/audit-trail', label: 'Nhật ký hệ thống', icon: <AuditOutlined /> },
-    ],
-  },
-  {
-    group: 'Chưa có API',
-    items: [
-      { to: '/admin/settings', label: 'Cài đặt hệ thống', icon: <SettingOutlined />, muted: true },
     ],
   },
 ];
@@ -191,10 +186,10 @@ export const AdminLayout: React.FC = () => {
                         className={({ isActive }) =>
                           [
                             'group flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium no-underline transition-colors duration-150',
-                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-emerald-400',
+                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-blue-500',
                             collapsed ? 'justify-center' : '',
                             isActive
-                              ? 'bg-white/[0.08] text-white shadow-[inset_3px_0_0_#34D399]'
+                              ? 'bg-slate-800 text-white font-medium rounded-lg border-l-2 border-blue-500'
                               : item.muted
                                 ? 'text-slate-400 font-normal hover:bg-white/[0.04] hover:text-slate-200'
                                 : 'text-slate-300 hover:bg-white/[0.05] hover:text-white',
@@ -267,7 +262,7 @@ export const AdminLayout: React.FC = () => {
             >
               <button
                 type="button"
-                className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"
+                className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
                 aria-label="Tài khoản"
               >
                 <AccountAvatar name={name} avatar={user?.avatar} size={34} />

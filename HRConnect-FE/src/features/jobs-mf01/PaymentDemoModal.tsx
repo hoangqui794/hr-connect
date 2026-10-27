@@ -229,7 +229,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
                   type="primary"
                   size="small"
                   icon={<CopyOutlined />}
-                  className="!h-6 !text-xs !bg-amber-600 hover:!bg-amber-500 font-medium"
+                  className="!h-6 !text-xs !bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium"
                   onClick={() => copyToClipboard(note, 'Nội dung chuyển khoản')}
                 >
                   Sao chép mã
@@ -284,7 +284,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
               size="middle"
               icon={<CheckCircleOutlined />}
               loading={paying}
-              className="!bg-indigo-600 hover:!bg-indigo-500 font-semibold shadow-xs"
+              className="!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold"
               onClick={handleConfirmPayment}
             >
               {isDepositMode ? 'Xác nhận nộp cọc' : 'Xác nhận đã thanh toán'}

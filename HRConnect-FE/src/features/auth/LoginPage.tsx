@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, message, Alert, Modal } from 'antd';
+import { Form, Input, Button, message, Alert, Modal, Dropdown } from 'antd';
 import {
   LockOutlined,
   MailOutlined,
@@ -26,6 +26,7 @@ import {
   ApartmentOutlined,
   TeamOutlined,
   SolutionOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore, type UserProfile, getInitials } from '@/stores/authStore';
@@ -347,6 +348,13 @@ export const LoginPage: React.FC = () => {
         description="Tiếp tục quản lý cơ hội nghề nghiệp, ứng viên và quy trình tuyển dụng của bạn."
         sideTitle="Kết nối tuyển dụng thông minh"
         sideDescription="Hệ sinh thái kết nối Doanh nghiệp, Headhunter và Ứng viên."
+        testimonial={{
+          quote: 'HR Connect giúp chúng tôi chuẩn hóa toàn bộ pipeline tuyển dụng và rút ngắn hơn 60% thời gian từ lúc lọc CV đến vòng phỏng vấn cuối cùng.',
+          author: 'Trần Minh Hoàng',
+          role: 'Head of Talent Acquisition',
+          company: 'V-Tech Group',
+          metrics: '60% Tốc độ tuyển',
+        }}
         benefits={[
           {
             icon: <ApartmentOutlined />,
@@ -472,31 +480,42 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {SHOW_DEMO_ACCOUNTS && (
-          <details className="group mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50">
-            <summary className="flex cursor-pointer list-none items-center justify-between px-3.5 py-2 text-xs font-bold text-slate-700">
-              <span className="flex items-center gap-1.5"><ThunderboltOutlined className="text-amber-500" /> Tài khoản kiểm thử</span>
-              <span className="text-[11px] font-medium text-slate-400 group-open:hidden">Mở danh sách</span>
-            </summary>
-            <div className="max-h-[145px] overflow-y-auto border-t border-slate-100 p-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-              {DEMO_ACCOUNTS.map((demo) => (
-                <button
-                  key={demo.role}
-                  type="button"
-                  disabled={submitting}
-                  onClick={() => handleQuickFill(demo)}
-                  className={`${demo.role === UserRole.ADMIN ? 'sm:col-span-2 ' : ''}flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 bg-white p-2 text-left transition hover:border-blue-300 hover:bg-blue-50/60 disabled:cursor-not-allowed disabled:opacity-50`}
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs" style={{ background: demo.badgeBg, color: demo.accentColor }}>
-                    {demo.icon}
-                  </span>
-                  <span className="min-w-0">
-                    <strong className="block truncate text-xs text-slate-800">{demo.title}</strong>
-                    <span className="block truncate text-[11px] text-slate-500">{demo.email}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </details>
+          <div className="mt-5 flex justify-center">
+            <Dropdown
+              menu={{
+                items: DEMO_ACCOUNTS.map((demo) => ({
+                  key: demo.role,
+                  label: (
+                    <div className="flex items-center gap-2.5 py-1 px-1">
+                      <span
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs"
+                        style={{ background: demo.badgeBg, color: demo.accentColor }}
+                      >
+                        {demo.icon}
+                      </span>
+                      <div className="min-w-0">
+                        <strong className="block text-xs text-slate-800">{demo.title}</strong>
+                        <span className="block text-[11px] text-slate-500">{demo.email}</span>
+                      </div>
+                    </div>
+                  ),
+                  onClick: () => handleQuickFill(demo),
+                })),
+              }}
+              trigger={['click']}
+              placement="top"
+            >
+              <button
+                type="button"
+                disabled={submitting}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ThunderboltOutlined className="text-amber-500 text-xs" />
+                <span>Tài khoản kiểm thử</span>
+                <DownOutlined className="text-[10px] text-slate-400" />
+              </button>
+            </Dropdown>
+          </div>
         )}
       </AuthPageShell>
 

@@ -414,7 +414,7 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
                     onClick={() => setSelectedIndustry(isActive && ind.key ? undefined : ind.key)}
                     className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
                       isActive
-                        ? 'bg-indigo-600 text-white shadow-sm'
+                        ? 'bg-blue-600 text-white shadow-sm'
                         : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900'
                     }`}
                   >

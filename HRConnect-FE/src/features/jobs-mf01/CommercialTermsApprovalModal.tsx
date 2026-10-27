@@ -165,7 +165,10 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
       okText={isRevision ? 'Cập nhật & Gửi hợp đồng' : 'Gửi hợp đồng cho Doanh nghiệp'}
       cancelText="Hủy"
       confirmLoading={loading}
-      okButtonProps={{ disabled: !data || defaults.isError }}
+      okButtonProps={{
+        disabled: !data || defaults.isError,
+        className: 'bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm active:scale-[0.98] font-medium border-0',
+      }}
       onCancel={onCancel}
       onOk={submit}
       destroyOnClose

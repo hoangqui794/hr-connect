@@ -9,7 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Divider, Drawer, Form, Input, Skeleton, Switch, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { DeleteOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { adminServiceTypesApi } from '@/services/api/adminApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { AdminServiceType, ServiceTypeAllowedRole, ServiceTypeInput } from '@/types/api/admin';
@@ -58,7 +58,7 @@ const RolePermissions: React.FC<{ serviceType: AdminServiceType }> = ({ serviceT
         được nộp hồ sơ vào tin. Thay đổi có hiệu lực ngay.
       </Typography.Paragraph>
       {draft.length === 0 ? (
-        <Alert type="info" showIcon message="Loại dịch vụ này chưa gán vai trò nào." description="Backend chưa có API liệt kê vai trò, nên chưa thể thêm vai trò mới từ giao diện." />
+        <Alert type="info" showIcon message="Chưa có vai trò nào được gán cho loại dịch vụ này." />
       ) : (
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -176,6 +176,25 @@ export const AdminServiceTypesPage: React.FC = () => {
       render: (v: boolean) => <StatusDot tone={v ? 'success' : 'neutral'}>{v ? 'Đang dùng' : 'Ngừng hoạt động'}</StatusDot>,
     },
     { title: 'Tạo lúc', dataIndex: 'createdAt', width: 150, render: (v: string) => <span className="tabular-nums">{formatDateTime(v)}</span> },
+    {
+      title: 'Thao tác',
+      key: 'actions',
+      width: 112,
+      align: 'right',
+      className: 'w-28 text-right pr-4',
+      render: (_, r) => (
+        <Button
+          size="small"
+          icon={<EditOutlined />}
+          onClick={(e) => {
+            e.stopPropagation();
+            setEditing(r);
+          }}
+        >
+          Sửa
+        </Button>
+      ),
+    },
   ];
 
   const current = editing && editing !== 'new' ? editing : null;
@@ -205,13 +224,12 @@ export const AdminServiceTypesPage: React.FC = () => {
           </div>
         ) : (
           <Table<AdminServiceType>
-            className="admin-soft-table"
+            className="admin-soft-table w-full table-auto"
             rowKey="id"
             loading={list.isLoading}
             columns={columns}
             dataSource={list.data ?? []}
             pagination={false}
-            scroll={{ x: 860 }}
             locale={{ emptyText: 'Chưa có loại dịch vụ nào.' }}
             onRow={(r) => ({
               onClick: () => setEditing(r),

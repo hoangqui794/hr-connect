@@ -47,7 +47,7 @@ export const AffiliatePerformancePage: React.FC = () => {
   ];
 
   const stats = [
-    { label: 'Lượt giới thiệu', value: data?.totalSubmissions, hint: 'Tổng hồ sơ đã gửi', icon: <SendOutlined />, color: '#5b3fd6', soft: '#f1efff' },
+    { label: 'Lượt giới thiệu', value: data?.totalSubmissions, hint: 'Tổng hồ sơ đã gửi', icon: <SendOutlined />, color: '#2563eb', soft: '#eff6ff' },
     { label: 'Được doanh nghiệp chọn', value: data?.totalShortlisted, hint: 'Hồ sơ qua sàng lọc', icon: <CheckCircleOutlined />, color: '#087a55', soft: '#eafaf3' },
     { label: 'Đã vào phỏng vấn', value: data?.totalInterviews, hint: 'Ứng viên có lịch phỏng vấn', icon: <TeamOutlined />, color: '#2563eb', soft: '#eef4ff' },
     { label: 'Tuyển dụng thành công', value: data?.totalPlacements, hint: `${successRate}% trên tổng lượt gửi`, icon: <TrophyOutlined />, color: '#a9550a', soft: '#fff6e8' },
@@ -75,7 +75,7 @@ export const AffiliatePerformancePage: React.FC = () => {
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
                 <div className="mb-2 flex items-end justify-between gap-3"><span className="text-sm font-semibold text-slate-700">Điểm chất lượng</span><span className="text-2xl font-bold text-slate-900">{qualityScore}<small className="text-sm font-medium text-slate-500">/100</small></span></div>
-                <Progress percent={qualityScore} showInfo={false} strokeColor="#5b3fd6" trailColor="#e8eaf1" />
+                <Progress percent={qualityScore} showInfo={false} strokeColor="#2563eb" trailColor="#e8eaf1" />
                 <p className="mb-0 mt-3 text-[13px] leading-relaxed text-slate-600">Mức hiện tại: <strong className="text-slate-900">{qualityLabel(data?.ratingLabel)}</strong>.</p>
               </div>
               <div>
@@ -98,7 +98,7 @@ export const AffiliatePerformancePage: React.FC = () => {
 
       <Surface className="p-6">
         <AffiliateSectionHeading title="Lịch sử các kỳ đánh giá" description="So sánh kết quả theo thời gian để nhận biết xu hướng chất lượng hồ sơ." />
-        <Table className="admin-soft-table" rowKey="affiliatePerformanceId" columns={historyColumns} dataSource={data?.history ?? []} loading={performance.isLoading} pagination={false} scroll={{ x: 820 }} locale={{ emptyText: <div className="py-8 text-slate-500">Chưa có dữ liệu của kỳ đánh giá trước.</div> }} />
+        <Table className="admin-soft-table w-full table-auto" rowKey="affiliatePerformanceId" columns={historyColumns} dataSource={data?.history ?? []} loading={performance.isLoading} pagination={false} locale={{ emptyText: <div className="py-8 text-slate-500">Chưa có dữ liệu của kỳ đánh giá trước.</div> }} />
       </Surface>
     </div>
   );

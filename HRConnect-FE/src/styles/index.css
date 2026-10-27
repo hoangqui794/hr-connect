@@ -4,9 +4,9 @@
 
 /* ─── CSS Custom Properties (High-End Modern Light SaaS - Emerald Tech) ─── */
 :root {
-  --brand-primary: #00b14f;
-  --brand-primary-dark: #009643;
-  --brand-primary-light: #10b981;
+  --brand-primary: #2563eb;
+  --brand-primary-dark: #1d4ed8;
+  --brand-primary-light: #3b82f6;
   --sidebar-bg: #ffffff;
   --sidebar-width: 240px;
   --sidebar-collapsed-width: 64px;
@@ -153,9 +153,9 @@ body {
 }
 
 .ant-menu .ant-menu-item-selected {
-  background: #ecfdf5 !important;
-  color: #009643 !important;
-  border-left: 2px solid #00b14f !important;
+  background: #eff6ff !important;
+  color: #2563eb !important;
+  border-left: 2px solid #2563eb !important;
   font-weight: 600 !important;
 }
 
@@ -177,9 +177,9 @@ body {
 }
 
 .admin-console-sider .ant-menu .ant-menu-item-selected {
-  background: #047857 !important;
+  background: #2563eb !important;
   color: #ffffff !important;
-  border-left: 2px solid #6ee7b7 !important;
+  border-left: 2px solid #60a5fa !important;
 }
 
 /* ─── High-End Modern Light SaaS Surfaces ────────────────── */
@@ -318,6 +318,11 @@ body {
   font-family: 'Be Vietnam Pro', 'Inter', sans-serif !important;
 }
 
+.ant-table table {
+  width: 100% !important;
+  table-layout: auto !important;
+}
+
 .ant-table-thead > tr > th {
   background: #f8fafc !important;
   font-weight: 600 !important;
@@ -326,19 +331,27 @@ body {
   text-transform: uppercase !important;
   color: #334155 !important;
   border-bottom: 1px solid #e2e8f0 !important;
-  padding: 13px 16px !important;
+  padding: 12px 14px !important; /* px-3.5 py-3 */
 }
 
 .ant-table-tbody > tr > td {
   background: #ffffff !important;
   border-bottom: 1px solid #f1f5f9 !important;
   color: #0f172a !important;
-  padding: 14px 16px !important;
+  padding: 12px 14px !important; /* px-3.5 py-3 */
   font-size: 13.5px !important;
 }
 
 .ant-table-tbody > tr:hover > td {
-  background: rgba(236, 253, 245, 0.45) !important; /* emerald-50/45 hover tint */
+  background: rgba(239, 246, 255, 0.5) !important; /* blue-50 hover tint */
+}
+
+.table-action-col {
+  width: 128px !important;
+  min-width: 128px !important;
+  text-align: right !important;
+  padding-right: 16px !important;
+  white-space: nowrap !important;
 }
 
 .ant-table-placeholder .ant-empty-description {

@@ -362,11 +362,11 @@ export const AffiliateCommissionsPage: React.FC = () => {
       {payouts.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(payouts.error)} />}
       <Surface>
         <Table
+          className="admin-soft-table w-full table-auto"
           rowKey="payoutId"
           columns={payoutColumns}
           dataSource={payouts.data?.items}
           loading={payouts.isFetching}
-          scroll={{ x: 560 }}
           pagination={{
             current: payoutPage,
             pageSize: PAGE_SIZE,

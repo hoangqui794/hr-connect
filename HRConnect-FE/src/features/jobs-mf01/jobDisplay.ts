@@ -176,13 +176,26 @@ export const clientActions = (status: JobStatus) => ({
 const moneyFormatter = (currency: string) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency, maximumFractionDigits: 0 });
 
+const formatAmount = (val: number, currency: string): string => {
+  if (currency === 'VND' || !currency) {
+    if (val >= 1_000_000_000 && val % 100_000_000 === 0) {
+      return `${val / 1_000_000_000}B VNĐ`;
+    }
+    if (val >= 1_000_000) {
+      const millions = val / 1_000_000;
+      return `${Number.isInteger(millions) ? millions : millions.toFixed(1)}M VNĐ`;
+    }
+  }
+  return moneyFormatter(currency || 'VND').format(val);
+};
+
 export const formatSalary = (job?: Partial<Pick<Job, 'salaryMin' | 'salaryMax' | 'salaryNegotiable' | 'currencyCode'>> | null): string => {
   if (!job) return 'Chưa công bố';
-  const fmt = moneyFormatter(job.currencyCode || 'VND');
+  const curr = job.currencyCode || 'VND';
   const { salaryMin: min, salaryMax: max } = job;
-  if (min != null && max != null) return `${fmt.format(min)} – ${fmt.format(max)}`;
-  if (min != null) return `Từ ${fmt.format(min)}`;
-  if (max != null) return `Đến ${fmt.format(max)}`;
+  if (min != null && max != null) return `${formatAmount(min, curr)} – ${formatAmount(max, curr)}`;
+  if (min != null) return `Từ ${formatAmount(min, curr)}`;
+  if (max != null) return `Đến ${formatAmount(max, curr)}`;
   return job.salaryNegotiable ? 'Thỏa thuận' : 'Chưa công bố';
 };
 

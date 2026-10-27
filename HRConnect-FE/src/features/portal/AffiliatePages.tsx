@@ -36,6 +36,7 @@ import {
   SendOutlined,
   UserAddOutlined,
   ArrowLeftOutlined,
+  BankOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   CalendarOutlined,
@@ -50,6 +51,7 @@ import {
   SafetyCertificateOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import { UploadCloud } from 'lucide-react';
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
@@ -102,7 +104,7 @@ export const AffiliateHomePage: React.FC = () => {
   const p = perf.data;
 
   const kpis = [
-    { label: 'Lượt giới thiệu', value: p?.totalSubmissions, hint: 'Tổng hồ sơ bạn đã gửi', icon: <SendOutlined />, color: '#5b3fd6', soft: '#f1efff' },
+    { label: 'Lượt giới thiệu', value: p?.totalSubmissions, hint: 'Tổng hồ sơ bạn đã gửi', icon: <SendOutlined />, color: '#2563eb', soft: '#eff6ff' },
     { label: 'Được doanh nghiệp chọn', value: p?.totalShortlisted, hint: 'Hồ sơ đã qua sàng lọc', icon: <CheckCircleOutlined />, color: '#087a55', soft: '#eafaf3' },
     { label: 'Đã vào phỏng vấn', value: p?.totalInterviews, hint: 'Ứng viên có lịch phỏng vấn', icon: <TeamOutlined />, color: '#2563eb', soft: '#eef4ff' },
     { label: 'Tuyển dụng thành công', value: p?.totalPlacements, hint: `Tỉ lệ thành công ${Math.round((p?.submissionToHireRate ?? 0) * 100)}%`, icon: <TrophyOutlined />, color: '#a9550a', soft: '#fff6e8' },
@@ -111,7 +113,7 @@ export const AffiliateHomePage: React.FC = () => {
   const total = Math.max(1, p?.totalSubmissions ?? 0);
   const chart = [
     { label: 'Đã được ghi nhận', value: p?.totalShortlisted ?? 0, color: '#18a36f' },
-    { label: 'Đang xử lý', value: Math.max(0, (p?.totalSubmissions ?? 0) - (p?.totalShortlisted ?? 0)), color: '#6c4df6' },
+    { label: 'Đang xử lý', value: Math.max(0, (p?.totalSubmissions ?? 0) - (p?.totalShortlisted ?? 0)), color: '#3b82f6' },
     { label: 'Không phù hợp', value: Math.max(0, total - (p?.totalShortlisted ?? 0) - Math.max(0, (p?.totalSubmissions ?? 0) - (p?.totalShortlisted ?? 0))), color: '#d8deea' },
   ];
 
@@ -205,11 +207,21 @@ export const AffiliateHomePage: React.FC = () => {
         <div className="affiliate-opportunity-grid">
           {(opportunities.data ?? []).map((job) => (
             <article key={job.jobId} className="affiliate-opportunity-card">
-              <div className="affiliate-opportunity-card__head"><span><UserAddOutlined /></span><button type="button" aria-label={`Lưu ${job.title}`}>♡</button></div>
+              <div className="affiliate-opportunity-card__head">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 border border-solid border-blue-100 font-bold">
+                  <BankOutlined />
+                </span>
+                <button type="button" aria-label={`Lưu ${job.title}`}>♡</button>
+              </div>
               <h3>{job.title}</h3>
               <p>{job.companyName || 'Doanh nghiệp tuyển dụng'}</p>
               <div className="affiliate-opportunity-meta"><span><EnvironmentOutlined /> {job.location || 'Toàn quốc'}</span></div>
-              <strong>Hoa hồng theo chính sách</strong>
+              <div className="my-2.5 p-2.5 rounded-lg bg-emerald-50 border border-solid border-emerald-100">
+                <div className="text-[10.5px] uppercase font-semibold text-emerald-800">Hoa hồng dự kiến</div>
+                <div className="text-base font-bold text-emerald-700">
+                  {job.sourcingPricePerCv ? `${job.sourcingPricePerCv.toLocaleString('vi-VN')} đ/CV` : job.feeMultiplier ? `${job.feeMultiplier} tháng lương` : '15.000.000 đ'}
+                </div>
+              </div>
               <Button type="primary" block onClick={() => navigate(`/affiliate/submit-candidate?job=${job.jobId}`)} disabled={!verified}>Giới thiệu ngay <RightOutlined /></Button>
             </article>
           ))}
@@ -462,21 +474,26 @@ export const AffiliateSubmitPage: React.FC = () => {
                       if (!e) setFile(f);
                       return false;
                     }}
-                    className="!rounded-xl"
+                    className="!border-2 !border-dashed !border-slate-300 hover:!border-blue-500 !bg-slate-50/50 hover:!bg-blue-50/20 !rounded-xl transition-all"
                   >
                     {file ? (
-                      <p className="m-0 py-1 text-sm text-slate-800">
-                        <FilePdfOutlined className="mr-1.5 text-red-700" aria-hidden />
-                        {file.name} · {fileSize(file.size)} <span className="text-slate-500">(bấm để đổi)</span>
-                      </p>
+                      <div className="py-2 text-center">
+                        <FilePdfOutlined className="text-2xl text-red-600 mb-1" aria-hidden />
+                        <div className="text-sm font-semibold text-slate-800">{file.name}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          {fileSize(file.size)} · <span className="text-blue-600 font-medium hover:underline">Bấm để đổi file</span>
+                        </div>
+                      </div>
                     ) : (
-                      <>
-                        <p className="ant-upload-drag-icon !mb-1">
-                          <InboxOutlined className="!text-[color:var(--console-accent)]" />
-                        </p>
-                        <p className="ant-upload-text !mb-1 !text-sm !font-semibold">Kéo thả CV vào đây hoặc bấm để chọn file</p>
-                        <p className="ant-upload-hint">Chỉ nhận PDF, dung lượng tối đa {MAX_CV_MB}MB.</p>
-                      </>
+                      <div className="py-4 text-center">
+                        <div className="flex justify-center mb-2">
+                          <span className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-blue-50 text-blue-600 border border-solid border-blue-100">
+                            <UploadCloud className="w-5 h-5 text-blue-600" />
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-slate-800 mb-1">Kéo thả CV vào đây hoặc bấm để chọn file</p>
+                        <p className="text-xs text-slate-500 m-0">Chỉ nhận PDF, dung lượng tối đa {MAX_CV_MB}MB.</p>
+                      </div>
                     )}
                   </Upload.Dragger>
                   {fileError && <div className="mt-1 text-[13px] text-red-700" role="alert">{fileError}</div>}
@@ -593,15 +610,23 @@ const SubmissionStatusBadge: React.FC<{ status: string; className?: string }> = 
 
 const referralProgressPresentation = (progress: string) => {
   const normalized = progress.toLowerCase();
-  if (normalized.includes('đi làm')) return { tone: 'success', icon: <TrophyOutlined /> };
+  if (normalized.includes('đi làm')) return { tone: 'success', icon: <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2 inline-block" /> };
   if (normalized.includes('phỏng vấn')) return { tone: 'info', icon: <TeamOutlined /> };
-  if (normalized.includes('được chọn')) return { tone: 'violet', icon: <CheckCircleOutlined /> };
+  if (normalized.includes('được chọn')) return { tone: 'info', icon: <CheckCircleOutlined /> };
   if (normalized.includes('offer') || normalized.includes('đề nghị')) return { tone: 'warning', icon: <FileDoneOutlined /> };
   return { tone: 'neutral', icon: <ClockCircleOutlined /> };
 };
 
 const ReferralProgressState: React.FC<{ progress: string }> = ({ progress }) => {
   const presentation = referralProgressPresentation(progress);
+  if (progress.toLowerCase().includes('đi làm')) {
+    return (
+      <div className="inline-flex items-center text-xs font-semibold text-slate-800" role="status">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2 inline-block"></span>
+        Đã đi làm
+      </div>
+    );
+  }
   return (
     <div className={`affiliate-referral-state is-${presentation.tone}`} role="status">
       <span className="affiliate-referral-state__icon" aria-hidden>{presentation.icon}</span>
@@ -703,10 +728,14 @@ export const AffiliateSubmissionsPage: React.FC = () => {
       key: 'a',
       width: 165,
       render: (_, r) => (
-        <div className="flex flex-wrap gap-2">
-          <Button className="affiliate-view-detail-button" size="small" icon={<EyeOutlined />} onClick={() => navigate(`/affiliate/submissions/${r.submissionId}`)}>
-            Xem chi tiết
-          </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className="text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline inline-flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
+            onClick={() => navigate(`/affiliate/submissions/${r.submissionId}`)}
+          >
+            <EyeOutlined /> Xem chi tiết
+          </button>
           {r.status === 'PENDING_CONSENT' && (
             <Button
               size="small"
@@ -785,8 +814,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
           </div>
         ) : (
           <Table<AffiliateSubmission>
-            className="admin-soft-table"
-            scroll={{ x: 890 }}
+            className="admin-soft-table w-full table-auto"
             rowKey="submissionId"
             columns={columns}
             dataSource={list.data?.items ?? []}
@@ -943,7 +971,7 @@ export const AffiliateSubmissionDetailPage: React.FC = () => {
           </dl>
         </Surface>
         <Surface className="affiliate-detail-card">
-          <div className="affiliate-detail-card__heading is-violet"><FileDoneOutlined /><h2>Hồ sơ đã gửi</h2></div>
+          <div className="affiliate-detail-card__heading"><FileDoneOutlined /><h2>Hồ sơ đã gửi</h2></div>
           <dl>
             <div><dt>CV ứng tuyển</dt><dd>{submission.cvTitle || submission.cvFileName || 'Chưa có tên CV'}</dd></div>
             <div><dt>Thời gian gửi</dt><dd>{fmt(submission.submittedAt)}</dd></div>
@@ -1049,7 +1077,18 @@ export const AffiliateCandidatesPage: React.FC = () => {
       title: <span className="sr-only">Thao tác</span>,
       key: 'actions',
       width: 135,
-      render: (_, row) => <Button className="affiliate-view-detail-button" size="small" icon={<EyeOutlined />} onClick={(event) => { event.stopPropagation(); setOpenId(row.candidateId); }}>Xem hồ sơ</Button>,
+      render: (_, row) => (
+        <button
+          type="button"
+          className="text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline inline-flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
+          onClick={(event) => {
+            event.stopPropagation();
+            setOpenId(row.candidateId);
+          }}
+        >
+          <EyeOutlined /> Xem hồ sơ
+        </button>
+      ),
     },
   ];
 
@@ -1058,7 +1097,7 @@ export const AffiliateCandidatesPage: React.FC = () => {
       <AffiliatePageHeader
         title="Kho ứng viên"
         description={`${list.data?.total ?? 0} ứng viên bạn đã giới thiệu. Tìm lại hồ sơ và sử dụng CV phù hợp cho cơ hội tuyển dụng mới.`}
-        actions={<Button type="primary" size="large" icon={<UserAddOutlined />} onClick={() => navigate('/affiliate/submit-candidate')}>Giới thiệu ứng viên mới</Button>}
+        actions={<Button type="primary" size="large" icon={<UserAddOutlined />} className="!bg-blue-600 hover:!bg-blue-700 !text-white rounded-lg shadow-sm font-medium" onClick={() => navigate('/affiliate/submit-candidate')}>Giới thiệu ứng viên mới</Button>}
       />
       <Surface>
         <div className="affiliate-library-toolbar">
@@ -1080,8 +1119,7 @@ export const AffiliateCandidatesPage: React.FC = () => {
           />
         </div>
         <Table<LibraryCandidate>
-          className="admin-soft-table affiliate-library-table"
-          scroll={{ x: 930 }}
+          className="admin-soft-table affiliate-library-table w-full table-auto"
           rowKey="candidateId"
           columns={columns}
           dataSource={list.data?.items ?? []}
@@ -1180,8 +1218,7 @@ export const AffiliateAttributionsPage: React.FC = () => {
       </section>
       <Surface>
         <Table<AffiliateAttribution>
-          className="admin-soft-table affiliate-attribution-table"
-          scroll={{ x: 995 }}
+          className="admin-soft-table affiliate-attribution-table w-full table-auto"
           rowKey="attributionId"
           columns={columns}
           dataSource={list.data?.items ?? []}

@@ -35,6 +35,7 @@ import {
   EditOutlined,
   EyeOutlined,
   FilePdfOutlined,
+  FileTextOutlined,
   InboxOutlined,
   SearchOutlined,
   ArrowLeftOutlined,
@@ -136,9 +137,40 @@ const CandidateDetailStatus: React.FC<{ stage: ReturnType<typeof candidateStage>
   </span>
 );
 
+const STANDARDIZED_STEPS = [
+  'Đã nộp',
+  'Đang được xem',
+  'Phỏng vấn',
+  'Đi làm',
+] as const;
+
+const getStandardizedStepIndex = (group: CandidateApplicationDisplayGroup): number => {
+  switch (group) {
+    case 'SUBMITTED':
+      return 0;
+    case 'IN_REVIEW':
+    case 'SELECTED':
+      return 1;
+    case 'INTERVIEW':
+    case 'OFFER':
+      return 2;
+    case 'HIRED':
+      return 3;
+    default:
+      return 0;
+  }
+};
+
+const parseJobTitleAndCode = (title: string) => {
+  const match = title.match(/^\[(.*?)\]\s*(.*)$/);
+  if (match) {
+    return { code: match[1], title: match[2] };
+  }
+  return { code: null, title };
+};
+
 const PublicApplicationProgress: React.FC<{ application: CandidateApplication }> = ({ application }) => {
   const stage = candidateDisplayStage(application.displayGroup, application.displayLabel);
-  const statusClass = application.displayGroup.toLowerCase().replace(/_/g, '-');
 
   if (stage.terminalMessage && application.displayGroup !== 'HIRED') {
     const outcomeClass = application.displayGroup === 'NOT_SELECTED'
@@ -155,18 +187,47 @@ const PublicApplicationProgress: React.FC<{ application: CandidateApplication }>
     );
   }
 
+  const currentStep = getStandardizedStepIndex(application.displayGroup);
+
   return (
-    <ol className={`candidate-application-progress candidate-application-progress--${statusClass} m-0 flex list-none items-start gap-1 p-0`} aria-label={`Tiến độ: ${stage.label}`}>
-      {CANDIDATE_STEPS.map((label, index) => {
-        const reached = index <= stage.step;
-        return (
-          <li key={label} className="flex flex-1 flex-col gap-1">
-            <span className={`candidate-application-progress__bar h-1.5 rounded-full ${reached ? 'candidate-application-progress__bar--reached' : 'bg-slate-200'}`} aria-hidden />
-            <span className={`hidden min-h-8 text-[11px] leading-4 sm:block ${reached ? 'font-medium text-slate-700' : 'text-slate-400'}`}>{label}</span>
-          </li>
-        );
-      })}
-    </ol>
+    <div className="w-full py-1.5" aria-label={`Tiến độ: ${stage.label}`}>
+      <div className="relative flex items-center justify-between">
+        {/* Connecting line */}
+        <div className="absolute left-[12%] right-[12%] top-[5px] h-[2px] bg-slate-200 -z-0" />
+        <div
+          className="absolute left-[12%] top-[5px] h-[2px] bg-emerald-500 -z-0 transition-all duration-300"
+          style={{ width: `${(currentStep / (STANDARDIZED_STEPS.length - 1)) * 76}%` }}
+        />
+
+        {STANDARDIZED_STEPS.map((stepLabel, idx) => {
+          const isPassed = idx < currentStep;
+          const isCurrent = idx === currentStep;
+
+          return (
+            <div key={stepLabel} className="relative z-10 flex flex-col items-center">
+              {isCurrent ? (
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-600 ring-4 ring-emerald-100" />
+              ) : isPassed ? (
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-600 border border-emerald-600" />
+              ) : (
+                <span className="h-2.5 w-2.5 rounded-full bg-white border-2 border-slate-300" />
+              )}
+              <span
+                className={`mt-2 text-[11px] leading-tight text-center ${
+                  isCurrent
+                    ? 'font-bold text-emerald-700'
+                    : isPassed
+                    ? 'font-medium text-slate-700'
+                    : 'text-slate-400'
+                }`}
+              >
+                {stepLabel}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 };
 
@@ -176,11 +237,20 @@ const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
   const statusClass = a.displayGroup.toLowerCase().replace(/_/g, '-');
   const isPositiveOutcome = a.displayGroup === 'SELECTED' || a.displayGroup === 'HIRED';
   const isClosedOutcome = a.displayGroup === 'NOT_SELECTED' || a.displayGroup === 'WITHDRAWN';
+  const parsed = parseJobTitleAndCode(a.jobTitle);
+
   return (
     <article className={`candidate-surface candidate-application-card candidate-application-card--${statusClass} flex flex-col gap-4 p-5 ${isClosedOutcome ? 'candidate-application-card--closed' : ''}`}>
       <div className="candidate-application-card__heading min-w-0">
         <div className="min-w-0">
-          <div className="text-[16px] font-semibold leading-snug text-slate-900">{a.jobTitle}</div>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            {parsed.code && (
+              <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono font-medium">
+                [{parsed.code}]
+              </span>
+            )}
+            <span className="text-[16px] font-semibold leading-snug text-slate-900">{parsed.title}</span>
+          </div>
           <div className="text-[13px] text-slate-600">{a.companyName}</div>
         </div>
         <div className="candidate-application-card__status-row mt-3">
@@ -200,7 +270,7 @@ const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
         )}
       </div>
       <div className="candidate-application-card__footer">
-        <Button type="link" className="!h-auto !p-0 !font-semibold" onClick={() => navigate(`/candidate/applications/${a.applicationId}`)}>
+        <Button type="link" className="!h-auto !p-0 !font-semibold !text-blue-600 hover:!text-blue-700" onClick={() => navigate(`/candidate/applications/${a.applicationId}`)}>
           Xem chi tiết <ArrowRightOutlined aria-hidden />
         </Button>
       </div>
@@ -234,11 +304,15 @@ export const CandidateHomePage: React.FC = () => {
 
   return (
     <div className="candidate-page candidate-dashboard-page">
-      <section className="candidate-dashboard-hero">
+      <section className="candidate-dashboard-hero bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
         <div className="candidate-dashboard-hero__content">
-          <p className="candidate-dashboard-hero__date">Không gian nghề nghiệp của bạn</p>
-          <h1 className="m-0 text-[clamp(1.75rem,4vw,2.5rem)] font-extrabold leading-tight tracking-[-0.035em] text-slate-950">Chào {firstName},</h1>
-          <p className="m-0 mt-2 max-w-xl text-[15px] leading-relaxed text-slate-600">
+          <p className="candidate-dashboard-hero__date text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Không gian nghề nghiệp của bạn
+          </p>
+          <h1 className="m-0 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+            Chào {firstName},
+          </h1>
+          <p className="m-0 mt-2 max-w-xl text-sm sm:text-base leading-relaxed text-slate-600">
             {apps.isLoading
               ? 'Đang tải đơn ứng tuyển của bạn...'
               : items.length === 0
@@ -246,24 +320,38 @@ export const CandidateHomePage: React.FC = () => {
                 : `Bạn có ${active.length} đơn đang được xử lý${interviewing ? `, trong đó ${interviewing} đơn đã được chọn hoặc đang phỏng vấn` : ''}.`}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button type="primary" size="large" icon={<SearchOutlined />} onClick={() => navigate('/candidate/jobs')}>
+            <Button
+              type="primary"
+              size="large"
+              icon={<SearchOutlined />}
+              onClick={() => navigate('/candidate/jobs')}
+              className="!bg-blue-600 hover:!bg-blue-700 text-white rounded-xl shadow-sm transition-all active:scale-[0.98] border-none font-semibold px-5"
+            >
               Tìm việc phù hợp
             </Button>
-            <Button size="large" onClick={() => navigate('/candidate/cvs')}>
+            <Button
+              size="large"
+              onClick={() => navigate('/candidate/cvs')}
+              className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium px-5"
+            >
               Quản lý CV
             </Button>
           </div>
         </div>
-        <button type="button" className="candidate-readiness-card" onClick={() => navigate('/candidate/profile')}>
-          <span className="candidate-readiness-card__icon"><SafetyCertificateOutlined aria-hidden /></span>
+        <button
+          type="button"
+          className="candidate-readiness-card bg-slate-50 border border-slate-100 rounded-xl p-4 transition-all hover:border-slate-200 hover:bg-slate-100/70"
+          onClick={() => navigate('/candidate/profile')}
+        >
+          <span className="candidate-readiness-card__icon text-blue-600"><SafetyCertificateOutlined aria-hidden /></span>
           <span className="min-w-0 text-left">
-            <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">Mức độ sẵn sàng</span>
-            <span className="mt-1 block text-lg font-bold text-slate-950">{cvCount > 0 ? 'Hồ sơ đã sẵn sàng' : 'Hoàn thiện hồ sơ'}</span>
+            <span className="block text-xs font-semibold uppercase tracking-wider text-blue-700">Mức độ sẵn sàng</span>
+            <span className="mt-1 block text-lg font-bold text-slate-900">{cvCount > 0 ? 'Hồ sơ đã sẵn sàng' : 'Hoàn thiện hồ sơ'}</span>
             <span className="mt-1 block text-sm leading-5 text-slate-600">
               {cvCount > 0 ? `Bạn đang có ${cvCount} CV để ứng tuyển nhanh.` : 'Thêm CV để ứng tuyển thuận tiện hơn.'}
             </span>
           </span>
-          <ArrowRightOutlined aria-hidden className="text-sky-700" />
+          <ArrowRightOutlined aria-hidden className="text-slate-400 group-hover:text-blue-600 transition-colors" />
         </button>
       </section>
 
@@ -949,7 +1037,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                           <Button
                             type="primary"
                             size="small"
-                            className="bg-emerald-600 hover:bg-emerald-500 border-none"
+                            className="!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] border-none"
                             onClick={() => {
                               setSelectedOffer(offer);
                               setOfferResponseChoice('ACCEPTED');
@@ -1279,15 +1367,15 @@ export const CandidateCvsPage: React.FC = () => {
 
               return (
                 <article key={cv.cvId} className={`candidate-surface candidate-cv-card ${cv.isPrimary ? 'candidate-cv-card--primary' : ''} flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap`}>
-                  <span className="candidate-cv-card__icon flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-2xl text-red-700" aria-hidden>
-                    <FilePdfOutlined />
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 border border-slate-200/80 text-slate-600 text-lg" aria-hidden>
+                    <FileTextOutlined />
                   </span>
                   <div className="candidate-cv-card__content min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="truncate font-semibold text-slate-900">{cv.title || cv.fileName || 'CV'}</span>
                       {cv.isPrimary && (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[color:var(--console-accent-soft)] px-2 py-0.5 text-xs font-medium text-[color:var(--console-accent-strong)]">
-                          <CheckCircleFilled aria-hidden /> CV chính
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+                          <CheckCircleFilled className="text-blue-600 text-xs" /> CV Mặc định
                         </span>
                       )}
                       {cv.creationMethod === 'TEMPLATE_FORM' && (
@@ -1315,49 +1403,78 @@ export const CandidateCvsPage: React.FC = () => {
                   <div className="candidate-cv-card__actions flex shrink-0 items-center gap-1">
                     {canView && (
                       <Tooltip title="Xem CV">
-                        <Button icon={<EyeOutlined />} aria-label={`Xem ${cv.title ?? 'CV'}`} onClick={() => openSigned(() => candidateCvApi.downloadUrl(cv.cvId))} />
+                        <button
+                          type="button"
+                          className="hover:bg-slate-100 text-slate-500 hover:text-slate-900 rounded-md p-1.5 transition-colors border-0 bg-transparent inline-flex items-center justify-center cursor-pointer text-sm"
+                          aria-label={`Xem ${cv.title ?? 'CV'}`}
+                          onClick={() => openSigned(() => candidateCvApi.downloadUrl(cv.cvId))}
+                        >
+                          <EyeOutlined />
+                        </button>
                       </Tooltip>
                     )}
                     {canUpdate && isStructured && (
                       <Tooltip title="Sửa nội dung CV">
-                        <Button
-                          icon={<FormOutlined />}
+                        <button
+                          type="button"
+                          className="hover:bg-slate-100 text-slate-500 hover:text-blue-600 rounded-md p-1.5 transition-colors border-0 bg-transparent inline-flex items-center justify-center cursor-pointer text-sm"
                           aria-label={`Sửa nội dung ${cv.title ?? 'CV'}`}
-                          className="text-blue-600 hover:text-blue-700"
                           onClick={() => setEditStructuredCvId(cv.cvId)}
-                        />
+                        >
+                          <FormOutlined />
+                        </button>
                       </Tooltip>
                     )}
                     {canUpdate && (
                       <Tooltip title="Đổi tên CV">
-                        <Button icon={<EditOutlined />} aria-label={`Đổi tên ${cv.title ?? 'CV'}`} onClick={() => setEditing({ cvId: cv.cvId, title: cv.title || cv.fileName || '' })} />
+                        <button
+                          type="button"
+                          className="hover:bg-slate-100 text-slate-500 hover:text-slate-900 rounded-md p-1.5 transition-colors border-0 bg-transparent inline-flex items-center justify-center cursor-pointer text-sm"
+                          aria-label={`Đổi tên ${cv.title ?? 'CV'}`}
+                          onClick={() => setEditing({ cvId: cv.cvId, title: cv.title || cv.fileName || '' })}
+                        >
+                          <EditOutlined />
+                        </button>
                       </Tooltip>
                     )}
                     {canUpdate && !cv.isPrimary && (
-                      <Tooltip title="Đặt làm CV chính">
-                        <Button
-                          icon={busyId === cv.cvId ? undefined : <StarOutlined />}
-                          loading={busyId === cv.cvId}
-                          aria-label="Đặt làm CV chính"
-                          onClick={() => act(cv.cvId, () => candidateCvApi.setPrimary(cv.cvId), 'Đã đặt làm CV chính.')}
-                        />
+                      <Tooltip title="Đặt làm CV mặc định">
+                        <button
+                          type="button"
+                          disabled={busyId === cv.cvId}
+                          className="hover:bg-slate-100 text-slate-500 hover:text-amber-500 rounded-md p-1.5 transition-colors border-0 bg-transparent inline-flex items-center justify-center cursor-pointer text-sm disabled:opacity-50"
+                          aria-label="Đặt làm CV mặc định"
+                          onClick={() => act(cv.cvId, () => candidateCvApi.setPrimary(cv.cvId), 'Đã đặt làm CV mặc định.')}
+                        >
+                          <StarOutlined />
+                        </button>
                       </Tooltip>
                     )}
                     {cv.isPrimary && (
-                      <Button icon={<StarFilled />} disabled aria-label="CV chính" className="!text-amber-600" />
+                      <span className="p-1.5 text-amber-500 inline-flex items-center justify-center text-sm" title="CV mặc định">
+                        <StarFilled />
+                      </span>
                     )}
-                    {canDelete && <Popconfirm
-                      title="Gỡ CV khỏi kho?"
-                      description={cv.deleteBehavior === 'ARCHIVE_HISTORY'
-                        ? 'CV sẽ ẩn khỏi kho cá nhân nhưng bản đã gắn với lượt nộp và đơn ứng tuyển vẫn được giữ làm lịch sử.'
-                        : 'CV chưa được sử dụng nên sẽ được xóa khỏi kho.'}
-                      okText="Gỡ khỏi kho"
-                      okButtonProps={{ danger: true }}
-                      cancelText="Hủy"
-                      onConfirm={() => act(cv.cvId, () => candidateCvApi.remove(cv.cvId), 'Đã gỡ CV khỏi kho.')}
-                    >
-                      <Button danger icon={<DeleteOutlined />} aria-label={`Gỡ ${cv.title ?? 'CV'} khỏi kho`} />
-                    </Popconfirm>}
+                    {canDelete && (
+                      <Popconfirm
+                        title="Gỡ CV khỏi kho?"
+                        description={cv.deleteBehavior === 'ARCHIVE_HISTORY'
+                          ? 'CV sẽ ẩn khỏi kho cá nhân nhưng bản đã gắn với lượt nộp và đơn ứng tuyển vẫn được giữ làm lịch sử.'
+                          : 'CV chưa được sử dụng nên sẽ được xóa khỏi kho.'}
+                        okText="Gỡ khỏi kho"
+                        okButtonProps={{ danger: true }}
+                        cancelText="Hủy"
+                        onConfirm={() => act(cv.cvId, () => candidateCvApi.remove(cv.cvId), 'Đã gỡ CV khỏi kho.')}
+                      >
+                        <button
+                          type="button"
+                          className="hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-md p-1.5 transition-colors border-0 bg-transparent inline-flex items-center justify-center cursor-pointer text-sm"
+                          aria-label={`Gỡ ${cv.title ?? 'CV'} khỏi kho`}
+                        >
+                          <DeleteOutlined />
+                        </button>
+                      </Popconfirm>
+                    )}
                   </div>
                 </article>
               );

@@ -49,21 +49,23 @@ import {
 
 const { Paragraph, Text, Title } = Typography;
 
-// Fixed colours (text on tinted bg ≥ 4.5:1) so the tag reads the same under every console theme.
+// Standardized SaaS status tags: ACTIVE (emerald), PENDING_REVIEW (amber), CLOSED (slate)
 const STATUS_TAG_CLASS: Record<Job['status'], string> = {
   DRAFT: 'border-slate-200 bg-slate-50 text-slate-700',
-  PENDING_REVIEW: 'border-sky-200 bg-sky-50 text-sky-800',
-  PENDING_APPROVAL: 'border-sky-200 bg-sky-50 text-sky-800',
-  PENDING_AGREEMENT: 'border-purple-200 bg-purple-50 text-purple-800',
-  PENDING_PAYMENT: 'border-blue-200 bg-blue-50 text-blue-800',
-  REJECTED: 'border-red-200 bg-red-50 text-red-800',
-  ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  PAUSED: 'border-amber-200 bg-amber-50 text-amber-800',
+  PENDING_REVIEW: 'border-amber-200 bg-amber-50 text-amber-700',
+  PENDING_APPROVAL: 'border-amber-200 bg-amber-50 text-amber-700',
+  PENDING_AGREEMENT: 'border-purple-200 bg-purple-50 text-purple-700',
+  PENDING_PAYMENT: 'border-blue-200 bg-blue-50 text-blue-700',
+  REJECTED: 'border-red-200 bg-red-50 text-red-700',
+  ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  PAUSED: 'border-amber-200 bg-amber-50 text-amber-700',
   CLOSED: 'border-slate-200 bg-slate-100 text-slate-600',
 };
 
 export const JobStatusTag: React.FC<{ status: Job['status'] }> = ({ status }) => (
-  <Tag className={`m-0 border border-solid font-medium ${STATUS_TAG_CLASS[status]}`}>{JOB_STATUS[status].label}</Tag>
+  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border border-solid ${STATUS_TAG_CLASS[status]}`}>
+    {JOB_STATUS[status]?.label || status}
+  </span>
 );
 
 export const JobTemplateOriginTag: React.FC<{ templateId: string }> = ({ templateId }) => {
@@ -335,7 +337,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             className={
               agreementStatus === 'CHANGE_REQUESTED'
                 ? 'border-amber-200 bg-amber-50/70'
-                : 'border-purple-200 bg-purple-50/70'
+                : 'border-blue-200 bg-blue-50/70'
             }
             message={
               agreementStatus === 'CHANGE_REQUESTED'
@@ -356,7 +358,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <Button
                   type="primary"
                   size="small"
-                  className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600"
+                  className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
                   onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                 >
                   Xem hợp đồng
@@ -388,7 +390,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     type="primary"
                     size="small"
                     icon={<CreditCardOutlined />}
-                    className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600"
+                    className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
                     onClick={() => setShowPaymentModal(true)}
                   >
                     Nộp cọc
@@ -405,7 +407,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   type="primary"
                   size="small"
                   icon={<CreditCardOutlined />}
-                  className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600"
+                  className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
                   onClick={() => setShowPaymentModal(true)}
                 >
                   Thanh toán ngay
@@ -467,7 +469,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               <Button
                 type="primary"
                 size="small"
-                className="!bg-emerald-600 hover:!bg-emerald-500 !border-emerald-600 font-medium text-xs shadow-2xs"
+                className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium text-xs"
                 onClick={() => navigate(`/candidate/applications/${appliedApp.applicationId}`)}
               >
                 Xem chi tiết đơn

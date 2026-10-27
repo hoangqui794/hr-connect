@@ -9,18 +9,27 @@ export interface BenefitItem {
   desc?: string;
 }
 
+export interface TestimonialInfo {
+  quote: string;
+  author: string;
+  role: string;
+  company: string;
+  metrics?: string;
+}
+
 interface AuthPageShellProps {
   eyebrow: string;
   title: string;
   description: string;
   sideTitle: string;
   sideDescription?: string;
-  benefits: (string | BenefitItem)[];
+  benefits?: (string | BenefitItem)[];
   children: React.ReactNode;
   wide?: boolean;
   fitScreen?: boolean;
-  /** Optional block under the benefits, rendered on the photo panel. */
+  /** Optional block under the benefits, rendered on the side panel. */
   extraVisual?: React.ReactNode;
+  testimonial?: TestimonialInfo;
 }
 
 /** Team photo (Unsplash, hotlinked per Unsplash guidelines). The panel keeps a solid brand color if it fails. */
@@ -28,9 +37,10 @@ const AUTH_PHOTO_URL =
   'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1600&q=75';
 
 /**
- * Auth layout (20/10, option "ảnh người thật"): left half is a real team photo under a brand-blue
- * overlay with the logo, one large slogan and short benefits; right half is a compact white form.
- * Below lg only the form shows, with a small brand row.
+ * Modern SaaS Auth layout:
+ * - Left half: Real team photo under brand-blue gradient overlay (#082F49 via #0C4A6E/80 to #0369A1/45)
+ *              with brand mark, large slogan, pills and trust footer.
+ * - Right half: Clean, focused form panel with lightweight border inputs and CTA.
  */
 export const AuthPageShell: React.FC<AuthPageShellProps> = ({
   eyebrow,
@@ -43,6 +53,7 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
   wide = false,
   fitScreen = false,
   extraVisual,
+  testimonial: _testimonial,
 }) => {
   const navigate = useNavigate();
 
@@ -81,7 +92,7 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
               {sideDescription && <p className="mb-0 mt-4 max-w-lg text-lg leading-relaxed text-sky-50">{sideDescription}</p>}
 
               <ul className="m-0 mt-8 flex list-none flex-wrap gap-2.5 p-0">
-                {benefits.map((item, idx) => {
+                {benefits?.map((item, idx) => {
                   const isObject = typeof item !== 'string';
                   const itemTitle = isObject ? item.title : item;
                   const icon = isObject && item.icon ? item.icon : <CheckCircleFilled />;
@@ -104,7 +115,7 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
           </div>
         </aside>
 
-        {/* Form panel */}
+        {/* Right Column: Form panel */}
         <div className={`flex flex-col ${fitScreen ? 'lg:h-[100dvh] lg:overflow-y-auto' : ''}`}>
           <div className={`mx-auto flex w-full flex-1 flex-col px-5 py-6 sm:px-10 sm:py-10 ${wide ? 'max-w-[600px]' : 'max-w-[440px]'}`}>
             <button
@@ -137,13 +148,14 @@ export const AuthPageShell: React.FC<AuthPageShellProps> = ({
 };
 
 export const AUTH_INPUT_CLASS =
-  'h-11 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 hover:border-[#0EA5E9] focus:border-[#0369A1] transition-colors duration-150';
+  'h-11 rounded-xl !border !border-slate-200 !bg-white text-slate-900 placeholder:text-slate-400 hover:!border-[#0EA5E9] focus:!border-[#0369A1] focus:!ring-4 focus:!ring-[#0369A1]/10 focus-within:!border-[#0369A1] focus-within:!ring-4 focus-within:!ring-[#0369A1]/10 transition-all duration-150';
 
-export const AUTH_LABEL_CLASS = 'text-sm font-semibold text-slate-700';
+export const AUTH_LABEL_CLASS = 'text-xs font-semibold text-slate-700';
 
 /** Primary submit button: solid brand blue, 48px tall, visible keyboard focus. */
 export const AUTH_PRIMARY_BUTTON_CLASS =
-  'flex h-12 w-full items-center justify-center gap-2 rounded-xl border-0 !bg-[#0369A1] text-[15px] font-semibold !text-white shadow-none transition-colors duration-150 hover:!bg-[#075985] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1] disabled:!bg-slate-300';
+  'flex !h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-0 !bg-[#0369A1] text-[15px] font-semibold !text-white shadow-none transition-all duration-150 hover:!bg-[#075985] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1] disabled:!bg-slate-300';
 
 export const AUTH_LINK_CLASS =
   'font-semibold text-[#0369A1] underline-offset-2 hover:text-[#075985] hover:underline';
+

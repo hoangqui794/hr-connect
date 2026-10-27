@@ -19,60 +19,99 @@ import { EMPLOYMENT_TYPE_LABEL, SERVICE_TYPE_LABEL, formatDate, formatExperience
 const { Title, Text } = Typography;
 const PAGE_SIZE = 12;
 
-const JobCard: React.FC<{ job: Job; detailBasePath: string; isApplied?: boolean }> = ({ job, detailBasePath, isApplied }) => (
-  <Card
-    hoverable
-    className={`candidate-job-card h-full bg-white transition-shadow duration-200 ${isApplied ? 'candidate-job-card--applied border-blue-200' : ''}`}
-    styles={{ body: { padding: 16, display: 'flex', flexDirection: 'column', gap: 8, height: '100%' } }}
-  >
-    <div className="candidate-job-card__topline">
-      <CompanyLogo
-        companyName={job.companyName || 'Doanh nghiệp tuyển dụng'}
-        logoUrl={job.companyLogoUrl || undefined}
-        size="md"
-        className="candidate-job-card__company-mark !rounded-xl"
-      />
-      <div className="flex items-center gap-1.5 shrink-0">
-        <BookmarkButton jobId={job.jobId} jobTitle={job.title} size="sm" />
-        {isApplied && (
-          <Tag color="blue" icon={<CheckCircleFilled />} className="m-0 shrink-0 font-medium text-[11px]">
-            Đã ứng tuyển
+const getEstimatedCommission = (job: Job): string => {
+  if (job.sourcingPricePerCv && job.sourcingPricePerCv > 0) {
+    return `${job.sourcingPricePerCv.toLocaleString('vi-VN')} đ / CV`;
+  }
+  if (job.feeMultiplier && job.feeMultiplier > 0) {
+    if (job.salaryMax && job.salaryMax > 0) {
+      const amount = Math.round(job.salaryMax * job.feeMultiplier);
+      return `${amount.toLocaleString('vi-VN')} đ`;
+    }
+    return `${job.feeMultiplier} tháng lương`;
+  }
+  if (job.salaryMax && job.salaryMax > 0) {
+    return `${job.salaryMax.toLocaleString('vi-VN')} đ`;
+  }
+  if (job.serviceTypeCode === 'HEADHUNT_COD') {
+    return '1 tháng lương';
+  }
+  return '15.000.000 đ';
+};
+
+const JobCard: React.FC<{ job: Job; detailBasePath: string; isApplied?: boolean }> = ({ job, detailBasePath, isApplied }) => {
+  const isAffiliate = detailBasePath.startsWith('/affiliate');
+  return (
+    <Card
+      hoverable
+      className={`candidate-job-card h-full bg-white transition-shadow duration-200 ${isApplied ? 'candidate-job-card--applied border-blue-200' : ''}`}
+      styles={{ body: { padding: 16, display: 'flex', flexDirection: 'column', gap: 8, height: '100%' } }}
+    >
+      <div className="candidate-job-card__topline">
+        <CompanyLogo
+          companyName={job.companyName || 'Doanh nghiệp tuyển dụng'}
+          logoUrl={job.companyLogoUrl || job.company?.logoUrl || undefined}
+          size="md"
+          className="candidate-job-card__company-mark !rounded-xl"
+        />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <BookmarkButton jobId={job.jobId} jobTitle={job.title} size="sm" />
+          {isApplied && (
+            <Tag color="blue" icon={<CheckCircleFilled />} className="m-0 shrink-0 font-medium text-[11px]">
+              Đã ứng tuyển
+            </Tag>
+          )}
+        </div>
+      </div>
+      <div className="candidate-job-card__heading">
+        <Link
+          to={`${detailBasePath}/${job.jobId}`}
+          className="candidate-job-card__title font-semibold text-slate-900 hover:text-blue-700 line-clamp-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700 rounded"
+        >
+          {job.title}
+        </Link>
+        <Text type="secondary" className="candidate-job-card__company text-sm">
+          {job.companyName ?? 'Doanh nghiệp tuyển dụng'}
+        </Text>
+      </div>
+
+      {isAffiliate ? (
+        <div className="rounded-lg bg-emerald-50 border border-solid border-emerald-200/80 p-2.5 my-1">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-800">Hoa hồng dự kiến</div>
+          <div className="text-lg font-extrabold text-emerald-700 font-mono tracking-tight mt-0.5">
+            {getEstimatedCommission(job)}
+          </div>
+          <div className="text-xs text-slate-500 mt-1">Lương: {formatSalary(job)}</div>
+        </div>
+      ) : (
+        <div className="candidate-job-card__salary">{formatSalary(job)}</div>
+      )}
+
+      <div className="candidate-job-card__tags flex flex-wrap gap-1.5">
+        {job.location && (
+          <Tag className="m-0" icon={<EnvironmentOutlined aria-hidden />}>
+            {job.location}
           </Tag>
         )}
+        {job.employmentType && <Tag className="m-0">{EMPLOYMENT_TYPE_LABEL[job.employmentType]}</Tag>}
+        <Tag className="m-0">{formatExperience(job.minExperienceYears, job.maxExperienceYears)}</Tag>
       </div>
-    </div>
-    <div className="candidate-job-card__heading">
-      <Link
-        to={`${detailBasePath}/${job.jobId}`}
-        className="candidate-job-card__title font-semibold text-slate-900 hover:text-blue-700 line-clamp-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700 rounded"
-      >
-        {job.title}
-      </Link>
-      <Text type="secondary" className="candidate-job-card__company text-sm">
-        {job.companyName ?? 'Doanh nghiệp tuyển dụng'}
-      </Text>
-    </div>
-    <div className="candidate-job-card__salary">{formatSalary(job)}</div>
-    <div className="candidate-job-card__tags flex flex-wrap gap-1.5">
-      {job.location && (
-        <Tag className="m-0" icon={<EnvironmentOutlined aria-hidden />}>
-          {job.location}
-        </Tag>
-      )}
-      {job.employmentType && <Tag className="m-0">{EMPLOYMENT_TYPE_LABEL[job.employmentType]}</Tag>}
-      <Tag className="m-0">{formatExperience(job.minExperienceYears, job.maxExperienceYears)}</Tag>
-    </div>
-    <div className="candidate-job-card__footer mt-auto flex items-center justify-between pt-2 text-xs text-slate-500">
-      <div>
-        <span>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : ''}</span>
-        <span> · Đăng {formatDate(job.postedAt)}</span>
+      <div className="candidate-job-card__footer mt-auto flex items-center justify-between pt-2 text-xs text-slate-500">
+        <div>
+          <span>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : ''}</span>
+          <span> · Đăng {formatDate(job.postedAt)}</span>
+        </div>
+        <Link
+          to={`${detailBasePath}/${job.jobId}`}
+          aria-label={`Xem chi tiết ${job.title}`}
+          className={isAffiliate ? 'font-semibold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1' : undefined}
+        >
+          {isAffiliate ? 'Giới thiệu ngay' : 'Xem việc'} <ArrowRightOutlined />
+        </Link>
       </div>
-      <Link to={`${detailBasePath}/${job.jobId}`} aria-label={`Xem chi tiết ${job.title}`}>
-        Xem việc <ArrowRightOutlined />
-      </Link>
-    </div>
-  </Card>
-);
+    </Card>
+  );
+};
 
 interface JobDiscoveryPageProps {
   /** Where job cards link to, e.g. "/jobs" (public) or "/affiliate/jobs" (in-app). */
@@ -113,8 +152,8 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
   return (
     <div className="space-y-5">
       {/* key remounts the uncontrolled inputs when the URL filters change (e.g. "Xóa bộ lọc"). */}
-      <div key={searchParams.toString()} className="rounded-xl border border-solid border-slate-200 bg-white p-4">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+      <div key={searchParams.toString()} className="rounded-xl border border-solid border-slate-200/80 bg-white p-3 shadow-sm">
+        <div className="grid gap-2.5 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center">
           <Input.Search
             size="large"
             allowClear

@@ -388,7 +388,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
       title: 'Tên vai trò & Mô tả',
       key: 'name',
       render: (_, r) => (
-        <div className="min-w-[200px]">
+        <div>
           <div className="font-semibold text-slate-900">{r.name}</div>
           {r.description && <div className="text-xs text-slate-500">{r.description}</div>}
         </div>
@@ -431,7 +431,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
         <Badge
           count={count}
           showZero
-          style={{ backgroundColor: count > 0 ? '#047857' : '#94A3B8' }}
+          style={{ backgroundColor: count > 0 ? '#2563EB' : '#94A3B8' }}
         />
       ),
     },
@@ -448,8 +448,9 @@ export const AdminRolesPermissionsPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 170,
+      width: 112,
       align: 'right',
+      className: 'w-28 text-right pr-4',
       render: (_, r) => (
         <Space size="small">
           {r.isSystem ? (
@@ -575,8 +576,9 @@ export const AdminRolesPermissionsPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 100,
+      width: 112,
       align: 'right',
+      className: 'w-28 text-right pr-4',
       render: (_, p) => (
         <Button
           size="small"
@@ -772,12 +774,11 @@ export const AdminRolesPermissionsPage: React.FC = () => {
               </div>
             ) : (
               <Table<RbacRole>
-                className="admin-soft-table"
+                className="admin-soft-table w-full table-auto"
                 rowKey="roleId"
                 loading={rolesQuery.isLoading}
                 columns={roleColumns}
                 dataSource={rolesQuery.data?.items ?? []}
-                scroll={{ x: 960 }}
                 locale={{ emptyText: <div className="py-10 text-slate-500">Không tìm thấy vai trò nào.</div> }}
                 pagination={{
                   current: rolesQuery.data?.page ?? roleParams.page,
@@ -882,12 +883,11 @@ export const AdminRolesPermissionsPage: React.FC = () => {
               </div>
             ) : (
               <Table<RbacPermission>
-                className="admin-soft-table"
+                className="admin-soft-table w-full table-auto"
                 rowKey="permissionId"
                 loading={permissionsQuery.isLoading}
                 columns={permissionColumns}
                 dataSource={permissionsQuery.data?.items ?? []}
-                scroll={{ x: 960 }}
                 locale={{ emptyText: <div className="py-10 text-slate-500">Không tìm thấy quyền nào.</div> }}
                 pagination={{
                   current: permissionsQuery.data?.page ?? permParams.page,

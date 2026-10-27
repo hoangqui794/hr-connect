@@ -241,7 +241,7 @@ export const ClientJobsListPage: React.FC = () => {
               <Button
                 size="small"
                 type="primary"
-                className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600 font-medium"
+                className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium"
                 icon={<CreditCardOutlined />}
                 onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
               >
@@ -520,7 +520,7 @@ export const ClientJobsListPage: React.FC = () => {
                         <Button
                           type="primary"
                           size="small"
-                          className="!bg-purple-600 hover:!bg-purple-500 !border-purple-600 !text-xs !h-6 font-medium whitespace-nowrap"
+                          className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] !text-xs !h-6 font-medium whitespace-nowrap"
                           onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                         >
                           Xem hợp đồng
@@ -539,7 +539,7 @@ export const ClientJobsListPage: React.FC = () => {
                           <Button
                             type="primary"
                             size="small"
-                            className="!bg-amber-600 hover:!bg-amber-500 !border-amber-600 !text-xs !h-6 font-medium"
+                            className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] !text-xs !h-6 font-medium"
                             onClick={() =>
                               setPaymentModalJob({
                                 jobId: job.jobId,

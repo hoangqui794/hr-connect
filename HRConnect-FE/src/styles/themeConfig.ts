@@ -5,34 +5,36 @@
  */
 import { theme, type ThemeConfig } from 'antd';
 
-export const emeraldBrand = {
-  primary: '#00b14f',        // Modern TopCV Tech Emerald
-  primaryHover: '#009643',   // Darker Emerald for hover states
-  primaryActive: '#007a36',  // Deep Emerald for active states
-  primaryBg: '#ecfdf5',      // emerald-50 tint
-  primaryBorder: '#a7f3d0',  // emerald-200 border
-  secondary: '#10b981',      // Emerald 500
+export const primaryBrand = {
+  primary: '#2563eb',        // Primary Action Blue (blue-600)
+  primaryHover: '#1d4ed8',   // Darker Blue for hover states (blue-700)
+  primaryActive: '#1e40af',  // Deep Blue for active states (blue-800)
+  primaryBg: '#eff6ff',      // blue-50 tint
+  primaryBorder: '#bfdbfe',  // blue-200 border
+  secondary: '#3b82f6',      // blue-500
   accentRuby: '#e11d48',     // Red Heart Tier (>=80%)
   accentTeal: '#0d9488',     // Strong Tier (70-79%)
   accentGreen: '#16a34a',    // Moderate Tier (60-69%)
   accentGray: '#64748b',     // Weak Tier (<60%)
 };
 
+export const emeraldBrand = primaryBrand;
+
 export const themeConfig: ThemeConfig = {
   algorithm: theme.defaultAlgorithm,
   token: {
-    // 1. Primary Colors - Emerald Tuyển dụng Công nghệ (TopCV / Tech Headhunting)
-    colorPrimary: emeraldBrand.primary,
-    colorPrimaryHover: emeraldBrand.primaryHover,
-    colorPrimaryActive: emeraldBrand.primaryActive,
-    colorPrimaryBg: emeraldBrand.primaryBg,
-    colorPrimaryBorder: emeraldBrand.primaryBorder,
+    // 1. Primary Colors - Unified Blue Action
+    colorPrimary: primaryBrand.primary,
+    colorPrimaryHover: primaryBrand.primaryHover,
+    colorPrimaryActive: primaryBrand.primaryActive,
+    colorPrimaryBg: primaryBrand.primaryBg,
+    colorPrimaryBorder: primaryBrand.primaryBorder,
 
-    // Status Colors
-    colorSuccess: '#10b981', // emerald-500
+    // Status Colors (Success: emerald-600, Error: rose-600)
+    colorSuccess: '#16a34a', // emerald-600
     colorWarning: '#f59e0b', // amber-500
-    colorError: '#ef4444',   // rose-500
-    colorInfo: '#0284c7',    // sky-600
+    colorError: '#e11d48',   // rose-600
+    colorInfo: '#2563eb',    // blue-600
 
     // Canvas Backgrounds - Light Slate Enterprise
     colorBgBase: '#ffffff',
@@ -89,10 +91,10 @@ export const themeConfig: ThemeConfig = {
     Menu: {
       itemBg: 'transparent',
       subMenuItemBg: 'transparent',
-      itemSelectedBg: '#ecfdf5',            // emerald-50
+      itemSelectedBg: '#eff6ff',            // blue-50
       itemHoverBg: 'rgba(241, 245, 249, 0.8)', // slate-100
       itemColor: '#475569',
-      itemSelectedColor: '#009643',
+      itemSelectedColor: '#2563eb',
       itemBorderRadius: 8,
       itemMarginInline: 8,
     },
@@ -102,7 +104,7 @@ export const themeConfig: ThemeConfig = {
       borderRadius: 8,
       controlHeight: 38,
       controlHeightLG: 44,
-      primaryShadow: '0 2px 4px 0 rgba(0, 177, 79, 0.25)',
+      primaryShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
     },
     Card: {
       borderRadius: 12,
@@ -112,21 +114,20 @@ export const themeConfig: ThemeConfig = {
       headerFontSize: 16,
       headerHeight: 48,
     },
-    // CRUCIAL: Ant Design Table Light Enterprise Spec (TopCV / LinkedIn Talent)
-    // Completely solves invisible/dark-text conflict
+    // Standard Enterprise Clean Table Spec: py-3 px-3.5 (12px 14px)
     Table: {
       headerBg: '#f8fafc',
       headerColor: '#334155',
       headerSortActiveBg: '#f1f5f9',
       headerSortHoverBg: '#f1f5f9',
       headerBorderRadius: 8,
-      rowHoverBg: 'rgba(236, 253, 245, 0.45)', // emerald-50/45 tint on hover
-      rowSelectedBg: '#ecfdf5',
-      rowSelectedHoverBg: '#d1fae5',
+      rowHoverBg: 'rgba(239, 246, 255, 0.5)', // blue-50 hover tint
+      rowSelectedBg: '#eff6ff',
+      rowSelectedHoverBg: '#dbeafe',
       borderColor: 'rgba(226, 232, 240, 0.85)',
       borderRadius: 8,
-      cellPaddingBlock: 13,
-      cellPaddingInline: 16,
+      cellPaddingBlock: 12,
+      cellPaddingInline: 14,
       fontSize: 13.5,
     },
     Modal: {
@@ -136,7 +137,7 @@ export const themeConfig: ThemeConfig = {
       titleFontSize: 18,
     },
     Steps: {
-      colorPrimary: '#00b14f',
+      colorPrimary: '#2563eb',
       dotSize: 8,
       titleLineHeight: 24,
       descriptionMaxWidth: 160,
@@ -147,28 +148,28 @@ export const themeConfig: ThemeConfig = {
       lineHeight: 20,
     },
     Badge: {
-      colorBgContainer: '#00b14f',
+      colorBgContainer: '#2563eb',
     },
     Input: {
       borderRadius: 8,
       controlHeight: 40,
       colorBgContainer: '#ffffff',
       colorBorder: 'rgba(203, 213, 225, 0.85)',
-      activeBorderColor: '#00b14f',
-      hoverBorderColor: '#10b981',
+      activeBorderColor: '#2563eb',
+      hoverBorderColor: '#3b82f6',
     },
     Select: {
       borderRadius: 8,
       controlHeight: 40,
       colorBgContainer: '#ffffff',
       colorBorder: 'rgba(203, 213, 225, 0.85)',
-      colorPrimary: '#00b14f',
-      colorPrimaryHover: '#10b981',
+      colorPrimary: '#2563eb',
+      colorPrimaryHover: '#3b82f6',
     },
     Tabs: {
-      colorPrimary: '#00b14f',
-      itemSelectedColor: '#009643',
-      itemHoverColor: '#10b981',
+      colorPrimary: '#2563eb',
+      itemSelectedColor: '#1d4ed8',
+      itemHoverColor: '#3b82f6',
       titleFontSize: 14,
     },
     Alert: {
@@ -176,7 +177,7 @@ export const themeConfig: ThemeConfig = {
     },
     Progress: {
       lineBorderRadius: 9999,
-      defaultColor: '#00b14f',
+      defaultColor: '#2563eb',
     },
   },
 };

@@ -81,16 +81,17 @@ const QueueItem: React.FC<{ job: Job; selected: boolean; onSelect: () => void }>
         type="button"
         onClick={onSelect}
         aria-current={selected ? 'true' : undefined}
-        className={`w-full cursor-pointer rounded-xl border p-3.5 text-left transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${selected
-            ? 'border-blue-500 bg-blue-50/80 shadow-xs ring-2 ring-blue-500/20'
-            : 'border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/60 hover:shadow-2xs'
-          }`}
+        className={`w-full cursor-pointer rounded-lg border p-3 text-left transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${
+          selected
+            ? 'border-l-4 border-l-blue-600 border-y-slate-200/80 border-r-slate-200/80 bg-blue-50/40 shadow-xs'
+            : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+        }`}
       >
         <div className="flex items-start justify-between gap-2">
-          <div className={`font-semibold text-sm line-clamp-2 leading-snug ${selected ? 'text-blue-900' : 'text-slate-800'}`}>
+          <div className={`font-semibold text-sm line-clamp-1 leading-snug ${selected ? 'text-blue-900' : 'text-slate-800'}`}>
             {job.title || 'Vị trí chưa đặt tên'}
           </div>
-          <Tag color={statusMeta.color} className="m-0 shrink-0 text-[11px] font-medium leading-4 rounded-md">
+          <Tag color={statusMeta.color} className="m-0 shrink-0 text-[11px] font-medium leading-4 rounded">
             {statusMeta.label}
           </Tag>
         </div>
@@ -99,29 +100,17 @@ const QueueItem: React.FC<{ job: Job; selected: boolean; onSelect: () => void }>
           {job.companyName ?? '—'}
         </div>
 
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs">
-          {job.serviceTypeCode && (
-            <Tag className="m-0 text-[11px] bg-slate-100 text-slate-600 border-slate-200/80 rounded font-normal">
-              {SERVICE_TYPE_LABEL[job.serviceTypeCode]?.label ?? job.serviceTypeCode}
-            </Tag>
-          )}
-          {job.templateId && (
-            <Tag color="cyan" className="m-0 text-[11px] font-medium rounded">
-              Có mẫu tuyển dụng
-            </Tag>
-          )}
-          {job.status === 'PENDING_PAYMENT' && (
-            <Tag color="warning" className="m-0 text-[10px] font-medium rounded">
-              {isAwaitingSourcingDeposit(job) ? 'Chờ đặt cọc' : 'Chờ nộp phí'}
-            </Tag>
-          )}
-          <span className="text-[11px] text-slate-400 ml-auto">
+        <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+          <span className="truncate max-w-[170px] text-slate-500 text-[11px]">
+            {job.serviceTypeCode ? (SERVICE_TYPE_LABEL[job.serviceTypeCode]?.label ?? job.serviceTypeCode) : ''}
+          </span>
+          <span className="text-[11px] text-slate-400 shrink-0">
             {formatDateTime(waitingSince(job))}
           </span>
         </div>
 
         {job.status === 'REJECTED' && job.statusReason && (
-          <div className="mt-2 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] text-rose-700 border border-solid border-rose-200/80 line-clamp-2">
+          <div className="mt-1.5 rounded bg-rose-50 px-2 py-0.5 text-[11px] text-rose-700 border border-solid border-rose-200 line-clamp-1">
             <span className="font-semibold">Lý do: </span>
             {job.statusReason}
           </div>
@@ -307,7 +296,7 @@ export const JobReviewPage: React.FC = () => {
           </div>
         ),
         okText: 'Duyệt tin',
-        okButtonProps: { className: '!bg-indigo-600 hover:!bg-indigo-500 font-semibold' },
+        okButtonProps: { className: '!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold' },
         cancelText: 'Hủy bỏ',
         onOk: () =>
           approve
@@ -409,7 +398,7 @@ export const JobReviewPage: React.FC = () => {
         </div>
       ),
       okText: 'Công khai tin tuyển dụng',
-      okButtonProps: { className: '!bg-emerald-600 hover:!bg-emerald-500 font-semibold' },
+      okButtonProps: { className: '!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold' },
       cancelText: 'Hủy bỏ',
       onOk: () =>
         approve
@@ -549,7 +538,7 @@ export const JobReviewPage: React.FC = () => {
                   <div className="flex flex-col gap-3 rounded-t-2xl border-0 border-b border-solid border-slate-200 bg-slate-50/70 px-6 py-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-700 flex items-center justify-center shrink-0 mt-0.5 border border-solid border-amber-200/60">
+                        <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5 border border-solid border-blue-200/60">
                           <AuditOutlined className="text-base" />
                         </div>
                         <div className="space-y-1">
@@ -557,16 +546,9 @@ export const JobReviewPage: React.FC = () => {
                             <span className="text-sm font-semibold text-slate-800">
                               Duyệt nội dung tin tuyển dụng
                             </span>
-                            {isStandardUnpaid ? (
-                              <Tag color="blue" className="m-0 font-medium text-xs">
-                                {packageLabel} · {feeText}
-                              </Tag>
-                            ) : (
-                              <Tag color="gold" className="m-0 font-medium text-xs">
-                                Cần phê duyệt
-                              </Tag>
-                            )}
-                            {job.templateId && <JobTemplateOriginTag templateId={job.templateId} />}
+                            <Tag color="gold" className="m-0 font-medium text-xs">
+                              Chờ duyệt
+                            </Tag>
                           </div>
                           <p className="text-xs text-slate-500 m-0 leading-relaxed max-w-2xl">
                             {isStandardUnpaid
@@ -576,22 +558,23 @@ export const JobReviewPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
-                        <Button danger icon={<CloseOutlined />} disabled={busy} onClick={() => setRejectOpen(true)}>
+                        <Button
+                          className="bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg font-medium shadow-none hover:!border-rose-300 hover:!text-rose-700"
+                          icon={<CloseOutlined />}
+                          disabled={busy}
+                          onClick={() => setRejectOpen(true)}
+                        >
                           Từ chối tin
                         </Button>
                         <Button
                           type="primary"
-                          className={
-                            isStandardUnpaid
-                              ? '!bg-indigo-600 hover:!bg-indigo-500 !border-indigo-600 font-semibold shadow-xs'
-                              : 'font-semibold shadow-xs'
-                          }
-                          icon={isStandardUnpaid ? <SendOutlined /> : <CheckOutlined />}
+                          className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm active:scale-[0.98] font-medium border-0"
+                          icon={<CheckOutlined />}
                           loading={approve.isPending}
                           disabled={reject.isPending}
                           onClick={confirmApprove}
                         >
-                          {needsTerms ? 'Chốt điều khoản' : isStandardUnpaid ? 'Duyệt & Yêu cầu thanh toán' : 'Duyệt và công bố'}
+                          Duyệt & Ký điều khoản
                         </Button>
                       </div>
                     </div>
@@ -687,7 +670,7 @@ export const JobReviewPage: React.FC = () => {
                         </Button>
                         <Button
                           type="primary"
-                          className="!bg-emerald-600 hover:!bg-emerald-500 !border-emerald-600 font-semibold"
+                          className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold"
                           icon={<CheckOutlined />}
                           loading={approve.isPending}
                           onClick={confirmPublishAgreementJob}

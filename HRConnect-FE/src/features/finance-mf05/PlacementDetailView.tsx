@@ -274,7 +274,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
               href={placement.offer.offerDocumentUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-indigo-600 hover:bg-indigo-700"
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
             >
               Hợp đồng Offer
             </Button>
