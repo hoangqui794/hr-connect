@@ -10,23 +10,10 @@
 import React, { useState } from 'react';
 import { Dropdown } from 'antd';
 import {
-  BellOutlined,
   CheckCircleFilled,
-  CompassOutlined,
   DownOutlined,
-  EditOutlined,
-  FileDoneOutlined,
-  FilePdfOutlined,
-  FolderOpenOutlined,
-  HeartOutlined,
-  HomeOutlined,
   LogoutOutlined,
-  MailOutlined,
-  SafetyCertificateOutlined,
-  SearchOutlined,
-  SettingOutlined,
   UpOutlined,
-  UserOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '@/services/authService';
@@ -81,10 +68,20 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
   const menuDropdownContent = (
     <div className="w-[330px] sm:w-[350px] bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden text-slate-800 divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-150">
       {/* ── 1. User Profile Header ── */}
-      <div className="p-4 bg-gradient-to-b from-slate-50/80 to-white flex items-center gap-3">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => handleNavigate('/candidate/dashboard')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            handleNavigate('/candidate/dashboard');
+          }
+        }}
+        className="p-4 bg-gradient-to-b from-slate-50/80 to-white flex items-center gap-3 cursor-pointer hover:bg-slate-50/90 transition-colors"
+      >
         <AccountAvatar name={name} avatar={user?.avatar} size={50} className="shrink-0 ring-2 ring-emerald-100" />
         <div className="min-w-0 flex-1">
-          <div className="font-bold text-slate-900 text-sm truncate">{name}</div>
+          <div className="font-bold text-slate-900 text-sm truncate hover:text-emerald-600 transition-colors">{name}</div>
           <div className="mt-0.5">
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
               <CheckCircleFilled className="text-[10px]" /> Tài khoản đã xác thực
@@ -119,6 +116,14 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
           <div className="mt-1 space-y-0.5">
             <button
               type="button"
+              onClick={() => handleNavigate('/candidate/dashboard')}
+              className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-slate-600 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
+            >
+              <span>Trang tổng quan cá nhân</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => handleNavigate('/candidate/saved-jobs')}
               className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-slate-600 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
             >
@@ -136,22 +141,6 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
               className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-slate-600 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
             >
               <span>Việc làm đã ứng tuyển</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleNavigate('/jobs')}
-              className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-slate-600 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
-            >
-              <span>Việc làm phù hợp với bạn</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleNavigate('/candidate/dashboard')}
-              className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-slate-600 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
-            >
-              <span>Cài đặt gợi ý việc làm</span>
             </button>
           </div>
         )}
@@ -198,14 +187,6 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
 
             <button
               type="button"
-              onClick={() => handleNavigate('/candidate/applications?tab=consents')}
-              className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-slate-600 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
-            >
-              <span>Nhà tuyển dụng muốn kết nối với bạn</span>
-            </button>
-
-            <button
-              type="button"
               onClick={() => handleNavigate('/candidate/profile')}
               className="w-full flex items-center justify-between py-2 px-3 pl-9 text-[13px] text-slate-600 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-colors text-left bg-transparent border-0 cursor-pointer"
             >
@@ -248,23 +229,14 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
       </div>
 
       {/* ── 5. Actions Footer ── */}
-      <div className="p-2 bg-slate-50/60 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => handleNavigate('/')}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-white rounded-xl transition-all bg-transparent border border-transparent hover:border-slate-200 cursor-pointer"
-        >
-          <HomeOutlined className="text-sm" />
-          <span>Về Trang chủ</span>
-        </button>
-
+      <div className="p-2.5 bg-slate-50/70 border-t border-slate-100">
         <button
           type="button"
           onClick={() => {
             setOpen(false);
             void signOut();
           }}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors bg-transparent border-0 cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors bg-transparent border-0 cursor-pointer"
         >
           <LogoutOutlined className="text-rose-500 text-sm" />
           <span>Đăng xuất</span>

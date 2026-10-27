@@ -1,112 +1,16 @@
 /**
  * @file CandidateShell.tsx
- * @description Persistent Candidate workspace with task-oriented desktop and mobile navigation.
+ * @description Persistent Candidate workspace with unified Navbar navigation matching homepage.
  */
-import React, { Suspense, useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Dropdown } from 'antd';
-import {
-  CloseOutlined,
-  FileDoneOutlined,
-  FolderOpenOutlined,
-  HeartOutlined,
-  HomeOutlined,
-  LogoutOutlined,
-  MailOutlined,
-  SearchOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
-import { useAuthStore } from '@/stores/authStore';
-import { AccountAvatar } from '@/components/common/AccountAvatar';
-import { authService } from '@/services/authService';
+import React, { Suspense } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { Navbar } from '@/features/landing/components/Navbar';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
-import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
-import { NotificationBell } from '@/components/notifications/NotificationBell';
 import '@/features/admin-console/admin-console.css';
 import './candidate/candidate.css';
-import { BrandMark } from '@/components/common/BrandMark';
-import { CandidateWorkspaceMenu } from './candidate/CandidateWorkspaceMenu';
-
-const PRIMARY_NAV = [
-  { to: '/candidate/dashboard', label: 'Tổng quan', icon: HomeOutlined, matches: ['/candidate/dashboard'] },
-  { to: '/jobs', label: 'Tìm việc', icon: SearchOutlined, matches: ['/jobs', '/candidate/jobs'] },
-  { to: '/candidate/saved-jobs', label: 'Việc đã lưu', icon: HeartOutlined, matches: ['/candidate/saved-jobs'] },
-  { to: '/candidate/applications', label: 'Đơn ứng tuyển', icon: FileDoneOutlined, matches: ['/candidate/applications', '/candidate/submission-consents'] },
-  {
-    to: '/candidate/cvs',
-    label: 'Hồ sơ & CV',
-    icon: FolderOpenOutlined,
-    matches: ['/candidate/cvs', '/candidate/affiliate-cvs'],
-  },
-] as const;
-
-const ACCOUNT_LINKS = [
-  { to: '/candidate/saved-jobs', label: 'Việc làm đã lưu', icon: HeartOutlined },
-  { to: '/candidate/profile', label: 'Hồ sơ cá nhân', icon: UserOutlined },
-  { to: '/candidate/affiliate-cvs', label: 'CV do đối tác gửi', icon: FolderOpenOutlined },
-  { to: '/candidate/settings/email-identities', label: 'Email liên kết & khôi phục dữ liệu', icon: MailOutlined },
-] as const;
-
-const desktopLinkClass = (active: boolean) =>
-  [
-    'flex h-10 items-center gap-2 rounded-full px-4 text-[14px] no-underline transition-colors duration-150',
-    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--console-accent)]',
-    active
-      ? 'bg-[color:var(--console-accent-soft)] font-semibold text-[color:var(--console-accent-strong)] shadow-[inset_0_0_0_1px_rgba(37,99,235,0.18)]'
-      : 'font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900',
-  ].join(' ');
 
 export const CandidateShell: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const compact = useCompactLayout();
-  const { user, logout } = useAuthStore();
-  const [accountOpen, setAccountOpen] = useState(false);
-  const accountButtonRef = useRef<HTMLButtonElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-
-  const isPathActive = (prefixes: readonly string[]) =>
-    prefixes.some((prefix) => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`));
-  const isAccountPathActive = isPathActive(ACCOUNT_LINKS.map((item) => item.to));
-
-  const closeAccount = (restoreFocus = false) => {
-    setAccountOpen(false);
-    if (restoreFocus) window.setTimeout(() => accountButtonRef.current?.focus(), 0);
-  };
-
-  useEffect(() => setAccountOpen(false), [location.pathname, compact]);
-  useEffect(() => {
-    if (!accountOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    closeButtonRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeAccount(true);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', onKeyDown);
-    };
-  }, [accountOpen]);
-
-  const signOut = async () => {
-    try {
-      await authService.logout();
-    } finally {
-      logout();
-      window.location.replace('/');
-    }
-  };
-
-  const name = user?.name || 'Ứng viên';
-  const accountMenuItems = [
-    { key: '/', icon: <HomeOutlined />, label: 'Về Trang chủ việc làm' },
-    { type: 'divider' as const },
-    ...ACCOUNT_LINKS.map((item) => ({ key: item.to, icon: React.createElement(item.icon), label: item.label })),
-    { type: 'divider' as const },
-    { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
-  ];
 
   const isCvBuilder = location.pathname.startsWith('/candidate/cv-builder');
 
@@ -121,147 +25,17 @@ export const CandidateShell: React.FC = () => {
   }
 
   return (
-    <div className="candidate-console min-h-screen text-slate-900">
-      <header className="candidate-topbar sticky top-0 z-30">
-        <div
-          className={
-            compact
-              ? 'mx-auto flex h-[68px] w-full items-center gap-4 px-4'
-              : 'mx-auto grid h-[72px] w-full max-w-[1536px] grid-cols-[minmax(230px,1fr)_auto_minmax(230px,1fr)] items-center gap-6 px-6 lg:px-10'
-          }
-        >
-          <NavLink to="/" className="flex shrink-0 items-center gap-2.5 no-underline" aria-label="HR Connect, về trang chủ">
-            <BrandMark size={42} />
-            <span className="leading-tight">
-              <span className="block text-[16px] font-extrabold tracking-[-0.02em] text-slate-950">HR Connect</span>
-              <span className="hidden text-[11px] font-semibold text-[color:var(--candidate-accent)] sm:block">Dành cho ứng viên</span>
-            </span>
-          </NavLink>
-
-          {!compact && (
-            <nav aria-label="Điều hướng ứng viên" className="candidate-desktop-nav flex items-center justify-self-center gap-1 p-1">
-              {PRIMARY_NAV.map((item) => {
-                const active = isPathActive(item.matches);
-                const Icon = item.icon;
-                return (
-                  <NavLink key={item.to} to={item.to} className={desktopLinkClass(active)} aria-current={active ? 'page' : undefined}>
-                    <Icon aria-hidden />
-                    {item.label}
-                  </NavLink>
-                );
-              })}
-            </nav>
-          )}
-
-          <div className={compact ? 'ml-auto flex items-center gap-2' : 'flex items-center justify-self-end gap-3'}>
-            <NotificationBell />
-            {compact ? (
-              <button
-                ref={accountButtonRef}
-                type="button"
-                aria-label="Mở tài khoản và cài đặt"
-                aria-expanded={accountOpen}
-                aria-controls="candidate-account-panel"
-                onClick={() => setAccountOpen(true)}
-                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full border-0 bg-transparent p-1 pr-2 text-left hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
-              >
-                <AccountAvatar name={name} avatar={user?.avatar} size={36} />
-                <span className="max-w-28 truncate text-sm font-semibold text-slate-800">{name}</span>
-              </button>
-            ) : (
-              <CandidateWorkspaceMenu />
-            )}
-          </div>
-        </div>
-      </header>
-
-      {compact && accountOpen && (
-        <div className="fixed inset-0 z-40 bg-slate-900/40" onClick={() => closeAccount(true)} aria-hidden />
-      )}
-      {compact && (
-        <aside
-          id="candidate-account-panel"
-          aria-label="Tài khoản và cài đặt"
-          aria-hidden={!accountOpen}
-          className="candidate-account-drawer fixed inset-y-0 right-0 z-50 w-[320px] max-w-[88vw] bg-white p-4 shadow-2xl"
-          data-open={accountOpen}
-        >
-          <div className="mb-5 flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <AccountAvatar name={name} avatar={user?.avatar} size={44} />
-              <div className="min-w-0">
-                <p className="m-0 truncate text-sm font-bold text-slate-900">{name}</p>
-                <p className="m-0 mt-0.5 truncate text-xs text-slate-500">{user?.email}</p>
-              </div>
-            </div>
-            <button
-              ref={closeButtonRef}
-              type="button"
-              onClick={() => closeAccount(true)}
-              aria-label="Đóng tài khoản và cài đặt"
-              className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl border-0 bg-slate-100 text-slate-700 hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
-            >
-              <CloseOutlined />
-            </button>
-          </div>
-          <nav aria-label="Liên kết tài khoản" className="space-y-1">
-            {ACCOUNT_LINKS.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  tabIndex={accountOpen ? 0 : -1}
-                  className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium text-slate-700 no-underline hover:bg-slate-100 hover:text-slate-950"
-                >
-                  <Icon aria-hidden className="text-[color:var(--console-accent)]" />
-                  {item.label}
-                </NavLink>
-              );
-            })}
-          </nav>
-          <button
-            type="button"
-            tabIndex={accountOpen ? 0 : -1}
-            onClick={signOut}
-            className="mt-5 flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-xl border-0 bg-red-50 px-3 text-sm font-semibold text-red-700 hover:bg-red-100"
-          >
-            <LogoutOutlined aria-hidden />
-            Đăng xuất
-          </button>
-        </aside>
-      )}
-
+    <div className="candidate-console min-h-screen text-slate-900 bg-[#f8fafc]">
+      {/* Unified top Navbar matching Homepage & public portal */}
+      <Navbar />
       <AdminTopProgress offsetLeft={0} />
-      <main className="candidate-main mx-auto w-full max-w-[1440px] px-4 py-6 pb-28 sm:px-6 lg:px-8 lg:py-8">
+      <main className="candidate-main mx-auto w-full max-w-[1440px] px-4 py-6 pb-20 sm:px-6 lg:px-8 lg:py-8">
         <AdminPageEnter pathKey={location.pathname}>
           <Suspense fallback={<AdminPageSkeleton />}>
             <Outlet />
           </Suspense>
         </AdminPageEnter>
       </main>
-
-      {compact && (
-        <nav aria-label="Điều hướng ứng viên trên thiết bị di động" className="candidate-bottom-nav fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-0 border-t border-solid border-slate-200 bg-white/95 px-1 pt-1 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur">
-          {PRIMARY_NAV.map((item) => {
-            const active = isPathActive(item.matches);
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                aria-current={active ? 'page' : undefined}
-                className={`flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-xl px-1 text-center text-[11px] no-underline ${
-                  active ? 'font-semibold text-[color:var(--console-accent-strong)]' : 'font-medium text-slate-500'
-                }`}
-              >
-                <Icon aria-hidden className="text-lg" />
-                <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
-        </nav>
-      )}
     </div>
   );
 };
