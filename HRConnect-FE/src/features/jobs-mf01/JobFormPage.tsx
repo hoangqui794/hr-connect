@@ -39,17 +39,19 @@ import {
 } from 'antd';
 import type { FormInstance } from 'antd';
 import {
+  AimOutlined,
   ArrowLeftOutlined,
   CheckCircleFilled,
   CheckCircleOutlined,
+  CheckOutlined,
   DeleteOutlined,
   EditOutlined,
   EnvironmentOutlined,
   ExclamationCircleOutlined,
+  FileSearchOutlined,
   InfoCircleOutlined,
   PlusOutlined,
-  RocketOutlined,
-  SafetyCertificateOutlined,
+  ProfileOutlined,
   TeamOutlined,
   WalletOutlined,
 } from '@ant-design/icons';
@@ -164,7 +166,15 @@ interface ServiceMeta {
   icon: React.ReactNode;
   defaultTitle: string;
   defaultSummary: string;
-  feeRule: string[];
+  /** "Phù hợp khi" – who the model is for. */
+  bestFor: string;
+  /** What HR Connect does under this model (MF-02/MF-03 rules). */
+  includes: string[];
+  /** Who screens the applications (ScreeningPolicy). */
+  screenedBy: string;
+  /** Payment model, short and detailed (no hard-coded amounts: fees come from packages/agreements). */
+  payTitle: string;
+  payDetail: string;
 }
 
 const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
@@ -172,28 +182,52 @@ const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
     code: 'CV_APPLICATION',
     tag: 'Gói đăng tin',
     color: 'blue',
-    icon: <RocketOutlined className="text-blue-600 text-lg" />,
+    icon: <ProfileOutlined />,
     defaultTitle: 'CV Application',
-    defaultSummary: 'Đăng tin để ứng viên chủ động tìm kiếm và nộp hồ sơ.',
-    feeRule: ['Thanh toán theo gói đăng tin (Miễn phí / Trả phí).'],
+    defaultSummary: 'Đăng tin trên HR Connect, ứng viên chủ động nộp hồ sơ và doanh nghiệp tự sàng lọc.',
+    bestFor: 'Vị trí cần nhiều hồ sơ và đội tuyển dụng nội bộ tự xử lý.',
+    includes: [
+      'Hiển thị tin trên trang việc làm công khai',
+      'AI chấm điểm, xếp hạng mức độ phù hợp từng CV',
+      'Quản lý ứng viên, phỏng vấn và offer trên một nơi',
+    ],
+    screenedBy: 'Doanh nghiệp tự sàng lọc',
+    payTitle: 'Theo gói đăng tin',
+    payDetail: 'Có gói miễn phí và gói trả phí; tin hiển thị sau khi HR Connect duyệt.',
   },
   CV_SOURCING: {
     code: 'CV_SOURCING',
     tag: 'Tìm kiếm hồ sơ',
     color: 'purple',
-    icon: <TeamOutlined className="text-purple-600 text-lg" />,
+    icon: <FileSearchOutlined />,
     defaultTitle: 'CV Sourcing',
-    defaultSummary: 'HR Connect & CTV chủ động tìm kiếm, sàng lọc hồ sơ đạt chuẩn.',
-    feeRule: ['Đặt cọc khi duyệt tin, thanh toán theo số hồ sơ nhận.'],
+    defaultSummary: 'HR Connect cùng mạng lưới cộng tác viên tìm và giao hồ sơ đã sàng lọc theo số lượng bạn đặt.',
+    bestFor: 'Cần nhanh một số lượng CV đạt chuẩn mà không tự đi tìm.',
+    includes: [
+      'Cộng tác viên chủ động tìm ứng viên phù hợp',
+      'HR Connect sàng lọc trước khi giao CV',
+      'Chấp nhận hoặc từ chối từng CV trong thời hạn xem xét',
+    ],
+    screenedBy: 'HR Connect sàng lọc',
+    payTitle: 'Đặt cọc, trả theo CV được nhận',
+    payDetail: 'Đặt cọc sau khi ký thỏa thuận dịch vụ; quyết toán theo số CV bạn chấp nhận.',
   },
   HEADHUNT_COD: {
     code: 'HEADHUNT_COD',
     tag: 'Tuyển dụng trọn gói',
     color: 'gold',
-    icon: <SafetyCertificateOutlined className="text-amber-600 text-lg" />,
+    icon: <AimOutlined />,
     defaultTitle: 'Headhunt COD',
-    defaultSummary: 'Tìm kiếm nhân sự theo yêu cầu, bảo hành tuyển thay thế.',
-    feeRule: ['Chỉ trả phí khi ứng viên nhận việc thành công.'],
+    defaultSummary: 'HR Connect tìm, sàng lọc và đề xuất ứng viên; bạn chỉ phỏng vấn và chọn người phù hợp.',
+    bestFor: 'Vị trí quan trọng, khó tuyển hoặc cấp quản lý.',
+    includes: [
+      'Headhunter tìm và tiếp cận ứng viên theo yêu cầu',
+      'HR Connect sàng lọc, chỉ gửi danh sách đã chọn',
+      'Bảo hành, tuyển thay thế miễn phí nếu ứng viên nghỉ sớm',
+    ],
+    screenedBy: 'HR Connect sàng lọc',
+    payTitle: 'Chỉ trả khi ứng viên đi làm',
+    payDetail: 'Phí theo hệ số × lương gross tháng, ghi trong thỏa thuận dịch vụ đã ký.',
   },
 };
 
@@ -1014,12 +1048,12 @@ export const JobFormPage: React.FC = () => {
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--console-accent-soft)] text-xs font-bold text-[color:var(--console-accent-strong)]">
                       1
                     </span>
-                    <h2 className="m-0 text-[18px] font-semibold text-slate-900">
+                    <h2 id="service-picker-heading" className="m-0 text-[18px] font-semibold text-slate-900">
                       Chọn loại dịch vụ tuyển dụng <span className="text-red-500 font-bold ml-1">*</span>
                     </h2>
                   </div>
                   <p className="m-0 text-[13.5px] text-slate-600">
-                    Chọn 1 trong 3 mô hình tuyển dụng phù hợp:
+                    So sánh 3 mô hình theo người sàng lọc hồ sơ và cách tính phí, rồi chọn mô hình phù hợp với vị trí cần tuyển.
                   </p>
                 </header>
 
@@ -1047,79 +1081,114 @@ export const JobFormPage: React.FC = () => {
                       }
                     />
                   ) : (
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div role="radiogroup" aria-labelledby="service-picker-heading" className="grid gap-4 lg:grid-cols-3">
                       {availableServiceTypes.map((st: ServiceType) => {
-                        const meta = SERVICE_META[st.code] ?? {
+                        const meta: ServiceMeta = SERVICE_META[st.code] ?? {
                           code: st.code,
                           tag: 'Dịch vụ',
                           color: 'blue',
-                          icon: <RocketOutlined />,
+                          icon: <ProfileOutlined />,
                           defaultTitle: st.name,
                           defaultSummary: st.description ?? '',
-                          feeRule: ['Áp dụng theo chính sách dịch vụ của HR Connect.'],
+                          bestFor: '',
+                          includes: [],
+                          screenedBy: '',
+                          payTitle: 'Theo chính sách dịch vụ',
+                          payDetail: 'Áp dụng theo chính sách dịch vụ của HR Connect.',
                         };
                         const isSelected =
                           selectedServiceId === st.id ||
                           selectedServiceCode === st.code ||
                           watched.serviceTypeId === st.id;
+                        const disabled = serviceTypeLocked || !editable;
 
                         return (
                           <div
                             key={st.id}
-                            role="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            aria-disabled={disabled || undefined}
                             tabIndex={0}
-                            aria-pressed={isSelected}
                             onClick={() => handleSelectService(st)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSelectService(st)}
-                            className={`group relative flex flex-col justify-between rounded-2xl border-2 border-solid p-5 text-left transition-all duration-200 cursor-pointer ${
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleSelectService(st);
+                              }
+                            }}
+                            className={`group relative flex flex-col rounded-2xl border border-solid bg-white text-left transition-[border-color,box-shadow] duration-200 outline-none focus-visible:ring-4 focus-visible:ring-blue-200 ${
                               isSelected
-                                ? 'border-2 border-blue-600 bg-blue-50/20 shadow-sm'
-                                : 'border-2 border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
-                            } ${serviceTypeLocked || !editable ? 'opacity-65 cursor-not-allowed' : ''}`}
+                                ? 'border-blue-600 shadow-[0_0_0_1px_theme(colors.blue.600),0_12px_32px_-16px_rgba(37,99,235,0.45)]'
+                                : 'border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md'
+                            } ${disabled ? 'opacity-65 cursor-not-allowed' : 'cursor-pointer'}`}
                           >
-                            <div>
-                              <div className="flex items-center justify-between gap-3 mb-3">
-                                <div className="flex min-w-0 items-center gap-2">
-                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 group-hover:bg-white transition-colors">
-                                    {meta.icon}
-                                  </div>
-                                  <Tag color={meta.color} className="m-0 min-w-0 truncate font-medium" title={meta.tag}>
-                                    {meta.tag}
-                                  </Tag>
-                                </div>
+                            <div className="flex flex-1 flex-col p-5">
+                              <div className="flex items-start justify-between gap-3">
                                 <div
                                   aria-hidden
-                                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-solid transition-colors ${
-                                    isSelected
-                                      ? 'border-blue-600 bg-blue-600 text-white'
-                                      : 'border-slate-300 bg-white'
+                                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-solid text-[22px] transition-colors ${
+                                    isSelected ? 'border-blue-200 text-blue-600' : 'border-slate-200 text-slate-600 group-hover:text-slate-800'
                                   }`}
                                 >
-                                  {isSelected && <span className="text-[11px] font-bold leading-none">✓</span>}
+                                  {meta.icon}
                                 </div>
+                                {isSelected ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1 text-[12px] font-semibold text-white">
+                                    <CheckOutlined aria-hidden className="text-[11px]" />
+                                    Đã chọn
+                                  </span>
+                                ) : (
+                                  <span
+                                    aria-hidden
+                                    className="mt-1 h-5 w-5 rounded-full border-2 border-solid border-slate-300 bg-white transition-colors group-hover:border-slate-400"
+                                  />
+                                )}
                               </div>
 
-                              <h3 className="m-0 text-[16px] font-bold text-slate-900 leading-snug">
+                              <div className="mt-4 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                                {meta.tag}
+                              </div>
+                              <h3 className="m-0 mt-1 text-[18px] font-bold leading-snug text-slate-900">
                                 {st.name || meta.defaultTitle}
                               </h3>
-                              <p className="mt-2 text-[13px] text-slate-600 leading-relaxed min-h-[40px]">
-                                {meta.defaultSummary}
-                              </p>
+                              <p className="m-0 mt-2 text-[13.5px] leading-relaxed text-slate-600">{meta.defaultSummary}</p>
+
+                              {meta.bestFor && (
+                                <p className="m-0 mt-3 text-[13px] leading-relaxed text-slate-700">
+                                  <span className="font-semibold text-slate-900">Phù hợp khi: </span>
+                                  {meta.bestFor}
+                                </p>
+                              )}
+
+                              {meta.includes.length > 0 && (
+                                <ul className="m-0 mt-4 list-none space-y-2 border-0 border-t border-solid border-slate-100 p-0 pt-4">
+                                  {meta.includes.map((item) => (
+                                    <li key={item} className="flex items-start gap-2 text-[13px] leading-snug text-slate-700">
+                                      <CheckOutlined aria-hidden className="mt-[3px] shrink-0 text-[12px] text-emerald-600" />
+                                      <span>{item}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
                             </div>
 
-                            {/* Read-only Fee Rule Block */}
-                            <div className="mt-4 rounded-xl border border-solid border-slate-200/90 bg-white/90 p-3 text-[12px] text-slate-700">
-                              <span className="font-semibold text-slate-900 flex items-center gap-1.5 mb-1">
-                                <WalletOutlined className="text-blue-600" />
-                                Cách thanh toán
-                              </span>
-                              <div className="space-y-1 text-slate-600 leading-relaxed">
-                                {meta.feeRule.map((rule) => (
-                                  <p key={rule} className="m-0 break-words">
-                                    {rule}
-                                  </p>
-                                ))}
+                            <div
+                              className={`rounded-b-2xl border-0 border-t border-solid px-5 py-4 transition-colors ${
+                                isSelected ? 'border-blue-100 bg-blue-50/60' : 'border-slate-100 bg-slate-50/80'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                                <WalletOutlined aria-hidden />
+                                Chi phí
                               </div>
+                              <div className="mt-1 text-[14.5px] font-bold text-slate-900">{meta.payTitle}</div>
+                              <p className="m-0 mt-1 text-[12.5px] leading-relaxed text-slate-600">{meta.payDetail}</p>
+                              {meta.screenedBy && (
+                                <div className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-white px-2 py-1 text-[12px] font-medium text-slate-700 ring-1 ring-inset ring-slate-200">
+                                  <TeamOutlined aria-hidden className="text-slate-500" />
+                                  {meta.screenedBy}
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
