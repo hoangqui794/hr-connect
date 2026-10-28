@@ -164,6 +164,18 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
     }
   }, [isDrawerOpen, previewTemplateId, templateDetailQuery.isError, message, templatesQuery]);
 
+  const templatesList = useMemo(() => templatesQuery.data?.items ?? [], [templatesQuery.data?.items]);
+
+  const paginatedTemplates = useMemo(() => {
+    const start = (systemPage - 1) * systemPageSize;
+    return templatesList.slice(start, start + systemPageSize);
+  }, [templatesList, systemPage, systemPageSize]);
+
+  const paginatedClientJobs = useMemo(() => {
+    const start = (myJobsPage - 1) * myJobsPageSize;
+    return clientJobsList.slice(start, start + myJobsPageSize);
+  }, [clientJobsList, myJobsPage, myJobsPageSize]);
+
   if (!editable) {
     return null;
   }
@@ -321,18 +333,6 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
       confirmAndApply(template);
     }
   };
-
-  const templatesList = templatesQuery.data?.items ?? [];
-
-  const paginatedTemplates = useMemo(() => {
-    const start = (systemPage - 1) * systemPageSize;
-    return templatesList.slice(start, start + systemPageSize);
-  }, [templatesList, systemPage, systemPageSize]);
-
-  const paginatedClientJobs = useMemo(() => {
-    const start = (myJobsPage - 1) * myJobsPageSize;
-    return clientJobsList.slice(start, start + myJobsPageSize);
-  }, [clientJobsList, myJobsPage, myJobsPageSize]);
 
   return (
     <section className="rounded-2xl border border-indigo-100/80 bg-gradient-to-br from-indigo-50/40 via-white to-sky-50/30 p-5 shadow-sm transition-all">
