@@ -29,6 +29,9 @@ const cleanParams = <T extends object>(params: T): Partial<T> =>
     Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
   ) as Partial<T>;
 
+/** Service types Internal HR screens (MF-03). CV_APPLICATION is screened by the Client itself. */
+export const HR_SCREENED_SERVICE_TYPES = 'HEADHUNT_COD,CV_SOURCING';
+
 export const screeningApi = {
   /** GET /recruitment/applications — scoped by the backend to what the caller may see. */
   async list(params: RecruitmentApplicationSearchParams): Promise<PagedItems<RecruitmentApplicationItem>> {
