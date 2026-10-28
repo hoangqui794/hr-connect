@@ -59,6 +59,7 @@ public class JobRepository : IJobRepository
             .Include(job => job.JobRequirements)
             .Include(job => job.JobSkills).ThenInclude(jobSkill => jobSkill.Skill)
             .Include(job => job.JobStatusHistories)
+            .Include(job => job.CurrentServiceAgreement)
             .FirstOrDefaultAsync(job => job.JobId == jobId, cancellationToken);
 
     public async Task<bool> HasSubmissionsOrApplicationsAsync(
@@ -82,6 +83,7 @@ public class JobRepository : IJobRepository
             .Include(job => job.JobPostingFees)
             .Include(job => job.JobRequirements)
             .Include(job => job.JobSkills).ThenInclude(jobSkill => jobSkill.Skill)
+            .Include(job => job.CurrentServiceAgreement)
             .Where(job => job.CompanyId == companyId)
             .OrderByDescending(job => job.UpdatedAt)
             .ToListAsync(cancellationToken);
@@ -96,6 +98,7 @@ public class JobRepository : IJobRepository
             .Include(job => job.JobRequirements)
             .Include(job => job.JobSkills).ThenInclude(jobSkill => jobSkill.Skill)
             .Include(job => job.JobStatusHistories)
+            .Include(job => job.CurrentServiceAgreement)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(status) && !status.Equals("ALL", StringComparison.OrdinalIgnoreCase))
@@ -138,7 +141,7 @@ public class JobRepository : IJobRepository
         Guid? serviceTypeId,
         decimal? salaryMin,
         decimal? salaryMax,
-        int experienceYears,
+        decimal? experienceYears,
         int page,
         int pageSize,
         string? sortBy = null,
@@ -156,7 +159,7 @@ public class JobRepository : IJobRepository
         Guid? serviceTypeId,
         decimal? salaryMin,
         decimal? salaryMax,
-        int? experienceYears,
+        decimal? experienceYears,
         int page,
         int pageSize,
         string? sortBy,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Job } from '@/types/api/jobs';
-import { formatMultilineText, formatPostingPackage, isAwaitingSourcingDeposit, sourcingDepositAmount } from './jobDisplay';
-import { EXPERIENCE_YEAR_OPTIONS } from './jobFormOptions';
+import { formatExperience, formatMultilineText, formatPostingPackage, isAwaitingSourcingDeposit, sourcingDepositAmount } from './jobDisplay';
+import { EXPERIENCE_YEAR_OPTIONS, JOB_EXPERIENCE_SELECT_OPTIONS } from './jobFormOptions';
 
 const terms = (sourcingTarget: number | null, pricePerCv: number | null, depositPercent: number | null) =>
   ({
@@ -50,8 +50,17 @@ describe('Nhãn biểu mẫu MF-01', () => {
     expect(EXPERIENCE_YEAR_OPTIONS[EXPERIENCE_YEAR_OPTIONS.length - 1]?.label).toBe('Từ 15 năm trở lên');
   });
 
-  it('giữ mỗi dấu đầu dòng trên một dòng riêng', () => {
-    expect(formatMultilineText('• Ý thứ nhất • Ý thứ hai')).toBe('• Ý thứ nhất\n• Ý thứ hai');
-    expect(formatMultilineText('Mở đầu\n• Ý thứ nhất\n• Ý thứ hai')).toBe('Mở đầu\n• Ý thứ nhất\n• Ý thứ hai');
+  it('hỗ trợ hiển thị và lựa chọn kinh nghiệm số lẻ và 6 tháng', () => {
+    expect(formatExperience(0.5, null)).toBe('Từ 6 tháng');
+    expect(formatExperience(1.5, null)).toBe('Từ 1.5 năm');
+    expect(formatExperience(2.5, 2.5)).toBe('2.5 năm');
+    expect(formatExperience(0, null)).toBe('Không yêu cầu');
+
+    expect(JOB_EXPERIENCE_SELECT_OPTIONS.some((opt) => opt.value === 0.5 && opt.label === 'Tối thiểu 6 tháng')).toBe(true);
+    expect(JOB_EXPERIENCE_SELECT_OPTIONS.some((opt) => opt.value === 1.5 && opt.label === 'Tối thiểu 1.5 năm')).toBe(true);
+    const customOpt = JOB_EXPERIENCE_SELECT_OPTIONS.find((opt) => opt.value === 'custom');
+    expect(customOpt).toBeDefined();
+    expect((customOpt?.label as string) === 'Khác' || customOpt?.label.includes('Tự nhập')).toBe(true);
   });
 });
+

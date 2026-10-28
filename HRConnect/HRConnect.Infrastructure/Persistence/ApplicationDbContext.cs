@@ -1942,8 +1942,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(1000)
                 .HasColumnName("salary_note");
             entity.Property(e => e.MinExperienceYears)
+                .HasPrecision(4, 1)
                 .HasColumnName("min_experience_years");
             entity.Property(e => e.MaxExperienceYears)
+                .HasPrecision(4, 1)
                 .HasColumnName("max_experience_years");
             entity.Property(e => e.ServiceTypeId).HasColumnName("service_type_id");
             entity.Property(e => e.Status)
@@ -2534,8 +2536,8 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.Benefits).HasColumnName("benefits");
             entity.Property(e => e.EmploymentType).HasMaxLength(50).HasColumnName("employment_type");
-            entity.Property(e => e.MinExperienceYears).HasColumnName("min_experience_years");
-            entity.Property(e => e.MaxExperienceYears).HasColumnName("max_experience_years");
+            entity.Property(e => e.MinExperienceYears).HasPrecision(4, 1).HasColumnName("min_experience_years");
+            entity.Property(e => e.MaxExperienceYears).HasPrecision(4, 1).HasColumnName("max_experience_years");
             entity.Property(e => e.SearchText).HasColumnName("search_text");
             entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
             entity.Property(e => e.UsageCount).HasDefaultValue(0).HasColumnName("usage_count");

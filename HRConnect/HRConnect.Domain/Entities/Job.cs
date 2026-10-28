@@ -33,9 +33,9 @@ public partial class Job
 
     public string? SalaryNote { get; set; }
 
-    public int? MinExperienceYears { get; set; }
+    public decimal? MinExperienceYears { get; set; }
 
-    public int? MaxExperienceYears { get; set; }
+    public decimal? MaxExperienceYears { get; set; }
 
     public string CurrencyCode { get; set; } = null!;
 

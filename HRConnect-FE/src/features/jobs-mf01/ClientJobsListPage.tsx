@@ -330,9 +330,9 @@ export const ClientJobsListPage: React.FC = () => {
       width: 150,
       render: (_, job) => (
         <div className="space-y-1">
-          <Tooltip title={JOB_STATUS[job.status].hint}>
+          <Tooltip title={job.status === 'PENDING_AGREEMENT' && job.hasSignedAgreement ? 'Đã nộp hợp đồng đã ký kết, đang chờ Internal HR kiểm tra và duyệt tin' : JOB_STATUS[job.status].hint}>
             <span>
-              <JobStatusTag status={job.status} />
+              <JobStatusTag status={job.status} hasSignedAgreement={job.hasSignedAgreement} />
             </span>
           </Tooltip>
           {job.postingFeeStatus === 'PENDING' && job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
@@ -504,9 +504,9 @@ export const ClientJobsListPage: React.FC = () => {
                       </div>
                     )}
                     <div className="flex items-start justify-between gap-3">
-                      <Tooltip title={JOB_STATUS[job.status].hint}>
+                      <Tooltip title={job.status === 'PENDING_AGREEMENT' && job.hasSignedAgreement ? 'Đã nộp hợp đồng đã ký kết, đang chờ Internal HR kiểm tra và duyệt tin' : JOB_STATUS[job.status].hint}>
                         <span>
-                          <JobStatusTag status={job.status} />
+                          <JobStatusTag status={job.status} hasSignedAgreement={job.hasSignedAgreement} />
                         </span>
                       </Tooltip>
                       <span className="text-xs text-slate-500">{formatDate(job.updatedAt)}</span>
@@ -528,17 +528,31 @@ export const ClientJobsListPage: React.FC = () => {
                       <div>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'}</div>
                     </div>
                     {job.status === 'PENDING_AGREEMENT' && (
-                      <div className="flex items-center justify-between rounded-xl bg-purple-50 border border-solid border-purple-200 px-3 py-2 text-xs text-purple-900">
-                        <span className="font-medium">Hợp đồng dịch vụ đã soạn xong</span>
-                        <Button
-                          type="primary"
-                          size="small"
-                          className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] !text-xs !h-6 font-medium whitespace-nowrap"
-                          onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
-                        >
-                          Xem hợp đồng
-                        </Button>
-                      </div>
+                      job.hasSignedAgreement ? (
+                        <div className="flex items-center justify-between rounded-xl bg-teal-50 border border-solid border-teal-200 px-3 py-2 text-xs text-teal-900">
+                          <span className="font-medium">📄 Đã nộp hợp đồng ký · Đang chờ HR kiểm tra & duyệt tin</span>
+                          <Button
+                            type="primary"
+                            size="small"
+                            className="!bg-teal-600 hover:!bg-teal-700 !border-teal-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] !text-xs !h-6 font-medium whitespace-nowrap ml-2"
+                            onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                          >
+                            Xem hợp đồng
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between rounded-xl bg-purple-50 border border-solid border-purple-200 px-3 py-2 text-xs text-purple-900">
+                          <span className="font-medium">Hợp đồng dịch vụ đã soạn xong</span>
+                          <Button
+                            type="primary"
+                            size="small"
+                            className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] !text-xs !h-6 font-medium whitespace-nowrap ml-2"
+                            onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                          >
+                            Xem hợp đồng
+                          </Button>
+                        </div>
+                      )
                     )}
                     {isAwaitingSourcingDeposit(job) && (
                       <div className="flex flex-col gap-2 rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2.5 text-xs text-amber-900">
