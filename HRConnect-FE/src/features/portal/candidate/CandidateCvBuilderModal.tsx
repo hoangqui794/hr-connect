@@ -33,6 +33,8 @@ import {
   cvBuilderApi,
   validateStructuredCvContent,
 } from '@/services/api/cvBuilderApi';
+import { STATIC_CV_TEMPLATES } from './cv-builder/constants/templates';
+import { getSavedCvById, saveCandidateCv } from './cv-builder/services/cvStorage';
 import type {
   StructuredCvContent,
   StructuredCvExperience,
@@ -109,15 +111,17 @@ export const CandidateCvBuilderModal: React.FC<CandidateCvBuilderModalProps> = (
   const [certInput, setCertInput] = useState<string>('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // 1. Query: List templates from GET /api/v1/cv-templates
-  const { data: templates = [], isLoading: isLoadingTemplates } = useQuery({
+  // 1. Query: List templates from cvBuilderApi (with static fallback)
+  const { data: remoteTemplates = [], isLoading: isLoadingTemplates } = useQuery({
     queryKey: ['cv-templates'],
     queryFn: () => cvBuilderApi.getTemplates(),
     enabled: open,
     staleTime: 5 * 60 * 1000,
   });
 
-  // 2. Query: Fetch structured CV if in edit mode
+  const templates = remoteTemplates.length > 0 ? remoteTemplates : STATIC_CV_TEMPLATES;
+
+  // 2. Fetch structured CV if in edit mode (from local storage or fallback)
   const {
     data: existingCv,
     isLoading: isLoadingExisting,
@@ -125,7 +129,22 @@ export const CandidateCvBuilderModal: React.FC<CandidateCvBuilderModalProps> = (
     error: existingError,
   } = useQuery({
     queryKey: ['candidate-cv-structured', editCvId],
-    queryFn: () => cvBuilderApi.getStructuredCv(editCvId!),
+    queryFn: async () => {
+      const stored = getSavedCvById(editCvId!);
+      if (stored) {
+        return {
+          cvId: stored.cvId,
+          title: stored.title,
+          cvTemplateId: stored.selectedTemplateCode,
+          isPrimary: stored.isPrimary,
+          status: stored.status,
+          createdAt: stored.createdAt,
+          updatedAt: stored.updatedAt,
+          structuredContent: stored.structuredContent,
+        };
+      }
+      return cvBuilderApi.getStructuredCv(editCvId!);
+    },
     enabled: open && mode === 'edit' && Boolean(editCvId),
   });
 
@@ -301,26 +320,31 @@ export const CandidateCvBuilderModal: React.FC<CandidateCvBuilderModalProps> = (
         certificates: certificates,
       };
 
-      // Client-side validation
-      const validation = validateStructuredCvContent(structuredContent, title);
-      if (!validation.isValid) {
-        throw new Error(validation.error);
-      }
-
+      let apiResult;
       if (mode === 'edit' && editCvId) {
-        return cvBuilderApi.updateStructuredCv(editCvId, {
+        apiResult = await cvBuilderApi.updateStructuredCv(editCvId, {
           title: title.trim(),
           cvTemplateId: selectedTemplateId,
           structuredContent,
         });
       } else {
-        return cvBuilderApi.createStructuredCv({
+        apiResult = await cvBuilderApi.createStructuredCv({
           title: title.trim(),
           cvTemplateId: selectedTemplateId,
           isPrimary,
           structuredContent,
         });
       }
+
+      saveCandidateCv({
+        cvId: mode === 'edit' ? editCvId : apiResult?.cvId,
+        title: title.trim(),
+        isPrimary,
+        selectedTemplateCode: selectedTemplateId || 'STANDARD',
+        structuredContent,
+      });
+
+      return apiResult;
     },
     onSuccess: () => {
       message.success(
@@ -329,6 +353,7 @@ export const CandidateCvBuilderModal: React.FC<CandidateCvBuilderModalProps> = (
           : 'Tạo CV thành công! File PDF đã được tự động khởi tạo trong Kho CV.'
       );
       void queryClient.invalidateQueries({ queryKey: ['candidate-cvs'] });
+      window.dispatchEvent(new Event('candidate_cv_updated'));
       onSuccess?.();
       onClose();
     },
@@ -338,7 +363,7 @@ export const CandidateCvBuilderModal: React.FC<CandidateCvBuilderModalProps> = (
       const apiMsg = getApiErrorMessage(err);
       const combined = `${rawCode} ${apiMsg}`;
 
-      if (combined.includes('CV_CONTENT_EMPTY')) {
+      if (combined.includes('CV_CONTENT_EMPTY') || combined.includes('Bắt buộc phải có ít nhất 1 trong các mục')) {
         setValidationError(
           'Nội dung CV chưa đủ thông tin. Vui lòng nhập ít nhất 1 trong các mục: Mục tiêu nghề nghiệp, Kinh nghiệm làm việc, Học vấn hoặc Kỹ năng.'
         );

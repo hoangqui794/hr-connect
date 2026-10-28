@@ -14,6 +14,7 @@ import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWorkspaceMenu';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { BrandMark } from '@/components/common/BrandMark';
+import { CvHeaderDropdown } from '@/components/layout/CvHeaderDropdown';
 
 const { Header } = Layout;
 
@@ -90,6 +91,9 @@ export const CandidateHeader: React.FC = () => {
           >
             Trang chủ / Tìm việc
           </Button>
+
+          {/* Header Tạo CV Dropdown (TopCV standard) */}
+          <CvHeaderDropdown />
 
           <Button
             type="text"

@@ -792,9 +792,11 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                       )}
                     </div>
                     <div className="space-y-1">
-                      {certsList.map((cert, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-xs text-slate-700 group/cert">
-                          <span>• {cert}</span>
+                      {certsList.map((cert, idx) => {
+                        const certText = typeof cert === 'string' ? cert : (cert as any)?.name ? `${(cert as any).name}${(cert as any).year ? ` (${(cert as any).year})` : ''}` : String(cert);
+                        return (
+                          <div key={idx} className="flex items-center justify-between text-xs text-slate-700 group/cert">
+                            <span>• {certText}</span>
                           {!readOnly && (
                             <button
                               type="button"
@@ -805,7 +807,8 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                             </button>
                           )}
                         </div>
-                      ))}
+                      );
+                    })}
                     </div>
                   </section>
                 )}
@@ -877,9 +880,11 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                       )}
                     </div>
                     <div className="flex flex-wrap gap-4 text-xs text-slate-700 pt-1">
-                      {interestsList.map((item, idx) => (
-                        <span key={idx} className="flex items-center gap-1 group/interest">
-                          <span>• {item}</span>
+                      {interestsList.map((item, idx) => {
+                        const itemText = typeof item === 'string' ? item : (item as any)?.name || String(item);
+                        return (
+                          <span key={idx} className="flex items-center gap-1 group/interest">
+                            <span>• {itemText}</span>
                           {!readOnly && (
                             <button
                               type="button"
@@ -890,7 +895,8 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                             </button>
                           )}
                         </span>
-                      ))}
+                      );
+                    })}
                     </div>
                   </section>
                 )}
@@ -1071,20 +1077,23 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                           )}
                         </div>
                         <div className="space-y-1.5">
-                          {certsList.map((cert, idx) => (
-                            <div key={idx} className="group/cert flex items-center justify-between text-xs text-slate-700">
-                              <span>• {cert}</span>
-                              {!readOnly && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveCert(idx)}
-                                  className="text-slate-400 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0 opacity-0 group-hover/cert:opacity-100 text-[10px]"
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                          ))}
+                          {certsList.map((cert, idx) => {
+                            const certText = typeof cert === 'string' ? cert : (cert as any)?.name ? `${(cert as any).name}${(cert as any).year ? ` (${(cert as any).year})` : ''}` : String(cert);
+                            return (
+                              <div key={idx} className="group/cert flex items-center justify-between text-xs text-slate-700">
+                                <span>• {certText}</span>
+                                {!readOnly && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveCert(idx)}
+                                    className="text-slate-400 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0 opacity-0 group-hover/cert:opacity-100 text-[10px]"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -1107,20 +1116,23 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                           )}
                         </div>
                         <div className="space-y-1 text-xs text-slate-600">
-                          {interestsList.map((item, idx) => (
-                            <div key={idx} className="flex items-center justify-between group/int">
-                              <span>• {item}</span>
-                              {!readOnly && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveInterest(idx)}
-                                  className="text-slate-400 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0 opacity-0 group-hover/int:opacity-100 text-[10px]"
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                          ))}
+                          {interestsList.map((item, idx) => {
+                            const itemText = typeof item === 'string' ? item : (item as any)?.name || String(item);
+                            return (
+                              <div key={idx} className="flex items-center justify-between group/int">
+                                <span>• {itemText}</span>
+                                {!readOnly && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveInterest(idx)}
+                                    className="text-slate-400 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0 opacity-0 group-hover/int:opacity-100 text-[10px]"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

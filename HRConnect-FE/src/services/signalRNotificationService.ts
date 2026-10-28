@@ -55,6 +55,7 @@ export class SignalRNotificationService {
   private restartTimer: ReturnType<typeof setTimeout> | null = null;
   private restartAttempt = 0;
   private stoppedByClient = false;
+  private isHubAvailable = true;
 
   constructor(hubUrlResolver: () => string = resolveNotificationHubUrl) {
     this.hubUrlResolver = hubUrlResolver;
@@ -78,9 +79,26 @@ export class SignalRNotificationService {
     return this.connectionState === signalR.HubConnectionState.Connected;
   }
 
+  public isAvailable(): boolean {
+    return this.isHubAvailable;
+  }
+
+  public resetHubAvailability(): void {
+    this.isHubAvailable = true;
+  }
+
   public async start(): Promise<void> {
     this.stoppedByClient = false;
     this.clearRestartTimer();
+
+    // Prevent spamming negotiate if hub returned 404 or explicitly disabled
+    if (!this.isHubAvailable) {
+      return;
+    }
+    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ENABLE_SIGNALR === 'false') {
+      return;
+    }
+
     const token = authTokenStorage.getAccessToken();
     if (!token) {
       return;
@@ -223,13 +241,30 @@ export class SignalRNotificationService {
         this.notifyStateChange(signalR.HubConnectionState.Connected);
       })
       .catch((err: unknown) => {
-        console.error('[SignalRNotificationService] Failed to connect to notifications hub:', err);
+        const is404 =
+          (err as any)?.statusCode === 404 ||
+          (err as any)?.status === 404 ||
+          (err instanceof Error && /404|not found/i.test(err.message));
+
+        if (is404) {
+          // Hub is not enabled on backend: stop further attempts to prevent 404 spam in Network tab
+          this.isHubAvailable = false;
+          this.clearRestartTimer();
+          console.warn(
+            '[SignalRNotificationService] Hub negotiate returned 404 Not Found. Realtime hub is not deployed on server; disabling SignalR and falling back to polling.'
+          );
+        } else {
+          console.warn('[SignalRNotificationService] Failed to connect to notifications hub:', err);
+          this.scheduleRestart();
+        }
+
         this.notifyStateChange(signalR.HubConnectionState.Disconnected);
         if (this.connection === connection) {
           this.connection = null;
         }
-        this.scheduleRestart();
-        throw err;
+        if (!is404) {
+          throw err;
+        }
       })
       .finally(() => {
         this.connectingPromise = null;
@@ -263,7 +298,7 @@ export class SignalRNotificationService {
   }
 
   private scheduleRestart(): void {
-    if (this.stoppedByClient || this.restartTimer || !authTokenStorage.getAccessToken()) return;
+    if (!this.isHubAvailable || this.stoppedByClient || this.restartTimer || !authTokenStorage.getAccessToken()) return;
 
     const index = Math.min(this.restartAttempt, SignalRNotificationService.retryDelaysMs.length - 1);
     const delay = SignalRNotificationService.retryDelaysMs[index];

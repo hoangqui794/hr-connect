@@ -246,5 +246,29 @@ describe('signalRNotificationService', () => {
 
       expect(mockConnection.start).toHaveBeenCalledTimes(1);
     });
+
+    it('disables hub and prevents retry loops when negotiate returns 404 Not Found', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(authTokenStorage, 'getAccessToken').mockReturnValue('mock-jwt-token');
+      const err404 = new Error('Failed to complete negotiation with the server: Error: Not Found (404)');
+      (err404 as any).statusCode = 404;
+      mockConnection.start.mockRejectedValue(err404);
+
+      // Should handle 404 cleanly without throwing an unhandled rejection
+      await service.start();
+
+      expect(mockConnection.start).toHaveBeenCalledTimes(1);
+      expect(service.isAvailable()).toBe(false);
+      expect(service.isConnected()).toBe(false);
+
+      // Advancing timer should NOT trigger retry because hub is marked unavailable
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(mockConnection.start).toHaveBeenCalledTimes(1);
+
+      // Subsequent start calls should skip immediately
+      await service.start();
+      expect(mockConnection.start).toHaveBeenCalledTimes(1);
+    });
   });
 });
+

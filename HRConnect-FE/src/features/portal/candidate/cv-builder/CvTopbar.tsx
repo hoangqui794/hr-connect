@@ -30,6 +30,7 @@ export const FONT_OPTIONS = [
   { label: 'Roboto', value: "'Roboto', sans-serif" },
   { label: 'Plus Jakarta Sans', value: "'Plus Jakarta Sans', sans-serif" },
   { label: 'Be Vietnam Pro', value: "'Be Vietnam Pro', sans-serif" },
+  { label: 'Georgia (Harvard)', value: "'Georgia', serif" },
 ];
 
 export const FONT_SIZE_SCALES: Array<{ label: string; value: 'small' | 'normal' | 'large' }> = [
@@ -65,6 +66,7 @@ export interface CvTopbarProps {
   onDownloadPdf: () => void;
   onSave: () => void;
   isSaving: boolean;
+  isSaved?: boolean;
   onBack: () => void;
   mode: 'create' | 'edit';
 }
@@ -90,6 +92,7 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
   onDownloadPdf,
   onSave,
   isSaving,
+  isSaved,
   onBack,
   mode,
 }) => {
@@ -457,20 +460,31 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
             onClick={onDownloadPdf}
             className="!rounded-lg font-semibold text-xs text-slate-700 hover:text-blue-600 hover:border-blue-400 flex items-center gap-1"
           >
-            <span className="hidden sm:inline">Tải PDF</span>
+            <span className="hidden sm:inline">Tải CV</span>
           </Button>
         </Tooltip>
 
         {/* Save CV Button */}
-        <Button
-          type="primary"
-          icon={<SaveOutlined />}
-          loading={isSaving}
-          onClick={onSave}
-          className="!rounded-lg !bg-blue-600 hover:!bg-blue-700 !font-bold text-xs !px-4 shadow-xs flex items-center gap-1.5"
-        >
-          <span>Lưu CV</span>
-        </Button>
+        {isSaved ? (
+          <Button
+            type="primary"
+            icon={<CheckOutlined />}
+            onClick={onSave}
+            className="!rounded-lg !bg-emerald-600 hover:!bg-emerald-700 !font-bold text-xs !px-4 shadow-xs flex items-center gap-1.5 text-white cursor-pointer"
+          >
+            <span>✓ Đã lưu</span>
+          </Button>
+        ) : (
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            loading={isSaving}
+            onClick={onSave}
+            className="!rounded-lg !bg-blue-600 hover:!bg-blue-700 !font-bold text-xs !px-4 shadow-xs flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>Lưu CV</span>
+          </Button>
+        )}
       </div>
     </header>
   );

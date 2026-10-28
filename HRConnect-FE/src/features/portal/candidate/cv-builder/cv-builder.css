@@ -4,6 +4,11 @@
  */
 
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 0mm;
+  }
+
   /* Hide all UI elements outside the canvas */
   header,
   aside,
@@ -13,6 +18,9 @@
   .cv-sidebar,
   .zoom-toolbar,
   .floating-item-controls,
+  .candidate-shell-header,
+  .candidate-console-header,
+  .app-header,
   .ant-tooltip,
   .ant-message,
   .ant-modal-root {
